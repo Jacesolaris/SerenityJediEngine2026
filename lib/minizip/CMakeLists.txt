@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2018, SerenityJediEngine2025 contributors
+# Copyright (C) 2013 - 2018, SerenityJediEngine2026 contributors
 #
-# This file is part of the SerenityJediEngine2025 source code.
+# This file is part of the SerenityJediEngine2026 source code.
 #
-# SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -19,7 +19,7 @@
 # Build our bundled minizip.
 #
 # It is built as a static relocatable library, and linked into any target that
-# requires it.  Other targets in SerenityJediEngine2025 that consume need to add
+# requires it.  Other targets in SerenityJediEngine2026 that consume need to add
 # MINZIP_INCLUDE_DIRS and MINIZIP_LIBRARIES to their lists of include
 # directories and target link libraries.
 #

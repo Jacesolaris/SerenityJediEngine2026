@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -305,7 +305,6 @@ void SG_TestSave();
 //	any new enhanced ones that need to ask for new chunks during loading.
 //
 constexpr auto iSAVEGAME_VERSION = 1;
-int SG_Version(); // call this to know what version number a successfully-opened savegame file was
 //
 extern SavedGameJustLoaded_e e_saved_game_just_loaded;
 extern qboolean qbLoadTransition;

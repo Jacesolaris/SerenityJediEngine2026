@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -285,7 +285,7 @@ void CM_TestInLeaf(traceWork_t* tw, trace_t& trace, cLeaf_t* leaf, clipMap_t* lo
 			}
 		}
 	}
-}
+	}
 
 /*
 ==================
@@ -736,7 +736,7 @@ void CM_TraceThroughLeaf(traceWork_t * tw, trace_t & trace, clipMap_t * local, c
 			}
 		}
 	}
-}
+	}
 
 #define RADIUS_EPSILON		1.0f
 
@@ -1123,7 +1123,7 @@ void CM_TraceToLeaf(traceWork_t * tw, trace_t & trace, cLeaf_t * leaf, clipMap_t
 			}
 		}
 	}
-}
+	}
 
 /*
 ==================

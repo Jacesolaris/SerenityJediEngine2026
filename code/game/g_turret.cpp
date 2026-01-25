@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1778,13 +1778,14 @@ void pas_think(gentity_t* ent)
 		ent->s.loopSound = 0;
 	}
 
-	if (ent->enemy && ent->attackDebounceTime < level.time && Q_flrand(0.0f, 1.0f) > 0.3f)
+	if (ent->enemy && ent->attackDebounceTime < level.time && Q_flrand(0.0f, 1.0f) > 0.4f)
 	{
 		ent->count--;
 
 		if (ent->count)
 		{
 			pas_fire(ent);
+			ent->attackDebounceTime = level.time + ent->delay;
 			ent->fly_sound_debounce_time = level.time; //used as lastShotTime
 		}
 		else
@@ -1868,6 +1869,8 @@ void SP_PAS(gentity_t* base)
 	base->e_UseFunc = useF_pas_use;
 
 	base->damage = 0; // start animation flag
+
+	base->delay = 400.f;
 
 	base->contents = CONTENTS_SHOTCLIP | CONTENTS_CORPSE; //for certain traces
 	VectorSet(base->mins, -8, -8, 0);

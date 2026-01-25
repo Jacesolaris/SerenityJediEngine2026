@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -209,7 +209,7 @@ using refexport_t = struct refexport_s
 	int (*G2API_Ghoul2Size)(const CGhoul2Info_v& ghoul2);
 	void (*G2API_GiveMeVectorFromMatrix)(mdxaBone_t* boltMatrix, Eorientations flags, vec3_t vec);
 	qboolean(*G2API_HasGhoul2ModelOnIndex)(CGhoul2Info_v** ghlRemove, int modelIndex);
-	qboolean(*G2API_HaveWeGhoul2Models)(const CGhoul2Info_v& ghoul2);
+	qboolean(*G2API_HaveWeGhoul2Models)(CGhoul2Info_v& ghoul2);
 	qboolean(*G2API_IKMove)(CGhoul2Info_v& ghoul2, int time, sharedIKMoveParams_t* params);
 	int (*G2API_InitGhoul2Model)(CGhoul2Info_v** ghoul2Ptr, const char* fileName, int modelIndex, qhandle_t customSkin,
 		qhandle_t customShader, int modelFlags, int lodBias);

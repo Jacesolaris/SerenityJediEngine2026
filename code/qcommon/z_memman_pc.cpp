@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -214,7 +214,7 @@ qboolean gbMemFreeupOccured = qfalse;
 // (normally I'd call another function for this, but this is supposed to be engine-independent,
 //	 so a certain amount of re-invention of the wheel is to be expected...)
 //
-char* _D_Z_Filename_WithoutPath(const char* psFilename)
+static char* _D_Z_Filename_WithoutPath(const char* psFilename)
 {
 	static char sString[MAX_QPATH];
 
@@ -399,17 +399,17 @@ void* Z_Malloc(const int iSize, const memtag_t eTag, const qboolean bZeroit, con
 // Special wrapper around Z_Malloc for better separation between the main engine
 // code and the bundled minizip library.
 
-extern "C" Q_EXPORT void* SerenityJediEngine2025_minizip_malloc(int size);
-extern "C" Q_EXPORT int SerenityJediEngine2025_minizip_free(void* to_free);
+extern "C" Q_EXPORT void* SerenityJediEngine2026_minizip_malloc(int size);
+extern "C" Q_EXPORT void SerenityJediEngine2026_minizip_free(void* to_free);
 
-void* SerenityJediEngine2025_minizip_malloc(const int size)
+void* SerenityJediEngine2026_minizip_malloc(const int size)
 {
 	return Z_Malloc(size, TAG_MINIZIP, qfalse);
 }
 
-int SerenityJediEngine2025_minizip_free(void* to_free)
+void SerenityJediEngine2026_minizip_free(void* to_free)
 {
-	return Z_Free(to_free);
+	Z_Free(to_free);
 }
 
 // used during model cacheing to save an extra malloc, lets us morph the disk-load buffer then

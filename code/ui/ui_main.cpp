@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1277,7 +1277,7 @@ static qboolean UI_RunMenuScript(const char** args)
 		{
 			Menus_CloseAll();
 			ui.Cmd_ExecuteText(EXEC_APPEND, "map part_1\n");
-			}
+		}
 		else if (Q_stricmp(name, "startmap") == 0)
 		{
 			Menus_CloseAll();
@@ -4619,7 +4619,7 @@ void Menu_Cache(void)
 	uis.cursor = ui.R_RegisterShaderNoMip("menu/new/crosshairb");
 	// Common menu graphics
 	uis.whiteShader = ui.R_RegisterShader("white");
-	
+
 	if (ui_com_outcast.integer == 3)
 	{
 		uis.menuBackShader = ui.R_RegisterShaderNoMip("menu/art/unknownmap_yav");
@@ -6913,7 +6913,7 @@ void UI_ResetDefaults()
 {
 	ui.Cmd_ExecuteText(EXEC_APPEND, "cvar_restart\n");
 	Controls_SetDefaults();
-	ui.Cmd_ExecuteText(EXEC_APPEND, "exec SerenityJediEngine2025-SP-default.cfg\n");
+	ui.Cmd_ExecuteText(EXEC_APPEND, "exec SerenityJediEngine2026-SP-default.cfg\n");
 	ui.Cmd_ExecuteText(EXEC_APPEND, "vid_restart\n");
 }
 

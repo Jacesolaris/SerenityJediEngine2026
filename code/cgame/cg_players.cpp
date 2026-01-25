@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -632,6 +632,13 @@ void CG_NewClientinfo(const int clientNum)
 	Q_strncpyz(g_entities[clientNum].client->renderInfo.headModelName, v,
 		sizeof g_entities[clientNum].client->renderInfo.headModelName);
 
+	// Check if NPC sounds are already registered
+	if (ci->customBasicSoundDir && ci->customBasicSoundDir[0])
+	{
+		//Com_Printf(S_COLOR_YELLOW "Skipping SP sounds because NPC sounds are already registered.\n");
+		ci->infoValid = qfalse;
+		return;
+	}
 	// sounds
 	v = Info_ValueForKey(configstring, "snd");
 
@@ -7038,7 +7045,7 @@ static void CG_StopWeaponSounds(centity_t* cent)
 		return;
 	}
 
-	if (!(cent->currentState.eFlags & EF_FIRING))
+	if (!(cent->currentState.eFlags & (EF_FIRING | EF_ALT_FIRING)))
 	{
 		if (cent->pe.lightningFiring)
 		{
@@ -7058,6 +7065,10 @@ static void CG_StopWeaponSounds(centity_t* cent)
 		{
 			cgi_S_AddLoopingSound(cent->currentState.number, cent->lerpOrigin, vec3_origin, weapon->altFiringSound);
 		}
+		cent->pe.lightningFiring = qtrue;
+	}
+	else if (cent->currentState.eFlags & EF_FIRING)
+	{
 		cent->pe.lightningFiring = qtrue;
 	}
 }

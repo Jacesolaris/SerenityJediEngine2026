@@ -2071,7 +2071,7 @@ void G2API_ListBones(CGhoul2Info* ghlInfo, const int frame)
 }
 
 // decide if we have Ghoul2 models associated with this ghoul list or not
-qboolean G2API_HaveWeGhoul2Models(const CGhoul2Info_v& ghoul2)
+qboolean G2API_HaveWeGhoul2Models(CGhoul2Info_v& ghoul2)
 {
 	if (ghoul2.size())
 	{

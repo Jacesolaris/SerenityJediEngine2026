@@ -103,17 +103,17 @@ extern int errno;
 #endif
 
 /* Normally, these forward declarations are a bad thing, but this seems to be
-   the best way to get at SerenityJediEngine2025_minizip_malloc and Z_Free without tightly
+   the best way to get at SerenityJediEngine2026_minizip_malloc and Z_Free without tightly
    binding the bundled minizip lib to the rest of the engine. */
 
-void* SerenityJediEngine2025_minizip_malloc(int);
-int SerenityJediEngine2025_minizip_free(void*);
+void* SerenityJediEngine2026_minizip_malloc(int);
+void SerenityJediEngine2026_minizip_free(void*);
 
 #ifndef ALLOC
-# define ALLOC(size) (SerenityJediEngine2025_minizip_malloc(size))
+# define ALLOC(size) (SerenityJediEngine2026_minizip_malloc(size))
 #endif
 #ifndef TRYFREE
-# define TRYFREE(p) {if (p) SerenityJediEngine2025_minizip_free(p);}
+# define TRYFREE(p) {if (p) SerenityJediEngine2026_minizip_free(p);}
 #endif
 
 #define SIZECENTRALDIRITEM (0x2e)

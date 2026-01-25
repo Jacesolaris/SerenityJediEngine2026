@@ -79,7 +79,7 @@ void* R_Malloc(const int iSize, const memtag_t eTag, const qboolean bZeroit)
 }
 
 #ifdef REND2_SP
-void* R_Malloc(const int iSize, const memtag_t eTag, const qboolean bZeroit, const int iUnusedAlign)
+static void* R_Malloc(const int iSize, const memtag_t eTag, const qboolean bZeroit, const int iUnusedAlign)
 {
 	return ri.Z_Malloc(iSize, eTag, bZeroit, iUnusedAlign);
 }
@@ -117,7 +117,7 @@ void* Hunk_Alloc(const int size, const ha_pref preference)
 	return R_Malloc(size, TAG_HUNKALLOC, qtrue);
 }
 
-void* Hunk_AllocateTempMemory(const int size)
+void* Hunk_AllocateTempMemory(int size)
 {
 	// don't bother clearing, because we are going to load a file over it
 	return R_Malloc(size, TAG_TEMP_HUNKALLOC, qfalse);
@@ -129,7 +129,7 @@ void Hunk_FreeTempMemory(void* buf)
 }
 #else
 
-void* Hunk_AllocateTempMemory(const int size)
+void* Hunk_AllocateTempMemory(int size)
 {
 	return ri.Hunk_AllocateTempMemory(size);
 }

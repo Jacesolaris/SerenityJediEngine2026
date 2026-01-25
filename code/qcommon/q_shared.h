@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -65,25 +65,25 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif // !JK2_MODE
 
 #if JK2_MODE
-#define PRODUCT_NAME			"SerenityJediEngineJO2025-SP"
+#define PRODUCT_NAME			"SerenityJediEngineJO2026-SP"
 
-#define CLIENT_WINDOW_TITLE "SerenityJediEngineJO2025 (SP)"
-#define CLIENT_CONSOLE_TITLE "SerenityJediEngineJO2025 Console (SP)"
-#define HOMEPATH_NAME_UNIX "SerenityJediEngineJO2025"
-#define HOMEPATH_NAME_WIN "SerenityJediEngineJO2025"
+#define CLIENT_WINDOW_TITLE "SerenityJediEngineJO2026 (SP)"
+#define CLIENT_CONSOLE_TITLE "SerenityJediEngineJO2026 Console (SP)"
+#define HOMEPATH_NAME_UNIX "SerenityJediEngineJO2026"
+#define HOMEPATH_NAME_WIN "SerenityJediEngineJO2026"
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 #else
-#define PRODUCT_NAME			"SerenityJediEngine2025-SP"
+#define PRODUCT_NAME			"SerenityJediEngine2026-SP"
 
-constexpr auto CLIENT_WINDOW_TITLE = "SerenityJediEngine2025 (SP)";
-constexpr auto CLIENT_CONSOLE_TITLE = "SerenityJediEngine2025 Console (SP)";
-constexpr auto HOMEPATH_NAME_UNIX = "SerenityJediEngine2025";
+constexpr auto CLIENT_WINDOW_TITLE = "SerenityJediEngine2026 (SP)";
+constexpr auto CLIENT_CONSOLE_TITLE = "SerenityJediEngine2026 Console (SP)";
+constexpr auto HOMEPATH_NAME_UNIX = "SerenityJediEngine2026";
 constexpr auto HOMEPATH_NAME_WIN = "SerenityJediEngine";
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 #endif
 
 constexpr auto BASEGAME = "base";
-constexpr auto SerenityJediEngine2025GAME = "SerenityJediEngine2025";
+constexpr auto SerenityJediEngine2026GAME = "SerenityJediEngine2026";
 
 #define Q3CONFIG_NAME PRODUCT_NAME ".cfg"
 

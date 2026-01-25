@@ -37,7 +37,7 @@ void RB_ShadowFinish(void)
 	{
 		return;
 	}
-	if (glConfig.stencilBits < 4) 
+	if (glConfig.stencilBits < 4)
 	{
 		return;
 	}

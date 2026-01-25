@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -985,7 +985,7 @@ void CG_PainEvent(centity_t* cent, const int health)
 	char* snd;
 
 	// don't do more than two pain sounds a second
-	if (cg.time - cent->pe.painTime < 500)
+	if (cg.time - cent->pe.painTime < 1500)
 	{
 		return;
 	}
@@ -2350,6 +2350,12 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 	case EV_PUSHED2:
 	case EV_PUSHED3:
 		DEBUGNAME("EV_PUSHEDx");
+		// Delay between pushed sounds
+		if (cg.time - cent->pe.pushedTime < 2500)
+		{
+			return;
+		}
+		cent->pe.pushedTime = cg.time;
 		CG_TryPlayCustomSound(NULL, es->number, CHAN_VOICE, va("*pushed%i.wav", event - EV_PUSHED1 + 1));
 		break;
 

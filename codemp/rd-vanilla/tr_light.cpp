@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -356,9 +356,9 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 			}
 			else
 			{
-				ent->ambientLight[0] += tr.identityLight * 96;
-				ent->ambientLight[1] += tr.identityLight * 96;
-				ent->ambientLight[2] += tr.identityLight * 96;
+				ent->ambientLight[0] += tr.identityLight * 76;
+				ent->ambientLight[1] += tr.identityLight * 76;
+				ent->ambientLight[2] += tr.identityLight * 76;
 			}
 		}
 		else
@@ -373,9 +373,9 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 	{
 		if (ent->e.renderfx & RF_MINLIGHT)
 		{
-			ent->ambientLight[0] += tr.identityLight * 96;
-			ent->ambientLight[1] += tr.identityLight * 96;
-			ent->ambientLight[2] += tr.identityLight * 96;
+			ent->ambientLight[0] += tr.identityLight * 76;
+			ent->ambientLight[1] += tr.identityLight * 76;
+			ent->ambientLight[2] += tr.identityLight * 76;
 		}
 		else
 		{

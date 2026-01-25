@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -6427,8 +6427,8 @@ static void UI_RunMenuScript(char** args)
 			{
 				trap->Cvar_SetValue("dedicated", Com_Clamp(0, 2, ui_dedicated.integer));
 			}
-			trap->Cvar_SetValue("g_gametype",Com_Clamp(0, GT_MAX_GAME_TYPE, uiInfo.gameTypes[ui_netGametype.integer].gtEnum));
-			trap->Cmd_ExecuteText(EXEC_APPEND,va("wait ; wait ; map %s\n",uiInfo.mapList[ui_currentNetMap.integer].mapLoadName));
+			trap->Cvar_SetValue("g_gametype", Com_Clamp(0, GT_MAX_GAME_TYPE, uiInfo.gameTypes[ui_netGametype.integer].gtEnum));
+			trap->Cmd_ExecuteText(EXEC_APPEND, va("wait ; wait ; map %s\n", uiInfo.mapList[ui_currentNetMap.integer].mapLoadName));
 			skill = trap->Cvar_VariableValue("g_spSkill");
 
 			//Cap the warmup values in case the user tries a dumb setting.
@@ -6530,7 +6530,7 @@ static void UI_RunMenuScript(char** args)
 		{
 			trap->Cmd_ExecuteText(EXEC_APPEND, "cvar_restart\n");
 			Controls_SetDefaults();
-			trap->Cmd_ExecuteText(EXEC_APPEND, "exec SerenityJediEngine2025-MP-default.cfg\n");
+			trap->Cmd_ExecuteText(EXEC_APPEND, "exec SerenityJediEngine2026-MP-default.cfg\n");
 			trap->Cmd_ExecuteText(EXEC_APPEND, "vid_restart\n");
 		}
 		else if (Q_stricmp(name, "loadArenas") == 0)
@@ -7191,7 +7191,7 @@ static void UI_RunMenuScript(char** args)
 			{
 				trap->Cvar_Set("ui_dualforcepower", "1");
 			}
-			}
+		}
 		else if (Q_stricmp(name, "dualForcePowers") == 0)
 		{
 			int	dualforcePower, i, forcePowerDisable = 0;
@@ -7229,7 +7229,7 @@ static void UI_RunMenuScript(char** args)
 			}
 
 			trap->Cvar_Set("g_forcePowerDisable", va("%i", forcePowerDisable));
-			}
+		}
 		else if (Q_stricmp(name, "forcePowersDisable") == 0)
 		{
 			int	forcePowerDisable, i;
@@ -7246,7 +7246,7 @@ static void UI_RunMenuScript(char** args)
 
 				trap->Cvar_Set("g_forcePowerDisable", va("%i", forcePowerDisable));
 			}
-			}
+		}
 		else if (Q_stricmp(name, "weaponDisable") == 0)
 		{
 			int	weaponDisable, i;
@@ -7277,9 +7277,9 @@ static void UI_RunMenuScript(char** args)
 
 				trap->Cvar_Set(cvarString, va("%i", weaponDisable));
 			}
-			}
-			// If this is siege, change all the bots to humans, because we faked it earlier
-			//  swapping humans for bots on the menu
+		}
+		// If this is siege, change all the bots to humans, because we faked it earlier
+		//  swapping humans for bots on the menu
 		else if (Q_stricmp(name, "setSiegeNoBots") == 0)
 		{
 			if (uiInfo.gameTypes[ui_netGametype.integer].gtEnum == GT_SIEGE)
@@ -7764,8 +7764,8 @@ static void UI_RunMenuScript(char** args)
 		{
 			Com_Printf("unknown UI script %s\n", name);
 		}
-		}
 	}
+}
 
 static void UI_GetTeamColor(vec4_t* color)
 {
@@ -8130,7 +8130,7 @@ static void UI_BuildServerDisplayList(int force)
 	int len = strlen(uiInfo.serverStatus.motd);
 	if (len == 0)
 	{
-		Q_strncpyz(uiInfo.serverStatus.motd, "Welcome to SerenityJediEngine2025 MP!", sizeof uiInfo.serverStatus.motd);
+		Q_strncpyz(uiInfo.serverStatus.motd, "Welcome to SerenityJediEngine2026 MP!", sizeof uiInfo.serverStatus.motd);
 		len = strlen(uiInfo.serverStatus.motd);
 	}
 	if (len != uiInfo.serverStatus.motdLen)
@@ -10850,7 +10850,7 @@ static void UI_Init(qboolean inGameLoad)
 		Q_strncpyz(buf, UI_Cvar_VariableString("name"), sizeof buf);
 		trap->Cvar_Register(NULL, "ui_Name", buf, CVAR_INTERNAL);
 		trap->Cvar_Register(NULL, "ui_adminpass", UI_Cvar_VariableString("g_adminpassword"), CVAR_INTERNAL);
-}
+	}
 
 	Menus_CloseAll();
 
@@ -11477,7 +11477,7 @@ GetModuleAPI
 
 uiImport_t* trap = NULL;
 
-Q_EXPORT uiExport_t * QDECL GetModuleAPI(int apiVersion, uiImport_t * import)
+Q_EXPORT uiExport_t* QDECL GetModuleAPI(int apiVersion, uiImport_t* import)
 {
 	static uiExport_t uie = { 0 };
 

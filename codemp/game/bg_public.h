@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -47,7 +47,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
 
-#define	GAME_VERSION		"SerenityJediEngine2025"
+#define	GAME_VERSION		"SerenityJediEngine2026"
 
 #define DEFAULT_SABER			"Kyle"
 #define DEFAULT_SABER_NAME		"lightsaber"
@@ -60,7 +60,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-14,Month-05,Year-24,BuildNum-03" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-24,Month-01,Year-26,BuildNum-01" // build date
 
 #define	STEPSIZE		18
 

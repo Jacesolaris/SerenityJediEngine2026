@@ -1,10 +1,10 @@
 /*
 ===========================================================================
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1782,7 +1782,8 @@ static void SV_G2API_SetGhoul2model_indexes(void* ghoul2, qhandle_t* modelList, 
 
 static qboolean SV_G2API_HaveWeGhoul2Models(void* ghoul2)
 {
-	return re->G2API_HaveWeGhoul2Models(*static_cast<CGhoul2Info_v*>(ghoul2));
+	if (!ghoul2) return qfalse;
+	return re->G2API_HaveWeGhoul2Models(*((CGhoul2Info_v*)ghoul2));
 }
 
 static qboolean SV_G2API_GetBoltMatrix(void* ghoul2, const int modelIndex, const int boltIndex, mdxaBone_t* matrix,
@@ -3038,7 +3039,7 @@ intptr_t SV_GameSystemCalls(intptr_t* args)
 		return 0;
 
 	case G_G2_HAVEWEGHOULMODELS:
-		return re->G2API_HaveWeGhoul2Models(*reinterpret_cast<CGhoul2Info_v*>(args[1]));
+		return SV_G2API_HaveWeGhoul2Models(VMA(1));
 
 	case G_G2_SETMODELS:
 		re->G2API_SetGhoul2model_indexes(*reinterpret_cast<CGhoul2Info_v*>(args[1]), static_cast<qhandle_t*>(VMA(2)),
@@ -3383,7 +3384,7 @@ void SV_InitGame(const qboolean restart)
 void SV_BindGame(void)
 {
 	static gameImport_t gi;
-	char dllName[MAX_OSPATH] = "SerenityJediEngine2025-mpgame" ARCH_STRING DLL_EXT;
+	char dllName[MAX_OSPATH] = "SerenityJediEngine2026-mpgame" ARCH_STRING DLL_EXT;
 
 	memset(&gi, 0, sizeof gi);
 

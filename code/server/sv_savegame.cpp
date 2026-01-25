@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, OpenJK contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the OpenJK source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+OpenJK is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -57,17 +57,17 @@ class CChid
 {
 private:
 	int		m_iCount;
-	int		m_iSize;
+	int		m_i_size;
 public:
 	CChid()
 	{
 		m_iCount = 0;
-		m_iSize = 0;
+		m_i_size = 0;
 	}
 	void Add(int iLength)
 	{
 		m_iCount++;
-		m_iSize += iLength;
+		m_i_size += iLength;
 	}
 	int GetCount()
 	{
@@ -75,7 +75,7 @@ public:
 	}
 	int GetSize()
 	{
-		return m_iSize;
+		return m_i_size;
 	}
 };
 
@@ -377,7 +377,6 @@ void SV_SaveGame_f()
 	}
 }
 
-extern void SV_Player_EndOfLevelSave();
 //---------------
 static void WriteGame(const qboolean autosave)
 {
@@ -392,6 +391,7 @@ static void WriteGame(const qboolean autosave)
 	{
 		// write out player ammo level, health, etc...
 		//
+		extern void SV_Player_EndOfLevelSave();
 		SV_Player_EndOfLevelSave(); // this sets up the various cvars needed, so we can then write them to disk
 		//
 		char s[MAX_STRING_CHARS] = {};
@@ -498,7 +498,7 @@ static qboolean ReadGame()
 extern cvar_t* cvar_vars;
 // I know this is really unpleasant, but I need access for scanning/writing latched cvars during save games
 
-static void SG_WriteCvars()
+void SG_WriteCvars()
 {
 	cvar_t* var;
 	int i_count = 0;
@@ -552,7 +552,7 @@ static void SG_WriteCvars()
 	}
 }
 
-static void SG_ReadCvars()
+void SG_ReadCvars()
 {
 	int i_count = 0;
 	std::string ps_name;
@@ -582,7 +582,7 @@ static void SG_ReadCvars()
 	}
 }
 
-static void SG_WriteServerConfigStrings()
+void SG_WriteServerConfigStrings()
 {
 	ojk::SavedGameHelper saved_game(
 		&ojk::SavedGame::get_instance());
@@ -629,7 +629,7 @@ static void SG_WriteServerConfigStrings()
 	}
 }
 
-static void SG_ReadServerConfigStrings()
+void SG_ReadServerConfigStrings()
 {
 	// trash the whole table...
 	//
@@ -684,14 +684,14 @@ static unsigned int SG_UnixTimestamp(const time_t& t)
 	return static_cast<unsigned int>(t);
 }
 
-static void SG_WriteComment(const qboolean qb_autosave, const char* ps_map_name)
+static void SG_WriteComment(const qboolean qbAutosave, const char* ps_map_name)
 {
 	ojk::SavedGameHelper saved_game(
 		&ojk::SavedGame::get_instance());
 
 	char s_comment[iSG_COMMENT_SIZE];
 
-	if (qb_autosave || !*save_game_comment)
+	if (qbAutosave || !*save_game_comment)
 	{
 		Com_sprintf(s_comment, sizeof s_comment, "---> %s", ps_map_name);
 	}

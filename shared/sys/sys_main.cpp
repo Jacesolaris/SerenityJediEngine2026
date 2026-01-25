@@ -1,11 +1,11 @@
 /*
 ===========================================================================
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -378,7 +378,7 @@ enum SearchPathFlag
 {
 	SEARCH_PATH_MOD = 1 << 0,
 	SEARCH_PATH_BASE = 1 << 1,
-	SEARCH_PATH_SerenityJediEngine2025 = 1 << 2,
+	SEARCH_PATH_SerenityJediEngine2026 = 1 << 2,
 	SEARCH_PATH_ROOT = 1 << 3
 };
 
@@ -422,7 +422,7 @@ static void* Sys_LoadDllFromPaths(const char* filename, const char* gamedir, con
 		}
 	}
 
-	if (searchFlags & SEARCH_PATH_SerenityJediEngine2025)
+	if (searchFlags & SEARCH_PATH_SerenityJediEngine2026)
 	{
 		for (size_t i = 0; i < numPaths; i++)
 		{
@@ -430,7 +430,7 @@ static void* Sys_LoadDllFromPaths(const char* filename, const char* gamedir, con
 			if (!libDir[0])
 				continue;
 
-			fn = FS_BuildOSPath(libDir, SerenityJediEngine2025GAME, filename);
+			fn = FS_BuildOSPath(libDir, SerenityJediEngine2026GAME, filename);
 			libHandle = Sys_LoadLibrary(fn);
 			if (libHandle)
 				return libHandle;
@@ -584,7 +584,7 @@ void* Sys_LoadSPGameDll(const char* name, GetGameAPIProc** GetGameAPI)
 		constexpr size_t numPaths = ARRAY_LEN(searchPaths);
 
 		libHandle = Sys_LoadDllFromPaths(filename, gamedir, searchPaths, numPaths,
-			SEARCH_PATH_BASE | SEARCH_PATH_MOD | SEARCH_PATH_SerenityJediEngine2025 | SEARCH_PATH_ROOT,
+			SEARCH_PATH_BASE | SEARCH_PATH_MOD | SEARCH_PATH_SerenityJediEngine2026 | SEARCH_PATH_ROOT,
 			__FUNCTION__);
 		if (!libHandle)
 			return nullptr;

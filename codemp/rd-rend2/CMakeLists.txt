@@ -1,7 +1,7 @@
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2025)
+if(NOT InSerenityJediEngine2026)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2025)
+endif(NOT InSerenityJediEngine2026)
 
 set(MPRend2IncludeDirectories
 	"${SharedDir}"
@@ -146,7 +146,7 @@ set(MPRend2Files
 	${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp)
 
-set(MPRend2IncludeDirectories ${MPRend2IncludeDirectories} ${SerenityJediEngine2025LibDir})
+set(MPRend2IncludeDirectories ${MPRend2IncludeDirectories} ${SerenityJediEngine2026LibDir})
 add_library(${MPRend2} SHARED ${MPRend2Files})
 
 if(NOT MSVC)
@@ -176,45 +176,45 @@ endif()
 set_target_properties(${MPRend2} PROPERTIES COMPILE_DEFINITIONS "${SharedDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPRend2} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2025_VISIBILITY_FLAGS})
+set_property(TARGET ${MPRend2} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2026_VISIBILITY_FLAGS})
 set_target_properties(${MPRend2} PROPERTIES INCLUDE_DIRECTORIES "${MPRend2IncludeDirectories}")
 set_target_properties(${MPRend2} PROPERTIES PROJECT_LABEL "MP Rend2 Renderer")
 target_link_libraries(${MPRend2} ${MPRend2Libraries})
 target_include_directories(${MPRend2} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 # GLSL shader file generator
-add_executable(SerenityJediEngine2025_glsl_mp
+add_executable(SerenityJediEngine2026_glsl_mp
 	${MPDir}/rd-rend2/glsl/compact.cpp
 	${MPDir}/rd-rend2/tr_allocator.cpp
 	${MPDir}/rd-rend2/tr_allocator.h
 	${MPDir}/rd-rend2/tr_glsl_parse.cpp)
-target_compile_definitions(SerenityJediEngine2025_glsl_mp PRIVATE "GLSL_BUILDTOOL" "NOMINMAX")
+target_compile_definitions(SerenityJediEngine2026_glsl_mp PRIVATE "GLSL_BUILDTOOL" "NOMINMAX")
 if (NOT WIN32 AND NOT APPLE)
-	target_compile_definitions(SerenityJediEngine2025_glsl_mp PRIVATE "ARCH_STRING=\"${Architecture}\"")
+	target_compile_definitions(SerenityJediEngine2026_glsl_mp PRIVATE "ARCH_STRING=\"${Architecture}\"")
 endif()
-target_include_directories(SerenityJediEngine2025_glsl_mp PRIVATE "${MPRend2IncludeDirectories}")
+target_include_directories(SerenityJediEngine2026_glsl_mp PRIVATE "${MPRend2IncludeDirectories}")
 if (WIN32 OR APPLE)
 add_custom_command(
 	OUTPUT
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	COMMAND
-		SerenityJediEngine2025_glsl_mp
+		SerenityJediEngine2026_glsl_mp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 			${MPRend2GLSLFiles}
 	DEPENDS
-		SerenityJediEngine2025_glsl_mp ${MPRend2GLSLFiles})
+		SerenityJediEngine2026_glsl_mp ${MPRend2GLSLFiles})
 else()
 add_custom_command(
 	OUTPUT
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	COMMAND
-		${CMAKE_BINARY_DIR}/SerenityJediEngine2025_glsl_mp
+		${CMAKE_BINARY_DIR}/SerenityJediEngine2026_glsl_mp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 			${MPRend2GLSLFiles}
 	DEPENDS
-		SerenityJediEngine2025_glsl_mp ${MPRend2GLSLFiles})
+		SerenityJediEngine2026_glsl_mp ${MPRend2GLSLFiles})
 endif()

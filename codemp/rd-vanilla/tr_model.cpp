@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -766,7 +766,7 @@ static qboolean ServerLoadMDXA(model_t* mod, void* buffer, const char* mod_name,
 
 		for (k = 0; k < 7; k++)
 			LS(pwIn[k]);
-}
+	}
 #endif
 	return qtrue;
 }
@@ -958,16 +958,16 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 				LL(v->uiNmWeightsAndBoneIndexes);
 
 				v++;
-		}
+			}
 #endif
 
 			// find the next surface
 			surf = (mdxmSurface_t*)((byte*)surf + surf->ofsEnd);
-	}
+		}
 
 		// find the next LOD
 		lod = (mdxmLOD_t*)((byte*)lod + lod->ofsEnd);
-}
+	}
 
 	return qtrue;
 }
@@ -1326,7 +1326,7 @@ fail:
 	mod->type = MOD_BAD;
 	RE_InsertModelIntoHash(name, mod);
 	return 0;
-	}
+}
 
 // wrapper function needed to avoid problems with mid-function returns so I can safely use this bool to tell the
 //	z_malloc-fail recovery code whether it's safe to ditch any model caches...
@@ -1445,7 +1445,7 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 			LF(tag->axis[1][j]);
 			LF(tag->axis[2][j]);
 		}
-}
+	}
 #endif
 
 	// swap all the surfaces
@@ -1520,12 +1520,12 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 			LS(xyz->xyz[2]);
 
 			LS(xyz->normal);
-	}
+		}
 #endif
 
 		// find the next surface
 		surf = (md3Surface_t*)((byte*)surf + surf->ofsEnd);
-}
+	}
 
 	return qtrue;
 }
@@ -1625,7 +1625,7 @@ void R_model_list_f(void) {
 #if	0		// not working right with new hunk
 	if (tr.world) {
 		ri->Printf(PRINT_ALL, "\n%8i : %s\n", tr.world->dataSize, tr.world->name);
-}
+	}
 #endif
 }
 

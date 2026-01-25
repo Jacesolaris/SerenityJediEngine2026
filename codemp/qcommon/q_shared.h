@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -38,16 +38,16 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
-#define PRODUCT_NAME			"SerenityJediEngine2025-MP"
+#define PRODUCT_NAME			"SerenityJediEngine2026-MP"
 
-#define CLIENT_WINDOW_TITLE "SerenityJediEngine2025 (MP)"
-#define CLIENT_CONSOLE_TITLE "SerenityJediEngine2025 Console (MP)"
-#define HOMEPATH_NAME_UNIX "SerenityJediEngine2025"
+#define CLIENT_WINDOW_TITLE "SerenityJediEngine2026 (MP)"
+#define CLIENT_CONSOLE_TITLE "SerenityJediEngine2026 Console (MP)"
+#define HOMEPATH_NAME_UNIX "SerenityJediEngine2026"
 #define HOMEPATH_NAME_WIN "SerenityJediEngine"
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 
 #define	BASEGAME "base"
-#define SerenityJediEngine2025GAME "SerenityJediEngine2025"
+#define SerenityJediEngine2026GAME "SerenityJediEngine2026"
 
 //NOTENOTE: Only change this to re-point ICARUS to a new script directory
 #define Q3_SCRIPT_DIR	"scriptsmp"
@@ -933,7 +933,7 @@ typedef enum {
 //
 // per-level limits
 //
-#define	MAX_CLIENTS			32		// absolute limit
+#define	MAX_CLIENTS			64		// absolute limit
 #define MAX_RADAR_ENTITIES	MAX_GENTITIES
 #define MAX_TERRAINS		1//32 //rwwRMG: inserted
 #define MAX_LOCATIONS		64
@@ -1181,6 +1181,7 @@ typedef struct playerState_s {
 
 	int			painTime;		// used for both game and client side to process the pain twitch - NOT sent across the network
 	int			painDirection;	// NOT sent across the network
+	int         pushedTime; // when the last push sound occurred
 	float		yawAngle;		// NOT sent across the network
 	qboolean	yawing;			// NOT sent across the network
 	float		pitchAngle;		// NOT sent across the network

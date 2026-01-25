@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1669,7 +1669,7 @@ qboolean NPC_BSFlee()
 			NPCInfo->goalEntity = found_weap; // Change Our Target Goal
 			NPCInfo->goalRadius = 30.0f; // 30 good enough?
 
-			TIMER_Set(NPC, "CheckForWeaponToPickup", Q_irand(10000, 50000));
+			TIMER_Set(NPC, "CheckForWeaponToPickup", Q_irand(1000, 5000) * 10);
 		}
 
 		// Look Again Soon

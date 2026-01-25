@@ -523,7 +523,7 @@ static void RB_Hyperspace(void) {
 	qglClearBufferfv(GL_COLOR, 0, v);
 }
 
-static void SetViewportAndScissor(void) 
+static void SetViewportAndScissor(void)
 {
 	GL_SetProjectionMatrix(backEnd.viewParms.projectionMatrix);
 
@@ -1238,7 +1238,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		if (shader->useSimpleDepthShader == qtrue)
 			shader = tr.defaultShader;
 
-
 		if (*drawSurf->surface == SF_MDX)
 		{
 			if (((CRenderableSurface*)drawSurf->surface)->boneCache != oldBoneCache)
@@ -1668,6 +1667,7 @@ static const void* RB_StretchPic(const void* data) {
 	RB_SetGL2D();
 
 	shader = cmd->shader;
+	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();
@@ -1751,6 +1751,7 @@ static const void* RB_RotatePic(const void* data)
 	RB_SetGL2D();
 
 	shader = cmd->shader;
+	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();
@@ -1844,6 +1845,7 @@ static const void* RB_RotatePic2(const void* data)
 	RB_SetGL2D();
 
 	shader = cmd->shader;
+	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();

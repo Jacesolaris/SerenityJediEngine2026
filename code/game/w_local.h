@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -33,11 +33,11 @@ void WP_ExplosiveDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker,
 bool WP_MissileTargetHint(gentity_t* shooter, vec3_t start, vec3_t out);
 void ViewHeightFix(const gentity_t* ent);
 qboolean LogAccuracyHit(const gentity_t* target, const gentity_t* attacker);
-extern qboolean G_BoxInBounds(const vec3_t point, const vec3_t mins, const vec3_t maxs, const vec3_t bounds_mins,const vec3_t bounds_maxs);
+extern qboolean G_BoxInBounds(const vec3_t point, const vec3_t mins, const vec3_t maxs, const vec3_t bounds_mins, const vec3_t bounds_maxs);
 extern qboolean jedi_dodge_evasion(gentity_t* self, gentity_t* shooter, trace_t* tr, int hit_loc);
 extern qboolean jedi_disruptor_dodge_evasion(gentity_t* self, gentity_t* shooter, trace_t* tr, int hit_loc);
 extern qboolean PM_DroidMelee(int npc_class);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, qboolean break_saber_lock);
 extern qboolean G_HasKnockdownAnims(const gentity_t* ent);
 
 extern gentity_t* ent_list[MAX_GENTITIES];

@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -2497,8 +2497,8 @@ static IHeapAllocator* GetG2VertSpaceServer(void)
 	return G2VertSpaceServer;
 }
 
-#define DEFAULT_RENDER_LIBRARY "SerenityJediEngine2025-rdmp"
-//#define DEFAULT_RENDER_LIBRARY "SerenityJediEngine2025-rdmp-rend2"
+#define DEFAULT_RENDER_LIBRARY "SerenityJediEngine2026-rdmp"
+//#define DEFAULT_RENDER_LIBRARY "SerenityJediEngine2026-rdmp-rend2"
 
 void CL_InitRef(void)
 {
@@ -2916,7 +2916,7 @@ void CL_Init(void)
 
 	cl_drawRecording = Cvar_Get("cl_drawRecording", "1", CVAR_ARCHIVE);
 
-	// enable the ja_guid player identifier in userinfo by default in SerenityJediEngine2025
+	// enable the ja_guid player identifier in userinfo by default in SerenityJediEngine2026
 	cl_enableGuid = Cvar_Get("cl_enableGuid", "1", CVAR_ARCHIVE_ND, "Enable GUID userinfo identifier");
 	cl_guidServerUniq = Cvar_Get("cl_guidServerUniq", "1", CVAR_ARCHIVE_ND, "Use a unique guid value per server");
 

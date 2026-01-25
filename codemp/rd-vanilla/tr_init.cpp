@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -39,6 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "../rd-common/tr_common.h"
 #include "tr_WorldEffects.h"
+#include "qcommon/MiniHeap.h"
 #include "ghoul2/g2_local.h"
 
 glconfig_t	glConfig;
@@ -787,7 +788,7 @@ static const char* TruncateGLExtensionsString(const char* extensions_string, con
 	int num_extensions = 0;
 	size_t extensions_len = strlen(extensions_string);
 
-	while ((q = strchr(p, ' ')) != nullptr && num_extensions <= max_extensions)
+	while ((q = strchr(p, ' ')) != nullptr && num_extensions < max_extensions)
 	{
 		p = q + 1;
 		num_extensions++;

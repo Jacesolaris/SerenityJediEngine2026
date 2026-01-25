@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -166,7 +166,7 @@ qboolean G2API_GetBoltMatrix(CGhoul2Info_v& ghoul2, const int modelIndex, const 
 
 void G2API_ListSurfaces(CGhoul2Info* ghlInfo);
 void G2API_ListBones(CGhoul2Info* ghlInfo, const int frame);
-qboolean G2API_HaveWeGhoul2Models(const CGhoul2Info_v& ghoul2);
+qboolean	G2API_HaveWeGhoul2Models(CGhoul2Info_v& ghoul2);
 void G2API_SetGhoul2ModelIndexes(CGhoul2Info_v& ghoul2, qhandle_t* modelList, const qhandle_t* skinList);
 qboolean G2API_SetGhoul2ModelFlags(CGhoul2Info* ghlInfo, const int flags);
 int G2API_GetGhoul2ModelFlags(CGhoul2Info* ghlInfo);

@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, OpenJK contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the OpenJK source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+OpenJK is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -35,8 +35,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 extern void g_load_save_write_misc_data();
 extern void g_load_save_read_misc_data();
 extern void g_reload_saber_data(const gentity_t* ent);
-extern void CG_ReadTheEvilCGHackStuff();
-extern void CG_WriteTheEvilCGHackStuff();
 extern void fx_read();
 extern void fx_write();
 
@@ -148,8 +146,10 @@ static std::list<sstring_t> strList;
 //
 static int get_string_num(const char* psString)
 {
-	assert(psString != reinterpret_cast<char*>(0xcdcdcdcd));
+	assert(reinterpret_cast<uintptr_t>(psString) != 0xcdcdcdcd);
 
+	// NULL ptrs I'll write out as a strlen of -1...
+	//
 	if (!psString)
 	{
 		return -1;
@@ -201,9 +201,9 @@ static char* get_string_ptr(const int i_strlen, char* psOriginal)
 /////////// gentity_t * ////////
 //
 //
-static intptr_t get_g_entity_num(const gentity_t* ent)
+static intptr_t get_g_entityNum(const gentity_t* ent)
 {
-	assert(ent != reinterpret_cast<gentity_t*>(0xcdcdcdcd));
+	assert(reinterpret_cast<uintptr_t>(ent) != 0xcdcdcdcd);
 
 	if (ent == nullptr)
 	{
@@ -240,7 +240,7 @@ static gentity_t* get_g_entity_ptr(const intptr_t i_ent_num)
 
 static intptr_t get_group_number(const AIGroupInfo_t* p_group)
 {
-	assert(p_group != reinterpret_cast<AIGroupInfo_t*>(0xcdcdcdcd));
+	assert(reinterpret_cast<uintptr_t>(p_group) != 0xcdcdcdcd);
 
 	if (p_group == nullptr)
 	{
@@ -262,6 +262,7 @@ static AIGroupInfo_t* get_group_ptr(const intptr_t i_group_num)
 		return nullptr;
 	}
 	assert(i_group_num >= 0);
+	// ReSharper disable once CppUseStdSize
 	assert(i_group_num < static_cast<int>(sizeof level.groups / sizeof level.groups[0]));
 	return level.groups + i_group_num;
 }
@@ -269,12 +270,12 @@ static AIGroupInfo_t* get_group_ptr(const intptr_t i_group_num)
 /////////// gclient_t * ////////
 //
 //
-static intptr_t get_g_clientNum(const gclient_t* c, const gentity_t* ent)
+static intptr_t get_g_client_num(const gclient_t* c, const gentity_t* ent)
 {
 	// unfortunately, I now need to see if this is a INT_ID('r','e','a','l') client (and therefore resolve to an enum), or
 	//	whether it's one of the NPC or SP_misc_weapon_shooter
 	//
-	assert(c != reinterpret_cast<gclient_t*>(0xcdcdcdcd));
+	assert(reinterpret_cast<uintptr_t>(c) != 0xcdcdcdcd);
 
 	if (c == nullptr)
 	{
@@ -316,7 +317,7 @@ static gclient_t* get_g_client_ptr(const intptr_t c)
 //
 static int get_g_item_num(const gitem_t* p_item)
 {
-	assert(p_item != reinterpret_cast<gitem_t*>(0xcdcdcdcd));
+	assert(reinterpret_cast<uintptr_t>(p_item) != static_cast<uintptr_t>(0xcdcdcdcd));
 
 	if (p_item == nullptr)
 	{
@@ -347,7 +348,7 @@ static gitem_t* get_g_item_ptr(const int i_item)
 //
 static int get_vehicle_info_num(const vehicleInfo_t* p_vehicle_info)
 {
-	assert(p_vehicle_info != reinterpret_cast<vehicleInfo_t*>(0xcdcdcdcd));
+	assert(reinterpret_cast<uintptr_t>(p_vehicle_info) != 0xcdcdcdcd);
 
 	if (p_vehicle_info == nullptr)
 	{
@@ -375,6 +376,7 @@ static vehicleInfo_t* get_vehicle_info_ptr(const int i_vehicle_index)
 
 static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 {
+	// ReSharper disable once CppCStyleCast
 	auto pv = (void*)(pb_base + p_field->iOffset);
 
 	switch (p_field->eFieldType)
@@ -384,7 +386,7 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 		break;
 
 	case F_GENTITY:
-		*static_cast<intptr_t*>(pv) = get_g_entity_num(*static_cast<gentity_t**>(pv));
+		*static_cast<intptr_t*>(pv) = get_g_entityNum(*static_cast<gentity_t**>(pv));
 		break;
 
 	case F_GROUP:
@@ -392,7 +394,8 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 		break;
 
 	case F_GCLIENT:
-		*static_cast<intptr_t*>(pv) = get_g_clientNum(*static_cast<gclient_t**>(pv), (gentity_t*)pb_base);
+		// ReSharper disable once CppCStyleCast
+		*static_cast<intptr_t*>(pv) = get_g_client_num(*static_cast<gclient_t**>(pv), (gentity_t*)pb_base);
 		break;
 
 	case F_ITEM:
@@ -420,7 +423,7 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 
 		for (int i = 0; i < MAX_ALERT_EVENTS; i++)
 		{
-			p[i].owner = reinterpret_cast<gentity_t*>(get_g_entity_num(p[i].owner));
+			p[i].owner = reinterpret_cast<gentity_t*>(get_g_entityNum(p[i].owner));
 		}
 	}
 	break;
@@ -431,8 +434,8 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 
 		for (int i = 0; i < MAX_FRAME_GROUPS; i++)
 		{
-			p[i].enemy = reinterpret_cast<gentity_t*>(get_g_entity_num(p[i].enemy));
-			p[i].commander = reinterpret_cast<gentity_t*>(get_g_entity_num(p[i].commander));
+			p[i].enemy = reinterpret_cast<gentity_t*>(get_g_entityNum(p[i].enemy));
+			p[i].commander = reinterpret_cast<gentity_t*>(get_g_entityNum(p[i].commander));
 		}
 	}
 	break;
@@ -835,12 +838,12 @@ static void ReadLevelLocals()
 	gi.Free(temp);
 }
 
-static void write_g_entities(const qboolean qb_autosave)
+static void write_g_entities(const qboolean qbAutosave)
 {
 	int i_count = 0;
 	int i;
 
-	for (i = 0; i < (qb_autosave ? 1 : globals.num_entities); i++)
+	for (i = 0; i < (qbAutosave ? 1 : globals.num_entities); i++)
 	{
 		const gentity_t* ent = &g_entities[i];
 
@@ -857,7 +860,7 @@ static void write_g_entities(const qboolean qb_autosave)
 		INT_ID('N', 'M', 'E', 'D'),
 		i_count);
 
-	for (i = 0; i < (qb_autosave ? 1 : globals.num_entities); i++)
+	for (i = 0; i < (qbAutosave ? 1 : globals.num_entities); i++)
 	{
 		gentity_t* ent = &g_entities[i];
 
@@ -917,7 +920,7 @@ static void write_g_entities(const qboolean qb_autosave)
 	//Write out all entity timers
 	TIMER_Save(); //WriteEntityTimers();
 
-	if (!qb_autosave)
+	if (!qbAutosave)
 	{
 		//Save out ICARUS information
 		IIcarusInterface::GetIcarus()->Save();
@@ -932,7 +935,7 @@ static void write_g_entities(const qboolean qb_autosave)
 			INT_ID('I', 'C', 'O', 'K'),
 			iBlah);
 	}
-	if (!qb_autosave) //really shouldn't need to write these bits at all, just restore them from the ents...
+	if (!qbAutosave) //really shouldn't need to write these bits at all, just restore them from the ents...
 	{
 		WriteInUseBits();
 	}
@@ -980,24 +983,24 @@ static void read_g_entities(const qboolean qbAutosave)
 		//
 		gentity_t entity;
 		gentity_t* p_ent_original = &entity;
-		gentity_t* pEnt = &g_entities[i_ent_index];
-		*p_ent_original = *pEnt; // struct copy, so we can refer to original
+		gentity_t* p_ent = &g_entities[i_ent_index];
+		*p_ent_original = *p_ent; // struct copy, so we can refer to original
 
 		p_ent_original->ghoul2.kill();
-		gi.unlinkentity(pEnt);
-		Quake3Game()->FreeEntity(pEnt);
+		gi.unlinkentity(p_ent);
+		Quake3Game()->FreeEntity(p_ent);
 
 		//
 		// sneaky:  destroy the ghoul2 object within this struct before binary-loading over the top of it...
 		//
-		gi.G2API_LoadSaveCodeDestructGhoul2Info(pEnt->ghoul2);
-		pEnt->ghoul2.kill();
-		EvaluateFields(savefields_g_entity, pEnt, reinterpret_cast<byte*>(p_ent_original), INT_ID('G', 'E', 'N', 'T'));
-		pEnt->ghoul2.kill();
+		gi.G2API_LoadSaveCodeDestructGhoul2Info(p_ent->ghoul2);
+		p_ent->ghoul2.kill();
+		EvaluateFields(savefields_g_entity, p_ent, reinterpret_cast<byte*>(p_ent_original), INT_ID('G', 'E', 'N', 'T'));
+		p_ent->ghoul2.kill();
 
 		// now for any fiddly bits...
 		//
-		if (pEnt->NPC) // will be qtrue/qfalse
+		if (p_ent->NPC) // will be qtrue/qfalse
 		{
 			gNPC_t temp_npc;
 
@@ -1010,20 +1013,20 @@ static void read_g_entities(const qboolean qbAutosave)
 			{
 				// pinch this G_Alloc handle...
 				//
-				pEnt->NPC = p_ent_original->NPC;
+				p_ent->NPC = p_ent_original->NPC;
 			}
 			else
 			{
 				// original didn't have one , so make a new one...
-				pEnt->NPC = static_cast<gNPC_t*>(G_Alloc(sizeof * pEnt->NPC));
+				p_ent->NPC = static_cast<gNPC_t*>(G_Alloc(sizeof * p_ent->NPC));
 			}
 
 			// copy over the one we've just loaded...
 			//
-			*pEnt->NPC = temp_npc; // struct copy
+			*p_ent->NPC = temp_npc; // struct copy
 		}
 
-		if (pEnt->client == reinterpret_cast<gclient_t*>(-2)) // one of Mike G's NPC clients?
+		if (p_ent->client == reinterpret_cast<gclient_t*>(-2)) // one of Mike G's NPC clients?
 		{
 			gclient_t temp_g_client;
 
@@ -1036,29 +1039,29 @@ static void read_g_entities(const qboolean qbAutosave)
 			{
 				// pinch this G_Alloc handle...
 				//
-				pEnt->client = p_ent_original->client;
+				p_ent->client = p_ent_original->client;
 			}
 			else
 			{
 				// original didn't have one so make a new one...
 				//
-				pEnt->client = static_cast<gclient_t*>(G_Alloc(sizeof * pEnt->client));
+				p_ent->client = static_cast<gclient_t*>(G_Alloc(sizeof * p_ent->client));
 			}
 
 			// copy over the one we've just loaded....
 			//
-			*pEnt->client = temp_g_client; // struct copy
+			*p_ent->client = temp_g_client; // struct copy
 
-			if (pEnt->s.number)
+			if (p_ent->s.number)
 			{
 				//not player
-				g_reload_saber_data(pEnt);
+				g_reload_saber_data(p_ent);
 			}
 		}
 
 		// Some Icarus thing... (probably)
 		//
-		if (pEnt->parms) // will be qtrue/qfalse
+		if (p_ent->parms) // will be qtrue/qfalse
 		{
 			parms_t temp_parms;
 
@@ -1072,29 +1075,28 @@ static void read_g_entities(const qboolean qbAutosave)
 			{
 				// pinch this G_Alloc handle...
 				//
-				pEnt->parms = p_ent_original->parms;
+				p_ent->parms = p_ent_original->parms;
 			}
 			else
 			{
 				// original didn't have one, so make a new one...
 				//
-				pEnt->parms = static_cast<parms_t*>(G_Alloc(sizeof * pEnt->parms));
+				p_ent->parms = static_cast<parms_t*>(G_Alloc(sizeof * p_ent->parms));
 			}
 
 			// copy over the one we've just loaded...
 			//
-			*pEnt->parms = temp_parms; // struct copy
+			*p_ent->parms = temp_parms; // struct copy
 		}
 
-		if (pEnt->m_pVehicle) // will be qtrue/qfalse
+		if (p_ent->m_pVehicle) // will be qtrue/qfalse
 		{
-			Vehicle_t tempVehicle;
+			Vehicle_t temp_vehicle;
 
-			// initialize the vehicle cache g_vehicleInfo
-			// Calling this function fixes the vehicle crashing issue
-			BG_VehicleGetIndex(pEnt->NPC_type);
+			//int vehicleIndex = BG_VehicleGetIndex(p_ent->NPC_type);
 
-			EvaluateFields(savefields_g_vhic, &tempVehicle, reinterpret_cast<byte*>(p_ent_original->m_pVehicle), INT_ID('V', 'H', 'I', 'C'));
+			EvaluateFields(savefields_g_vhic, &temp_vehicle, reinterpret_cast<byte*>(p_ent_original->m_pVehicle),
+				INT_ID('V', 'H', 'I', 'C'));
 
 			// so can we pinch the original's one or do we have to alloc a new one?...
 			//
@@ -1102,18 +1104,18 @@ static void read_g_entities(const qboolean qbAutosave)
 			{
 				// pinch this G_Alloc handle...
 				//
-				pEnt->m_pVehicle = p_ent_original->m_pVehicle;
+				p_ent->m_pVehicle = p_ent_original->m_pVehicle;
 			}
 			else
 			{
 				// original didn't have one, so make a new one...
 				//
-				pEnt->m_pVehicle = static_cast<Vehicle_t*>(gi.Malloc(sizeof(Vehicle_t), TAG_G_ALLOC, qfalse));
+				p_ent->m_pVehicle = static_cast<Vehicle_t*>(gi.Malloc(sizeof(Vehicle_t), TAG_G_ALLOC, qfalse));
 			}
 
 			// copy over the one we've just loaded...
 			//
-			*pEnt->m_pVehicle = tempVehicle; // struct copy
+			*p_ent->m_pVehicle = temp_vehicle; // struct copy
 		}
 
 		// the scary ghoul2 stuff...  (fingers crossed)
@@ -1122,30 +1124,30 @@ static void read_g_entities(const qboolean qbAutosave)
 			saved_game.read_chunk(
 				INT_ID('G', 'H', 'L', '2'));
 
-			gi.G2API_LoadGhoul2Models(pEnt->ghoul2, nullptr);
+			gi.G2API_LoadGhoul2Models(p_ent->ghoul2, nullptr);
 		}
 
-		if (pEnt->s.eType == ET_MOVER && pEnt->s.loopSound > 0)
+		if (p_ent->s.eType == ET_MOVER && p_ent->s.loopSound > 0)
 		{
-			if (VALIDSTRING(pEnt->soundSet))
+			if (VALIDSTRING(p_ent->soundSet))
 			{
 				extern int BMS_MID; // from g_mover
-				pEnt->s.loopSound = CAS_GetBModelSound(pEnt->soundSet, BMS_MID);
-				if (pEnt->s.loopSound == -1)
+				p_ent->s.loopSound = CAS_GetBModelSound(p_ent->soundSet, BMS_MID);
+				if (p_ent->s.loopSound == -1)
 				{
-					pEnt->s.loopSound = 0;
+					p_ent->s.loopSound = 0;
 				}
 			}
 		}
 
 		// NPCs and other ents store waypoints that aren't valid after a load
-		pEnt->waypoint = 0;
+		p_ent->waypoint = 0;
 
-		const qboolean qb_linked = pEnt->linked;
-		pEnt->linked = qfalse;
+		const qboolean qb_linked = p_ent->linked;
+		p_ent->linked = qfalse;
 		if (qb_linked)
 		{
-			gi.linkentity(pEnt);
+			gi.linkentity(p_ent);
 		}
 	}
 
@@ -1204,6 +1206,8 @@ void WriteLevel(const qboolean qbAutosave)
 	write_g_entities(qbAutosave);
 	Quake3Game()->VariableSave();
 	g_load_save_write_misc_data();
+
+	extern void CG_WriteTheEvilCGHackStuff();
 	CG_WriteTheEvilCGHackStuff();
 
 	// (Do NOT put any write-code below this line)
@@ -1279,6 +1283,8 @@ void ReadLevel(const qboolean qbAutosave, const qboolean qbLoadTransition)
 	read_g_entities(qbAutosave);
 	Quake3Game()->VariableLoad();
 	g_load_save_read_misc_data();
+
+	extern void CG_ReadTheEvilCGHackStuff();
 	CG_ReadTheEvilCGHackStuff();
 
 	// (Do NOT put any read-code below this line)

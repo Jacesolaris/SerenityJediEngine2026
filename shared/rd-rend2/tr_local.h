@@ -47,7 +47,7 @@ typedef enum {
 	h_dontcare
 } ha_pref;
 void* Hunk_Alloc(const int size, const ha_pref preference);
-void* Hunk_AllocateTempMemory(const int size);
+void* Hunk_AllocateTempMemory(int size);
 void Hunk_FreeTempMemory(void* buf);
 #else
 void* R_Malloc(const int iSize, const memtag_t eTag);
@@ -2635,7 +2635,6 @@ typedef struct trGlobals_s {
 	// Specific to Jedi Academy
 	int						numBSPModels;
 	int						currentLevel;
-
 } trGlobals_t;
 
 struct glconfigExt_t

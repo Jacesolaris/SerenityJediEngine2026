@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -513,6 +513,12 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 			//Probably a damn script!
 			return;
 		}
+
+		// Fix TEAM_ENEMY NPCs trying to target the player who is on their team
+		if (self->client->playerTeam != TEAM_FREE && self->client->playerTeam != TEAM_SOLO)
+		{
+			return;
+		}
 	}
 
 	if (self->NPC && self->client && self->client->ps.weapon == WP_SABER)
@@ -532,7 +538,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		//FIXME: Have to do this to prevent alert cascading
 		G_ClearEnemy(self);
 		self->enemy = enemy;
-		
+
 		if (self->client && self->client->NPC_class == CLASS_SABOTEUR)
 		{
 			Saboteur_Cloak(NPC); // Cloak
@@ -618,7 +624,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 					//don't yell that you have an enemy more than once every 4-8 seconds
 					TIMER_Set(self, "kyleAngerSoundDebounce", Q_irand(4000, 8000));
 				}
-				G_AddVoiceEvent(self, event, 2000);
+				G_AddVoiceEvent(self, event, Q_irand(10000, 13000));
 			}
 		}
 

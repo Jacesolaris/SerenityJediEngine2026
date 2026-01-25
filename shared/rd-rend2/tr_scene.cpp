@@ -96,7 +96,7 @@ void R_AddPolygonSurfaces(const trRefdef_t* refdef)
 	for (i = 0, poly = refdef->polys; i < refdef->numPolys; i++, poly++)
 	{
 		shader_t* sh = R_GetShaderByHandle(poly->hShader);
-		R_AddDrawSurf((surfaceType_t*)poly,	REFENTITYNUM_WORLD,	sh,	poly->fogIndex & fogMask,qfalse,qfalse,	0);
+		R_AddDrawSurf((surfaceType_t*)poly, REFENTITYNUM_WORLD, sh, poly->fogIndex & fogMask, qfalse, qfalse, 0);
 	}
 }
 

@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -3543,14 +3543,14 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #else
 				ri.Printf(PRINT_WARNING, "R_LoadMDXM: %s has different bones than anim (%i != %i)\n", mod_name, mdxm->numBones, tr.models[mdxm->animIndex]->mdxa->numBones);
 #endif
-		    }
+			}
 			if (!isAnOldModelFile)
 			{
 				//hmm, load up the old JK2 ones anyway?
 				return qfalse;
 			}
-	    }
-    }
+		}
+	}
 #endif
 
 	mod->numLods = mdxm->numLODs - 1; //copy this up to the model for ease of use - it wil get inced after this.
@@ -3619,7 +3619,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		// find the next surface
 		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (intptr_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->
 			childIndexes[surfInfo->numChildren]);
-		}
+	}
 
 	// swap all the LOD's	(we need to do the middle part of this even for intel, because of shader reg and err-check)
 	lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsLODs);
@@ -3700,7 +3700,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 				LL(v->uiNmWeightsAndBoneIndexes);
 
 				v++;
-		}
+			}
 #endif
 
 #ifndef JK2_MODE
@@ -3723,13 +3723,13 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #endif
 			// find the next surface
 			surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(surf) + surf->ofsEnd);
-	}
+		}
 		// find the next LOD
 		lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(lod) + lod->ofsEnd);
 	}
 
 	return qtrue;
-	}
+}
 
 /*
 =================

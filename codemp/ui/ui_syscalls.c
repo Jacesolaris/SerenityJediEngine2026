@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -462,13 +462,13 @@ void UISyscall_G2API_CollisionDetect(CollisionRecord_t* collRecMap, void* ghoul2
 void UISyscall_AddCommand(const char* cmd_name)
 {
 	// TODO warn developer only
-	Com_Printf(S_COLOR_YELLOW "WARNING: trap->ext.AddCommand() is only supported with SerenityJediEngine2025 mod API!\n");
+	Com_Printf(S_COLOR_YELLOW "WARNING: trap->ext.AddCommand() is only supported with SerenityJediEngine2026 mod API!\n");
 }
 
 void UISyscall_RemoveCommand(const char* cmd_name)
 {
 	// TODO warn developer only
-	Com_Printf(S_COLOR_YELLOW "WARNING: trap->ext.RemoveCommand() is only supported with SerenityJediEngine2025 mod API!\n");
+	Com_Printf(S_COLOR_YELLOW "WARNING: trap->ext.RemoveCommand() is only supported with SerenityJediEngine2026 mod API!\n");
 }
 
 NORETURN void QDECL UI_Error(int level, const char* error, ...) {

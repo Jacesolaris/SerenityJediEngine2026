@@ -1,11 +1,11 @@
 /*
 ===========================================================================
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -24,6 +24,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <io.h>
 #include <shlobj.h>
 #include <windows.h>
+#include <qcommon\q_shared.h>
+#include <string.h>
+#include <qcommon\qcommon.h>
+#include <ShlObj_core.h>
+#include <cstdlib>
+#include <malloc.h>
 
 constexpr auto MEM_THRESHOLD = 128 * 1024 * 1024;
 
@@ -213,8 +219,13 @@ void Sys_SetProcessorAffinity()
 	if (!GetProcessAffinityMask(handle, &processAffinityMask, &systemAffinityMask))
 		return;
 
-	if (sscanf(com_affinity->string, "%X", &processMask) != 1)
+	// Fix: sscanf expects an unsigned int*, but processMask is DWORD_PTR (unsigned __int64 on 64-bit)
+	// Use a temporary unsigned int for parsing, then assign/cast to processMask
+	unsigned int tempMask = 0;
+	if (sscanf(com_affinity->string, "%X", &tempMask) != 1)
 		processMask = 1; // set to first core only
+	else
+		processMask = static_cast<DWORD_PTR>(tempMask);
 
 	if (!processMask)
 		processMask = systemAffinityMask; // use all the cores available to the system

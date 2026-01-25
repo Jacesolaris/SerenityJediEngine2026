@@ -75,7 +75,7 @@ VALUE "FileDescription", "Singleplayer"
 VALUE "FileVersion", VERSION_STRING
 VALUE "InternalName", "SJE SP Game"
 VALUE "LegalCopyright", "Copyright (C) 2022"
-VALUE "OriginalFilename", "SerenityJediEngine2025-gamex86.dll"
+VALUE "OriginalFilename", "SerenityJediEngine2026-gamex86.dll"
 VALUE "ProductName", "Singleplayer"
 VALUE "ProductVersion", VERSION_STRING
 END

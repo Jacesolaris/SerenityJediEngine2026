@@ -1171,7 +1171,7 @@ const ct_data* dtree; /* distance tree */
 				"pendingBuf overflow");
 		} while (lx < s->last_lit);
 
-		send_code(s, END_BLOCK, ltree);
+	send_code(s, END_BLOCK, ltree);
 }
 
 /* ===========================================================================

@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -165,7 +165,7 @@ static void P_DamageFeedback(gentity_t* player)
 	{
 		// don't do more than two pain sounds a second
 		// nmckenzie: also don't make him loud and whiny if he's only getting nicked.
-		if (level.time - client->ps.painTime < 500 || count < 10)
+		if (level.time - client->ps.painTime < 1500 || count < 10)
 		{
 			return;
 		}
@@ -7207,7 +7207,7 @@ static qboolean ClientCinematicThink(gclient_t* client, const usercmd_t* ucmd)
 
 qboolean NPC_IsNotHavingEnoughForceSight(const gentity_t* self)
 {
-	if (self->client &&	(!(self->client->ps.fd.forcePowersActive & 1 << FP_SEE))) //sight is not on OR
+	if (self->client && (!(self->client->ps.fd.forcePowersActive & 1 << FP_SEE))) //sight is not on OR
 	{//force sight 2+ gives perfect aim
 		return qtrue;
 	}

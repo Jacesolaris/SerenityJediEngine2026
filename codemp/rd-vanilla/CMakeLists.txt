@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+# Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 #
-# This file is part of the SerenityJediEngine2025 source code.
+# This file is part of the SerenityJediEngine2026 source code.
 #
-# SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2025)
+if(NOT InSerenityJediEngine2026)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2025)
+endif(NOT InSerenityJediEngine2026)
 
 # Check for dependencies first
 
@@ -131,7 +131,7 @@ find_package(OpenGL REQUIRED)
 set(MPVanillaRendererIncludeDirectories ${MPVanillaRendererIncludeDirectories} ${OPENGL_INCLUDE_DIR})
 set(MPVanillaRendererLibraries ${MPVanillaRendererLibraries} ${OPENGL_LIBRARIES})
 
-set(MPVanillaRendererIncludeDirectories ${MPVanillaRendererIncludeDirectories} ${SerenityJediEngine2025LibDir})
+set(MPVanillaRendererIncludeDirectories ${MPVanillaRendererIncludeDirectories} ${SerenityJediEngine2026LibDir})
 add_library(${MPVanillaRenderer} SHARED ${MPVanillaRendererFiles})
 
 if(NOT MSVC)
@@ -161,7 +161,7 @@ endif()
 set_target_properties(${MPVanillaRenderer} PROPERTIES COMPILE_DEFINITIONS "${SharedDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPVanillaRenderer} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2025_VISIBILITY_FLAGS})
+set_property(TARGET ${MPVanillaRenderer} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2026_VISIBILITY_FLAGS})
 
 set_target_properties(${MPVanillaRenderer} PROPERTIES INCLUDE_DIRECTORIES "${MPVanillaRendererIncludeDirectories}")
 set_target_properties(${MPVanillaRenderer} PROPERTIES PROJECT_LABEL "MP Vanilla Renderer")

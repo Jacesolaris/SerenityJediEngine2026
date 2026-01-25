@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -34,6 +34,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //NPC_combat.cpp
 #include "b_local.h"
 #include "g_nav.h"
+#include "bg_public.h"
+#include "g_public.h"
 
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
 extern void G_SetEnemy(gentity_t* self, gentity_t* enemy);
@@ -504,13 +506,22 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 	//	}
 	//#endif// _DEBUG
 
-	if (self->client && self->NPC && enemy->client && enemy->client->playerTeam == self->client->playerTeam)
+	if (self->client && self->NPC && enemy->client)
 	{
-		//Probably a damn script!
-		if (self->NPC->charmedTime > level.time)
+		if (enemy->client->playerTeam == self->client->playerTeam)
 		{
 			//Probably a damn script!
-			return;
+			if (self->NPC->charmedTime > level.time)
+			{
+				//Probably a damn script!
+				return;
+			}
+
+			// Fix TEAM_ENEMY NPCs trying to target the player who is on their team
+			if (self->client->playerTeam != NPCTEAM_FREE && self->client->playerTeam != NPCTEAM_SOLO)
+			{
+				return;
+			}
 		}
 	}
 
@@ -548,8 +559,8 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 			&& enemy->client && enemy->client->playerTeam == NPCTEAM_PLAYER)
 		{
 			//make the player "evil" so that everyone goes after him
-			enemy->client->enemyTeam = TEAM_FREE;
-			enemy->client->playerTeam = TEAM_FREE;
+			enemy->client->enemyTeam = (npcteam_t)TEAM_FREE;
+			enemy->client->playerTeam = (npcteam_t)TEAM_FREE;
 		}
 
 		//If have an anger script, run that instead of yelling
@@ -2239,7 +2250,7 @@ gentity_t* NPC_CheckEnemy(const qboolean find_new, const qboolean too_far_ok, co
 		{
 			//racc - NPCTEAM_FREE players don't do this.
 			if (NPCS.NPC->client->playerTeam != NPCS.NPC->enemy->client->playerTeam
-				&& NPCS.NPC->client->enemyTeam != TEAM_FREE
+				&& NPCS.NPC->client->enemyTeam != (npcteam_t)TEAM_FREE
 				&& NPCS.NPC->client->enemyTeam != NPCS.NPC->enemy->client->playerTeam)
 			{
 				//racc - We're not attacking an ally, this isn't a NPCTEAM_FREE enemy,
@@ -2949,7 +2960,6 @@ int NPC_FindCombatPoint(const vec3_t position, const vec3_t avoidPosition, vec3_
 		}
 
 		//See if we're trying to avoid our enemy
-		//FIXME: this needs to check for the waypoint you'll be taking to get to that combat point
 		if (flags & CP_AVOID_ENEMY)
 		{
 			vec3_t eDir, gDir;
@@ -3250,7 +3260,7 @@ qboolean NPC_SetCombatPoint(const int combatPointID)
 	return qtrue;
 }
 
-extern qboolean CheckItemCanBePickedUpByNPC(const gentity_t* item, const gentity_t* pickerupper);
+extern qboolean G_CanPickUpWeapons(const gentity_t* other);
 
 gentity_t* NPC_SearchForWeapons(void)
 {

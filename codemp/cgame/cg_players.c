@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -2616,7 +2616,7 @@ static void CG_PlayerFootsteps(centity_t* cent, const footstepType_t foot_step_t
 	}
 }
 
-void CG_PlayerAnimEventDo(centity_t* cent, animevent_t* anim_event)
+static void CG_PlayerAnimEventDo(centity_t* cent, animevent_t* anim_event)
 {
 	soundChannel_t channel = CHAN_AUTO;
 	const clientInfo_t* client;
@@ -2638,16 +2638,22 @@ void CG_PlayerAnimEventDo(centity_t* cent, animevent_t* anim_event)
 		// are there variations on the sound?
 		if (anim_event->eventData[AED_SOUNDINDEX_START] == 0)
 		{
-			const int n = Q_irand(anim_event->eventData[AED_CSOUND_RANDSTART],
-				anim_event->eventData[AED_CSOUND_RANDSTART] + anim_event->eventData[
-					AED_SOUND_NUMRANDOMSNDS]);
-			trap->S_StartSound(NULL, cent->currentState.number, channel,
-				CG_CustomSound(cent->currentState.number, va(anim_event->stringData, n)));
+			const int n = Q_irand(anim_event->eventData[AED_CSOUND_RANDSTART], anim_event->eventData[AED_CSOUND_RANDSTART] + anim_event->eventData[AED_SOUND_NUMRANDOMSNDS]);
+
+			if (anim_event->stringData && anim_event->stringData[0])
+			{
+				const char* soundName = va(anim_event->stringData, n);
+				trap->S_StartSound(NULL, cent->currentState.number, channel, CG_CustomSound(cent->currentState.number, soundName));
+			}
+			else
+			{
+				// Fallback: skip, log or use a default sound index
+				// e.g., trap->S_StartSound(NULL, cent->currentState.number, channel, defaultSoundHandle);
+			}
 		}
 		else
 		{
-			const int hold_snd = anim_event->eventData[AED_SOUNDINDEX_START + Q_irand(
-				0, anim_event->eventData[AED_SOUND_NUMRANDOMSNDS])];
+			const int hold_snd = anim_event->eventData[AED_SOUNDINDEX_START + Q_irand(0, anim_event->eventData[AED_SOUND_NUMRANDOMSNDS])];
 			if (hold_snd > 0)
 			{
 				trap->S_StartSound(NULL, cent->currentState.number, channel, hold_snd);

@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -647,7 +647,7 @@ void NPC_Precache(gentity_t* spawner)
 				continue;
 			}
 			Com_sprintf(tk, sizeof tk, "NPC%s", token);
-			playerTeam = (team_t)GetIDForString(TeamTable, tk);
+			playerTeam = (npcteam_t)(team_t)GetIDForString(TeamTable, tk);
 			continue;
 		}
 
@@ -2980,10 +2980,7 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 				{
 					f = 4.0f;
 				}
-				for (n = 0; n < MAX_BLADES; n++)
-				{
-					npc->client->saber[1].blade[n].lengthMax = f;
-				}
+				npc->client->saber[1].blade[0].lengthMax = f;
 				continue;
 			}
 

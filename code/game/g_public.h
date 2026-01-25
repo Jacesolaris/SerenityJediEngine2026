@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -320,7 +320,7 @@ using game_import_t = struct
 
 	void (*G2API_ListSurfaces)(CGhoul2Info* ghlInfo);
 	void (*G2API_ListBones)(CGhoul2Info* ghlInfo, int frame);
-	qboolean(*G2API_HaveWeGhoul2Models)(const CGhoul2Info_v& ghoul2);
+	qboolean(*G2API_HaveWeGhoul2Models)(CGhoul2Info_v& ghoul2);
 	qboolean(*G2API_SetGhoul2ModelFlags)(CGhoul2Info* ghlInfo, int flags);
 	int (*G2API_GetGhoul2ModelFlags)(CGhoul2Info* ghlInfo);
 
@@ -451,6 +451,6 @@ using game_export_t = struct
 	int num_entities; // current number, <= MAX_GENTITIES
 };
 
-game_export_t * GetGameApi(game_import_t * import);
+game_export_t* GetGameApi(game_import_t* import);
 
 #endif//#ifndef __G_PUBLIC_H__

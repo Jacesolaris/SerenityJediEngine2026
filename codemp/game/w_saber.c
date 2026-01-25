@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -2515,21 +2515,21 @@ qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 
 	switch (lock_quad)
 	{
-	case Q_BR:
+	case (qboolean)Q_BR:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_BR);
-	case Q_R:
+	case (qboolean)Q_R:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_R);
-	case Q_TR:
+	case (qboolean)Q_TR:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_TR);
-	case Q_T:
+	case (qboolean)Q_T:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_TOP);
-	case Q_TL:
+	case (qboolean)Q_TL:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_TL);
-	case Q_L:
+	case (qboolean)Q_L:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_L);
-	case Q_BL:
+	case (qboolean)Q_BL:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_BL);
-	case Q_B:
+	case (qboolean)Q_B:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_TOP);
 	default:
 		//this shouldn't happen.  just wing it
@@ -11499,7 +11499,7 @@ static void G_KickSomeMofos(gentity_t* ent)
 	}
 }
 
-static QINLINE qboolean G_PrettyCloseIGuess(const float a, const float b, const float tolerance)
+static QINLINE qboolean G_PrettyCloseIGuess(float a, const float b, const float tolerance)
 {
 	if (a - b < tolerance &&
 		a - b > -tolerance)
@@ -11717,8 +11717,8 @@ void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd)
 	}
 	else if (self->client->ps.torsoAnim == BOTH_KYLE_GRAB)
 	{//try to grab someone
-		//G_GrabSomeMofos(self);
-		G_KickSomeMofos(self);  //temp fix jacesolaris
+		G_GrabSomeMofos(self);
+		//G_KickSomeMofos(self);  //temp fix jacesolaris
 	}
 	else if (self->client->grappleState)
 	{
@@ -13117,7 +13117,7 @@ qboolean manual_meleeblocking(const gentity_t* defender) //Is this guy blocking 
 
 qboolean manual_melee_dodging(const gentity_t* defender) //Is this guy dodgeing or not?
 {
-	if (defender->client->NPC_class == BCLASS_BOBAFETT || defender->client->pers.botclass == BCLASS_MANDOLORIAN || defender->
+	if (defender->client->pers.botclass == BCLASS_BOBAFETT || defender->client->pers.botclass == BCLASS_MANDOLORIAN || defender->
 		client->pers.botclass == BCLASS_MANDOLORIAN1 || defender->client->pers.botclass == BCLASS_MANDOLORIAN2)
 	{
 		return qfalse;

@@ -14,7 +14,7 @@
  * needed on buffers full of bytes, and then call MD5Final, which
  * will fill a supplied 16-byte array with the digest.
  *
- * An implementation of HMAC-MD5 (originally for SerenityJediEngine2025) is also
+ * An implementation of HMAC-MD5 (originally for SerenityJediEngine2026) is also
  * provided, and also released into the public domain.
  */
 
@@ -309,7 +309,7 @@ char* Com_MD5File(const char* fn, int length, const char* prefix, const int pref
 
 /*
  * The following code implements HMAC-MD5 using the public domain MD5 implementation above.
- * This code (originally for SerenityJediEngine2025) is also released into the public domain.
+ * This code (originally for SerenityJediEngine2026) is also released into the public domain.
  */
 
 void HMAC_MD5_Init(hmacMD5Context_t* ctx, const unsigned char* key, unsigned int keylen)

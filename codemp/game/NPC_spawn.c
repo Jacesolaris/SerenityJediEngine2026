@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -589,9 +589,9 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 	}
 
 	//***I'm not sure whether I should leave this as a TEAM_ switch, I think NPC_class may be more appropriate - dmv
-	switch (ent->client->playerTeam)
+	switch ((team_t)ent->client->playerTeam)
 	{
-	case NPCTEAM_PLAYER:
+	case (team_t)NPCTEAM_PLAYER:
 	{
 		if (ent->client->NPC_class == CLASS_SEEKER)
 		{
@@ -659,7 +659,7 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 	}
 	break;
 
-	case NPCTEAM_NEUTRAL:
+	case (team_t)NPCTEAM_NEUTRAL:
 
 		if (Q_stricmp(ent->NPC_type, "gonk") == 0)
 		{
@@ -683,7 +683,7 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 		}
 		break;
 
-	case NPCTEAM_ENEMY:
+	case (team_t)NPCTEAM_ENEMY:
 	{
 		ent->NPC->defaultBehavior = BS_DEFAULT;
 
@@ -905,7 +905,7 @@ int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_
 	//*** not sure how to handle this, should I pass in class instead of team and go from there? - dmv
 	switch (team)
 	{
-	case NPCTEAM_ENEMY:
+	case (team_t)NPCTEAM_ENEMY:
 		if (Q_stricmp("tavion", NPC_type) == 0 ||
 			Q_strncmp("reborn", NPC_type, 6) == 0 ||
 			Q_stricmp("desann", NPC_type) == 0 ||
@@ -1043,7 +1043,7 @@ int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_
 		//Stormtroopers, etc.
 		return 1 << WP_BLASTER;
 
-	case NPCTEAM_PLAYER:
+	case  (team_t)NPCTEAM_PLAYER:
 
 		if (spawnflags & SFB_RIFLEMAN)
 			return 1 << WP_REPEATER;
@@ -1072,7 +1072,7 @@ int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_
 		//rebel
 		return 1 << WP_BLASTER;
 
-	case NPCTEAM_NEUTRAL:
+	case  (team_t)NPCTEAM_NEUTRAL:
 
 		if (Q_stricmp("mark1", NPC_type) == 0)
 		{

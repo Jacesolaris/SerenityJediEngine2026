@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1278,7 +1278,7 @@ long FS_FOpenFileRead(const char* filename, fileHandle_t* file, qboolean uniqueF
 					continue;
 				}
 
-				// autoexec_mp.cfg and SerenityJediEngine2025-SP-default.cfg can only be loaded outside of pk3 files.
+				// autoexec_mp.cfg and SerenityJediEngine2026-SP-default.cfg can only be loaded outside of pk3 files.
 				if (isUserConfig)
 				{
 					continue;
@@ -1311,7 +1311,7 @@ long FS_FOpenFileRead(const char* filename, fileHandle_t* file, qboolean uniqueF
 								!FS_IsExt(filename, ".arena", l) &&
 								!FS_IsExt(filename, ".menu", l) &&
 								!FS_IsExt(filename, ".fcf", l) &&
-								Q_stricmp(filename, "SerenityJediEngine2025-mpgamex86.dll") != 0 &&
+								Q_stricmp(filename, "SerenityJediEngine2026-mpgamex86.dll") != 0 &&
 								!strstr(filename, "levelshots"))
 							{
 								pak->referenced |= FS_GENERAL_REF;
@@ -3218,7 +3218,7 @@ static void FS_ReorderPurePaks()
 	9.  <fs_basepath>/<fs_game>/
 	10. <fs_homepath>/<fs_game>/
 
-	@param gameName Name of the default folder (i.e. always BASEGAME = "base" in SerenityJediEngine2025)
+	@param gameName Name of the default folder (i.e. always BASEGAME = "base" in SerenityJediEngine2026)
 */
 static void FS_Startup(const char* gameName)
 {
@@ -3239,7 +3239,7 @@ static void FS_Startup(const char* gameName)
 		homePath = fs_basepath->string;
 	}
 	fs_homepath = Cvar_Get("fs_homepath", homePath, CVAR_USER_CREATED, "(Read/Write) Location for user generated files");
-	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2025", CVAR_INIT | CVAR_SYSTEMINFO, "Mod directory");
+	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2026", CVAR_INIT | CVAR_SYSTEMINFO, "Mod directory");
 
 	fs_dirbeforepak = Cvar_Get("fs_dirbeforepak", "0", CVAR_INIT | CVAR_PROTECTED, "Prioritize directories before paks if not pure");
 
@@ -3661,11 +3661,11 @@ void FS_InitFilesystem(void) {
 	// try to start up normally
 	FS_Startup(BASEGAME);
 
-	// if we can't find SerenityJediEngine2025-MP-default.cfg, assume that the paths are
+	// if we can't find SerenityJediEngine2026-MP-default.cfg, assume that the paths are
 	// busted and error out now, rather than getting an unreadable
 	// graphics screen when the font fails to load
-	if (FS_ReadFile("SerenityJediEngine2025-MP-default.cfg", nullptr) <= 0) {
-		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2025-MP-default.cfg");
+	if (FS_ReadFile("SerenityJediEngine2026-MP-default.cfg", nullptr) <= 0) {
+		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2026-MP-default.cfg");
 		// bk001208 - SafeMode see below, FIXME?
 	}
 
@@ -3697,10 +3697,10 @@ void FS_Restart(int checksumFeed) {
 	// try to start up normally
 	FS_Startup(BASEGAME);
 
-	// if we can't find SerenityJediEngine2025-MP-default.cfg, assume that the paths are
+	// if we can't find SerenityJediEngine2026-MP-default.cfg, assume that the paths are
 	// busted and error out now, rather than getting an unreadable
 	// graphics screen when the font fails to load
-	if (FS_ReadFile("SerenityJediEngine2025-MP-default.cfg", nullptr) <= 0) {
+	if (FS_ReadFile("SerenityJediEngine2026-MP-default.cfg", nullptr) <= 0) {
 		// this might happen when connecting to a pure server not using BASEGAME/pak0.pk3
 		// (for instance a TA demo server)
 		if (lastValidBase[0]) {
@@ -3712,7 +3712,7 @@ void FS_Restart(int checksumFeed) {
 			FS_Restart(checksumFeed);
 			Com_Error(ERR_DROP, "Invalid game folder\n");
 		}
-		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2025-MP-default.cfg");
+		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2026-MP-default.cfg");
 	}
 
 	if (Q_stricmp(fs_gamedirvar->string, lastValidGame)) {

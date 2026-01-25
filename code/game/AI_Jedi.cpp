@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -618,7 +618,7 @@ static void Tavion_ScepterDamage()
 
 			gi.G2API_GetBoltMatrix(NPC->ghoul2, NPC->weaponModel[1],
 				NPC->genericBolt1,
-				&boltMatrix, angles, NPC->currentOrigin, time,nullptr, NPC->s.modelScale);
+				&boltMatrix, angles, NPC->currentOrigin, time, nullptr, NPC->s.modelScale);
 			gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, base);
 			gi.G2API_GiveMeVectorFromMatrix(boltMatrix, NEGATIVE_X, dir);
 			VectorMA(base, 512, dir, tip);
@@ -799,7 +799,7 @@ static void Tavion_ScepterSlam()
 
 static void Tavion_StartScepterBeam()
 {
-	G_PlayEffect(G_EffectIndex("scepter/beam_warmup.efx"), NPC->weaponModel[1], NPC->genericBolt1, NPC->s.number,NPC->currentOrigin, 0, qtrue);
+	G_PlayEffect(G_EffectIndex("scepter/beam_warmup.efx"), NPC->weaponModel[1], NPC->genericBolt1, NPC->s.number, NPC->currentOrigin, 0, qtrue);
 	G_SoundOnEnt(NPC, CHAN_ITEM, "sound/weapons/scepter/beam_warmup.wav");
 	NPC->client->ps.legsAnimTimer = NPC->client->ps.torsoAnimTimer = 0;
 	NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_SCEPTER_START, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -10272,7 +10272,7 @@ static qboolean Jedi_InSpecialMove()
 		{
 			//go into the hold
 			NPC->s.loopSound = G_SoundIndex("sound/weapons/scepter/loop.wav");
-			G_PlayEffect(G_EffectIndex("scepter/beam.efx"), NPC->weaponModel[1], NPC->genericBolt1, NPC->s.number,NPC->currentOrigin, 10000, qtrue);
+			G_PlayEffect(G_EffectIndex("scepter/beam.efx"), NPC->weaponModel[1], NPC->genericBolt1, NPC->s.number, NPC->currentOrigin, 10000, qtrue);
 			NPC->client->ps.legsAnimTimer = NPC->client->ps.torsoAnimTimer = 0;
 			NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_SCEPTER_HOLD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 			NPC->client->ps.torsoAnimTimer += 200;
@@ -10308,6 +10308,7 @@ static qboolean Jedi_InSpecialMove()
 		}
 		else
 		{
+			NPC->s.loopSound = G_SoundIndex("sound/weapons/scepter/loop.wav");
 			Tavion_ScepterDamage();
 		}
 		if (NPC->enemy)

@@ -1259,7 +1259,6 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 				stage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK)
 				index |= LIGHTDEF_USE_PARALLAXMAP | LIGHTDEF_USE_LIGHT_VERTEX;
 
-
 			result = &stage->glslShaderGroup[index];
 			backEnd.pc.c_lightallDraws++;
 		}

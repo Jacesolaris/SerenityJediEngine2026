@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -14193,6 +14193,7 @@ static void PM_Weapon(void)
 				//ok, grapple time
 #if 0 //eh, I want to try turning the saber off, but can't do that reliably for prediction..
 				qboolean icandoit = qtrue;
+
 				if (pm->ps->weaponTime > 0)
 				{ //weapon busy
 					icandoit = qfalse;
@@ -17133,7 +17134,6 @@ void BG_G2PlayerAngles(void* ghoul2, const int motionBolt, entityState_t* cent, 
 	static vec3_t velPos, velAng;
 	static vec3_t ulAngles, llAngles, viewAngles, angles, thoracicAngles = { 0, 0, 0 };
 	static vec3_t headClampMinAngles = { -25, -55, -10 }, headClampMaxAngles = { 50, 50, 10 };
-	//int			painTime;{}, painDirection, currentTime;
 
 	if (cent->m_iVehicleNum || cent->forceFrame || PM_SaberLockBreakAnim(cent->legsAnim) || PM_SaberLockBreakAnim(
 		cent->torsoAnim))

@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -24,12 +24,18 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_common.h"
 #include <png.h>
+#include <qcommon\q_shared.h>
+#include <pngconf.h>
+#include <qcommon\q_platform.h>
+#include <csetjmp>
+#include <cstdint>
+#include <string.h>
 
-void user_write_data(const png_structp png_ptr, const png_bytep data, const png_size_t length) {
+static void user_write_data(const png_structp png_ptr, const png_bytep data, const png_size_t length) {
 	const fileHandle_t fp = *static_cast<fileHandle_t*>(png_get_io_ptr(png_ptr));
 	ri->FS_Write(data, length, fp);
 }
-void user_flush_data(png_structp png_ptr)
+static void user_flush_data(png_structp png_ptr)
 {
 	//TODO: ri->FS_Flush?
 }
@@ -123,17 +129,17 @@ fopen_failed:
 }
 
 void user_read_data(png_structp png_ptr, png_bytep data, png_size_t length);
-void png_print_error(png_structp png_ptr, const png_const_charp err)
+static void png_print_error(png_structp png_ptr, const png_const_charp err)
 {
 	ri->Printf(PRINT_ERROR, "%s\n", err);
 }
 
-void png_print_warning(png_structp png_ptr, const png_const_charp warning)
+static void png_print_warning(png_structp png_ptr, const png_const_charp warning)
 {
 	ri->Printf(PRINT_WARNING, "%s\n", warning);
 }
 
-bool IsPowerOfTwo(const int i) { return (i & i - 1) == 0; }
+static bool IsPowerOfTwo(const int i) { return (i & i - 1) == 0; }
 
 struct PNGFileReader
 {

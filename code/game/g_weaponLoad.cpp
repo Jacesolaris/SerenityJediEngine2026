@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -233,7 +233,7 @@ void WPN_MuzzleEffect(const char** hold_buf);
 void WPN_AltMuzzleEffect(const char** hold_buf);
 void WPN_overloadmuzzleEffect(const char** hold_buf);
 
-// SerenityJediEngine2025 ADD
+// SerenityJediEngine2026 ADD
 
 void WPN_Damage(const char** hold_buf);
 void WPN_AltDamage(const char** hold_buf);
@@ -531,7 +531,7 @@ wpnParms_t WpnParms[] =
 	{"muzzleEffect", WPN_MuzzleEffect},
 	{"altmuzzleEffect", WPN_AltMuzzleEffect},
 	{"overloadmuzzleEffect", WPN_overloadmuzzleEffect},
-	// SerenityJediEngine2025 NEW FIELDS
+	// SerenityJediEngine2026 NEW FIELDS
 	{"damage", WPN_Damage},
 	{"altdamage", WPN_AltDamage},
 	{"splashDamage", WPN_SplashDamage},

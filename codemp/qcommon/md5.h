@@ -14,13 +14,14 @@
  * needed on buffers full of bytes, and then call MD5Final, which
  * will fill a supplied 16-byte array with the digest.
  *
- * An implementation of HMAC-MD5 (originally for SerenityJediEngine2025) is also
+ * An implementation of HMAC-MD5 (originally for SerenityJediEngine2026) is also
  * provided, and also released into the public domain.
  */
 
 #pragma once
 
 #include "q_shared.h"
+#include <cstdint>
 
 using MD5_CTX = struct MD5Context
 {

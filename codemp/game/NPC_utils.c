@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1471,22 +1471,13 @@ qboolean NPC_CheckLookTarget(const gentity_t* self)
 		if (self->client->renderInfo.lookTarget >= 0 && self->client->renderInfo.lookTarget < ENTITYNUM_WORLD)
 		{
 			//within valid range
-			if (&g_entities[self->client->renderInfo.lookTarget] == NULL || !g_entities[self->client->renderInfo.
-				lookTarget].inuse)
+			int lookTargetIdx = self->client->renderInfo.lookTarget;
+			if (lookTargetIdx < 0 ||
+				lookTargetIdx >= level.num_entities ||
+				!g_entities[lookTargetIdx].inuse ||
+				!g_entities[lookTargetIdx].client /* or other checks as needed */)
 			{
-				//lookTarget not inuse or not valid anymore
-				NPC_ClearLookTarget(self);
-			}
-			else if (self->client->renderInfo.lookTargetClearTime && self->client->renderInfo.lookTargetClearTime <
-				level.time)
-			{
-				//Time to clear lookTarget
-				NPC_ClearLookTarget(self);
-			}
-			else if (g_entities[self->client->renderInfo.lookTarget].client && self->enemy && &g_entities[self->client->
-				renderInfo.lookTarget] != self->enemy)
-			{
-				//should always look at current enemy if engaged in battle... FIXME: this could override certain scripted lookTargets...???
+				// handle invalid look target
 				NPC_ClearLookTarget(self);
 			}
 			else
@@ -1517,9 +1508,9 @@ void G_CheckCharmed(gentity_t* self)
 	{
 		//we were charmed, set us back!
 		//NOTE: presumptions here...
-		const team_t savTeam = self->client->enemyTeam;
+		const team_t savTeam = (team_t)self->client->enemyTeam;
 		self->client->enemyTeam = self->client->playerTeam;
-		self->client->playerTeam = savTeam;
+		self->client->playerTeam = (npcteam_t)savTeam;
 		self->client->leader = NULL;
 		self->NPC->charmedTime = 0;
 		if (self->health > 0)

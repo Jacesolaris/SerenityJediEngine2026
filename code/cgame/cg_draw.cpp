@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -7407,7 +7407,8 @@ static void CG_Draw2D()
 		//draw it as long as it isn't full
 		CG_DrawPic(0, 0, 640, 480, cgi_R_RegisterShader("gfx/2d/stasissense"));
 	}
-	else if (cg.snap->ps.stats[STAT_HEALTH] <= 25)
+	else if ((cg.snap->ps.stats[STAT_HEALTH] <= 25 && cg.snap->ps.stats[STAT_MAX_HEALTH] >= 100) ||
+		(cg.snap->ps.stats[STAT_HEALTH] <= (cg.snap->ps.stats[STAT_MAX_HEALTH] / 3) && cg.snap->ps.stats[STAT_MAX_HEALTH] < 100))
 	{
 		//tint screen red
 		CG_DrawPic(0, 0, 640, 480, cgi_R_RegisterShader("gfx/2d/dmgsense"));

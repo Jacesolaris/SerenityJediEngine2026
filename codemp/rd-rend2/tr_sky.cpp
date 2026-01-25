@@ -811,7 +811,8 @@ void RB_DrawSun(float scale, shader_t* shader) {
 	// farthest depth range
 	GL_DepthRange(1.0f, 1.0f);
 
-	RB_BeginSurface(shader, 0, 0);
+	shader_t* state = (shader->remappedShader) ? shader->remappedShader : shader;
+	RB_BeginSurface(state, 0, 0);
 
 	RB_AddQuadStamp(origin, vec1, vec2, colorWhite);
 

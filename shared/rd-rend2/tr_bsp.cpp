@@ -4332,7 +4332,7 @@ RE_LoadWorldMap
 Called directly from cgame
 =================
 */
-void RE_LoadWorldMap(const char* name) 
+void RE_LoadWorldMap(const char* name)
 {
 	if (tr.worldMapLoaded)
 	{

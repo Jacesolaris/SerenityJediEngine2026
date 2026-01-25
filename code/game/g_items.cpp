@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1292,24 +1292,19 @@ void FinishSpawningItem(gentity_t* ent)
 		vec3_t dest;
 		// drop to floor
 		VectorSet(dest, ent->s.origin[0], ent->s.origin[1], MIN_WORLD_COORD);
-		gi.trace(&tr, ent->s.origin, ent->mins, ent->maxs, dest, ent->s.number, MASK_SOLID | CONTENTS_PLAYERCLIP,
-			static_cast<EG2_Collision>(0), 0);
+		gi.trace(&tr, ent->s.origin, ent->mins, ent->maxs, dest, ent->s.number, MASK_SOLID | CONTENTS_PLAYERCLIP, static_cast<EG2_Collision>(0), 0);
 		if (tr.startsolid)
 		{
-			if (&g_entities[tr.entityNum] != nullptr)
+			if (g_entities[tr.entityNum].inuse)
 			{
-				gi.Printf(S_COLOR_RED"FinishSpawningItem: removing %s startsolid at %s (in a %s)\n", ent->classname,
-					vtos(ent->s.origin), g_entities[tr.entityNum].classname);
+				gi.Printf(S_COLOR_RED"FinishSpawningItem: removing %s startsolid at %s (in a %s)\n", ent->classname, vtos(ent->s.origin), g_entities[tr.entityNum].classname);
 			}
 			else
 			{
-				gi.Printf(S_COLOR_RED"FinishSpawningItem: removing %s startsolid at %s (in a %s)\n", ent->classname,
-					vtos(ent->s.origin));
+				gi.Printf(S_COLOR_RED"FinishSpawningItem: removing %s startsolid at %s\n", ent->classname, vtos(ent->s.origin));
 			}
-			//assert( 0 && "item starting in solid");//jacesolaris removed for debugging
-			if (!g_entities[ENTITYNUM_WORLD].s.radius)
-			{
-				//not a region
+			assert(0 && "item starting in solid");
+			if (!g_entities[ENTITYNUM_WORLD].s.radius) {	//not a region
 				delayedShutDown = level.time + 100;
 			}
 			G_FreeEntity(ent);
@@ -2010,6 +2005,10 @@ static qboolean he_has_gun(const gentity_t* ent)
 
 qboolean he_is_jedi(const gentity_t* ent)
 {
+	if (!ent || !ent->client)
+	{
+		return qfalse;
+	}
 	switch (ent->client->NPC_class)
 	{
 	case CLASS_SITHLORD:
@@ -2036,6 +2035,11 @@ qboolean he_is_jedi(const gentity_t* ent)
 
 qboolean droideka_npc(const gentity_t* ent)
 {
+	if (!ent || !ent->client)
+	{
+		return qfalse;
+	}
+
 	if (ent->NPC
 		&& ent->client->NPC_class == CLASS_DROIDEKA
 		&& ent->s.weapon == WP_DROIDEKA

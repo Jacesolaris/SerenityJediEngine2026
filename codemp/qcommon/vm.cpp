@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -30,9 +30,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 vm_t* currentVM = nullptr;
 
 static const char* vmNames[MAX_VM] = {
-	"SerenityJediEngine2025-mpgame",
-	"SerenityJediEngine2025-cgame",
-	"SerenityJediEngine2025-ui"
+	"SerenityJediEngine2026-mpgame",
+	"SerenityJediEngine2026-cgame",
+	"SerenityJediEngine2026-ui"
 };
 
 const char* vmStrs[MAX_VM] = {

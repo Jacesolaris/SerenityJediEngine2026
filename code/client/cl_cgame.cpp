@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -68,7 +68,7 @@ qboolean CL_InitCGameVM(void* gameLibrary)
 
 	if (!cgvm.entryPoint || !dllEntry)
 	{
-		const auto gamename = "SerenityJediEngine2025-game";
+		const auto gamename = "SerenityJediEngine2026-game";
 
 		Com_Printf("CL_InitCGameVM: client game entry point not found in %s" ARCH_STRING DLL_EXT ": %s\n", gamename,
 			Sys_LibraryError());
@@ -799,11 +799,11 @@ cgameImport_t CL_ConvertJK2SysCall(cgameJK2Import_t import)
 	case CG_ANYLANGUAGE_READFROMSTRING2_JK2:
 		return CG_ANYLANGUAGE_READFROMSTRING2;
 		break;
-	case CG_SerenityJediEngine2025_MENU_PAINT_JK2:
-		return CG_SerenityJediEngine2025_MENU_PAINT;
+	case CG_SerenityJediEngine2026_MENU_PAINT_JK2:
+		return CG_SerenityJediEngine2026_MENU_PAINT;
 		break;
-	case CG_SerenityJediEngine2025_GETMENU_BYNAME_JK2:
-		return CG_SerenityJediEngine2025_GETMENU_BYNAME;
+	case CG_SerenityJediEngine2026_GETMENU_BYNAME_JK2:
+		return CG_SerenityJediEngine2026_GETMENU_BYNAME;
 		break;
 	}
 	return (cgameImport_t)-1;
@@ -1124,7 +1124,7 @@ intptr_t CL_CgameSystemCalls(intptr_t* args)
 		return 0;
 
 	case CG_G2_HAVEWEGHOULMODELS:
-		return re.G2API_HaveWeGhoul2Models(*static_cast<CGhoul2Info_v*>(VMA(1)));
+		return re.G2API_HaveWeGhoul2Models(*((CGhoul2Info_v*)VMA(1)));
 
 	case CG_G2_SETMODELS:
 		re.G2API_SetGhoul2ModelIndexes(*static_cast<CGhoul2Info_v*>(VMA(1)), static_cast<qhandle_t*>(VMA(2)),
@@ -1231,11 +1231,11 @@ intptr_t CL_CgameSystemCalls(intptr_t* args)
 		Menu_PaintAll();
 		return 0;
 
-	case CG_SerenityJediEngine2025_MENU_PAINT:
+	case CG_SerenityJediEngine2026_MENU_PAINT:
 		Menu_Paint(static_cast<menuDef_t*>(VMA(1)), static_cast<qboolean>(args[2] != 0));
 		return 0;
 
-	case CG_SerenityJediEngine2025_GETMENU_BYNAME:
+	case CG_SerenityJediEngine2026_GETMENU_BYNAME:
 		return reinterpret_cast<intptr_t>(Menus_FindByName(static_cast<const char*>(VMA(1))));
 
 	case CG_UI_STRING_INIT:

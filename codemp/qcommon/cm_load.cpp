@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -636,6 +636,9 @@ static void CM_LoadMap_Actual(const char* name, const qboolean clientload, int* 
 	dheader_t header;
 	static unsigned last_checksum;
 	char orig_name[MAX_OSPATH];
+	fileHandle_t h;
+	const int i_bsp_len = FS_FOpenFileRead(name, &h, qfalse);
+	void* new_buff = Z_Malloc(i_bsp_len, TAG_BSP_DISKIMAGE);
 
 	if (!name || !name[0])
 	{
@@ -699,11 +702,8 @@ static void CM_LoadMap_Actual(const char* name, const qboolean clientload, int* 
 	//	then discard it after that...
 	//
 	buf = nullptr;
-	fileHandle_t h;
-	const int i_bsp_len = FS_FOpenFileRead(name, &h, qfalse);
 	if (h)
 	{
-		void* new_buff = Z_Malloc(i_bsp_len, TAG_BSP_DISKIMAGE);
 		FS_Read(new_buff, i_bsp_len, h);
 		FS_FCloseFile(h);
 
@@ -775,10 +775,11 @@ static void CM_LoadMap_Actual(const char* name, const qboolean clientload, int* 
 	//	for the renderer to chew on... (but not if this gets ported to a big-endian machine, because some of the
 	//	map data will have been Little-Long'd, but some hasn't).
 	//
-	if (Sys_LowPhysicalMemory()
-		|| com_dedicated->integer
-		//		|| we're on a big-endian machine
-		)
+	if (new_buff && new_buff != gpvCachedMapDiskImage)
+	{
+		Z_Free(new_buff);
+	}
+	else if (Sys_LowPhysicalMemory() || com_dedicated->integer)	//		|| we're on a big-endian machine
 	{
 		Z_Free(gpvCachedMapDiskImage);
 		gpvCachedMapDiskImage = nullptr;

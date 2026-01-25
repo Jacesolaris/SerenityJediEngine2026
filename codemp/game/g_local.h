@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2025 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
 
-This file is part of the SerenityJediEngine2025 source code.
+This file is part of the SerenityJediEngine2026 source code.
 
-SerenityJediEngine2025 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -44,7 +44,7 @@ extern vec3_t gPainPoint;
 //==================================================================
 
 // the "gameversion" client command will print this plus compile date
-#define	GAMEVERSION	"SerenityJediEngine2025"
+#define	GAMEVERSION	"SerenityJediEngine2026"
 
 #define SECURITY_LOG "security.log"
 
@@ -539,7 +539,7 @@ struct gentity_s
 	qboolean loopAnim; //does this animation loop?
 
 	int roff_ctr; // current roff frame we are playing
-	// SerenityJediEngine2025 add
+	// SerenityJediEngine2026 add
 	int IDCode; // Used for GLua to identify old ent references
 	int UsesELS;
 	int useDebounceTime; // for cultist_destroyer
