@@ -1289,12 +1289,42 @@ static qboolean PM_Is_A_Dash_Anim(const int anim)
 
 static qboolean pm_check_jump()
 {
+
+	// Pseudocode plan:
+	// 1. Identify which functions/types from <malloc.h> are used (e.g., malloc, free, alloca).
+	// 2. If only standard memory functions (malloc, free, calloc, realloc) are used, replace <malloc.h> with <cstdlib>.
+	// 3. If alloca is used, include <stdlib.h> or <alloca.h> as appropriate for your platform.
+	// 4. Remove <malloc.h> and add the correct standard header(s).
+
+#include <cstdlib>// for malloc, free, calloc, realloc
+
+	// Note: If there are multiple large arrays/structs, repeat the above pattern for each.
+	// If the function is called very frequently and performance is critical, consider making the arrays static and reusing them, but only if thread safety and reentrancy are not concerns.
+	// Pseudocode plan:
+	// 1. Identify large stack allocations in pm_check_jump (likely large arrays or structs).
+	// 2. Move these allocations to heap using malloc/free or new/delete, or make them static if safe.
+	// 3. Replace stack usage with pointers and ensure proper cleanup to avoid memory leaks.
+		// Example: Suppose the original code had
+		// trace_t traces[256]; // Large array on stack
+
+		// Change to heap allocation
+	trace_t* traces = (trace_t*)malloc(sizeof(trace_t) * 256);
+
+	if (!traces)
+	{
+		// Handle allocation failure
+		return qfalse;
+	}
+
+	// ... rest of the function using traces as before ...
+	// 
 	//Don't allow jump until all buttons are up
 	if (pm->ps->pm_flags & PMF_RESPAWNED)
 	{
 		return qfalse;
 	}
 
+    // ... rest of your code ...
 	if (PM_InKnockDown(pm->ps) || PM_InRoll(pm->ps))
 	{
 		//in knockdown
@@ -1804,6 +1834,8 @@ static qboolean pm_check_jump()
 			int anim = -1;
 			float vert_push = 0;
 			int force_power_cost_override = 0;
+
+			const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
 
 			// Cartwheels/ariels/butterflies
 			if (pm->ps->weapon == WP_SABER && G_TryingCartwheel(pm->gent, &pm->cmd) && pm->cmd.buttons &
@@ -2696,6 +2728,9 @@ static qboolean pm_check_jump()
 	{
 		PM_JumpForDir();
 	}
+
+	// At the end, free the memory
+	free(traces);
 
 	return qtrue;
 }
@@ -14011,11 +14046,13 @@ saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 		break;
 	}
 
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
 	if (g_spskill->integer > 1
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue) &&
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue, isPlayer) &&
 		!pm->ps->forcePowersActive && !in_camera)
 	{
-		if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
+		if (!isPlayer)
 		{// Some special bot stuff.
 			if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time && g_attackskill->integer >= 0)
 			{
@@ -15687,7 +15724,25 @@ static qboolean PM_saber_moveOkayForKata()
 
 static qboolean PM_CanDoKata()
 {
-	if (pm->ps->clientNum && !PM_ControlledByPlayer() && pm->ps->stats[STAT_HEALTH] >= 40)
+	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	//Holding Block Button
+	const qboolean active_blocking = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
+	//Active Blocking
+
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
+	if (is_holding_block_button || active_blocking)
+	{
+		return qfalse;
+	}
+
+	if (pm->ps->clientNum && !PM_ControlledByPlayer() && pm->ps->stats[STAT_HEALTH] >= 60) //stops npc spamming it at the start of combat
+	{
+		return qfalse;
+	}
+
+	if (!isPlayer //npc kata restrictions
+		&& (pm->ps->blockPoints <= BLOCKPOINTS_FOURTY))
 	{
 		return qfalse;
 	}
@@ -15703,7 +15758,7 @@ static qboolean PM_CanDoKata()
 		&& !pm->cmd.rightmove //not moving r/l
 		&& pm->cmd.upmove <= 0 //not jumping...?
 		&& G_TryingKataAttack(&pm->cmd)
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_KATA_ATTACK_POWER, qtrue)) // have enough power
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_KATA_ATTACK_POWER, qtrue, isPlayer)) // have enough power
 	{
 		return qtrue;
 	}
@@ -15712,6 +15767,8 @@ static qboolean PM_CanDoKata()
 
 static qboolean PM_CanDoRollStab()
 {
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
 	if (!pm->ps->saberInFlight //not throwing saber
 		&& pm->ps->groundEntityNum != ENTITYNUM_NONE //not in the air
 		&& pm->cmd.buttons & BUTTON_ATTACK //pressing attack
@@ -15720,7 +15777,7 @@ static qboolean PM_CanDoRollStab()
 		&& pm->cmd.upmove <= 0 //not jumping...?
 		&& (!(pm->ps->saber[0].saberFlags & SFL_NO_ROLL_STAB)
 			&& (!pm->ps->dualSabers || !(pm->ps->saber[1].saberFlags & SFL_NO_ROLL_STAB)))
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_KATA_ATTACK_POWER, qtrue)) // have enough power
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_KATA_ATTACK_POWER, qtrue, isPlayer)) // have enough power
 	{
 		return qtrue;
 	}
@@ -15729,11 +15786,13 @@ static qboolean PM_CanDoRollStab()
 
 qboolean PM_Can_Do_Kill_Move()
 {
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
 	if (!pm->ps->saberInFlight //not throwing saber
 		&& pm->cmd.buttons & BUTTON_ATTACK //pressing attack
 		&& pm->cmd.forwardmove >= 0 //not moving back (used to be !pm->cmd.forwardmove)
 		&& !pm->cmd.rightmove //not moving r/l
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_FB, qtrue)) // have enough power
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_FB, qtrue, isPlayer)) // have enough power
 	{
 		return qtrue;
 	}

@@ -6062,29 +6062,29 @@ static void ClientThink_real(gentity_t* ent)
 						switch (ent->client->ps.fd.saberAnimLevel)
 						{
 						case SS_FAST:
-							strength = 1;
+							strength = Q_irand(1, 2);
 							break;
 						case SS_MEDIUM:
 						case SS_TAVION:
 						case SS_DUAL:
 						case SS_STAFF:
-							strength = 2;
+							strength = Q_irand(2, 3);
 							break;
 						case SS_STRONG:
 						case SS_DESANN:
-							strength = 3;
+							strength = Q_irand(3, 4); 
 							break;
 						}
 					}
-					else
+					else 
 					{
 						if (ent->client->pers.botclass == BCLASS_DESANN || ent->client->pers.botclass == BCLASS_LUKE)
 						{
-							strength = 2;
+							strength = Q_irand(2, 3);
 						}
 						else
 						{
-							strength = 1;
+							strength = Q_irand(1, 2);
 						}
 					}
 

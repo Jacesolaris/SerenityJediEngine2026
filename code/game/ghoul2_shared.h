@@ -26,6 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <map>
+#include <cassert>
 
 constexpr auto G2T_SV_TIME = 0;
 constexpr auto G2T_CG_TIME = 1;

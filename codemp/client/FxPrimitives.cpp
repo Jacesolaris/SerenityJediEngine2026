@@ -1653,7 +1653,9 @@ void CLight::UpdateRGB(void)
 
 	// Now get the correct color
 	VectorScale(mRGBStart, perc1, res);
-	VectorMA(res, 1.0f - perc1, mRGBEnd, mRefEnt.origin);
+	VectorMA(res, 1.0f - perc1, mRGBEnd, res);
+
+	ClampRGB(res, reinterpret_cast<byte*>(&mRefEnt.shaderRGBA));
 }
 
 //--------------------------

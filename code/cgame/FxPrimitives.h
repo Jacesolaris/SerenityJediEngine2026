@@ -691,7 +691,7 @@ public:
 //	adds to a SINGLE triangle or quad....
 // The editor doesn't need to see or do anything with this
 //------------------------------
-constexpr auto MAX_CPOLY_VERTS = 5;
+constexpr auto MAX_CPOLY_VERTS = 6;
 
 class CPoly : public CParticle
 {

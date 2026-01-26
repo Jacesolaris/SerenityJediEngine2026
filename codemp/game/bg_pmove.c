@@ -4268,7 +4268,7 @@ static qboolean PM_Is_A_Dash_Anim(const int anim)
 PM_CheckJump
 =============
 */
-extern qboolean BG_EnoughForcePowerForMove(int cost);
+extern qboolean BG_EnoughForcePowerForMove(int cost, const qboolean play_sound);
 extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 
 static qboolean pm_check_jump(void)
@@ -4277,6 +4277,8 @@ static qboolean pm_check_jump(void)
 
 	saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
 	saberInfo_t* saber2 = BG_MySaber(pm->ps->clientNum, 1);
+
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
 
 	if (pm->ps->clientNum >= MAX_CLIENTS)
 	{
@@ -4979,14 +4981,14 @@ static qboolean pm_check_jump(void)
 			else if (pm->cmd.forwardmove < 0 && !(pm->cmd.buttons & BUTTON_ATTACK))
 			{
 				//backflip
-				if (allowFlips && BG_EnoughForcePowerForMove(FATIGUE_BACKFLIP_ATARU)
+				if (allowFlips && BG_EnoughForcePowerForMove(FATIGUE_BACKFLIP_ATARU, isPlayer)
 					&& saber1 && !saber2 && pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{
 					vertPush = JUMP_VELOCITY;
 					anim = BOTH_FLIP_BACK1;
 					PM_AddFatigue(pm->ps, FATIGUE_BACKFLIP_ATARU);
 				}
-				else if (allowFlips && BG_EnoughForcePowerForMove(FATIGUE_BACKFLIP))
+				else if (allowFlips && BG_EnoughForcePowerForMove(FATIGUE_BACKFLIP, isPlayer))
 				{
 					vertPush = JUMP_VELOCITY;
 					anim = BOTH_FLIP_BACK1;

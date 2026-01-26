@@ -5982,7 +5982,7 @@ qboolean G_TryingLungeAttack(const gentity_t* self, const usercmd_t* cmd)
 }
 
 //FIXME: for these below funcs, maybe in the old control scheme some moves should still cost power... if so, pass in the saber_move and use a switch statement
-qboolean G_EnoughPowerForSpecialMove(const int forcePower, const int cost, const qboolean kataMove)
+qboolean G_EnoughPowerForSpecialMove(const int forcePower, const int cost, const qboolean kataMove, const qboolean play_sound)
 {
 	if (g_saberNewControlScheme->integer || kataMove)
 	{
@@ -5991,9 +5991,12 @@ qboolean G_EnoughPowerForSpecialMove(const int forcePower, const int cost, const
 		{
 			return qtrue;
 		}
-		cg.forceHUDTotalFlashTime = level.time + 1000;
-		cg.mishapHUDTotalFlashTime = level.time + 500;
-		cg.blockHUDTotalFlashTime = level.time + 500;
+		if (play_sound)
+		{
+			cg.forceHUDTotalFlashTime = level.time + 500;
+			cg.mishapHUDTotalFlashTime = level.time + 500;
+			cg.blockHUDTotalFlashTime = level.time + 500;
+		}
 		return qfalse;
 	}
 	//old control scheme: uses no power, so just do it

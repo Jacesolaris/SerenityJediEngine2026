@@ -300,9 +300,13 @@ gentity_t* G_DropSaberItem(const char* saberType, const saber_colors_t saberColo
 					saberColor >> 16 & 0xff);
 				newItem->NPC_targetname = rgb_color;
 			}
-			else
+			else if (saberColor >= 0 && saberColor < SABER_RGB)
 			{
 				newItem->NPC_targetname = const_cast<char*>(saberColorStringForColor[saberColor]);
+			}
+			else
+			{
+				newItem->NPC_targetname = nullptr;
 			}
 			newItem->count = 1;
 			newItem->flags = FL_DROPPED_ITEM;

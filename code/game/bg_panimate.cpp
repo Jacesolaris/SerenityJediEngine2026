@@ -4287,11 +4287,13 @@ static saber_moveName_t PM_CheckDualSpinProtect()
 		}
 	}
 	//do normal checks
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
 	if (pm->ps->saber_move == LS_READY //ready
 		&& pm->ps->saberAnimLevel == SS_DUAL //using dual saber style
 		&& pm->ps->saber[0].Active() && pm->ps->saber[1].Active() //both sabers on
 		&& G_TryingKataAttack(&pm->cmd)
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue)
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue, isPlayer)
 		//pm->ps->forcePower >= SABER_ALT_ATTACK_POWER//DUAL_SPIN_PROTECT_POWER//force push 3
 		&& pm->cmd.buttons & BUTTON_ATTACK) //pressing attack
 	{
@@ -4363,11 +4365,13 @@ static saber_moveName_t PM_CheckStaffKata()
 		}
 	}
 	//do normal checks
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
 	if (pm->ps->saber_move == LS_READY //ready
 		&& pm->ps->saberAnimLevel == SS_STAFF //using dual saber style
 		&& pm->ps->saber[0].Active() //saber on
 		&& G_TryingKataAttack(&pm->cmd)
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue)
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue, isPlayer)
 		&& pm->cmd.buttons & BUTTON_ATTACK) //pressing attack
 	{
 		//FIXME: some NPC logic to do this?
@@ -4403,6 +4407,9 @@ saber_moveName_t PM_CheckPullAttack()
 		return LS_NONE;
 	}
 
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
+
 	if ((pm->ps->saber_move == LS_READY || PM_SaberInReturn(pm->ps->saber_move) || PM_SaberInReflect(pm->ps->saber_move))
 		//ready
 		&& pm->ps->groundEntityNum != ENTITYNUM_NONE
@@ -4410,7 +4417,7 @@ saber_moveName_t PM_CheckPullAttack()
 		&& pm->ps->saberAnimLevel <= SS_STRONG
 		&& G_TryingPullAttack(pm->gent, &pm->cmd, qfalse)
 		&& pm->cmd.buttons & BUTTON_ATTACK //attacking
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK))
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK,qtrue, isPlayer))
 	{
 		qboolean do_move = g_saberNewControlScheme->integer ? qtrue : qfalse;
 		//in new control scheme, can always do this, even if there's no-one to do it to
@@ -4649,6 +4656,9 @@ saber_moveName_t PM_SaberAttackForMovement(const int forwardmove, const int righ
 		//first saber not overridden, check second
 		override_jump_left_attack_move = static_cast<saber_moveName_t>(pm->ps->saber[1].jumpAtkLeftMove);
 	}
+
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
+
 	if (rightmove > 0)
 	{
 		//moving right
@@ -4658,7 +4668,7 @@ saber_moveName_t PM_SaberAttackForMovement(const int forwardmove, const int righ
 			//on ground or just jumped
 			&& (pm->cmd.buttons & BUTTON_ATTACK && !(pm->cmd.buttons & BUTTON_BLOCK)) //hitting attack
 			&& pm->ps->forcePowerLevel[FP_LEVITATION] > FORCE_LEVEL_0 //have force jump 1 at least
-			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_LR)
+			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_LR, qfalse, isPlayer)
 			&& (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer() && pm->cmd.upmove > 0 //jumping NPC
 				|| (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) &&
 				G_TryingCartwheel(pm->gent, &pm->cmd))) //focus-holding player
@@ -4727,7 +4737,7 @@ saber_moveName_t PM_SaberAttackForMovement(const int forwardmove, const int righ
 			//on ground or just jumped
 			&& (pm->cmd.buttons & BUTTON_ATTACK && !(pm->cmd.buttons & BUTTON_BLOCK)) //hitting attack
 			&& pm->ps->forcePowerLevel[FP_LEVITATION] > FORCE_LEVEL_0 //have force jump 1 at least
-			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_LR)
+			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_LR, qfalse, isPlayer)
 			//pm->ps->forcePower >= SABER_ALT_ATTACK_POWER_LR//have enough power
 			&& (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer() && pm->cmd.upmove > 0 //jumping NPC
 				|| (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) &&

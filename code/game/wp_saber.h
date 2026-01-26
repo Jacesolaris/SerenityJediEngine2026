@@ -287,7 +287,7 @@ extern qboolean G_GetHitLocFromSurfName(gentity_t* ent, const char* surfName, in
 	vec3_t blade_dir, int mod, saberType_t saber_type = SABER_NONE);
 extern qboolean G_CheckEnemyPresence(const gentity_t* ent, int dir, float radius, float tolerance = 0.75f);
 extern void WP_SaberFreeStrings(saberInfo_t& saber);
-extern qboolean G_EnoughPowerForSpecialMove(int forcePower, int cost, qboolean kataMove = qfalse);
+extern qboolean G_EnoughPowerForSpecialMove(int forcePower, int cost, qboolean kataMove = qfalse, qboolean play_sound = qtrue);
 extern void G_DrainPowerForSpecialMove(const gentity_t* self, forcePowers_t fp, int cost, qboolean kataMove = qfalse);
 extern int G_CostForSpecialMove(int cost, qboolean kataMove = qfalse);
 extern gentity_t* G_DropSaberItem(const char* saberType, saber_colors_t saberColor, vec3_t saberPos, vec3_t saberVel,

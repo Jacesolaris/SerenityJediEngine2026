@@ -176,11 +176,14 @@ void BG_ForcePowerKill(playerState_t* ps)
 	}
 }
 
-qboolean BG_EnoughForcePowerForMove(const int cost)
+qboolean BG_EnoughForcePowerForMove(const int cost, const qboolean play_sound)
 {
 	if (pm->ps->fd.forcePower < cost)
 	{
-		PM_AddEvent(EV_NOAMMO);
+		if (play_sound)
+		{
+			PM_AddEvent(EV_NOAMMO);
+		}
 		return qfalse;
 	}
 
@@ -721,9 +724,11 @@ saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 		break;
 	}
 
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 #ifdef _GAME
 	if (bot_thinklevel.integer >= 1 &&
-		BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER) &&
+		BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER, isPlayer) &&
 		!pm->ps->fd.forcePowersActive && !in_camera)
 	{
 		if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT)
@@ -2998,6 +3003,8 @@ qboolean G_CheckEnemyPresence(const int dir, const float radius)
 
 saber_moveName_t PM_CheckPullAttack(void)
 {
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 	//add pull attack swing,
 	if (!(pm->cmd.buttons & BUTTON_ATTACK))
 	{
@@ -3013,7 +3020,7 @@ saber_moveName_t PM_CheckPullAttack(void)
 		&& !(pm->ps->fd.forcePowersActive & 1 << FP_PULL)
 		&& pm->ps->powerups[PW_PULL] > pm->cmd.serverTime
 		&& pm->cmd.buttons & BUTTON_ATTACK
-		&& BG_EnoughForcePowerForMove(FATIGUE_JUMPATTACK))
+		&& BG_EnoughForcePowerForMove(FATIGUE_JUMPATTACK, isPlayer))
 	{
 		const qboolean doMove = qtrue;
 
@@ -3081,6 +3088,8 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
 	const saberInfo_t* saber2 = BG_MySaber(pm->ps->clientNum, 1);
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 
 	if (pm->ps->weapon == WP_SABER)
 	{
@@ -3159,7 +3168,7 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 			&& (pm->cmd.buttons & BUTTON_ATTACK && !(pm->cmd.buttons & BUTTON_BLOCK)) //hitting attack
 			&& PM_GroundDistance() < 70.0f //not too high above ground
 			&& (pm->cmd.upmove > 0 || pm->ps->pm_flags & PMF_JUMP_HELD) //focus-holding player
-			&& BG_EnoughForcePowerForMove(SABER_ALT_ATTACK_POWER_LR)) //have enough power
+			&& BG_EnoughForcePowerForMove(SABER_ALT_ATTACK_POWER_LR, isPlayer)) //have enough power
 		{
 			//cartwheel right
 			WP_ForcePowerDrain(pm->ps, FP_GRIP, SABER_ALT_ATTACK_POWER_LR);
@@ -3217,7 +3226,7 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 			&& (pm->cmd.buttons & BUTTON_ATTACK && !(pm->cmd.buttons & BUTTON_BLOCK)) //hitting attack
 			&& PM_GroundDistance() < 70.0f //not too high above ground
 			&& (pm->cmd.upmove > 0 || pm->ps->pm_flags & PMF_JUMP_HELD) //focus-holding player
-			&& BG_EnoughForcePowerForMove(SABER_ALT_ATTACK_POWER_LR)) //have enough power
+			&& BG_EnoughForcePowerForMove(SABER_ALT_ATTACK_POWER_LR, isPlayer)) //have enough power
 		{
 			//cartwheel left
 			WP_ForcePowerDrain(pm->ps, FP_GRIP, SABER_ALT_ATTACK_POWER_LR);
@@ -3282,7 +3291,7 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 				pm->ps->weaponTime <= 0 &&
 				pm->ps->forceHandExtend == HANDEXTEND_NONE &&
 				(pm->cmd.buttons & BUTTON_ATTACK && !(pm->cmd.buttons & BUTTON_BLOCK)) &&
-				BG_EnoughForcePowerForMove(FATIGUE_JUMPATTACK))
+				BG_EnoughForcePowerForMove(FATIGUE_JUMPATTACK, isPlayer))
 			{
 				//DUAL/STAFF JUMP ATTACK
 				newmove = PM_SaberJumpAttackMove2();
@@ -3299,7 +3308,7 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 				PM_GroundDistance() < 32 &&
 				!PM_InSpecialJump(pm->ps->legsAnim) &&
 				!pm_saber_in_special_attack(pm->ps->torsoAnim) &&
-				BG_EnoughForcePowerForMove(FATIGUE_JUMPATTACK))
+				BG_EnoughForcePowerForMove(FATIGUE_JUMPATTACK, isPlayer))
 			{
 				//FLIP AND DOWNWARD ATTACK
 				newmove = PM_SaberFlipOverAttackMove();
@@ -3334,7 +3343,7 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 			{
 				const saber_moveName_t stabDownMove = PM_CheckStabDown();
 				if (stabDownMove != LS_NONE
-					&& BG_EnoughForcePowerForMove(FATIGUE_GROUNDATTACK))
+					&& BG_EnoughForcePowerForMove(FATIGUE_GROUNDATTACK, isPlayer))
 				{
 					newmove = stabDownMove;
 					WP_ForcePowerDrain(pm->ps, FP_GRIP, FATIGUE_GROUNDATTACK);
@@ -3849,6 +3858,21 @@ static qboolean PM_saber_moveOkayForKata(void)
 
 static qboolean PM_CanDoKata(void)
 {
+
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
+	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	//Holding Block Button
+	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
+	//Active Blocking
+	const qboolean walking_blocking = pm->ps->ManualBlockingFlags & 1 << MBF_BLOCKWALKING ? qtrue : qfalse;
+	//Walking Blocking
+
+	if (is_holding_block_button || is_holding_block_button_and_attack || walking_blocking)
+	{
+		return qfalse;
+	}
+
 	if (!pm->ps->saberInFlight //not throwing saber
 		&& PM_saber_moveOkayForKata()
 		&& !PM_SaberInKata(pm->ps->saber_move)
@@ -3860,7 +3884,7 @@ static qboolean PM_CanDoKata(void)
 		&& !pm->cmd.forwardmove //not moving f/b
 		&& !pm->cmd.rightmove //not moving r/l
 		&& pm->cmd.upmove <= 0 //not jumping...?
-		&& BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER)) // have enough power
+		&& BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER, isPlayer)) // have enough power
 	{
 		return qtrue;
 	}
@@ -3929,6 +3953,8 @@ int bg_parryDebounce[NUM_FORCE_POWER_LEVELS] =
 
 static qboolean PM_SaberPowerCheck(void)
 {
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 	if (pm->ps->saberInFlight)
 	{
 		//so we don't keep doing stupid force out thing while guiding saber.
@@ -3939,7 +3965,7 @@ static qboolean PM_SaberPowerCheck(void)
 	}
 	else
 	{
-		return BG_EnoughForcePowerForMove(forcePowerNeeded[pm->ps->fd.forcePowerLevel[FP_SABERTHROW]][FP_SABERTHROW]);
+		return BG_EnoughForcePowerForMove(forcePowerNeeded[pm->ps->fd.forcePowerLevel[FP_SABERTHROW]][FP_SABERTHROW], isPlayer);
 	}
 
 	return qfalse;
@@ -3971,11 +3997,13 @@ static qboolean PM_CanDoRollStab(void)
 
 qboolean PM_Can_Do_Kill_Move(void)
 {
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 	if (!pm->ps->saberInFlight //not throwing saber
 		&& pm->cmd.buttons & BUTTON_ATTACK //pressing attack
 		&& pm->cmd.forwardmove >= 0 //not moving back (used to be !pm->cmd.forwardmove)
 		&& !pm->cmd.rightmove //not moving r/l
-		&& BG_EnoughForcePowerForMove(SABER_ALT_ATTACK_POWER_FB)) // have enough power
+		&& BG_EnoughForcePowerForMove(SABER_ALT_ATTACK_POWER_FB, isPlayer)) // have enough power
 	{
 		return qtrue;
 	}
@@ -5011,6 +5039,9 @@ void PM_WeaponLightsaber(void)
 	const qboolean walking_blocking = pm->ps->ManualBlockingFlags & 1 << MBF_BLOCKWALKING ? qtrue : qfalse;
 	//Walking Blocking
 
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
+
 	qboolean check_only_weap = qfalse;
 
 	if (pm_entSelf->s.NPC_class == CLASS_SABER_DROID)
@@ -5081,7 +5112,7 @@ void PM_WeaponLightsaber(void)
 		{
 			if (pm->cmd.buttons & BUTTON_ATTACK)
 			{
-				if (BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER) && !pm->ps->saberInFlight && pm->watertype != CONTENTS_WATER)
+				if (BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER, isPlayer) && !pm->ps->saberInFlight && pm->watertype != CONTENTS_WATER)
 				{
 					if (PM_CanDoRollStab())
 					{
@@ -7240,6 +7271,8 @@ qboolean PM_DoKick(void)
 	//perform a kick.
 	int kick_move = -1;
 
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 	if (!PM_KickingAnim(pm->ps->torsoAnim) &&
 		!PM_KickingAnim(pm->ps->legsAnim) &&
 		!BG_InRoll(pm->ps, pm->ps->legsAnim) &&
@@ -7313,7 +7346,7 @@ qboolean PM_DoKick(void)
 			}
 		}
 
-		if (kick_move != -1 && BG_EnoughForcePowerForMove(FATIGUE_SABERATTACK))
+		if (kick_move != -1 && BG_EnoughForcePowerForMove(FATIGUE_SABERATTACK, isPlayer))
 		{
 			PM_SetSaberMove(kick_move);
 			return qtrue;
@@ -7327,6 +7360,9 @@ qboolean PM_DoSlap(void)
 {
 	//perform a kick.
 	int kick_move = -1;
+
+	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
+
 
 	if (!PM_SaberInBounce(pm->ps->saber_move)
 		&& !PM_SaberInKnockaway(pm->ps->saber_move)
@@ -7405,7 +7441,7 @@ qboolean PM_DoSlap(void)
 			}
 		}
 
-		if (kick_move != -1 && BG_EnoughForcePowerForMove(FATIGUE_SABERATTACK))
+		if (kick_move != -1 && BG_EnoughForcePowerForMove(FATIGUE_SABERATTACK, isPlayer))
 		{
 			PM_SetSaberMove(kick_move);
 			return qtrue;

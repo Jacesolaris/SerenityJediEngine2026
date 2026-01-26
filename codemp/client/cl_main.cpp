@@ -454,12 +454,13 @@ CL_ReadDemoMessage
 void CL_ReadDemoMessage(void)
 {
 	msg_t buf;
-	byte bufData[MAX_MSGLEN];
+	byte* bufData = static_cast<byte*>(Z_Malloc(MAX_MSGLEN, TAG_TEMP_WORKSPACE, qfalse)); // Allocate on the heap to avoid large stack usage
 	int s;
 
 	if (!clc.demofile)
 	{
 		CL_DemoCompleted();
+		Z_Free(bufData);
 		return;
 	}
 
@@ -468,28 +469,32 @@ void CL_ReadDemoMessage(void)
 	if (r != 4)
 	{
 		CL_DemoCompleted();
+		Z_Free(bufData);
 		return;
 	}
 	clc.serverMessageSequence = LittleLong s;
 
 	// init the message
-	MSG_Init(&buf, bufData, sizeof bufData);
+	MSG_Init(&buf, bufData, MAX_MSGLEN);
 
 	// get the length
 	r = FS_Read(&buf.cursize, 4, clc.demofile);
 	if (r != 4)
 	{
 		CL_DemoCompleted();
+		Z_Free(bufData);
 		return;
 	}
 	buf.cursize = LittleLong buf.cursize;
 	if (buf.cursize == -1)
 	{
 		CL_DemoCompleted();
+		Z_Free(bufData);
 		return;
 	}
 	if (buf.cursize > buf.maxsize)
 	{
+		Z_Free(bufData);
 		Com_Error(ERR_DROP, "CL_ReadDemoMessage: demoMsglen > MAX_MSGLEN");
 	}
 	r = FS_Read(buf.data, buf.cursize, clc.demofile);
@@ -497,12 +502,15 @@ void CL_ReadDemoMessage(void)
 	{
 		Com_Printf("Demo file was truncated.\n");
 		CL_DemoCompleted();
+		Z_Free(bufData);
 		return;
 	}
 
 	clc.lastPacketTime = cls.realtime;
 	buf.readcount = 0;
 	CL_ParseServerMessage(&buf);
+
+	Z_Free(bufData);
 }
 
 /*
@@ -3421,7 +3429,12 @@ void CL_ServerStatusResponse(const netadr_t from, msg_t* msg)
 		if (serverStatus->print)
 		{
 			score = ping = 0;
-			sscanf(s, "%d %d", &score, &ping);
+			// Check the return value of sscanf to fix C6031
+			if (sscanf(s, "%d %d", &score, &ping) != 2) {
+				// Handle error: parsing failed
+				score = 0;
+				ping = 0;
+			}
 			s = strchr(s, ' ');
 			if (s)
 				s = strchr(s + 1, ' ');
@@ -3466,7 +3479,7 @@ void CL_LocalServers_f(void)
 		Com_Memset(&cls.localServers[i], 0, sizeof cls.localServers[i]);
 		cls.localServers[i].visible = b;
 	}
-	Com_Memset(&to, 0, sizeof to);
+	Com_Memset(&to, 0, sizeof(netadr_t));
 
 	// The 'xxx' in the message is a challenge that will be echoed back
 	// by the server.  We don't care about that here, but master servers
@@ -3606,7 +3619,7 @@ void CL_GetPing(const int n, char* buf, const int buflen, int* pingtime)
 		}
 	}
 
-	CL_SetServerInfoByAddress(cl_pinglist[n].adr, cl_pinglist[n].info, cl_pinglist[n].time);
+	CL_SetServerInfoByAddress(cl_pinglist[n].adr, nullptr, 0);
 
 	*pingtime = time;
 }

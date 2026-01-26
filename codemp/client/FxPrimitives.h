@@ -711,7 +711,7 @@ public:
 // We're getting pretty low level here, not the kind of thing to abuse considering how much overhead this
 //	adds to a SINGLE triangle or quad....
 //------------------------------
-#define MAX_CPOLY_VERTS	5
+#define MAX_CPOLY_VERTS	6
 
 class CPoly : public CParticle
 {
