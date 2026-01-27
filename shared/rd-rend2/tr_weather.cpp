@@ -1059,10 +1059,6 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 				chunkIndex = ((int(centerZoneOffsetX + numMinZonesX) + x + 1) % 3 + 3) % 3;
 				chunkIndex += (((int(centerZoneOffsetY + numMinZonesY) + y + 1) % 3 + 3) % 3) * 3;
 
-				if (chunkIndex < 0) {
-					chunkIndex += 9;
-				}
-
 				VectorSet2(
 					zoneOffsets[chunkIndex],
 					x,

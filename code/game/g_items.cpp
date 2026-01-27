@@ -27,6 +27,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "wp_saber.h"
 #include "../cgame/cg_local.h"
 #include "b_local.h"
+#include <qcommon\q_color.h>
+#include "ghoul2_shared.h"
+#include <cassert>
 
 extern qboolean missionInfo_Updated;
 extern cvar_t* com_outcast;

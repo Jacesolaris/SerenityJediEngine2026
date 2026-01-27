@@ -6729,12 +6729,14 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 		{
 			client->ps.speed *= 0.3f;
 		}
-		else if (client->ps.stats[STAT_HEALTH] <= 25)
+		else if ((client->ps.stats[STAT_HEALTH] <= 25 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
+			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 3) && client->ps.stats[STAT_MAX_HEALTH] < 100))
 		{
 			//move slower when low on health
 			client->ps.speed *= 0.85f;
 		}
-		else if (client->ps.stats[STAT_HEALTH] <= 40)
+		else if ((client->ps.stats[STAT_HEALTH] <= 40 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
+			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 2) && client->ps.stats[STAT_MAX_HEALTH] < 100))
 		{
 			//move slower when low on health
 			client->ps.speed *= 0.90f;
@@ -8955,7 +8957,13 @@ void ClientThink(const int clientNum, usercmd_t* ucmd)
 				//still controlling, save off my ucmd and clear it for my actual run through pmove
 				restore_ucmd = qtrue;
 				memcpy(&sav_ucmd, ucmd, sizeof(usercmd_t));
-				memset(ucmd, 0, sizeof(usercmd_t));
+				
+				// Before using ent->client, add a null check to prevent dereferencing a NULL pointer.
+				if (ent && ent->client)
+				{
+					memset(ucmd, 0, sizeof(usercmd_t));	// ... rest of code that uses ent->client ...
+				}
+
 				//to keep pointing in same dir, need to set ucmd->angles
 				ucmd->angles[PITCH] = ANGLE2SHORT(ent->client->ps.viewangles[PITCH]) - ent->client->ps.delta_angles[
 					PITCH];

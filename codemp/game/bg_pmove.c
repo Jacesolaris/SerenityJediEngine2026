@@ -16084,12 +16084,14 @@ static void BG_AdjustClientSpeed(playerState_t* ps, const usercmd_t* cmd, const 
 			ps->speed *= 0.2f;
 	}
 
-	if (pm->ps->stats[STAT_HEALTH] <= 25)
+	if ((pm->ps->stats[STAT_HEALTH] <= 25 && pm->ps->stats[STAT_MAX_HEALTH] >= 100) ||
+		(pm->ps->stats[STAT_HEALTH] <= (pm->ps->stats[STAT_MAX_HEALTH] / 3) && pm->ps->stats[STAT_MAX_HEALTH] < 100))
 	{
 		//move slower when low on health
 		ps->speed *= 0.85f;
 	}
-	else if (pm->ps->stats[STAT_HEALTH] <= 40)
+	else if ((pm->ps->stats[STAT_HEALTH] <= 40 && pm->ps->stats[STAT_MAX_HEALTH] >= 100) ||
+		(pm->ps->stats[STAT_HEALTH] <= (pm->ps->stats[STAT_MAX_HEALTH] / 2) && pm->ps->stats[STAT_MAX_HEALTH] < 100))
 	{
 		//move slower when low on health
 		ps->speed *= 0.90f;

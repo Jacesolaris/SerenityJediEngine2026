@@ -2003,8 +2003,9 @@ void CG_TileClear(void);
 void CG_ColorForHealth(vec4_t hcolor);
 void CG_GetColorForHealth(int health, int armor, vec4_t hcolor);
 
-void UI_DrawProportionalString(int x, int y, const char* str, int style, vec4_t color, int font);
-void CG_DrawProportionalString(int x, int y, const char* str, int style, vec4_t color);
+void UI_DrawProportionalString( int x, const int y, const char* str, const int style, vec4_t color, int font);
+void CG_DrawProportionalString( int x, const int y, const char* str, const int style, vec4_t color);
+void CG_DrawSmallProportionalString( int x, const int y, const char* str, const int style, vec4_t color);
 void CG_DrawScaledProportionalString(int x, int y, const char* str, int style, vec4_t color, float scale);
 void CG_DrawRect(float x, float y, float width, float height, float size, const float* color);
 void CG_DrawSides(float x, float y, float w, float h, float size);

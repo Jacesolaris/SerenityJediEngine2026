@@ -346,7 +346,8 @@ to overflow.
 */
 void RB_BeginSurface(shader_t* shader, const int fogNum)
 {
-	shader_t* state = shader->remappedShader ? shader->remappedShader : shader;
+	//	shader_t *state = (shader->remappedShader) ? shader->remappedShader : shader;
+	shader_t* state = shader;
 
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;

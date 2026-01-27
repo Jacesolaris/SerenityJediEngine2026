@@ -1032,7 +1032,33 @@ static void SG_WriteScreenshot(qboolean qbAutosave, const char* psMapName)
 
 	if (!pbRawScreenShot)
 	{
+		if (byBlank != NULL)
+		{
+			delete[] byBlank;
+		}
+
+		const size_t bySize = SG_SCR_WIDTH * SG_SCR_HEIGHT * 3;
+
+		byBlank = new byte[bySize];
 		pbRawScreenShot = SCR_GetScreenshot(0);
+
+		// We can't just do the same resampling as with qbAutosave as we would alter the cached buffer
+		// That might be used elsewhere and is expected to have RGBA data, like for drawing the level transition screenshot
+		if (pbRawScreenShot)
+		{
+			for (int y = 0; y < SG_SCR_HEIGHT; y++)
+			{
+				for (int x = 0; x < SG_SCR_WIDTH; x++)
+				{
+					src = pbRawScreenShot + 4 * (y * SG_SCR_WIDTH + x);
+					dst = byBlank + 3 * (y * SG_SCR_WIDTH + x);
+					dst[0] = src[0];
+					dst[1] = src[1];
+					dst[2] = src[2];
+				}
+			}
+			pbRawScreenShot = byBlank;
+		}
 	}
 
 	size_t iJPGDataSize = 0;

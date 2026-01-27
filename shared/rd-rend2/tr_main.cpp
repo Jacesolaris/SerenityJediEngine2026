@@ -1139,6 +1139,7 @@ static void R_SetupProjectionOrtho(viewParms_t* dest, const vec3_t viewBounds[2]
 /*
 =================
 R_MirrorPoint
+
 =================
 */
 static void R_MirrorPoint(vec3_t in, const orientation_t* surface, const orientation_t* camera, vec3_t out)
@@ -1815,6 +1816,7 @@ void R_AddDrawSurf(surfaceType_t* surface, int entityNum, const shader_t* shader
 {
 	int index;
 	drawSurf_t* surf;
+	const shader_t* drawShader = (shader->remappedShader) ? shader->remappedShader : shader;
 
 	if (tr.refdef.rdflags & RDF_NOFOG)
 	{
@@ -1825,13 +1827,13 @@ void R_AddDrawSurf(surfaceType_t* surface, int entityNum, const shader_t* shader
 	{
 		fogIndex = tr.world->numfogs;
 	}
-	if ((shader->surfaceFlags & SURF_FORCESIGHT) && !(tr.refdef.rdflags & RDF_ForceSightOn))
+	if ((drawShader->surfaceFlags & SURF_FORCESIGHT) && !(tr.refdef.rdflags & RDF_ForceSightOn))
 	{	//if shader is only seen with ForceSight and we don't have ForceSight on, then don't draw
 		return;
 	}
 
 	if (tr.viewParms.flags & VPF_DEPTHSHADOW &&
-		(postRender == qtrue || shader->sort != SS_OPAQUE))
+		(postRender == qtrue || drawShader->sort != SS_OPAQUE))
 	{
 		return;
 	}
@@ -1843,7 +1845,7 @@ void R_AddDrawSurf(surfaceType_t* surface, int entityNum, const shader_t* shader
 	surf->surface = surface;
 
 	if (tr.viewParms.flags & VPF_DEPTHSHADOW &&
-		shader->useSimpleDepthShader == qtrue)
+		drawShader->useSimpleDepthShader == qtrue)
 	{
 		surf->sort = R_CreateSortKey(entityNum, tr.defaultShader->sortedIndex, 0, 0);
 		surf->dlightBits = 0;
@@ -1851,7 +1853,7 @@ void R_AddDrawSurf(surfaceType_t* surface, int entityNum, const shader_t* shader
 	}
 	else
 	{
-		surf->sort = R_CreateSortKey(entityNum, shader->sortedIndex, cubemap, postRender);
+		surf->sort = R_CreateSortKey(entityNum, drawShader->sortedIndex, cubemap, postRender);
 		surf->dlightBits = dlightMap;
 		surf->fogIndex = fogIndex;
 	}
@@ -2617,7 +2619,8 @@ static qboolean R_AddPortalView(const trRefdef_t* refdef)
 				continue;
 			}
 			else {
-				switch (tr.currentModel->type) {
+				switch (tr.currentModel->type)
+				{
 				case MOD_BRUSH:
 				{
 					//R_AddBrushModelSurfaces(ent, i);
@@ -2769,15 +2772,11 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 					shadowParms.targetFbo = tr.shadowCubeFbo[i * 6 + j];
 					shadowParms.targetFboLayer = 0;
 
-					shadowParms.currentViewParm = tr.numCachedViewParms;
-					shadowParms.viewParmType = VPT_POINT_SHADOWS;
+					R_RenderView(&shadowParms);
 
-					R_RotateForViewer(&shadowParms.world, &shadowParms);
-					R_SetupProjection(&shadowParms, shadowParms.zNear, shadowParms.zFar, qtrue);
-					R_SetupProjectionZ(&shadowParms);
+					R_IssuePendingRenderCommands();
 
-					Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &shadowParms, sizeof(viewParms_t));
-					tr.numCachedViewParms++;
+					tr.refdef.numDrawSurfs = 0;
 				}
 			}
 		}
@@ -2882,6 +2881,7 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 					}
 
 					tr.viewParms.currentViewParm = tr.numCachedViewParms;
+					tr.viewParms.viewParmType = VPT_PLAYER_SHADOWS;
 					Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &tr.viewParms, sizeof(viewParms_t));
 					tr.numCachedViewParms++;
 				}
@@ -3038,7 +3038,6 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 				Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &tr.viewParms, sizeof(viewParms_t));
 				tr.numCachedViewParms++;
 			}
-			mainFlags |= VPF_USESUNLIGHT;
 		}
 	}
 

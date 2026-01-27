@@ -405,7 +405,7 @@ using fogParms_t = struct {
 
 using shader_t = struct shader_s {
 	char		name[MAX_QPATH];		// game path, including extension
-	int			lightmapIndex[MAXLIGHTMAPS];	// for a shader to match, both name and lightmapIndex must match
+	int			lightmapIndex[MAXLIGHTMAPS];	// for a shader to match, both name and all lightmapIndex must match
 	byte		styles[MAXLIGHTMAPS];
 
 	int			index;					// this shader == tr.shaders[index]
@@ -450,7 +450,7 @@ using shader_t = struct shader_s {
 	// True if this shader has a stage with glow in it (just an optimization).
 	bool hasGlow;
 
-	//	struct shader_s		*remappedShader;                  // current shader this one is remapped too
+	shader_s* remappedShader;                  // current shader this one is remapped too
 	shader_s* next;
 };
 

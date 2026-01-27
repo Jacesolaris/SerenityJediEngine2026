@@ -1403,7 +1403,7 @@ void Boba_Update()
 				VectorCopy(NPC->enemy->currentOrigin, NPCInfo->enemyLastSeenLocation);
 				VectorCopy(NPC->enemy->currentOrigin, NPCInfo->enemyLastHeardLocation);
 			}
-			else if (gi.inPVS(NPC->enemy->currentOrigin, NPC->currentOrigin))
+			else if (NPC->enemy && gi.inPVS(NPC->enemy->currentOrigin, NPC->currentOrigin))
 			{
 				NPCInfo->enemyLastHeardTime = level.time;
 				VectorCopy(NPC->enemy->currentOrigin, NPCInfo->enemyLastHeardLocation);
@@ -1440,7 +1440,7 @@ void Boba_Update()
 	//--------------------------------------------------------------------------------------------------
 	if (!BobaHadDeathScript && NPC->behaviorSet[BSET_DEATH] != nullptr && NPC->client->NPC_class != CLASS_MANDO)
 	{
-		if (!gi.inPVS(NPC->enemy->currentOrigin, NPC->currentOrigin))
+		if (!NPC->enemy || gi.inPVS(NPC->enemy->currentOrigin, NPC->currentOrigin))
 		{
 			Boba_Printf("Attempting Final Battle Spawn...");
 			if (Boba_Respawn())

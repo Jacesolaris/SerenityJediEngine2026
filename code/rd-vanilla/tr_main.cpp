@@ -1156,6 +1156,7 @@ R_AddDrawSurf
 void R_AddDrawSurf(surfaceType_t* surface, const shader_t* shader, int fogIndex, const int dlightMap)
 {
 	int			index;
+	const shader_t* drawShader = (shader->remappedShader) ? shader->remappedShader : shader;
 
 	// instead of checking for overflow, we just mask the index
 	// so it wraps around
@@ -1166,14 +1167,14 @@ void R_AddDrawSurf(surfaceType_t* surface, const shader_t* shader, int fogIndex,
 		fogIndex = tr.world->numfogs;
 	}
 
-	if ((shader->surfaceFlags & SURF_FORCESIGHT) && !(tr.refdef.rdflags & RDF_ForceSightOn))
+	if ((drawShader->surfaceFlags & SURF_FORCESIGHT) && !(tr.refdef.rdflags & RDF_ForceSightOn))
 	{	//if shader is only seen with ForceSight and we don't have ForceSight on, then don't draw
 		return;
 	}
 
 	// the sort data is packed into a single 32 bit value so it can be
 	// compared quickly during the qsorting process
-	tr.refdef.drawSurfs[index].sort = (shader->sortedIndex << QSORT_SHADERNUM_SHIFT) | tr.shiftedEntityNum | (fogIndex << QSORT_FOGNUM_SHIFT) | (int)dlightMap;
+	tr.refdef.drawSurfs[index].sort = (drawShader->sortedIndex << QSORT_SHADERNUM_SHIFT) | tr.shiftedEntityNum | (fogIndex << QSORT_FOGNUM_SHIFT) | (int)dlightMap;
 	tr.refdef.drawSurfs[index].surface = (surfaceType_t*)surface;
 	tr.refdef.numDrawSurfs++;
 }

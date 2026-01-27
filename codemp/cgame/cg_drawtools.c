@@ -669,6 +669,48 @@ void CG_DrawProportionalString(int x, const int y, const char* str, const int st
 	CG_Text_Paint(x, y, 1.0, color, str, 0, 0, iStyle, i_menu_font);
 }
 
+void CG_DrawSmallProportionalString(int x, const int y, const char* str, const int style, vec4_t color)
+{
+	// having all these different style defines (1 for UI, one for CG, and now one for the re->font stuff)
+	//	is dumb, but for now...
+	//
+	int iStyle = 0;
+	const int i_menu_font = style & UI_SMALLFONT ? FONT_SMALL : FONT_SMALL;
+
+	switch (style & (UI_LEFT | UI_CENTER | UI_RIGHT))
+	{
+	default:
+	case UI_LEFT:
+	{
+		// nada...
+	}
+	break;
+
+	case UI_CENTER:
+	{
+		x -= CG_Text_Width(str, 1.0, i_menu_font) / 2;
+	}
+	break;
+
+	case UI_RIGHT:
+	{
+		x -= CG_Text_Width(str, 1.0, i_menu_font) / 2;
+	}
+	break;
+	}
+
+	if (style & UI_DROPSHADOW)
+	{
+		iStyle = ITEM_TEXTSTYLE_SHADOWED;
+	}
+	else if (style & (UI_BLINK | UI_PULSE))
+	{
+		iStyle = ITEM_TEXTSTYLE_BLINK;
+	}
+
+	CG_Text_Paint(x, y, 0.5, color, str, 0, 0, iStyle, i_menu_font);
+}
+
 void UI_DrawProportionalString(int x, const int y, const char* str, const int style, vec4_t color, int font)
 {
 	// having all these different style defines (1 for UI, one for CG, and now one for the re->font stuff)

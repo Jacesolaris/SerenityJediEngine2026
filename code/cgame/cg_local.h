@@ -795,7 +795,7 @@ void CG_DrawRotatePic(float x, float y, float width, float height, float angle, 
 void CG_DrawRotatePic2(float x, float y, float width, float height, float angle, qhandle_t hShader,
 	float aspectCorrection = 1.0f);
 void CG_DrawNumField(int x, int y, int width, int value, int charWidth, int charHeight, int style, qboolean zeroFill);
-void CG_DrawProportionalString(int x, int y, const char* str, int style, vec4_t color);
+void CG_DrawProportionalString(int x, const int y, const char* str, int style, vec4_t color);
 
 void CG_DrawStringExt(int x, int y, const char* string, const float* setColor, qboolean forceColor, qboolean shadow,
 	int charWidth, int charHeight);

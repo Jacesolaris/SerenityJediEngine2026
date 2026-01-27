@@ -567,7 +567,7 @@ void CG_LoadBar(void)
 		{
 			if (com_rend2.integer == 1) //rend2 is on
 			{
-				CG_DrawProportionalString(300, 2, CG_GetStringEdString("LOADTIPS", "REND2TIP"), UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
+				CG_DrawSmallProportionalString(300, 2, CG_GetStringEdString("LOADTIPS", "REND2TIP"), UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
 			}
 		}
 		const int x = (640 - LOADBAR_CLIP_WIDTH) / 2;
