@@ -553,8 +553,7 @@ void NPC_Pain(gentity_t* self, gentity_t* attacker, const int damage)
 	RestoreNPCGlobals();
 }
 
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 
 void npc_push(gentity_t* self, gentity_t* other, trace_t* trace)
 {

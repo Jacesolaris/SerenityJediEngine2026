@@ -44,6 +44,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_vehicles.h"
 #include "Q3_Interface.h"
 #include "g_navigator.h"
+#include "weapons.h"
 
 constexpr auto TURN_OFF = 0x00000100;
 extern cvar_t* g_DebugSaberCombat;
@@ -96,7 +97,7 @@ extern qboolean PM_RollingAnim(int anim);
 extern qboolean PM_InAnimForsaber_move(int anim, int saber_move);
 extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInReturn(int move);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern qboolean PM_LockedAnim(int anim);
 extern qboolean PM_KnockDownAnim(int anim);
 extern void G_SpeechEvent(const gentity_t* self, int event);
@@ -6107,8 +6108,7 @@ extern qboolean Boba_StopKnockdown(gentity_t* self, const gentity_t* pusher, con
 	qboolean force_knockdown = qfalse);
 extern qboolean Jedi_StopKnockdown(gentity_t* self, const vec3_t push_dir);
 
-void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	const qboolean break_saber_lock)
+void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock)
 {
 	if (!self || !self->client)
 	{
@@ -6148,7 +6148,7 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	//break out of a saberLock?
 	if (self->client->ps.saberLockTime > level.time)
 	{
-		if (break_saber_lock)
+		if (breakSaberLock)
 		{
 			self->client->ps.saberLockTime = 0;
 			self->client->ps.saberLockEnemy = ENTITYNUM_NONE;
@@ -6259,8 +6259,7 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	}
 }
 
-void G_KnockOver(gentity_t* self, const gentity_t* attacker, const vec3_t push_dir, float strength,
-	const qboolean break_saber_lock)
+void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock)
 {
 	if (!self || !self->client)
 	{
@@ -6300,7 +6299,7 @@ void G_KnockOver(gentity_t* self, const gentity_t* attacker, const vec3_t push_d
 	//break out of a saberLock?
 	if (self->client->ps.saberLockTime > level.time)
 	{
-		if (break_saber_lock)
+		if (breakSaberLock)
 		{
 			self->client->ps.saberLockTime = 0;
 			self->client->ps.saberLockEnemy = ENTITYNUM_NONE;

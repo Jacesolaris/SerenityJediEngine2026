@@ -32,7 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define MAX_MENUDEFFILE				8192 //4096
 #define MAX_MENUFILE				65536 //32768
-#define MAX_MENUS					128 //64
+#define MAX_MENUS					256 //64
 #define MAX_MENUITEMS				4096 //256
 #define MAX_COLOR_RANGES			10
 #define MAX_OPEN_MENUS				128 //16

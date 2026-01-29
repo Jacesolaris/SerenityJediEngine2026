@@ -59,7 +59,7 @@ extern qboolean BG_KnockDownAnim(int anim);
 extern void ScalePlayer(gentity_t* self, int scale);
 extern qboolean PM_InAnimForsaber_move(int anim, int saber_move);
 extern qboolean PM_SaberInStart(int move);
-extern int PM_AnimLength(animNumber_t anim);
+extern int PM_AnimLength(const animNumber_t anim);
 extern qboolean PM_SaberInReturn(int move);
 extern int pm_power_level_for_saber_anims(const playerState_t* ps);
 void AddFatigueHurtBonus(const gentity_t* attacker, const gentity_t* victim, int mod);
@@ -4159,8 +4159,7 @@ static int CheckArmor(const gentity_t* ent, const int damage, const int dflags, 
 	return save;
 }
 
-void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean g_standard_humanoid(gentity_t* self);
 
 static void G_CheckKnockdown(gentity_t* targ, gentity_t* attacker, vec3_t new_dir, const int dflags, const int mod)
@@ -5834,8 +5833,7 @@ qboolean G_ThereIsAMaster(void)
 
 extern qboolean Rosh_BeingHealed(const gentity_t* self);
 
-void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	const qboolean break_saber_lock)
+void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock)
 {
 	if (!self || !self->client)
 	{
@@ -5875,7 +5873,7 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	//break out of a saberLock?
 	if (self->client->ps.saberLockTime > level.time)
 	{
-		if (break_saber_lock)
+		if (breakSaberLock)
 		{
 			self->client->ps.saberLockTime = 0;
 			self->client->ps.saberLockEnemy = ENTITYNUM_NONE;
@@ -5989,8 +5987,7 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	}
 }
 
-void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	const qboolean break_saber_lock)
+void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock)
 {
 	if (!self || !self->client)
 	{
@@ -6026,7 +6023,7 @@ void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	//break out of a saberLock?
 	if (self->client->ps.saberLockTime > level.time)
 	{
-		if (break_saber_lock)
+		if (breakSaberLock)
 		{
 			self->client->ps.saberLockTime = 0;
 			self->client->ps.saberLockEnemy = ENTITYNUM_NONE;

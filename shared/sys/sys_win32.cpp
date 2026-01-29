@@ -30,8 +30,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <ShlObj_core.h>
 #include <cstdlib>
 #include <malloc.h>
+#include <qcommon\q_string.h>
+#include <qcommon\q_platform.h>
 
-constexpr auto MEM_THRESHOLD = 128 * 1024 * 1024;
+constexpr auto MEM_THRESHOLD = (128 * 1024 * 1024);
 
 // Used to determine where to store user-specific files
 static char homePath[MAX_OSPATH] = { 0 };

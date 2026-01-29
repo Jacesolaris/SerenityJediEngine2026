@@ -25,6 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_navigator.h"
 #include "../cgame/cg_local.h"
 #include "g_functions.h"
+#include "g_shared.h"
 
 extern void CG_DrawAlert(vec3_t origin, float rating);
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
@@ -32,7 +33,7 @@ extern void NPC_TempLookTarget(const gentity_t* self, int lookEntNum, int minLoo
 extern qboolean G_ExpandPointToBBox(vec3_t point, const vec3_t mins, const vec3_t maxs, int ignore, int clipmask);
 extern void NPC_AimAdjust(int change);
 extern qboolean FlyingCreature(const gentity_t* ent);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern qboolean NPC_IsGunner(const gentity_t* self);
 extern void NPC_AngerSound();
 extern void npc_check_speak(gentity_t* speaker_npc);
@@ -405,8 +406,7 @@ static void NPC_BSTusken_Attack()
 	NPC_UpdateAngles(qtrue, qtrue);
 }
 
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 
 static void Tusken_StaffTrace()
 {

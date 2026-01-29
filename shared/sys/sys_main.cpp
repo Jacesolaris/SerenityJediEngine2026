@@ -31,6 +31,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "sys_loadlib.h"
 #include "sys_public.h"
 #include "con_local.h"
+#include <qcommon\q_shared.h>
 
 static char binaryPath[MAX_OSPATH] = { 0 };
 static char installPath[MAX_OSPATH] = { 0 };

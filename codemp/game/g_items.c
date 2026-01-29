@@ -24,6 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_local.h"
 #include "ghoul2/G2.h"
 #include "qcommon/q_shared.h"
+#include <qcommon\q_math.h>
 
 /*
 
@@ -280,8 +281,7 @@ int sje_number_of_allies(const gentity_t* ent)
 	return number_of_allies;
 }
 
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 // Somebody (a player) has touched the shield.  See if it is a "friend".
 static void ShieldTouch(gentity_t* self, gentity_t* other, trace_t* trace)
 {

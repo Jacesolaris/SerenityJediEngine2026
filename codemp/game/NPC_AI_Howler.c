@@ -21,6 +21,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "b_local.h"
+#include "g_local.h"
+#include <qcommon\q_platform.h>
 
 // These define the working combat range for these suckers
 #define MIN_DISTANCE		54
@@ -222,8 +224,7 @@ static qboolean Howler_Move()
 //---------------------------------------------------------
 //replaced with SP version
 extern qboolean PM_InKnockDown(const playerState_t* ps);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 
 static void Howler_TryDamage(const int damage, const qboolean tongue, const qboolean knockdown)
 {

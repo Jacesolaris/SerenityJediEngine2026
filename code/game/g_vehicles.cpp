@@ -36,6 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #else
 #include "bg_vehicles.h"
 #endif
+#include "anims.h"
 
 #ifdef _JK2MP
 //this is really horrible, but it works! just be sure not to use any locals or anything
@@ -81,10 +82,9 @@ extern vec3_t player_maxs;
 extern cvar_t* g_speederControlScheme;
 extern cvar_t* in_joystick;
 extern void PM_SetAnim(const pmove_t* pm, int setAnimParts, int anim, int setAnimFlags, int blendTime);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags, int i_blend);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 #endif
 
 #ifdef _JK2MP
@@ -2153,7 +2153,7 @@ static bool UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, usercmd_t* pUmcd)
 	}
 
 	return true;
-	}
+}
 
 // Attachs all the riders of this vehicle to their appropriate tag (*driver, *pass1, *pass2, whatever...).
 static void AttachRiders(Vehicle_t * p_veh)

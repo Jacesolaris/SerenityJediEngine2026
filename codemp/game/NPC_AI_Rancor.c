@@ -21,6 +21,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "b_local.h"
+#include <qcommon\q_platform.h>
+#include "g_local.h"
+#include <qcommon\q_math.h>
 
 extern void G_GetBoltPosition(gentity_t* self, int boltIndex, vec3_t pos, int modelIndex);
 
@@ -35,7 +38,7 @@ extern void G_GetBoltPosition(gentity_t* self, int boltIndex, vec3_t pos, int mo
 #define LSTATE_WAITING		1
 
 extern void TossClientItems(gentity_t* self);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern void G_Dismember(const gentity_t* ent, const gentity_t* enemy, vec3_t point, int limb_type);
 extern float NPC_EntRangeFromBolt(const gentity_t* targ_ent, int boltIndex);
 extern int NPC_GetEntsNearBolt(int* radius_ents, float radius, int boltIndex, vec3_t bolt_org);

@@ -1470,7 +1470,7 @@ void NPC_PrecacheAnimationCFG(const char* npc_type)
 	COM_EndParseSession();
 }
 
-extern int NPC_WeaponsForTeam(team_t team, int spawnflags, const char* NPC_type);
+extern int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_type);
 
 static void NPC_PrecacheWeapons(const team_t player_team, const int spawnflags, const char* np_ctype)
 {

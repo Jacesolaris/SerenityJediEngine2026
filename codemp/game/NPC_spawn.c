@@ -900,12 +900,12 @@ NPC_WeaponsForTeam
 -------------------------
 */
 
-int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_type)
+int NPC_WeaponsForTeam(const npcteam_t team, const int spawnflags, const char* NPC_type)
 {
 	//*** not sure how to handle this, should I pass in class instead of team and go from there? - dmv
 	switch (team)
 	{
-	case (team_t)NPCTEAM_ENEMY:
+	case (npcteam_t)NPCTEAM_ENEMY:
 		if (Q_stricmp("tavion", NPC_type) == 0 ||
 			Q_strncmp("reborn", NPC_type, 6) == 0 ||
 			Q_stricmp("desann", NPC_type) == 0 ||
@@ -1043,7 +1043,7 @@ int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_
 		//Stormtroopers, etc.
 		return 1 << WP_BLASTER;
 
-	case  (team_t)NPCTEAM_PLAYER:
+	case  (npcteam_t)NPCTEAM_PLAYER:
 
 		if (spawnflags & SFB_RIFLEMAN)
 			return 1 << WP_REPEATER;
@@ -1072,7 +1072,7 @@ int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const char* NPC_
 		//rebel
 		return 1 << WP_BLASTER;
 
-	case  (team_t)NPCTEAM_NEUTRAL:
+	case  (npcteam_t)NPCTEAM_NEUTRAL:
 
 		if (Q_stricmp("mark1", NPC_type) == 0)
 		{

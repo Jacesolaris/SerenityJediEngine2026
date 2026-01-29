@@ -208,7 +208,7 @@ extern void PM_SetTorsoAnimTimer(gentity_t* ent, int* torsoAnimTimer, int time);
 extern void PM_SetLegsAnimTimer(gentity_t* ent, int* legsAnimTimer, int time);
 extern void PM_TorsoAnimation();
 extern int PM_TorsoAnimForFrame(gentity_t* ent, int torso_frame);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern qboolean PM_InOnGroundAnim(playerState_t* ps);
 extern weaponInfo_t cg_weapons[MAX_WEAPONS];
 extern int PM_PickAnim(const gentity_t* self, int minAnim, int maxAnim);
@@ -1289,7 +1289,6 @@ static qboolean PM_Is_A_Dash_Anim(const int anim)
 
 static qboolean pm_check_jump()
 {
-
 	// Pseudocode plan:
 	// 1. Identify which functions/types from <malloc.h> are used (e.g., malloc, free, alloca).
 	// 2. If only standard memory functions (malloc, free, calloc, realloc) are used, replace <malloc.h> with <cstdlib>.
@@ -1317,14 +1316,14 @@ static qboolean pm_check_jump()
 	}
 
 	// ... rest of the function using traces as before ...
-	// 
+	//
 	//Don't allow jump until all buttons are up
 	if (pm->ps->pm_flags & PMF_RESPAWNED)
 	{
 		return qfalse;
 	}
 
-    // ... rest of your code ...
+	// ... rest of your code ...
 	if (PM_InKnockDown(pm->ps) || PM_InRoll(pm->ps))
 	{
 		//in knockdown
@@ -5954,7 +5953,7 @@ static void PM_GroundTraceMissed()
 }
 
 #ifdef _GAME
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, qboolean breakSaberLock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 #endif
 
 static qboolean BG_InDFA()

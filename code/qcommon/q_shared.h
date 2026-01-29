@@ -78,7 +78,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 constexpr auto CLIENT_WINDOW_TITLE = "SerenityJediEngine2026 (SP)";
 constexpr auto CLIENT_CONSOLE_TITLE = "SerenityJediEngine2026 Console (SP)";
 constexpr auto HOMEPATH_NAME_UNIX = "SerenityJediEngine2026";
-constexpr auto HOMEPATH_NAME_WIN = "SerenityJediEngine";
+constexpr auto HOMEPATH_NAME_WIN = "SerenityJediEngine2026";
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 #endif
 

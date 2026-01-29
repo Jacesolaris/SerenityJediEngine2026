@@ -20,6 +20,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ===========================================================================
 */
 
+#include <qcommon\q_shared.h>
+#include "bg_public.h"
+
 extern vec3_t forward_vec, vright_vec, up;
 extern vec3_t muzzle;
 extern vec3_t muzzle2;
@@ -28,8 +31,7 @@ void WP_TraceSetStart(const gentity_t* ent, vec3_t start);
 gentity_t* CreateMissile(vec3_t org, vec3_t dir, float vel, int life, gentity_t* owner, qboolean alt_fire = qfalse);
 void WP_Stick(gentity_t* missile, const trace_t* trace, float fudge_distance = 0.0f);
 void WP_Explode(gentity_t* self);
-void WP_ExplosiveDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath,
-	int d_flags, int hit_loc);
+void WP_ExplosiveDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath, int d_flags, int hit_loc);
 bool WP_MissileTargetHint(gentity_t* shooter, vec3_t start, vec3_t out);
 void ViewHeightFix(const gentity_t* ent);
 qboolean LogAccuracyHit(const gentity_t* target, const gentity_t* attacker);
@@ -37,7 +39,7 @@ extern qboolean G_BoxInBounds(const vec3_t point, const vec3_t mins, const vec3_
 extern qboolean jedi_dodge_evasion(gentity_t* self, gentity_t* shooter, trace_t* tr, int hit_loc);
 extern qboolean jedi_disruptor_dodge_evasion(gentity_t* self, gentity_t* shooter, trace_t* tr, int hit_loc);
 extern qboolean PM_DroidMelee(int npc_class);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean G_HasKnockdownAnims(const gentity_t* ent);
 
 extern gentity_t* ent_list[MAX_GENTITIES];

@@ -63,6 +63,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #else
 #include "bg_vehicles.h"
 #endif
+#include "anims.h"
 
 #ifdef _JK2MP
 //this is really horrible, but it works! just be sure not to use any locals or anything
@@ -92,7 +93,7 @@ extern vec3_t player_maxs;
 extern cvar_t* g_speederControlScheme;
 extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 extern void PM_SetAnim(const pmove_t* pm, int setAnimParts, int anim, int setAnimFlags, int blendTime);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern void G_VehicleTrace(trace_t* results, const vec3_t start, const vec3_t tMins, const vec3_t tMaxs,
 	const vec3_t end, int pass_entity_num, int contentmask);
 #endif

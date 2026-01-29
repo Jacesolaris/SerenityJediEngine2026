@@ -166,9 +166,8 @@ extern void G_StartMatrixEffect(const gentity_t* ent, int me_flags = 0, int leng
 	int spin_time = 0);
 extern void G_StartStasisEffect(const gentity_t* ent, int me_flags = 0, int length = 1000, float time_scale = 0.0f,
 	int spin_time = 0);
-extern int PM_AnimLength(int index, animNumber_t anim);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern void G_KnockOffVehicle(gentity_t* pRider, const gentity_t* self, qboolean bPull);
 extern qboolean PM_LockedAnim(int anim);
 extern qboolean Rosh_BeingHealed(const gentity_t* self);
@@ -191,8 +190,7 @@ void WP_DeactivateSaber(const gentity_t* self, qboolean clear_length = qfalse);
 qboolean FP_ForceDrainGrippableEnt(const gentity_t* victim);
 void G_SaberBounce(const gentity_t* attacker, gentity_t* victim);
 extern qboolean PM_FaceProtectAnim(int anim);
-extern void G_KnockOver(gentity_t* self, const gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean BG_InKnockDown(int anim);
 extern saber_moveName_t PM_BrokenParryForParry(int move);
 extern qboolean PM_SaberInDamageMove(int move);
@@ -14540,7 +14538,7 @@ extern qboolean Boba_StopKnockdown(gentity_t* self, const gentity_t* pusher, con
 extern qboolean Jedi_StopKnockdown(gentity_t* self, const vec3_t push_dir);
 
 static void WP_ForceKnockdown(gentity_t* self, gentity_t* pusher, const qboolean pull, qboolean strong_knockdown,
-	const qboolean break_saber_lock)
+	const qboolean breakSaberLock)
 {
 	if (!self || !self->client || !pusher || !pusher->client)
 	{
@@ -14564,7 +14562,7 @@ static void WP_ForceKnockdown(gentity_t* self, gentity_t* pusher, const qboolean
 	//break out of a saberLock?
 	if (self->client->ps.saberLockTime > level.time)
 	{
-		if (break_saber_lock
+		if (breakSaberLock
 			|| pusher && self->client->ps.saberLockEnemy == pusher->s.number)
 		{
 			self->client->ps.saberLockTime = 0;

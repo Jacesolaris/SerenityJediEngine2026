@@ -26,12 +26,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "bg_public.h"
 #include "bg_vehicles.h"
+#include <qcommon\q_shared.h>
+#include "bg_weapons.h"
+#include <string.h>
 
 #ifdef _GAME //SP or gameside MP
 extern vec3_t player_mins;
 extern vec3_t player_maxs;
 extern void ChangeWeapon(const gentity_t* ent, int newWeapon);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const animNumber_t anim);
 #endif
 
 extern void BG_SetAnim(playerState_t* ps, const animation_t* animations, int setAnimParts, int anim, int setAnimFlags);
@@ -333,7 +336,7 @@ static void ProcessOrientCommands(const Vehicle_t* p_veh)
 
 #ifdef _GAME
 
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const animNumber_t anim);
 
 // This function makes sure that the vehicle is properly animated.
 static void AnimateVehicle(Vehicle_t* p_veh)

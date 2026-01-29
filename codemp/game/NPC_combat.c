@@ -559,8 +559,8 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 			&& enemy->client && enemy->client->playerTeam == NPCTEAM_PLAYER)
 		{
 			//make the player "evil" so that everyone goes after him
-			enemy->client->enemyTeam = (npcteam_t)TEAM_FREE;
-			enemy->client->playerTeam = (npcteam_t)TEAM_FREE;
+			enemy->client->enemyTeam = (npcteam_t)(team_t)TEAM_FREE;
+			enemy->client->playerTeam = (npcteam_t)(team_t)TEAM_FREE;
 		}
 
 		//If have an anger script, run that instead of yelling
@@ -2250,7 +2250,7 @@ gentity_t* NPC_CheckEnemy(const qboolean find_new, const qboolean too_far_ok, co
 		{
 			//racc - NPCTEAM_FREE players don't do this.
 			if (NPCS.NPC->client->playerTeam != NPCS.NPC->enemy->client->playerTeam
-				&& NPCS.NPC->client->enemyTeam != (npcteam_t)TEAM_FREE
+				&& NPCS.NPC->client->enemyTeam != (npcteam_t)(team_t)TEAM_FREE
 				&& NPCS.NPC->client->enemyTeam != NPCS.NPC->enemy->client->playerTeam)
 			{
 				//racc - We're not attacking an ally, this isn't a NPCTEAM_FREE enemy,

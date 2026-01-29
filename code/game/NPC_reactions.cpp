@@ -27,10 +27,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_functions.h"
 #include "wp_saber.h"
 #include "g_vehicles.h"
+#include "bg_public.h"
+#include <qcommon\q_math.h>
+#include "g_shared.h"
 
 extern qboolean G_CheckForStrongAttackMomentum(const gentity_t* self);
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern void cgi_S_StartSound(const vec3_t origin, int entityNum, int entchannel, sfxHandle_t sfx);
 extern qboolean Q3_TaskIDPending(const gentity_t* ent, taskID_t taskType);
 extern int PM_PickAnim(const gentity_t* self, int minAnim, int maxAnim);

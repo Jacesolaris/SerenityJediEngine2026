@@ -414,8 +414,7 @@ static void P_WorldEffects(gentity_t* ent)
 
 //==============================================================
 extern void G_ApplyKnockback(gentity_t* targ, vec3_t new_dir, float knockback);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 
 void G_GetMassAndVelocityForEnt(const gentity_t* ent, float* mass, vec3_t velocity)
 {
@@ -6074,11 +6073,11 @@ static void ClientThink_real(gentity_t* ent)
 							break;
 						case SS_STRONG:
 						case SS_DESANN:
-							strength = Q_irand(3, 4); 
+							strength = Q_irand(3, 4);
 							break;
 						}
 					}
-					else 
+					else
 					{
 						if (ent->client->pers.botclass == BCLASS_DESANN || ent->client->pers.botclass == BCLASS_LUKE)
 						{

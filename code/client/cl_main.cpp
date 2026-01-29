@@ -1327,7 +1327,7 @@ void CL_Init()
 
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 26/01/2026-----------------------\n"); // build date
+	Com_Printf("---------------------Build date 29/01/2026-----------------------\n"); // build date
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

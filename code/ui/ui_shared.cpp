@@ -117,7 +117,7 @@ static void (*captureFunc)(void* p) = nullptr;
 static void* captureData = nullptr;
 
 #ifdef CGAME
-#define MEM_POOL_SIZE  (256 * 1024)
+#define MEM_POOL_SIZE  (1 * 1024 * 1024) // was 256 * 1024
 #else
 constexpr auto MEM_POOL_SIZE = 8 * 1024 * 1024;
 #endif

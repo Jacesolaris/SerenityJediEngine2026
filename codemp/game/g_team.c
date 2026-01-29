@@ -523,7 +523,7 @@ void Team_CheckHurtCarrier(const gentity_t* targ, const gentity_t* attacker)
 		attacker->client->pers.teamState.lasthurtcarrier = level.time;
 }
 
-gentity_t* Team_ResetFlag(const int team)
+static gentity_t* Team_ResetFlag(const int team)
 {
 	char* c;
 	gentity_t* rent = NULL;
@@ -589,7 +589,7 @@ void Team_ReturnFlagSound(gentity_t* ent, const int team)
 	te->r.svFlags |= SVF_BROADCAST;
 }
 
-void Team_TakeFlagSound(gentity_t* ent, const int team)
+static void Team_TakeFlagSound(gentity_t* ent, const int team)
 {
 	if (ent == NULL)
 	{

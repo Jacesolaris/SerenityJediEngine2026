@@ -552,19 +552,34 @@ public:
 		mFreeIndecies.erase(mFreeIndecies.begin());
 		return mIds[idx];
 	}
-	bool IsValid(int handle) const
+
+	//bool IsValid(int handle) const
+	//{
+	//	if (handle <= 0)
+	//	{
+	//		return false;
+	//	}
+	//	assert((handle & G2_INDEX_MASK) >= 0 && (handle & G2_INDEX_MASK) < MAX_G2_MODELS); //junk handle
+	//	if (mIds[handle & G2_INDEX_MASK] != handle) // not a valid handle, could be old
+	//	{
+	//		return false;
+	//	}
+	//	return true;
+	//}
+
+	// This fucker has been grinding my gears for days because ghoul2 can be null here.
+	bool IsValid(const int handle) const override
 	{
-		if (handle <= 0)
-		{
+		if (handle <= 0) {
 			return false;
 		}
-		assert((handle & G2_INDEX_MASK) >= 0 && (handle & G2_INDEX_MASK) < MAX_G2_MODELS); //junk handle
-		if (mIds[handle & G2_INDEX_MASK] != handle) // not a valid handle, could be old
-		{
+		const int idx = handle & G2_INDEX_MASK;
+		if (idx < 0 || idx >= MAX_G2_MODELS) {
 			return false;
 		}
-		return true;
+		return mIds[idx] == handle;
 	}
+
 	void Delete(int handle)
 	{
 		if (handle <= 0)

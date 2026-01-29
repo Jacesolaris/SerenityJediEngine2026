@@ -37,6 +37,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_vehicles.h"
 #include "../qcommon/tri_coll_test.h"
 #include "../cgame/cg_local.h"
+#include <qcommon\q_math.h>
+#include <qcommon\q_shared.h>
+#include "bg_public.h"
 
 //////////Defines////////////////
 extern qboolean PM_KickingAnim(int anim);
@@ -60,8 +63,7 @@ extern qboolean WP_SaberLose(gentity_t* self, vec3_t throw_dir);
 extern cvar_t* g_saberAutoBlocking;
 extern qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2);
 extern qboolean walk_check(const gentity_t* self);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean PM_SuperBreakWinAnim(int anim);
 extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern qboolean WP_SaberBlockNonRandom(gentity_t* self, vec3_t hitloc, qboolean missileBlock);

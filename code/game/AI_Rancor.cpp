@@ -25,6 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_functions.h"
 #include "g_navigator.h"
 #include "g_nav.h"
+#include <qcommon\q_math.h>
 
 // These define the working combat range for these suckers
 constexpr auto MIN_DISTANCE = 128;
@@ -44,7 +45,7 @@ extern cvar_t* g_dismemberment;
 extern cvar_t* g_bobaDebug;
 
 void Rancor_Attack(float distance, qboolean do_charge, qboolean aim_at_blocked_entity);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean G_DoDismemberment(gentity_t* self, vec3_t point, int mod, int hit_loc, qboolean force = qfalse);
 extern float NPC_EntRangeFromBolt(const gentity_t* targ_ent, int boltIndex);
 extern int NPC_GetEntsNearBolt(gentity_t** radius_ents, float radius, int boltIndex, vec3_t bolt_org);

@@ -25,6 +25,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "b_public.h"
 #include "anims.h"
 #include "ghoul2/G2.h"
+#include "g_local.h"
+#include "bg_weapons.h"
 
 extern qboolean NPCsPrecached;
 
@@ -457,7 +459,7 @@ void NPC_PrecacheAnimationCFG(const char* npc_type)
 #endif
 }
 
-extern int NPC_WeaponsForTeam(team_t team, int spawnflags, const char* NPC_type);
+extern int NPC_WeaponsForTeam(const npcteam_t team, const int spawnflags, const char* NPC_type);
 
 static void NPC_PrecacheWeapons(team_t playerTeam, int spawnflags, char* NPCtype)
 {

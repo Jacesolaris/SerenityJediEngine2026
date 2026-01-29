@@ -2880,8 +2880,7 @@ static void ST_Commander(void)
 	RestoreNPCGlobals();
 }
 
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 
 static void Noghri_StickTrace(void)
 {

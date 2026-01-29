@@ -72,8 +72,7 @@ extern qboolean WP_SaberBlockBolt(gentity_t* self, vec3_t hitloc, qboolean missi
 void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, vec3_t fwd);
 extern int WP_SaberBoltBlockCost(gentity_t* defender, const gentity_t* attacker);
 extern void WP_BlockPointsDrain(const gentity_t* self, int fatigue);
-extern void G_KnockOver(gentity_t* self, const gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern float manual_running_and_saberblocking(const gentity_t* defender);
 extern qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 

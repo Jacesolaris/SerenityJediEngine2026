@@ -1462,7 +1462,7 @@ extern void bubble_shield_update(void);
 extern void NPC_BSSD_Default(void);
 extern void NPC_BSCivilian_Default(int b_state);
 
-static void NPC_RunBehavior(const int team, const int b_state)
+static void NPC_RunBehavior(const npcteam_t team, const int b_state)
 {
 	qboolean dontSetAim;
 
@@ -1588,7 +1588,7 @@ static void NPC_RunBehavior(const int team, const int b_state)
 	{
 		switch (team)
 		{
-		case NPCTEAM_ENEMY:
+		case (npcteam_t)NPCTEAM_ENEMY:
 			// special cases for enemy droids
 			switch (NPCS.NPC->client->NPC_class)
 			{
@@ -1723,7 +1723,7 @@ static void NPC_RunBehavior(const int team, const int b_state)
 			NPC_BehaviorSet_Stormtrooper(b_state);
 			break;
 
-		case NPCTEAM_NEUTRAL:
+		case (npcteam_t)NPCTEAM_NEUTRAL:
 
 			// special cases for enemy droids
 			if (NPCS.NPC->client->NPC_class == CLASS_PROTOCOL)

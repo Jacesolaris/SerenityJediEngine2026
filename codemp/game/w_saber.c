@@ -4960,8 +4960,7 @@ static void wp_saber_specific_do_hit(const gentity_t* self, const int saberNum, 
 	}
 }
 
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 static qboolean saberDoClashEffect = qfalse;
 static vec3_t saberClashPos = { 0 };
 static vec3_t saberClashNorm = { 0 };
@@ -11718,7 +11717,6 @@ void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd)
 	else if (self->client->ps.torsoAnim == BOTH_KYLE_GRAB)
 	{//try to grab someone
 		G_GrabSomeMofos(self);
-		//G_KickSomeMofos(self);  //temp fix jacesolaris
 	}
 	else if (self->client->grappleState)
 	{
@@ -11883,15 +11881,20 @@ void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd)
 
 								VectorSubtract(grappler->client->ps.origin, self->client->ps.origin, tossDir);
 								VectorNormalize(tossDir);
-								VectorScale(tossDir, 500.0f, tossDir);
+								VectorScale(tossDir, 250.0f, tossDir);
 								tossDir[2] = 200.0f;
 
 								VectorAdd(grappler->client->ps.velocity, tossDir, grappler->client->ps.velocity);
 
 								if (grappler->health > 0)
 								{ //if still alive knock them down
-									grappler->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-									grappler->client->ps.forceHandExtendTime = level.time + 1300;
+
+									//grappler->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
+									//No more Yeeting them across the map
+									G_Knockdown(grappler, self, tossDir, 100, qtrue);
+									G_SetAnim(grappler, &grappler->client->pers.cmd, SETANIM_BOTH, BOTH_KNOCKDOWN1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+
+									grappler->client->ps.forceHandExtendTime = level.time + 500;
 
 									//Count as kill for attacker if the other player falls to his death.
 									grappler->client->ps.otherKiller = self->s.number;
@@ -11942,7 +11945,7 @@ void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd)
 								//it might try to put them into a pain anim or something, so override it back again
 								if (grappler->health > 0)
 								{
-									grappler->client->ps.torsoTimer = 1000;
+									grappler->client->ps.torsoTimer = 500;
 									SetClientViewAngle(grappler, grapAng);
 									G_SetAnim(grappler, &grappler->client->pers.cmd, SETANIM_BOTH, BOTH_GETUP3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 									grappler->client->grappleState = 0;
@@ -12002,16 +12005,20 @@ void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd)
 
 								VectorSubtract(grappler->client->ps.origin, self->client->ps.origin, tossDir);
 								VectorNormalize(tossDir);
-								VectorScale(tossDir, 500.0f, tossDir);
+								VectorScale(tossDir, 250.0f, tossDir);
 								tossDir[2] = 200.0f;
 
 								VectorAdd(grappler->client->ps.velocity, tossDir, grappler->client->ps.velocity);
 
 								if (grappler->health > 0)
 								{//racc - knock this mofo down
-									grappler->client->ps.torsoTimer = 1000;
-									grappler->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-									grappler->client->ps.forceHandExtendTime = level.time + 1300;
+									grappler->client->ps.torsoTimer = 500;
+									//grappler->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
+									//No more Yeeting them across the map
+									G_Knockdown(grappler, self, tossDir, 200, qtrue);
+									G_SetAnim(grappler, &grappler->client->pers.cmd, SETANIM_BOTH, BOTH_KNOCKDOWN3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+
+									grappler->client->ps.forceHandExtendTime = level.time + 500;
 									grappler->client->grappleState = 0;
 
 									//Count as kill for attacker if the other player falls to his death.

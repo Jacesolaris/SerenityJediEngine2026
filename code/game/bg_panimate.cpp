@@ -99,7 +99,7 @@ extern qboolean G_ControlledByPlayer(const gentity_t* self);
 extern qboolean PM_InSaberAnim(int anim);
 extern int g_crosshairEntNum;
 extern int PM_ReturnforQuad(int quad);
-int PM_AnimLength(int index, animNumber_t anim);
+int PM_AnimLength(const int index, const animNumber_t anim);
 qboolean PM_LockedAnim(int anim);
 qboolean PM_StandingAnim(int anim);
 qboolean PM_StandingidleAnim(int anim);

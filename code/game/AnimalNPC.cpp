@@ -100,19 +100,20 @@ extern cvar_t* g_speederControlScheme;
 #ifdef _JK2MP
 #include "../namespace_begin.h"
 #endif
+#include "anims.h"
 extern void PM_SetAnim(const pmove_t* pm, int setAnimParts, int anim, int setAnimFlags, int blendTime);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 #ifdef _JK2MP
 #include "../namespace_end.h"
 #endif
+#include <qcommon\q_platform.h>
 
 #ifndef	_JK2MP
 extern void CG_ChangeWeapon(int num);
 #endif
 
 extern void Vehicle_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags, int i_blend);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern void G_VehicleTrace(trace_t* results, const vec3_t start, const vec3_t tMins, const vec3_t tMaxs,
 	const vec3_t end, int pass_entity_num, int contentmask);
 

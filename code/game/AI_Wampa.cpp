@@ -22,6 +22,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "b_local.h"
 #include "g_navigator.h"
+#include "bg_public.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_math.h>
+#include "anims.h"
 
 // These define the working combat range for these suckers
 constexpr auto MIN_DISTANCE = 48;
@@ -35,7 +39,7 @@ constexpr auto LSTATE_WAITING = 1;
 
 float enemyDist = 0;
 extern qboolean NAV_CheckAhead(const gentity_t* self, vec3_t end, trace_t& trace, int clipmask);
-extern int PM_AnimLength(int index, animNumber_t anim);
+extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern cvar_t* g_dismemberment;
 /*
 -------------------------
@@ -180,8 +184,7 @@ void Wampa_Move(const qboolean visible)
 }
 
 //---------------------------------------------------------
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength,
-	qboolean break_saber_lock);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean G_DoDismemberment(gentity_t* self, vec3_t point, int mod, int hit_loc,
 	qboolean force = qfalse);
 extern int NPC_GetEntsNearBolt(gentity_t** radius_ents, float radius, int boltIndex, vec3_t bolt_org);
