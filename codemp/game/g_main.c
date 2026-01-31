@@ -29,6 +29,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "b_local.h"
 #include "g_dynmusic.h"
 #include "g_roff.h"
+#include "b_public.h"
 
 level_locals_t level;
 

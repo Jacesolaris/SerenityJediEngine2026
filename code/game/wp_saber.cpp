@@ -17018,7 +17018,7 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 	}
 }
 
-void WP_DebounceForceDeactivateTime(const gentity_t* self)
+static void WP_DebounceForceDeactivateTime(const gentity_t* self)
 {
 	if (self && self->client)
 	{

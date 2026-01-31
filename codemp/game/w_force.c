@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
@@ -36,6 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "ai_main.h"
 #include <qcommon\q_shared.h>
 #include <qcommon\q_math.h>
+#include "w_force.h"
 
 #define METROID_JUMP 1
 
@@ -64,8 +65,8 @@ extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern void Boba_FlyStart(gentity_t* self);
 extern qboolean in_camera;
 extern qboolean PM_RunningAnim(int anim);
-extern void g_reflect_missile_auto(const gentity_t* ent, gentity_t* missile, vec3_t forward);
-extern void g_reflect_missile_bot(const gentity_t* ent, gentity_t* missile, vec3_t forward);
+extern void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward);
+extern void g_reflect_missile_bot(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);

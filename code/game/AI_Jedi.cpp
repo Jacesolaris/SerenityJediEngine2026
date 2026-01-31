@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
@@ -9211,6 +9211,631 @@ Jedi_Attack
 -------------------------
 */
 
+// =====================
+// Cinematic Hybrid Attack System
+// =====================
+
+// =====================
+// Input Helpers
+// =====================
+
+static inline void JediPressAttack(void)
+{
+	ucmd.buttons |= BUTTON_ATTACK;
+}
+
+static inline void JediPressAltAttack(void)
+{
+	ucmd.buttons |= BUTTON_ALT_ATTACK;
+}
+
+// =====================
+// Combo Container
+// =====================
+
+typedef struct saberCombo_s
+{
+	qboolean          valid;
+	saber_moveName_t  moves[4];
+	int               length;
+	qboolean          useForcePushFinisher;
+} saberCombo_t;
+
+// =====================
+// Cinematic Signature Combos
+// =====================
+
+// Fast style (agile, mostly directional, occasional acrobatics)
+static const saber_moveName_t s_fastSignatureCombos[][4] =
+{
+	// Pure directional, quick exchanges
+	{ LS_A_L2R,   LS_A_R2L,   LS_A_T2B,      LS_NONE },
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_A_T2B,      LS_NONE },
+	{ LS_A_BL2TR, LS_A_BR2TL, LS_A_T2B,      LS_NONE },
+
+	// Directional into light acrobatic finisher
+	{ LS_A_L2R,   LS_A_R2L,   LS_A_LUNGE,    LS_NONE },
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_A_FLIP_SLASH, LS_NONE },
+
+	// Slightly more cinematic: special in the middle, directional close
+	{ LS_A_FLIP_STAB, LS_A_R2L, LS_A_T2B,    LS_NONE }
+};
+
+// Medium style (balanced, classic Jedi duelist)
+static const saber_moveName_t s_mediumSignatureCombos[][4] =
+{
+	// Core directional chains
+	{ LS_A_TL2BR, LS_A_L2R,   LS_A_TR2BL,    LS_NONE },
+	{ LS_A_BL2TR, LS_A_BR2TL, LS_A_T2B,      LS_NONE },
+	{ LS_A_L2R,   LS_A_T2B,   LS_A_R2L,      LS_NONE },
+
+	// Directional into a controlled special finisher
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_SPINATTACK, LS_NONE },
+	{ LS_A_L2R,   LS_A_R2L,   LS_A_BACKFLIP_ATK, LS_NONE },
+
+	// Slightly more cinematic: special in the middle
+	{ LS_A_LUNGE, LS_A_R2L,   LS_A_T2B,      LS_NONE }
+};
+
+// Strong style (heavy, aggressive, Sith-like)
+static const saber_moveName_t s_strongSignatureCombos[][4] =
+{
+	// Heavy directional pressure
+	{ LS_A_T2B,   LS_A_BR2TL, LS_A_T2B,      LS_NONE },
+	{ LS_A_R2L,   LS_A_L2R,   LS_A_T2B,      LS_NONE },
+	{ LS_A_TR2BL, LS_A_TL2BR, LS_A_T2B,      LS_NONE },
+
+	// Directional into brutal special finisher
+	{ LS_A_T2B,   LS_A_BR2TL, LS_SPINATTACK, LS_NONE },
+	{ LS_A_R2L,   LS_A_T2B,   LS_A_LUNGE,    LS_NONE },
+
+	// Cinematic: special in the middle, heavy close
+	{ LS_A_FLIP_SLASH, LS_A_R2L, LS_A_T2B,   LS_NONE }
+};
+
+// Dual style (flashy, flowing, more specials but still grounded)
+static const saber_moveName_t s_dualSignatureCombos[][4] =
+{
+	// Directional dual chains
+	{ LS_A_L2R,   LS_A_R2L,   LS_A_T2B,          LS_NONE },
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_A_T2B,          LS_NONE },
+
+	// Dual spin as finisher
+	{ LS_A_L2R,   LS_A_R2L,   LS_DUAL_SPIN_PROTECT, LS_NONE },
+	{ LS_A_BL2TR, LS_A_BR2TL, LS_SPINATTACK_DUAL,   LS_NONE },
+
+	// Cinematic: special in the middle
+	{ LS_SPINATTACK_ALORA, LS_A_R2L, LS_A_T2B, LS_NONE }
+};
+
+// Staff style (wide arcs, Maul-like, a bit more special-heavy)
+static const saber_moveName_t s_staffSignatureCombos[][4] =
+{
+	// Wide directional arcs
+	{ LS_A_L2R,   LS_A_R2L,   LS_A_T2B,        LS_NONE },
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_A_T2B,        LS_NONE },
+
+	// Staff special as finisher
+	{ LS_A_L2R,   LS_A_R2L,   LS_STAFF_SOULCAL, LS_NONE },
+	{ LS_A_T2B,   LS_A_BR2TL, LS_STAFF_SOULCAL, LS_NONE },
+
+	// Cinematic: special in the middle
+	{ LS_STAFF_SOULCAL, LS_A_R2L, LS_A_T2B,    LS_NONE }
+};
+
+// Light cinematic pool (shorter, safer)
+static const saber_moveName_t s_lightComboPool[][3] =
+{
+	{ LS_A_L2R,   LS_A_R2L,   LS_NONE },
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_NONE },
+	{ LS_A_BL2TR, LS_A_BR2TL, LS_NONE },
+	{ LS_A_R2L,   LS_A_T2B,   LS_NONE },
+	{ LS_A_L2R,   LS_A_T2B,   LS_NONE }
+};
+
+// Heavy/aggressive pool (longer, riskier)
+static const saber_moveName_t s_heavyComboPool[][4] =
+{
+	{ LS_A_T2B,   LS_A_BR2TL, LS_A_T2B,        LS_NONE },
+	{ LS_A_R2L,   LS_A_L2R,   LS_A_T2B,        LS_NONE },
+	{ LS_A_TL2BR, LS_A_TR2BL, LS_A_T2B,        LS_NONE },
+
+	// Occasional cinematic finisher
+	{ LS_A_L2R,   LS_A_R2L,   LS_SPINATTACK,   LS_NONE },
+	{ LS_A_T2B,   LS_A_BR2TL, LS_A_LUNGE,      LS_NONE }
+};
+
+static const saber_moveName_t s_duelistCounterPool[][3] =
+{
+	{ LS_A_R2L,   LS_A_T2B,   LS_NONE },
+	{ LS_A_L2R,   LS_A_T2B,   LS_NONE },
+	{ LS_A_TR2BL, LS_A_TL2BR, LS_NONE },
+
+	// Occasional stylish punish
+	{ LS_A_LUNGE, LS_A_T2B,   LS_NONE }
+};
+
+// =====================
+// Distance Helpers
+// =====================
+
+static float JediDistanceToEnemy(gentity_t* self)
+{
+	if (!self || !self->enemy)
+	{
+		return 99999.0f;
+	}
+
+	vec3_t diff;
+	VectorSubtract(self->enemy->currentOrigin, self->currentOrigin, diff);
+	return VectorLength(diff);
+}
+static qboolean JediInAttackRange(gentity_t* self, float minDist, float maxDist)
+{
+	const float dist = JediDistanceToEnemy(self);
+	return (dist >= minDist && dist <= maxDist) ? qtrue : qfalse;
+}
+
+static qboolean JediHasLineOfSight(gentity_t* self)
+{
+	if (!self || !self->enemy)
+	{
+		return qfalse;
+	}
+
+	return in_front(self->enemy->currentOrigin, self->currentOrigin, self->client->ps.viewangles, 0.5f);
+}
+
+// =====================
+// Cooldown Helpers
+// =====================
+
+static qboolean JediAttackCooldownReady(gentity_t* self)
+{
+	return TIMER_Done(self, "cinematicAttackCooldown") ? qtrue : qfalse;
+}
+
+static void JediSetAttackCooldown(gentity_t* self, int ms)
+{
+	TIMER_Set(self, "cinematicAttackCooldown", ms);
+}
+
+// =====================
+// Spacing Handler
+// =====================
+
+static void JediHandleSpacing(gentity_t* self)
+{
+	if (!self || !self->enemy)
+	{
+		return;
+	}
+
+	const float dist = JediDistanceToEnemy(self);
+	const qboolean airborne = (qboolean)(self->client->ps.groundEntityNum == ENTITYNUM_NONE);
+
+	// =====================================================
+	// 1. Long‑range: Jump‑in attacks (350+ units)
+	// =====================================================
+	if (dist > 350.0f)
+	{
+		// Do NOT allow jump‑ins during cinematic camera
+		if (!in_camera)
+		{
+			// Only attempt a jump‑in every 2–4 seconds
+			if (level.time >= self->NPC->jumpTime)
+			{
+				// 1 in 20 chance per attempt
+				if (!Q_irand(0, 19))
+				{
+					Jedi_FaceEnemy(qtrue);
+					NPC_UpdateAngles(qtrue, qtrue);
+
+					// Jump forward
+					ucmd.upmove = 127;
+					ucmd.forwardmove = 127;
+
+					// Only trigger saber special once airborne
+					if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+					{
+						switch (Q_irand(0, 2))
+						{
+						case 0:
+							self->client->ps.saber_move = LS_A_JUMP_T__B_; // DFA
+							break;
+						case 1:
+							self->client->ps.saber_move = LS_A_LUNGE;      // Lunge
+							break;
+						case 2:
+							self->client->ps.saber_move = LS_SPINATTACK;   // Spin
+							break;
+						}
+					}
+
+					// Set next allowed jump‑in time (2–4 seconds)
+					self->NPC->jumpTime = level.time + Q_irand(2000, 4000);
+
+					return;
+				}
+			}
+		}
+
+		// Normal chase (also used during _camera)
+		NPCInfo->goalEntity = self->enemy;
+		Jedi_Move(self->enemy, qfalse);
+		ucmd.forwardmove = 127;
+		Jedi_FaceEnemy(qtrue);
+		NPC_UpdateAngles(qtrue, qtrue);
+		return;
+	}
+
+	// =====================================================
+	// 2. Mid‑range: Dash‑in lunges (200–350 units)
+	// =====================================================
+	if (dist > 200.0f)
+	{
+		if (level.time >= self->NPC->jumpTime)
+		{
+			// 1 in 10 chance per attempt
+			if (!Q_irand(0, 9))
+			{
+				Jedi_FaceEnemy(qtrue);
+				NPC_UpdateAngles(qtrue, qtrue);
+
+				// Burst forward
+				ucmd.forwardmove = 127;
+
+				if (airborne && !in_camera)
+				{
+					self->client->ps.saber_move = BOTH_LUNGE2_B__T_;
+					self->client->ps.weaponTime = level.time + 400;
+				}
+
+				// Set next allowed jump‑in time (2–4 seconds)
+				self->NPC->jumpTime = level.time + Q_irand(2000, 4000);
+
+				return;
+			}
+		}
+
+		// Normal chase
+		NPCInfo->goalEntity = self->enemy;
+		Jedi_Move(self->enemy, qfalse);
+		ucmd.forwardmove = 127;
+		Jedi_FaceEnemy(qtrue);
+		NPC_UpdateAngles(qtrue, qtrue);
+		return;
+	}
+
+	// =====================================================
+	// 3. Close‑range: Circle‑strafe approach (80–200 units)
+	// =====================================================
+	vec3_t pvel;
+	VectorCopy(self->enemy->client->ps.velocity, pvel);
+
+	float pSpeed = VectorLength(pvel);
+
+	if (pSpeed > 50.0f)
+	{
+		// Player strafing right
+		if (pvel[1] > 80)
+		{
+			ucmd.rightmove = -64;
+			ucmd.forwardmove = 48;
+			Jedi_FaceEnemy(qtrue);
+			NPC_UpdateAngles(qtrue, qtrue);
+			return;
+		}
+
+		// Player strafing left
+		if (pvel[1] < -80)
+		{
+			ucmd.rightmove = 64;
+			ucmd.forwardmove = 48;
+			Jedi_FaceEnemy(qtrue);
+			NPC_UpdateAngles(qtrue, qtrue);
+			return;
+		}
+
+		// Player backing up
+		if (pvel[0] < -80)
+		{
+			ucmd.forwardmove = 127;
+			Jedi_FaceEnemy(qtrue);
+			NPC_UpdateAngles(qtrue, qtrue);
+			return;
+		}
+
+		// Player rushing forward
+		if (pvel[0] > 80)
+		{
+			ucmd.rightmove = (Q_irand(0, 1) ? 64 : -64);
+			Jedi_FaceEnemy(qtrue);
+			NPC_UpdateAngles(qtrue, qtrue);
+			return;
+		}
+	}
+
+	// =====================================================
+	// 4. Too close: back off slightly
+	// =====================================================
+	if (dist < 48.0f)
+	{
+		ucmd.forwardmove = -32;
+		return;
+	}
+
+	// =====================================================
+	// 5. Ideal range — do nothing
+	// =====================================================
+	// Let attack logic take over
+}
+
+// =====================
+// Counterattack Handler
+// =====================
+
+static void JediHandleCounterattacks(gentity_t* self)
+{
+	if (!self || !self->enemy)
+	{
+		return;
+	}
+
+	// Placeholder for future expansion:
+	// If you detect a block, parry, or stagger, you can set flags here
+	// to influence combo selection (e.g., prefer heavy or counter pools).
+}
+
+// =====================
+// Combo Selection Logic
+// =====================
+
+static saberCombo_t JediChooseCombo(gentity_t* self)
+{
+	saberCombo_t combo;
+	combo.valid = qfalse;
+	combo.length = 0;
+	combo.useForcePushFinisher = qfalse;
+
+	if (!self || !self->enemy)
+	{
+		return combo;
+	}
+
+	const int style = self->client->ps.saberAnimLevel;
+
+	// 70% chance signature combo, 30% chance pool combo
+	const qboolean useSignature = (Q_irand(0, 9) < 7) ? qtrue : qfalse;
+
+	const saber_moveName_t* chosen = NULL;
+	int maxLen = 0;
+
+	// -------------------------
+	// Signature combos
+	// -------------------------
+	if (useSignature)
+	{
+		switch (style)
+		{
+		case SS_FAST:
+		case SS_TAVION:
+			chosen = s_fastSignatureCombos[Q_irand(0, ARRAY_LEN(s_fastSignatureCombos) - 1)];
+			maxLen = 4;
+			break;
+
+		case SS_MEDIUM:
+			chosen = s_mediumSignatureCombos[Q_irand(0, ARRAY_LEN(s_mediumSignatureCombos) - 1)];
+			maxLen = 4;
+			break;
+
+		case SS_STRONG:
+		case SS_DESANN:
+			chosen = s_strongSignatureCombos[Q_irand(0, ARRAY_LEN(s_strongSignatureCombos) - 1)];
+			maxLen = 4;
+			break;
+
+		case SS_DUAL:
+			chosen = s_dualSignatureCombos[Q_irand(0, ARRAY_LEN(s_dualSignatureCombos) - 1)];
+			maxLen = 4;
+			break;
+
+		case SS_STAFF:
+			chosen = s_staffSignatureCombos[Q_irand(0, ARRAY_LEN(s_staffSignatureCombos) - 1)];
+			maxLen = 4;
+			break;
+
+		default:
+			chosen = s_mediumSignatureCombos[Q_irand(0, ARRAY_LEN(s_mediumSignatureCombos) - 1)];
+			maxLen = 4;
+			break;
+		}
+	}
+	else
+	{
+		// -------------------------
+		// Pool combos
+		// -------------------------
+
+		// 20% chance heavy pool, 20% chance duelist counter pool, 60% light pool
+		const int roll = Q_irand(0, 9);
+
+		if (roll < 2)
+		{
+			chosen = s_heavyComboPool[Q_irand(0, ARRAY_LEN(s_heavyComboPool) - 1)];
+			maxLen = 4;
+		}
+		else if (roll < 4)
+		{
+			chosen = s_duelistCounterPool[Q_irand(0, ARRAY_LEN(s_duelistCounterPool) - 1)];
+			maxLen = 3;
+		}
+		else
+		{
+			chosen = s_lightComboPool[Q_irand(0, ARRAY_LEN(s_lightComboPool) - 1)];
+			maxLen = 3;
+		}
+	}
+
+	if (!chosen)
+	{
+		return combo;
+	}
+
+	// -------------------------
+	// Copy moves into combo struct
+	// -------------------------
+	for (int i = 0; i < maxLen; i++)
+	{
+		combo.moves[i] = chosen[i];
+
+		if (chosen[i] == LS_NONE)
+		{
+			maxLen = i;
+			break;
+		}
+	}
+
+	combo.length = maxLen;
+	combo.valid = (maxLen > 0) ? qtrue : qfalse;
+
+	if (!combo.valid)
+	{
+		return combo;
+	}
+
+	// -------------------------
+	// Optional Force Push finisher
+	// -------------------------
+	if (combo.length >= 2 &&
+		self->client->ps.forcePowerLevel[FP_PUSH] >= FORCE_LEVEL_1 &&
+		self->client->ps.forcePower >= 10 &&
+		!Q_irand(0, 5)) // ~1 in 6 combos get a Force Push finisher
+	{
+		combo.useForcePushFinisher = qtrue;
+	}
+
+	return combo;
+}
+
+// =====================
+// Combo Execution Logic
+// =====================
+
+static void JediExecuteCombo(gentity_t* self, const saberCombo_t& combo)
+{
+	if (!self || !combo.valid || combo.length <= 0)
+	{
+		return;
+	}
+
+	// Execute each move in the combo
+	for (int i = 0; i < combo.length; i++)
+	{
+		saber_moveName_t move = combo.moves[i];
+		if (move == LS_NONE)
+		{
+			break;
+		}
+
+		// Hint the saber system which move to use
+		self->client->ps.saber_move = move;
+
+		// Trigger the attack
+		JediPressAttack();
+	}
+
+	// Optional Force Push finisher
+	if (combo.useForcePushFinisher)
+	{
+		if (self->client->ps.forcePower >= 10 &&
+			self->client->ps.forcePowerLevel[FP_PUSH] >= FORCE_LEVEL_1)
+		{
+			// Use your existing ForceThrow logic
+			ForceThrow(self, qfalse);
+		}
+	}
+
+	// Apply cooldown so we don't spam combos
+	JediSetAttackCooldown(self, Q_irand(400, 900));
+}
+
+// =====================
+// Should the Jedi attempt a cinematic combo?
+// =====================
+
+static qboolean JediShouldAttack(gentity_t* self)
+{
+	if (!self || !self->enemy)
+	{
+		return qfalse;
+	}
+
+	// If too far away, move toward the enemy even in cinematic mode
+	if (NPC->enemy)
+	{
+		float dist = JediDistanceToEnemy(NPC);
+
+		if (dist > 192.0f)
+		{
+			// Move forward to close the gap
+			ucmd.forwardmove = 64;
+
+			// Face the enemy
+			Jedi_FaceEnemy(qtrue);
+			NPC_UpdateAngles(qtrue, qtrue);
+		}
+	}
+
+	// Do not override special saber states
+	if (PM_SaberInBrokenParry(self->client->ps.saber_move) ||
+		pm_saber_in_special_attack(self->client->ps.torsoAnim) ||
+		PM_SpinningSaberAnim(self->client->ps.torsoAnim))
+	{
+		return qfalse;
+	}
+
+	// Must be on the ground
+	if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+	{
+		return qfalse;
+	}
+
+	// Enemy must also be on the ground (prevents weird mid‑air combos)
+	if (self->enemy->client &&
+		self->enemy->client->ps.groundEntityNum == ENTITYNUM_NONE)
+	{
+		return qfalse;
+	}
+
+	// Must have line of sight and be facing the enemy
+	if (!JediHasLineOfSight(self))
+	{
+		return qfalse;
+	}
+
+	// Preferred cinematic combo range
+	// (tight enough to hit, far enough to not clip)
+	if (!JediInAttackRange(self, 64.0f, 192.0f))
+	{
+		return qfalse;
+	}
+
+	// Cooldown prevents spam
+	if (!JediAttackCooldownReady(self))
+	{
+		return qfalse;
+	}
+
+	// Optional: avoid combos if stunned, pushed, or recovering
+	if (self->client->ps.weaponTime > 0)
+	{
+		return qfalse;
+	}
+
+	return qtrue;
+}
+
 extern qboolean PM_SaberInAttackback(int move);
 
 static void Jedi_Attack()
@@ -9988,6 +10613,47 @@ static void Jedi_Attack()
 					}
 				}
 			}
+		}
+	}
+	// =====================
+	// Dynamic Cinematic/Raven Switching
+	// =====================
+
+	// Conditions that *allow* cinematic mode
+	qboolean cinematicAllowed = qfalse;
+
+	// 1. Engine mode 2 gives a 50% chance to use the cinematic system
+	if (g_spskill->integer == 2)
+	{
+		cinematicAllowed = (Q_irand(0, 1) == 0) ? qtrue : qfalse;
+	}
+
+	// 2. Low health increases chance of cinematic mode
+	if (NPC->health < (NPC->max_health * 0.35f))
+	{
+		if (!Q_irand(0, 2)) // ~33% chance
+		{
+			cinematicAllowed = qtrue;
+		}
+	}
+
+	// =====================
+	// Cinematic Mode
+	// =====================
+	if (cinematicAllowed && JediShouldAttack(NPC))
+	{
+		JediHandleSpacing(NPC);
+		JediHandleCounterattacks(NPC);
+
+		saberCombo_t combo = JediChooseCombo(NPC);
+
+		if (combo.valid)
+		{
+			JediExecuteCombo(NPC, combo);
+
+			// IMPORTANT:
+		// Do NOT return here.
+		// We want Raven movement/pathing to continue.
 		}
 	}
 

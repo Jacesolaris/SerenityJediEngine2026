@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -2254,34 +2254,116 @@ qboolean G_CanBeEnemy(const gentity_t* self, const gentity_t* enemy)
 
 extern void G_Stagger(gentity_t* hit_ent);
 
+// ============================================================
+// Helper: Saber deactivate with correct sound logic (SP version)
+// ============================================================
+static void WP_SP_SaberDeactivateWithSound(gentity_t* ent)
+{
+	if (!ent || !ent->client)
+		return;
+
+	if (!ent->client->ps.SaberActive())
+		return;
+
+	// Play correct saber-off sound depending on which blade is active
+	if (ent->client->ps.saber[1].Active())
+	{
+		G_Sound(ent, ent->client->ps.saber[1].soundOff);
+	}
+	else if (ent->client->ps.saber[0].Active())
+	{
+		G_Sound(ent, ent->client->ps.saber[0].soundOff);
+	}
+
+	ent->client->ps.SaberDeactivate();
+}
+
+
+// ============================================================
+// Helper: Knockdown + drain + fatigue + punch sound
+// ============================================================
+static void WP_SP_KnockdownAndDrain(
+	gentity_t* hit_ent,
+	const gentity_t* pusher,
+	int animMin,
+	int animMax,
+	qboolean addFatigueBonus,
+	qboolean useAbsorbDrain)
+{
+	if (!hit_ent || !hit_ent->client)
+		return;
+
+	NPC_SetAnim(
+		hit_ent,
+		SETANIM_BOTH,
+		(animMin == animMax) ? animMin : Q_irand(animMin, animMax),
+		SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD
+	);
+
+	if (useAbsorbDrain)
+		WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
+	else
+		WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
+
+	if (addFatigueBonus && pusher)
+		AddFatigueMeleeBonus(pusher, hit_ent);
+
+	G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+
+	WP_SP_SaberDeactivateWithSound(hit_ent);
+}
+
+
+// ============================================================
+// FINAL OPTIMIZED FUNCTION
+// ============================================================
 qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t push_dir)
 {
-	const qboolean is_holding_block_button_and_attack = hit_ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
-	//manual Blocking
-	const qboolean is_holding_block_button = hit_ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	//Normal Blocking
-	const qboolean NPCBlocking = hit_ent->client->ps.ManualBlockingFlags & 1 << MBF_NPCKICKBLOCK ? qtrue : qfalse;
-	//NPC Blocking
+	if (!hit_ent || !hit_ent->client || !pusher || !pusher->client)
+		return qfalse;
 
-	if (PlayerCanAbsorbKick(hit_ent, push_dir) && (is_holding_block_button || is_holding_block_button_and_attack) && (hit_ent->s.number < MAX_CLIENTS ||
-		G_ControlledByPlayer(hit_ent))) //player only
+	// Cached blocking flags
+	const qboolean isHoldingBlockAndAttack =
+		(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0);
+
+	const qboolean isHoldingBlock =
+		(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0);
+
+	const qboolean NPCBlocking =
+		(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0);
+
+	const qboolean isPlayer =
+		(qboolean)(hit_ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(hit_ent));
+
+	const qboolean isNPC =
+		(qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
+
+
+	// ============================================================
+	// 1. PLAYER ABSORB (manual block)
+	// ============================================================
+	if (PlayerCanAbsorbKick(hit_ent, push_dir) &&
+		(isHoldingBlock || isHoldingBlockAndAttack) &&
+		isPlayer)
 	{
 		if (hit_ent->client->ps.blockPoints > 50)
-		{
 			G_Stagger(hit_ent);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
-		}
 		else
-		{
 			G_Stumble(hit_ent);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
-		}
+
+		WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
 		G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		return qtrue;
 	}
-	else if (BotCanAbsorbKick(hit_ent, push_dir) && NPCBlocking && hit_ent->s.clientNum >= MAX_CLIENTS && !
-		G_ControlledByPlayer(hit_ent)) //NPC only
+
+
+	// ============================================================
+	// 2. NPC ABSORB
+	// ============================================================
+	if (BotCanAbsorbKick(hit_ent, push_dir) && NPCBlocking && isNPC)
 	{
-		if (hit_ent->client->ps.blockPoints > 50 && hit_ent->client->ps.forcePower > 50) //NPC only
+		if (hit_ent->client->ps.blockPoints > 50 &&
+			hit_ent->client->ps.forcePower > 50)
 		{
 			G_Stagger(hit_ent);
 			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
@@ -2289,302 +2371,236 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		}
 		else
 		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, Q_irand(BOTH_FLIP_BACK1, BOTH_FLIP_BACK2),
+			NPC_SetAnim(hit_ent, SETANIM_BOTH,
+				Q_irand(BOTH_FLIP_BACK1, BOTH_FLIP_BACK2),
 				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+
 			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
 		}
+
 		G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		return qtrue;
 	}
-	else
+
+
+	// ============================================================
+	// 3. NON‑ABSORB: ACTUAL HIT REACTIONS
+	// ============================================================
+
+	// -------------------------
+	// Uppercut / melee stance
+	// -------------------------
+	if (pusher->client->ps.torsoAnim == BOTH_MELEEUP ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_T ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_LT ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_RT ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_BR ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_BL ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_B ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_T ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_LT ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_RT ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_BR ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_BL ||
+		pusher->client->ps.torsoAnim == MELEE_STANCE_B)
 	{
-		if (pusher->client->ps.torsoAnim == BOTH_MELEEUP ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_T ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_LT ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_RT ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_BR ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_BL ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_HOLD_B ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_T ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_LT ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_RT ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_BR ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_BL ||
-			pusher->client->ps.torsoAnim == MELEE_STANCE_B) //for the Uppercut
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, Q_irand(BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2,
+			qtrue, qfalse);
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.torsoAnim == BOTH_WOOKIE_SLAP || pusher->client->ps.torsoAnim == BOTH_TUSKENLUNGE1)
-			//for the wookie slap
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, Q_irand(BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNLEFT),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		return qtrue;
+	}
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.legsAnim == BOTH_A7_KICK_F
-			|| pusher->client->ps.legsAnim == BOTH_A7_KICK_F2
-			|| pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK1
-			|| pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK2
-			|| pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3) //for the front kick
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, Q_irand(BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			if (d_slowmoaction->integer && hit_ent->health >= 10 && hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF && (
-				pusher->s.number < MAX_CLIENTS || G_ControlledByPlayer(pusher)))
-			{
-				G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
-			}
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
-			if (pusher->client->ps.legsAnim == BOTH_A7_KICK_F
-				|| pusher->client->ps.legsAnim == BOTH_A7_KICK_F2)
-			{
-				G_Sound(pusher, G_SoundIndex(va("sound/weapons/melee/swing%d", Q_irand(1, 4))));
-			}
-			else if (pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK1
-				|| pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK2
-				|| pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3)
-			{
-				G_Sound(hit_ent, G_SoundIndex("sound/movers/objects/saber_slam"));
-			}
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B) //for the roundhouse
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, Q_irand(BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN5),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+	// -------------------------
+	// Wookie slap / Tusken lunge
+	// -------------------------
+	if (pusher->client->ps.torsoAnim == BOTH_WOOKIE_SLAP ||
+		pusher->client->ps.torsoAnim == BOTH_TUSKENLUNGE1)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNLEFT,
+			qtrue, qfalse);
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B2) //for the backkick
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, BOTH_KNOCKDOWN5, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			if (d_slowmoaction->integer && hit_ent->health >= 10 && hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF && (
-				pusher->s.number < MAX_CLIENTS || G_ControlledByPlayer(pusher)))
-			{
-				G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
-			}
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		return qtrue;
+	}
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B3) //for the backkick
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, BOTH_KNOCKDOWN4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			if (d_slowmoaction->integer && hit_ent->health >= 10 && hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF && (
-				pusher->s.number < MAX_CLIENTS || G_ControlledByPlayer(pusher)))
-			{
-				G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
-			}
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.legsAnim == BOTH_A7_KICK_R || pusher->client->ps.legsAnim == BOTH_A7_KICK_L)
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, BOTH_KNOCKDOWN2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+	// -------------------------
+	// Front kick (A7_KICK_F / F2 / Tusken attacks)
+	// -------------------------
+	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_F ||
+		pusher->client->ps.legsAnim == BOTH_A7_KICK_F2 ||
+		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK1 ||
+		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK2 ||
+		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2,
+			qtrue, qfalse);
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_R || pusher->client->ps.torsoAnim == BOTH_SMACK_R)
-			//for the r slap
+		// Slowmo stasis effect
+		if (d_slowmoaction->integer &&
+			hit_ent->health >= 10 &&
+			hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF &&
+			isPlayer)
 		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, BOTH_SLAPDOWNRIGHT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			if (d_slowmoaction->integer && hit_ent->health >= 10 && hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF && (
-				pusher->s.number < MAX_CLIENTS || G_ControlledByPlayer(pusher)))
-			{
-				G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
-			}
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+			G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
+		}
 
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_L || pusher->client->ps.torsoAnim == BOTH_SMACK_L)
-			//for the l slap
+		// Extra sounds
+		if (pusher->client->ps.legsAnim == BOTH_A7_KICK_F ||
+			pusher->client->ps.legsAnim == BOTH_A7_KICK_F2)
 		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, BOTH_SLAPDOWNLEFT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			if (d_slowmoaction->integer && hit_ent->health >= 10 && hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF && (
-				pusher->s.number < MAX_CLIENTS || G_ControlledByPlayer(pusher)))
-			{
-				G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
-			}
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
-
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
-		}
-		else if (pusher->client->ps.torsoAnim == BOTH_A7_HILT) //for the hiltbash
-		{
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, BOTH_BASHED1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-			AddFatigueMeleeBonus(pusher, hit_ent);
-			G_Sound(hit_ent, G_SoundIndex("sound/movers/objects/saber_slam"));
+			G_Sound(pusher, G_SoundIndex(va("sound/weapons/melee/swing%d", Q_irand(1, 4))));
 		}
 		else
 		{
-			//if anything else other than kick/slap/roundhouse or karate
-			NPC_SetAnim(hit_ent, SETANIM_BOTH, Q_irand(BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
-			G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
-
-			if (hit_ent->client->ps.SaberActive())
-			{
-				if (hit_ent->client->ps.saber[1].Active())
-				{
-					//turn off second saber
-					G_Sound(hit_ent, hit_ent->client->ps.saber[1].soundOff);
-				}
-				else if (hit_ent->client->ps.saber[0].Active())
-				{
-					//turn off first
-					G_Sound(hit_ent, hit_ent->client->ps.saber[0].soundOff);
-				}
-				hit_ent->client->ps.SaberDeactivate();
-			}
+			G_Sound(hit_ent, G_SoundIndex("sound/movers/objects/saber_slam"));
 		}
+
+		return qtrue;
 	}
+
+
+	// -------------------------
+	// Roundhouse (A7_KICK_B)
+	// -------------------------
+	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN5,
+			qtrue, qfalse);
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Backkick (B2)
+	// -------------------------
+	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B2)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_KNOCKDOWN5, BOTH_KNOCKDOWN5,
+			qtrue, qfalse);
+
+		if (d_slowmoaction->integer &&
+			hit_ent->health >= 10 &&
+			hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF &&
+			isPlayer)
+		{
+			G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
+		}
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Backkick (B3)
+	// -------------------------
+	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B3)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_KNOCKDOWN4, BOTH_KNOCKDOWN4,
+			qtrue, qfalse);
+
+		if (d_slowmoaction->integer &&
+			hit_ent->health >= 10 &&
+			hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF &&
+			isPlayer)
+		{
+			G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
+		}
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Side kicks (R / L)
+	// -------------------------
+	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_R ||
+		pusher->client->ps.legsAnim == BOTH_A7_KICK_L)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_KNOCKDOWN2, BOTH_KNOCKDOWN2,
+			qtrue, qfalse);
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Right slap
+	// -------------------------
+	if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_R ||
+		pusher->client->ps.torsoAnim == BOTH_SMACK_R)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNRIGHT,
+			qtrue, qfalse);
+
+		if (d_slowmoaction->integer &&
+			hit_ent->health >= 10 &&
+			hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF &&
+			isPlayer)
+		{
+			G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
+		}
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Left slap
+	// -------------------------
+	if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_L ||
+		pusher->client->ps.torsoAnim == BOTH_SMACK_L)
+	{
+		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+			BOTH_SLAPDOWNLEFT, BOTH_SLAPDOWNLEFT,
+			qtrue, qfalse);
+
+		if (d_slowmoaction->integer &&
+			hit_ent->health >= 10 &&
+			hit_ent->client->ps.blockPoints < BLOCKPOINTS_HALF &&
+			isPlayer)
+		{
+			G_StartStasisEffect(pusher, MEF_NO_SPIN, 300, 0.3f, 0);
+		}
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Hilt bash
+	// -------------------------
+	if (pusher->client->ps.torsoAnim == BOTH_A7_HILT)
+	{
+		NPC_SetAnim(hit_ent, SETANIM_BOTH,
+			BOTH_BASHED1,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+
+		WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
+		AddFatigueMeleeBonus(pusher, hit_ent);
+
+		G_Sound(hit_ent, G_SoundIndex("sound/movers/objects/saber_slam"));
+
+		return qtrue;
+	}
+
+
+	// -------------------------
+	// Default fallback
+	// -------------------------
+	WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2,
+		qfalse, qtrue);
+
 	return qtrue;
 }
 

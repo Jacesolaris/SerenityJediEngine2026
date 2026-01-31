@@ -374,27 +374,36 @@ int SCREENTIP_NEXT_UPDATE_TIME = 0;
 
 static void LoadTips(void)
 {
-	const int index = rand() % 15;
 	const int time = cgi_Milliseconds();
 
-	if (cg_com_outcast.integer > 1) //jko version
+	// Determine whether tips are allowed to update
+	qboolean allowUpdate = qfalse;
+
+	if (cg_com_outcast.integer > 1)  // JKO version
 	{
 		if (cg.loadLCARSStage >= 3)
-		{
-			if ((SCREENTIP_NEXT_UPDATE_TIME < time || SCREENTIP_NEXT_UPDATE_TIME == 0))
-			{
-				cgi_Cvar_Set("ui_tipsbriefing", va("@LOADTIPS_TIP%d", index));
-				SCREENTIP_NEXT_UPDATE_TIME = time + 3500;
-			}
-		}
+			allowUpdate = qtrue;
 	}
 	else
 	{
-		if ((SCREENTIP_NEXT_UPDATE_TIME < time || SCREENTIP_NEXT_UPDATE_TIME == 0))
-		{
-			cgi_Cvar_Set("ui_tipsbriefing", va("@LOADTIPS_TIP%d", index));
-			SCREENTIP_NEXT_UPDATE_TIME = time + 3500;
-		}
+		allowUpdate = qtrue;
+	}
+
+	if (allowUpdate &&
+		(SCREENTIP_NEXT_UPDATE_TIME == 0 || SCREENTIP_NEXT_UPDATE_TIME < time))
+	{
+		static int lastIndex = -1;
+		int index;
+
+		// Prevent repeating the same tip twice
+		do {
+			index = rand() % 15;
+		} while (index == lastIndex);
+
+		lastIndex = index;
+
+		cgi_Cvar_Set("ui_tipsbriefing", va("@LOADTIPS_TIP%d", index));
+		SCREENTIP_NEXT_UPDATE_TIME = time + 3500;
 	}
 }
 

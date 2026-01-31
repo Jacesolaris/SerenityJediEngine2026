@@ -3204,24 +3204,6 @@ static void FS_ReorderPurePaks()
 	}
 }
 
-/**
-	@brief Mount the asset archives (.pk3) and register commands.
-
-	Mounts in this order the archives from:
-
-	1.  <fs_cdpath>/<gameName>/
-	2.  <fs_basepath>/<gameName>/
-	3.  <fs_apppath>/<gameName>/ (Mac Only)
-	4.  <fs_homepath>/<gameName>/
-	5.  <fs_cdpath>/<fs_basegame>/
-	6.  <fs_basepath>/<fs_basegame>/
-	7.  <fs_homepath>/<fs_basegame>/
-	8.  <fs_cdpath>/<fs_game>/
-	9.  <fs_basepath>/<fs_game>/
-	10. <fs_homepath>/<fs_game>/
-
-	@param gameName Name of the default folder (i.e. always BASEGAME = "base" in SerenityJediEngine2026)
-*/
 static void FS_Startup(const char* gameName)
 {
 	Com_Printf("----- FS_Startup -----\n");
@@ -3240,7 +3222,7 @@ static void FS_Startup(const char* gameName)
 	if (!homePath || !homePath[0]) {
 		homePath = fs_basepath->string;
 	}
-	fs_homepath = Cvar_Get("fs_homepath", homePath, CVAR_USER_CREATED, "(Read/Write) Location for user generated files");
+	fs_homepath = Cvar_Get("fs_homepath", homePath, CVAR_INIT | CVAR_PROTECTED, "(Read/Write) Location for user generated files");
 	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2026", CVAR_INIT | CVAR_SYSTEMINFO, "Mod directory");
 
 	fs_dirbeforepak = Cvar_Get("fs_dirbeforepak", "0", CVAR_INIT | CVAR_PROTECTED, "Prioritize directories before paks if not pure");

@@ -35,6 +35,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_local.h"
 #include "w_saber.h"
 #include "ai_main.h"
+#include <qcommon\q_color.h>
 
 //////////Defines////////////////
 extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);

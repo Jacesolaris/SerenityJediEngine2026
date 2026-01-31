@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../win32/AutoVersion.h"
 
 #ifdef _DEBUG
-#define	Q3_VERSION		"(debug)SerenityJediEngine2026-SP: " VERSION_STRING_DOTTED
+#define	Q3_VERSION		"(debug)SerenityJediEngine2026-SP: " VERSION_STRING_DOTTED // build date
 #elif defined FINAL_BUILD
 #define	Q3_VERSION		"SerenityJediEngine2026-SP: " VERSION_STRING_DOTTED
 #else

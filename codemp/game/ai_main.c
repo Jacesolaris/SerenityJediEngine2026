@@ -56,8 +56,6 @@ int next_flourish[MAX_CLIENTS];
 qboolean bot_will_fall[MAX_CLIENTS];
 vec3_t jumpPos[MAX_CLIENTS];
 int next_bot_fallcheck[MAX_CLIENTS];
-int next_bot_vischeck[MAX_CLIENTS];
-int last_bot_wp_vischeck_result[MAX_CLIENTS];
 vec3_t safe_pos[MAX_CLIENTS];
 int last_checkfall[MAX_GENTITIES];
 //number of bots

@@ -24,6 +24,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // cg_info.c -- display information while data is being loading
 
 #include "cg_local.h"
+#include <qcommon\q_color.h>
+#include <stdlib.h>
 
 #define MAX_LOADING_PLAYER_ICONS	16
 #define MAX_LOADING_ITEM_ICONS		26
@@ -202,77 +204,33 @@ int SCREENTIP_NEXT_UPDATE_TIME = 0;
 static void LoadTips(void)
 {
 	const int time = trap->Milliseconds();
-	const int index = rand() % 15;
 
-	if ((SCREENTIP_NEXT_UPDATE_TIME < time || SCREENTIP_NEXT_UPDATE_TIME == 0))
+	if (SCREENTIP_NEXT_UPDATE_TIME == 0 || SCREENTIP_NEXT_UPDATE_TIME < time)
 	{
-		switch (index)
-		{
-		case 0:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP2"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 1:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP3"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 2:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP4"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 3:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP5"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 4:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP6"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 5:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP7"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 6:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP8"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 7:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP9"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 8:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP10"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 9:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP11"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 10:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP12"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 11:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP13"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 12:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP14"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 13:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP15"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		case 14:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP1"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		default:
-			CG_DrawProportionalString(300, 390, CG_GetStringEdString("LOADTIPS", "TIP1"),
-				UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
-			break;
-		}
+		// TIP1..TIP15 (same order as your switch)
+		static const char* tipKeys[15] = {
+			"TIP2", "TIP3", "TIP4", "TIP5", "TIP6",
+			"TIP7", "TIP8", "TIP9", "TIP10", "TIP11",
+			"TIP12", "TIP13", "TIP14", "TIP15", "TIP1"
+		};
+
+		static int lastIndex = -1;
+		int index;
+
+		// Prevent repeating the same tip twice
+		do {
+			index = rand() % 15;
+		} while (index == lastIndex);
+
+		lastIndex = index;
+
+		CG_DrawProportionalString(
+			300, 390,
+			CG_GetStringEdString("LOADTIPS", (char*)tipKeys[index]),
+			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW,
+			colorWhite
+		);
+
 		SCREENTIP_NEXT_UPDATE_TIME = time + 3500;
 	}
 }

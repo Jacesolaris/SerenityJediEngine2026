@@ -307,7 +307,7 @@ static void g_reflect_missile_to_attacker(const gentity_t* ent, gentity_t* missi
 	}
 }
 
-void g_reflect_missile_auto(const gentity_t* ent, gentity_t* missile, vec3_t forward)
+void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
 	int isowner = 0;
@@ -456,7 +456,7 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward)
 	}
 }
 
-void g_reflect_missile_bot(const gentity_t* ent, gentity_t* missile, vec3_t forward)
+void g_reflect_missile_bot(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
 	int isowner = 0;
