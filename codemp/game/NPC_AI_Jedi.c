@@ -24,6 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_nav.h"
 #include "anims.h"
 #include "w_saber.h"
+#include "bg_weapons.h"
 
 extern qboolean BG_SabersOff(const playerState_t* ps);
 
@@ -59,7 +60,7 @@ void Boba_FireDecide(void);
 extern void Player_CheckBurn(const gentity_t* self);
 extern void player_Burn(const gentity_t* self);
 
-extern gitem_t* BG_FindItemForAmmo(ammo_t ammo);
+extern gitem_t* BG_FindItemForAmmo(const ammo_t ammo);
 extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 
 extern void ForceThrow(gentity_t* self, qboolean pull);

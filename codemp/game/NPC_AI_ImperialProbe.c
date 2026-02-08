@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "b_local.h"
 #include "g_nav.h"
 
-gitem_t* BG_FindItemForAmmo(ammo_t ammo);
+gitem_t* BG_FindItemForAmmo(const ammo_t ammo);
 extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 
 //Local state enums

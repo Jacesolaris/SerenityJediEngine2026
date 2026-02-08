@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
@@ -691,40 +691,91 @@ namespace ragl
 		////////////////////////////////////////////////////////////////////////////////////
 		// Connect Node With An Edge Object  (A->B)  if reflexive, also (B->A)
 		////////////////////////////////////////////////////////////////////////////////////
-		int			connect_node(const TEDGE& t, int nodeA, int nodeB, bool reflexive = true)
+		int connect_node(const TEDGE& t, int node_a, int node_b, bool reflexive = true)
 		{
-			if (nodeA == nodeB || !nodeA || !nodeB || !mNodes.is_used(nodeA) || !mNodes.is_used(nodeB))
+			// ----------------------------------------
+			// Basic validity checks
+			// ----------------------------------------
+			if (node_a == node_b ||
+				node_a <= 0 || node_b <= 0 ||
+				!mNodes.is_used(node_a) ||
+				!mNodes.is_used(node_b))
 			{
-				assert("ERROR: Cannot Connect A and B!" == nullptr);
+				assert(false && "connect_node: invalid node indices");
 				return 0;
 			}
 
-			if (mLinks[nodeA].full() || reflexive && mLinks[nodeB].full())
+			// ----------------------------------------
+			// Prevent duplicate edges (both directions)
+			// ----------------------------------------
+			for (const SNodeNeighbor& nbr : mLinks[node_a])
 			{
-				assert("ERROR: Max edges per node exceeded!" == nullptr);
+				if (nbr.mNode == node_b)
+					return nbr.mEdge; // already connected
+			}
+
+			if (reflexive)
+			{
+				for (const SNodeNeighbor& nbr : mLinks[node_b])
+				{
+					if (nbr.mNode == node_a)
+						return nbr.mEdge; // already connected
+				}
+			}
+
+			// ----------------------------------------
+			// Capacity checks
+			// ----------------------------------------
+			if (mLinks[node_a].full())
+			{
+				assert(false && "connect_node: node_a adjacency list full");
+				return 0;
+			}
+
+			if (reflexive && mLinks[node_b].full())
+			{
+				assert(false && "connect_node: node_b adjacency list full");
 				return 0;
 			}
 
 			if (mEdges.full())
 			{
-				assert("ERROR: Max edges exceeded!" == nullptr);
+				assert(false && "connect_node: global edge pool full");
 				return 0;
 			}
 
-			SNodeNeighbor	nNbr;
-
-			nNbr.mNode = nodeB;
-			nNbr.mEdge = mEdges.alloc();
-			mEdges[nNbr.mEdge] = t;
-
-			mLinks[nodeA].push_back(nNbr);
-			if (reflexive)
+			// ----------------------------------------
+			// Allocate edge
+			// ----------------------------------------
+			int edgeIndex = mEdges.alloc();
+			if (!edgeIndex)
 			{
-				nNbr.mNode = nodeA;
-				mLinks[nodeB].push_back(nNbr);
+				assert(false && "connect_node: edge allocation failed");
+				return 0;
 			}
 
-			return nNbr.mEdge;
+			mEdges[edgeIndex] = t;
+
+			// ----------------------------------------
+			// Add A → B
+			// ----------------------------------------
+			SNodeNeighbor nbrAB;
+			nbrAB.mNode = node_b;
+			nbrAB.mEdge = edgeIndex;
+			mLinks[node_a].push_back(nbrAB);
+
+			// ----------------------------------------
+			// Add B → A (if reflexive)
+			// ----------------------------------------
+			if (reflexive)
+			{
+				SNodeNeighbor nbrBA;
+				nbrBA.mNode = node_a;
+				nbrBA.mEdge = edgeIndex;
+				mLinks[node_b].push_back(nbrBA);
+			}
+
+			return edgeIndex;
 		}
 
 		////////////////////////////////////////////////////////////////////////////////////

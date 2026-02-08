@@ -37,6 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../cgame/cg_local.h"
 #include "wp_saber.h"
 #include <qcommon\q_math.h>
+#include <qcommon\q_shared.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Forward References Of Functions
@@ -96,7 +97,7 @@ bool Boba_Flee(); // If returns true, Jedi and Seeker AI not used
 // External Functions
 ////////////////////////////////////////////////////////////////////////////////////////
 extern void G_SoundAtSpot(vec3_t org, int sound_index, qboolean broadcast);
-extern void g_create_g2_attached_weapon_model(gentity_t* ent, const char* ps_weapon_model, int bolt_num,int weapon_num);
+extern void g_create_g2_attached_weapon_model(gentity_t* ent, const char* ps_weapon_model, int bolt_num, int weapon_num);
 extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 extern void WP_ResistForcePush(gentity_t* self, const gentity_t* pusher, qboolean no_penalty);
 extern void ForceJump(gentity_t* self, const usercmd_t* ucmd);

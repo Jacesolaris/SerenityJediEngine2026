@@ -391,6 +391,7 @@ qboolean G_SpawnVector4(const char* key, const char* defaultString, float* out);
 qboolean G_SpawnAngleHack(const char* key, const char* defaultString, float* out);
 void G_SpawnEntitiesFromString(const char* entity_string);
 void AnimateStun(gentity_t* self, gentity_t* inflictor);
+void G_DebugBBox(const vec3_t origin, const vec3_t mins, const vec3_t maxs, int time, int color);
 
 //
 // g_cmds.c
@@ -548,7 +549,7 @@ void IT_LoadWeatherParms(void);
 void SetClientViewAngle(gentity_t* ent, vec3_t angle);
 gentity_t* SelectSpawnPoint(vec3_t avoid_point, team_t team, vec3_t origin, vec3_t angles);
 void respawn(gentity_t* ent);
-qboolean client_spawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loaded);
+qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loaded);
 void player_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int means_of_death, int dflags,
 	int hit_loc);
 void AddScore(const gentity_t* ent, int score);

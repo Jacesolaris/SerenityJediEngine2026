@@ -915,6 +915,8 @@ public:
 	int DekaFired;
 	int BoltsFired;
 	int Dash_Count;
+	gentity_t* lastSaberTarget;
+	int lastSaberTargetTime;
 
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const
@@ -1018,6 +1020,8 @@ public:
 		saved_game.write<int32_t>(DekaFired);
 		saved_game.write<int32_t>(BoltsFired);
 		saved_game.write<int32_t>(Dash_Count);
+		saved_game.write<int32_t>(lastSaberTarget);
+		saved_game.write<int32_t>(lastSaberTargetTime);
 	}
 
 	void sg_import(
@@ -1122,6 +1126,8 @@ public:
 		saved_game.read<int32_t>(DekaFired);
 		saved_game.read<int32_t>(BoltsFired);
 		saved_game.read<int32_t>(Dash_Count);
+		saved_game.read<int32_t>(lastSaberTarget);
+		saved_game.read<int32_t>(lastSaberTargetTime);
 	}
 }; // GClientBase
 

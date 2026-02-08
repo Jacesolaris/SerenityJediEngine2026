@@ -404,6 +404,7 @@ public:
 	//sigh... you'd think I'd be able to find a way to do this without having to use 3 int fields, but...
 	int ffireDebounce;
 	int ffireFadeDebounce;
+	int kataDebounceTime;
 
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const
@@ -524,6 +525,7 @@ public:
 		saved_game.write<int32_t>(ffireCount);
 		saved_game.write<int32_t>(ffireDebounce);
 		saved_game.write<int32_t>(ffireFadeDebounce);
+		saved_game.write<int32_t>(kataDebounceTime);
 	}
 
 	void sg_import(
@@ -645,6 +647,7 @@ public:
 		saved_game.read<int32_t>(ffireCount);
 		saved_game.read<int32_t>(ffireDebounce);
 		saved_game.read<int32_t>(ffireFadeDebounce);
+		saved_game.read<int32_t>(kataDebounceTime);
 	}
 }; // gNPC_t
 

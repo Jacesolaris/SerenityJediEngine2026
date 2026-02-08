@@ -24,17 +24,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_local.h"
 #include "bg_saga.h"
 
-typedef struct teamgame_s
-{
-	float last_flag_capture;
-	int last_capture_team;
-	flagStatus_t redStatus; // CTF
-	flagStatus_t blueStatus; // CTF
-	flagStatus_t flagStatus; // One Flag CTF
-	int redTakenTime;
-	int blueTakenTime;
-} teamgame_t;
-
 teamgame_t teamgame;
 
 void Team_SetFlagStatus(int team, flagStatus_t status);

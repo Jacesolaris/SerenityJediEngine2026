@@ -8798,9 +8798,18 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 		break;
 
 	case SET_OBJECTIVE_SHOW:
-		//trap->SendServerCommand(-1, "cp \"^1May the Force be with you.\n\"");
-		//trap->SE_GetStringTextString(va("OBJECTIVES_%s", data), char_data, sizeof(char_data));
-		ObjectivePrint_Line();
+		if (trap->SE_GetStringTextString)
+		{
+			trap->SE_GetStringTextString(va("OBJECTIVES_%s", data), char_data, sizeof(char_data));
+		}
+		else {
+			// Fallback: use data key or empty string if localization API isn't available
+			//Q_strncpyz(char_data, va("OBJECTIVES_%s", data), sizeof(char_data));
+			ObjectivePrint_Line();
+		}
+		trap->SendServerCommand(-1, va("cp \"" S_COLOR_BLUE "New Mission Objective:\n%s\"", char_data));
+		break;
+		//ObjectivePrint_Line();
 		break;
 	case SET_OBJECTIVE_HIDE:
 		//G_DebugPrint(WL_WARNING, "SET_OBJECTIVE_HIDE: NOT SUPPORTED IN MP\n");

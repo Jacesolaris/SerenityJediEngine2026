@@ -475,7 +475,7 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 	Com_Printf("----- Client Initialization -----\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 31/01/2026-----------------------\n"); // build date
+	Com_Printf("---------------------Build date 08/02/2026-----------------------\n"); // build date
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

@@ -711,7 +711,7 @@ void client_begin(const int clientNum, const usercmd_t* cmd, const SavedGameJust
 	{
 		client->pers.connected = CON_CONNECTED;
 		ent->client = client;
-		client_spawn(ent, e_saved_game_just_loaded);
+		ClientSpawn(ent, e_saved_game_just_loaded);
 	}
 	else
 	{
@@ -736,7 +736,7 @@ void client_begin(const int clientNum, const usercmd_t* cmd, const SavedGameJust
 		}
 
 		// locate ent at a spawn point
-		if (client_spawn(ent, e_saved_game_just_loaded)) // SavedGameJustLoaded_e
+		if (ClientSpawn(ent, e_saved_game_just_loaded)) // SavedGameJustLoaded_e
 		{
 			// send teleport event
 		}
@@ -3055,7 +3055,7 @@ qboolean g_check_player_dark_side()
 
 extern void g_kill_box(gentity_t* ent);
 
-qboolean client_spawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loaded)
+qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loaded)
 {
 	int index;
 	gclient_t* client;
@@ -3067,6 +3067,9 @@ qboolean client_spawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_lo
 
 	index = ent - g_entities;
 	client = ent->client;
+
+	client->lastSaberTarget = nullptr;
+	client->lastSaberTargetTime = 0;
 
 	if (e_saved_game_just_loaded == eFULL && g_qb_load_transition == qfalse) //qbFromSavedGame)
 	{

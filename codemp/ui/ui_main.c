@@ -10834,7 +10834,6 @@ static void UI_Init(qboolean inGameLoad)
 	if (inGameLoad)
 	{
 		UI_LoadMenus("ui/SJE-mpingame.txt", qtrue);
-		UI_LoadMenus("ui/menutest.txt", qfalse);
 	}
 	else if (!ui_bypassMainMenuLoad.integer)
 	{

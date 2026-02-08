@@ -37,6 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 // Because renderer.
 #include "../rd-common/tr_public.h"
+#include <qcommon\q_color.h>
 extern refexport_t re;
 
 static fileHandle_t logfile;

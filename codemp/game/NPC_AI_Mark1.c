@@ -60,7 +60,7 @@ qboolean NPC_CheckPlayerTeamStealth(void);
 void Mark1_BlasterAttack(qboolean advance);
 void DeathFX(const gentity_t* ent);
 
-extern gitem_t* BG_FindItemForAmmo(ammo_t ammo);
+extern gitem_t* BG_FindItemForAmmo(const ammo_t ammo);
 
 /*
 -------------------------

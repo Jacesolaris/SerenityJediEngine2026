@@ -24,6 +24,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "bg_saga.h"
+#include <qcommon/q_shared.h>
+#include "g_local.h"
 
 #define MAX_CHAT_BUFFER_SIZE 8192
 #define MAX_CHAT_LINE_SIZE 128
@@ -111,6 +113,62 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define BOT_SABER_THROW_RANGE		800
 
 typedef int bot_route_t[MAX_WPARRAY_SIZE];
+
+#define BOTFLAG_SABERCHALLENGED			0x00000004
+//flag to indicate we're issued a saber challenge as part of the BOTORDER_SABERDUELCHALLENGE tactic.
+
+//The Distance at which you can challenge someone to a saber duel.
+#define SABERDUELCHALLENGEDIST 256
+//Maximum distance allowed between nodes for them to count as seqencial wp.
+#define MAX_NODE_DIS 1000
+
+//bots will stay within this distance to their defend targets while fighting enemies
+#define	DEFEND_MAXDISTANCE	500
+
+//used by track attac to prevent the bot from thinking you've disappeared the second it loses
+//visual/hearing on you (like if you hid behind it).  It will continue to know where you
+//are during this time.
+#define BOT_VISUALLOSETRACKTIME	2000
+
+//MiscBotFlags Defines - Used by tabbots
+#define	BOTFLAG_REACHEDCAPTUREPOINT		0x00000001
+
+//Sets the distance at which we're sure to have captured an objective object.
+//If we haven't captured at this point, it means that our team's flag isn't at our base.
+//activate our waiting for flag to return behavior.
+#define BOTAI_CAPTUREDISTANCE 10
+//Distance at which a bot knows it touched the weapon/spawnpoint it was traveling to
+#define	BOT_WEAPTOUCH_DISTANCE		10
+
+//Defines the top list of weapons that we care about getting or having ammo for.
+//IE the top 5, the top 10, etc...
+#define TAB_FAVWEAPCARELEVEL_MAX 5
+
+//RAFIXME - this should probably be handled by a new bot attribute.
+#define DESIREDAMMOLEVEL .5
+
+//distance at which the bot will move out of the way of an ally.
+#define BLOCKALLIESDISTANCE 50
+//data area for objective depandancy
+//we assume that the dependancy stuff is only for the attacking team since the defenders
+//never seem to have attackable objectives.
+int ObjectiveDependancy[MAX_OBJECTIVES][MAX_OBJECTIVEDEPENDANCY]; 
+
+int next_point[MAX_CLIENTS];
+
+typedef struct nodeWaypoint_s
+{
+	int wpNum;
+	float f;
+	float g;
+	float h;
+	int pNum;
+} nodeWaypoint_t;
+
+//Don't use the 0 slot of this array.  It's a binary heap and it's based on 1 being the first slot.
+nodeWaypoint_t OpenList[MAX_WPARRAY_SIZE + 1];
+
+nodeWaypoint_t CloseList[MAX_WPARRAY_SIZE];
 
 typedef enum
 {
@@ -472,6 +530,17 @@ typedef struct bot_state_s
 	int highThinkTime;
 
 	int nextPurchase;
+
+	float wpFailPenalty[MAX_WPARRAY_SIZE];
+	vec3_t lastMoveDir;
+	trace_t traceResult;
+	int saberEngageStartTime;
+	int saberEngageEmote; // 0 = none, ACTION_GLOAT, ACTION_FLOURISH
+	int nextSaberEmoteTime; int fallbackTurnTime;
+	float fallbackTurnYaw;
+	float saberStyleDebounce; 
+	int spacingState; // 0 = HOLD, 1 = BACKUP, 2 = CLOSE
+
 	//end rww
 } bot_state_t;
 
@@ -483,11 +552,10 @@ void B_Free(void* ptr);
 
 //resets the whole bot state
 void bot_reset_state(bot_state_t* bs);
-//returns the number of bots in the game
-int num_bots(void);
 
 void BotUtilizePersonality(bot_state_t* bs);
 int BotDoChat(bot_state_t* bs, const char* section, int always);
+void Enhanced_bot_ai(bot_state_t* bs);
 void standard_bot_ai(bot_state_t* bs);
 void BotWaypointRender(void);
 int org_visible_box(vec3_t org1, vec3_t mins, vec3_t maxs, vec3_t org2, int ignore);
@@ -540,3 +608,12 @@ extern int gLevelFlags;
 extern float floattime;
 
 #define FloatTime() floattime
+
+typedef enum
+{
+	BBEHAVE_NONE,  //use this if you don't want a behavior function to be run
+	BBEHAVE_STILL, //bot stands still
+	BBEHAVE_MOVETO, //Move to the current inputted goalPosition;
+	BBEHAVE_ATTACK,  //Attack given entity
+	BBEHAVE_VISUALSCAN	//visually scanning around
+} bot_bbeave_t;

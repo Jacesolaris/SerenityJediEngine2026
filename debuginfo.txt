@@ -1,6 +1,0 @@
-
-Command Arguments
-+set fs_game SerenityJediEngine2026 +set sv_pure 0 +set fs_basepath "G:/Mods/SerenityJediEngine2026" +set r_fullscreen 0
-
-Working Directory
-G:/Mods/SerenityJediEngine2026

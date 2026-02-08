@@ -1280,7 +1280,7 @@ long FS_FOpenFileRead(const char* filename, fileHandle_t* file, qboolean uniqueF
 					continue;
 				}
 
-				// autoexec_mp.cfg and SerenityJediEngine2026-SP-default.cfg can only be loaded outside of pk3 files.
+				// autoexec_mp.cfg and SerenityJediEngine2026-MP-default.cfg can only be loaded outside of pk3 files.
 				if (isUserConfig)
 				{
 					continue;

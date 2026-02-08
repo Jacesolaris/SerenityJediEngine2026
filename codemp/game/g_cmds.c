@@ -3800,11 +3800,6 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 			select_level++;
 		}
 
-		/*if (select_level > ent->client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE])
-		{
-			select_level = FORCE_LEVEL_1;
-		}*/
-
 		if (d_saberStanceDebug.integer)
 		{
 			trap->SendServerCommand(ent - g_entities, va("print \"SABERSTANCEDEBUG: Attempted to cycle stance normally.\n\""));

@@ -2758,7 +2758,7 @@ static void FS_Startup(const char* gameName)
 		homePath = fs_basepath->string;
 	}
 	fs_homepath = Cvar_Get("fs_homepath", homePath, CVAR_INIT | CVAR_PROTECTED);
-	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2025", CVAR_INIT | CVAR_SYSTEMINFO);
+	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2026", CVAR_INIT | CVAR_SYSTEMINFO);
 
 	fs_dirbeforepak = Cvar_Get("fs_dirbeforepak", "0", CVAR_INIT | CVAR_PROTECTED);
 

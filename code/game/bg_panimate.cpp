@@ -47,6 +47,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_local.h"
 #include "wp_saber.h"
 #include "g_vehicles.h"
+#include <cmath>
 
 extern pmove_t* pm;
 extern pml_t pml;
@@ -4409,7 +4410,6 @@ saber_moveName_t PM_CheckPullAttack()
 
 	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
 
-
 	if ((pm->ps->saber_move == LS_READY || PM_SaberInReturn(pm->ps->saber_move) || PM_SaberInReflect(pm->ps->saber_move))
 		//ready
 		&& pm->ps->groundEntityNum != ENTITYNUM_NONE
@@ -4417,7 +4417,7 @@ saber_moveName_t PM_CheckPullAttack()
 		&& pm->ps->saberAnimLevel <= SS_STRONG
 		&& G_TryingPullAttack(pm->gent, &pm->cmd, qfalse)
 		&& pm->cmd.buttons & BUTTON_ATTACK //attacking
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK,qtrue, isPlayer))
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK, qtrue, isPlayer))
 	{
 		qboolean do_move = g_saberNewControlScheme->integer ? qtrue : qfalse;
 		//in new control scheme, can always do this, even if there's no-one to do it to
@@ -4737,8 +4737,7 @@ saber_moveName_t PM_SaberAttackForMovement(const int forwardmove, const int righ
 			//on ground or just jumped
 			&& (pm->cmd.buttons & BUTTON_ATTACK && !(pm->cmd.buttons & BUTTON_BLOCK)) //hitting attack
 			&& pm->ps->forcePowerLevel[FP_LEVITATION] > FORCE_LEVEL_0 //have force jump 1 at least
-			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_LR, qfalse, isPlayer)
-			//pm->ps->forcePower >= SABER_ALT_ATTACK_POWER_LR//have enough power
+			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER_LR, qfalse, isPlayer)//have enough power
 			&& (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer() && pm->cmd.upmove > 0 //jumping NPC
 				|| (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) &&
 				G_TryingCartwheel(pm->gent, &pm->cmd)/*(pm->cmd.buttons&BUTTON_FORCE_FOCUS)*/))
@@ -4848,8 +4847,7 @@ saber_moveName_t PM_SaberAttackForMovement(const int forwardmove, const int righ
 						&& pm->gent->enemy->client->NPC_class != CLASS_HOWLER //too short to do auto-aiming accurately
 						&& g_saberAutoAim->integer)
 					{
-						const saber_moveName_t auto_move = PM_AttackForEnemyPos(
-							qfalse,
+						const saber_moveName_t auto_move = PM_AttackForEnemyPos(qfalse,
 							static_cast<qboolean>(pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer()));
 						if (auto_move != LS_INVALID)
 						{
@@ -5080,11 +5078,11 @@ saber_moveName_t PM_SaberAttackForMovement(const int forwardmove, const int righ
 			return newmove;
 		}
 		else if (PM_SaberInKnockaway(curmove))
-		{
-			//bounces should go to their default attack if you don't specify a direction but are attacking
-			if (pm->ps->clientNum && !PM_ControlledByPlayer() && Q_irand(0, 3))
+		{//bounces should go to their default attack if you don't specify a direction but are attacking
+			bool npc = (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer());
+
+			if (npc && Q_irand(0, 1))// 50% chance
 			{
-				//use NPC random
 				newmove = PM_NPCSaberAttackFromQuad(saber_moveData[curmove].endQuad);
 			}
 			else

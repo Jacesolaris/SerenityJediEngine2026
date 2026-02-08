@@ -733,68 +733,114 @@ qboolean WP_UseFirstValidSaberStyle(const saberInfo_t* saber1, const saberInfo_t
 	return qfalse;
 }
 
-qboolean WP_SaberStyleValidForSaber(const saberInfo_t* saber1, const saberInfo_t* saber2, const int saberHolstered, int saberAnimLevel)
+qboolean WP_SaberStyleValidForSaber(
+	const saberInfo_t* saber1,
+	const saberInfo_t* saber2,
+	const int saberHolstered,
+	int saberAnimLevel)
 {
-	qboolean saber1Active, saber2Active;
+	qboolean saber1Active = qfalse;
+	qboolean saber2Active = qfalse;
 	qboolean dualSabers = qfalse;
 
+	// -----------------------------------------------------
+	// DETECT DUAL SABERS
+	// -----------------------------------------------------
 	if (saber2 && saber2->model[0])
 		dualSabers = qtrue;
 
-	if (dualSabers) {
+	// -----------------------------------------------------
+	// DETERMINE ACTIVE SABERS
+	// -----------------------------------------------------
+	if (dualSabers)
+	{
 		if (saberHolstered > 1)
-			saber1Active = saber2Active = qfalse;
-		else if (saberHolstered > 0) {
+		{
+			saber1Active = qfalse;
+			saber2Active = qfalse;
+		}
+		else if (saberHolstered > 0)
+		{
 			saber1Active = qtrue;
 			saber2Active = qfalse;
 		}
 		else
-			saber1Active = saber2Active = qtrue;
+		{
+			saber1Active = qtrue;
+			saber2Active = qtrue;
+		}
 	}
 	else
 	{
 		saber2Active = qfalse;
+
 		if (!saber1 || !saber1->model[0])
+		{
 			saber1Active = qfalse;
-
-		//staff
-		else if (saber1->numBlades > 1)
+		}
+		else if (saber1->numBlades > 1) // staff
+		{
 			saber1Active = (saberHolstered > 1) ? qfalse : qtrue;
-
-		//single
-		else
+		}
+		else // single
+		{
 			saber1Active = saberHolstered ? qfalse : qtrue;
+		}
 	}
 
-	if (saber1Active && saber1 && saber1->model[0] && saber1->stylesForbidden)
+	// -----------------------------------------------------
+	// NEW RULE:
+	// SINGLE SABER USERS CAN USE *ALL* STYLES
+	// -----------------------------------------------------
+	if (!dualSabers &&
+		saber1Active &&
+		saber1 &&
+		saber1->model[0] &&
+		saber1->numBlades == 1)
 	{
-		if ((saber1->stylesForbidden & (1 << saberAnimLevel)))
+		return qtrue;
+	}
+
+	// -----------------------------------------------------
+	// FORBIDDEN STYLE CHECKS (SABER 1)
+	// -----------------------------------------------------
+	if (saber1Active &&
+		saber1 &&
+		saber1->model[0] &&
+		saber1->stylesForbidden)
+	{
+		if (saber1->stylesForbidden & (1 << saberAnimLevel))
+			return qfalse;
+	}
+
+	// -----------------------------------------------------
+	// DUAL SABER RESTRICTIONS
+	// -----------------------------------------------------
+	if (dualSabers &&
+		saber2Active &&
+		saber2 &&
+		saber2->model[0])
+	{
+		// Forbidden styles for saber2
+		if (saber2->stylesForbidden &&
+			(saber2->stylesForbidden & (1 << saberAnimLevel)))
 		{
 			return qfalse;
 		}
-	}
 
-	if (dualSabers && saber2Active && saber2 && saber2->model[0])
-	{
-		if (saber2->stylesForbidden)
-		{
-			if ((saber2->stylesForbidden & (1 << saberAnimLevel)))
-				return qfalse;
-		}
-		//now: if using dual sabers, only dual and tavion (if given with this saber) are allowed
+		// Dual sabers only allow:
+		// - SS_DUAL
+		// - SS_TAVION (if both sabers support it)
 		if (saberAnimLevel != SS_DUAL)
 		{
 			if (saberAnimLevel != SS_TAVION)
+				return qfalse;
+
+			// Check both sabers allow Tavion
+			if (!(saber1Active && (saber1->stylesLearned & (1 << SS_TAVION))) ||
+				!(saber2->stylesLearned & (1 << SS_TAVION)))
 			{
 				return qfalse;
-			}
-			else
-			{
-				//see if "tavion" style is okay
-				if (!(saber1Active && (saber1->stylesLearned & (1 << SS_TAVION))) || !(saber2->stylesLearned & (1 << SS_TAVION)))
-				{
-					return qfalse;
-				}
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -1296,6 +1296,9 @@ static qboolean pm_check_jump()
 	// 4. Remove <malloc.h> and add the correct standard header(s).
 
 #include <cstdlib>// for malloc, free, calloc, realloc
+#include <qcommon/q_color.h>
+#include <qcommon/q_color.h>
+#include <qcommon/q_color.h>
 
 	// Note: If there are multiple large arrays/structs, repeat the above pattern for each.
 	// If the function is called very frequently and performance is critical, consider making the arrays static and reusing them, but only if thread safety and reentrancy are not concerns.
@@ -13928,8 +13931,10 @@ saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 	saber_moveName_t auto_move = LS_NONE;
 
 	if (pm->gent &&
-		(pm->gent->NPC && pm->gent->NPC->rank != RANK_ENSIGN && pm->gent->NPC->rank != RANK_CIVILIAN
-			|| pm->gent->client && (pm->gent->client->NPC_class == CLASS_TAVION || pm->gent->client->NPC_class == CLASS_ALORA)))
+		pm->gent->NPC &&
+		pm->gent->client &&
+		(pm->gent->client->NPC_class == CLASS_TAVION ||
+			pm->gent->client->NPC_class == CLASS_ALORA))
 	{
 		auto_move = PM_AttackForEnemyPos(qtrue, qtrue);
 	}
@@ -13942,283 +13947,227 @@ saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 	//pick another one
 	saber_moveName_t newmove = LS_NONE;
 
+	// Default quadrant‑based selection
 	switch (quad)
 	{
-	case Q_T: //blocked top
-		if (Q_irand(0, 1))
-		{
-			newmove = LS_A_T2B;
-		}
-		else
-		{
-			newmove = LS_A_TR2BL;
-		}
-		break;
+	case Q_T:
+		return Q_irand(0, 1) ? LS_A_T2B : LS_A_TR2BL;
+
 	case Q_TR:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_R2L;
+		case 0: return LS_A_R2L;
+		case 1: return LS_A_TR2BL;
+		default: return LS_T1_TR_BR;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_A_TR2BL;
-		}
-		else
-		{
-			newmove = LS_T1_TR_BR;
-		}
-		break;
+
 	case Q_TL:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_L2R;
+		case 0: return LS_A_L2R;
+		case 1: return LS_A_TL2BR;
+		default: return LS_T1_TL_BL;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_A_TL2BR;
-		}
-		else
-		{
-			newmove = LS_T1_TL_BL;
-		}
-		break;
+
 	case Q_BR:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_BR2TL;
+		case 0: return LS_A_BR2TL;
+		case 1: return LS_T1_BR_TR;
+		default: return LS_A_R2L;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1_BR_TR;
-		}
-		else
-		{
-			newmove = LS_A_R2L;
-		}
-		break;
+
 	case Q_BL:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_BL2TR;
+		case 0: return LS_A_BL2TR;
+		case 1: return LS_T1_BL_TL;
+		default: return LS_A_L2R;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1_BL_TL;
-		}
-		else
-		{
-			newmove = LS_A_L2R;
-		}
-		break;
+
 	case Q_L:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_L2R;
+		case 0: return LS_A_L2R;
+		case 1: return LS_T1__L_T_;
+		default: return LS_A_R2L;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1__L_T_;
-		}
-		else
-		{
-			newmove = LS_A_R2L;
-		}
-		break;
+
 	case Q_R:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_R2L;
+		case 0: return LS_A_R2L;
+		case 1: return LS_T1__R_T_;
+		default: return LS_A_L2R;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1__R_T_;
-		}
-		else
-		{
-			newmove = LS_A_L2R;
-		}
-		break;
+
 	case Q_B:
-		newmove = PM_SaberLungeAttackMove(qtrue);
-		break;
+		return PM_SaberLungeAttackMove(qtrue);
+
 	default:
-		break;
+		return LS_NONE;
 	}
 
-	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) ? qtrue : qfalse;
 
-	if (g_spskill->integer > 1
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER, qtrue, isPlayer) &&
-		!pm->ps->forcePowersActive && !in_camera)
+
+	if (g_spskill->integer == 2
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER)
+		&& !pm->ps->forcePowersActive
+		&& !in_camera)
 	{
-		if (!isPlayer)
-		{// Some special bot stuff.
-			if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time && g_attackskill->integer >= 0)
-			{
-				int check_val = 0; // Times 500 for next check interval.
+		// Some special bot stuff.
+		if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time
+			&& g_attackskill->integer >= 0)
+		{
+			int check_val = 0; // Times 500 for next check interval.
 
-				if (PM_Can_Do_Kill_Lunge_back())
-				{ //BACKSTAB
-					if ((pm->ps->pm_flags & PMF_DUCKED) || pm->cmd.upmove < 0)
+			if (PM_Can_Do_Kill_Lunge_back())
+			{   // BACKSTAB
+				if ((pm->ps->pm_flags & PMF_DUCKED) || pm->cmd.upmove < 0)
+				{
+					newmove = LS_A_BACK_CR;
+				}
+				else
+				{
+					int choice = rand() % 4;
+
+					switch (choice)
 					{
-						newmove = LS_A_BACK_CR;
+					case 0:
+						newmove = LS_A_BACK;
+						break;
+
+					case 1:
+						newmove = PM_SaberBackflipAttackMove();
+						break;
+
+					case 2:
+						newmove = LS_A_BACKFLIP_ATK;
+						break;
+
+					case 3:
+					default:
+						newmove = LS_A_BACKSTAB;
+						break;
 					}
-					else
-					{
-						int choice = rand() % 3;
+				}
+			}
+			else if (PM_Can_Do_Kill_Lunge())
+			{
+				if (pm->ps->pm_flags & PMF_DUCKED)
+				{
+					newmove = PM_SaberLungeAttackMove(qtrue);
 
-						if (choice == 1)
+					if (d_attackinfo->integer)
+					{
+						gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 0\n");
+					}
+				}
+				else
+				{
+					const int choice = rand() % 9;
+
+					switch (choice)
+					{
+					case 0:
+						newmove = PM_NPC_Force_Leap_Attack();
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 1\n");
+						break;
+
+					case 1:
+						newmove = PM_DoAI_Fake(qtrue);
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 2\n");
+						break;
+
+					case 2:
+						newmove = LS_A1_SPECIAL;
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 3\n");
+						break;
+
+					case 3:
+						newmove = LS_A2_SPECIAL;
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 4\n");
+						break;
+
+					case 4:
+						newmove = LS_A3_SPECIAL;
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 5\n");
+						break;
+
+					case 5:
+						newmove = LS_A4_SPECIAL;
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 6\n");
+						break;
+
+					case 6:
+						newmove = LS_A5_SPECIAL;
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 7\n");
+						break;
+
+					case 7:
+						if (pm->ps->saberAnimLevel == SS_DUAL)
 						{
-							newmove = LS_A_BACK;
+							newmove = LS_DUAL_SPIN_PROTECT;
 						}
-						else if (choice == 2)
+						else if (pm->ps->saberAnimLevel == SS_STAFF)
 						{
-							newmove = PM_SaberBackflipAttackMove();
-						}
-						else if (choice == 3)
-						{
-							newmove = LS_A_BACKFLIP_ATK;
+							newmove = LS_STAFF_SOULCAL;
 						}
 						else
 						{
-							newmove = LS_A_BACKSTAB;
+							newmove = LS_A_JUMP_T__B_;
 						}
-					}
-				}
-				else if (PM_Can_Do_Kill_Lunge())
-				{
-					if (pm->ps->pm_flags & PMF_DUCKED)
-					{
-						newmove = PM_SaberLungeAttackMove(qtrue);
 
 						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 8\n");
+						break;
+
+					case 8:
+						if (pm->ps->saberAnimLevel == SS_DUAL)
 						{
-							gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 0\n");
+							newmove = LS_JUMPATTACK_DUAL;
 						}
-					}
-					else
-					{
-						const int choice = rand() % 9;
-
-						switch (choice)
+						else if (pm->ps->saberAnimLevel == SS_STAFF)
 						{
-						case 0:
-							newmove = PM_NPC_Force_Leap_Attack();
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 1\n");
-							}
-							break;
-						case 1:
-							newmove = PM_DoAI_Fake(qtrue);
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 2\n");
-							}
-							break;
-						case 2:
-							newmove = LS_A1_SPECIAL;
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 3\n");
-							}
-							break;
-						case 3:
-							newmove = LS_A2_SPECIAL;
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 4\n");
-							}
-							break;
-						case 4:
-							newmove = LS_A3_SPECIAL;
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 5\n");
-							}
-							break;
-						case 5:
-							newmove = LS_A4_SPECIAL;
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 6\n");
-							}
-							break;
-						case 6:
-							newmove = LS_A5_SPECIAL;
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 7\n");
-							}
-							break;
-						case 7:
-							if (pm->ps->saberAnimLevel == SS_DUAL)
-							{
-								newmove = LS_DUAL_SPIN_PROTECT;
-							}
-							else if (pm->ps->saberAnimLevel == SS_STAFF)
-							{
-								newmove = LS_STAFF_SOULCAL;
-							}
-							else
-							{
-								newmove = LS_A_JUMP_T__B_;
-							}
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 8\n");
-							}
-							break;
-						case 8:
-							if (pm->ps->saberAnimLevel == SS_DUAL)
-							{
-								newmove = LS_JUMPATTACK_DUAL;
-							}
-							else if (pm->ps->saberAnimLevel == SS_STAFF)
-							{
-								newmove = LS_JUMPATTACK_STAFF_RIGHT;
-							}
-							else
-							{
-								newmove = LS_SPINATTACK;
-							}
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 9\n");
-							}
-							break;
-						default:
-							newmove = PM_SaberFlipOverAttackMove();
-
-							if (d_attackinfo->integer)
-							{
-								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 10\n");
-							}
-							break;
+							newmove = LS_JUMPATTACK_STAFF_RIGHT;
 						}
+						else
+						{
+							newmove = LS_SPINATTACK;
+						}
+
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 9\n");
+						break;
+
+					default:
+						newmove = PM_SaberLungeAttackMove(qtrue);
+						if (d_attackinfo->integer)
+							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 10\n");
+						break;
 					}
-					pm->ps->weaponstate = WEAPON_FIRING;
-					WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 				}
 
-				check_val = g_attackskill->integer;
-
-				if (check_val <= 0)
-				{
-					check_val = 1;
-				}
-
-				Next_Kill_Attack_Move_Check[pm->ps->clientNum] = level.time + (40000 / check_val); // 20 secs / g_attackskill->integer
+				pm->ps->weaponstate = WEAPON_FIRING;
+				WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 			}
+
+			check_val = g_attackskill->integer;
+
+			if (check_val <= 0)
+			{
+				check_val = 1;
+			}
+
+			Next_Kill_Attack_Move_Check[pm->ps->clientNum] =
+				level.time + (90000 / check_val); // 20 secs / g_attackskill->integer
 		}
 	}
 
@@ -18580,18 +18529,11 @@ void PM_WeaponLightsaber()
 					newmove = LS_READY;
 				}
 				else
-				{
-					//get attack move from movement command
-					if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer()
-						&& (Q_irand(0, pm->ps->forcePowerLevel[FP_SABER_OFFENSE] - 1)
-							|| pm->gent && pm->gent->enemy && pm->gent->enemy->client
-							&& PM_InKnockDownOnGround(&pm->gent->enemy->client->ps)
-							//enemy knocked down, use some logic
-							|| pm->ps->saberAnimLevel == SS_FAST && pm->gent
-							&& pm->gent->NPC && pm->gent->NPC->rank >= RANK_LT_JG && Q_irand(0, 1)))
-						//minor change to make fast-attack users use the special attacks more
+				{//get attack move from movement command
+					bool npc = (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer());
+
+					if (npc && Q_irand(0, 1))// 50% chance
 					{
-						//NPCs use more randomized attacks the more skilled they are
 						newmove = PM_NPCSaberAttackFromQuad(saber_moveData[curmove].endQuad);
 					}
 					else
@@ -21918,446 +21860,479 @@ static qboolean LedgeGrabableEntity(const int entityNum)
 
 static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 {
-	vec3_t fwd_angles, move_dir;
-	const float animationpoint = GetSelfLegAnimPointforLedge();
+	vec3_t fwdAngles, moveDir;
+	const float t = GetSelfLegAnimPointforLedge();
+
+	auto ClearVel = [&]()
+		{
+			VectorClear(ps->velocity);
+		};
+
+	auto SetDirVel = [&](float yaw, float scale, bool useRight, bool useUp)
+		{
+			VectorSet(fwdAngles, 0.0f, yaw, 0.0f);
+			AngleVectors(
+				fwdAngles,
+				useRight ? nullptr : moveDir,   // forward
+				useRight ? moveDir : nullptr,   // right
+				useUp ? moveDir : nullptr       // up
+			);
+			VectorScale(moveDir, scale, moveDir);
+			VectorCopy(moveDir, ps->velocity);
+		};
 
 	switch (anim)
 	{
 	case BOTH_LEDGE_GRAB:
 	case BOTH_LEDGE_HOLD:
-		VectorClear(ps->velocity);
+		ClearVel();
 		return;
+
 	case BOTH_LEDGE_LEFT:
-		if (animationpoint > .333 && animationpoint < .666)
+		if (t > 0.333f && t < 0.666f)
 		{
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, nullptr, move_dir, nullptr);
-			VectorScale(move_dir, -30, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			SetDirVel(pm->ps->viewangles[YAW], -30.0f, true, false);
 		}
 		else
 		{
-			VectorClear(ps->velocity);
+			ClearVel();
 		}
 		break;
+
 	case BOTH_LEDGE_RIGHT:
-		if (animationpoint > .333 && animationpoint < .666)
+		if (t > 0.333f && t < 0.666f)
 		{
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, nullptr, move_dir, nullptr);
-			VectorScale(move_dir, 30, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			SetDirVel(pm->ps->viewangles[YAW], 30.0f, true, false);
 		}
 		else
 		{
-			VectorClear(ps->velocity);
+			ClearVel();
 		}
 		break;
+
 	case BOTH_LEDGE_MERCPULL:
-		if (animationpoint > .8 && animationpoint < .925)
+		if (t > 0.8f && t < 0.925f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 154;
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, move_dir, nullptr, nullptr);
-			VectorScale(move_dir, 70, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			float blend = (t - 0.8f) / 0.125f;   // 0 → 1
+			float animWeight = 1.0f - blend;
+			float physWeight = blend;
+
+			VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0.0f);
+			AngleVectors(fwdAngles, moveDir, nullptr, nullptr);
+
+			vec3_t animVel, physVel;
+
+			// Stronger animation-driven forward push
+			VectorScale(moveDir, 45.0f, animVel);
+			animVel[2] = 154.0f;
+
+			// Stronger physics-driven "step up and forward"
+			physVel[0] = moveDir[0] * 60.0f;
+			physVel[1] = moveDir[1] * 60.0f;
+			physVel[2] = 200.0f;
+
+			// Blend them
+			ps->velocity[0] = animVel[0] * animWeight + physVel[0] * physWeight;
+			ps->velocity[1] = animVel[1] * animWeight + physVel[1] * physWeight;
+			ps->velocity[2] = animVel[2] * animWeight + physVel[2] * physWeight;
 		}
-		else if (animationpoint > .7 && animationpoint < .75)
+		else if (t > 0.7f && t < 0.75f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 26;
+			ClearVel();
+			ps->velocity[2] = 26.0f;
 		}
-		else if (animationpoint > .375 && animationpoint < .7)
+		else if (t > 0.375f && t < 0.7f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 140;
+			ClearVel();
+			ps->velocity[2] = 140.0f;
 		}
-		else if (animationpoint < .375)
+		else if (t < 0.375f)
 		{
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, nullptr, nullptr, move_dir);
-			VectorScale(move_dir, 140, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			SetDirVel(pm->ps->viewangles[YAW], 140.0f, false, true);
 		}
 		else
 		{
-			VectorClear(ps->velocity);
+			ClearVel();
 		}
 		break;
+
 	default:
-		VectorClear(ps->velocity);
+		ClearVel();
+		break;
 	}
 }
 
 void PM_AdjustAngleForWallGrab(playerState_t* ps, usercmd_t* ucmd)
 {
-	if (ps->pm_flags & PMF_STUCK_TO_WALL && PM_InLedgeMove(ps->legsAnim))
+	if (!(ps->pm_flags & PMF_STUCK_TO_WALL) || !PM_InLedgeMove(ps->legsAnim))
 	{
-		//still holding onto the ledge stick our view to the wall angles
-		if (ps->legsAnim != BOTH_LEDGE_MERCPULL)
+		return;
+	}
+
+	// While stuck to a ledge, keep view locked and validate the ledge
+	if (ps->legsAnim != BOTH_LEDGE_MERCPULL)
+	{
+		vec3_t traceTo, traceFrom, fwd, fwdAngles;
+		trace_t trace;
+
+		// Trace forward from the player toward the wall at ledge height
+		VectorSet(fwdAngles, 0.0f, ps->viewangles[YAW], 0.0f);
+		AngleVectors(fwdAngles, fwd, nullptr, nullptr);
+		VectorNormalize(fwd);
+
+		VectorCopy(ps->origin, traceFrom);
+		traceFrom[2] += LEDGEGRABHEIGHT - 1.0f;
+
+		VectorMA(traceFrom, LEDGEGRABDISTANCE, fwd, traceTo);
+
+		gi.trace(&trace, traceFrom, nullptr, nullptr, traceTo,
+			ps->clientNum, pm->tracemask, static_cast<EG2_Collision>(0), 0);
+
+		if (trace.fraction == 1.0f ||
+			!LedgeGrabableEntity(trace.entityNum) ||
+			(pm->cmd.buttons & BUTTON_USE_FORCE) ||
+			(pm->cmd.buttons & BUTTON_FORCE_LIGHTNING) ||
+			(pm->cmd.buttons & BUTTON_FORCE_DRAIN) ||
+			(pm->cmd.buttons & BUTTON_FORCEGRIP) ||
+			(pm->cmd.buttons & BUTTON_BLOCK) ||
+			(pm->cmd.buttons & BUTTON_KICK) ||
+			(pm->cmd.buttons & BUTTON_DASH) ||
+			(pm->gent->painDebounceTime > level.time) ||
+			(ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer()))
 		{
-			vec3_t traceTo, trace_from, fwd, fwdAngles;
-			trace_t trace;
+			// Lost the ledge or invalid state → let go
+			BG_LetGoofLedge(ps);
+			return;
+		}
 
-			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwdAngles, fwd, nullptr, nullptr);
-			VectorNormalize(fwd);
+		// Lock view to face the wall
+		ps->viewangles[YAW] = vectoyaw(trace.plane.normal) + 180.0f;
+		PM_SetPMViewAngle(ps, ps->viewangles, ucmd);
+		ucmd->angles[YAW] = ANGLE2SHORT(ps->viewangles[YAW]) - ps->delta_angles[YAW];
+	}
+	else
+	{
+		// During pull‑up, just lock view to current angles
+		PM_SetPMViewAngle(ps, ps->viewangles, ucmd);
+		ucmd->angles[YAW] = ANGLE2SHORT(ps->viewangles[YAW]) - ps->delta_angles[YAW];
+	}
 
-			VectorCopy(ps->origin, trace_from);
-			trace_from[2] += LEDGEGRABHEIGHT - 1;
-
-			VectorMA(trace_from, LEDGEGRABDISTANCE, fwd, traceTo);
-
-			gi.trace(&trace, trace_from, nullptr, nullptr, traceTo, ps->clientNum, pm->tracemask,
-				static_cast<EG2_Collision>(0), 0);
-
-			if (trace.fraction == 1 || !LedgeGrabableEntity(trace.entityNum)
-				|| pm->cmd.buttons & BUTTON_USE_FORCE
-				|| pm->cmd.buttons & BUTTON_FORCE_LIGHTNING
-				|| pm->cmd.buttons & BUTTON_FORCE_DRAIN
-				|| pm->cmd.buttons & BUTTON_FORCEGRIP
-				|| pm->cmd.buttons & BUTTON_BLOCK
-				|| pm->cmd.buttons & BUTTON_KICK
-				|| pm->cmd.buttons & BUTTON_DASH
-				|| pm->gent->painDebounceTime > level.time
-				|| pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
-			{
-				//that's not good, we lost the ledge so let go.
-				BG_LetGoofLedge(ps);
-				return;
-			}
-
-			//lock the view viewangles
-			ps->viewangles[YAW] = vectoyaw(trace.plane.normal) + 180;
-			PM_SetPMViewAngle(ps, ps->viewangles, ucmd);
-			ucmd->angles[YAW] = ANGLE2SHORT(ps->viewangles[YAW]) - ps->delta_angles[YAW];
+	// Handle timing and transitions
+	if (ps->legsAnimTimer <= 50)
+	{
+		// Try switching to idle / hold
+		if (ps->legsAnim == BOTH_LEDGE_MERCPULL)
+		{
+			// Pull‑up done, release from wall
+			ps->pm_flags &= ~PMF_STUCK_TO_WALL;
 		}
 		else
 		{
-			//lock viewangles
-			PM_SetPMViewAngle(ps, ps->viewangles, ucmd);
-			ucmd->angles[YAW] = ANGLE2SHORT(ps->viewangles[YAW]) - ps->delta_angles[YAW];
+			PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_HOLD, SETANIM_FLAG_OVERRIDE);
+			ps->torsoAnimTimer = 500;
+			ps->legsAnimTimer = 500;
+			ps->weaponTime = ps->legsAnimTimer; // prevent attacks while hanging
 		}
-
-		if (ps->legsAnimTimer <= 50)
-		{
-			//Try switching to idle
-			if (ps->legsAnim == BOTH_LEDGE_MERCPULL)
-			{
-				//pull up done, bail.
-				ps->pm_flags &= ~PMF_STUCK_TO_WALL;
-			}
-			else
-			{
-				PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_HOLD, SETANIM_FLAG_OVERRIDE);
-				ps->torsoAnimTimer = 500;
-				ps->legsAnimTimer = 500;
-				//hold weapontime so people can't do attacks while in ledgegrab
-				ps->weaponTime = ps->legsAnimTimer;
-			}
-		}
-		else if (ps->legsAnim == BOTH_LEDGE_HOLD)
-		{
-			if (ucmd->rightmove)
-			{
-				//trying to move left/right
-				if (ucmd->rightmove < 0)
-				{
-					//shimmy left
-					PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_LEFT, AFLAG_LEDGE);
-					//hold weapontime so people can't do attacks while in ledgegrab
-					ps->weaponTime = ps->legsAnimTimer;
-				}
-				else
-				{
-					//shimmy right
-					PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_RIGHT, AFLAG_LEDGE);
-					//hold weapontime so people can't do attacks while in ledgegrab
-					ps->weaponTime = ps->legsAnimTimer;
-				}
-			}
-			else if (ucmd->forwardmove < 0 || pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer()
-				|| pm->cmd.buttons & BUTTON_USE_FORCE
-				|| pm->cmd.buttons & BUTTON_FORCE_LIGHTNING
-				|| pm->cmd.buttons & BUTTON_FORCE_DRAIN
-				|| pm->cmd.buttons & BUTTON_FORCEGRIP
-				|| pm->cmd.buttons & BUTTON_BLOCK
-				|| pm->cmd.buttons & BUTTON_KICK
-				|| pm->cmd.buttons & BUTTON_DASH
-				|| pm->gent->painDebounceTime > level.time)
-			{
-				//letting go
-				BG_LetGoofLedge(ps);
-			}
-			else if (ucmd->forwardmove > 0)
-			{
-				//Pull up
-				PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_MERCPULL,
-					SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_HOLDLESS);
-				//hold weapontime so people can't do attacks while in ledgegrab
-				ps->weaponTime = ps->legsAnimTimer;
-			}
-			else
-			{
-				//keep holding on
-				ps->torsoAnimTimer = 500;
-				ps->legsAnimTimer = 500;
-				//hold weapontime so people can't do attacks while in ledgegrab
-				ps->weaponTime = ps->legsAnimTimer;
-			}
-		}
-
-		//set movement velocity
-		PM_SetVelocityforLedgeMove(ps, ps->legsAnim);
-
-		//clear movement commands to prevent movement
-		ucmd->rightmove = 0;
-		ucmd->upmove = 0;
-		ucmd->forwardmove = 0;
 	}
+	else if (ps->legsAnim == BOTH_LEDGE_HOLD)
+	{
+		// Player is in hold state: handle input
+		if (ucmd->rightmove)
+		{
+			// Shimmy left/right
+			if (ucmd->rightmove < 0)
+			{
+				PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_LEFT, AFLAG_LEDGE);
+			}
+			else
+			{
+				PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_RIGHT, AFLAG_LEDGE);
+			}
+			ps->weaponTime = ps->legsAnimTimer;
+		}
+		else if (ucmd->forwardmove < 0 ||
+			(ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer()) ||
+			(pm->cmd.buttons & BUTTON_USE_FORCE) ||
+			(pm->cmd.buttons & BUTTON_FORCE_LIGHTNING) ||
+			(pm->cmd.buttons & BUTTON_FORCE_DRAIN) ||
+			(pm->cmd.buttons & BUTTON_FORCEGRIP) ||
+			(pm->cmd.buttons & BUTTON_BLOCK) ||
+			(pm->cmd.buttons & BUTTON_KICK) ||
+			(pm->cmd.buttons & BUTTON_DASH) ||
+			(pm->gent->painDebounceTime > level.time))
+		{
+			// Let go of the ledge
+			BG_LetGoofLedge(ps);
+		}
+		else if (ucmd->forwardmove > 0)
+		{
+			// Pull up
+			PM_SetAnim(pm, SETANIM_BOTH, BOTH_LEDGE_MERCPULL,
+				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_HOLDLESS);
+			ps->weaponTime = ps->legsAnimTimer;
+		}
+		else
+		{
+			// Keep holding on
+			ps->torsoAnimTimer = 500;
+			ps->legsAnimTimer = 500;
+			ps->weaponTime = ps->legsAnimTimer;
+		}
+	}
+
+	// Apply ledge movement velocity
+	PM_SetVelocityforLedgeMove(ps, ps->legsAnim);
+
+	// Clear movement commands while hanging
+	ucmd->rightmove = 0;
+	ucmd->upmove = 0;
+	ucmd->forwardmove = 0;
 }
 
 static qboolean LedgeTrace(trace_t* trace, vec3_t dir, float* lerpup, float* lerpfwd, float* lerpyaw)
 {
-	//scan for for a ledge in the given direction
-	vec3_t traceTo, trace_from, wallangles;
-	VectorMA(pm->ps->origin, LEDGEGRABDISTANCE, dir, traceTo);
-	VectorCopy(pm->ps->origin, trace_from);
+	vec3_t traceTo, traceFrom, wallAngles;
+	vec3_t dirs[3];
 
-	trace_from[2] += LEDGEGRABMINHEIGHT;
-	traceTo[2] += LEDGEGRABMINHEIGHT;
+	// Build a small cone of directions: forward, left 15°, right 15°
+	VectorCopy(dir, dirs[0]);
+	RotatePointAroundVector(dirs[1], pm->ps->viewangles, dirs[0], 15.0f);
+	RotatePointAroundVector(dirs[2], pm->ps->viewangles, dirs[0], -15.0f);
 
-	gi.trace(trace, trace_from, nullptr, nullptr, traceTo, pm->ps->clientNum, pm->tracemask,
-		static_cast<EG2_Collision>(0), 0);
-
-	if (trace->fraction < 1 && LedgeGrabableEntity(trace->entityNum))
+	// Try each direction until one succeeds
+	for (int i = 0; i < 3; i++)
 	{
-		//hit a wall, pop into the wall and fire down to find top of wall
-		VectorMA(trace->endpos, 0.5, dir, traceTo);
+		vec3_t useDir;
+		VectorCopy(dirs[i], useDir);
 
-		VectorCopy(traceTo, trace_from);
+		// Step 1: forward trace at minimum ledge height
+		VectorCopy(pm->ps->origin, traceFrom);
+		VectorMA(pm->ps->origin, LEDGEGRABDISTANCE, useDir, traceTo);
 
-		trace_from[2] += LEDGEGRABMAXHEIGHT - LEDGEGRABMINHEIGHT;
+		traceFrom[2] += LEDGEGRABMINHEIGHT;
+		traceTo[2] += LEDGEGRABMINHEIGHT;
 
-		gi.trace(trace, trace_from, nullptr, nullptr, traceTo, pm->ps->clientNum, pm->tracemask,
-			static_cast<EG2_Collision>(0), 0);
+		gi.trace(trace, traceFrom, nullptr, nullptr, traceTo,
+			pm->ps->clientNum, pm->tracemask, static_cast<EG2_Collision>(0), 0);
 
-		if (trace->fraction == 1.0 || trace->startsolid || !LedgeGrabableEntity(trace->entityNum))
+		// Step 2: hit a wall → check for top surface
+		if (trace->fraction < 1.0f && LedgeGrabableEntity(trace->entityNum))
 		{
-			return qfalse;
+			// Move slightly into the wall
+			VectorMA(trace->endpos, 0.5f, useDir, traceTo);
+			VectorCopy(traceTo, traceFrom);
+
+			// Scan upward to find the top
+			traceFrom[2] += (LEDGEGRABMAXHEIGHT - LEDGEGRABMINHEIGHT);
+
+			gi.trace(trace, traceFrom, nullptr, nullptr, traceTo,
+				pm->ps->clientNum, pm->tracemask, static_cast<EG2_Collision>(0), 0);
+
+			if (trace->fraction == 1.0f || trace->startsolid || !LedgeGrabableEntity(trace->entityNum))
+			{
+				continue; // try next direction
+			}
 		}
+		else
+		{
+			continue; // no wall hit → try next direction
+		}
+
+		// Step 3: validate top surface slope (more forgiving)
+		vectoangles(trace->plane.normal, wallAngles);
+
+		if (wallAngles[PITCH] > -30.0f) // was -45
+		{
+			continue;
+		}
+
+		// Step 4: compute vertical offset
+		VectorCopy(trace->endpos, traceTo);
+		*lerpup = traceTo[2] - pm->ps->origin[2] - LEDGEVERTOFFSET;
+
+		// Step 5: downward trace to confirm flat ledge surface
+		VectorCopy(pm->ps->origin, traceFrom);
+		traceTo[2] -= 1.0f;
+		traceFrom[2] = traceTo[2];
+
+		gi.trace(trace, traceFrom, nullptr, nullptr, traceTo,
+			pm->ps->clientNum, pm->tracemask, static_cast<EG2_Collision>(0), 0);
+
+		// Safety downward nudge if needed
+		if (trace->fraction == 1.0f)
+		{
+			traceFrom[2] -= 4.0f;
+			gi.trace(trace, traceFrom, nullptr, nullptr, traceTo,
+				pm->ps->clientNum, pm->tracemask, static_cast<EG2_Collision>(0), 0);
+		}
+
+		vectoangles(trace->plane.normal, wallAngles);
+
+		if (trace->fraction == 1.0f ||
+			wallAngles[PITCH] > 30.0f || wallAngles[PITCH] < -30.0f ||
+			!LedgeGrabableEntity(trace->entityNum))
+		{
+			continue;
+		}
+
+		// Step 6: compute forward offset with snap correction
+		float dist = Distance(trace->endpos, traceFrom);
+
+		if (dist > LEDGEHOROFFSET + 8.0f)
+		{
+			continue; // too far to grab
+		}
+
+		if (dist < LEDGEHOROFFSET - 8.0f)
+		{
+			dist = LEDGEHOROFFSET; // snap forward
+		}
+
+		*lerpfwd = dist - LEDGEHOROFFSET;
+		*lerpyaw = vectoyaw(trace->plane.normal) + 180.0f;
+
+		return qtrue; // success on this direction
 	}
 
-	//check to make sure we found a good top surface and go from there
-	vectoangles(trace->plane.normal, wallangles);
-
-	if (wallangles[PITCH] > -45)
-	{
-		//no ledge or the ledge is too steep
-		return qfalse;
-	}
-	VectorCopy(trace->endpos, traceTo);
-	*lerpup = trace->endpos[2] - pm->ps->origin[2] - LEDGEVERTOFFSET;
-
-	VectorCopy(pm->ps->origin, trace_from);
-	traceTo[2] -= 1;
-
-	trace_from[2] = traceTo[2];
-
-	gi.trace(trace, trace_from, nullptr, nullptr, traceTo, pm->ps->clientNum, pm->tracemask,
-		static_cast<EG2_Collision>(0), 0);
-
-	vectoangles(trace->plane.normal, wallangles);
-	if (trace->fraction == 1.0
-		|| wallangles[PITCH] > 20 || wallangles[PITCH] < -20
-		|| !LedgeGrabableEntity(trace->entityNum))
-	{
-		//no ledge or too steep of a ledge
-		return qfalse;
-	}
-
-	*lerpfwd = Distance(trace->endpos, trace_from) - LEDGEHOROFFSET;
-	*lerpyaw = vectoyaw(trace->plane.normal) + 180;
-	return qtrue;
+	return qfalse; // no direction succeeded
 }
 
 //check for ledge grab
-void PM_CheckGrab()
+void PM_CheckGrab(void)
 {
-	vec3_t check_dir, trace_to, fwd_angles;
+	vec3_t checkDir, traceTo, fwdAngles;
 	trace_t trace;
-	float lerpup = 0;
-	float lerpfwd = 0;
-	float lerpyaw = 0;
-	qboolean skip_Cmdtrace = qfalse;
+	float lerpUp = 0.0f;
+	float lerpFwd = 0.0f;
+	float lerpYaw = 0.0f;
+	qboolean usedVelocityDir = qfalse;
 
-	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
-	{
-		//not in the air don't attempt a ledge grab
+	// Basic disqualifiers
+	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)            // not in air
 		return;
-	}
 
-	if (g_entities[pm->ps->clientNum].client->jetPackOn)
-	{
-		//don't do ledgegrab checks while using the jetpack
+	if (g_entities[pm->ps->clientNum].client->jetPackOn)      // jetpack active
 		return;
-	}
 
-	if (pm->gent->client->NPC_class == CLASS_SBD || pm->gent->client->NPC_class == CLASS_DROIDEKA)
-	{
-		//no
+	if (pm->gent->client->NPC_class == CLASS_SBD ||
+		pm->gent->client->NPC_class == CLASS_DROIDEKA)        // no ledge grab for these
 		return;
-	}
 
-	if (pm->watertype & CONTENTS_LADDER)
-	{
-		//no
+	if (pm->watertype & CONTENTS_LADDER)                      // on ladder
 		return;
-	}
 
-	if (pm->waterlevel > 1)
-	{
-		//no
+	if (pm->waterlevel > 1)                                   // too deep in water
 		return;
-	}
 
-	if (!g_allowClimbing->integer)
-	{
+	if (!g_allowClimbing->integer)                            // climbing disabled
 		return;
-	}
 
-	if (PM_InLedgeMove(pm->gent->client->ps.legsAnim)
-		|| PM_InSpecialJump(pm->gent->client->ps.legsAnim)
-		|| PM_CrouchAnim(pm->gent->client->ps.legsAnim)
-		|| pm->ps->pm_flags & PMF_DUCKED)
-	{
-		//already on ledge, a spectator, or in a special jump
+	if (PM_InLedgeMove(pm->gent->client->ps.legsAnim) ||
+		PM_InSpecialJump(pm->gent->client->ps.legsAnim) ||
+		PM_CrouchAnim(pm->gent->client->ps.legsAnim) ||
+		(pm->ps->pm_flags & PMF_DUCKED))                      // already busy
 		return;
-	}
 
-	if (pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ||
-		pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-		pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-	{
+	if ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) ||
+		(pm->ps->PlayerEffectFlags & (1 << PEF_SPRINTING)) ||
+		(pm->ps->PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)))
 		return;
-	}
 
-	if (pm->ps->velocity[0] == 0)
-	{
-		//Not moving forward
-		return;
-	}
+	if (pm->ps->velocity[0] == 0.0f && pm->ps->velocity[1] == 0.0f)
+		return;                                               // not moving horizontally
 
 	if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
-	{
 		return;
-	}
 
-	if (g_AllowLedgeGrab->integer == 0)
-	{
-		//Not allowed
+	if (!g_AllowLedgeGrab->integer)
 		return;
-	}
 
-	//try looking in front of us first
-	VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0.0f);
-	AngleVectors(fwd_angles, check_dir, nullptr, nullptr);
+	// Base forward direction from view yaw
+	VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0.0f);
+	AngleVectors(fwdAngles, checkDir, nullptr, nullptr);
 
+	// First: try based on actual movement direction
 	if (!VectorCompare(pm->ps->velocity, vec3_origin))
 	{
-		//player is moving
-		if (LedgeTrace(&trace, check_dir, &lerpup, &lerpfwd, &lerpyaw))
+		if (LedgeTrace(&trace, checkDir, &lerpUp, &lerpFwd, &lerpYaw))
 		{
-			skip_Cmdtrace = qtrue;
+			usedVelocityDir = qtrue;
 		}
 	}
 
-	if (!skip_Cmdtrace)
+	// Second: if that failed, try based on intended movement (cmd)
+	if (!usedVelocityDir)
 	{
-		//no luck finding a ledge to grab based on movement.  Try looking for a ledge based on where the player is
-		//TRYING to go.
 		if (!pm->cmd.rightmove && !pm->cmd.forwardmove)
-		{
-			//no dice abort
-			return;
-		}
+			return; // no input, nothing to infer
+
 		if (pm->cmd.rightmove)
 		{
-			if (pm->cmd.rightmove > 0)
+			// Strafe-based direction
+			AngleVectors(fwdAngles, nullptr, checkDir, nullptr);
+			if (pm->cmd.rightmove < 0)
 			{
-				AngleVectors(fwd_angles, nullptr, check_dir, nullptr);
-				VectorNormalize(check_dir);
+				VectorScale(checkDir, -1.0f, checkDir);
 			}
-			else if (pm->cmd.rightmove < 0)
-			{
-				AngleVectors(fwd_angles, nullptr, check_dir, nullptr);
-				VectorScale(check_dir, -1, check_dir);
-				VectorNormalize(check_dir);
-			}
+			VectorNormalize(checkDir);
 		}
 		else if (pm->cmd.forwardmove > 0)
 		{
-			//already tried this direction.
+			// Already tried forward
 			return;
 		}
 		else if (pm->cmd.forwardmove < 0)
 		{
-			AngleVectors(fwd_angles, check_dir, nullptr, nullptr);
-			VectorScale(check_dir, -1, check_dir);
-			VectorNormalize(check_dir);
+			// Backwards
+			AngleVectors(fwdAngles, checkDir, nullptr, nullptr);
+			VectorScale(checkDir, -1.0f, checkDir);
+			VectorNormalize(checkDir);
 		}
 
-		if (!LedgeTrace(&trace, check_dir, &lerpup, &lerpfwd, &lerpyaw))
+		if (!LedgeTrace(&trace, checkDir, &lerpUp, &lerpFwd, &lerpYaw))
 		{
-			//no dice
 			return;
 		}
 	}
 
-	VectorCopy(pm->ps->origin, trace_to);
-	VectorMA(pm->ps->origin, lerpfwd, check_dir, trace_to);
-	trace_to[2] += lerpup;
+	// Compute final latch position
+	VectorCopy(pm->ps->origin, traceTo);
+	VectorMA(traceTo, lerpFwd, checkDir, traceTo);
+	traceTo[2] += lerpUp;
 
-	//check to see if we can actually latch to that position.
-	gi.trace(&trace, pm->ps->origin, pm->mins, pm->maxs, trace_to, pm->ps->clientNum, MASK_PLAYERSOLID,
-		static_cast<EG2_Collision>(0), 0);
+	// Check if we can actually occupy that position
+	gi.trace(&trace, pm->ps->origin, pm->mins, pm->maxs, traceTo,
+		pm->ps->clientNum, MASK_PLAYERSOLID, static_cast<EG2_Collision>(0), 0);
 
-	if (trace.fraction != 1 || trace.startsolid)
-	{
+	if (trace.fraction != 1.0f || trace.startsolid)
 		return;
-	}
 
-	//turn to face wall
-	pm->ps->viewangles[YAW] = lerpyaw;
+	// Turn to face wall
+	pm->ps->viewangles[YAW] = lerpYaw;
 	PM_SetPMViewAngle(pm->ps, pm->ps->viewangles, &pm->cmd);
 	pm->cmd.angles[YAW] = ANGLE2SHORT(pm->ps->viewangles[YAW]) - pm->ps->delta_angles[YAW];
 
-	// you couldnt move
+	// Stop current actions
 	pm->ps->weaponTime = 0;
 	pm->ps->saber_move = 0;
 	pm->cmd.upmove = 0;
 
-	//We are clear to latch to the wall
+	// Handle saber / weapon state
 	if (pm->ps->SaberActive())
 	{
 		pm->ps->SaberDeactivate();
 		G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/saber/saberoff.mp3");
 	}
-	else
+	else if (PM_IsGunner())
 	{
-		if (PM_IsGunner())
-		{
-			G_SetWeapon(pm->gent, WP_MELEE);
-			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/change.wav");
-		}
+		G_SetWeapon(pm->gent, WP_MELEE);
+		G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/change.wav");
 	}
 
+	// Snap to ledge and enter ledge state
 	VectorCopy(trace.endpos, pm->ps->origin);
 	VectorCopy(vec3_origin, pm->ps->velocity);
+
 	PM_GrabWallForJump(BOTH_LEDGE_GRAB);
 	pm->ps->weaponTime = pm->ps->legsAnimTimer;
 }

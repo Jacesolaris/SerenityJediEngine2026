@@ -1880,7 +1880,7 @@ static qboolean SV_G2API_GetBoneAnim(void* ghoul2, const char* boneName, const i
 	const int modelIndex)
 {
 	CGhoul2Info_v& g2 = *static_cast<CGhoul2Info_v*>(ghoul2);
-	return re->G2API_GetBoneAnim(g2, modelIndex, boneName, currentTime, currentFrame, startFrame, endFrame, flags,animSpeed, modelList);
+	return re->G2API_GetBoneAnim(g2, modelIndex, boneName, currentTime, currentFrame, startFrame, endFrame, flags, animSpeed, modelList);
 }
 
 //static void SV_G2API_GetGLAName(void* ghoul2, const int modelIndex, char* fillBuf)
@@ -1904,7 +1904,7 @@ static void SV_G2API_GetGLAName(void* ghoul2, const int modelIndex, char* fillBu
 
 	CGhoul2Info_v* g2 = static_cast<CGhoul2Info_v*>(ghoul2);
 
-	if (!g2) 
+	if (!g2)
 	{
 		return;
 	}

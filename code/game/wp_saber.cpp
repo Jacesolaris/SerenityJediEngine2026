@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
@@ -39,6 +39,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_vehicles.h"
 #include "../qcommon/tri_coll_test.h"
 #include "../cgame/cg_local.h"
+#include "ai.h"
+#include <cassert>
 
 #define JK2_RAGDOLL_GRIPNOHEALTH
 
@@ -630,7 +632,7 @@ static qboolean class_is_gunner(const gentity_t* self)
 
 //SABER INITIALIZATION======================================================================
 
-void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_weapon_model, const int bolt_num,
+static void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_weapon_model, const int bolt_num,
 	const int weapon_num, vec3_t angles, vec3_t offset)
 {
 	if (!ps_weapon_model)
@@ -8573,169 +8575,386 @@ void wp_saber_in_flight_reflect_check(gentity_t* self)
 	}
 }
 
-static qboolean wp_saber_validate_enemy(gentity_t* self, gentity_t* enemy)
+static qboolean WP_SaberValidateEnemy(gentity_t* self, gentity_t* enemy)
 {
-	if (!enemy)
-	{
-		return qfalse;
-	}
-
+	// ----------------------------------------------------
+	// Basic null / self / validity checks
+	// ----------------------------------------------------
 	if (!enemy || enemy == self || !enemy->inuse || !enemy->client)
-	{
-		//not valid
 		return qfalse;
-	}
 
+	// ----------------------------------------------------
+	// Must be alive
+	// ----------------------------------------------------
 	if (enemy->health <= 0)
-	{
-		//corpse
 		return qfalse;
-	}
 
+	// ----------------------------------------------------
+	// NPCs cannot target Jedi unless they are Jedi themselves
+	// (prevents non‑Jedi NPCs from cheating with saber throw)
+	// ----------------------------------------------------
 	if (enemy->s.number >= MAX_CLIENTS)
 	{
-		//NPCs can cheat and use the homing saber throw 3 on the player
-		if (enemy->client->ps.forcePowersKnown)
-		{
-			//not other jedi?
+		if (enemy->client->ps.forcePowersKnown == 0)
 			return qfalse;
-		}
 	}
 
-	if (DistanceSquared(self->client->renderInfo.handRPoint, enemy->currentOrigin) > saberThrowDistSquared[self->client
-		->ps.forcePowerLevel[FP_SABERTHROW]])
+	// ----------------------------------------------------
+	// Distance check (squared for performance)
+	// ----------------------------------------------------
+	const float maxDistSq =
+		saberThrowDistSquared[self->client->ps.forcePowerLevel[FP_SABERTHROW]];
+
+	if (DistanceSquared(self->client->renderInfo.handRPoint,
+		enemy->currentOrigin) > maxDistSq)
 	{
-		//too far
 		return qfalse;
 	}
 
-	if ((!in_front(enemy->currentOrigin, self->currentOrigin, self->client->ps.viewangles, 0.0f) || !G_ClearLOS(
-		self, self->client->renderInfo.eyePoint, enemy))
-		&& (DistanceHorizontalSquared(enemy->currentOrigin, self->currentOrigin) > 65536 || fabs(
-			enemy->currentOrigin[2] - self->currentOrigin[2]) > 384))
+	// ----------------------------------------------------
+	// Field‑of‑view + LOS check
+	// If enemy is far away horizontally or vertically,
+	// they MUST be in front AND visible.
+	// ----------------------------------------------------
+	const float horizDistSq =
+		DistanceHorizontalSquared(enemy->currentOrigin, self->currentOrigin);
+
+	const float vertDist =
+		fabsf(enemy->currentOrigin[2] - self->currentOrigin[2]);
+
+	const qboolean inFront =
+		in_front(enemy->currentOrigin, self->currentOrigin,
+			self->client->ps.viewangles, 0.0f);
+
+	const qboolean hasLOS =
+		G_ClearLOS(self, self->client->renderInfo.eyePoint, enemy);
+
+	if ((!inFront || !hasLOS) &&
+		(horizDistSq > 65536.0f || vertDist > 384.0f))
 	{
-		//(not in front or not clear LOS) & greater than 256 away
 		return qfalse;
 	}
 
-	if (enemy->client->playerTeam == self->client->playerTeam && (enemy->client->playerTeam != TEAM_SOLO && self->client
-		->playerTeam != TEAM_SOLO))
+	// ----------------------------------------------------
+	// Team check (unless SOLO)
+	// ----------------------------------------------------
+	if (enemy->client->playerTeam == self->client->playerTeam &&
+		enemy->client->playerTeam != TEAM_SOLO &&
+		self->client->playerTeam != TEAM_SOLO)
 	{
-		//on same team
 		return qfalse;
 	}
-
-	//LOS?
 
 	return qtrue;
 }
 
-static float WP_SaberRateEnemy(const gentity_t* enemy, vec3_t center, vec3_t forward, const float radius)
-{
-	vec3_t dir;
+// ======================================================
+// Distance macro (JA-style)
+// ======================================================
+#define Distance(a,b) (sqrt( ( (a)[0] - (b)[0] ) * ( (a)[0] - (b)[0] ) + \
+                              ( (a)[1] - (b)[1] ) * ( (a)[1] - (b)[1] ) + \
+                              ( (a)[2] - (b)[2] ) * ( (a)[2] - (b)[2] ) ))
 
+// ======================================================
+// Safe helpers
+// ======================================================
+static float SafeDot(const vec3_t a, const vec3_t b)
+{
+	float d = DotProduct(a, b);
+	if (!(d >= -1.0f && d <= 1.0f)) // catches NaN/INF
+		return 0.0f;
+	return d;
+}
+
+static float SafeNormalize(vec3_t v)
+{
+	float len = VectorLength(v);
+	if (len <= 0.0001f)
+		return 0.0f;
+
+	float inv = 1.0f / len;
+	v[0] *= inv;
+	v[1] *= inv;
+	v[2] *= inv;
+	return len;
+}
+
+// ======================================================
+// Rate an enemy with:
+//  • Step 1: current target awareness
+//  • Step 2: soft‑lock smoothing
+//  • Step 3: target stickiness (time‑based decay)
+//  • Step 4: cinematic target switching
+//  • Step 5: screen‑center weighting
+//  • Step 6: cinematic distance falloff (safe)
+//  • Step 7: threat weighting
+// ======================================================
+static float WP_SaberRateEnemy(
+	const gentity_t* self,
+	const gentity_t* enemy,
+	const gentity_t* currentTarget,
+	const gentity_t* lastTarget,
+	const int        lastTargetTime,
+	const vec3_t& center,
+	const vec3_t& forward,
+	const float      radius)
+{
+	// -----------------------------
+	// Step 6: Cinematic distance falloff (safe)
+	// -----------------------------
+	float dist = Distance(center, enemy->currentOrigin);
+	if (!(dist >= 0.0f)) // NaN guard
+		return 0.0f;
+
+	float d = dist / radius;
+	if (d > 1.0f)
+		return 0.0f;
+	if (d < 0.0f)
+		d = 0.0f;
+
+	const float falloffPower = 2.25f;
+	float base = 1.0f - d;
+	if (base < 0.0f)
+		base = 0.0f;
+
+	float distWeight = powf(base, falloffPower);
+	if (!(distWeight >= 0.0f)) // NaN guard
+		distWeight = 0.0f;
+
+	float rating = distWeight;
+
+	// -----------------------------
+	// Forward alignment (safe)
+	// -----------------------------
+	vec3_t dir;
 	VectorSubtract(enemy->currentOrigin, center, dir);
-	float rating = 1.0f - VectorNormalize(dir) / radius;
-	rating *= DotProduct(forward, dir);
+	if (SafeNormalize(dir) == 0.0f)
+		return rating;
+
+	float fwdDot = SafeDot(forward, dir);
+	rating *= fwdDot;
+
+	// -----------------------------
+	// Step 2: Soft‑lock smoothing
+	// -----------------------------
+	if (enemy == currentTarget && currentTarget != nullptr)
+	{
+		const float softLockStrength = 0.35f;
+		rating = rating + (1.0f - rating) * softLockStrength;
+	}
+
+	// -----------------------------
+	// Step 3: Target stickiness
+	// -----------------------------
+	if (enemy == lastTarget && lastTarget != nullptr)
+	{
+		const float stickinessDuration = 300.0f;
+		float       t = (level.time - lastTargetTime);
+
+		if (t < stickinessDuration)
+		{
+			float decay = 1.0f - (t / stickinessDuration);
+			float stickinessBoost = decay * 0.45f;
+			rating += stickinessBoost;
+		}
+	}
+
+	// -----------------------------
+	// Step 5: Screen‑center weighting (safe)
+	// -----------------------------
+	{
+		vec3_t toEnemy;
+		VectorSubtract(enemy->currentOrigin, center, toEnemy);
+
+		if (SafeNormalize(toEnemy) != 0.0f)
+		{
+			float dot = SafeDot(forward, toEnemy);
+			float centerWeight = (dot > 0.0f) ? dot : 0.0f;
+
+			const float centerBiasStrength = 0.65f;
+
+			rating = rating * (1.0f - centerBiasStrength) +
+				centerWeight * centerBiasStrength;
+		}
+	}
+
+	// -----------------------------
+	// Step 4: Cinematic target switching
+	// -----------------------------
+	if (enemy->client && enemy->client->ps.saber_move != LS_NONE)
+		rating += 0.35f;
+
+	if (enemy->client && enemy->client->ps.saberBlocked == BLOCKED_PARRY_BROKEN)
+		rating += 0.55f;
+
+	if (enemy->client &&
+		(enemy->client->ps.weapon == WP_BLASTER ||
+			enemy->client->ps.weapon == WP_BLASTER_PISTOL) &&
+		enemy->client->ps.weaponstate == WEAPON_FIRING)
+	{
+		rating += 0.40f;
+	}
+
+	{
+		vec3_t toEnemy2;
+		VectorSubtract(enemy->currentOrigin, center, toEnemy2);
+
+		if (SafeNormalize(toEnemy2) != 0.0f)
+		{
+			float behind = SafeDot(forward, toEnemy2);
+			if (behind < -0.3f)
+			{
+				float dist2 = Distance(center, enemy->currentOrigin);
+				if (dist2 < 200.0f)
+					rating += 0.50f;
+			}
+		}
+	}
+
+	// -----------------------------
+	// Step 7: Threat weighting
+	// -----------------------------
+
+	// 1. Enemy is aiming at you
+	if (enemy->enemy == self && enemy->client)
+	{
+		vec3_t enemyFwd;
+		AngleVectors(enemy->client->ps.viewangles, enemyFwd, nullptr, nullptr);
+
+		vec3_t toSelf;
+		VectorSubtract(self->currentOrigin, enemy->currentOrigin, toSelf);
+		if (SafeNormalize(toSelf) != 0.0f)
+		{
+			float aimDot = SafeDot(enemyFwd, toSelf);
+			if (aimDot > 0.7f)
+				rating += 0.45f;
+		}
+	}
+
+	// 2. Close‑range threat
+	if (dist < 120.0f)
+		rating += 0.35f;
+
+	// 3. Boss / elite priority (rank_t >= RANK_LT)
+	if (enemy->NPC && enemy->NPC->rank >= RANK_LT)
+		rating += 0.50f;
+
+	// 4. Flanking threat (side angles)
+	{
+		float sideDot = SafeDot(forward, dir);
+		if (sideDot < 0.2f && sideDot > -0.3f)
+		{
+			if (dist < 250.0f)
+				rating += 0.30f;
+		}
+	}
+
+	// 5. High‑speed rusher
+	if (enemy->client)
+	{
+		float speed = VectorLength(enemy->client->ps.velocity);
+		if (speed > 200.0f)
+			rating += 0.25f;
+	}
+
 	return rating;
 }
 
-static gentity_t* wp_saber_find_enemy(gentity_t* self, const gentity_t* saber)
+// ======================================================
+// Try a candidate enemy and update best target
+// ======================================================
+static void WP_TrySaberCandidate(
+	gentity_t* self,
+	gentity_t* ent,
+	gentity_t*& best,
+	float& bestRating,
+	const vec3_t& center,
+	const vec3_t& forward,
+	const float   radius)
 {
-	//FIXME: should be a more intelligent way of doing this, like auto aim?
-	//closest, most in front... did damage to... took damage from?  How do we know who the player is focusing on?
-	gentity_t* best_ent = nullptr;
-	gentity_t* entity_list[MAX_GENTITIES];
-	vec3_t center, mins{}, maxs{}, fwdangles{}, forward;
-	constexpr float radius = 400;
-	float best_rating = 0.0f;
+	if (!ent)
+		return;
 
-	//FIXME: no need to do this in 1st person?
-	fwdangles[1] = self->client->ps.viewangles[1];
-	AngleVectors(fwdangles, forward, nullptr, nullptr);
+	if (!WP_SaberValidateEnemy(self, ent))
+		return;
 
+	if (!gi.inPVS(self->currentOrigin, ent->currentOrigin))
+		return;
+
+	if (!G_ClearLOS(self, self->client->renderInfo.eyePoint, ent))
+		return;
+
+	float rating = WP_SaberRateEnemy(
+		self,
+		ent,
+		best,                              // current target
+		self->client->lastSaberTarget,     // last target
+		self->client->lastSaberTargetTime, // last target time
+		center,
+		forward,
+		radius
+	);
+
+	if (rating > bestRating)
+	{
+		best = ent;
+		bestRating = rating;
+	}
+}
+
+// ======================================================
+// Main enemy‑finding function
+// ======================================================
+static gentity_t* WP_SaberFindEnemy(gentity_t* self, const gentity_t* saber)
+{
+	gentity_t* best = nullptr;
+
+	static gentity_t* entity_list[MAX_GENTITIES];
+
+	vec3_t center, mins, maxs, fwdAngles, forward;
+	constexpr float radius = 400.0f;
+	float           bestRating = 0.0f;
+
+	// Forward direction from view yaw
+	VectorSet(fwdAngles, 0.0f, self->client->ps.viewangles[YAW], 0.0f);
+	AngleVectors(fwdAngles, forward, nullptr, nullptr);
+
+	// Search area around saber
 	VectorCopy(saber->currentOrigin, center);
-
 	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = center[i] - radius;
 		maxs[i] = center[i] + radius;
 	}
 
-	//if the saber has an enemy from the last time it looked, init to that one
-	if (wp_saber_validate_enemy(self, saber->enemy))
+	// 1. Saber’s last enemy
+	WP_TrySaberCandidate(self, saber->enemy, best, bestRating, center, forward, radius);
+
+	// 2. Self’s current enemy
+	WP_TrySaberCandidate(self, self->enemy, best, bestRating, center, forward, radius);
+
+	// 3. Nearby entities
+	int count = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+	if (count)
 	{
-		if (gi.inPVS(self->currentOrigin, saber->enemy->currentOrigin))
+		for (int i = 0; i < count; i++)
 		{
-			//potentially visible
-			if (G_ClearLOS(self, self->client->renderInfo.eyePoint, saber->enemy))
-			{
-				//can see him
-				best_ent = saber->enemy;
-				best_rating = WP_SaberRateEnemy(best_ent, center, forward, radius);
-			}
+			gentity_t* ent = entity_list[i];
+			if (ent == self || ent == saber || ent == best)
+				continue;
+
+			WP_TrySaberCandidate(self, ent, best, bestRating, center, forward, radius);
 		}
 	}
 
-	//If I have an enemy, see if that's even better
-	if (wp_saber_validate_enemy(self, self->enemy))
+	// Update last target + timestamp
+	if (best != self->client->lastSaberTarget)
 	{
-		const float my_enemy_rating = WP_SaberRateEnemy(self->enemy, center, forward, radius);
-		if (my_enemy_rating > best_rating)
-		{
-			if (gi.inPVS(self->currentOrigin, self->enemy->currentOrigin))
-			{
-				//potentially visible
-				if (G_ClearLOS(self, self->client->renderInfo.eyePoint, self->enemy))
-				{
-					//can see him
-					best_ent = self->enemy;
-					best_rating = my_enemy_rating;
-				}
-			}
-		}
+		self->client->lastSaberTarget = best;
+		self->client->lastSaberTargetTime = level.time;
 	}
 
-	const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
-
-	if (!num_listed_entities)
-	{
-		//should we clear the enemy?
-		return best_ent;
-	}
-
-	for (int e = 0; e < num_listed_entities; e++)
-	{
-		gentity_t* ent = entity_list[e];
-
-		if (ent == self || ent == saber || ent == best_ent)
-		{
-			continue;
-		}
-		if (!wp_saber_validate_enemy(self, ent))
-		{
-			//doesn't meet criteria of valid look enemy (don't check current since we would have done that before this func's call
-			continue;
-		}
-		if (!gi.inPVS(self->currentOrigin, ent->currentOrigin))
-		{
-			//not even potentially visible
-			continue;
-		}
-		if (!G_ClearLOS(self, self->client->renderInfo.eyePoint, ent))
-		{
-			//can't see him
-			continue;
-		}
-		//rate him based on how close & how in front he is
-		const float rating = WP_SaberRateEnemy(ent, center, forward, radius);
-		if (rating > best_rating)
-		{
-			best_ent = ent;
-			best_rating = rating;
-		}
-	}
-	return best_ent;
+	return best;
 }
 
 static void WP_RunSaber(gentity_t* self, gentity_t* saber)
@@ -8834,14 +9053,14 @@ static void WP_RunSaber(gentity_t* self, gentity_t* saber)
 				&& self->client->ps.saberEntityState == SES_LEAVING)
 			{
 				//max level
-				if (self->enemy && !wp_saber_validate_enemy(self, self->enemy))
+				if (self->enemy && !WP_SaberValidateEnemy(self, self->enemy))
 				{
 					//if my enemy isn't valid to auto-aim at, don't autoaim
 				}
 				else
 				{
 					//pick an enemy
-					enemy = wp_saber_find_enemy(self, saber);
+					enemy = WP_SaberFindEnemy(self, saber);
 					if (enemy)
 					{
 						//home in on enemy
@@ -13814,60 +14033,75 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 
 	if (incoming)
 	{
+		// NPC branch
 		if (self->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(self))
 		{
 			if (Jedi_WaitingAmbush(self))
 			{
 				Jedi_Ambush(self);
 			}
+
+			// Hovering Boba/Mando/RT logic
 			if ((self->client->NPC_class == CLASS_BOBAFETT ||
-				self->client->NPC_class == CLASS_MANDO || self->client->NPC_class == CLASS_ROCKETTROOPER)
-				&& self->client->moveType == MT_FLYSWIM
-				&& incoming->methodOfDeath != MOD_ROCKET_ALT)
+				self->client->NPC_class == CLASS_MANDO ||
+				self->client->NPC_class == CLASS_ROCKETTROOPER) &&
+				self->client->moveType == MT_FLYSWIM &&
+				incoming->methodOfDeath != MOD_ROCKET_ALT)
 			{
-				//a hovering Boba Fett, not a tracking rocket
 				if (!Q_irand(0, 1))
 				{
-					//strafe
 					self->NPC->standTime = 0;
-					self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] = level.time + Q_irand(1000, 2000);
+					self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] =
+						level.time + Q_irand(1000, 2000);
 				}
+
 				if (!Q_irand(0, 1))
 				{
-					//go up/down
 					TIMER_Set(self, "heightChange", Q_irand(1000, 3000));
-					self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] = level.time + Q_irand(1000, 2000);
+					self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] =
+						level.time + Q_irand(1000, 2000);
 				}
 			}
 			else if (jedi_saber_block_go(self, &self->NPC->last_ucmd, nullptr, nullptr, incoming) != EVASION_NONE)
 			{
-				if (self->client->NPC_class != CLASS_ROCKETTROOPER
-					&& self->client->NPC_class != CLASS_BOBAFETT
-					&& self->client->NPC_class != CLASS_MANDO
-					&& self->client->NPC_class != CLASS_REBORN)
+				// NPCs that SHOULD activate saber on block
+				if (self->client->NPC_class != CLASS_ROCKETTROOPER &&
+					self->client->NPC_class != CLASS_BOBAFETT &&
+					self->client->NPC_class != CLASS_MANDO &&
+					self->client->NPC_class != CLASS_REBORN)
 				{
-					//make sure to turn on your saber if it's not on
-					if (self->s.weapon == WP_SABER)
+					// Correct saber activation condition
+					if (self->s.weapon != WP_SABER)
 					{
 						self->client->ps.SaberActivate();
 					}
 				}
 			}
 		}
-		else //player
+		// Player branch
+		else
 		{
+			// Validate ownerNum
+			if (incoming->ownerNum < 0 || incoming->ownerNum >= ENTITYNUM_WORLD)
+				return;
+
 			gentity_t* blocker = &g_entities[incoming->ownerNum];
 
+			// Player saber activation
 			if (self->client && !self->client->ps.SaberActive())
 			{
 				self->client->ps.SaberActivate();
 			}
+
+			// Block logic
 			if (closest_swing_block && blocker->health > 0)
 			{
 				blocker->client->ps.saberBlocked = blockedfor_quad(closest_swing_quad);
 				blocker->client->ps.userInt3 |= 1 << FLAG_PREBLOCK;
 			}
-			else if (blocker->health > 0 && (blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK || blocker->client->ps.ManualBlockingFlags & 1 << MBF_NPCBLOCKING))
+			else if (blocker->health > 0 &&
+				(blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK) ||
+					blocker->client->ps.ManualBlockingFlags & (1 << MBF_NPCBLOCKING)))
 			{
 				wp_saber_block_non_random_missile(blocker, incoming->currentOrigin, qtrue);
 			}
@@ -13876,15 +14110,22 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 				vec3_t diff, start, end;
 				VectorSubtract(incoming->currentOrigin, self->currentOrigin, diff);
 				const float scale = VectorLength(diff);
+
 				VectorNormalize2(incoming->s.pos.trDelta, ent_dir);
 				VectorMA(incoming->currentOrigin, scale, ent_dir, start);
+
 				VectorCopy(self->currentOrigin, end);
 				end[2] += self->maxs[2] * 0.75f;
-				gi.trace(&trace, start, incoming->mins, incoming->maxs, end, incoming->s.number, MASK_SHOT, G2_COLLIDE, 10);
+
+				gi.trace(&trace, start, incoming->mins, incoming->maxs, end,
+					incoming->s.number, MASK_SHOT, G2_COLLIDE, 10);
 
 				jedi_dodge_evasion(self, incoming->owner, &trace, HL_NONE);
 			}
-			if (incoming->owner && incoming->owner->client && (!self->enemy || self->enemy->s.weapon != WP_SABER))
+
+			// Set enemy if appropriate
+			if (incoming->owner && incoming->owner->client &&
+				(!self->enemy || self->enemy->s.weapon != WP_SABER))
 			{
 				self->enemy = incoming->owner;
 				NPC_SetLookTarget(self, incoming->owner->s.number, level.time + 1000);
@@ -13906,250 +14147,248 @@ static void WP_SetSaberMove(const gentity_t* self, const short blocked)
 
 void wp_saber_update(gentity_t* self, const usercmd_t* ucmd)
 {
-	float minsize = 16;
+	float minsize = 16.0f;
 
-	if (!self->client)
-	{
+	if (!self || !self->client)
 		return;
-	}
 
-	if (self->client->ps.saberEntityNum < 0 || self->client->ps.saberEntityNum >= ENTITYNUM_WORLD)
-	{
-		//never got one
+	int saberEntNum = self->client->ps.saberEntityNum;
+	if (saberEntNum < 0 || saberEntNum >= ENTITYNUM_WORLD)
 		return;
-	}
 
-	// Check if we are throwing it, launch it if needed, update position if needed.
+	// Saber throw may change saberEntityNum
 	WP_SaberThrow(self, ucmd);
 
 	if (self->client->ps.saberEntityNum <= 0)
-	{
-		//WTF?!!  We lost it?
 		return;
-	}
 
 	gentity_t* saberent = &g_entities[self->client->ps.saberEntityNum];
 
 	if (self->client->ps.saberBlocked != BLOCKED_NONE)
-	{
-		//we're blocking, increase min size
-		minsize = 32;
-	}
+		minsize = 32.0f;
 
+	// Cinematic fake blocking
 	if (g_in_cinematic_saber_anim(self))
 	{
-		//fake some blocking
 		self->client->ps.saberBlocking = BLK_TIGHT;
+
 		if (self->client->ps.saber[0].Active())
-		{
 			self->client->ps.saber[0].ActivateTrail(150);
-		}
+
 		if (self->client->ps.saber[1].Active())
-		{
 			self->client->ps.saber[1].ActivateTrail(150);
-		}
 	}
 
-	//is our saber in flight?
+	// Saber NOT in flight
 	if (!self->client->ps.saberInFlight)
 	{
-		// It isn't, which means we can update its position as we will.
-		qboolean always_block[MAX_SABERS][MAX_BLADES]{};
+		qboolean always_block[MAX_SABERS][MAX_BLADES] = { 0 };
 		qboolean force_block = qfalse;
 		qboolean no_blocking = qfalse;
 
-		//clear out last frame's numbers
 		VectorClear(saberent->mins);
 		VectorClear(saberent->maxs);
 
 		const Vehicle_t* p_veh = G_IsRidingVehicle(self);
-		if (!self->client->ps.SaberActive()
-			|| !self->client->ps.saberBlocking
-			|| (self->s.number < MAX_CLIENTS || G_ControlledByPlayer(self)) && !manual_saberblocking(self)
-			|| PM_InKnockDown(&self->client->ps)
-			|| PM_SuperBreakLoseAnim(self->client->ps.torsoAnim)
-			|| p_veh && p_veh->m_pVehicleInfo && p_veh->m_pVehicleInfo->type != VH_ANIMAL && p_veh->m_pVehicleInfo->type
-			!= VH_FLIER) //riding a vehicle that you cannot block shots on
+
+		qboolean saberActive = self->client->ps.SaberActive() ? qtrue : qfalse;
+		qboolean hasBlocking = (self->client->ps.saberBlocking != 0) ? qtrue : qfalse;
+		qboolean isPlayer = ((self->s.number < MAX_CLIENTS) || G_ControlledByPlayer(self)) ? qtrue : qfalse;
+		qboolean manualBlockOn = manual_saberblocking(self) ? qtrue : qfalse;
+		qboolean inKnockdown = PM_InKnockDown(&self->client->ps) ? qtrue : qfalse;
+		qboolean inSuperBreakLose = PM_SuperBreakLoseAnim(self->client->ps.torsoAnim) ? qtrue : qfalse;
+
+		qboolean badVehicle =
+			(p_veh &&
+				p_veh->m_pVehicleInfo &&
+				p_veh->m_pVehicleInfo->type != VH_ANIMAL &&
+				p_veh->m_pVehicleInfo->type != VH_FLIER)
+			? qtrue : qfalse;
+
+		if (!saberActive ||
+			!hasBlocking ||
+			(isPlayer && !manualBlockOn) ||
+			inKnockdown ||
+			inSuperBreakLose ||
+			badVehicle)
 		{
-			//can't block if saber isn't on
-			int j;
-			for (int i = 0; i < MAX_SABERS; i++)
+			int i, j;
+			for (i = 0; i < MAX_SABERS; i++)
 			{
-				//initialize to not blocking
-				for (j = 0; j < MAX_BLADES; j++)
-				{
-					always_block[i][j] = qfalse;
-				}
 				if (i > 0 && !self->client->ps.dualSabers)
+					continue;
+
+				saberInfo_t* saber = &self->client->ps.saber[i];
+
+				if (saber->saberFlags2 & SFL2_ALWAYS_BLOCK)
 				{
-					//not using a second saber, leave it not blocking
-				}
-				else
-				{
-					if (self->client->ps.saber[i].saberFlags2 & SFL2_ALWAYS_BLOCK)
+					for (j = 0; j < saber->numBlades; j++)
 					{
-						for (j = 0; j < self->client->ps.saber[i].numBlades; j++)
+						always_block[i][j] = qtrue;
+						force_block = qtrue;
+					}
+				}
+
+				if (saber->bladeStyle2Start > 0)
+				{
+					for (j = saber->bladeStyle2Start; j < saber->numBlades; j++)
+					{
+						if (saber->saberFlags2 & SFL2_ALWAYS_BLOCK2)
 						{
 							always_block[i][j] = qtrue;
 							force_block = qtrue;
 						}
-					}
-					if (self->client->ps.saber[i].bladeStyle2Start > 0)
-					{
-						for (j = self->client->ps.saber[i].bladeStyle2Start; j < self->client->ps.saber[i].numBlades; j
-							++)
+						else
 						{
-							if (self->client->ps.saber[i].saberFlags2 & SFL2_ALWAYS_BLOCK2)
-							{
-								always_block[i][j] = qtrue;
-								force_block = qtrue;
-							}
-							else
-							{
-								always_block[i][j] = qfalse;
-							}
+							always_block[i][j] = qfalse;
 						}
 					}
 				}
 			}
+
 			if (!force_block)
-			{
 				no_blocking = qtrue;
-			}
 			else if (!self->client->ps.saberBlocking)
-			{
-				//turn blocking on!
 				self->client->ps.saberBlocking = BLK_TIGHT;
-			}
 		}
+
 		if (no_blocking)
 		{
 			G_SetOrigin(saberent, self->currentOrigin);
 		}
-		else if (self->client->ps.saberBlocking == BLK_TIGHT || self->client->ps.saberBlocking == BLK_WIDE)
+		else if (self->client->ps.saberBlocking == BLK_TIGHT ||
+			self->client->ps.saberBlocking == BLK_WIDE)
 		{
-			//keep bbox in front of player, even when wide?
 			vec3_t saber_org;
 
-			if (!force_block
-				&& (self->s.number && !Jedi_SaberBusy(self) && !g_saberRealisticCombat->integer
-					|| self->s.number == 0 && self->client->ps.saberBlocking == BLK_WIDE
-					&& (self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK
-						|| self->client->ps.ManualBlockingFlags & 1 << MBF_NPCBLOCKING && self->NPC && !
-						G_ControlledByPlayer(self)
-						|| g_saberAutoBlocking->integer && self->NPC && !G_ControlledByPlayer(self)
-						|| self->client->ps.saberBlockingTime > level.time))
-				&& self->client->ps.weaponTime <= 0
-				&& !g_in_cinematic_saber_anim(self))
+			qboolean saberBusy = Jedi_SaberBusy(self) ? qtrue : qfalse;
+			qboolean realistic = (g_saberRealisticCombat->integer != 0) ? qtrue : qfalse;
+			qboolean holdingBlock = ((self->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+			qboolean npcBlocking = ((self->client->ps.ManualBlockingFlags & (1 << MBF_NPCBLOCKING)) != 0) ? qtrue : qfalse;
+			qboolean isNPC = (self->NPC != NULL) ? qtrue : qfalse;
+			qboolean controlledNPC = (isNPC && !G_ControlledByPlayer(self)) ? qtrue : qfalse;
+			qboolean autoBlockNPC = (g_saberAutoBlocking->integer && controlledNPC) ? qtrue : qfalse;
+			qboolean npcManualBlock = (npcBlocking && controlledNPC) ? qtrue : qfalse;
+			qboolean blockingTime = (self->client->ps.saberBlockingTime > level.time) ? qtrue : qfalse;
+			qboolean attacking = (self->client->ps.weaponTime > 0) ? qtrue : qfalse;
+			qboolean inCinematic = g_in_cinematic_saber_anim(self) ? qtrue : qfalse;
+
+			qboolean fullSizeBlockCondition =
+				(!force_block &&
+					(
+						(self->s.number && !saberBusy && !realistic) ||
+						(self->s.number == 0 &&
+							self->client->ps.saberBlocking == BLK_WIDE &&
+							(holdingBlock ||
+								npcManualBlock ||
+								autoBlockNPC ||
+								blockingTime))
+						) &&
+					!attacking &&
+					!inCinematic)
+				? qtrue : qfalse;
+
+			if (fullSizeBlockCondition)
 			{
-				//full-size blocking for non-attacking player with ManualBlockingFlags & (1 << HOLDINGBLOCK) on
-				vec3_t saberang = { 0, 0, 0 }, fwd;
-				constexpr vec3_t sabermaxs = { 8, 8, 8 };
-				constexpr vec3_t sabermins = { -8, -8, -8 };
+				vec3_t saberang = { 0.0f, 0.0f, 0.0f };
+				vec3_t fwd;
+				static const vec3_t sabermaxs = { 8.0f,  8.0f,  8.0f };
+				static const vec3_t sabermins = { -8.0f, -8.0f, -8.0f };
 
 				saberang[YAW] = self->client->ps.viewangles[YAW];
-				AngleVectors(saberang, fwd, nullptr, nullptr);
+				AngleVectors(saberang, fwd, NULL, NULL);
 
-				VectorMA(self->currentOrigin, 12, fwd, saber_org);
+				VectorMA(self->currentOrigin, 12.0f, fwd, saber_org);
 
 				VectorAdd(self->mins, sabermins, saberent->mins);
 				VectorAdd(self->maxs, sabermaxs, saberent->maxs);
 
 				saberent->contents = CONTENTS_LIGHTSABER;
-
 				G_SetOrigin(saberent, saber_org);
 			}
 			else
 			{
-				int num_sabers = 1;
-				if (self->client->ps.dualSabers)
+				int num_sabers = self->client->ps.dualSabers ? 2 : 1;
+				int saberNum, blade_num, i;
+
+				VectorClear(saberent->mins);
+				VectorClear(saberent->maxs);
+				VectorClear(saber_org);
+
+				for (saberNum = 0; saberNum < num_sabers; saberNum++)
 				{
-					num_sabers = 2;
-				}
-				for (int saberNum = 0; saberNum < num_sabers; saberNum++)
-				{
-					for (int blade_num = 0; blade_num < self->client->ps.saber[saberNum].numBlades; blade_num++)
+					saberInfo_t* saber = &self->client->ps.saber[saberNum];
+
+					for (blade_num = 0; blade_num < saber->numBlades; blade_num++)
 					{
-						vec3_t saber_tip;
-						vec3_t saber_base;
-						if (self->client->ps.saber[saberNum].blade[blade_num].length <= 0.0f)
-						{
-							//don't include blades that are not on...
+						if (saber->blade[blade_num].length <= 0.0f)
 							continue;
-						}
-						if (force_block)
-						{
-							//doing blade-specific bbox-sizing only, see if this blade should be counted
-							if (!always_block[saberNum][blade_num])
-							{
-								//this blade doesn't count right now
-								continue;
-							}
-						}
-						VectorCopy(self->client->ps.saber[saberNum].blade[blade_num].muzzlePoint, saber_base);
-						VectorMA(saber_base, self->client->ps.saber[saberNum].blade[blade_num].length,
-							self->client->ps.saber[saberNum].blade[blade_num].muzzleDir, saber_tip);
-						VectorMA(saber_base, self->client->ps.saber[saberNum].blade[blade_num].length * 0.5,
-							self->client->ps.saber[saberNum].blade[blade_num].muzzleDir, saber_org);
-						for (int i = 0; i < 3; i++)
+
+						if (force_block && !always_block[saberNum][blade_num])
+							continue;
+
+						vec3_t saber_base;
+						vec3_t saber_tip;
+
+						VectorCopy(saber->blade[blade_num].muzzlePoint, saber_base);
+
+						VectorMA(saber_base,
+							saber->blade[blade_num].length,
+							saber->blade[blade_num].muzzleDir,
+							saber_tip);
+
+						VectorMA(saber_base,
+							saber->blade[blade_num].length * 0.5f,
+							saber->blade[blade_num].muzzleDir,
+							saber_org);
+
+						for (i = 0; i < 3; i++)
 						{
 							float new_size_tip = saber_tip[i] - saber_org[i];
-							new_size_tip += new_size_tip >= 0 ? 8 : -8;
 							float new_size_base = saber_base[i] - saber_org[i];
-							new_size_base += new_size_base >= 0 ? 8 : -8;
+
+							new_size_tip += (new_size_tip >= 0.0f) ? 8.0f : -8.0f;
+							new_size_base += (new_size_base >= 0.0f) ? 8.0f : -8.0f;
+
 							if (new_size_tip > saberent->maxs[i])
-							{
 								saberent->maxs[i] = new_size_tip;
-							}
 							if (new_size_base > saberent->maxs[i])
-							{
 								saberent->maxs[i] = new_size_base;
-							}
+
 							if (new_size_tip < saberent->mins[i])
-							{
 								saberent->mins[i] = new_size_tip;
-							}
 							if (new_size_base < saberent->mins[i])
-							{
 								saberent->mins[i] = new_size_base;
-							}
 						}
 					}
 				}
+
 				if (!force_block)
 				{
-					//not doing special "alwaysBlock" bbox
-					if (self->client->ps.weaponTime > 0
-						|| self->s.number
-						|| g_saberAutoBlocking->integer && self->NPC && !G_ControlledByPlayer(self)
-						|| self->client->ps.ManualBlockingFlags & 1 << MBF_NPCBLOCKING && self->NPC && !
-						G_ControlledByPlayer(self)
-						|| self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK
-						|| self->client->ps.saberBlockingTime > level.time)
+					if (attacking ||
+						self->s.number ||
+						autoBlockNPC ||
+						npcManualBlock ||
+						holdingBlock ||
+						blockingTime)
 					{
-						//if attacking or blocking (or an NPC), inflate to a minimum size
-						for (int i = 0; i < 3; i++)
+						for (i = 0; i < 3; i++)
 						{
-							if (saberent->maxs[i] < minsize)
-							{
-								saberent->maxs[i] = minsize;
-							}
-							if (saberent->mins[i] > -minsize)
-							{
-								saberent->mins[i] = -minsize;
-							}
+							if (saberent->maxs[i] < minsize) saberent->maxs[i] = minsize;
+							if (saberent->mins[i] > -minsize) saberent->mins[i] = -minsize;
 						}
 					}
 				}
+
 				saberent->contents = CONTENTS_LIGHTSABER;
 				G_SetOrigin(saberent, saber_org);
 			}
 		}
 		else
 		{
-			// Otherwise there is no blocking possible.
 			G_SetOrigin(saberent, self->currentOrigin);
 		}
+
 		saberent->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
 		gi.linkentity(saberent);
 	}
@@ -14158,78 +14397,101 @@ void wp_saber_update(gentity_t* self, const usercmd_t* ucmd)
 		wp_saber_in_flight_reflect_check(self);
 	}
 
-	if ((d_saberInfo->integer || g_DebugSaberCombat->integer) && !PM_SaberInAttack(self->client->ps.saber_move))
+	if ((d_saberInfo->integer || g_DebugSaberCombat->integer) &&
+		!PM_SaberInAttack(self->client->ps.saber_move))
 	{
-		if (self->NPC && !G_ControlledByPlayer(self)) //NPC only
-		{
-			CG_CubeOutline(saberent->absmin, saberent->absmax, 40,
-				wp_debug_saber_colour(self->client->ps.saber[0].blade[0].color));
-		}
-		else
-		{
-			CG_CubeOutline(saberent->absmin, saberent->absmax, 10,
-				wp_debug_saber_colour(self->client->ps.saber[0].blade[0].color));
-		}
+		int debugTime = (self->NPC && !G_ControlledByPlayer(self)) ? 40 : 10;
+
+		CG_CubeOutline(
+			saberent->absmin,
+			saberent->absmax,
+			debugTime,
+			wp_debug_saber_colour(self->client->ps.saber[0].blade[0].color));
 	}
 }
 
-constexpr auto MAX_RADIUS_ENTS = 256; //NOTE: This can cause entities to be lost;
-qboolean G_CheckEnemyPresence(const gentity_t* ent, const int dir, const float radius, const float tolerance)
+constexpr int MAX_RADIUS_ENTS = 256;
+
+qboolean G_CheckEnemyPresence(const gentity_t* ent, int dir, float radius, float tolerance)
 {
-	gentity_t* radius_ents[MAX_RADIUS_ENTS];
-	vec3_t mins{}, maxs{};
-	vec3_t check_dir;
-	int i;
+	if (!ent || !ent->inuse)
+		return qfalse;
+
+	// ----------------------------------------------------
+	// Compute direction vector
+	// ----------------------------------------------------
+	vec3_t check_dir = { 0 };
 
 	switch (dir)
 	{
 	case DIR_RIGHT:
 		AngleVectors(ent->currentAngles, nullptr, check_dir, nullptr);
 		break;
+
 	case DIR_LEFT:
 		AngleVectors(ent->currentAngles, nullptr, check_dir, nullptr);
-		VectorScale(check_dir, -1, check_dir);
+		VectorScale(check_dir, -1.0f, check_dir);
 		break;
+
 	case DIR_FRONT:
 		AngleVectors(ent->currentAngles, check_dir, nullptr, nullptr);
 		break;
+
 	case DIR_BACK:
 		AngleVectors(ent->currentAngles, check_dir, nullptr, nullptr);
-		VectorScale(check_dir, -1, check_dir);
+		VectorScale(check_dir, -1.0f, check_dir);
 		break;
-	default:;
-	}
-	//Get all ents in range, see if they're living clients and enemies, then check dot to them...
 
-	//Setup the bbox to search in
-	for (i = 0; i < 3; i++)
+	default:
+		return qfalse;
+	}
+
+	// NaN guard
+	if (check_dir[0] != check_dir[0])
+		return qfalse;
+
+	// ----------------------------------------------------
+	// Build bounding box
+	// ----------------------------------------------------
+	vec3_t mins, maxs;
+	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = ent->currentOrigin[i] - radius;
 		maxs[i] = ent->currentOrigin[i] + radius;
 	}
 
-	//Get a number of entities in a given space
-	const int num_ents = gi.EntitiesInBox(mins, maxs, radius_ents, MAX_RADIUS_ENTS);
+	// ----------------------------------------------------
+	// Query entities
+	// ----------------------------------------------------
+	gentity_t* ents[MAX_RADIUS_ENTS];
+	const int num = gi.EntitiesInBox(mins, maxs, ents, MAX_RADIUS_ENTS);
 
-	for (i = 0; i < num_ents; i++)
+	// If we hit the cap, entities may have been dropped.
+	// Treat this as "enemy presence likely".
+	if (num == MAX_RADIUS_ENTS)
+		return qtrue;
+
+	// ----------------------------------------------------
+	// Check each entity
+	// ----------------------------------------------------
+	for (int i = 0; i < num; i++)
 	{
-		vec3_t dir2_check_ent;
-		//Don't consider self
-		if (radius_ents[i] == ent)
+		gentity_t* other = ents[i];
+
+		if (other == ent)
 			continue;
 
-		//Must be valid
-		if (G_ValidEnemy(ent, radius_ents[i]) == qfalse)
+		if (!G_ValidEnemy(ent, other))
 			continue;
 
-		VectorSubtract(radius_ents[i]->currentOrigin, ent->currentOrigin, dir2_check_ent);
-		const float dist = VectorNormalize(dir2_check_ent);
-		if (dist <= radius
-			&& DotProduct(dir2_check_ent, check_dir) >= tolerance)
-		{
-			//stop on the first one
+		// Compute direction to entity
+		vec3_t delta, dir_to_ent;
+		VectorSubtract(other->currentOrigin, ent->currentOrigin, delta);
+
+		float dist = VectorNormalize2(delta, dir_to_ent);
+
+		if (dist <= radius && DotProduct(dir_to_ent, check_dir) >= tolerance)
 			return qtrue;
-		}
 	}
 
 	return qfalse;

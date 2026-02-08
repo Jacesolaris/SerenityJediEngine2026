@@ -182,12 +182,14 @@ set_target_properties(${MPRend2} PROPERTIES PROJECT_LABEL "MP Rend2 Renderer")
 target_link_libraries(${MPRend2} ${MPRend2Libraries})
 target_include_directories(${MPRend2} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
+set_source_files_properties(../win32/iconmp_glsl.rc PROPERTIES LANGUAGE RC)
 # GLSL shader file generator
 add_executable(SerenityJediEngine2026_glsl_mp
 	${MPDir}/rd-rend2/glsl/compact.cpp
 	${MPDir}/rd-rend2/tr_allocator.cpp
 	${MPDir}/rd-rend2/tr_allocator.h
 	${MPDir}/rd-rend2/tr_glsl_parse.cpp)
+target_sources(SerenityJediEngine2026_glsl_mp PRIVATE ../win32/iconmp_glsl.rc)
 target_compile_definitions(SerenityJediEngine2026_glsl_mp PRIVATE "GLSL_BUILDTOOL" "NOMINMAX")
 if (NOT WIN32 AND NOT APPLE)
 	target_compile_definitions(SerenityJediEngine2026_glsl_mp PRIVATE "ARCH_STRING=\"${Architecture}\"")

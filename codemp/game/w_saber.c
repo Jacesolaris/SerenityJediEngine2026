@@ -11832,7 +11832,6 @@ void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd)
 
 								if (grappler->health > 0)
 								{ //if still alive knock them down
-
 									//grappler->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
 									//No more Yeeting them across the map
 									G_Knockdown(grappler, self, tossDir, 100, qtrue);

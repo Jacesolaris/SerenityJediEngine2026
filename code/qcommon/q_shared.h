@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -65,15 +65,16 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif // !JK2_MODE
 
 #if JK2_MODE
-#define PRODUCT_NAME			"SerenityJediEngineJO2026-SP"
+#define PRODUCT_NAME		 "SerenityJediEngineJO2026-SP"
 
-#define CLIENT_WINDOW_TITLE "SerenityJediEngineJO2026 (SP)"
+#define CLIENT_WINDOW_TITLE  "SerenityJediEngineJO2026 (SP)"
 #define CLIENT_CONSOLE_TITLE "SerenityJediEngineJO2026 Console (SP)"
-#define HOMEPATH_NAME_UNIX "SerenityJediEngineJO2026"
-#define HOMEPATH_NAME_WIN "SerenityJediEngineJO2026"
+#define HOMEPATH_NAME_UNIX   "SerenityJediEngineJO2026"
+#define HOMEPATH_NAME_WIN    "SerenityJediEngineJO2026"
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 #else
-#define PRODUCT_NAME			"SerenityJediEngine2026-SP"
+
+#define PRODUCT_NAME         "SerenityJediEngine2026-SP"
 
 constexpr auto CLIENT_WINDOW_TITLE = "SerenityJediEngine2026 (SP)";
 constexpr auto CLIENT_CONSOLE_TITLE = "SerenityJediEngine2026 Console (SP)";
@@ -652,8 +653,7 @@ constexpr auto KEYCATCH_UI = 2;
 constexpr auto MAX_CLIENTS = 1; // 128		// absolute limit;
 constexpr auto MAX_TERRAINS = 1; //32;
 
-constexpr auto GENTITYNUM_BITS = 12;
-//10		// don't need to send any more //serenity does, got this from doom 3 code and it works hey hey;
+constexpr auto GENTITYNUM_BITS = 10;// don't need to send any more
 #define	MAX_GENTITIES		(1<<GENTITYNUM_BITS)
 
 // entity_nums are communicated with GENTITY_BITS, so any reserved

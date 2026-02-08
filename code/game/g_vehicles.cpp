@@ -2153,7 +2153,7 @@ static bool UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, usercmd_t* pUmcd)
 	}
 
 	return true;
-}
+	}
 
 // Attachs all the riders of this vehicle to their appropriate tag (*driver, *pass1, *pass2, whatever...).
 static void AttachRiders(Vehicle_t * p_veh)

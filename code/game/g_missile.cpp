@@ -42,6 +42,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifdef _DEBUG
 #include <float.h>
 #endif //_DEBUG
+#include <qcommon\q_shared.h>
+#include "weapons.h"
 
 constexpr auto TASER_DAMAGE = 20;
 extern cvar_t* g_DebugSaberCombat;

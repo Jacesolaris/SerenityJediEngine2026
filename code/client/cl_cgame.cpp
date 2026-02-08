@@ -32,6 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "vmachine.h"
 #include "qcommon/stringed_ingame.h"
 #include "sys/sys_loadlib.h"
+#include <ghoul2/G2.h>
 
 vm_t cgvm;
 /*
@@ -41,6 +42,7 @@ Ghoul2 Insert Start
 #if !defined(G2_H_INC)
 #include "../ghoul2/G2.h"
 #endif
+#include <qcommon/q_shared.h>
 
 /*
 Ghoul2 Insert End

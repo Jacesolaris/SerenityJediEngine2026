@@ -1873,138 +1873,146 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 	{
 		client->timeResidual -= 1000;
 
-		// if out of trip mines or thermals, remove them from weapon selection
+		/* ---------------------------------------------------------
+		   WEAPON REMOVAL WHEN OUT OF AMMO
+		--------------------------------------------------------- */
 		if (client->ps.ammo[AMMO_THERMAL] == 0)
-		{
 			client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_THERMAL);
-		}
 
 		if (client->ps.ammo[AMMO_TRIPMINE] == 0)
-		{
 			client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_TRIP_MINE);
-		}
 
+		/* ---------------------------------------------------------
+		   WEAPON USAGE STATS
+		--------------------------------------------------------- */
 		if (ent->s.weapon != WP_NONE)
+			client->sess.missionStats.weaponUsed[ent->s.weapon]++;
+
+		/* ---------------------------------------------------------
+		   ARMOR REGEN (players only)
+		--------------------------------------------------------- */
+		if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) &&
+			ent->client->NPC_class != CLASS_GALAKMECH &&
+			client->ps.forcePowerLevel[FP_PROTECT] > FORCE_LEVEL_2 &&
+			client->ps.forceRageRecoveryTime < level.time &&
+			!(client->ps.forcePowersActive & (1 << FP_RAGE)))
 		{
-			ent->client->sess.missionStats.weaponUsed[ent->s.weapon]++;
+			if (client->ps.stats[STAT_ARMOR] < client->ps.stats[STAT_MAX_HEALTH])
+				client->ps.stats[STAT_ARMOR]++;
 		}
 
-		if (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent))
+		/* ---------------------------------------------------------
+		   HEALTH REGEN (force heal)
+		--------------------------------------------------------- */
+		if (!PM_SaberInAttack(client->ps.saber_move) &&
+			!(client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) &&
+			!client->poisonTime &&
+			!client->stunTime &&
+			!client->AmputateTime &&
+			client->ps.forcePowerLevel[FP_HEAL] > FORCE_LEVEL_2 &&
+			client->ps.forceRageRecoveryTime < level.time &&
+			!(client->ps.forcePowersActive & (1 << FP_RAGE)))
 		{
-			if (ent->client->NPC_class != CLASS_GALAKMECH
-				&& ent->client->ps.forcePowerLevel[FP_PROTECT] > FORCE_LEVEL_2
-				&& ent->client->ps.forceRageRecoveryTime < level.time
-				&& !(ent->client->ps.forcePowersActive & 1 << FP_RAGE))
-			{
-				if (client->ps.stats[STAT_ARMOR] < client->ps.stats[STAT_MAX_HEALTH])
-				{
-					client->ps.stats[STAT_ARMOR]++;
-				}
-			}
-		}
-
-		if (!PM_SaberInAttack(ent->client->ps.saber_move)
-			&& !(ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK)
-			&& !ent->client->poisonTime
-			&& !ent->client->stunTime
-			&& !ent->client->AmputateTime
-			&& ent->client->ps.forcePowerLevel[FP_HEAL] > FORCE_LEVEL_2
-			&& ent->client->ps.forceRageRecoveryTime < level.time
-			&& !(ent->client->ps.forcePowersActive & 1 << FP_RAGE))
-		{
-			//you heal 1 hp every 1 second.
 			if (ent->health < client->ps.stats[STAT_MAX_HEALTH])
-			{
 				ent->health++;
-			}
 		}
-		// count down armor when over max
+
+		/* ---------------------------------------------------------
+		   ARMOR / HEALTH DECAY WHEN ABOVE MAX
+		--------------------------------------------------------- */
 		if (client->ps.stats[STAT_ARMOR] > client->ps.stats[STAT_MAX_HEALTH])
-		{
 			client->ps.stats[STAT_ARMOR]--;
-		}
 
 		if (ent->flags & FL_OVERCHARGED_HEALTH)
 		{
-			//need to gradually reduce health back to max
-			if (ent->health > ent->client->ps.stats[STAT_MAX_HEALTH])
+			if (ent->health > client->ps.stats[STAT_MAX_HEALTH])
 			{
-				//decrement it
 				ent->health--;
-				ent->client->ps.stats[STAT_HEALTH] = ent->health;
+				client->ps.stats[STAT_HEALTH] = ent->health;
 			}
 			else
 			{
-				//done
 				ent->flags &= ~FL_OVERCHARGED_HEALTH;
 			}
 		}
 
-		if (!(ent->client->ps.pm_flags & PMF_ATTACK_HELD) && !(ent->client->ps.pm_flags & PMF_ALT_ATTACK_HELD))
+		/* ---------------------------------------------------------
+		   BLASTER FATIGUE REGEN
+		--------------------------------------------------------- */
+		if (!(client->ps.pm_flags & PMF_ATTACK_HELD) &&
+			!(client->ps.pm_flags & PMF_ALT_ATTACK_HELD) &&
+			client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_MIN &&
+			client->ps.weaponTime < 1)
 		{
-			if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_MIN && ent->client->ps.weaponTime < 1)
-			{
-				if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
-				{
-					WP_BlasterFatigueRegenerate(4);
-				}
-				else
-				{
-					WP_BlasterFatigueRegenerate(1);
-				}
-			}
+			if (client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
+				WP_BlasterFatigueRegenerate(4);
+			else
+				WP_BlasterFatigueRegenerate(1);
 		}
 
-		if (ent->client->ps.forcePowersActive & 1 << FP_SEE)
-		{
-			bg_reduce_blaster_mishap_level_advanced(&ent->client->ps);
-		}
+		/* ---------------------------------------------------------
+		   FORCE SENSE — reduces blaster mishap
+		--------------------------------------------------------- */
+		if (client->ps.forcePowersActive & (1 << FP_SEE))
+			bg_reduce_blaster_mishap_level_advanced(&client->ps);
 
-		if (ent->client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE
-			&& (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) // player
-			&& !BG_InSlowBounce(&ent->client->ps)
-			&& !PM_SaberInBrokenParry(ent->client->ps.saber_move)
-			&& !PM_SaberInAttackPure(ent->client->ps.saber_move)
-			&& !PM_SaberInAttack(ent->client->ps.saber_move)
-			&& !PM_SaberInTransitionAny(ent->client->ps.saber_move)
-			&& !PM_InKnockDown(&ent->client->ps)
-			&& ent->client->ps.saberLockTime < level.time
-			&& ent->client->ps.saberBlockingTime < level.time
-			&& ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+		/* ---------------------------------------------------------
+		   SABER FATIGUE REGEN (players)
+		--------------------------------------------------------- */
+		if (client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE &&
+			(ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) &&
+			!BG_InSlowBounce(&client->ps) &&
+			!PM_SaberInBrokenParry(client->ps.saber_move) &&
+			!PM_SaberInAttackPure(client->ps.saber_move) &&
+			!PM_SaberInAttack(client->ps.saber_move) &&
+			!PM_SaberInTransitionAny(client->ps.saber_move) &&
+			!PM_InKnockDown(&client->ps) &&
+			client->ps.saberLockTime < level.time &&
+			client->ps.saberBlockingTime < level.time &&
+			client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
-			if (!(ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
-			{
+			if (!(client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)))
 				WP_SaberFatigueRegenerate(1);
-			}
 		}
-		else if (ent->client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE
-			&& (ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(ent)) //npc
-			&& !BG_InSlowBounce(&ent->client->ps)
-			&& !PM_SaberInBrokenParry(ent->client->ps.saber_move)
-			&& !PM_SaberInAttackPure(ent->client->ps.saber_move)
-			&& !PM_SaberInAttack(ent->client->ps.saber_move)
-			&& !PM_SaberInTransitionAny(ent->client->ps.saber_move)
-			&& !PM_InKnockDown(&ent->client->ps)
-			&& ent->client->ps.saberLockTime < level.time
-			&& ent->client->ps.saberBlockingTime < level.time
-			&& ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+		/* ---------------------------------------------------------
+		   SABER FATIGUE REGEN (NPCs)
+		--------------------------------------------------------- */
+		else if (client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE &&
+			ent->s.clientNum >= MAX_CLIENTS &&
+			!G_ControlledByPlayer(ent) &&
+			!BG_InSlowBounce(&client->ps) &&
+			!PM_SaberInBrokenParry(client->ps.saber_move) &&
+			!PM_SaberInAttackPure(client->ps.saber_move) &&
+			!PM_SaberInAttack(client->ps.saber_move) &&
+			!PM_SaberInTransitionAny(client->ps.saber_move) &&
+			!PM_InKnockDown(&client->ps) &&
+			client->ps.saberLockTime < level.time &&
+			client->ps.saberBlockingTime < level.time &&
+			client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
 			WP_SaberFatigueRegenerate(1);
 		}
 
-		if (ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(ent)
-			&& ent->client->ps.blockPoints < BLOCK_POINTS_MAX)
+		/* ---------------------------------------------------------
+		   NPC BLOCK POINTS REGEN
+		--------------------------------------------------------- */
+		if (ent->s.clientNum >= MAX_CLIENTS &&
+			!G_ControlledByPlayer(ent) &&
+			client->ps.blockPoints < BLOCK_POINTS_MAX)
 		{
-			if (!PM_SaberInMassiveBounce(ent->client->ps.torsoAnim)
-				&& !BG_InSlowBounce(&ent->client->ps)
-				&& !PM_InKnockDown(&ent->client->ps)
-				&& !PM_SaberInBrokenParry(ent->client->ps.saber_move)
-				&& ent->client->ps.saberBlockingTime < level.time) // npc, dont auto regen bp if doing this
+			if (!PM_SaberInMassiveBounce(client->ps.torsoAnim) &&
+				!BG_InSlowBounce(&client->ps) &&
+				!PM_InKnockDown(&client->ps) &&
+				!PM_SaberInBrokenParry(client->ps.saber_move) &&
+				client->ps.saberBlockingTime < level.time)
 			{
-				ent->client->ps.blockPoints++;
+				client->ps.blockPoints++;
 			}
 		}
 
+		/* ---------------------------------------------------------
+		   STATUS EFFECTS
+		--------------------------------------------------------- */
 		Player_CheckBurn(ent);
 		Player_CheckFreeze(ent);
 	}
@@ -2278,7 +2286,6 @@ static void WP_SP_SaberDeactivateWithSound(gentity_t* ent)
 	ent->client->ps.SaberDeactivate();
 }
 
-
 // ============================================================
 // Helper: Knockdown + drain + fatigue + punch sound
 // ============================================================
@@ -2313,7 +2320,6 @@ static void WP_SP_KnockdownAndDrain(
 	WP_SP_SaberDeactivateWithSound(hit_ent);
 }
 
-
 // ============================================================
 // FINAL OPTIMIZED FUNCTION
 // ============================================================
@@ -2338,7 +2344,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	const qboolean isNPC =
 		(qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
 
-
 	// ============================================================
 	// 1. PLAYER ABSORB (manual block)
 	// ============================================================
@@ -2355,7 +2360,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 		return qtrue;
 	}
-
 
 	// ============================================================
 	// 2. NPC ABSORB
@@ -2381,7 +2385,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 		return qtrue;
 	}
-
 
 	// ============================================================
 	// 3. NON‑ABSORB: ACTUAL HIT REACTIONS
@@ -2411,7 +2414,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		return qtrue;
 	}
 
-
 	// -------------------------
 	// Wookie slap / Tusken lunge
 	// -------------------------
@@ -2424,7 +2426,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 
 		return qtrue;
 	}
-
 
 	// -------------------------
 	// Front kick (A7_KICK_F / F2 / Tusken attacks)
@@ -2462,7 +2463,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		return qtrue;
 	}
 
-
 	// -------------------------
 	// Roundhouse (A7_KICK_B)
 	// -------------------------
@@ -2474,7 +2474,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 
 		return qtrue;
 	}
-
 
 	// -------------------------
 	// Backkick (B2)
@@ -2496,7 +2495,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		return qtrue;
 	}
 
-
 	// -------------------------
 	// Backkick (B3)
 	// -------------------------
@@ -2517,7 +2515,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		return qtrue;
 	}
 
-
 	// -------------------------
 	// Side kicks (R / L)
 	// -------------------------
@@ -2530,7 +2527,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 
 		return qtrue;
 	}
-
 
 	// -------------------------
 	// Right slap
@@ -2553,7 +2549,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		return qtrue;
 	}
 
-
 	// -------------------------
 	// Left slap
 	// -------------------------
@@ -2575,7 +2570,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		return qtrue;
 	}
 
-
 	// -------------------------
 	// Hilt bash
 	// -------------------------
@@ -2592,7 +2586,6 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 
 		return qtrue;
 	}
-
 
 	// -------------------------
 	// Default fallback

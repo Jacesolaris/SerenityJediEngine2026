@@ -3697,8 +3697,9 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 	case BOTH_LEDGE_HOLD:
 		VectorClear(ps->velocity);
 		return;
+
 	case BOTH_LEDGE_LEFT:
-		if (animationpoint > .333 && animationpoint < .666)
+		if (animationpoint > .333f && animationpoint < .666f)
 		{
 			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
 			AngleVectors(fwdAngles, NULL, moveDir, NULL);
@@ -3710,8 +3711,9 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 			VectorClear(ps->velocity);
 		}
 		break;
+
 	case BOTH_LEDGE_RIGHT:
-		if (animationpoint > .333 && animationpoint < .666)
+		if (animationpoint > .333f && animationpoint < .666f)
 		{
 			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
 			AngleVectors(fwdAngles, NULL, moveDir, NULL);
@@ -3723,26 +3725,46 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 			VectorClear(ps->velocity);
 		}
 		break;
+
 	case BOTH_LEDGE_MERCPULL:
-		if (animationpoint > .8 && animationpoint < .925)
+		if (animationpoint > .8f && animationpoint < .925f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 154;
+			float t = (animationpoint - .8f) / .125f; // 0 ? 1
+			float animWeight = 1.0f - t;
+			float physWeight = t;
+
+			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, moveDir, NULL, NULL);
+
+			vec3_t animVel, physVel;
+
+			// animation-driven forward push
+			VectorScale(moveDir, 30, animVel);
+			animVel[2] = 154;
+
+			// physics-driven "step up"
+			physVel[0] = moveDir[0] * 20;
+			physVel[1] = moveDir[1] * 20;
+			physVel[2] = 200;
+
+			// blend them
+			ps->velocity[0] = animVel[0] * animWeight + physVel[0] * physWeight;
+			ps->velocity[1] = animVel[1] * animWeight + physVel[1] * physWeight;
+			ps->velocity[2] = animVel[2] * animWeight + physVel[2] * physWeight;
 		}
-		else if (animationpoint > .7 && animationpoint < .75)
+		else if (animationpoint > .7f && animationpoint < .75f)
 		{
 			ps->velocity[0] = 0;
 			ps->velocity[1] = 0;
 			ps->velocity[2] = 26;
 		}
-		else if (animationpoint > .375 && animationpoint < .7)
+		else if (animationpoint > .375f && animationpoint < .7f)
 		{
 			ps->velocity[0] = 0;
 			ps->velocity[1] = 0;
 			ps->velocity[2] = 140;
 		}
-		else if (animationpoint < .375)
+		else if (animationpoint < .375f)
 		{
 			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
 			AngleVectors(fwdAngles, moveDir, NULL, NULL);
@@ -3754,8 +3776,10 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 			VectorClear(ps->velocity);
 		}
 		break;
+
 	default:
 		VectorClear(ps->velocity);
+		break;
 	}
 }
 

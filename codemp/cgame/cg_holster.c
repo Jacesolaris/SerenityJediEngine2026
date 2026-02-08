@@ -1,4 +1,5 @@
 #include "cg_local.h"
+#include <qcommon/q_shared.h>
 
 extern int BG_SiegeGetPairedValue(const char* buf, char* key, char* outbuf);
 extern int BG_SiegeGetValueGroup(const char* buf, char* group, char* outbuf);
@@ -22,7 +23,9 @@ stringID_table_t holsterTypeTable[] =
 	ENUM2STRING(HLR_REPEATER), //repeater
 	ENUM2STRING(HLR_FLECHETTE), //flechette
 	ENUM2STRING(HLR_DISRUPTOR), //disruptor
-	ENUM2STRING(MAX_HOLSTER)
+	ENUM2STRING(MAX_HOLSTER),
+
+	{ NULL, 0 }   // <-- REQUIRED TERMINATOR
 };
 
 stringID_table_t holsterBoneTable[] =

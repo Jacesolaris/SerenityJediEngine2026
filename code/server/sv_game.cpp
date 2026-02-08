@@ -31,6 +31,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../client/vmachine.h"
 #include "../client/client.h"
 #include "qcommon/ojk_saved_game.h"
+#include <ghoul2/G2.h>
 /*#include "..\renderer\tr_local.h"
 #include "..\renderer\tr_WorldEffects.h"*/
 /*
@@ -39,6 +40,10 @@ Ghoul2 Insert Start
 #if !defined(G2_H_INC)
 #include "../ghoul2/G2.h"
 #endif
+#include <qcommon/q_shared.h>
+#include <cstdarg>
+#include <qcommon/q_string.h>
+#include <cassert>
 
 /*
 Ghoul2 Insert End
@@ -93,7 +98,7 @@ SV_GameSendServerCommand
 Sends a command string to a client
 ===============
 */
-void SV_GameSendServerCommand(const int clientNum, const char* fmt, ...)
+static void SV_GameSendServerCommand(const int clientNum, const char* fmt, ...)
 {
 	char msg[8192];
 	va_list argptr;
@@ -905,7 +910,7 @@ Init the game subsystem for a new map
 */
 void SV_InitGameProgs()
 {
-	game_import_t import;
+	game_import_t import{};
 	int i;
 
 	// unload anything we have now
@@ -1082,6 +1087,7 @@ import.WE_SetTempGlobalFogColor = SV_WE_SetTempGlobalFogColor;
 		Com_Error(ERR_DROP, "Failed to load %s library", gamename);
 	}
 
+	// quick sanity checks on the exported API before proceeding
 	if (ge->apiversion != GAME_API_VERSION)
 	{
 		int apiVersion = ge->apiversion;
@@ -1089,22 +1095,41 @@ import.WE_SetTempGlobalFogColor = SV_WE_SetTempGlobalFogColor;
 		Com_Error(ERR_DROP, "game is version %i, not %i", apiVersion, GAME_API_VERSION);
 	}
 
-	//hook up the client while we're here
-	if (!CL_InitCGameVM(gameLibrary))
+	if (!ge->Init || !ge->RunFrame || ge->gentitySize <= 0)
 	{
+		// This gives a clear log if the game DLL doesn't export the functions we expect,
+		// or if the API struct looks malformed (possible ABI/export mismatch).
 		Sys_UnloadDll(gameLibrary);
-		Com_Error(ERR_DROP, "Failed to load client game functions");
+		Com_Error(ERR_DROP, "Game DLL appears invalid or incompatible (missing exports or bad gentitySize)");
 	}
 
+	// Hook up the client VM (cgame). If this fails we must NOT call into ge->Init.
+	if (!CL_InitCGameVM(gameLibrary))
+	{
+		// If CL_InitCGameVM can provide an error string, log it here.
+		// For now, record a helpful message to make it clear where the failure occurred.
+		Sys_UnloadDll(gameLibrary);
+		Com_Error(ERR_DROP, "Failed to load client game functions (CL_InitCGameVM failed)");
+		return; // defensive, although Com_Error should not return
+	}
+
+	// capture entity parsing pointer
 	sv.entityParsePoint = CM_EntityString();
 
 	// use the current msec count for a random seed
 	Z_TagFree(TAG_G_ALLOC);
-	ge->Init(sv_mapname->string, sv_spawntarget->string, sv_mapChecksum->integer, CM_EntityString(), sv.time,
-		com_frameTime, Com_Milliseconds(), e_saved_game_just_loaded, qbLoadTransition);
 
-	// clear all gentity pointers that might still be set from
-	// a previous level
+	// Final sanity: ensure entity string and mapname are valid
+	if (!sv_mapname || !sv_mapname->string || !CM_EntityString())
+	{
+		Sys_UnloadDll(gameLibrary);
+		Com_Error(ERR_DROP, "SV_InitGameProgs: invalid map or entity data");
+	}
+
+	// call into game Init - after we've validated the exports and cgame init succeeded.
+	ge->Init(sv_mapname->string, sv_spawntarget->string, sv_mapChecksum->integer, CM_EntityString(), sv.time, com_frameTime, Com_Milliseconds(), e_saved_game_just_loaded, qbLoadTransition);
+
+	// clear all gentity pointers that might still be set from a previous level
 	for (i = 0; i < 1; i++)
 	{
 		svs.clients[i].gentity = nullptr;

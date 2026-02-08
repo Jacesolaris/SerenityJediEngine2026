@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
@@ -39,6 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifdef _DEBUG
 #include <float.h>
 #endif
+#include "surfaceflags.h"
 
 extern int eventClearTime;
 /*
@@ -940,88 +941,86 @@ G_ClearLOS
 -------------------------
 */
 
-// Position to position
+// ======================================================
+// Position → Position (HEAVY VERSION — MUST NOT INLINE)
+// ======================================================
+__declspec(noinline)
 qboolean G_ClearLOS(gentity_t* self, const vec3_t start, const vec3_t end)
 {
 	trace_t tr;
 	int traceCount = 0;
 
-	//FIXME: ENTITYNUM_NONE ok?
 	gi.trace(&tr, start, nullptr, nullptr, end, ENTITYNUM_NONE,
-		CONTENTS_OPAQUE/*CONTENTS_SOLID*//*(CONTENTS_SOLID|CONTENTS_MONSTERCLIP)*/, static_cast<EG2_Collision>(0),
-		0);
-	while (tr.fraction < 1.0 && traceCount < 3)
+		CONTENTS_OPAQUE, static_cast<EG2_Collision>(0), 0);
+
+	while (tr.fraction < 1.0f && traceCount < 3)
 	{
-		//can see through 3 panes of glass
 		if (tr.entityNum < ENTITYNUM_WORLD)
 		{
-			if (&g_entities[tr.entityNum] != nullptr && g_entities[tr.entityNum].svFlags & SVF_GLASS_BRUSH)
+			if (&g_entities[tr.entityNum] != nullptr &&
+				(g_entities[tr.entityNum].svFlags & SVF_GLASS_BRUSH))
 			{
-				//can see through glass, trace again, ignoring me
-				gi.trace(&tr, tr.endpos, nullptr, nullptr, end, tr.entityNum, MASK_OPAQUE,
-					static_cast<EG2_Collision>(0), 0);
+				gi.trace(&tr, tr.endpos, nullptr, nullptr, end, tr.entityNum,
+					MASK_OPAQUE, static_cast<EG2_Collision>(0), 0);
+
 				traceCount++;
 				continue;
 			}
 		}
+
 		return qfalse;
 	}
 
-	if (tr.fraction == 1.0)
-		return qtrue;
-
-	return qfalse;
+	return (tr.fraction == 1.0f) ? qtrue : qfalse;
 }
 
-//Entity to position
+// ======================================================
+// Entity → Position
+// ======================================================
 qboolean G_ClearLOS(gentity_t* self, const gentity_t* ent, const vec3_t end)
 {
 	vec3_t eyes;
-
 	CalcEntitySpot(ent, SPOT_HEAD_LEAN, eyes);
-
 	return G_ClearLOS(self, eyes, end);
 }
 
-//Position to entity
+// ======================================================
+// Position → Entity
+// ======================================================
 qboolean G_ClearLOS(gentity_t* self, const vec3_t start, const gentity_t* ent)
 {
 	vec3_t spot;
 
-	//Look for the chest first
+	// Chest
 	CalcEntitySpot(ent, SPOT_ORIGIN, spot);
-
 	if (G_ClearLOS(self, start, spot))
 		return qtrue;
 
-	//Look for the head next
+	// Head
 	CalcEntitySpot(ent, SPOT_HEAD_LEAN, spot);
-
 	if (G_ClearLOS(self, start, spot))
 		return qtrue;
 
 	return qfalse;
 }
 
-//NPC's eyes to entity
+// ======================================================
+// NPC Eyes → Entity
+// ======================================================
 qboolean G_ClearLOS(gentity_t* self, const gentity_t* ent)
 {
 	vec3_t eyes;
-
-	//Calculate my position
 	CalcEntitySpot(self, SPOT_HEAD_LEAN, eyes);
-
 	return G_ClearLOS(self, eyes, ent);
 }
 
-//NPC's eyes to position
+// ======================================================
+// NPC Eyes → Position
+// ======================================================
 qboolean G_ClearLOS(gentity_t* self, const vec3_t end)
 {
 	vec3_t eyes;
-
-	//Calculate the my position
 	CalcEntitySpot(self, SPOT_HEAD_LEAN, eyes);
-
 	return G_ClearLOS(self, eyes, end);
 }
 

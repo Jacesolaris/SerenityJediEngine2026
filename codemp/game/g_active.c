@@ -1231,135 +1231,155 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 {
 	gclient_t* client = ent->client;
 	client->timeResidual += msec;
-	int clientNum = ent - g_entities;
+	const int clientNum = ent - g_entities;
 
 	while (client->timeResidual >= 1000)
 	{
 		client->timeResidual -= 1000;
 
-		// if out of trip mines or thermals, remove them from weapon selection
+		/* ---------------------------------------------------------
+		   WEAPON REMOVAL WHEN OUT OF AMMO
+		--------------------------------------------------------- */
 		if (client->ps.ammo[AMMO_THERMAL] == 0)
-		{
 			client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_THERMAL);
-		}
 
 		if (client->ps.ammo[AMMO_TRIPMINE] == 0)
-		{
 			client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_TRIP_MINE);
-		}
 
+		/* ---------------------------------------------------------
+		   PASSIVE HEALING / ARMOR REGEN (non-bots only)
+		--------------------------------------------------------- */
 		if (!(ent->r.svFlags & SVF_BOT) &&
-			!PM_SaberInAttack(ent->client->ps.saber_move)
-			&& !(ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK)
-			&& !ent->client->poisonTime
-			&& !ent->client->stunTime
-			&& !ent->client->AmputateTime
-			&& ent->client->NPC_class != CLASS_GALAKMECH
-			&& ent->client->ps.fd.forceRageRecoveryTime < level.time
-			&& !(ent->client->ps.fd.forcePowersActive & 1 << FP_RAGE))
+			!PM_SaberInAttack(ent->client->ps.saber_move) &&
+			!(ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) &&
+			!ent->client->poisonTime &&
+			!ent->client->stunTime &&
+			!ent->client->AmputateTime &&
+			ent->client->NPC_class != CLASS_GALAKMECH &&
+			ent->client->ps.fd.forceRageRecoveryTime < level.time &&
+			!(ent->client->ps.fd.forcePowersActive & (1 << FP_RAGE)))
 		{
-			//you heal 1 hp every 1 second.
-			if (ent->client->ps.fd.forcePowerLevel[FP_HEAL] > FORCE_LEVEL_2)
+			// Heal HP
+			if (ent->client->ps.fd.forcePowerLevel[FP_HEAL] > FORCE_LEVEL_2 &&
+				ent->health < client->ps.stats[STAT_MAX_HEALTH])
 			{
-				if (ent->health < client->ps.stats[STAT_MAX_HEALTH])
-				{
-					ent->health++;
-				}
+				ent->health++;
 			}
 
-			if (ent->client->ps.fd.forcePowerLevel[FP_PROTECT] > FORCE_LEVEL_2)
+			// Heal Armor
+			if (ent->client->ps.fd.forcePowerLevel[FP_PROTECT] > FORCE_LEVEL_2 &&
+				client->ps.stats[STAT_ARMOR] < client->ps.stats[STAT_MAX_HEALTH])
 			{
-				if (client->ps.stats[STAT_ARMOR] < client->ps.stats[STAT_MAX_HEALTH])
-				{
-					client->ps.stats[STAT_ARMOR]++;
-				}
+				client->ps.stats[STAT_ARMOR]++;
 			}
 		}
 
-		// count down armor when over max
+		/* ---------------------------------------------------------
+		   OVER-MAX ARMOR / HEALTH DECAY
+		--------------------------------------------------------- */
 		if (client->ps.stats[STAT_ARMOR] > client->ps.stats[STAT_MAX_HEALTH])
-		{
 			client->ps.stats[STAT_ARMOR]--;
-		}
 
-		// count down health when over max
 		if (ent->health > client->ps.stats[STAT_MAX_HEALTH])
-		{
 			ent->health--;
+
+		/* ---------------------------------------------------------
+		   BLASTER FATIGUE REGEN
+		--------------------------------------------------------- */
+		if (!(ent->client->buttons & BUTTON_ATTACK) &&
+			!(ent->client->buttons & BUTTON_ALT_ATTACK) &&
+			ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_MIN &&
+			ent->client->ps.weaponTime < 1)
+		{
+			if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
+				WP_BlasterFatigueRegenerate(4);
+			else
+				WP_BlasterFatigueRegenerate(1);
 		}
 
-		if (!(ent->client->buttons & BUTTON_ATTACK) && !(ent->client->buttons & BUTTON_ALT_ATTACK))
-		{
-			if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_MIN && ent->client->ps.weaponTime < 1)
-			{
-				if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
-				{
-					WP_BlasterFatigueRegenerate(4);
-				}
-				else
-				{
-					WP_BlasterFatigueRegenerate(1);
-				}
-			}
-		}
-
-		if (ent->client->ps.fd.forcePowersActive & 1 << FP_SEE)
-		{
+		/* ---------------------------------------------------------
+		   FORCE SENSE — reduces blaster mishap
+		--------------------------------------------------------- */
+		if (ent->client->ps.fd.forcePowersActive & (1 << FP_SEE))
 			bg_reduce_blaster_mishap_level_advanced(&ent->client->ps);
-		}
 
-		if (ent->client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE
-			&& (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) // player
-			&& !BG_InSlowBounce(&ent->client->ps)
-			&& !PM_SaberInBrokenParry(ent->client->ps.saber_move)
-			&& !PM_SaberInAttackPure(ent->client->ps.saber_move)
-			&& !PM_SaberInAttack(ent->client->ps.saber_move)
-			&& !PM_SaberInTransitionAny(ent->client->ps.saber_move)
-			&& !PM_InKnockDown(&ent->client->ps)
-			&& ent->client->ps.saberLockTime < level.time
-			&& ent->client->ps.saberBlockingTime < level.time
-			&& ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+		/* ---------------------------------------------------------
+		   SABER FATIGUE REGEN (players)
+		--------------------------------------------------------- */
+		if (ent->client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE &&
+			(ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) &&
+			!BG_InSlowBounce(&ent->client->ps) &&
+			!PM_SaberInBrokenParry(ent->client->ps.saber_move) &&
+			!PM_SaberInAttackPure(ent->client->ps.saber_move) &&
+			!PM_SaberInAttack(ent->client->ps.saber_move) &&
+			!PM_SaberInTransitionAny(ent->client->ps.saber_move) &&
+			!PM_InKnockDown(&ent->client->ps) &&
+			ent->client->ps.saberLockTime < level.time &&
+			ent->client->ps.saberBlockingTime < level.time &&
+			ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
-			if (!(ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
-			{
+			if (!(ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)))
 				WP_SaberFatigueRegenerate(1);
-			}
 		}
-		else if (ent->client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE
-			&& ent->r.svFlags & SVF_BOT //npc
-			&& !BG_InSlowBounce(&ent->client->ps)
-			&& !PM_SaberInBrokenParry(ent->client->ps.saber_move)
-			&& !PM_SaberInAttackPure(ent->client->ps.saber_move)
-			&& !PM_SaberInAttack(ent->client->ps.saber_move)
-			&& !PM_SaberInTransitionAny(ent->client->ps.saber_move)
-			&& !PM_InKnockDown(&ent->client->ps)
-			&& ent->client->ps.saberLockTime < level.time
-			&& ent->client->ps.saberBlockingTime < level.time
-			&& ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+		/* ---------------------------------------------------------
+		   SABER FATIGUE REGEN (bots)
+		--------------------------------------------------------- */
+		else if (ent->client->ps.saberFatigueChainCount > MISHAPLEVEL_NONE &&
+			(ent->r.svFlags & SVF_BOT) &&
+			!BG_InSlowBounce(&ent->client->ps) &&
+			!PM_SaberInBrokenParry(ent->client->ps.saber_move) &&
+			!PM_SaberInAttackPure(ent->client->ps.saber_move) &&
+			!PM_SaberInAttack(ent->client->ps.saber_move) &&
+			!PM_SaberInTransitionAny(ent->client->ps.saber_move) &&
+			!PM_InKnockDown(&ent->client->ps) &&
+			ent->client->ps.saberLockTime < level.time &&
+			ent->client->ps.saberBlockingTime < level.time &&
+			ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
 			WP_SaberFatigueRegenerate(1);
 		}
 
-		if (ent->r.svFlags & SVF_BOT
-			&& ent->client->ps.fd.blockPoints < BLOCK_POINTS_MAX)
+		/* ---------------------------------------------------------
+		   BOT BLOCK POINTS REGEN
+		--------------------------------------------------------- */
+		if ((ent->r.svFlags & SVF_BOT) &&
+			ent->client->ps.fd.blockPoints < BLOCK_POINTS_MAX)
 		{
 			ent->client->ps.fd.blockPoints++;
 		}
 
+		/* ---------------------------------------------------------
+		   STATUS EFFECTS
+		--------------------------------------------------------- */
 		Player_CheckBurn(ent);
 		Player_CheckFreeze(ent);
 
-		if (client->pers.padawantimer >= 3 && client->pers.isapadawan == 1 && g_noPadawanNames.integer != 0)
+		/* ---------------------------------------------------------
+		   PADAWAN NAME TIMER
+		--------------------------------------------------------- */
+		if (client->pers.padawantimer >= 3 &&
+			client->pers.isapadawan == 1 &&
+			g_noPadawanNames.integer != 0)
 		{
-			trap->SendServerCommand(ent - g_entities, va("cp \"The Name ^1padawan ^7is not allowed here!\nPlease change it in ^3%d seconds,\nor your name will be changed.\n\"", client->pers.padawantimer));
+			trap->SendServerCommand(ent - g_entities,
+				va("cp \"The Name ^1padawan ^7is not allowed here!\n"
+					"Please change it in ^3%d seconds,\n"
+					"or your name will be changed.\n\"",
+					client->pers.padawantimer));
+
 			client->pers.padawantimer--;
 		}
 
-		if ((client->pers.padawantimer == 2 || client->pers.padawantimer == 1) && client->pers.isapadawan == 1 && g_noPadawanNames.integer != 0)
+		if ((client->pers.padawantimer == 2 ||
+			client->pers.padawantimer == 1) &&
+			client->pers.isapadawan == 1 &&
+			g_noPadawanNames.integer != 0)
 		{
 			client->pers.isapadawan = 0;
 			G_Rename_Player(&g_entities[clientNum], PickName());
-			trap->SendServerCommand(ent - g_entities, va("cp \"^1Padawan names are not allowed, you have been ^1forcefully renamed.\n\""));
+
+			trap->SendServerCommand(ent - g_entities,
+				"cp \"^1Padawan names are not allowed, you have been ^1forcefully renamed.\n\"");
 		}
 	}
 }

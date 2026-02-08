@@ -214,6 +214,10 @@ typedef enum
 	//enter into a saber challenge with the objective entity
 	BOTORDER_RESUPPLY,
 	//Go grab/use the tactic entity (used for making the bots pick up ammo).
+	BOTORDER_JETPACK_COMBAT,
+	BOTORDER_SABER_DUEL,
+	BOTORDER_FLANK,
+
 	BOTORDER_MAX
 } Botorder_t;
 
@@ -1121,7 +1125,8 @@ struct gclient_s
 	int VaderBreathTime;
 
 	int			sphereshieldToggleTime;
-	int			overloadToggleTime;
+	int			overloadToggleTime; 
+	int respawnPending;   // time when the client should retry spawning
 };
 
 //animations
@@ -1765,6 +1770,16 @@ void G_RunClient(gentity_t* ent);
 //
 qboolean OnSameTeam(const gentity_t* ent1, const gentity_t* ent2);
 void Team_CheckDroppedItem(const gentity_t* dropped);
+
+typedef struct teamgame_s {
+	float			last_flag_capture;
+	int				last_capture_team;
+	flagStatus_t	redStatus;	// CTF
+	flagStatus_t	blueStatus;	// CTF
+	flagStatus_t	flagStatus;	// One Flag CTF
+	int				redTakenTime;
+	int				blueTakenTime;
+} teamgame_t;
 
 //
 // g_mem.c

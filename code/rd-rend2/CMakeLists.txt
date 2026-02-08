@@ -197,12 +197,14 @@ if(BuildJK2SPRdRend2)
 	add_sp_renderer_project(${JK2SPRend2Renderer} "JK2 SP Rend2 Renderer" ${JK2SPEngine} ${JK2InstallDir} ${JK2SPClientComponent})
 endif(BuildJK2SPRdRend2)
 
+set_source_files_properties(../win32/iconsp_glsl.rc PROPERTIES LANGUAGE RC)
 # GLSL shader file generator
 add_executable(SerenityJediEngine2026_glsl_sp
 	${SharedDir}/rd-rend2/glsl/compact.cpp
 	${SharedDir}/rd-rend2/tr_allocator.cpp
 	${SharedDir}/rd-rend2/tr_allocator.h
 	${SharedDir}/rd-rend2/tr_glsl_parse.cpp)
+target_sources(SerenityJediEngine2026_glsl_sp PRIVATE ../win32/iconsp_glsl.rc)
 target_compile_definitions(SerenityJediEngine2026_glsl_sp PRIVATE "GLSL_BUILDTOOL" "NOMINMAX" "REND2_SP")
 if (NOT WIN32 AND NOT APPLE)
 	target_compile_definitions(SerenityJediEngine2026_glsl_sp PRIVATE "ARCH_STRING=\"${Architecture}\"")

@@ -3944,3 +3944,23 @@ qboolean BG_IsLMSGametype(const int gametype)
 
 	return qfalse;
 }
+
+void AngleClamp(vec3_t ang)
+{
+	// Normalize yaw
+	while (ang[YAW] > 180.0f)  ang[YAW] -= 360.0f;
+	while (ang[YAW] < -180.0f) ang[YAW] += 360.0f;
+
+	// Normalize pitch
+	if (ang[PITCH] > 89.0f)  ang[PITCH] = 89.0f;
+	if (ang[PITCH] < -89.0f) ang[PITCH] = -89.0f;
+
+	// Roll is usually unused for bots, but clamp anyway
+	while (ang[ROLL] > 180.0f)  ang[ROLL] -= 360.0f;
+	while (ang[ROLL] < -180.0f) ang[ROLL] += 360.0f;
+
+	// NaN safety
+	if (Q_isnan(ang[YAW]))   ang[YAW] = 0;
+	if (Q_isnan(ang[PITCH])) ang[PITCH] = 0;
+	if (Q_isnan(ang[ROLL]))  ang[ROLL] = 0;
+}

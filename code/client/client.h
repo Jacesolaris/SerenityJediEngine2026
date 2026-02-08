@@ -30,6 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "keys.h"
 #include "snd_public.h"
 #include "../cgame/cg_public.h"
+#include <rd-common/tr_types.h>
 
 // snapshots are a view of the server at a given time
 using clSnapshot_t = struct

@@ -2030,6 +2030,7 @@ typedef struct entityState_s {
 
 	int	    communicatingflags;
 	int     frozenTime;
+	int		modelindex;		// model used
 } entityState_t;
 
 typedef enum {

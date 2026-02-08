@@ -200,38 +200,43 @@ static char* cg_GetCurrentLevelshot2(const char* s)
 }
 
 int SCREENTIP_NEXT_UPDATE_TIME = 0;
+int SCREENTIP_CURRENT_INDEX = -1;
 
 static void LoadTips(void)
 {
 	const int time = trap->Milliseconds();
 
+	static const char* tipKeys[15] = {
+		"TIP1",  "TIP2",  "TIP3",  "TIP4",  "TIP5",
+		"TIP6",  "TIP7",  "TIP8",  "TIP9",  "TIP10",
+		"TIP11", "TIP12", "TIP13", "TIP14", "TIP15"
+	};
+
+	// Pick a new tip every 3.5 seconds
 	if (SCREENTIP_NEXT_UPDATE_TIME == 0 || SCREENTIP_NEXT_UPDATE_TIME < time)
 	{
-		// TIP1..TIP15 (same order as your switch)
-		static const char* tipKeys[15] = {
-			"TIP2", "TIP3", "TIP4", "TIP5", "TIP6",
-			"TIP7", "TIP8", "TIP9", "TIP10", "TIP11",
-			"TIP12", "TIP13", "TIP14", "TIP15", "TIP1"
-		};
+		int newIndex;
 
-		static int lastIndex = -1;
-		int index;
-
-		// Prevent repeating the same tip twice
+		// Prevent repeating the same tip
 		do {
-			index = rand() % 15;
-		} while (index == lastIndex);
+			newIndex = rand() % 15;
+		} while (newIndex == SCREENTIP_CURRENT_INDEX);
 
-		lastIndex = index;
+		SCREENTIP_CURRENT_INDEX = newIndex;
 
-		CG_DrawProportionalString(
-			300, 390,
-			CG_GetStringEdString("LOADTIPS", (char*)tipKeys[index]),
-			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW,
+		// 3500 ms = 3.5 seconds
+		SCREENTIP_NEXT_UPDATE_TIME = time + 3500;
+	}
+
+	// Draw the current tip EVERY frame
+	if (SCREENTIP_CURRENT_INDEX >= 0)
+	{
+		CG_DrawSmallProportionalString(
+			125, 430,
+			CG_GetStringEdString("LOADTIPS", (char*)tipKeys[SCREENTIP_CURRENT_INDEX]),
+			UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
 			colorWhite
 		);
-
-		SCREENTIP_NEXT_UPDATE_TIME = time + 3500;
 	}
 }
 
@@ -270,6 +275,9 @@ void CG_DrawInformation(void)
 
 	CG_LoadBar();
 
+	//
+	// load tips
+	//
 	LoadTips();
 
 	int y = 180 - 32;
@@ -507,6 +515,7 @@ void CG_LoadBar(void)
 	const int capleft = barleft + tickpadx, tickleft = capleft + capwidth, ticktop = bartop + tickpady;
 
 	trap->R_SetColor(colorWhite);
+
 	// Draw background
 	CG_DrawPic(barleft, bartop, barwidth, barheight, cgs.media.loadBarLEDSurround);
 
@@ -525,12 +534,12 @@ void CG_LoadBar(void)
 		{
 			if (com_rend2.integer == 1) //rend2 is on
 			{
-				CG_DrawSmallProportionalString(300, 2, CG_GetStringEdString("LOADTIPS", "REND2TIP"), UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
+				CG_DrawSmallProportionalString(440, 2, CG_GetStringEdString("LOADTIPS", "REND2TIP"), UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, colorWhite);
 			}
 		}
-		const int x = (640 - LOADBAR_CLIP_WIDTH) / 2;
-		const int y = 50;
-
-		CG_DrawPic(x, y, LOADBAR_CLIP_WIDTH, LOADBAR_CLIP_HEIGHT, cgs.media.load_SerenitySaberSystems);
 	}
+	const int x = (640 - LOADBAR_CLIP_WIDTH) / 2;
+	const int y = 340;
+
+	CG_DrawPic(x, y, LOADBAR_CLIP_WIDTH, LOADBAR_CLIP_HEIGHT, cgs.media.load_SerenitySaberSystems);
 }

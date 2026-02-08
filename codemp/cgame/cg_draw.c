@@ -8710,6 +8710,11 @@ static void CG_SanitizeString(const char* in, char* out)
 	int i = 0;
 	int r = 0;
 
+	if (!in || !out) {
+		if (out) out[0] = 0;
+		return;
+	}
+
 	while (in[i])
 	{
 		if (i >= 128 - 1)
@@ -8851,26 +8856,49 @@ static void CG_DrawCrosshairNames(void)
 		return;
 	}
 
-	char* name = cgs.clientinfo[cg.crosshairclientNum].cleanname;
+	const char* name = NULL;
+	const centity_t* cent = NULL;
 
-	const float w = CG_DrawStrlen(va("Civilian")) * TINYCHAR_WIDTH;
-
-	if (cg.snap->ps.duelInProgress)
+	// safe client name lookup
+	if (cg.crosshairclientNum >= 0 && cg.crosshairclientNum < MAX_CLIENTS)
 	{
-		if (cg.crosshairclientNum != cg.snap->ps.duelIndex)
+		if (cgs.clientinfo[cg.crosshairclientNum].infoValid)
 		{
-			//grey out crosshair for everyone but your foe if you're in a duel
-			//baseColor = CT_BLACK;
+			name = cgs.clientinfo[cg.crosshairclientNum].cleanname;
 		}
 	}
-	else if (cg_entities[cg.crosshairclientNum].currentState.bolt1)
+	else if (cg.crosshairclientNum >= 0 && cg.crosshairclientNum < ENTITYNUM_WORLD)
 	{
-		//this fellow is in a duel. We just checked if we were in a duel above, so
-		//this means we aren't and he is. Which of course means our crosshair greys out over him.
-		//baseColor = CT_BLACK;
+		// entity index refers to a non-client (NPC, vehicle...). try to get a readable name:
+		cent = &cg_entities[cg.crosshairclientNum];
+
+		// If the entity has an npcClient (clientInfo_t*), prefer that
+		if (cent->npcClient && cent->npcClient->infoValid)
+		{
+			name = cent->npcClient->cleanname;
+		}
+		else if (cent->currentState.eType == ET_NPC)
+		{
+			// fallback label for NPCs with no clientinfo
+			name = "(NPC)";
+		}
+		else
+		{
+			// not a client or NPC we can name
+			name = NULL;
+		}
+	}
+
+	if (!name || !name[0])
+	{
+		trap->R_SetColor(NULL);
+		return; // nothing to draw
 	}
 
 	CG_SanitizeString(name, sanitized);
+
+
+	const float w = CG_DrawStrlen(va("Civilian")) * TINYCHAR_WIDTH;
 
 	if (is_veh)
 	{

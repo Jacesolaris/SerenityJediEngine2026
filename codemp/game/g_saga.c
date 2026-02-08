@@ -64,7 +64,7 @@ void LogExit(const char* string);
 void SetTeamQuick(const gentity_t* ent, int team, qboolean doBegin);
 
 static char gParseObjectives[MAX_SIEGE_INFO_SIZE];
-static char gObjectiveCfgStr[1024];
+char gObjectiveCfgStr[1024];
 
 //go through all classes on a team and register their
 //weapons and items for precaching.

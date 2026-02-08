@@ -3721,7 +3721,7 @@ FIXME: sometimes we want these to not be shootable... maybe just put them behind
 */
 void CreateLaserTrap(gentity_t* laser_trap, vec3_t start, gentity_t* owner);
 void laserTrapStick(gentity_t* ent, vec3_t endpos, vec3_t normal);
-gitem_t* BG_FindItemForAmmo(ammo_t ammo);
+gitem_t* BG_FindItemForAmmo(const ammo_t ammo);
 
 void SP_misc_trip_mine(gentity_t* ent)
 {

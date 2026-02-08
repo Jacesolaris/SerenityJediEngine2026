@@ -37,6 +37,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "dmstates.h"
 #include "qcommon/ojk_saved_game_helper.h"
+#include <cstdlib>
+#include "b_public.h"
 
 extern void WP_SaberLoadParms();
 extern void WP_SaberLoadParms_yav();
@@ -260,6 +262,8 @@ cvar_t* com_rend2;
 cvar_t* r_AdvancedsurfaceSprites;
 
 cvar_t* g_AllowWeather;
+cvar_t* g_debugItems;
+cvar_t* g_fixJOItems;
 
 qboolean stop_icarus = qfalse;
 
@@ -881,6 +885,9 @@ static void G_InitCvars()
 	r_AdvancedsurfaceSprites = gi.cvar("r_advancedlod", "1", CVAR_ARCHIVE | CVAR_SAVEGAME);
 
 	g_AllowWeather = gi.cvar("g_AllowWeather", "1", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
+
+	g_debugItems = gi.cvar("g_debugItems", "0", CVAR_CHEAT);
+	g_fixJOItems = gi.cvar("g_fixJOItems", "1", CVAR_ARCHIVE);
 }
 
 /*

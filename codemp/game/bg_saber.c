@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -618,287 +618,247 @@ saber_moveName_t transitionMove[Q_NUM_QUADS][Q_NUM_QUADS] =
 
 saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 {
+	saber_moveName_t auto_move = LS_NONE;
+
+	if (auto_move != LS_NONE && PM_SaberInSpecial(auto_move))
+	{
+		return auto_move;
+	}
+
 	//pick another one
 	saber_moveName_t newmove = LS_NONE;
 
+	// Default quadrant‑based selection
 	switch (quad)
 	{
-	case Q_T: //blocked top
-		if (Q_irand(0, 1))
-		{
-			newmove = LS_A_T2B;
-		}
-		else
-		{
-			newmove = LS_A_TR2BL;
-		}
-		break;
+	case Q_T:
+		return Q_irand(0, 1) ? LS_A_T2B : LS_A_TR2BL;
+
 	case Q_TR:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_R2L;
+		case 0: return LS_A_R2L;
+		case 1: return LS_A_TR2BL;
+		default: return LS_T1_TR_BR;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_A_TR2BL;
-		}
-		else
-		{
-			newmove = LS_T1_TR_BR;
-		}
-		break;
+
 	case Q_TL:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_L2R;
+		case 0: return LS_A_L2R;
+		case 1: return LS_A_TL2BR;
+		default: return LS_T1_TL_BL;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_A_TL2BR;
-		}
-		else
-		{
-			newmove = LS_T1_TL_BL;
-		}
-		break;
+
 	case Q_BR:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_BR2TL;
+		case 0: return LS_A_BR2TL;
+		case 1: return LS_T1_BR_TR;
+		default: return LS_A_R2L;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1_BR_TR;
-		}
-		else
-		{
-			newmove = LS_A_R2L;
-		}
-		break;
+
 	case Q_BL:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_BL2TR;
+		case 0: return LS_A_BL2TR;
+		case 1: return LS_T1_BL_TL;
+		default: return LS_A_L2R;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1_BL_TL;
-		}
-		else
-		{
-			newmove = LS_A_L2R;
-		}
-		break;
+
 	case Q_L:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_L2R;
+		case 0: return LS_A_L2R;
+		case 1: return LS_T1__L_T_;
+		default: return LS_A_R2L;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1__L_T_;
-		}
-		else
-		{
-			newmove = LS_A_R2L;
-		}
-		break;
+
 	case Q_R:
-		if (!Q_irand(0, 2))
+		switch (Q_irand(0, 2))
 		{
-			newmove = LS_A_R2L;
+		case 0: return LS_A_R2L;
+		case 1: return LS_T1__R_T_;
+		default: return LS_A_L2R;
 		}
-		else if (!Q_irand(0, 1))
-		{
-			newmove = LS_T1__R_T_;
-		}
-		else
-		{
-			newmove = LS_A_L2R;
-		}
-		break;
+
 	case Q_B:
-		newmove = PM_SaberLungeAttackMove(qtrue);
-		break;
+		return PM_SaberLungeAttackMove(qtrue);
+
 	default:
-		break;
+		return LS_NONE;
 	}
 
-	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
 
 #ifdef _GAME
 	if (bot_thinklevel.integer >= 1 &&
-		BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER, isPlayer) &&
-		!pm->ps->fd.forcePowersActive && !in_camera)
+		BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER,qfalse) &&
+		!pm->ps->fd.forcePowersActive &&
+		!in_camera)
 	{
-		if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT)
-		{// Some special bot stuff.
-			if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time && g_attackskill.integer >= 0)
+		// Some special stuff.
+		if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time &&
+			g_attackskill.integer >= 0)
+		{
+			int check_val = 0; // Times 500 for next check interval.
+
+			//
+			// BACKSTAB / BACK-LUNGE LOGIC
+			//
+			if (PM_Can_Do_Kill_Lunge_back())
 			{
-				int check_val = 0; // Times 500 for next check interval.
+				if ((pm->ps->pm_flags & PMF_DUCKED) || pm->cmd.upmove < 0)
+				{
+					newmove = LS_A_BACK_CR;
+				}
+				else
+				{
+					int choice = rand() % 4;   // FIXED: %4 so all 4 branches reachable
 
-				if (PM_Can_Do_Kill_Lunge_back())
-				{ //BACKSTAB
-					if ((pm->ps->pm_flags & PMF_DUCKED) || pm->cmd.upmove < 0)
+					switch (choice)
 					{
-						newmove = LS_A_BACK_CR;
+					case 0:
+						newmove = LS_A_BACK;
+						break;
+
+					case 1:
+						newmove = PM_SaberBackflipAttackMove();
+						break;
+
+					case 2:
+						newmove = LS_A_BACKFLIP_ATK;
+						break;
+
+					case 3:
+					default:
+						newmove = LS_A_BACKSTAB;
+						break;
 					}
-					else
-					{
-						int choice = rand() % 3;
+				}
+			}
 
-						if (choice == 1)
+			//
+			// LUNGE / SPECIAL ATTACK LOGIC
+			//
+			else if (PM_Can_Do_Kill_Lunge())
+			{
+				if (pm->ps->pm_flags & PMF_DUCKED)
+				{
+					newmove = PM_SaberLungeAttackMove(qtrue);
+
+					if (d_attackinfo.integer)
+					{
+						Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 0\n");
+					}
+				}
+				else
+				{
+					const int choice = rand() % 9;
+
+					switch (choice)
+					{
+					case 0:
+						newmove = PM_NPC_Force_Leap_Attack();
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 1\n");
+						break;
+
+					case 1:
+						newmove = PM_DoAI_Fake(qtrue);
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 2\n");
+						break;
+
+					case 2:
+						newmove = LS_A1_SPECIAL;
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 3\n");
+						break;
+
+					case 3:
+						newmove = LS_A2_SPECIAL;
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 4\n");
+						break;
+
+					case 4:
+						newmove = LS_A3_SPECIAL;
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 5\n");
+						break;
+
+					case 5:
+						newmove = LS_A4_SPECIAL;
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 6\n");
+						break;
+
+					case 6:
+						newmove = LS_A5_SPECIAL;
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 7\n");
+						break;
+
+					case 7:
+						if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 						{
-							newmove = LS_A_BACK;
+							newmove = LS_DUAL_SPIN_PROTECT;
 						}
-						else if (choice == 2)
+						else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 						{
-							newmove = PM_SaberBackflipAttackMove();
-						}
-						else if (choice == 3)
-						{
-							newmove = LS_A_BACKFLIP_ATK;
+							newmove = LS_STAFF_SOULCAL;
 						}
 						else
 						{
-							newmove = LS_A_BACKSTAB;
+							newmove = LS_A_JUMP_T__B_;
 						}
-					}
-				}
-				else if (PM_Can_Do_Kill_Lunge())
-				{ //Bot Lunge (attack varies by level)
-					if (pm->ps->pm_flags & PMF_DUCKED)
-					{
-						newmove = PM_SaberLungeAttackMove(qtrue);
 
 						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 8\n");
+						break;
+
+					case 8:
+						if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 						{
-							Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 0\n");
+							newmove = LS_JUMPATTACK_DUAL;
 						}
-					}
-					else
-					{
-						const int choice = rand() % 9;
-
-						switch (choice)
+						else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 						{
-						case 0:
-							newmove = PM_NPC_Force_Leap_Attack();
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 1\n");
-							}
-							break;
-						case 1:
-							newmove = PM_DoAI_Fake(qtrue);
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 2\n");
-							}
-							break;
-						case 2:
-							newmove = LS_A1_SPECIAL;
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 3\n");
-							}
-							break;
-						case 3:
-							newmove = LS_A2_SPECIAL;
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 4\n");
-							}
-							break;
-						case 4:
-							newmove = LS_A3_SPECIAL;
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 5\n");
-							}
-							break;
-						case 5:
-							newmove = LS_A4_SPECIAL;
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 6\n");
-							}
-							break;
-						case 6:
-							newmove = LS_A5_SPECIAL;
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 7\n");
-							}
-							break;
-						case 7:
-							if (pm->ps->fd.saberAnimLevel == SS_DUAL)
-							{
-								newmove = LS_DUAL_SPIN_PROTECT;
-							}
-							else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
-							{
-								newmove = LS_STAFF_SOULCAL;
-							}
-							else
-							{
-								newmove = LS_A_JUMP_T__B_;
-							}
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 8\n");
-							}
-							break;
-						case 8:
-							if (pm->ps->fd.saberAnimLevel == SS_DUAL)
-							{
-								newmove = LS_JUMPATTACK_DUAL;
-							}
-							else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
-							{
-								newmove = LS_JUMPATTACK_STAFF_RIGHT;
-							}
-							else
-							{
-								newmove = LS_SPINATTACK;
-							}
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 9\n");
-							}
-							break;
-						default:
-							newmove = PM_SaberFlipOverAttackMove();
-
-							if (d_attackinfo.integer)
-							{
-								Com_Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 10\n");
-							}
-							break;
+							newmove = LS_JUMPATTACK_STAFF_RIGHT;
 						}
+						else
+						{
+							newmove = LS_SPINATTACK;
+						}
+
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 9\n");
+						break;
+
+					default:
+						newmove = PM_SaberLungeAttackMove(qtrue);
+						if (d_attackinfo.integer)
+							Com_Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 10\n");
+						break;
 					}
-					pm->ps->weaponstate = WEAPON_FIRING;
-					WP_ForcePowerDrain(pm->ps, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 				}
 
-				check_val = g_attackskill.integer;
-
-				if (check_val <= 0)
-				{
-					check_val = 1;
-				}
-
-				Next_Kill_Attack_Move_Check[pm->ps->clientNum] = level.time + (40000 / check_val); // 20 secs / g_attackskill
+				pm->ps->weaponstate = WEAPON_FIRING;
+				WP_ForcePowerDrain(pm->ps, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 			}
+
+			//
+			// COOLDOWN UPDATE
+			//
+			check_val = g_attackskill.integer;
+
+			if (check_val <= 0)
+			{
+				check_val = 1;
+			}
+
+			Next_Kill_Attack_Move_Check[pm->ps->clientNum] =
+				level.time + (90000 / check_val); // 20 secs / g_attackskill
 		}
 	}
 #endif
@@ -3090,7 +3050,6 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 	const saberInfo_t* saber2 = BG_MySaber(pm->ps->clientNum, 1);
 	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
 
-
 	if (pm->ps->weapon == WP_SABER)
 	{
 		if (saber1
@@ -3443,13 +3402,13 @@ static saber_moveName_t PM_SaberAttackForMovement(const saber_moveName_t curmove
 				return newmove;
 			}
 			else if (PM_SaberInKnockaway(curmove))
-			{
-				//bounces should go to their default attack if you don't specify a direction but are attacking
+			{//bounces should go to their default attack if you don't specify a direction but are attacking
 #ifdef _GAME
-				if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm_entSelf->s.eType == ET_NPC &&
-					Q_irand(0, 3))
+				qboolean  bot = (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT);
+				qboolean  npc = (pm_entSelf->s.eType == ET_NPC);
+
+				if (bot || npc && Q_irand(0, 1)) // 50% chance
 				{
-					//use bot random
 					newmove = PM_NPCSaberAttackFromQuad(saber_moveData[curmove].endQuad);
 				}
 				else
@@ -3858,7 +3817,6 @@ static qboolean PM_saber_moveOkayForKata(void)
 
 static qboolean PM_CanDoKata(void)
 {
-
 	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
 
 	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
@@ -5041,7 +4999,6 @@ void PM_WeaponLightsaber(void)
 
 	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
 
-
 	qboolean check_only_weap = qfalse;
 
 	if (pm_entSelf->s.NPC_class == CLASS_SABER_DROID)
@@ -6136,15 +6093,13 @@ weapChecks:
 				newmove = LS_READY;
 			}
 			else
-			{
-				//get attack move from movement command
+			{//get attack move from movement command
 #ifdef _GAME
-				if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT
-					&& (Q_irand(0, pm->ps->fd.forcePowerLevel[FP_SABER_OFFENSE] - 1)
-						|| pm->ps->fd.saberAnimLevel == SS_FAST
-						&& Q_irand(0, 1))) //minor change to make fast-attack users use the special attacks more
+				qboolean  bot = (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT);
+				qboolean  npc = (pm_entSelf->s.eType == ET_NPC);
+
+				if (bot || npc && Q_irand(0, 1)) // 50% chance
 				{
-					//NPCs use more randomized attacks the more skilled they are
 					newmove = PM_NPCSaberAttackFromQuad(saber_moveData[curmove].endQuad);
 				}
 				else
@@ -7362,7 +7317,6 @@ qboolean PM_DoSlap(void)
 	int kick_move = -1;
 
 	const qboolean isPlayer = (pm->ps->clientNum < MAX_CLIENTS) ? qtrue : qfalse;
-
 
 	if (!PM_SaberInBounce(pm->ps->saber_move)
 		&& !PM_SaberInKnockaway(pm->ps->saber_move)

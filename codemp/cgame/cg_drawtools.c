@@ -217,23 +217,30 @@ Coordinates are at 640 by 480 virtual resolution
 */
 #include "ui/menudef.h"	// for "ITEM_TEXTSTYLE_SHADOWED"
 
-void CG_DrawStringExt(const int x, const int y, const char* string, const float* setColor, const qboolean forceColor,
-	const qboolean shadow,
+void CG_DrawStringExt(const int x, const int y, const char* string, const float* setColor,
+	const qboolean forceColor, const qboolean shadow,
 	const int charWidth, const int charHeight, int maxChars)
 {
+	// Safety guard: prevents analyzer warning + avoids theoretical NULL deref
+	if (!string) {
+		return;
+	}
+
 	if (trap->R_Language_IsAsian())
 	{
 		// hack-a-doodle-do (post-release quick fix code)...
-		//
 		vec4_t color;
 		memcpy(color, setColor, sizeof color); // de-const it
-		CG_Text_Paint(x, y, 1.0f, // float scale,
-			color, // vec4_t color,
-			string, // const char *text,
-			0.0f, // float adjust,
-			0, // int limit,
-			shadow ? ITEM_TEXTSTYLE_SHADOWED : 0, // int style,
-			FONT_MEDIUM // i_menu_font
+
+		CG_Text_Paint(
+			x, y,
+			1.0f,                 // scale
+			color,                // vec4_t color
+			string,               // const char *text
+			0.0f,                 // adjust
+			0,                    // limit
+			shadow ? ITEM_TEXTSTYLE_SHADOWED : 0,
+			FONT_MEDIUM
 		);
 	}
 	else
@@ -248,8 +255,10 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 			color[0] = color[1] = color[2] = 0;
 			color[3] = setColor[3];
 			trap->R_SetColor(color);
+
 			s = string;
 			xx = x;
+
 			while (*s)
 			{
 				if (Q_IsColorString(s))
@@ -257,6 +266,7 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 					s += 2;
 					continue;
 				}
+
 				CG_DrawChar(xx + 2, y + 2, charWidth, charHeight, *s);
 				xx += charWidth;
 				s++;
@@ -267,6 +277,7 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 		s = string;
 		xx = x;
 		trap->R_SetColor(setColor);
+
 		while (*s)
 		{
 			if (Q_IsColorString(s))
@@ -277,13 +288,16 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 					color[3] = setColor[3];
 					trap->R_SetColor(color);
 				}
+
 				s += 2;
 				continue;
 			}
+
 			CG_DrawChar(xx, y, charWidth, charHeight, *s);
 			xx += charWidth;
 			s++;
 		}
+
 		trap->R_SetColor(NULL);
 	}
 }

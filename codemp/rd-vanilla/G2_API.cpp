@@ -578,7 +578,7 @@ public:
 	//	}
 	//	return true;
 	//}
-	 
+
 	// This fucker has been grinding my gears for days because ghoul2 can be null here.
 	bool IsValid(const int handle) const override
 	{

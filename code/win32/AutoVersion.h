@@ -32,11 +32,11 @@ This file is part of Jedi Academy.
 // Current version of the single player game
 
 #define VERSION_MAJOR_RELEASE		26  // Build year
-#define VERSION_MINOR_RELEASE		01  // Build month
-#define VERSION_INTERNAL_BUILD		31  // Build day
+#define VERSION_MINOR_RELEASE		02  // Build month
+#define VERSION_INTERNAL_BUILD		08  // Build day
 
-#define VERSION_STRING				"Day-31,Month-01,Year-26,BuildNum-03" // build date
-#define VERSION_STRING_DOTTED		"Day-31,Month-01,Year-26,BuildNum-03" // build date
+#define VERSION_STRING				"Day-08,Month-02,Year-26,BuildNum-01" // build date
+#define VERSION_STRING_DOTTED		"Day-08,Month-02,Year-26,BuildNum-01" // build date
 
 
 #endif // __AUTO_VERSION_HEADER

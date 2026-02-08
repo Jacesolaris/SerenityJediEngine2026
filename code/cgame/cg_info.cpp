@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -25,6 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "cg_media.h"
 #include "../game/objectives.h"
+#include <qcommon\q_math.h>
 
 // For printing objectives
 static constexpr short objectiveStartingYpos = 75; // Y starting position for objective text
@@ -412,61 +413,106 @@ constexpr auto LOADBAR_CLIP_HEIGHT = 64;
 
 void CG_LoadBar(void)
 {
-	constexpr int numticks = 9, tickwidth = 40, tickheight = 8;
-	constexpr int tickpadx = 20, tickpady = 12;
+	constexpr int numticks = 9;
+	constexpr int tickwidth = 40;
+	constexpr int tickheight = 8;
+	constexpr int tickpadx = 20;
+	constexpr int tickpady = 12;
 	constexpr int capwidth = 8;
-	constexpr int barwidth = numticks * tickwidth + tickpadx * 2 + capwidth * 2, barleft = (640 - barwidth) / 2;
-	constexpr int barheight = tickheight + tickpady * 2, bartop = 475 - barheight;
-	constexpr int capleft = barleft + tickpadx, tickleft = capleft + capwidth, ticktop = bartop + tickpady;
+
+	constexpr int barwidth = numticks * tickwidth + tickpadx * 2 + capwidth * 2;
+	constexpr int barleft = (640 - barwidth) / 2;
+
+	// SP uses 475 instead of 480 for the bottom alignment
+	constexpr int barheight = tickheight + tickpady * 2;
+	constexpr int bartop = 475 - barheight;
+
+	constexpr int capleft = barleft + tickpadx;
+	constexpr int tickleft = capleft + capwidth;
+	constexpr int ticktop = bartop + tickpady;
 
 	cgi_R_SetColor(colorTable[CT_WHITE]);
 
-	if (cg_com_outcast.integer > 1) //jko version
+	//
+	// OUTCAST MODE (Jedi Outcast‑style loading bar)
+	//
+	if (cg_com_outcast.integer > 1)
 	{
 		if (cg.loadLCARSStage >= 3)
 		{
-			// Draw background
+			// Background
 			CG_DrawPic(barleft, bartop, barwidth, barheight, cgs.media.levelLoad);
 
-			// Draw left cap (backwards)
+			// Left cap (mirrored)
 			CG_DrawPic(tickleft, ticktop, -capwidth, tickheight, cgs.media.loadTickCap);
 
-			// Draw bar
-			CG_DrawPic(tickleft, ticktop, tickwidth * cg.loadLCARSStage, tickheight, cgs.media.loadTick);
+			// Bar fill
+			CG_DrawPic(tickleft, ticktop,
+				tickwidth * cg.loadLCARSStage,
+				tickheight,
+				cgs.media.loadTick);
 
-			// Draw right cap
-			CG_DrawPic(tickleft + tickwidth * cg.loadLCARSStage, ticktop, capwidth, tickheight, cgs.media.loadTickCap);
+			// Right cap
+			CG_DrawPic(tickleft + tickwidth * cg.loadLCARSStage,
+				ticktop,
+				capwidth,
+				tickheight,
+				cgs.media.loadTickCap);
 		}
 	}
+	//
+	// STANDARD JKA MODE (same visuals as MP)
+	//
 	else
 	{
-		// Draw background
+		// Background
 		CG_DrawPic(barleft, bartop, barwidth, barheight, cgs.media.levelLoad);
 
-		// Draw left cap (backwards)
+		// Left cap (mirrored)
 		CG_DrawPic(tickleft, ticktop, -capwidth, tickheight, cgs.media.loadTickCap);
 
-		// Draw bar
-		CG_DrawPic(tickleft, ticktop, tickwidth * cg.loadLCARSStage, tickheight, cgs.media.loadTick);
+		// Bar fill
+		CG_DrawPic(tickleft, ticktop,
+			tickwidth * cg.loadLCARSStage,
+			tickheight,
+			cgs.media.loadTick);
 
-		// Draw right cap
-		CG_DrawPic(tickleft + tickwidth * cg.loadLCARSStage, ticktop, capwidth, tickheight, cgs.media.loadTickCap);
+		// Right cap
+		CG_DrawPic(tickleft + tickwidth * cg.loadLCARSStage,
+			ticktop,
+			capwidth,
+			tickheight,
+			cgs.media.loadTickCap);
 	}
 
-	if (cg.loadLCARSStage >= 3)
+	//
+	// REND2 WARNING (same logic as MP)
+	//
+	if (cg.loadLCARSStage >= 3 && cg.loadLCARSStage <= 6)
 	{
-		if (cg.loadLCARSStage <= 6)
+		if (cg_com_rend2.integer == 1)
 		{
-			if (cg_com_rend2.integer == 1) //rend2 is on
-			{
-				cgi_R_Font_DrawString(10, 10, va("Warning: When using Quality mode, longer loading times can be expected."), colorTable[CT_WHITE], cgs.media.qhFontMedium, -1, 0.5f);
-			}
+			cgi_R_Font_DrawString(
+				100, 20,
+				va("Warning: When  using  Quality  mode,  longer  loading  times  can  be  expected."),
+				colorTable[CT_WHITE],
+				cgs.media.qhFontMedium,
+				-1,
+				0.5f
+			);
 		}
-		constexpr int x = (640 - LOADBAR_CLIP_WIDTH) / 2;
-		constexpr int y = 340;
-
-		CG_DrawPic(x, y, LOADBAR_CLIP_WIDTH, LOADBAR_CLIP_HEIGHT, cgs.media.load_SerenitySaberSystems);
 	}
+
+	//
+	// Serenity Saber Systems logo (same placement as MP)
+	//
+	constexpr int x = (640 - LOADBAR_CLIP_WIDTH) / 2;
+	constexpr int y = 340;
+
+	CG_DrawPic(x, y,
+		LOADBAR_CLIP_WIDTH,
+		LOADBAR_CLIP_HEIGHT,
+		cgs.media.load_SerenitySaberSystems);
 }
 
 int CG_WeaponCheck(int weapon_index);
@@ -978,6 +1024,9 @@ void CG_DrawInformation(void)
 		}
 		cgi_UI_MenuPaintAll();
 		CG_LoadBar();
+		//
+		// load tips
+		//
 		LoadTips();
 	}
 

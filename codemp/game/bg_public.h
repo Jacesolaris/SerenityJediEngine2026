@@ -60,7 +60,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-31,Month-01,Year-26,BuildNum-03" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-08,Month-02,Year-26,BuildNum-01" // build date
 
 #define	STEPSIZE		18
 
@@ -2026,7 +2026,7 @@ qboolean BG_IsUsingMediumWeap(const playerState_t* ps);
 qboolean BG_IsUsingHeavyWeap(const playerState_t* ps);
 
 qboolean BG_IsItemSelectable(int item);
-qboolean BG_IsLMSGametype(int gametype);
+qboolean BG_IsLMSGametype(const int gametype);
 
 qboolean BG_HasYsalamiri(int gametype, const playerState_t* ps);
 qboolean BG_CanUseFPNow(int gametype, const playerState_t* ps, int time, forcePowers_t power);

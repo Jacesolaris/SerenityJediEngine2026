@@ -37,6 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "b_local.h"
 #include "bg_saga.h"
 #include "g_dynmusic.h"
+#include "bg_public.h"
 
 extern int G_ShipSurfaceForSurfName(const char* surfaceName);
 extern qboolean G_FlyVehicleDestroySurface(gentity_t* veh, int surface);
@@ -563,7 +564,7 @@ static int WeaponRemovalTime()
 	return time;
 }
 
-extern gitem_t* BG_FindItemForAmmo(ammo_t ammo);
+extern gitem_t* BG_FindItemForAmmo(const ammo_t ammo);
 extern gentity_t* WP_DropThermal(gentity_t* ent);
 
 void TossClientItems(gentity_t* self)

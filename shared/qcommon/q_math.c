@@ -1533,7 +1533,7 @@ void VectorSet5(vec5_t vec, const float x, const float y, const float z, const f
 	vec[0] = x; vec[1] = y; vec[2] = z; vec[3] = w; vec[4] = u;
 }
 
-float VectorDistance(vec3_t v1, vec3_t v2)
+float VectorDistance(const vec3_t v1, const vec3_t v2)
 {//returns the distance between the two points.
 	vec3_t dir;
 
