@@ -2412,7 +2412,7 @@ static void G_AddWeaponModels(gentity_t* ent)
 	{
 		if (ent->client->ps.weapon == WP_SABER)
 		{
-			wp_saber_add_g2_saber_models(ent);
+			WP_SaberAddG2SaberModels(ent);
 			G_RemoveHolsterModels(ent);
 		}
 		else if (ent->client->ps.weapon != WP_NONE)
@@ -3410,7 +3410,7 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 				&& ent->client->ps.weapon == WP_SABER) //current weapon is saber
 			{
 				//add the proper models
-				wp_saber_add_g2_saber_models(ent);
+				WP_SaberAddG2SaberModels(ent);
 				G_RemoveHolsterModels(ent);
 			}
 		}

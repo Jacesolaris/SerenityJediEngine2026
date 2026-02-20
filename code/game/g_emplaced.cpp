@@ -1071,7 +1071,7 @@ void ExitEmplacedWeapon(gentity_t* ent)
 			CG_ChangeWeapon(ent->client->ps.weapon);
 			if (ent->client->ps.weapon == WP_SABER)
 			{
-				wp_saber_add_g2_saber_models(ent);
+				WP_SaberAddG2SaberModels(ent);
 				G_RemoveHolsterModels(ent);
 			}
 			else

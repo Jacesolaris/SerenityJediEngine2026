@@ -37,6 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_shared.h>
 #include <qcommon\q_math.h>
 #include "w_force.h"
+#include "g_public.h"
 
 #define METROID_JUMP 1
 
@@ -65,7 +66,7 @@ extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern void Boba_FlyStart(gentity_t* self);
 extern qboolean in_camera;
 extern qboolean PM_RunningAnim(int anim);
-extern void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward);
+extern void G_ReflectMissileAuto(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern void g_reflect_missile_bot(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
@@ -347,7 +348,7 @@ void DetermineDodgeMax(const gentity_t* ent)
 	ent->client->ps.stats[STAT_MAX_DODGE] = (int)dodgeMax;
 }
 
-void WP_InitForcePowers(const gentity_t* ent)
+void WP_InitForcePowers(gentity_t* ent)
 {
 	int i, last_fp_known = -1;
 	qboolean warn_client, did_event = qfalse;
@@ -721,6 +722,26 @@ void WP_InitForcePowers(const gentity_t* ent)
 						ent->client->sess.sessionTeam = TEAM_SPECTATOR;
 						ent->client->sess.spectatorState = SPECTATOR_FREE;
 						ent->client->sess.spectatorClient = 0;
+
+						// --- REQUIRED spectator reset to prevent out-of-bounds ---
+						ent->client->ps.pm_type = PM_SPECTATOR;
+						ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
+
+						VectorClear(ent->client->ps.velocity);
+						ent->client->ps.pm_flags = 0;
+						ent->client->ps.pm_time = 0;
+
+						// Clear collision box
+						VectorClear(ent->r.mins);
+						VectorClear(ent->r.maxs);
+						ent->r.contents = 0;
+
+						// Safe spectator spawn
+						VectorCopy(level.intermission_origin, ent->client->ps.origin);
+						VectorCopy(level.intermission_angle, ent->client->ps.viewangles);
+
+						trap->LinkEntity((sharedEntity_t*)ent);
+						// ----------------------------------------------------------
 
 						ent->client->pers.teamState.state = TEAM_BEGIN;
 						trap->SendServerCommand(ent - g_entities, "spc"); // Fire up the profile menu
@@ -1348,7 +1369,7 @@ int wp_absorb_conversion(const gentity_t* attacked, const int atd_abs_level, con
 	return get_level;
 }
 
-void wp_force_power_regenerate(const gentity_t* self, const int override_amt)
+void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt)
 {
 	//called on a regular interval to regenerate force power.
 	if (!self->client)
@@ -1374,7 +1395,7 @@ void wp_force_power_regenerate(const gentity_t* self, const int override_amt)
 	}
 }
 
-void wp_block_points_regenerate(const gentity_t* self, const int override_amt)
+void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt)
 {
 	const qboolean is_holding_block_button = self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
 	//Normal Blocking
@@ -1399,7 +1420,7 @@ void wp_block_points_regenerate(const gentity_t* self, const int override_amt)
 	}
 }
 
-void wp_block_points_regenerate_over_ride(const gentity_t* self, const int override_amt)
+void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt)
 {
 	if (self->client->ps.fd.blockPoints < BLOCK_POINTS_MAX)
 	{
@@ -1643,7 +1664,10 @@ void ForceHeal(gentity_t* self)
 		return;
 	}
 
-	if (self->painDebounceTime > level.time || self->client->ps.weaponTime && self->client->ps.weapon != WP_NONE)
+	if (self->painDebounceTime > level.time ||
+		(self->client->ps.weaponTime &&
+			self->client->ps.weapon != WP_NONE &&
+			self->client->ps.saberHolstered != 2))
 	{
 		//can't initiate a heal while taking pain or attacking
 		return;
@@ -1718,15 +1742,6 @@ void ForceHeal(gentity_t* self)
 		self->client->ps.saber_move = self->client->ps.saberBounceMove = LS_READY;
 		self->client->ps.saberBlocked = BLOCKED_NONE;
 	}
-
-	/*if (self->client->ps.fd.forcePowerLevel[FP_HEAL] < FORCE_LEVEL_2)
-	{
-		G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/weapons/force/heal.wav"));
-	}
-	else
-	{
-		G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/player/injecthealth.mp3"));
-	}*/
 	G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/weapons/force/heal.wav"));
 
 	G_PlayBoltedEffect(G_EffectIndex("force/heal2.efx"), self, "thoracic");
@@ -2971,7 +2986,7 @@ static qboolean melee_block_lightning(gentity_t* attacker, gentity_t* defender)
 		return qfalse;
 	}
 
-	if (!in_front(attacker->client->ps.origin, defender->client->ps.origin, defender->client->ps.viewangles, -0.7f))
+	if (!InFront(attacker->client->ps.origin, defender->client->ps.origin, defender->client->ps.viewangles, -0.7f))
 		//can't block behind us while hand blocking.
 	{
 		//not facing the lightning attacker
@@ -3016,7 +3031,7 @@ static qboolean saber_block_lightning(const gentity_t* attacker, const gentity_t
 		return qfalse;
 	}
 
-	if (!in_front(attacker->client->ps.origin, defender->client->ps.origin, defender->client->ps.viewangles, -0.7f))
+	if (!InFront(attacker->client->ps.origin, defender->client->ps.origin, defender->client->ps.viewangles, -0.7f))
 		//can't block behind us while hand blocking.
 	{
 		//not facing the lightning attacker
@@ -3380,7 +3395,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 					else if (traceEnt->client->ps.weapon == WP_NONE
 						|| traceEnt->client->ps.weapon == WP_MELEE
 						&& traceEnt->client->ps.fd.forcePower > 20
-						&& in_front(self->client->ps.origin, traceEnt->client->ps.origin,
+						&& InFront(self->client->ps.origin, traceEnt->client->ps.origin,
 							traceEnt->client->ps.viewangles, -0.7f))
 					{
 						if (hand_lightning_blocked && !saber_lightning_blocked)
@@ -4866,7 +4881,7 @@ static qboolean playeris_resisting_force_throw(const gentity_t* player, gentity_
 	if (manual_forceblocking(player))
 	{
 		// player was pushing, or player's force push/pull is high enough to try to stop me
-		if (in_front(attacker->r.currentOrigin, player->client->renderInfo.eyePoint, player->client->ps.viewangles,
+		if (InFront(attacker->r.currentOrigin, player->client->renderInfo.eyePoint, player->client->ps.viewangles,
 			0.3f))
 		{
 			//I'm in front of player
@@ -4923,7 +4938,7 @@ static qboolean ShouldPlayerResistForceThrow(const gentity_t* self, const gentit
 		return 0;
 	}
 
-	if (!in_front(thrower->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.3f))
+	if (!InFront(thrower->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.3f))
 	{
 		//not facing the attacker
 		return 0;
@@ -6482,7 +6497,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 							pers.cmd.buttons & BUTTON_BLOCK
 							|| push_target[x]->client->ps.BlasterAttackChainCount <= BLASTERMISHAPLEVEL_HEAVYER && !
 							BG_IsUsingHeavyWeap(&push_target[x]->client->ps)
-							&& in_front(push_target[x]->client->ps.origin, self->client->ps.origin,
+							&& InFront(push_target[x]->client->ps.origin, self->client->ps.origin,
 								self->client->ps.viewangles, -0.7f))
 						{
 							WP_ResistForcePush(push_target[x], self, qfalse);
@@ -6543,7 +6558,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 								}
 							}
 						}
-						else if (!in_front(push_target[x]->r.currentOrigin, self->r.currentOrigin,
+						else if (!InFront(push_target[x]->r.currentOrigin, self->r.currentOrigin,
 							self->client->ps.viewangles, 0.3f) && !walk_check(push_target[x]))
 						{
 							G_Knockdown(push_target[x], self, push_dir, 300, qtrue);
@@ -6602,7 +6617,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 							pers.cmd.buttons & BUTTON_BLOCK
 							|| push_target[x]->client->ps.BlasterAttackChainCount <= BLASTERMISHAPLEVEL_HEAVYER && !
 							BG_IsUsingHeavyWeap(&push_target[x]->client->ps)
-							&& in_front(push_target[x]->client->ps.origin, self->client->ps.origin,
+							&& InFront(push_target[x]->client->ps.origin, self->client->ps.origin,
 								self->client->ps.viewangles, -0.7f))
 						{
 							WP_ResistForcePush(push_target[x], self, qfalse);
@@ -6663,7 +6678,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 								}
 							}
 						}
-						else if (!in_front(push_target[x]->r.currentOrigin, self->r.currentOrigin,
+						else if (!InFront(push_target[x]->r.currentOrigin, self->r.currentOrigin,
 							self->client->ps.viewangles, 0.3f) && !walk_check(push_target[x]))
 						{
 							G_Knockdown(push_target[x], self, push_dir, 300, qtrue);
@@ -6756,7 +6771,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 					}
 					else
 					{
-						g_reflect_missile_auto(self, push_target[x], forward);
+						G_ReflectMissileAuto(self, push_target[x], forward);
 					}
 				}
 			}
@@ -7121,7 +7136,7 @@ static void DoGripAction(gentity_t* self, const forcePowers_t forcePower)
 		return;
 	}
 
-	if (!in_front(gripEnt->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.9f) &&
+	if (!InFront(gripEnt->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.9f) &&
 		grip_level < FORCE_LEVEL_3)
 	{
 		WP_ForcePowerStop(self, forcePower);
@@ -7878,7 +7893,7 @@ static void FindGenericEnemyIndex(const gentity_t* self)
 			const float tlen = VectorLength(a);
 
 			if (tlen < blen &&
-				in_front(ent->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.8f) &&
+				InFront(ent->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.8f) &&
 				org_visible(self->client->ps.origin, ent->client->ps.origin, self->s.number))
 			{
 				blen = tlen;
@@ -8038,7 +8053,7 @@ static void SeekerDroneUpdate(gentity_t* self)
 		}
 		else
 		{
-			if (!in_front(en->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.8f))
+			if (!InFront(en->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.8f))
 			{
 				self->client->ps.genericEnemyIndex = ENTITYNUM_NONE;
 			}
@@ -8897,34 +8912,34 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 			{
 				if (self->client->ps.powerups[PW_FORCE_BOON])
 				{
-					wp_force_power_regenerate(self, 6);
+					WP_ForcePowerRegenerate(self, 6);
 				}
 				else if (self->client->ps.isJediMaster && level.gametype == GT_JEDIMASTER)
 				{
-					wp_force_power_regenerate(self, 4); //jedi master regenerates 4 times as fast
+					WP_ForcePowerRegenerate(self, 4); //jedi master regenerates 4 times as fast
 				}
 				else if (PM_RestAnim(self->client->ps.legsAnim))
 				{
-					wp_force_power_regenerate(self, 10);
+					WP_ForcePowerRegenerate(self, 10);
 					BG_ReduceSaberMishapLevel(&self->client->ps);
 					self->client->ps.powerups[PW_MEDITATE] = level.time + self->client->ps.torsoTimer + 3000;
 				}
 				else if (PM_CrouchAnim(self->client->ps.legsAnim))
 				{
-					wp_force_power_regenerate(self, 8);
+					WP_ForcePowerRegenerate(self, 8);
 					BG_ReduceSaberMishapLevel(&self->client->ps);
 				}
 				else if (is_holding_block_button || is_holding_block_button_and_attack)
 				{
 					//regen half as fast
 					self->client->ps.fd.forcePowerRegenDebounceTime += 2000; //1 point per 1 seconds.. super slow
-					wp_force_power_regenerate(self, 1);
+					WP_ForcePowerRegenerate(self, 1);
 				}
 				else if (self->client->ps.saberInFlight)
 				{
 					//regen half as fast
 					self->client->ps.fd.forcePowerRegenDebounceTime += 2000; //1 point per 1 seconds.. super slow
-					wp_force_power_regenerate(self, 1);
+					WP_ForcePowerRegenerate(self, 1);
 				}
 				else if (PM_SaberInAttack(self->client->ps.saber_move)
 					|| pm_saber_in_special_attack(self->client->ps.torsoAnim)
@@ -8934,11 +8949,11 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 				{
 					//regen half as fast
 					self->client->ps.fd.forcePowerRegenDebounceTime += 4000; //1 point per 1 seconds.. super slow
-					wp_force_power_regenerate(self, 1);
+					WP_ForcePowerRegenerate(self, 1);
 				}
 				else
 				{
-					wp_force_power_regenerate(self, 0);
+					WP_ForcePowerRegenerate(self, 0);
 				}
 			}
 			else
@@ -8953,7 +8968,7 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 					holo++;
 				}
 
-				wp_force_power_regenerate(self, holoregen);
+				WP_ForcePowerRegenerate(self, holoregen);
 			}
 
 			if (level.gametype == GT_SIEGE)
@@ -9086,18 +9101,18 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 			//when not using the block, regenerate at 10 points per second
 			if (self->client->ps.fd.BlockPointsRegenDebounceTime < level.time)
 			{
-				wp_block_points_regenerate(self, self->client->ps.fd.BlockPointRegenAmount);
+				WP_BlockPointsRegenerate(self, self->client->ps.fd.BlockPointRegenAmount);
 
 				self->client->ps.fd.BlockPointsRegenDebounceTime = level.time + self->client->ps.fd.BlockPointRegenRate;
 
 				if (PM_RestAnim(self->client->ps.legsAnim))
 				{
-					wp_block_points_regenerate(self, 4);
+					WP_BlockPointsRegenerate(self, 4);
 					self->client->ps.powerups[PW_MEDITATE] = level.time + self->client->ps.torsoTimer + 3000;
 				}
 				else if (PM_CrouchAnim(self->client->ps.legsAnim))
 				{
-					wp_block_points_regenerate(self, 2);
+					WP_BlockPointsRegenerate(self, 2);
 				}
 				else
 				{
@@ -9140,7 +9155,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 		{
 			if (self->client->ps.fd.BlockPointsRegenDebounceTime < level.time)
 			{
-				wp_block_points_regenerate_over_ride(self, self->client->ps.fd.BlockPointRegenAmount);
+				WP_BlockPointsRegenerate_over_ride(self, self->client->ps.fd.BlockPointRegenAmount);
 
 				self->client->ps.fd.BlockPointsRegenDebounceTime = level.time + self->client->ps.fd.BlockPointRegenRate;
 

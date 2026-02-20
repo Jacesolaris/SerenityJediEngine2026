@@ -3365,7 +3365,7 @@ void G_SetWeapon(gentity_t* self, int wp)
 		{
 			wp_saber_init_blade_data(self);
 		}
-		wp_saber_add_g2_saber_models(self);
+		WP_SaberAddG2SaberModels(self);
 		G_RemoveHolsterModels(self);
 	}
 	else

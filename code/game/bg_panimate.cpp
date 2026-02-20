@@ -64,7 +64,7 @@ extern cvar_t* g_speederControlScheme;
 extern cvar_t* g_saberNewControlScheme;
 extern cvar_t* g_noIgniteTwirl;
 
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern void WP_ForcePowerDrain(const gentity_t* self, forcePowers_t force_power, int override_amt);
 extern qboolean ValidAnimFileIndex(int index);
 extern qboolean PM_ControlledByPlayer();
@@ -4124,7 +4124,7 @@ qboolean PM_CheckFlipOverAttackMove(const qboolean checkEnemy)
 					&& pm->gent->enemy->maxs[2] > 12
 					&& (!pm->gent->enemy->client || !PM_InKnockDownOnGround(&pm->gent->enemy->client->ps))
 					&& DistanceSquared(pm->gent->currentOrigin, pm->gent->enemy->currentOrigin) < 10000
-					&& in_front(pm->gent->enemy->currentOrigin, pm->gent->currentOrigin, fwd_angles, 0.3f))
+					&& InFront(pm->gent->enemy->currentOrigin, pm->gent->currentOrigin, fwd_angles, 0.3f))
 				{
 					//enemy must be alive, not low to ground, close and in front
 					return qtrue;
@@ -4472,7 +4472,7 @@ saber_moveName_t PM_CheckPullAttack()
 				}
 
 				vec3_t targ_angles = { 0, targ_ent->client->ps.viewangles[YAW], 0 };
-				if (in_front(pm->ps->origin, targ_ent->currentOrigin, targ_angles))
+				if (InFront(pm->ps->origin, targ_ent->currentOrigin, targ_angles))
 				{
 					NPC_SetAnim(targ_ent, SETANIM_BOTH, BOTH_PULLED_INAIR_F, SETANIM_FLAG_OVERRIDE, SETANIM_FLAG_HOLD);
 				}
@@ -4536,28 +4536,73 @@ static saber_moveName_t PM_CheckPlayerAttackFromParry(const int curmove)
 }
 
 constexpr auto SPECIAL_ATTACK_DISTANCE = 128;
+extern qboolean npc_is_sith_lord(const gentity_t* self);
 qboolean PM_Can_Do_Kill_Lunge(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, back{};
-	const vec3_t trmins = { -15, -15, -8 };
-	const vec3_t trmaxs = { 15, 15, 8 };
+	vec3_t fwd, back;
+	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
+	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
+
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
+	const int clientNum = pm->ps->clientNum;
+	const int killLungeCooldownMs = 60000; // 1 minute
+
+	// If this is an NPC (entity numbers >= MAX_CLIENTS), check NPC cooldown field.
+	if (clientNum >= MAX_CLIENTS && clientNum < ENTITYNUM_MAX_NORMAL)
+	{
+		gentity_t* ent = &g_entities[clientNum];
+
+		if (!ent || !ent->NPC)
+		{
+			return qfalse;
+		}
+
+		if (level.time < ent->NPC->lastKataTime)
+		{
+			return qfalse;
+		}
+
+		if (npc_is_sith_lord(ent))
+		{
+			return qfalse;
+		}
+	}
 
 	VectorCopy(pm->ps->viewangles, flatAng);
 	flatAng[PITCH] = 0;
 
-	AngleVectors(flatAng, fwd, 0, 0);
+	AngleVectors(flatAng, fwd, NULL, NULL);
 
 	back[0] = pm->ps->origin[0] + fwd[0] * SPECIAL_ATTACK_DISTANCE;
 	back[1] = pm->ps->origin[1] + fwd[1] * SPECIAL_ATTACK_DISTANCE;
 	back[2] = pm->ps->origin[2] + fwd[2] * SPECIAL_ATTACK_DISTANCE;
 
-	pm->trace(&tr, pm->ps->origin, trmins, trmaxs, back, pm->ps->clientNum, MASK_PLAYERSOLID, static_cast<EG2_Collision>(0), 0);
+	pm->trace(&tr, pm->ps->origin, trmins, trmaxs, back, pm->ps->clientNum,
+		MASK_PLAYERSOLID, (EG2_Collision)0, 0);
 
-	if (tr.fraction != 1.0 && tr.entityNum >= 0 && tr.entityNum < MAX_CLIENTS)
+	if (tr.fraction != 1.0f && tr.entityNum >= 0 && tr.entityNum < MAX_CLIENTS)
 	{
-		//We don't have real entity access here so we can't do an in depth check. But if it's a client, I guess that's reason enough to attack
+		// Hit a client — start cooldown for NPCs (and optionally players)
+		if (clientNum >= MAX_CLIENTS && clientNum < ENTITYNUM_MAX_NORMAL)
+		{
+			gentity_t* ent = &g_entities[clientNum];
+			if (ent && ent->NPC)
+			{
+				ent->NPC->lastKataTime = level.time + killLungeCooldownMs;
+			}
+		}
+		else if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+		{
+			static int lastKillLungeTime[MAX_CLIENTS] = { 0 };
+			lastKillLungeTime[clientNum] = level.time + killLungeCooldownMs;
+		}
+
 		return qtrue;
 	}
 
@@ -4568,23 +4613,66 @@ qboolean PM_Can_Do_Kill_Lunge_back(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, back{};
-	vec3_t trmins = { -15, -15, -8 };
-	vec3_t trmaxs = { 15, 15, 8 };
+	vec3_t fwd, back;
+	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
+	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
+
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
+	const int clientNum = pm->ps->clientNum;
+	const int killLungeCooldownMs = 60000; // 1 minute
+
+	// NPC cooldown check
+	if (clientNum >= MAX_CLIENTS && clientNum < ENTITYNUM_MAX_NORMAL)
+	{
+		gentity_t* ent = &g_entities[clientNum];
+		if (!ent || !ent->NPC)
+		{
+			return qfalse;
+		}
+		if (level.time < ent->NPC->lastKataTime)
+		{
+			return qfalse;
+		}
+
+		if (npc_is_sith_lord(ent))
+		{
+			return qfalse;
+		}
+	}
 
 	VectorCopy(pm->ps->viewangles, flatAng);
 	flatAng[PITCH] = 0;
 
-	AngleVectors(flatAng, fwd, 0, 0);
+	AngleVectors(flatAng, fwd, NULL, NULL);
 
 	back[0] = pm->ps->origin[0] - fwd[0] * SPECIAL_ATTACK_DISTANCE;
 	back[1] = pm->ps->origin[1] - fwd[1] * SPECIAL_ATTACK_DISTANCE;
 	back[2] = pm->ps->origin[2] - fwd[2] * SPECIAL_ATTACK_DISTANCE;
 
-	pm->trace(&tr, pm->ps->origin, trmins, trmaxs, back, pm->ps->clientNum, MASK_PLAYERSOLID, static_cast<EG2_Collision>(0), 0);
+	pm->trace(&tr, pm->ps->origin, trmins, trmaxs, back, pm->ps->clientNum,
+		MASK_PLAYERSOLID, (EG2_Collision)0, 0);
 
-	if (tr.fraction != 1.0 && tr.entityNum >= 0 && (tr.entityNum < MAX_CLIENTS))
-	{ //We don't have real entity access here so we can't do an indepth check. But if it's a client and it's behind us, I guess that's reason enough to stab backward
+	if (tr.fraction != 1.0f && tr.entityNum >= 0 && tr.entityNum < MAX_CLIENTS)
+	{
+		// Hit a client behind us — start cooldown for NPCs (and optionally players)
+		if (clientNum >= MAX_CLIENTS && clientNum < ENTITYNUM_MAX_NORMAL)
+		{
+			gentity_t* ent = &g_entities[clientNum];
+			if (ent && ent->NPC)
+			{
+				ent->NPC->lastKataTime = level.time + killLungeCooldownMs;
+			}
+		}
+		else if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+		{
+			static int lastKillLungeBackTime[MAX_CLIENTS] = { 0 };
+			lastKillLungeBackTime[clientNum] = level.time + killLungeCooldownMs;
+		}
+
 		return qtrue;
 	}
 

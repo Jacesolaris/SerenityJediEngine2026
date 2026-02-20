@@ -28,6 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_local.h"
 #include "../cgame/cg_local.h"
 #include "g_functions.h"
+#include <qcommon\q_shared.h>
 
 void GEntity_ThinkFunc(gentity_t* self)
 {
@@ -113,7 +114,7 @@ void GEntity_ThinkFunc(gentity_t* self)
 			THINKCASE(pas_think) // personal assault sentry
 			THINKCASE(ion_cannon_think)
 			THINKCASE(maglock_link)
-			THINKCASE(wp_flechette_alt_blow)
+			THINKCASE(WP_flechette_alt_blow)
 			THINKCASE(WP_prox_mine_think)
 			THINKCASE(camera_aim)
 			THINKCASE(fx_explosion_trail_link)
@@ -149,6 +150,10 @@ void GEntity_ThinkFunc(gentity_t* self)
 			THINKCASE(Weapon_StunFree)
 
 			THINKCASE(asteroid_move_to_start)
+
+			THINKCASE(wp_stasis_missile_blow)
+
+			THINKCASE(WP_SaberBallisticsThink)
 
 	default:
 		Com_Error(ERR_DROP, "GEntity_ThinkFunc: case %d not handled!\n", self->e_ThinkFunc);

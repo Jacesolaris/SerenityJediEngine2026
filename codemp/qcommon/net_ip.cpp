@@ -37,6 +37,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #ifdef _WIN32
 #include <winsock.h>
+#include <qcommon\q_platform.h>
+#include <Windows.h>
 
 using socklen_t = int;
 
@@ -81,6 +83,7 @@ static qboolean winsockInitialized = qfalse;
 #ifdef __sun
 #include <sys/filio.h>
 #endif
+#include <cstdlib>
 
 typedef int SOCKET;
 #define INVALID_SOCKET                -1
@@ -113,7 +116,7 @@ static sockaddr_in socksRelayAddr;
 static SOCKET ip_socket = INVALID_SOCKET;
 static SOCKET socks_socket = INVALID_SOCKET;
 
-#define	MAX_IPS		16
+constexpr auto MAX_IPS = 16;
 static int numIP;
 static byte localIP[MAX_IPS][4];
 
@@ -475,7 +478,7 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 	Com_Printf("----- Client Initialization -----\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 08/02/2026-----------------------\n"); // build date
+	Com_Printf("---------------------Build date 20/02/2026-----------------------\n"); // build date
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -1119,19 +1122,18 @@ static void NET_Event(fd_set* fdr)
 	netadr_t from;
 	msg_t netmsg;
 
+	static byte bufData[MAX_MSGLEN + 1];   // moved off stack
+
 	while (true)
 	{
-		byte bufData[MAX_MSGLEN + 1];
 		MSG_Init(&netmsg, bufData, sizeof bufData);
 
 		if (NET_GetPacket(&from, &netmsg, fdr))
 		{
 			if (net_dropsim->value > 0.0f && net_dropsim->value <= 100.0f)
 			{
-				// com_dropsim->value percent of incoming packets get dropped.
-				if (rand() < static_cast<int>(static_cast<double>(RAND_MAX) / 100.0 * static_cast<double>(net_dropsim->
-					value)))
-					continue; // drop this packet
+				if (rand() < (int)((double)RAND_MAX / 100.0 * net_dropsim->value))
+					continue;
 			}
 
 			if (com_sv_running->integer)

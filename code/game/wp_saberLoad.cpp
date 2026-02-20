@@ -2905,7 +2905,7 @@ void WP_SetSaber(gentity_t* ent, const int saberNum, const char* saber_name)
 	}
 	if (ent->client->ps.weapon == WP_SABER)
 	{
-		wp_saber_add_g2_saber_models(ent, saberNum);
+		WP_SaberAddG2SaberModels(ent, saberNum);
 		ent->client->ps.saber[saberNum].SetLength(0.0f);
 		ent->client->ps.saber[saberNum].Activate();
 	}

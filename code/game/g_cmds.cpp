@@ -1230,7 +1230,7 @@ static void G_Taunt(gentity_t* ent)
 			if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 			{
 				G_RemoveHolsterModels(ent);
-				wp_saber_add_g2_saber_models(ent, qtrue);
+				WP_SaberAddG2SaberModels(ent, qtrue);
 			}
 		}
 		else
@@ -1498,7 +1498,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						if (ent->client->ps.saber[0].type == SABER_GRIE || ent->client->ps.saber[0].type == SABER_GRIE4)
 						{
@@ -1515,7 +1515,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
@@ -1570,7 +1570,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						if (ent->client->ps.saber[0].type == SABER_GRIE || ent->client->ps.saber[0].type == SABER_GRIE4)
 						{
@@ -1587,7 +1587,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
@@ -1882,7 +1882,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 				if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 				{
 					G_RemoveHolsterModels(ent);
-					wp_saber_add_g2_saber_models(ent, qtrue);
+					WP_SaberAddG2SaberModels(ent, qtrue);
 				}
 			}
 			break;
@@ -1978,7 +1978,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VICTORY_DUAL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						if (!ent->client->ps.SaberActive())
@@ -1991,7 +1991,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_STAFF, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						if (!ent->client->ps.SaberActive())
@@ -2034,7 +2034,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VICTORY_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
@@ -2043,7 +2043,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VICTORY_DUAL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
@@ -2052,7 +2052,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 						{
 							G_RemoveHolsterModels(ent);
-							wp_saber_add_g2_saber_models(ent, qtrue);
+							WP_SaberAddG2SaberModels(ent, qtrue);
 						}
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_STAFF, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
@@ -2214,7 +2214,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 					if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 					{
 						G_RemoveHolsterModels(ent);
-						wp_saber_add_g2_saber_models(ent, qtrue);
+						WP_SaberAddG2SaberModels(ent, qtrue);
 					}
 					if (ent->client->ps.saber[0].type == SABER_GRIE || ent->client->ps.saber[0].type == SABER_GRIE4)
 					{
@@ -2231,7 +2231,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 					if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 					{
 						G_RemoveHolsterModels(ent);
-						wp_saber_add_g2_saber_models(ent, qtrue);
+						WP_SaberAddG2SaberModels(ent, qtrue);
 					}
 					NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
@@ -2286,7 +2286,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 					if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 					{
 						G_RemoveHolsterModels(ent);
-						wp_saber_add_g2_saber_models(ent, qtrue);
+						WP_SaberAddG2SaberModels(ent, qtrue);
 					}
 					if (ent->client->ps.saber[0].type == SABER_GRIE || ent->client->ps.saber[0].type == SABER_GRIE4)
 					{
@@ -2303,7 +2303,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 					if (ent->client->ps.dualSabers && ent->weaponModel[1] == -1)
 					{
 						G_RemoveHolsterModels(ent);
-						wp_saber_add_g2_saber_models(ent, qtrue);
+						WP_SaberAddG2SaberModels(ent, qtrue);
 					}
 					NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;

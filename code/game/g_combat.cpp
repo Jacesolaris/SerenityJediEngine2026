@@ -102,7 +102,7 @@ extern qboolean PM_LockedAnim(int anim);
 extern qboolean PM_KnockDownAnim(int anim);
 extern void G_SpeechEvent(const gentity_t* self, int event);
 extern qboolean Rosh_BeingHealed(const gentity_t* self);
-extern void wp_force_power_regenerate(const gentity_t* self, int override_amt);
+extern void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
 extern qboolean manual_saberblocking(const gentity_t* defender);
 static int G_CheckForLedge(const gentity_t* self, vec3_t fall_check_dir, float check_dist);
 static int G_CheckSpecialDeathAnim(gentity_t* self);
@@ -114,7 +114,7 @@ void AddFatigueHurtBonus(const gentity_t* attacker, const gentity_t* victim, int
 void AddFatigueHurtBonusMax(const gentity_t* attacker, const gentity_t* victim, int mod);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
 extern void Jetpack_Off(const gentity_t* ent);
-extern void wp_block_points_regenerate(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
 extern qboolean NPC_IsJetpacking(const gentity_t* self);
 void AddFatigueKillBonus(const gentity_t* attacker, const gentity_t* victim, int means_of_death);
 void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags, int i_blend);
@@ -8896,14 +8896,14 @@ void AddFatigueKillBonus(const gentity_t* attacker, const gentity_t* victim, con
 		//DONT GET THIS BONUS IF YOUR A BLOCK SPAMMER
 	{
 		//add bonus
-		wp_block_points_regenerate(attacker, FATIGUE_SMALLBONUS);
-		wp_force_power_regenerate(attacker, FATIGUE_HURTBONUSMAX);
+		WP_BlockPointsRegenerate(attacker, FATIGUE_SMALLBONUS);
+		WP_ForcePowerRegenerate(attacker, FATIGUE_HURTBONUSMAX);
 	}
 	else
 	{
 		//add bonus
-		wp_block_points_regenerate(attacker, FATIGUE_KILLBONUS);
-		wp_force_power_regenerate(attacker, FATIGUE_KILLBONUS);
+		WP_BlockPointsRegenerate(attacker, FATIGUE_KILLBONUS);
+		WP_ForcePowerRegenerate(attacker, FATIGUE_KILLBONUS);
 	}
 
 	if (attacker->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY)
@@ -8932,8 +8932,8 @@ void AddFatigueMeleeBonus(const gentity_t* attacker, const gentity_t* victim)
 	}
 
 	//add bonus
-	wp_block_points_regenerate(attacker, FATIGUE_DAMAGEBONUS);
-	wp_force_power_regenerate(attacker, FATIGUE_DAMAGEBONUS);
+	WP_BlockPointsRegenerate(attacker, FATIGUE_DAMAGEBONUS);
+	WP_ForcePowerRegenerate(attacker, FATIGUE_DAMAGEBONUS);
 
 	if (attacker->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY)
 	{
@@ -8970,14 +8970,14 @@ void AddFatigueHurtBonus(const gentity_t* attacker, const gentity_t* victim, con
 		//DONT GET THIS BONUS IF YOUR A BLOCK SPAMMER
 	{
 		//add bonus
-		wp_block_points_regenerate(attacker, FATIGUE_SMALLBONUS);
-		wp_force_power_regenerate(attacker, FATIGUE_DAMAGEBONUS);
+		WP_BlockPointsRegenerate(attacker, FATIGUE_SMALLBONUS);
+		WP_ForcePowerRegenerate(attacker, FATIGUE_DAMAGEBONUS);
 	}
 	else
 	{
 		//add bonus
-		wp_block_points_regenerate(attacker, FATIGUE_HURTBONUS);
-		wp_force_power_regenerate(attacker, FATIGUE_HURTBONUS);
+		WP_BlockPointsRegenerate(attacker, FATIGUE_HURTBONUS);
+		WP_ForcePowerRegenerate(attacker, FATIGUE_HURTBONUS);
 	}
 
 	if (attacker->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY)
@@ -9015,14 +9015,14 @@ void AddFatigueHurtBonusMax(const gentity_t* attacker, const gentity_t* victim, 
 		//DONT GET THIS BONUS IF YOUR A BLOCK SPAMMER
 	{
 		//add bonus
-		wp_block_points_regenerate(attacker, FATIGUE_SMALLBONUS);
-		wp_force_power_regenerate(attacker, FATIGUE_SMALLBONUS);
+		WP_BlockPointsRegenerate(attacker, FATIGUE_SMALLBONUS);
+		WP_ForcePowerRegenerate(attacker, FATIGUE_SMALLBONUS);
 	}
 	else
 	{
 		//add bonus
-		wp_block_points_regenerate(attacker, FATIGUE_HURTBONUSMAX);
-		wp_force_power_regenerate(attacker, FATIGUE_HURTBONUSMAX);
+		WP_BlockPointsRegenerate(attacker, FATIGUE_HURTBONUSMAX);
+		WP_ForcePowerRegenerate(attacker, FATIGUE_HURTBONUSMAX);
 	}
 
 	if (attacker->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY)
@@ -9035,8 +9035,8 @@ void add_npc_block_point_bonus(const gentity_t* self)
 {
 	//get a small bonus
 	//add bonus
-	wp_block_points_regenerate(self, FATIGUE_HURTBONUS);
-	wp_force_power_regenerate(self, FATIGUE_HURTBONUSMAX);
+	WP_BlockPointsRegenerate(self, FATIGUE_HURTBONUS);
+	WP_ForcePowerRegenerate(self, FATIGUE_HURTBONUSMAX);
 
 	if (self->client->ps.saberFatigueChainCount >= MISHAPLEVEL_TEN)
 	{

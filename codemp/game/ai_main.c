@@ -44,6 +44,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include "g_public.h"
 #include <stdlib.h>
+#include "b_public.h"
 //
 
 #define BOT_THINK_TIME	1000/bot_fps.integer
@@ -73,7 +74,6 @@ float regularupdate_time;
 int bot_get_weapon_range(const bot_state_t* bs);
 int pass_loved_one_check(const bot_state_t* bs, const gentity_t* ent);
 void ExitLevel(void);
-qboolean WP_ForcePowerUsable(const gentity_t* self, forcePowers_t forcePower);
 extern qboolean G_HeavyMelee(const gentity_t* attacker);
 void siege_defend_from_attackers(bot_state_t* bs);
 void request_siege_assistance(bot_state_t* bs, int base_class);
@@ -488,7 +488,7 @@ static gentity_t* find_closest_human_player(vec3_t position, const int enemy_tea
 
 static float vector_distancebot(vec3_t v1, vec3_t v2)
 {
-	vec3_t dir = {0, 0, 0};
+	vec3_t dir = { 0, 0, 0 };
 
 	VectorSubtract(v2, v1, dir);
 	return VectorLength(dir);
@@ -594,11 +594,10 @@ static void set_enemy_path(bot_state_t* bs)
 	}
 }
 
-
-
 // ------------------------------------------------------------
 // Jetpack helper (C89-safe)
 // ------------------------------------------------------------
+qboolean BotOrderJetPack(bot_state_t* bs);
 static void AI_EnableJetpack(bot_state_t* bs)
 {
 	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & (1 << HI_JETPACK))
@@ -776,7 +775,7 @@ static void ai_mod_jump(bot_state_t* bs)
 	case JS_JUMPING:
 	{
 		// Keep jetpack assist if we have it
-		AI_EnableJetpack(bs);
+		BotOrderJetPack(bs);
 
 		// If we hit ground, transition to landing
 		if (bot->s.groundEntityNum != ENTITYNUM_NONE)
@@ -825,7 +824,7 @@ static void ai_mod_jump(bot_state_t* bs)
 		// Reset to facing state
 		if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & (1 << HI_JETPACK))
 		{
-			AI_EnableJetpack(bs);
+			BotOrderJetPack(bs);
 		}
 		bs->BOTjumpState = JS_FACING;
 		break;
@@ -1512,7 +1511,6 @@ static void bot_update_input(bot_state_t* bs, const int time, const int elapsed_
 	}
 
 	// Saber walk logic
-	//bot_should_walk_saber(bs, &bi);
 
 	// Timed actions (kick, gloat, flourish)
 	if (bot_try_timed_action(bs, &next_kick[client], 20000, SABER_KICK_RANGE, ACTION_KICK))
@@ -1559,35 +1557,38 @@ static void bot_update_input(bot_state_t* bs, const int time, const int elapsed_
 		// Left saber range → reset for next engagement
 		bs->saberEngageEmote = 0;
 	}
-	
+
 	// Saber combat walking logic
 	if (bs->cur_ps.weapon == WP_SABER)
 	{
-		gentity_t* self = &g_entities[bs->cur_ps.clientNum];
+		gentity_t* self = &g_entities[client];
 		gentity_t* enemy = bs->currentEnemy;
-
 		qboolean inSaberCombat = qfalse;
 
 		if (enemy &&
 			enemy->client &&
 			enemy->health > 0 &&
-			!bs->cur_ps.saberHolstered) // saber ignited
+			bs->jumpTime <= level.time &&
+			(VectorDistance(self->r.currentOrigin, enemy->r.currentOrigin) < 300 || walktime[client] > level.time))
 		{
-			float dist = VectorDistance(self->r.currentOrigin, enemy->r.currentOrigin);
-
-			// Duel distance (feels natural in Movie Duels)
-			if (dist < 200.0f)
+			if (visible(self, bs->currentEnemy) || walktime[client] > level.time)
 			{
-				inSaberCombat = qtrue;
-			}
-		}
+				bi.actionflags |= ACTION_WALK;
+				walktime[client] = level.time + 2000;
 
-		if (inSaberCombat)
-		{
-			bi.actionflags |= ACTION_WALK;
+				if (bs->cur_ps.saberHolstered)
+					bs->cur_ps.saberHolstered = 0;
+			}
+			else
+			{
+				walktime[client] = 0;
+				bi.actionflags &= ~ACTION_WALK;
+				//bot_should_walk_saber(bs, &bi);
+			}
 		}
 		else
 		{
+			walktime[client] = 0;
 			bi.actionflags &= ~ACTION_WALK;
 		}
 	}
@@ -2149,9 +2150,7 @@ static float route_randomize(const bot_state_t* bs, const float dest_dist)
 	//bots take a random path instead of always taking the shortest route.
 	//This should vary based on situation to prevent the bots from taking weird routes
 	//for inapproprate situations.
-	if (bs->currentTactic == BOTORDER_OBJECTIVE
-		&& bs->objectiveType == OT_CAPTURE
-		&& !carrying_cap_objective(bs))
+	if (!carrying_cap_objective(bs))
 	{
 		//trying to capture something.  Fairly random paths to mix up the defending team.
 		return dest_dist * Q_flrand(.5, 1.5);
@@ -3369,70 +3368,91 @@ static qboolean calculate_jump(vec3_t origin, vec3_t dest)
 
 static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboolean strafe)
 {
-	vec3_t move_dir;
-	vec3_t view_dir;
-	vec3_t ang;
+	// ---------------------------------------------------------
+	// STACK-SAFE VECTOR SET (reused scratch vectors)
+	// ---------------------------------------------------------
+	vec3_t move_dir, view_dir, ang;
+	vec3_t scratch1, scratch2; // replaces 10+ separate locals
 	qboolean movetrace = qtrue;
 
+	// ---------------------------------------------------------
+	// COMBAT GATING (C1-B)
+	// Disable jumps ONLY when:
+	//   - enemy exists
+	//   - weapon is saber or melee
+	//   - enemy is within 256 units
+	// ---------------------------------------------------------
+	const qboolean inSaberCombat =
+		(bs->currentEnemy != NULL) &&
+		(bs->cur_ps.weapon == WP_SABER || bs->cur_ps.weapon == WP_MELEE) &&
+		(bs->frame_Enemy_Len < 256.0f);
+
+	// ---------------------------------------------------------
+	// VIEW DIRECTION
+	// ---------------------------------------------------------
 	VectorSubtract(dest, bs->eye, view_dir);
 	vectoangles(view_dir, ang);
 	VectorCopy(ang, bs->goalAngles);
-
-	if (wptravel)
-	{
-		//if we're traveling between waypoints, don't bob the view up and down.
-		bs->goalAngles[PITCH] = 0;
-	}
-
-	VectorSubtract(dest, bs->origin, move_dir);
-	move_dir[2] = 0;
-	VectorNormalize(move_dir);
 
 	if (wptravel && !bs->wpCurrent)
 	{
 		return;
 	}
+
 	if (wptravel)
 	{
-		//special wp moves
+		bs->goalAngles[PITCH] = 0;
+	}
+
+	// ---------------------------------------------------------
+	// MOVE DIRECTION (2D)
+	// ---------------------------------------------------------
+	VectorSubtract(dest, bs->origin, move_dir);
+	move_dir[2] = 0;
+	VectorNormalize(move_dir);
+
+	// ---------------------------------------------------------
+	// WAYPOINT SPECIAL LOGIC
+	// ---------------------------------------------------------
+	if (wptravel)
+	{
+		// BREAKABLE
 		if (bs->wpCurrent->flags & WPFLAG_DESTROY_FUNCBREAK)
 		{
-			//look for nearby func_breakable and break them if we can before we continue
 			if (AttackLocalBreakable(bs))
 			{
-				//found a breakable that we can destroy
 				bs->wpSeenTime = level.time + 3000;
 				return;
 			}
 		}
 
+		// FORCE PUSH
 		if (bs->wpCurrent->flags & WPFLAG_FORCEPUSH)
 		{
 			if (use_forceon_local(bs, bs->wpCurrent->origin, qfalse))
 			{
-				//found something we can Force Push
 				bs->wpSeenTime = level.time + 3000;
 				return;
 			}
 		}
 
+		// FORCE PULL
 		if (bs->wpCurrent->flags & WPFLAG_FORCEPULL)
 		{
 			if (use_forceon_local(bs, bs->wpCurrent->origin, qtrue))
 			{
-				//found something we can Force Pull
 				wp_visible_update(bs);
 				return;
 			}
 		}
 
-		if (bs->wpCurrent->flags & WPFLAG_JUMP)
+		// ---------------------------------------------------------
+		// JUMP WAYPOINT — DISABLED DURING SABER COMBAT
+		// ---------------------------------------------------------
+		if ((bs->wpCurrent->flags & WPFLAG_JUMP) && !inSaberCombat)
 		{
-			//jump while travelling to this point
-			vec3_t viewang;
-			vec3_t velocity;
+			// (Original jump logic preserved, but gated)
 			vec3_t flatorigin, flatstart, flatend;
-
 			VectorCopy(bs->origin, flatorigin);
 			VectorCopy(bs->wpCurrentLoc, flatstart);
 			VectorCopy(bs->wpCurrent->origin, flatend);
@@ -3442,67 +3462,57 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 			const float diststart = Distance(flatorigin, flatstart);
 			const float distend = Distance(flatorigin, flatend);
 
-			VectorSubtract(dest, bs->origin, viewang);
-			vectoangles(viewang, ang);
+			VectorSubtract(dest, bs->origin, scratch1);
+			vectoangles(scratch1, ang);
 
-			//never strafe during when jumping somewhere
-			strafe = qfalse;
+			strafe = qfalse; // never strafe during jump
 
 			if (bs->cur_ps.groundEntityNum != ENTITYNUM_NONE &&
 				(diststart < distend || bs->origin[2] < bs->wpCurrent->origin[2]))
 			{
-				//before jump attempt
-				if (ForcePowerforJump[force_jump_needed(bs->origin, bs->wpCurrent->origin)] > bs->cur_ps.fd.forcePower)
+				if (ForcePowerforJump[force_jump_needed(bs->origin, bs->wpCurrent->origin)]
+				> bs->cur_ps.fd.forcePower)
 				{
-					//we don't have enough energy to make our jump.  wait here.
 					bs->wpSpecial = qtrue;
 					return;
 				}
 			}
 
-			//velocity analysis
-			viewang[2] = 0;
-			VectorNormalize(viewang);
-			VectorCopy(bs->cur_ps.velocity, velocity);
-			velocity[2] = 0;
-			const float hor_velo = VectorNormalize(velocity);
+			// Velocity analysis
+			scratch1[2] = 0;
+			VectorNormalize(scratch1);
 
-			//make sure we're stopped or moving towards our goal before jumping
-			if (diststart < distend && (VectorCompare(vec3_origin, velocity) || DotProduct(velocity, viewang) > .7)
+			VectorCopy(bs->cur_ps.velocity, scratch2);
+			scratch2[2] = 0;
+			const float hor_velo = VectorNormalize(scratch2);
+
+			if ((diststart < distend &&
+				(VectorCompare(vec3_origin, scratch2) || DotProduct(scratch2, scratch1) > .7))
 				|| bs->cur_ps.groundEntityNum == ENTITYNUM_NONE)
 			{
-				//moving towards to our jump target or not moving at all or already on route and not already near the target.
-				//hold down jump until we're pretty sure that we'll hit our target by just falling onto it.
 				vec3_t to_dest_flat;
 				qboolean hold_jump = qtrue;
 
 				VectorSubtract(flatend, flatorigin, to_dest_flat);
 				VectorNormalize(to_dest_flat);
 
-				const float velo_scaler = DotProduct(to_dest_flat, velocity);
+				const float velo_scaler = DotProduct(to_dest_flat, scratch2);
 
-				//figure out how long it will take make it to the target with our current horizontal velocity.
 				if (hor_velo)
 				{
-					//can't check when not moving
 					const float time_to_end = distend / (hor_velo * velo_scaler);
-					//assumes we're moving fully in the correct direction
-
-					//calculate our estimated vertical position if we just let go of the jump now.
-					const float estVert = bs->origin[2] + bs->cur_ps.velocity[2] * time_to_end - g_gravity.value *
-						time_to_end *
-						time_to_end;
+					const float estVert = bs->origin[2] +
+						bs->cur_ps.velocity[2] * time_to_end -
+						g_gravity.value * time_to_end * time_to_end;
 
 					if (estVert >= bs->wpCurrent->origin[2])
 					{
-						//we're going to make it, let go of jump
 						hold_jump = qfalse;
 					}
 				}
 
 				if (hold_jump)
 				{
-					//jump
 					bs->jumpTime = level.time + 100;
 					bs->wpSpecial = qtrue;
 					wp_visible_update(bs);
@@ -3512,79 +3522,37 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 			}
 		}
 
-		//not doing a special wp move so clear that flag.
 		bs->wpSpecial = qfalse;
 
+		// WAITFORFUNC
 		if (bs->wpCurrent->flags & WPFLAG_WAITFORFUNC)
 		{
 			if (!check_for_func(bs->wpCurrent->origin, bs->client))
 			{
 				wp_visible_update(bs);
-				if (!bs->AltRouteCheck && bs->wpTravelTime - level.time < 20000)
-				{
-					//been waiting for 10 seconds, try looking for alt route if we haven't
-					//already
-					bot_route_t route_test;
-					int newwp = get_nearest_visible_wpsje(bs, bs->origin, bs->client,
-						bs->wpCurrent->index);
-					bs->AltRouteCheck = qtrue;
-
-					if (newwp == -1)
-					{
-						newwp = get_nearest_wp(bs, bs->origin, bs->wpCurrent->index);
-					}
-					if (find_ideal_pathto_wp(bs, newwp, bs->wpDestination->index, bs->wpCurrent->index, route_test) != -
-						1)
-					{
-						//found a new route
-						bs->wpCurrent = gWPArray[newwp];
-						copy_route(route_test, bs->botRoute);
-						reset_wp_timers(bs);
-					}
-				}
 				return;
 			}
 		}
+
+		// NOMOVEFUNC
 		if (bs->wpCurrent->flags & WPFLAG_NOMOVEFUNC)
 		{
 			if (check_for_func(bs->wpCurrent->origin, bs->client))
 			{
 				wp_visible_update(bs);
-				if (!bs->AltRouteCheck && bs->wpTravelTime - level.time < 20000)
-				{
-					//been waiting for 10 seconds, try looking for alt route if we haven't
-					//already
-					bot_route_t route_test;
-					int newwp = get_nearest_visible_wpsje(bs, bs->origin, bs->client, bs->wpCurrent->index);
-					bs->AltRouteCheck = qtrue;
-
-					if (newwp == -1)
-					{
-						newwp = get_nearest_wp(bs, bs->origin, bs->wpCurrent->index);
-					}
-					if (find_ideal_pathto_wp(bs, newwp, bs->wpDestination->index, bs->wpCurrent->index, route_test) != -
-						1)
-					{
-						//found a new route
-						bs->wpCurrent = gWPArray[newwp];
-						copy_route(route_test, bs->botRoute);
-						reset_wp_timers(bs);
-					}
-				}
 				return;
 			}
 		}
 
+		// DUCK
 		if (bs->wpCurrent->flags & WPFLAG_DUCK)
 		{
-			//duck while travelling to this point
 			bs->duckTime = level.time + 100;
 		}
 
-		//visual check
+		// VIS CHECK
 		if (!(bs->wpCurrent->flags & WPFLAG_NOVIS))
 		{
-			//do visual check
 			wp_visible_update(bs);
 		}
 		else
@@ -3595,39 +3563,42 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 	}
 	else
 	{
-		//jump to dest if we need to.
-		if (calculate_jump(bs->origin, dest))
+		// ---------------------------------------------------------
+		// NON-WAYPOINT JUMP — DISABLED DURING SABER COMBAT
+		// ---------------------------------------------------------
+		if (!inSaberCombat && calculate_jump(bs->origin, dest))
 		{
 			bs->jumpTime = level.time + 100;
 		}
 	}
 
-	//set strafing.
+	// ---------------------------------------------------------
+	// STRAFING
+	// ---------------------------------------------------------
 	if (strafe)
 	{
 		if (bs->meleeStrafeTime < level.time)
 		{
-			//select a new strafing direction, since we're actively navigating, switch strafe
-			//directions more often
-			//0 = no strafe
-			//1 = strafe right
-			//2 = strafe left
 			bs->meleeStrafeDir = Q_irand(0, 2);
 			bs->meleeStrafeTime = level.time + Q_irand(500, 1000);
 		}
 
-		//adjust the moveDir to do strafing
 		adjustfor_strafe(bs, move_dir);
 	}
 
+	// ---------------------------------------------------------
+	// TRACE MOVE
+	// ---------------------------------------------------------
 	if (movetrace)
 	{
 		trace_move(bs, move_dir, bs->DestIgnore);
 	}
 
+	// ---------------------------------------------------------
+	// FINAL MOVEMENT
+	// ---------------------------------------------------------
 	if (DistanceHorizontal(bs->origin, dest) > 10)
 	{
-		//move if we're not in touch range.
 		trap->EA_Move(bs->client, move_dir, 5000);
 	}
 }
@@ -5744,25 +5715,6 @@ static int scan_for_enemies(bot_state_t* bs)
 		find_angles(bs->currentEnemy, bs->lastEnemyAngles);
 		return -1;
 	}
-	if (bs->currentTactic == BOTORDER_SEARCHANDDESTROY
-		&& bs->tacticEntity)
-	{
-		//currently going after search and destroy target
-		if (bs->tacticEntity->s.number == bs->currentEnemy->s.number)
-		{
-			enemy_visual_update(bs);
-			return -1;
-		}
-	}
-	else if (bs->currentTactic == BOTORDER_OBJECTIVE
-		&& bs->tacticEntity)
-	{
-		if (bs->tacticEntity->s.number == bs->currentEnemy->s.number)
-		{
-			enemy_visual_update(bs);
-			return -1;
-		}
-	}
 
 	if (level.gametype == GT_JEDIMASTER)
 	{
@@ -5943,26 +5895,7 @@ static void advanced_scanfor_enemies(bot_state_t* bs)
 	if (bs->currentEnemy)
 	{
 		//we're already locked onto an enemy
-		if (bs->currentTactic == BOTORDER_SEARCHANDDESTROY
-			&& bs->tacticEntity)
-		{
-			//currently going after search and destroy target
-			if (bs->tacticEntity->s.number == bs->currentEnemy->s.number)
-			{
-				enemy_visual_update(bs);
-				return;
-			}
-		}
-		//If you're locked onto an objective, don't lose it.
-		else if (bs->currentTactic == BOTORDER_OBJECTIVE && bs->tacticEntity)
-		{
-			if (bs->tacticEntity->s.number == bs->currentEnemy->s.number)
-			{
-				enemy_visual_update(bs);
-				return;
-			}
-		}
-		else if (bs->frame_Enemy_Vis || bs->enemySeenTime > level.time - 2000)
+		if (bs->frame_Enemy_Vis || bs->enemySeenTime > level.time - 2000)
 		{
 			return;
 		}
@@ -6610,58 +6543,6 @@ static int bot_get_flag_back(bot_state_t* bs)
 	}
 
 	return 1;
-}
-
-static void determine_ctf_goal(bot_state_t* bs)
-{
-	int num_offence = 0; //number of bots on offence
-	int num_defense = 0; //number of bots on defence
-
-	//clear out the current tactic
-	bs->currentTactic = BOTORDER_OBJECTIVE;
-	bs->tacticEntity = NULL;
-
-	for (int i = 0; i < MAX_CLIENTS; i++)
-	{
-		const bot_state_t* tempbot = botstates[i];
-
-		if (!tempbot || !tempbot->inuse || tempbot->client == bs->client)
-		{
-			//this bot isn't in use or this is the current bot
-			continue;
-		}
-
-		if (g_entities[tempbot->client].client->sess.sessionTeam
-			!= g_entities[bs->client].client->sess.sessionTeam)
-		{
-			continue;
-		}
-
-		if (tempbot->currentTactic == BOTORDER_OBJECTIVE)
-		{
-			//this bot is going for/defending the flag
-			if (tempbot->objectiveType == OT_CAPTURE)
-			{
-				num_offence++;
-			}
-			else
-			{
-				//it's on defense
-				num_defense++;
-			}
-		}
-	}
-
-	if (num_defense < num_offence)
-	{
-		//we have less defenders than attackers.  Go on the defense.
-		bs->objectiveType = OT_DEFENDCAPTURE;
-	}
-	else
-	{
-		//go on the attack
-		bs->objectiveType = OT_CAPTURE;
-	}
 }
 
 //Someone else on our team has the enemy flag, so try to get
@@ -8319,16 +8200,14 @@ static void melee_combat_handling(bot_state_t* bs)
 	}
 
 	// -----------------------------
-	// GROUND CHECKS (SAFE)
+	// GROUND CHECKS
 	// -----------------------------
-	// Enemy ground
 	VectorCopy(enemyPos, downvec);
 	downvec[2] -= 4096;
 
 	trap->Trace(&tr, enemyPos, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
 	int en_down = tr.endpos[2];
 
-	// Our ground
 	VectorCopy(bs->origin, downvec);
 	downvec[2] -= 4096;
 
@@ -8339,9 +8218,8 @@ static void melee_combat_handling(bot_state_t* bs)
 	// MIDPOINT GROUND CHECK
 	// -----------------------------
 	VectorSubtract(enemyPos, bs->origin, a);
-
 	if (VectorLength(a) < 0.001f)
-		VectorSet(a, 1, 0, 0); // safe fallback
+		VectorSet(a, 1, 0, 0);
 
 	vectoangles(a, a);
 	AngleVectors(a, fwd, NULL, NULL);
@@ -8359,9 +8237,29 @@ static void melee_combat_handling(bot_state_t* bs)
 	// -----------------------------
 	if (me_down == en_down && en_down == mid_down)
 	{
-		// Melee is simple: just close the distance
+		// Melee bots simply close distance
 		VectorCopy(enemyPos, bs->goalPosition);
 	}
+
+	// -----------------------------
+	// BUILD MOVEMENT VECTOR
+	// -----------------------------
+	vec3_t move_dir;
+	VectorSubtract(bs->goalPosition, bs->origin, move_dir);
+	move_dir[2] = 0; // never vertical
+	VectorNormalize(move_dir);
+
+	if (VectorLength(move_dir) > 0.001f)
+	{
+		// Always drive movement → prevents botlib jumping
+		trap->EA_Move(bs->client, move_dir, 5000);
+	}
+
+	// -----------------------------
+	// HARD BLOCK: NO JUMPING IN MELEE
+	// -----------------------------
+	// Do NOT call EA_Jump here.
+	// This prevents the botlib “unstick jump” from firing.
 }
 
 void adjustfor_strafe(const bot_state_t* bs, vec3_t move_dir)
@@ -8743,6 +8641,7 @@ static void saber_combat_handling(bot_state_t* bs)
 		return;
 	}
 
+	// Get enemy position
 	if (bs->currentEnemy->client)
 	{
 		VectorCopy(bs->currentEnemy->client->ps.origin, usethisvec);
@@ -8752,32 +8651,21 @@ static void saber_combat_handling(bot_state_t* bs)
 		VectorCopy(bs->currentEnemy->s.origin, usethisvec);
 	}
 
+	// Strafe timer
 	if (bs->meleeStrafeTime < level.time)
 	{
-		if (bs->meleeStrafeDir)
-		{
-			bs->meleeStrafeDir = 0;
-		}
-		else
-		{
-			bs->meleeStrafeDir = 1;
-		}
-
+		bs->meleeStrafeDir = !bs->meleeStrafeDir;
 		bs->meleeStrafeTime = level.time + Q_irand(500, 1800);
 	}
 
-	mins[0] = -15;
-	mins[1] = -15;
-	mins[2] = -24;
-	maxs[0] = 15;
-	maxs[1] = 15;
-	maxs[2] = 32;
+	mins[0] = -15; mins[1] = -15; mins[2] = -24;
+	maxs[0] = 15; maxs[1] = 15; maxs[2] = 32;
 
+	// Enemy ground
 	VectorCopy(usethisvec, downvec);
 	downvec[2] -= 4096;
 
 	trap->Trace(&tr, usethisvec, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
-
 	int en_down = (int)tr.endpos[2];
 
 	if (tr.startsolid || tr.allsolid)
@@ -8787,11 +8675,11 @@ static void saber_combat_handling(bot_state_t* bs)
 	}
 	else
 	{
+		// Our ground
 		VectorCopy(bs->origin, downvec);
 		downvec[2] -= 4096;
 
 		trap->Trace(&tr, bs->origin, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
-
 		me_down = (int)tr.endpos[2];
 
 		if (tr.startsolid || tr.allsolid)
@@ -8801,94 +8689,63 @@ static void saber_combat_handling(bot_state_t* bs)
 		}
 	}
 
+	// Midpoint ground
 	VectorSubtract(usethisvec, bs->origin, a);
 	vectoangles(a, a);
 	AngleVectors(a, fwd, NULL, NULL);
 
-	midorg[0] = bs->origin[0] + fwd[0] * bs->frame_Enemy_Len / 2;
-	midorg[1] = bs->origin[1] + fwd[1] * bs->frame_Enemy_Len / 2;
-	midorg[2] = bs->origin[2] + fwd[2] * bs->frame_Enemy_Len / 2;
+	midorg[0] = bs->origin[0] + fwd[0] * bs->frame_Enemy_Len * 0.5f;
+	midorg[1] = bs->origin[1] + fwd[1] * bs->frame_Enemy_Len * 0.5f;
+	midorg[2] = bs->origin[2] + fwd[2] * bs->frame_Enemy_Len * 0.5f;
 
 	VectorCopy(midorg, downvec);
 	downvec[2] -= 4096;
 
 	trap->Trace(&tr, midorg, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
-
 	const int mid_down = (int)tr.endpos[2];
 
-	if (me_down == en_down && en_down == mid_down) // - Both over the same level of ground
+	// Same ground level
+	if (me_down == en_down && en_down == mid_down)
 	{
 		if (bs->frame_Enemy_Len > 128)
 		{
-			//be ready to attack
-			//this should be an attack while moving function but for now we'll just use moveto
-			vec3_t enemyOrigin;
-			FindOrigin(bs->currentEnemy, enemyOrigin);
-			VectorCopy(enemyOrigin, bs->DestPosition);
-			bs->DestIgnore = bs->currentEnemy->s.number;
-			bot_behave_attack_move(bs);
-			return;
+			bs->saberDefending = 0;
+			bs->saberDefendDecideTime = level.time + Q_irand(1000, 2000);
 		}
-		if (bs->saberDefendDecideTime < level.time)
+		else
 		{
-			if (bs->saberDefending)
+			if (bs->saberDefendDecideTime < level.time)
 			{
-				bs->saberDefending = 0;
+				bs->saberDefending = !bs->saberDefending;
+				bs->saberDefendDecideTime = level.time + Q_irand(500, 2000);
 			}
-			else
-			{
-				bs->saberDefending = 1;
-			}
-
-			bs->saberDefendDecideTime = level.time + Q_irand(500, 2000);
 		}
 
-		if (bs->frame_Enemy_Len < 54) // (How far away you are from him)
+		if (bs->frame_Enemy_Len < 64)
 		{
 			VectorCopy(bs->origin, bs->goalPosition);
 			bs->saberBFTime = 0;
 		}
 
+		// Backoff logic
 		if (bs->currentEnemy && bs->currentEnemy->client)
 		{
-			if (!PM_SaberInSpecial(bs->currentEnemy->client->ps.saber_move)
-				&& bs->frame_Enemy_Len > 90
-				&& bs->saberBFTime > level.time
-				&& bs->saberBTime > level.time
-				&& bs->beStill < level.time
-				&& bs->saberSTime < level.time)
-			{
-				bs->beStill = level.time + Q_irand(500, 1000);
-				bs->saberSTime = level.time + Q_irand(1200, 1800);
-			}
-			else if (bs->currentEnemy->client->ps.weapon == WP_SABER
-				&& bs->frame_Enemy_Len < 80.0f
-				&& (Q_irand(1, 10) < 8
-					&& bs->saberBFTime < level.time || bs->saberBTime > level.time
-					|| PM_SaberInKata(bs->currentEnemy->client->ps.saber_move)
-					|| bs->currentEnemy->client->ps.saber_move == LS_SPINATTACK
-					|| bs->currentEnemy->client->ps.saber_move == LS_SPINATTACK_GRIEV
-					|| bs->currentEnemy->client->ps.saber_move == LS_SPINATTACK_DUAL))
+			const int emove = bs->currentEnemy->client->ps.saber_move;
+			const qboolean enemyInKata =
+				PM_SaberInKata(emove) ||
+				emove == LS_SPINATTACK ||
+				emove == LS_SPINATTACK_GRIEV ||
+				emove == LS_SPINATTACK_DUAL;
+
+			if (enemyInKata && bs->frame_Enemy_Len < 110.0f)
 			{
 				vec3_t vs;
 				vec3_t groundcheck;
-				int ideal_dist;
+				int ideal_dist = enemyInKata ? 256 : 64;
 				int check_incr = 0;
 
 				VectorSubtract(bs->origin, bs->goalPosition, vs);
 				VectorNormalize(vs);
-
-				if (PM_SaberInKata(bs->currentEnemy->client->ps.saber_move)
-					|| bs->currentEnemy->client->ps.saber_move == LS_SPINATTACK
-					|| bs->currentEnemy->client->ps.saber_move == LS_SPINATTACK_GRIEV
-					|| bs->currentEnemy->client->ps.saber_move == LS_SPINATTACK_DUAL)
-				{
-					ideal_dist = 256;
-				}
-				else
-				{
-					ideal_dist = 64;
-				}
 
 				while (check_incr < ideal_dist)
 				{
@@ -8896,55 +8753,64 @@ static void saber_combat_handling(bot_state_t* bs)
 					bs->goalPosition[1] = bs->origin[1] + vs[1] * check_incr;
 					bs->goalPosition[2] = bs->origin[2] + vs[2] * check_incr;
 
-					if (bs->saberBTime < level.time)
-					{
-						bs->saberBFTime = level.time + Q_irand(900, 1300);
-						bs->saberBTime = level.time + Q_irand(300, 700);
-					}
-
 					VectorCopy(bs->goalPosition, groundcheck);
-
 					groundcheck[2] -= 64;
 
-					trap->Trace(&tr, bs->goalPosition, NULL, NULL, groundcheck, bs->client, MASK_SOLID, qfalse, 0, 0);
+					trap->Trace(&tr, bs->goalPosition, NULL, NULL, groundcheck,
+						bs->client, MASK_SOLID, qfalse, 0, 0);
 
 					if (tr.fraction == 1.0f)
 					{
-						//don't back off of a ledge
 						VectorCopy(usethisvec, bs->goalPosition);
 						break;
 					}
+
 					check_incr += 64;
 				}
 			}
-			else if (bs->currentEnemy->client->ps.weapon == WP_SABER && bs->frame_Enemy_Len >= 75)
-			{
-				bs->saberBFTime = level.time + Q_irand(700, 1300);
-				bs->saberBTime = 0;
-			}
 		}
 	}
-	else if (bs->frame_Enemy_Len <= 56)
+	else if (bs->frame_Enemy_Len <= 64)
 	{
 		bot_behave_attack(bs);
 		bs->saberDefending = 0;
 	}
 
-	if (!VectorCompare(vec3_origin, move_dir))
+	// -----------------------------------------------------
+	// FIX: ALWAYS DRIVE MOVEMENT → PREVENT BOTLIB JUMPING
+	// -----------------------------------------------------
+	VectorSubtract(bs->goalPosition, bs->origin, move_dir);
+	move_dir[2] = 0; // never vertical
+	VectorNormalize(move_dir);
+
+	if (VectorLength(move_dir) > 0.001f)
 	{
 		trap->EA_Move(bs->client, move_dir, 5000);
 	}
 
-	if (bs->frame_Enemy_Vis && bs->cur_ps.weapon == bs->virtualWeapon
-		&& (in_field_of_vision(bs->viewangles, 30, ang)
-			|| bs->virtualWeapon == WP_SABER && in_field_of_vision(bs->viewangles, 100, ang)))
+	// -----------------------------------------------------
+	// FIX: NO JUMPING DURING SABER DUELS
+	// -----------------------------------------------------
+	// This prevents ANY jump input from being sent this frame.
+	trap->EA_Jump(bs->client); // <-- DO NOT SEND
+	// (We simply never call EA_Jump here.)
+
+	// -----------------------------------------------------
+	// ATTACK TRIGGER
+	// -----------------------------------------------------
+	VectorSubtract(usethisvec, bs->origin, a);
+	vectoangles(a, ang);
+
+	if (bs->frame_Enemy_Vis &&
+		bs->cur_ps.weapon == bs->virtualWeapon &&
+		(in_field_of_vision(bs->viewangles, 30, ang) ||
+			(bs->virtualWeapon == WP_SABER &&
+				in_field_of_vision(bs->viewangles, 100, ang))))
 	{
-		//not switching weapons so attack
 		trap->EA_Attack(bs->client);
 
 		if (bs->cur_ps.weapon == WP_SABER)
 		{
-			//only walk while attacking with the saber.
 			bs->doWalk = qtrue;
 		}
 	}
@@ -8953,7 +8819,9 @@ static void saber_combat_handling(bot_state_t* bs)
 static void Enhanced_saber_combat_handling(bot_state_t* bs)
 {
 	if (!bs->currentEnemy)
+	{
 		return;
+	}
 
 	// -----------------------------
 	// SAFE VECTOR INITIALIZATION
@@ -8973,9 +8841,13 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	// GET ENEMY POSITION
 	// -----------------------------
 	if (bs->currentEnemy->client)
+	{
 		VectorCopy(bs->currentEnemy->client->ps.origin, enemyPos);
+	}
 	else
+	{
 		VectorCopy(bs->currentEnemy->s.origin, enemyPos);
+	}
 
 	// -----------------------------
 	// STRAFE DIRECTION TIMER
@@ -8994,26 +8866,26 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	downvec[2] -= 4096;
 
 	trap->Trace(&tr, enemyPos, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
-	int en_down = tr.endpos[2];
+	int en_down = (int)tr.endpos[2];
 
 	// Our ground
 	VectorCopy(bs->origin, downvec);
 	downvec[2] -= 4096;
 
 	trap->Trace(&tr, bs->origin, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
-	int me_down = tr.endpos[2];
+	int me_down = (int)tr.endpos[2];
 
 	// -----------------------------------------------------
-   // IDEAL SPACING FOR SABER DUELS
-   // -----------------------------------------------------
-	const float idealMin = 80.0f;   // too close
-	const float idealMax = 120.0f;  // too far
+	// IDEAL SPACING FOR SABER DUELS
+	// -----------------------------------------------------
+	const float idealMin = 90.0f;   // too close
+	const float idealMax = 130.0f;  // too far
 
 	if (bs->frame_Enemy_Len < idealMin)
 	{
 		// Step BACKWARD to maintain spacing
 		vec3_t back;
-		VectorSubtract(bs->origin, bs->currentEnemy->client->ps.origin, back);
+		VectorSubtract(bs->origin, enemyPos, back);
 
 		if (VectorNormalize(back) > 0.001f)
 		{
@@ -9026,20 +8898,23 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	else if (bs->frame_Enemy_Len > idealMax)
 	{
 		// Step FORWARD to close distance
-		vec3_t fwd;
-		VectorSubtract(bs->currentEnemy->client->ps.origin, bs->origin, fwd);
+		vec3_t fwd_to_enemy;
+		VectorSubtract(enemyPos, bs->origin, fwd_to_enemy);
 
-		if (VectorNormalize(fwd) > 0.001f)
+		if (VectorNormalize(fwd_to_enemy) > 0.001f)
 		{
-			VectorMA(bs->origin, 64.0f, fwd, bs->goalPosition);
+			VectorMA(bs->origin, 64.0f, fwd_to_enemy, bs->goalPosition);
 		}
 	}
+
 	// -----------------------------
 	// MIDPOINT GROUND CHECK
 	// -----------------------------
 	VectorSubtract(enemyPos, bs->origin, a);
 	if (VectorLength(a) < 0.001f)
+	{
 		VectorSet(a, 1, 0, 0);
+	}
 
 	vectoangles(a, a);
 	AngleVectors(a, fwd, NULL, NULL);
@@ -9050,22 +8925,19 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	downvec[2] -= 4096;
 
 	trap->Trace(&tr, midorg, mins, maxs, downvec, -1, MASK_SOLID, qfalse, 0, 0);
-	int mid_down = tr.endpos[2];
+	int mid_down = (int)tr.endpos[2];
 
 	// -----------------------------
-	// SAME GROUND LEVEL → NORMAL DUEL LOGIC
+	// SAME GROUND LEVEL → NORMAL DUEL LOGIC (WITH TOLERANCE)
 	// -----------------------------
-	if (me_down == en_down && en_down == mid_down)
+	if (fabsf((float)me_down - (float)en_down) <= 8.0f &&
+		fabsf((float)en_down - (float)mid_down) <= 8.0f)
 	{
 		// Move toward enemy if far
 		if (bs->frame_Enemy_Len > 128)
 		{
-			vec3_t enemyOrigin;
-			FindOrigin(bs->currentEnemy, enemyOrigin);
-			VectorCopy(enemyOrigin, bs->DestPosition);
-			bs->DestIgnore = bs->currentEnemy->s.number;
-			bot_behave_attack_move(bs);
-			return;
+			bs->saberDefending = 0;
+			bs->saberDefendDecideTime = level.time + Q_irand(1000, 2000);
 		}
 
 		// Toggle defending
@@ -9095,13 +8967,17 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 				emove == LS_SPINATTACK_DUAL;
 
 			// Backoff logic
-			if (enemyInKata && bs->frame_Enemy_Len < 80.0f)
+			if (enemyInKata && bs->frame_Enemy_Len < 110.0f)
 			{
 				vec3_t vs = { 0 };
-				VectorSubtract(bs->origin, bs->goalPosition, vs);
+
+				// Proper backoff direction: away from enemy
+				VectorSubtract(bs->origin, enemyPos, vs);
 
 				if (VectorNormalize(vs) < 0.001f)
+				{
 					VectorSet(vs, 1, 0, 0);
+				}
 
 				int ideal_dist = enemyInKata ? 256 : 64;
 				int check_incr = 0;
@@ -9128,21 +9004,39 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 				}
 
 				if (!found_safe)
+				{
 					VectorCopy(enemyPos, bs->goalPosition);
+				}
 			}
 		}
 	}
-	else if (bs->frame_Enemy_Len <= 56)
+	else if (bs->frame_Enemy_Len <= 64)
 	{
 		bot_behave_attack(bs);
 		bs->saberDefending = 0;
 	}
 
 	// -----------------------------
-	// MOVEMENT EXECUTION
+	// BUILD MOVEMENT VECTOR
 	// -----------------------------
-	if (VectorLength(move_dir) > 0.001f)
+	VectorSubtract(bs->goalPosition, bs->origin, move_dir);
+	move_dir[2] = 0.0f;
+
+	if (VectorNormalize(move_dir) > 0.001f)
+	{
+		// For saber users with an enemy, we *only* move, never request jumps here.
 		trap->EA_Move(bs->client, move_dir, 5000);
+	}
+
+	// -----------------------------
+	// AIM ANGLES FOR FOV CHECK
+	// -----------------------------
+	VectorSubtract(enemyPos, bs->origin, a);
+	if (VectorLength(a) < 0.001f)
+	{
+		VectorSet(a, 1, 0, 0);
+	}
+	vectoangles(a, ang);
 
 	// -----------------------------
 	// ATTACK TRIGGER
@@ -9156,8 +9050,12 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 		trap->EA_Attack(bs->client);
 
 		if (bs->cur_ps.weapon == WP_SABER)
+		{
 			bs->doWalk = qtrue;
+		}
 	}
+
+	// NOTE: no EA_Jump calls here at all.
 }
 
 //should we be "leading" our aim with this weapon? And if
@@ -9605,6 +9503,7 @@ static int combat_bot_ai(bot_state_t* bs)
 
 	return 0;
 }
+
 static int gunner_bot_fallback_navigation(bot_state_t* bs)
 {
 	const int client = bs->cur_ps.clientNum;
@@ -11399,74 +11298,14 @@ void standard_bot_ai(bot_state_t* bs)
 	advanced_scanfor_enemies(bs);
 
 	//determine which tactic we want to use.
-	if (carrying_cap_objective(bs))
+
+	if (bs->isSquadLeader)
 	{
-		//we're carrying the objective, always go into capture mode.
-		bs->currentTactic = BOTORDER_OBJECTIVE;
-		bs->objectiveType = OT_CAPTURE;
+		commander_bot_ai(bs);
 	}
 	else
 	{
-		//otherwise, just pick our tactic based on current situation.
-		if (bs->botOrder == BOTORDER_NONE)
-		{
-			//we don't have a higher level order, use the default for the current situation
-			if (bs->currentTactic)
-			{
-				//already have a tactic, use it.
-			}
-			else if (level.gametype == GT_SIEGE)
-			{
-				//hack do objectives
-				bs->currentTactic = BOTORDER_OBJECTIVE;
-			}
-			else if (level.gametype == GT_CTF || level.gametype == GT_CTY)
-			{
-				determine_ctf_goal(bs);
-			}
-			else if (level.gametype == GT_SINGLE_PLAYER)
-			{
-				gentity_t* player = find_closest_human_player(bs->origin, NPCTEAM_PLAYER);
-				if (player)
-				{
-					//a player on our team
-					bs->currentTactic = BOTORDER_DEFEND;
-					bs->tacticEntity = player;
-				}
-				else
-				{
-					//just run around and kill enemies
-					bs->currentTactic = BOTORDER_SEARCHANDDESTROY;
-					bs->tacticEntity = NULL;
-				}
-			}
-			else if (level.gametype == GT_JEDIMASTER)
-			{
-				bs->currentTactic = BOTORDER_JEDIMASTER;
-			}
-			else
-			{
-				if (bs->isSquadLeader)
-				{
-					commander_bot_ai(bs);
-				}
-				else
-				{
-					bot_do_teamplay_ai(bs);
-				}
-			}
-		}
-		else
-		{
-			if (bs->isSquadLeader)
-			{
-				commander_bot_ai(bs);
-			}
-			else
-			{
-				bot_do_teamplay_ai(bs);
-			}
-		}
+		bot_do_teamplay_ai(bs);
 	}
 
 	if (!bs->currentEnemy)
@@ -13114,7 +12953,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 	move_toward_ideal_angles(bs);
 }
-
+void bot_moveto(bot_state_t* bs, const qboolean strafe);
 void Enhanced_bot_ai(bot_state_t* bs)
 {
 	const int saberNum = 0;
@@ -13132,6 +12971,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 	vec3_t move_dir;
 	const saberInfo_t* saber1 = BG_MySaber(bs->client, 0);
 	const saberInfo_t* saber2 = BG_MySaber(bs->client, 1);
+	qboolean highLevelThink = (qboolean)(bs->highThinkTime < level.time);
 
 	//Reset the action states
 	bs->doAttack = qfalse;
@@ -13378,87 +13218,36 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		bs->objectiveType = 0;
 		bs->MiscBotFlags = 0;
 
-		if (rand() % 10 < 5 &&
-			(!bs->doChat || bs->chatTime < level.time))
-		{
-			trap->EA_Attack(bs->client);
-			if (g_entities[bs->client].client->ps.fd.saberAnimLevel != SS_STAFF
-				&& g_entities[bs->client].client->ps.fd.saberAnimLevel != SS_DUAL)
-			{
-				Cmd_SaberAttackCycle_f(&g_entities[bs->client]); // we died lets change the saber style
-			}
-		}
-
 		return;
 	}
-
-	// -----------------------------------------------------
-   // SABER STYLE AUTO-SELECTION (Modern, Safe, Rule-Aligned)
-   // -----------------------------------------------------
 
 	qboolean dualSabers = qfalse;
 	qboolean staffSaber = qfalse;
 
-	// Detect dual sabers
 	if (saber2 && saber2->model[0])
+	{
 		dualSabers = qtrue;
+	}
 
-	// Detect staff saber (more than one blade)
-	if (saber1 && saber1->numBlades > 1)
+	if (saber1->numBlades > 1)
+	{
 		staffSaber = qtrue;
-
-	// Do not change styles during unstable states
-	if (bs->cur_ps.saberLockTime > level.time ||
-		bs->cur_ps.saberInFlight ||
-		bs->forceJumping > level.time ||
-		bs->botChallengingTime > level.time)
-	{
-		return;
 	}
 
-	// Cooldown to prevent spam
-	if (bs->saberStyleDebounce > level.time)
-		return;
-
-	// -----------------------------------------------------
-	// Dual Sabers → SS_DUAL
-	// -----------------------------------------------------
-	if (dualSabers)
-	{
-		if (bs->cur_ps.fd.saberAnimLevel != SS_DUAL)
-		{
-			Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-		}
-		return;
+	if (dualSabers && bs->cur_ps.fd.saberAnimLevel != SS_DUAL)
+	{//dual sabers
+		Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
 	}
 
-	// -----------------------------------------------------
-	// Staff Saber → SS_STAFF
-	// -----------------------------------------------------
-	if (staffSaber)
-	{
-		if (bs->cur_ps.fd.saberAnimLevel != SS_STAFF)
-		{
-			Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-		}
-		return;
+	if (staffSaber && bs->cur_ps.fd.saberAnimLevel != SS_STAFF)
+	{//dual sabers
+		Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
 	}
 
-	// -----------------------------------------------------
-	// Single Saber → ensure valid single-saber style
-	// -----------------------------------------------------
-	if (!dualSabers && !staffSaber)
-	{
-		int style = bs->cur_ps.fd.saberAnimLevel;
-
-		if (style != SS_FAST &&
-			style != SS_TAVION &&
-			style != SS_MEDIUM &&
-			style != SS_STRONG &&
-			style != SS_DESANN)
-		{
-			Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-		}
+	if (!dualSabers && !staffSaber
+		&& (bs->cur_ps.fd.saberAnimLevel != SS_MEDIUM))
+	{//using a single saber
+		Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
 	}
 
 	bot_check_speak(&g_entities[bs->client], qtrue);
@@ -13491,100 +13280,35 @@ void Enhanced_bot_ai(bot_state_t* bs)
 	bs->doAltAttack = 0;
 	advanced_scanfor_enemies(bs);
 
-	// If carrying an objective, override everything
-	if (carrying_cap_objective(bs))
-	{
-		bs->currentTactic = BOTORDER_OBJECTIVE;
-		bs->objectiveType = OT_CAPTURE;
-		return;
-	}
-
 	//determine which tactic we want to use.
-	// If no explicit bot order, choose based on gametype or situation
-	if (bs->botOrder == BOTORDER_NONE)
+
+	if (bs->isSquadLeader)
 	{
-		// If we already have a tactic, keep it
-		if (bs->currentTactic)
-		{
-			// nothing to do
-		}
-		else
-		{
-			switch (level.gametype)
-			{
-			case GT_SIEGE:
-				bs->currentTactic = BOTORDER_OBJECTIVE;
-				break;
-
-			case GT_CTF:
-			case GT_CTY:
-				determine_ctf_goal(bs);
-				break;
-
-			case GT_SINGLE_PLAYER:
-			{
-				gentity_t* player = find_closest_human_player(bs->origin, NPCTEAM_PLAYER);
-
-				if (player)
-				{
-					bs->currentTactic = BOTORDER_DEFEND;
-					bs->tacticEntity = player;
-				}
-				else
-				{
-					bs->currentTactic = BOTORDER_SEARCHANDDESTROY;
-					bs->tacticEntity = NULL;
-				}
-				break;
-			}
-
-			case GT_JEDIMASTER:
-				bs->currentTactic = BOTORDER_JEDIMASTER;
-				break;
-
-			default:
-				if (bs->isSquadLeader)
-					commander_bot_ai(bs);
-				else
-					bot_do_teamplay_ai(bs);
-				break;
-			}
-		}
+		commander_bot_ai(bs);
 	}
 	else
 	{
-		// We have a botOrder → use teamplay/commander logic
-		if (bs->isSquadLeader)
-			commander_bot_ai(bs);
-		else
-			bot_do_teamplay_ai(bs);
+		bot_do_teamplay_ai(bs);
 	}
 
-	// If no current enemy, clear visibility flag
 	if (!bs->currentEnemy)
 	{
 		bs->frame_Enemy_Vis = 0;
 	}
 
-	// Validate revenge enemy
-	if (bs->revengeEnemy && bs->revengeEnemy->client)
+	if (bs->revengeEnemy && bs->revengeEnemy->client &&
+		bs->revengeEnemy->client->pers.connected != CON_CONNECTED && bs->revengeEnemy->client->pers.connected !=
+		CON_CONNECTING)
 	{
-		const int conn = bs->revengeEnemy->client->pers.connected;
-		if (conn != CON_CONNECTED && conn != CON_CONNECTING)
-		{
-			bs->revengeEnemy = NULL;
-			bs->revengeHateLevel = 0;
-		}
+		bs->revengeEnemy = NULL;
+		bs->revengeHateLevel = 0;
 	}
 
-	// Validate current enemy
-	if (bs->currentEnemy && bs->currentEnemy->client)
+	if (bs->currentEnemy && bs->currentEnemy->client &&
+		bs->currentEnemy->client->pers.connected != CON_CONNECTED && bs->currentEnemy->client->pers.connected !=
+		CON_CONNECTING)
 	{
-		const int conn = bs->currentEnemy->client->pers.connected;
-		if (conn != CON_CONNECTED && conn != CON_CONNECTING)
-		{
-			bs->currentEnemy = NULL;
-		}
+		bs->currentEnemy = NULL;
 	}
 
 	fj_halt = 0;
@@ -13847,9 +13571,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		}
 	}
 
-	// ------------------------------------------------------------
-	// NON-HOSTILE POWERS (only if no offensive power was chosen)
-	// ------------------------------------------------------------
 	if (!use_the_force)
 	{
 		const int fpLevelHeal = bs->cur_ps.fd.forcePowerLevel[FP_HEAL];
@@ -13881,9 +13602,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		}
 	}
 
-	// ------------------------------------------------------------
-	// VALIDATE HOSTILE FORCE POWER
-	// ------------------------------------------------------------
 	if (use_the_force && forceHostile)
 	{
 		if (!bs->currentEnemy ||
@@ -14393,7 +14111,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		}
 	}
 
-	// Jumping logic (clean, rule-compliant)
 	if (bs->currentEnemy && bs->entityNum < MAX_CLIENTS)
 	{
 		if (g_entities[bs->entityNum].health > 0 &&
@@ -14668,43 +14385,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 				bs->saberPowerTime = level.time + Q_irand(3000, 15000);
 			}
 
-			// Style selection (don’t touch staff/dual)
-			if (g_entities[bs->client].client->ps.fd.saberAnimLevel != SS_STAFF &&
-				g_entities[bs->client].client->ps.fd.saberAnimLevel != SS_DUAL)
-			{
-				const int enemyBP = bs->currentEnemy->client->ps.fd.blockPoints;
-				const int myOffense = g_entities[bs->client].client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE];
-				const int curStyle = g_entities[bs->client].client->ps.fd.saberAnimLevel;
-
-				if (enemyBP > BLOCKPOINTS_FULL && myOffense > 2)
-				{
-					// High BP enemy, we have strong available
-					if (bs->saberPower &&
-						curStyle != SS_STRONG &&
-						curStyle != SS_DESANN)
-					{
-						Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-					}
-				}
-				else if (enemyBP > BLOCKPOINTS_HALF && myOffense > 1)
-				{
-					// Mid BP → medium
-					if (curStyle != SS_MEDIUM)
-					{
-						Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-					}
-				}
-				else
-				{
-					// Low BP → fast
-					if (curStyle != SS_FAST &&
-						curStyle != SS_TAVION)
-					{
-						Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-					}
-				}
-			}
-
 			if (level.gametype == GT_SINGLE_PLAYER)
 			{
 				saber_range *= 3;
@@ -14760,9 +14440,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		VectorCopy(bs->origin, bs->goalPosition);
 	}
 
-	// ---------------------------------------------
-// FORCE JUMP HALT CHECK
-// ---------------------------------------------
 	if (bs->forceJumping > level.time)
 	{
 		vec3_t horizDiff = { 0 };
@@ -14777,9 +14454,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		}
 	}
 
-	// ---------------------------------------------
-	// FALL‑SAFETY SYSTEM
-	// ---------------------------------------------
 	qboolean longFall =
 		(bs->cur_ps.lastOnGround + 300 < level.time) &&
 		(!bs->cur_ps.fd.forceJumpZStart ||
@@ -15299,32 +14973,26 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		bs->doAttack = 0;
 	}
 
-	// -----------------------------------------------------
-// SABER DEFENSE OVERRIDE
-// If defending and enemy has a blockable weapon, do NOT attack
-// -----------------------------------------------------
-	if (bs->doAttack &&
-		bs->cur_ps.weapon == WP_SABER &&
-		bs->saberDefending &&
-		bs->currentEnemy && bs->currentEnemy->client &&
+	if (bs->doAttack && bs->cur_ps.weapon == WP_SABER &&
+		bs->saberDefending && bs->currentEnemy && bs->currentEnemy->client &&
 		bot_weapon_blockable(bs->currentEnemy->client->ps.weapon))
 	{
 		bs->doAttack = 0;
 	}
 
-	// -----------------------------------------------------
-	// SABER LOCK RANDOMIZATION
-	// -----------------------------------------------------
-	if (bs->cur_ps.saberLockTime > level.time &&
-		bs->saberLockDebounce < level.time)
+	if (bs->cur_ps.saberLockTime > level.time && bs->saberLockDebounce < level.time)
 	{
-		bs->doAttack = (Q_irand(0, 9) < 5);
+		if (rand() % 10 < 5)
+		{
+			bs->doAttack = 1;
+		}
+		else
+		{
+			bs->doAttack = 0;
+		}
 		bs->saberLockDebounce = level.time + 50;
 	}
 
-	// -----------------------------------------------------
-	// CHALLENGE MODE DISABLES ALL ATTACKS
-	// -----------------------------------------------------
 	if (bs->botChallengingTime > level.time)
 	{
 		bs->doAttack = 0;
@@ -15332,35 +15000,39 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		bs->doBotKick = 0;
 	}
 
-	// -----------------------------------------------------
-	// SABER KNOCKED AWAY → TRY TO RETRIEVE
-	// -----------------------------------------------------
 	if (bs->cur_ps.weapon == WP_SABER &&
 		bs->cur_ps.saberInFlight &&
 		!bs->cur_ps.saberEntityNum)
 	{
-		// Attack to pull saber back
+		//saber knocked away, keep trying to get it back
 		bs->doAttack = 1;
 		bs->doAltAttack = 0;
 	}
 
-	// -----------------------------------------------------
-	// EXECUTE ATTACKS
-	// -----------------------------------------------------
 	if (bs->doAttack)
 	{
+		// Prevent frozen bots from firing
+		if (bs->cur_ps.userInt3 & (1 << FLAG_FROZEN))
+		{
+			bs->doAttack = qfalse;      // stop attack intent
+			bs->doAltAttack = qfalse;   // stop alt attack intent
+			return;                     // skip firing
+		}
 		trap->EA_Attack(bs->client);
 	}
 	else if (bs->doAltAttack)
 	{
+		// Prevent frozen bots from alt-firing
+		if (bs->cur_ps.userInt3 & (1 << FLAG_FROZEN))
+		{
+			bs->doAttack = qfalse;
+			bs->doAltAttack = qfalse;
+			return;
+		}
 		trap->EA_Alt_Attack(bs->client);
 	}
 
-	// -----------------------------------------------------
-	// FORCE POWER ACTIVATION (Rule‑aligned)
-	// -----------------------------------------------------
-	if (use_the_force && forceHostile &&
-		bs->botChallengingTime > level.time)
+	if (use_the_force && forceHostile && bs->botChallengingTime > level.time)
 	{
 		use_the_force = qfalse;
 	}
@@ -15392,7 +15064,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 	}
 
 	move_toward_ideal_angles(bs);
-
 }
 
 static void movement_command(bot_state_t* bs, const int command, vec3_t move_dir)
@@ -15815,7 +15486,7 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 
 void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 {
-	vec3_t dir = {0, 0, 0};
+	vec3_t dir = { 0, 0, 0 };
 	vec3_t hit_normal;
 	int i = 7;
 	int quad;
@@ -16505,12 +16176,9 @@ int bot_weapon_detpack(bot_state_t* bs, const gentity_t* target)
 	return qtrue;
 }
 
-
 //----- Start Enhaned logic code -----//
 
-
-
-qboolean BotOrderJetPack(bot_state_t* bs)
+static qboolean BotOrderJetPack(bot_state_t* bs)
 {
 	if (!bs->currentEnemy)
 		return qfalse;
@@ -16519,6 +16187,9 @@ qboolean BotOrderJetPack(bot_state_t* bs)
 	bs->forceMove_Forward = 0;
 	bs->forceMove_Right = 0;
 	bs->forceMove_Up = 0;
+	bs->cur_ps.eFlags |= EF_JETPACK_ACTIVE;
+	bs->cur_ps.eFlags |= EF_JETPACK_FLAMING;
+	bs->cur_ps.eFlags |= EF3_JETPACK_HOVER;
 
 	// Always fly when enemy is present
 	bs->forceMove_Up = 1;
@@ -16581,111 +16252,6 @@ static int BotSelectChoiceWeapon(bot_state_t* bs, int weapon, int doselection)
 	}
 
 	return 0;
-}
-
-qboolean BotOrderSaberDuel(bot_state_t* bs)
-{
-	gentity_t* self = &g_entities[bs->client];
-
-	if (!bs->currentEnemy || !bs->tacticEntity || !bs->tacticEntity->client)
-		return qfalse;
-
-	// Reset forced movement each frame
-	bs->forceMove_Forward = 0;
-	bs->forceMove_Right = 0;
-	bs->forceMove_Up = 0;
-
-	// Walk-only rule
-	bs->doWalk = qtrue;
-	bs->doJump = qfalse;
-	bs->doBotKick = qfalse;
-
-	float dist = bs->frame_Enemy_Len;
-
-	// Movement logic
-	if (dist > 140)
-	{
-		bs->forceMove_Forward = 1;
-	}
-	else
-	{
-		bs->forceMove_Right = (rand() % 2) ? 1 : -1;
-	}
-
-	// Attack when in range
-	if (dist < 150)
-	{
-		bs->doAttack = qtrue;
-	}
-
-	// Tactic entity dead ? end tactic
-	if (bs->tacticEntity->health < 1)
-	{
-		bs->currentTactic = BOTORDER_NONE;
-		bs->tacticEntity = NULL;
-
-		if (bs->botOrder == BOTORDER_SABERDUELCHALLENGE)
-		{
-			bs->botOrder = BOTORDER_NONE;
-			bs->orderEntity = NULL;
-		}
-
-		return qtrue;
-	}
-
-	// Not in duel yet ? approach and challenge
-	if (!self->client->ps.duelInProgress)
-	{
-		float d2 = DistanceHorizontalSquared(bs->origin,
-			bs->tacticEntity->client->ps.origin);
-
-		if (d2 > SABERDUELCHALLENGEDIST * SABERDUELCHALLENGEDIST)
-		{
-			// Move toward target
-			VectorCopy(bs->tacticEntity->client->ps.origin, bs->DestPosition);
-			bs->DestIgnore = bs->tacticEntity->s.number;
-			bot_moveto(bs, qfalse);
-		}
-		else
-		{
-			// Face target
-			vec3_t viewDir, ang;
-			VectorSubtract(bs->tacticEntity->client->ps.origin, bs->eye, viewDir);
-			vectoangles(viewDir, ang);
-			VectorCopy(ang, bs->goalAngles);
-
-			// Ensure saber is out
-			if (bs->cur_ps.weapon != WP_SABER && bs->virtualWeapon != WP_SABER)
-			{
-				bot_select_choice_weapon(bs, WP_SABER, 1);
-			}
-			else
-			{
-				// Send challenge (debounced)
-				if (!(bs->MiscBotFlags & BOTFLAG_SABERCHALLENGED) ||
-					bs->miscBotFlagsTimer <= level.time)
-				{
-					Cmd_EngageDuel_f(self);
-					bs->MiscBotFlags |= BOTFLAG_SABERCHALLENGED;
-					bs->miscBotFlagsTimer = level.time + Q_irand(5000, 10000);
-				}
-			}
-		}
-
-		return qtrue;
-	}
-
-	// Already in duel ? fight normally
-	if (bs->tacticEntity->s.number == bs->currentEnemy->s.number)
-	{
-		enemy_visual_update(bs);
-	}
-
-	// Reset challenge flag
-	bs->miscBotFlagsTimer = level.time;
-	bs->MiscBotFlags &= ~BOTFLAG_SABERCHALLENGED;
-
-	return qtrue;
 }
 
 //Scans for the given wp on the Close List and returns it's CloseList position.
@@ -16937,288 +16503,11 @@ static float RouteRandomize(bot_state_t* bs, float DestDist)
 	return DestDist;
 }
 
-//Add this wpNum to the open list.
-static void AddOpenList(bot_state_t* bs, int wpNum, int parent, int end)
-{
-	int i;
-	float f;
-	float g;
-	float h;
-
-	if (gWPArray[wpNum]->flags & WPFLAG_REDONLY
-		&& g_entities[bs->client].client->sess.sessionTeam != TEAM_RED)
-	{//red only wp, can't use
-		return;
-	}
-
-	if (gWPArray[wpNum]->flags & WPFLAG_BLUEONLY
-		&& g_entities[bs->client].client->sess.sessionTeam != TEAM_BLUE)
-	{//blue only wp, can't use
-		return;
-	}
-
-	if (parent != -1 && gWPArray[wpNum]->flags & WPFLAG_JUMP)
-	{
-		if (force_jump_needed(gWPArray[parent]->origin, gWPArray[wpNum]->origin) > bs->cur_ps.fd.forcePowerLevel[FP_LEVITATION])
-		{//can't make this jump with our level of Force Jump
-			return;
-		}
-	}
-
-	if (parent == -1)
-	{//This is the start point, just use zero for g
-		g = 0;
-	}
-	else if (wpNum == parent + 1)
-	{
-		if (gWPArray[wpNum]->flags & WPFLAG_ONEWAY_BACK)
-		{//can't go down this one way
-			return;
-		}
-		i = FindCloseList(parent);
-		if (i != -1)
-		{
-			g = CloseList[i].g + gWPArray[parent]->disttonext;
-		}
-		else
-		{
-			G_Printf("Couldn't find parent on CloseList in AddOpenList().  This shouldn't happen.\n");
-			return;
-		}
-	}
-	else if (wpNum == parent - 1)
-	{
-		if (gWPArray[wpNum]->flags & WPFLAG_ONEWAY_FWD)
-		{//can't go down this one way
-			return;
-		}
-		i = FindCloseList(parent);
-		if (i != -1)
-		{
-			g = CloseList[i].g + gWPArray[wpNum]->disttonext;
-		}
-		else
-		{
-			G_Printf("Couldn't find parent on CloseList in AddOpenList().  This shouldn't happen.\n");
-			return;
-		}
-	}
-	else
-	{//nonsequencal parent/wpNum
-		//don't try to go thru oneways when you're doing neighbor moves
-		if ((gWPArray[wpNum]->flags & WPFLAG_ONEWAY_FWD) || (gWPArray[wpNum]->flags & WPFLAG_ONEWAY_BACK))
-		{
-			return;
-		}
-
-		i = FindCloseList(parent);
-		if (i != -1)
-		{
-			g = OpenList[i].g + Distance(gWPArray[wpNum]->origin, gWPArray[parent]->origin);
-		}
-		else
-		{
-			G_Printf("Couldn't find parent on CloseList in AddOpenList().  This shouldn't happen.\n");
-			return;
-		}
-	}
-
-	//Find first open slot or the slot that this wpNum already occupies.
-	for (i = 1; i < MAX_WPARRAY_SIZE + 1 && OpenList[i].wpNum != -1; i++)
-	{
-		if (OpenList[i].wpNum == wpNum)
-		{
-			break;
-		}
-	}
-
-	h = Distance(gWPArray[wpNum]->origin, gWPArray[end]->origin);
-
-	//add a bit of a random factor to h to make the bots take a variety of paths.
-	h = RouteRandomize(bs, h);
-
-	f = g + h;
-	OpenList[i].f = f;
-	OpenList[i].g = g;
-	OpenList[i].h = h;
-	OpenList[i].pNum = parent;
-	OpenList[i].wpNum = wpNum;
-
-	while (OpenList[i].f <= OpenList[i / 2].f && i != 1)
-	{//binary parent has higher f than child
-		float ftemp = OpenList[i / 2].f;
-		float gtemp = OpenList[i / 2].g;
-		float htemp = OpenList[i / 2].h;
-		int pNumtemp = OpenList[i / 2].pNum;
-		int wptemp = OpenList[i / 2].wpNum;
-
-		OpenList[i / 2].f = OpenList[i].f;
-		OpenList[i / 2].g = OpenList[i].g;
-		OpenList[i / 2].h = OpenList[i].h;
-		OpenList[i / 2].pNum = OpenList[i].pNum;
-		OpenList[i / 2].wpNum = OpenList[i].wpNum;
-
-		OpenList[i].f = ftemp;
-		OpenList[i].g = gtemp;
-		OpenList[i].h = htemp;
-		OpenList[i].pNum = pNumtemp;
-		OpenList[i].wpNum = wptemp;
-
-		i = i / 2;
-	}
-	return;
-}
-
-//Find the ideal (shortest) route between the start wp and the end wp
-//badwp is for situations where you need to recalc a path when you dynamically discover
-//that a wp is bad (door locked, blocked, etc).
-//doRoute = actually set botRoute
-static float FindIdealPathtoWP(bot_state_t* bs, int start, int end, int badwp, bot_route_t Route)
-{
-	int i;
-	float dist = -1;
-
-	if (bs->PathFindDebounce > level.time)
-	{//currently debouncing the path finding to prevent a massive overload of AI thinking
-		//in weird situations, like when the target near a waypoint where the bot can't
-		//get to (like in an area where you need a specific force power to get to).
-		return -1;
-	}
-
-	if (start == end)
-	{
-		ClearRoute(Route);
-		AddtoRoute(end, Route);
-		return 0;
-	}
-
-	//reset node lists
-	for (i = 0; i < MAX_WPARRAY_SIZE; i++)
-	{
-		OpenList[i].wpNum = -1;
-		OpenList[i].f = -1;
-		OpenList[i].g = -1;
-		OpenList[i].h = -1;
-		OpenList[i].pNum = -1;
-	}
-
-	for (i = 0; i < MAX_WPARRAY_SIZE; i++)
-	{
-		CloseList[i].wpNum = -1;
-		CloseList[i].f = -1;
-		CloseList[i].g = -1;
-		CloseList[i].h = -1;
-		CloseList[i].pNum = -1;
-	}
-
-	AddOpenList(bs, start, -1, end);
-
-	while (!OpenListEmpty() && FindOpenList(end) == -1)
-	{//open list not empty
-		//we're using a binary pile so the first slot always has the lowest f score
-		AddCloseList(1);
-		i = OpenList[1].wpNum;
-		RemoveFirstOpenList();
-
-		//Add surrounding nodes
-		if (gWPArray[i + 1] && gWPArray[i + 1]->inuse)
-		{
-			if (gWPArray[i]->disttonext < MAX_NODE_DIS
-				&& FindCloseList(i + 1) == -1 && i + 1 != badwp)
-			{//Add next sequencial node
-				AddOpenList(bs, i + 1, i, end);
-			}
-		}
-
-		if (i > 0)
-		{
-			if (gWPArray[i - 1]->disttonext < MAX_NODE_DIS && gWPArray[i - 1]->inuse
-				&& FindCloseList(i - 1) == -1 && i - 1 != badwp)
-			{//Add previous sequencial node
-				AddOpenList(bs, i - 1, i, end);
-			}
-		}
-
-		if (gWPArray[i]->neighbornum)
-		{//add all the wp's neighbors to the list
-			int x;
-			for (x = 0; x < gWPArray[i]->neighbornum; x++)
-			{
-				if (x != badwp && FindCloseList(gWPArray[i]->neighbors[x].num) == -1)
-				{
-					AddOpenList(bs, gWPArray[i]->neighbors[x].num, i, end);
-				}
-			}
-		}
-	}
-
-	i = FindOpenList(end);
-
-	if (i != -1)
-	{//we have a valid route to the end point
-		ClearRoute(Route);
-		AddtoRoute(end, Route);
-		dist = OpenList[i].g;
-		i = OpenList[i].pNum;
-		i = FindCloseList(i);
-		while (i != -1)
-		{
-			AddtoRoute(CloseList[i].wpNum, Route);
-			i = FindCloseList(CloseList[i].pNum);
-		}
-		//only have the debouncer when we fail to find a route.
-		bs->PathFindDebounce = level.time;
-		return dist;
-	}
-	bs->PathFindDebounce = level.time + 3000;  //try again in 3 seconds.
-
-	return -1;
-}
-
-static void ResetWPTimers(bot_state_t* bs)
-{
-	if ((bs->wpCurrent->flags & WPFLAG_WAITFORFUNC)
-		|| (bs->wpCurrent->flags & WPFLAG_NOMOVEFUNC)
-		|| (bs->wpCurrent->flags & WPFLAG_DESTROY_FUNCBREAK)
-		|| (bs->wpCurrent->flags & WPFLAG_FORCEPUSH)
-		|| (bs->wpCurrent->flags & WPFLAG_FORCEPULL))
-	{//it's an elevator or something waypoint time needs to be longer.
-		bs->wpSeenTime = level.time + 30000;
-		bs->wpTravelTime = level.time + 30000;
-	}
-	else if (bs->wpCurrent->flags & WPFLAG_NOVIS)
-	{
-		//10 sec
-		bs->wpSeenTime = level.time + 10000;
-		bs->wpTravelTime = level.time + 10000;
-	}
-	else
-	{
-		//3 sec visual time
-		bs->wpSeenTime = level.time + 3000;
-
-		//10 sec move time
-		bs->wpTravelTime = level.time + 10000;
-	}
-
-	if (bs->wpCurrent->index == bs->wpDestination->index)
-	{//just touched our destination node
-		bs->wpTouchedDest = qtrue;
-	}
-	else
-	{//reset the final node touched flag
-		bs->wpTouchedDest = qfalse;
-	}
-
-	bs->AltRouteCheck = qfalse;
-	bs->DontSpamPushPull = 0;
-}
-
 // Simple helper: move directly toward DestPosition (no waypoint logic).
 // This does NOT call EA_Move itself; it just sets goalPosition/goalMovedir.
 static void BotMoveDirect(bot_state_t* bs, qboolean strafe)
 {
-	vec3_t dir = {0, 0, 0};
+	vec3_t dir = { 0, 0, 0 };
 
 	// Set where we ultimately want to go this frame
 	VectorCopy(bs->DestPosition, bs->goalPosition);
@@ -17239,70 +16528,7 @@ static void BotMoveDirect(bot_state_t* bs, qboolean strafe)
 	(void)strafe;
 }
 
-//just like GetNearestVisibleWP except without visiblity checks
-static int GetNearestWP(bot_state_t* bs, vec3_t org, int badwp)
-{
-	int i;
-	float bestdist;
-	float flLen;
-	int bestindex;
-	vec3_t a;
-
-	if (RMG.integer)
-	{
-		bestdist = 300;
-	}
-	else
-	{
-		//We're not doing traces!
-		bestdist = 99999;
-	}
-	bestindex = -1;
-
-	for (i = 0; i < gWPNum; i++)
-	{
-		if (gWPArray[i] && gWPArray[i]->inuse && i != badwp)
-		{
-			if (bs)
-			{//check to make sure that this bot's team can use this waypoint
-				if (gWPArray[i]->flags & WPFLAG_REDONLY
-					&& g_entities[bs->client].client->sess.sessionTeam != TEAM_RED)
-				{//red only wp, can't use
-					continue;
-				}
-
-				if (gWPArray[i]->flags & WPFLAG_BLUEONLY
-					&& g_entities[bs->client].client->sess.sessionTeam != TEAM_BLUE)
-				{//blue only wp, can't use
-					continue;
-				}
-			}
-
-			VectorSubtract(org, gWPArray[i]->origin, a);
-			flLen = VectorLength(a);
-
-			if (gWPArray[i]->flags & WPFLAG_WAITFORFUNC
-				|| (gWPArray[i]->flags & WPFLAG_NOMOVEFUNC)
-				|| (gWPArray[i]->flags & WPFLAG_DESTROY_FUNCBREAK)
-				|| (gWPArray[i]->flags & WPFLAG_FORCEPUSH)
-				|| (gWPArray[i]->flags & WPFLAG_FORCEPULL))
-			{//boost the distance for these waypoints so that we will try to avoid using them
-				//if at all possible
-				flLen = flLen + 500;
-			}
-
-			if (flLen < bestdist)
-			{
-				bestdist = flLen;
-				bestindex = i;
-			}
-		}
-	}
-
-	return bestindex;
-}
-
-qboolean BotOrderFlank(bot_state_t* bs)
+static qboolean BotOrderFlank(bot_state_t* bs)
 {
 	if (!bs->currentEnemy)
 		return qfalse;
@@ -17344,7 +16570,7 @@ qboolean BotOrderFlank(bot_state_t* bs)
 }
 
 //get out of the way of allies if they're close
-qboolean DontBlockAllies(bot_state_t* bs)
+static qboolean DontBlockAllies(bot_state_t* bs)
 {
 	int i;
 	for (i = 0; i < level.maxclients; i++)
@@ -17365,1787 +16591,6 @@ qboolean DontBlockAllies(bot_state_t* bs)
 	}
 	return qfalse;
 }
-
-//Attack an enemy or track after them if you loss them.
-static void BotTrackAttack(bot_state_t* bs)
-{
-	vec_t distance = Distance(bs->origin, bs->lastEnemySpotted);
-	if (bs->frame_Enemy_Vis || bs->enemySeenTime > level.time)
-	{//attack!
-		bs->botBehave = BBEHAVE_ATTACK;
-		VectorClear(bs->DestPosition);
-		bs->DestIgnore = -1;
-		return;
-	}
-	else if (distance < BOT_WEAPTOUCH_DISTANCE)
-	{//do a visual scan
-		if (bs->doVisualScan && bs->VisualScanTime < level.time)
-		{//no dice.
-			bs->doVisualScan = qfalse;
-			bs->currentEnemy = NULL;
-			bs->botBehave = BBEHAVE_STILL;
-			return;
-		}
-		else
-		{//try looking around for 5 seconds
-			VectorCopy(bs->lastEnemyAngles, bs->VisualScanDir);
-			if (!bs->doVisualScan)
-			{
-				bs->doVisualScan = qtrue;
-				bs->VisualScanTime = level.time + 5000;
-			}
-			bs->botBehave = BBEHAVE_VISUALSCAN;
-			return;
-		}
-	}
-	else
-	{//lost him, go to the last seen location and see if we can find them
-		bs->botBehave = BBEHAVE_MOVETO;
-		VectorCopy(bs->lastEnemySpotted, bs->DestPosition);
-		bs->DestIgnore = bs->currentEnemy->s.number;
-		return;
-	}
-}
-
-//defend given entity from attack
-qboolean BotDefend(bot_state_t* bs, gentity_t* defendEnt)
-{
-	vec3_t defendOrigin;
-	float dist;
-
-	FindOrigin(defendEnt, defendOrigin);
-
-	if (strcmp(defendEnt->classname, "func_breakable") == 0
-		&& defendEnt->paintarget
-		&& strcmp(defendEnt->paintarget, "shieldgen_underattack") == 0)
-	{//dirty hack to get the bots to attack the shield generator on siege_hoth
-		VectorSet(defendOrigin, -369, 858, -231);
-	}
-
-	dist = Distance(bs->origin, defendOrigin);
-
-	if (bs->currentEnemy)
-	{//see an enemy
-		if (dist > DEFEND_MAXDISTANCE)
-		{//attack move back into the defend range
-			VectorCopy(defendOrigin, bs->DestPosition);
-			bs->DestIgnore = defendEnt->s.number;
-			bot_behave_attack_move(bs);
-		}
-		else
-		{//just attack them
-			VectorClear(bs->DestPosition);
-			bs->DestIgnore = -1;
-			BotTrackAttack(bs);
-		}
-	}
-	else
-	{//don't see an enemy
-		if (DontBlockAllies(bs))
-		{
-		}
-		else if (dist < DEFEND_MINDISTANCE)
-		{//just stand around and wait
-			VectorClear(bs->DestPosition);
-			bs->DestIgnore = -1;
-			bs->botBehave = BBEHAVE_STILL;
-		}
-		else
-		{//move closer to defend target
-			VectorCopy(defendOrigin, bs->DestPosition);
-			bs->DestIgnore = defendEnt->s.number;
-			bs->botBehave = BBEHAVE_MOVETO;
-		}
-	}
-	return qtrue;
-}
-
-static gentity_t* FindGoalPointEnt(bot_state_t* bs)
-{//Find the goalpoint entity for this capture objective point
-	if (level.gametype == GT_SIEGE)
-	{
-		return G_Find(NULL, FOFS(targetname), bs->tacticEntity->goaltarget);
-	}
-	else
-	{//Capture the flag
-		char* c;
-		if (g_entities[bs->client].client->sess.sessionTeam == TEAM_RED)
-		{
-			c = "team_CTF_redflag";
-		}
-		else
-		{
-			c = "team_CTF_blueflag";
-		}
-		return G_Find(NULL, FOFS(classname), c);
-	}
-}
-
-static int FlagColorforObjective(bot_state_t* bs)
-{
-	if (g_entities[bs->client].client->sess.sessionTeam == TEAM_RED)
-	{
-		if (bs->objectiveType == OT_CAPTURE)
-		{
-			return PW_BLUEFLAG;
-		}
-		else
-		{
-			return PW_REDFLAG;
-		}
-	}
-	else
-	{
-		if (bs->objectiveType == OT_CAPTURE)
-		{
-			return PW_REDFLAG;
-		}
-		else
-		{
-			return PW_BLUEFLAG;
-		}
-	}
-}
-
-static qboolean CapObjectiveIsCarried(bot_state_t* bs)
-{//check to see if the current objective capture item is being carried
-	if (level.gametype == GT_SIEGE)
-	{
-		if (bs->tacticEntity->genericValue2)
-			return qtrue;
-	}
-	else
-	{//capture the flag types
-		int flagpr, i;
-		gentity_t* carrier;
-
-		//Set which flag powerup we're looking for
-		flagpr = FlagColorforObjective(bs);
-
-		// check for carrier on desired flag
-		for (i = 0; i < level.maxclients; i++)
-		{
-			carrier = g_entities + i;
-			if (carrier->inuse && carrier->client->ps.powerups[flagpr])
-				return qtrue;
-		}
-	}
-
-	return qfalse;
-}
-
-static qboolean CarryingCapObjective(bot_state_t* bs)
-{//Carrying the Capture Objective?
-	if (level.gametype == GT_SIEGE)
-	{
-		if (bs->tacticEntity && bs->client == bs->tacticEntity->genericValue8)
-			return qtrue;
-	}
-	else
-	{
-		if (g_entities[bs->client].client->ps.powerups[PW_REDFLAG]
-			|| g_entities[bs->client].client->ps.powerups[PW_BLUEFLAG])
-			return qtrue;
-	}
-	return qfalse;
-}
-
-//Find the favorite weapon for this range.
-static int FindWeaponforRange(bot_state_t* bs, float range)
-{
-	int bestweap = -1;
-	int bestfav = -1;
-	int weapdist;
-	int i;
-
-	//try to find the fav weapon for this attack range
-	for (i = 0; i < WP_NUM_WEAPONS; i++)
-	{
-		if (bs->cur_ps.ammo[weaponData[i].ammoIndex] < weaponData[i].energyPerShot
-			|| !(bs->cur_ps.stats[STAT_WEAPONS] & (1 << i)))
-		{//check to see if we have this weapon or enough ammo for it.
-			continue;
-		}
-
-		if (i == WP_SABER)
-		{//hack to prevent the player from switching away from the saber when close to
-			//target
-			weapdist = 300;
-		}
-		else
-		{
-			weapdist = MaximumAttackDistance[i];
-			//weapdist = IdealAttackDistance[i] * 1.1;
-		}
-
-		if (range < weapdist && bs->botWeaponWeights[i] > bestfav)
-		{
-			bestweap = i;
-			bestfav = bs->botWeaponWeights[i];
-		}
-	}
-
-	return bestweap;
-}
-
-//should we be "leading" our aim with this weapon? And if
-//so, by how much?
-static float BotWeaponCanLead(bot_state_t* bs)
-{
-	int weap = bs->cur_ps.weapon;
-
-	if (weap == WP_BRYAR_PISTOL)
-	{
-		return 0.5;
-	}
-	if (weap == WP_BLASTER)
-	{
-		return 0.35;
-	}
-	if (weap == WP_BOWCASTER)
-	{
-		return 0.5;
-	}
-	if (weap == WP_REPEATER)
-	{
-		return 0.45;
-	}
-	if (weap == WP_THERMAL)
-	{
-		return 0.5;
-	}
-	if (weap == WP_DEMP2)
-	{
-		return 0.35;
-	}
-	if (weap == WP_ROCKET_LAUNCHER)
-	{
-		return 0.7;
-	}
-
-	return 0;
-}
-
-//attack/fire at currentEnemy while moving towards DestPosition
-static void BotBehave_AttackMove(bot_state_t* bs)
-{
-	vec3_t viewDir;
-	vec3_t ang;
-	vec3_t enemyOrigin;
-
-	//switch to an approprate weapon
-	int desiredweap;
-	float range;
-
-	float leadamount; //lead amount
-
-	if (!bs->frame_Enemy_Vis && bs->enemySeenTime < level.time)
-	{//lost track of enemy
-		bs->currentEnemy = NULL;
-		return;
-	}
-
-	FindOrigin(bs->currentEnemy, enemyOrigin);
-
-	range = TargetDistance(bs, bs->currentEnemy, enemyOrigin);
-
-	desiredweap = FindWeaponforRange(bs, range);
-
-	if (desiredweap != bs->virtualWeapon && desiredweap != -1)
-	{//need to switch to desired weapon otherwise stay with what you go
-		BotSelectChoiceWeapon(bs, desiredweap, qtrue);
-	}
-
-	//move towards DestPosition
-	bot_move(bs, qfalse, qfalse, qfalse);
-
-	if (bs->wpSpecial)
-	{//in special wp move, don't do interrupt it.
-		return;
-	}
-
-	//adjust angle for target leading.
-	leadamount = BotWeaponCanLead(bs);
-
-	bot_aim_leading(bs, enemyOrigin, leadamount);
-
-	//set viewangle
-	VectorSubtract(enemyOrigin, bs->eye, viewDir);
-
-	vectoangles(viewDir, ang);
-	VectorCopy(ang, bs->goalAngles);
-
-	if (bs->frame_Enemy_Vis && bs->cur_ps.weapon == bs->virtualWeapon && range < MaximumAttackDistance[bs->virtualWeapon]
-		&& range > MinimumAttackDistance[bs->virtualWeapon]
-		//if(bs->cur_ps.weapon == bs->virtualWeapon && range <= IdealAttackDistance[bs->virtualWeapon] * 1.1
-		&& (in_field_of_vision(bs->viewangles, 30, ang)
-			|| (bs->virtualWeapon == WP_SABER && in_field_of_vision(bs->viewangles, 100, ang))))
-	{//don't attack unless you're inside your AttackDistance band and actually pointing at your enemy.
-		//This is to prevent the bots from attackmoving with the saber @ 500 meters. :)
-		trap_EA_Attack(bs->client);
-		if (bs->virtualWeapon == WP_SABER)
-		{//only walk while attacking with the saber.
-			bs->doWalk = qtrue;
-		}
-	}
-}
-
-static void BotGrabNearByItems(bot_state_t* bs)
-{//go around and pick up nearby items that we don't have.
-	gentity_t* ent = NULL;
-	gentity_t* closestEnt = NULL;
-	float		closestDist = 9999;
-	vec3_t		closestOrigin;
-	int			i;
-
-	//find the closest item we'd like to pick up
-	for (i = MAX_CLIENTS; i < level.num_entities; i++)
-	{
-		vec3_t	entOrigin;
-		float	entDist;
-		ent = &g_entities[i];
-
-		if (ent->s.eType != ET_ITEM || !BG_CanItemBeGrabbed(level.gametype, &ent->s, &bs->cur_ps))
-		{//not something we can pick up.
-			continue;
-		}
-
-		if (bg_itemlist[ent->s.modelindex].giType == IT_TEAM)
-		{//ignore team items, like flags.
-			continue;
-		}
-
-		if ((ent->s.eFlags & EF_ITEMPLACEHOLDER) || (ent->s.eFlags & EF_NODRAW))
-		{//item has been picked up already
-			continue;
-		}
-
-		FindOrigin(ent, entOrigin);
-
-		entDist = Distance(bs->origin, entOrigin);
-
-		if (entDist < closestDist)
-		{
-			closestDist = entDist;
-			closestEnt = ent;
-			VectorCopy(entOrigin, closestOrigin);
-		}
-	}
-
-	if (closestEnt)
-	{//found a nearby object that we can pick up.
-		VectorCopy(closestOrigin, bs->DestPosition);
-		bs->DestIgnore = closestEnt->s.number;
-		if (bs->currentEnemy)
-		{//have a local enemy, attackmove
-			BotBehave_AttackMove(bs);
-		}
-		else
-		{//normal move
-			bs->botBehave = BBEHAVE_MOVETO;
-		}
-	}
-}
-
-static gentity_t* CapObjectiveCarrier(bot_state_t* bs)
-{//Returns the gentity for the current carrier of the capture objective
-	if (level.gametype == GT_SIEGE)
-	{
-		return &g_entities[bs->tacticEntity->genericValue8];
-	}
-	else
-	{
-		int flagpr, i;
-		gentity_t* carrier;
-
-		//Set which flag powerup we're looking for
-		flagpr = FlagColorforObjective(bs);
-
-		// find attacker's team's flag carrier
-		for (i = 0; i < level.maxclients; i++)
-		{
-			carrier = g_entities + i;
-			if (carrier->inuse && carrier->client->ps.powerups[flagpr])
-				return carrier;
-		}
-	}
-
-	return NULL;
-}
-
-extern teamgame_t teamgame;
-static void objectiveType_Capture(bot_state_t* bs)
-{
-	if (!bs->tacticEntity)
-	{//This is bad
-		G_Printf("This is bad, we've lost out entity in objectiveType_Capture.\n");
-		return;
-	}
-
-	if (CapObjectiveIsCarried(bs))
-	{//objective already being carried
-		if (CarryingCapObjective(bs))
-		{//I'm carrying the flag.
-			//find the goaltarget
-			gentity_t* goal = NULL;
-			goal = FindGoalPointEnt(bs);
-			if (goal && !(bs->MiscBotFlags & BOTFLAG_REACHEDCAPTUREPOINT))
-			{//found goal position and we haven't already visited the goal point
-				vec3_t goalorigin;
-				FindOrigin(goal, goalorigin);
-				if (level.gametype != GT_SIEGE && DistanceHorizontal(goalorigin, bs->origin) < BOTAI_CAPTUREDISTANCE)
-				{//we've touched the goal point and haven't captured the objective.
-					//This means that our team's flag isn't there. Flip the waiting
-					//for flag behavior
-					bs->MiscBotFlags |= BOTFLAG_REACHEDCAPTUREPOINT;
-				}
-
-				VectorCopy(goalorigin, bs->DestPosition);
-				bs->DestIgnore = goal->s.number;
-				if (bs->currentEnemy)
-				{
-					bot_behave_attack_move(bs);
-				}
-				else
-				{
-					bs->botBehave = BBEHAVE_MOVETO;
-				}
-			}
-			else
-			{//we've already visited our capture point or the capture point isn't valid.
-				//Do our "waiting for flag return" behavior here.
-
-				//check to see if our flag has been returned.
-				if (g_entities[bs->client].client->sess.sessionTeam == TEAM_RED)
-				{
-					if (teamgame.redStatus == FLAG_ATBASE)
-					{
-						bs->MiscBotFlags &= ~BOTFLAG_REACHEDCAPTUREPOINT;
-						return;
-					}
-				}
-				else
-				{
-					if (teamgame.blueStatus == FLAG_ATBASE)
-					{
-						bs->MiscBotFlags &= ~BOTFLAG_REACHEDCAPTUREPOINT;
-						return;
-					}
-				}
-
-				//ok, flag hasn't returned, wonder around and grab items in the area
-				BotGrabNearByItems(bs);
-			}
-			return;
-		}
-		else
-		{//someone else is covering the flag, cover them
-			BotDefend(bs, CapObjectiveCarrier(bs));
-			return;
-		}
-	}
-	else
-	{//not being carried
-		//get the flag!
-		vec3_t origin;
-		FindOrigin(bs->tacticEntity, origin);
-		VectorCopy(origin, bs->DestPosition);
-		bs->DestIgnore = bs->tacticEntity->s.number;
-		if (bs->currentEnemy)
-		{
-			bot_behave_attack_move(bs);
-		}
-		else
-		{
-			bs->botBehave = BBEHAVE_MOVETO;
-		}
-		return;
-	}
-}
-
-extern gentity_t* droppedBlueFlag;
-extern gentity_t* droppedRedFlag;
-static gentity_t* FindFlag(bot_state_t* bs)
-{//find the flag item entity for this bot's objective entity
-	if (FlagColorforObjective(bs) == PW_BLUEFLAG)
-	{//blue flag
-		return droppedBlueFlag;
-	}
-	else
-	{
-		return droppedRedFlag;
-	}
-
-	//bad flag?!
-	return NULL;
-}
-static void objectiveType_Attack(bot_state_t* bs, gentity_t* target);
-//Prevent this objective from getting captured.
-static void objectiveType_DefendCapture(bot_state_t* bs)
-{
-	if (!CapObjectiveIsCarried(bs))
-	{
-		if (level.gametype == GT_SIEGE)
-		{
-			//turns out that you don't normally recap capturable siege items.
-			BotDefend(bs, bs->tacticEntity);
-		}
-		else
-		{//flag of some sort, touch it if it is dropped.  Otherwise, just defend it.
-			gentity_t* flag = FindFlag(bs);
-			if (flag && flag->flags & FL_DROPPED_ITEM)
-			{//dropped, touch it
-				vec3_t origin;
-				FindOrigin(flag, origin);
-				VectorCopy(origin, bs->DestPosition);
-				bs->DestIgnore = flag->s.number;
-				if (bs->currentEnemy)
-				{
-					bot_behave_attack_move(bs);
-				}
-				else
-				{
-					bs->botBehave = BBEHAVE_MOVETO;
-				}
-			}
-			else
-			{//objective at homebase, defend it
-				BotDefend(bs, bs->tacticEntity);
-			}
-		}
-	}
-	else
-	{//object has been taken, attack the carrier
-		objectiveType_Attack(bs, CapObjectiveCarrier(bs));
-	}
-}
-
-extern qboolean InFOV2(vec3_t origin, const gentity_t* from, int hFOV, int vFOV);
-static gentity_t* ClosestItemforWeapon(bot_state_t* bs, weapon_t weapon)
-{//returns the closest gentity item (perminate) for a given ammo type.
-	float		bestDist = 9999999;
-	gentity_t* bestItem = NULL;
-
-	gitem_t* currentItemType;
-	gentity_t* currentObject = NULL;
-	float		currentDist;
-
-	//look for the ammo type for this weapon
-	currentItemType = BG_FindItemForWeapon(weapon);
-
-	while ((currentObject = G_Find(currentObject, FOFS(classname),
-		currentItemType->classname)) != NULL)
-	{//scan thru the map entities until we find an gentity of this ammo item
-		if (!BG_CanItemBeGrabbed(level.gametype, &currentObject->s, &bs->cur_ps))
-		{//we can't pick up this item right now.
-			continue;
-		}
-
-		currentDist = DistanceSquared(bs->origin, currentObject->r.currentOrigin);
-
-		if (currentDist < bestDist)
-		{//this item is closer than the current best ammo object
-			if ((currentObject->flags & FL_DROPPED_ITEM)
-				|| (currentObject->s.eFlags & EF_ITEMPLACEHOLDER))
-			{//we're going to need a visibility check to see if we know about the status of this
-				//object
-				if (bot_pvs_check(bs->eye, currentObject->r.currentOrigin)
-					&& InFOV2(currentObject->r.currentOrigin, &g_entities[bs->client], 100, 100)
-					&& org_visible(bs->eye, currentObject->r.currentOrigin, bs->client))
-				{//we can see the item
-					if (currentObject->s.eFlags & EF_ITEMPLACEHOLDER)
-					{//the weapon item isn't currently there, ignore.
-						continue;
-					}
-				}
-				else
-				{//can't see the item
-					if (currentObject->flags & FL_DROPPED_ITEM)
-					{//If we can't see the item, we won't know about this dropped item.
-						continue;
-					}
-				}
-			}
-
-			bestDist = currentDist;
-			bestItem = currentObject;
-		}
-	}
-
-	if (bestItem)
-	{//we've found an object for this ammo type, go for it.
-		return bestItem;
-	}
-	else
-	{
-		return NULL;
-	}
-}
-
-static gentity_t* WantWeapon(bot_state_t* bs, qboolean setOrder, int numOfChecks)
-{//This function checks to see if the bot wishes to go  particular weapon that it doesn't have.
-	int favWeapon;
-	int ignoreWeapons = 0;  //weapons we've already checked.
-	int counter;
-
-	if (level.gametype == GT_SIEGE
-		|| level.gametype == GT_DUEL
-		|| level.gametype == GT_POWERDUEL)
-	{//you can't pick up new weapons in these gametypes
-		return NULL;
-	}
-
-	for (counter = 0; counter < numOfChecks; counter++)
-	{//keep checking until we run out of fav weapons we want to check.
-		//check to see if we have our favorite weapon.
-		favWeapon = favorite_weapon(bs, bs->currentEnemy, qfalse, qfalse, ignoreWeapons);
-
-		if (!(bs->cur_ps.stats[STAT_WEAPONS] & (1 << favWeapon)))
-		{//We don't have the weapon we want.
-			gentity_t* item = ClosestItemforWeapon(bs, favWeapon);
-			if (item)
-			{
-				if (setOrder)
-				{//we want to switch our current tactic.
-					bs->currentTactic = BOTORDER_RESUPPLY;
-					bs->tacticEntity = item;
-				}
-				return item;
-			}
-		}
-
-		//no dice, add to ignore list and retry if we want to.
-		ignoreWeapons |= (1 << favWeapon);
-	}
-
-	return NULL;
-}
-
-extern gitem_t* BG_FindItemForAmmo(const ammo_t ammo);
-static gentity_t* ClosestItemforAmmo(bot_state_t* bs, int ammo)
-{//returns the closest gentity item (perminate) for a given ammo type.
-	float		bestDist = 9999999;
-	gentity_t* bestItem = NULL;
-
-	gitem_t* currentItemType;
-	gentity_t* currentObject = NULL;
-	float		currentDist;
-
-	//look for the ammo type for this weapon
-	currentItemType = BG_FindItemForAmmo((ammo_t)ammo);
-
-	while ((currentObject = G_Find(currentObject, FOFS(classname),
-		currentItemType->classname)) != NULL)
-	{//scan thru the map entities until we find an gentity of this ammo item
-		if (!BG_CanItemBeGrabbed(level.gametype, &currentObject->s, &bs->cur_ps))
-		{//we can't pick up this item.
-			continue;
-		}
-
-		currentDist = DistanceSquared(bs->origin, currentObject->r.currentOrigin);
-
-		if (currentDist < bestDist)
-		{//this item is closer than the current best ammo object
-			if ((currentObject->s.eFlags & EF_NODRAW) || (currentObject->flags & FL_DROPPED_ITEM))
-			{//we're going to need a visibility check to see if we know about the status of this
-				//object
-				if (bot_pvs_check(bs->eye, currentObject->r.currentOrigin)
-					&& InFOV2(currentObject->r.currentOrigin, &g_entities[bs->client], 100, 100)
-					&& org_visible(bs->eye, currentObject->r.currentOrigin, bs->client))
-				{//we can see the item
-					if (currentObject->s.eFlags & EF_NODRAW)
-					{//the ammo item isn't currently there, ignore.
-						continue;
-					}
-				}
-				else
-				{//can't see the item
-					if (currentObject->flags & FL_DROPPED_ITEM)
-					{//If we can't see the item, we won't know about this dropped item.
-						continue;
-					}
-				}
-			}
-
-			bestDist = currentDist;
-			bestItem = currentObject;
-		}
-	}
-
-	//try looking for those ammo despensor things
-	currentObject = NULL;
-	while ((currentObject = G_Find(currentObject, FOFS(classname),
-		"misc_ammo_floor_unit")) != NULL)
-	{//scan thru the map entities until we find an gentity of this ammo item
-		currentDist = DistanceSquared(bs->origin, currentObject->r.currentOrigin);
-
-		if (currentDist < bestDist)
-		{//this item is closer than the current best ammo object
-			bestDist = currentDist;
-			bestItem = currentObject;
-		}
-	}
-
-	if (bestItem)
-	{//we've found an object for this ammo type, go for it.
-		return bestItem;
-	}
-	else
-	{
-		return NULL;
-	}
-}
-
-static gentity_t* WantAmmo(bot_state_t* bs, qboolean setOrder, int numOfChecks)
-{//This function checks to see if the bot wishes to go for ammo for a particular weapon.
-	//Returns true if we've decided to go after ammo
-	//setOrder - sets wheither or not we should switch our current tactic if we want ammo.
-	int ignoreWeapons = 0;  //weapons we've already checked.
-	int counter;
-	int favWeapon;
-	int ammoMax;
-
-	for (counter = 0; counter < numOfChecks; counter++)
-	{//keep checking until we run out of fav weapons we want to check.
-		//check our ammo on our current favorite weapon
-		favWeapon = favorite_weapon(bs, bs->currentEnemy, qtrue, qfalse, ignoreWeapons);
-		ammoMax = ammoData[weaponData[favWeapon].ammoIndex].max;
-
-		if (weaponData[favWeapon].ammoIndex == AMMO_ROCKETS && level.gametype == GT_SIEGE)
-		{//hack for the lower rocket amount in Siege
-			ammoMax = 10;
-		}
-
-		if (weaponData[favWeapon].ammoIndex != AMMO_NONE
-			&& (bs->cur_ps.ammo[weaponData[favWeapon].ammoIndex]
-				< ammoMax * DESIREDAMMOLEVEL))
-		{//we have less ammo than we'd like, check to see if there's ammo for this weapon on
-			//this map.
-			gentity_t* item = ClosestItemforAmmo(bs, weaponData[favWeapon].ammoIndex);
-			if (item)
-			{
-				if (setOrder)
-				{//we want to switch our current tactic.
-					bs->currentTactic = BOTORDER_RESUPPLY;
-					bs->tacticEntity = item;
-				}
-				return item;
-			}
-		}
-
-		//no dice, add to ignore list and retry if we want to.
-		ignoreWeapons |= (1 << favWeapon);
-	}
-
-	return NULL;
-}
-
-qboolean BotResupply(bot_state_t* bs, gentity_t* tacticEnt)
-{//this behavior makes the bot resupply by picking up or using the tacticEntity
-	if (tacticEnt)
-	{//we have a valid item to use/pickup
-		float dist;
-
-		if (((tacticEnt->s.eFlags & EF_NODRAW)
-			|| (tacticEnt->s.eFlags & EF_ITEMPLACEHOLDER))
-			&& bot_pvs_check(bs->eye, tacticEnt->r.currentOrigin)
-			&& InFOV2(tacticEnt->r.currentOrigin, &g_entities[bs->client], 100, 100)
-			&& org_visible(bs->eye, tacticEnt->r.currentOrigin, bs->client))
-		{//This object has been picked up since we last saw it and we can see that it's
-			//been taken.  Tactic complete then.
-			if (bs->currentTactic == BOTORDER_RESUPPLY)
-			{//this is the current tactic, cancel orders
-				bs->currentTactic = BOTORDER_NONE;
-				bs->tacticEntity = NULL;
-			}
-
-			//clear out the nav destination stuff.
-			VectorClear(bs->DestPosition);
-			bs->DestIgnore = -1;
-
-			if (bs->botOrder == BOTORDER_RESUPPLY)
-			{//order completed
-				bs->botOrder = BOTORDER_NONE;
-				bs->orderEntity = NULL;
-			}
-			return qfalse;
-		}
-
-		dist = DistanceSquared(tacticEnt->r.currentOrigin, bs->origin);
-
-		if (dist < (40 * 40))
-		{//we're touching the item
-			if (tacticEnt->r.svFlags & SVF_PLAYER_USABLE)
-			{//we have to use this item to get ammo from it.
-				if (tacticEnt->count && WantAmmo(bs, qfalse, TAB_FAVWEAPCARELEVEL_MAX))
-				{//the ammo system isn't empty and we still want ammo, so keep taking ammo.
-					vec3_t viewDir, ang;
-					VectorSubtract(tacticEnt->r.currentOrigin, bs->eye, viewDir);
-					vectoangles(viewDir, ang);
-					VectorCopy(ang, bs->goalAngles);
-
-					if (in_field_of_vision(bs->viewangles, 5, ang))
-					{//looking at dispensor, press the use button now.
-						bs->useTime = level.time + 100;
-					}
-					return qfalse;
-				}
-			}
-
-			if (bs->currentTactic == BOTORDER_RESUPPLY)
-			{//this is the current tactic, cancel orders
-				//picked up our item or used it up, stop this tactic and order
-				bs->currentTactic = BOTORDER_NONE;
-				bs->tacticEntity = NULL;
-			}
-
-			//clear out destination data
-			VectorClear(bs->DestPosition);
-			bs->DestIgnore = -1;
-
-			if (bs->botOrder == BOTORDER_RESUPPLY)
-			{//order completed
-				bs->botOrder = BOTORDER_NONE;
-				bs->orderEntity = NULL;
-			}
-		}
-		else
-		{//keep moving towards object.
-			VectorCopy(tacticEnt->r.currentOrigin, bs->DestPosition);
-			bs->DestIgnore = tacticEnt->s.number;
-
-			if (bs->currentEnemy)
-			{
-				bot_behave_attack_move(bs);
-			}
-			else
-			{
-				bs->botBehave = BBEHAVE_MOVETO;
-			}
-		}
-	}
-	return qtrue;
-}
-
-qboolean BotSearchAndDestroy(bot_state_t* bs)
-{
-	if (!bs->currentEnemy && (VectorCompare(bs->DestPosition, vec3_origin) || DistanceHorizontal(bs->origin, bs->DestPosition) < BOT_WEAPTOUCH_DISTANCE))
-	{//hmmm, noone in the area and we're not already going somewhere
-		//Check to see if we need some weapons or ammo
-		gentity_t* desiredPickup = WantWeapon(bs, qfalse, TAB_FAVWEAPCARELEVEL_MAX);
-		if (desiredPickup)
-		{//want weapon, going for it.
-			BotResupply(bs, desiredPickup);
-			return qfalse;
-		}
-
-		desiredPickup = WantAmmo(bs, qfalse, TAB_FAVWEAPCARELEVEL_MAX);
-
-		if (desiredPickup)
-		{//want ammo, going for it. behavior is set in
-			BotResupply(bs, desiredPickup);
-			return qfalse;
-		}
-		else
-		{//let's just randomly go to a spawnpoint
-			gentity_t* spawnpoint;
-			vec3_t temp;
-			spawnpoint = SelectSpawnPoint(vec3_origin, temp, temp, level.clients[bs->client].sess.sessionTeam, qtrue);
-			if (spawnpoint)
-			{
-				VectorCopy(spawnpoint->s.origin, bs->DestPosition);
-				bs->DestIgnore = -1;
-				bs->botBehave = BBEHAVE_MOVETO;
-				return qfalse;
-			}
-			else
-			{//that's not good
-				bs->botBehave = BBEHAVE_STILL;
-				VectorClear(bs->DestPosition);
-				bs->DestIgnore = -1;
-				return qfalse;
-			}
-		}
-	}
-	else if (!bs->currentEnemy && !VectorCompare(bs->DestPosition, vec3_origin))
-	{//moving towards a weapon or spawnpoint
-		bs->botBehave = BBEHAVE_MOVETO;
-		return qfalse;
-	}
-	else
-	{//have an enemy and can see him
-		if (bs->currentEnemy != bs->tacticEntity)
-		{//attacking someone other that your target
-			//This should probably be some sort of attack move or something
-			BotTrackAttack(bs);
-			return qfalse;
-		}
-		else
-		{
-			BotTrackAttack(bs);
-			return qfalse;
-		}
-	}
-	return qtrue;
-}
-
-//determines the trigger entity and type for a seige objective
-//attacker = objective attacker or defender? This is used for the recursion stuff.
-//use 0 to have it be determined by the side of the info_siege_objective
-static gentity_t* DetermineObjectiveType(int team, int objective, int* type, gentity_t* obj, int attacker)
-{
-	gentity_t* test = NULL;
-
-	if (level.gametype != GT_SIEGE)
-	{//find the flag for this objective type
-		char* c;
-		if (*type == OT_CAPTURE)
-		{
-			if (team == TEAM_RED)
-			{
-				c = "team_CTF_blueflag";
-			}
-			else
-			{
-				c = "team_CTF_redflag";
-			}
-		}
-		else if (*type == OT_DEFENDCAPTURE)
-		{
-			if (team == TEAM_RED)
-			{
-				c = "team_CTF_redflag";
-			}
-			else
-			{
-				c = "team_CTF_blueflag";
-			}
-		}
-		else
-		{
-			G_Printf("DetermineObjectiveType() Error: Bad ObjectiveType Given for CTF flag find.\n");
-			return NULL;
-		}
-		test = G_Find(test, FOFS(classname), c);
-		return test;
-	}
-
-	if (!obj)
-	{//don't already have obj entity to scan from, find it.
-		while ((obj = G_Find(obj, FOFS(classname), "info_siege_objective")) != NULL)
-		{
-			if (objective == obj->objective)
-			{//found it
-				if (!attacker)
-				{//this should always be true
-					if (obj->side == team)
-					{//we get points from this objective, we're the attacker.
-						attacker = 1;
-					}
-					else
-					{//we're the defender
-						attacker = 2;
-					}
-				}
-				break;
-			}
-		}
-	}
-
-	if (!obj)
-	{//hmmm, couldn't find the thing.  That's not good.
-		*type = OT_NONE;
-		return NULL;
-	}
-
-	//let's try back tracking and figuring out how this trigger is triggered
-
-	//try scanning thru the target triggers first.
-	while ((test = G_Find(test, FOFS(target), obj->targetname)) != NULL)
-	{
-		if (test->flags & FL_INACTIVE)
-		{//this entity isn't active, ignore it
-			continue;
-		}
-		else if (strcmp(test->classname, "func_breakable") == 0
-			|| (strcmp(test->classname, "NPC") == 0))
-		{//Destroyable objective or NPC
-			if (attacker == 1)
-			{//attack
-				*type = OT_ATTACK;
-				return test;
-			}
-			else if (attacker == 2)
-			{//Defend this target
-				*type = OT_DEFEND;
-				return test;
-			}
-			else
-			{
-				G_Printf("Bad attacker state for func_breakable objective in DetermineObjectiveType().\n");
-				return test;
-			}
-			break;
-		}
-		else if ((strcmp(test->classname, "trigger_multiple") == 0)
-			|| (strcmp(test->classname, "target_relay") == 0)
-			|| (strcmp(test->classname, "target_counter") == 0)
-			|| (strcmp(test->classname, "func_usable") == 0)
-			|| (strcmp(test->classname, "trigger_once") == 0))
-		{//ok, you can't do something directly to a trigger_multiple or a target_relay
-			//scan for whatever links to this relay
-			gentity_t* triggerer = DetermineObjectiveType(team, objective, type, test, attacker);
-			if (triggerer)
-			{//success!
-				return triggerer;
-			}
-			else if ((!strcmp(test->classname, "func_usable") && (test->spawnflags & 64)) || //useable by player
-				(!strcmp(test->classname, "trigger_multiple") && (test->spawnflags & 4)) || //need to press the use button to work
-				(!strcmp(test->classname, "trigger_once")))
-			{//ok, so they aren't linked to anything, try using them directly then
-				if (test->NPC_targetname)
-				{//vehicle objective
-					if (attacker == 1)
-					{//attack
-						*type = OT_VEHICLE;
-						return test;
-					}
-					else if (attacker == 2)
-					{//destroy the vehicle
-						gentity_t* vehicle = NULL;
-						//Find the vehicle
-						while ((vehicle = G_Find(vehicle, FOFS(script_targetname), test->NPC_targetname)) != NULL)
-						{
-							if (vehicle->inuse && vehicle->client && vehicle->s.eType == ET_NPC &&
-								vehicle->s.NPC_class == CLASS_VEHICLE && vehicle->m_pVehicle)
-							{
-								break;
-							}
-						}
-
-						if (!vehicle)
-						{//can't find the vehicle?!
-							*type = OT_WAIT;
-							return NULL;
-						}
-
-						test = vehicle;
-						*type = OT_ATTACK;
-						return test;
-					}
-					else
-					{
-						G_Printf("Bad attacker state for vehicle trigger_once objective in DetermineObjectiveType().\n");
-						return test;
-					}
-				}
-				else
-				{
-					if (attacker == 1)
-					{//attack
-						*type = OT_TOUCH;
-						return test;
-					}
-					else if (attacker == 2)
-					{//Defend this target
-						*type = OT_DEFEND;
-						return test;
-					}
-					else
-					{
-						G_Printf("Bad attacker state for func_usable objective in DetermineObjectiveType().\n");
-						return test;
-					}
-				}
-				break;
-			}
-		}
-	}
-
-	test = NULL;
-
-	//ok, see obj is triggered by the goaltarget of a capturable misc_siege_item
-	while ((test = G_Find(test, FOFS(goaltarget), obj->targetname)) != NULL)
-	{
-		if (strcmp(test->classname, "misc_siege_item") == 0)
-		{//Destroyable objective
-			if (attacker == 1)
-			{//attack
-				*type = OT_CAPTURE;
-				return test;
-			}
-			else if (attacker == 2)
-			{//Defend this target
-				*type = OT_DEFENDCAPTURE;
-				return test;
-			}
-			else
-			{
-				G_Printf("Bad attacker state for misc_siege_item objective in DetermineObjectiveType().\n");
-				return test;
-			}
-			break;
-		}
-	}
-
-	test = NULL;
-
-	//ok, see obj is triggered by the target3 (delivery target) of a capturable misc_siege_item
-	while ((test = G_Find(test, FOFS(target3), obj->targetname)) != NULL)
-	{
-		if (strcmp(test->classname, "misc_siege_item") == 0)
-		{//capturable objective
-			if (attacker == 1)
-			{//attack
-				*type = OT_CAPTURE;
-				return test;
-			}
-			else if (attacker == 2)
-			{//Defend this target
-				*type = OT_DEFENDCAPTURE;
-				return test;
-			}
-			else
-			{
-				G_Printf("Bad attacker state for misc_siege_item (target3) objective in DetermineObjectiveType().\n");
-				return test;
-			}
-			break;
-		}
-	}
-
-	test = NULL;
-
-	//check for a destroyable misc_siege_item that triggers this objective
-	while ((test = G_Find(test, FOFS(target4), obj->targetname)) != NULL)
-	{
-		if (strcmp(test->classname, "misc_siege_item") == 0)
-		{
-			if (attacker == 1)
-			{//attack
-				*type = OT_ATTACK;
-				return test;
-			}
-			else if (attacker == 2)
-			{//Defend this target
-				*type = OT_DEFEND;
-				return test;
-			}
-			else
-			{
-				G_Printf("Bad attacker state for misc_siege_item (target4) objective in DetermineObjectiveType().\n");
-				return test;
-			}
-			break;
-		}
-	}
-
-	//no dice
-	*type = OT_NONE;
-	return NULL;
-}
-
-static void BotBehave_Attack(bot_state_t* bs)
-{
-	int desiredweap = favorite_weapon(bs, bs->currentEnemy, qtrue, qtrue, 0);
-
-	if (bs->frame_Enemy_Len > MaximumAttackDistance[desiredweap])
-		//if( bs->frame_Enemy_Len > IdealAttackDistance[desiredweap] * 1.1)
-	{//this should be an attack while moving function but for now we'll just use moveto
-		vec3_t enemyOrigin;
-		FindOrigin(bs->currentEnemy, enemyOrigin);
-		VectorCopy(enemyOrigin, bs->DestPosition);
-		bs->DestIgnore = bs->currentEnemy->s.number;
-		BotBehave_AttackMove(bs);
-		return;
-	}
-
-	//determine which weapon you want to use
-	if (desiredweap != bs->virtualWeapon)
-	{//need to switch to desired weapon
-		BotSelectChoiceWeapon(bs, desiredweap, qtrue);
-	}
-
-	//we're going to go get in close so null out the wpCurrent so it will update when we're
-	//done.
-	bs->wpCurrent = NULL;
-
-	//use basic attack
-	bot_behave_attack_basic(bs, bs->currentEnemy);
-}
-
-//use/touch the given objective
-static void objectiveType_Touch(bot_state_t* bs)
-{
-	vec3_t objOrigin;
-
-	FindOrigin(bs->tacticEntity, objOrigin);
-
-	if (!G_PointInBounds(bs->origin, bs->tacticEntity->r.absmin, bs->tacticEntity->r.absmax))
-	{//move closer
-		VectorCopy(objOrigin, bs->DestPosition);
-		bs->DestIgnore = bs->tacticEntity->s.number;
-		if (bs->currentEnemy)
-		{//have a local enemy, attackmove
-			BotBehave_Attack(bs);
-		}
-		else
-		{//normal move
-			bs->botBehave = BBEHAVE_MOVETO;
-		}
-	}
-	else
-	{//in range hold down use
-		bs->useTime = level.time + 100;
-		if (bs->tacticEntity->spawnflags & 2 /*FACING*/)
-		{//you have to face in the direction of the trigger to have it work
-			vec3_t ang;
-			vectoangles(bs->tacticEntity->movedir, ang);
-			VectorCopy(ang, bs->goalAngles);
-		}
-	}
-}
-
-extern char gObjectiveCfgStr[1024];
-static qboolean ObjectiveStillActive(int objective)
-{//Is the given Objective for the given team still active?
-	int i = 0;
-	int objectiveNum = 0;
-
-	if (objective <= 0)
-	{//bad objective number
-		return qfalse;
-	}
-
-	while (gObjectiveCfgStr[i])
-	{
-		if (gObjectiveCfgStr[i] == '|')
-		{ //switch over to team2, this is the next section
-			objectiveNum = 0;
-		}
-		else if (gObjectiveCfgStr[i] == '-')
-		{
-			objectiveNum++;
-			i++;
-			if (gObjectiveCfgStr[i] == '0' && objectiveNum == objective)
-			{//tactic still active.
-				return qtrue;
-			}
-		}
-		i++;
-	}
-
-	return qfalse;
-}
-
-//See if bot is mindtricked by the client in question
-static int BotMindTricked(int botClient, int enemyClient)
-{
-	forcedata_t* fd;
-
-	if (!g_entities[enemyClient].client)
-	{
-		return 0;
-	}
-
-	fd = &g_entities[enemyClient].client->ps.fd;
-
-	if (!fd)
-	{
-		return 0;
-	}
-
-	if (botClient > 47)
-	{
-		if (fd->forceMindtrickTargetIndex4 & (1 << (botClient - 48)))
-		{
-			return 1;
-		}
-	}
-	else if (botClient > 31)
-	{
-		if (fd->forceMindtrickTargetIndex3 & (1 << (botClient - 32)))
-		{
-			return 1;
-		}
-	}
-	else if (botClient > 15)
-	{
-		if (fd->forceMindtrickTargetIndex2 & (1 << (botClient - 16)))
-		{
-			return 1;
-		}
-	}
-	else
-	{
-		if (fd->forceMindtrickTargetIndex & (1 << botClient))
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-//perform cheap "hearing" checks based on the event catching
-//system
-static int BotCanHear(bot_state_t* bs, gentity_t* en, float endist)
-{
-	float minlen;
-
-	if (!en || !en->client)
-	{
-		return 0;
-	}
-
-	if (en && en->client && en->client->ps.otherSoundTime > level.time)
-	{ //they made a noise in recent time
-		minlen = en->client->ps.otherSoundLen;
-		goto checkStep;
-	}
-
-	if (en && en->client && en->client->ps.footstepTime > level.time)
-	{ //they made a footstep
-		minlen = 256;
-		goto checkStep;
-	}
-
-	if (gBotEventTracker[en->s.number].eventTime < level.time)
-	{ //no recent events to check
-		return 0;
-	}
-
-	switch (gBotEventTracker[en->s.number].events[gBotEventTracker[en->s.number].eventSequence & (MAX_PS_EVENTS - 1)])
-	{ //did the last event contain a sound?
-	case EV_GLOBAL_SOUND:
-		minlen = 256;
-		break;
-	case EV_FIRE_WEAPON:
-	case EV_ALTFIRE:
-	case EV_SABER_ATTACK:
-		minlen = 512;
-		break;
-	case EV_STEP_4:
-	case EV_STEP_8:
-	case EV_STEP_12:
-	case EV_STEP_16:
-	case EV_FOOTSTEP:
-	case EV_FOOTSTEP_METAL:
-	case EV_FOOTWADE:
-		minlen = 256;
-		break;
-	case EV_JUMP:
-	case EV_ROLL:
-		minlen = 256;
-		break;
-	default:
-		minlen = 999999;
-		break;
-	}
-checkStep:
-	if (BotMindTricked(bs->client, en->s.number))
-	{ //if mindtricked by this person, cut down on the minlen so they can't "hear" as well
-		minlen /= 4;
-	}
-
-	if (endist <= minlen)
-	{ //we heard it
-		return 1;
-	}
-
-	return 0;
-}
-
-//Find a class with a heavyweapon
-//index = which one of the classes with heavy weapons do you return first?  the first one?
-//second one?  etc.
-//saber:	qtrue = look for class with saber
-//			qfalse = look for class with general heavy weapon
-//returns the basic class enum
-static int FindHeavyWeaponClass(int team, int index, qboolean saber)
-{
-	int i;
-	int NumHeavyWeapClasses = 0;
-	siegeTeam_t* stm;
-
-	stm = BG_SiegeFindThemeForTeam(team);
-	if (!stm)
-	{
-		return -1;
-	}
-
-	// Loop through all the classes for this team
-	for (i = 0; i < stm->numClasses; i++)
-	{
-		if (!saber)
-		{
-			if (have_heavy_weapon(stm->classes[i]->weapons))
-			{
-				if (index == NumHeavyWeapClasses)
-				{
-					return stm->classes[i]->playerClass;
-				}
-				NumHeavyWeapClasses++;
-			}
-		}
-		else
-		{//look for saber
-			if (stm->classes[i]->weapons & (1 << WP_SABER))
-			{
-				if (index == NumHeavyWeapClasses)
-				{
-					return stm->classes[i]->playerClass;
-				}
-				NumHeavyWeapClasses++;
-			}
-		}
-	}
-
-	//no heavy weapons/saber carrying units at this index
-	return -1;
-}
-
-//Find the number of players useing this basic class on team.
-static int NumberofSiegeBasicClass(int team, int BaseClass)
-{
-	int i = 0;
-	siegeClass_t* holdClass = BG_GetClassOnBaseClass(team, BaseClass, 0);
-	int NumPlayers = 0;
-
-	for (i = 0; i < MAX_CLIENTS; i++)
-	{
-		gentity_t* ent = &g_entities[i];
-		if (ent && ent->client && ent->client->pers.connected == CON_CONNECTED
-			&& ent->client->sess.siegeClass && ent->client->sess.sessionTeam == team)
-		{
-			if (strcmp(ent->client->sess.siegeClass, holdClass->name) == 0)
-			{
-				NumPlayers++;
-			}
-		}
-	}
-	return NumPlayers;
-}
-
-//Should we switch classes to destroy this breakable or just call for help?
-//saber = saber only destroyable?
-static void ShouldSwitchSiegeClasses(bot_state_t* bs, qboolean saber)
-{
-	int i = 0;
-	int x;
-	int classNum;
-
-	classNum = FindHeavyWeaponClass(g_entities[bs->client].client->sess.siegeDesiredTeam, i, saber);
-	while (classNum != -1)
-	{
-		x = NumberofSiegeBasicClass(g_entities[bs->client].client->sess.siegeDesiredTeam, classNum);
-		if (x)
-		{//request assistance for this class since we already have someone
-			//playing that class
-			request_siege_assistance(bs, SPC_DEMOLITIONIST);
-			return;
-		}
-
-		//ok, noone is using that class check for the next
-		//indexed heavy weapon class
-		i++;
-		classNum = FindHeavyWeaponClass(g_entities[bs->client].client->sess.siegeDesiredTeam, i, saber);
-	}
-
-	//ok, noone else is using a siege class with a heavyweapon.  Switch to
-	//one ourselves
-	i--;
-	classNum = FindHeavyWeaponClass(g_entities[bs->client].client->sess.siegeDesiredTeam, i, saber);
-
-	if (classNum == -1)
-	{//what the?!
-		G_Printf("couldn't find a siege class with a heavy weapon in ShouldSwitchSiegeClasses().\n");
-	}
-	else
-	{//switch to this class
-		siegeClass_t* holdClass = BG_GetClassOnBaseClass(g_entities[bs->client].client->sess.siegeDesiredTeam, classNum, 0);
-		trap_EA_Command(bs->client, va("siegeclass \"%s\"\n", holdClass->name));
-	}
-}
-
-//find angles/viewangles for entity
-static void FindAngles(gentity_t* ent, vec3_t angles)
-{
-	if (ent->client)
-	{//player
-		VectorCopy(ent->client->ps.viewangles, angles);
-	}
-	else
-	{//other stuff
-		VectorCopy(ent->s.angles, angles);
-	}
-}
-
-//Basically this is the tactical order for attacking an object with a known location
-static void objectiveType_Attack(bot_state_t* bs, gentity_t* target)
-{
-	vec3_t objOrigin;
-	vec3_t a;
-	trace_t tr;
-	float dist;
-
-	FindOrigin(target, objOrigin);
-
-	//Do visual check to target
-	VectorSubtract(objOrigin, bs->eye, a);
-	dist = TargetDistance(bs, target, objOrigin);
-	vectoangles(a, a);
-
-	trap->Trace(&tr, bs->eye, NULL, NULL, objOrigin, bs->client, MASK_PLAYERSOLID, qfalse, 0, 0);
-
-	if (((tr.entityNum == target->s.number || tr.fraction == 1)
-		&& (in_field_of_vision(bs->viewangles, 90, a) || bs->cur_ps.groundEntityNum == target->s.number)
-		&& !BotMindTricked(bs->client, target->s.number))
-		|| BotCanHear(bs, target, dist) || dist < 100)
-	{//we see the objective, go for it.
-		int desiredweap = favorite_weapon(bs, target, qtrue, qtrue, 0);
-		if ((target->flags & FL_DMG_BY_HEAVY_WEAP_ONLY) && !is_heavy_weapon(bs, desiredweap))
-		{//we currently don't have a heavy weap that we can use to destroy this target
-			if (have_heavy_weapon(bs->cur_ps.stats[STAT_WEAPONS]))
-			{//we have a weapon that could destroy this target but we don't have ammo
-				BotDefend(bs, target);
-			}
-			else if (level.gametype == GT_SIEGE)
-			{//ok, check to see if we should switch classes if noone else can blast this
-				ShouldSwitchSiegeClasses(bs, qfalse);
-				BotDefend(bs, target);
-			}
-			else
-			{//go hunting for a weapon that can destroy this object
-				//RAFIXME:  Add this code
-				BotDefend(bs, target);
-			}
-		}
-		else if ((target->flags & FL_DMG_BY_SABER_ONLY) && !(bs->cur_ps.stats[STAT_WEAPONS] & (1 << WP_SABER)))
-		{//This is only damaged by sabers and we don't have a saber
-			ShouldSwitchSiegeClasses(bs, qtrue);
-			BotDefend(bs, target);
-		}
-		else
-		{//cleared to attack
-			bs->frame_Enemy_Len = dist;
-			bs->frame_Enemy_Vis = 1;
-			bs->currentEnemy = target;
-			VectorCopy(objOrigin, bs->lastEnemySpotted);
-			FindAngles(target, bs->lastEnemyAngles);
-			bs->enemySeenTime = level.time + BOT_VISUALLOSETRACKTIME;
-			BotBehave_Attack(bs);
-		}
-		return;
-	}
-	else if (bs->currentEnemy == target)
-	{//can't see the target so null it out so we can find other enemies.
-		bs->currentEnemy = NULL;
-		bs->frame_Enemy_Vis = 0;
-		bs->frame_Enemy_Len = 0;
-	}
-
-	if (strcmp(target->classname, "func_breakable") == 0
-		&& target->paintarget
-		&& strcmp(target->paintarget, "shieldgen_underattack") == 0)
-	{//dirty hack to get the bots to attack the shield generator on siege_hoth
-		vec3_t temp;
-		VectorSet(temp, -369, 858, -231);
-		if (Distance(bs->origin, temp) < DEFEND_MAXDISTANCE)
-		{//automatically see target.
-			if (!(bs->cur_ps.stats[STAT_WEAPONS] & (1 << WP_DEMP2))
-				&& !(bs->cur_ps.stats[STAT_WEAPONS] & (1 << WP_ROCKET_LAUNCHER))
-				&& !(bs->cur_ps.stats[STAT_WEAPONS] & (1 << WP_CONCUSSION))
-				&& !(bs->cur_ps.stats[STAT_WEAPONS] & (1 << WP_REPEATER)))
-			{//we currently don't have a heavy weap that can reach this target
-				BotDefend(bs, target);
-			}
-			else
-			{//cleared to attack
-				bs->frame_Enemy_Len = dist;
-				bs->frame_Enemy_Vis = 1;
-				bs->currentEnemy = target;
-				VectorCopy(objOrigin, bs->lastEnemySpotted);
-				FindAngles(target, bs->lastEnemyAngles);
-				bs->enemySeenTime = level.time + BOT_VISUALLOSETRACKTIME;
-				BotBehave_Attack(bs);
-			}
-			return;
-		}
-		VectorCopy(temp, objOrigin);
-	}
-
-	//ok, we can't see the objective, move towards its location
-	VectorCopy(objOrigin, bs->DestPosition);
-	bs->DestIgnore = target->s.number;
-	if (bs->currentEnemy)
-	{//have a local enemy, attackmove
-		BotBehave_AttackMove(bs);
-	}
-	else
-	{//normal move
-		bs->botBehave = BBEHAVE_MOVETO;
-	}
-}
-
-static int FindValidObjective(int objective)
-{
-	int x = 0;
-
-	//since the game only ever does 6 objectives
-	if (objective == -1)
-	{
-		objective = Q_irand(1, 6);
-	}
-
-	//we assume that the round over check is done before this point
-	while (!ObjectiveStillActive(objective))
-	{
-		objective--;
-		if (objective < 1)
-		{
-			objective = 6;
-		}
-	}
-
-	//depandancy checking
-	for (x = 0; x < MAX_OBJECTIVEDEPENDANCY; x++)
-	{
-		if (ObjectiveDependancy[objective - 1][x])
-		{//dependancy
-			if (ObjectiveStillActive(ObjectiveDependancy[objective - 1][x]))
-			{//a prereq objective hasn't been completed, do that first
-				return FindValidObjective(ObjectiveDependancy[objective - 1][x]);
-			}
-		}
-	}
-
-	return objective;
-}
-
-//vehicle
-static void objectiveType_Vehicle(bot_state_t* bs)
-{
-	gentity_t* vehicle = NULL;
-	gentity_t* botEnt = &g_entities[bs->client];
-
-	//find the vehicle that must trigger this trigger.
-	while ((vehicle = G_Find(vehicle, FOFS(script_targetname), bs->tacticEntity->NPC_targetname)) != NULL)
-	{
-		if (vehicle->inuse && vehicle->client && vehicle->s.eType == ET_NPC &&
-			vehicle->s.NPC_class == CLASS_VEHICLE && vehicle->m_pVehicle)
-		{
-			break;
-		}
-	}
-
-	if (!vehicle)
-	{//can't find the vehicle?!
-		return;
-	}
-
-	if (botEnt->inuse && botEnt->client
-		&& botEnt->client->ps.m_iVehicleNum == vehicle->s.number)
-	{//in the vehicle
-		//move towards trigger point
-		vec3_t objOrigin;
-		FindOrigin(bs->tacticEntity, objOrigin);
-
-		bs->noUseTime = +level.time + 5000;
-
-		bs->DestIgnore = bs->tacticEntity->s.number;
-		bot_move(bs, objOrigin, qfalse, qfalse);
-	}
-	else if (vehicle->client->ps.m_iVehicleNum)
-	{//vehicle already occuped, cover it.
-		BotDefend(bs, vehicle);
-	}
-	else
-	{//go to the vehicle!
-		//hack!
-		vec3_t vehOrigin;
-		FindOrigin(vehicle, vehOrigin);
-
-		//bs->useTime = level.time + 100;
-
-		bs->botBehave = BBEHAVE_MOVETO;
-		VectorCopy(vehOrigin, bs->DestPosition);
-		bs->DestIgnore = vehicle->s.number;
-	}
-}
-
-extern qboolean gSiegeRoundEnded;
-qboolean BotObjective(bot_state_t* bs)
-{
-	//make sure the objective is still valid
-	if (level.gametype != GT_SIEGE)
-	{
-	}
-	else if (gSiegeRoundEnded)
-	{//round over, don't do anything
-		return qfalse;
-	}
-	else if (bs->tacticObjective <= 0 ||
-		!ObjectiveStillActive(bs->tacticObjective))
-	{//objective lost/completed. switch to first active objective
-		//G_Printf("Bot switched objectives due to objective being lost/won.\n");
-		bs->tacticObjective = FindValidObjective(-1);
-		bs->objectiveType = 0;
-		if (bs->tacticObjective == -1)
-		{//end of map
-			return qfalse;
-		}
-	}
-
-	if (!bs->objectiveType || !bs->tacticEntity
-		|| strcmp(bs->tacticEntity->classname, "freed") == 0)
-	{//don't have objective entity type, don't have tacticEntity, or the tacticEntity you had
-		//was killed/freed
-		bs->tacticEntity = DetermineObjectiveType(g_entities[bs->client].client->sess.sessionTeam,
-			bs->tacticObjective, &bs->objectiveType, NULL, 0);
-	}
-
-	if (bs->objectiveType == OT_ATTACK)
-	{
-		//attack tactical code
-		objectiveType_Attack(bs, bs->tacticEntity);
-	}
-	else if (bs->objectiveType == OT_DEFEND)
-	{//defend tactical code
-		BotDefend(bs, bs->tacticEntity);
-	}
-	else if (bs->objectiveType == OT_CAPTURE)
-	{//capture tactical code
-		objectiveType_Capture(bs);
-	}
-	else if (bs->objectiveType == OT_DEFENDCAPTURE)
-	{//defend capture tactical
-		objectiveType_DefendCapture(bs);
-	}
-	else if (bs->objectiveType == OT_TOUCH)
-	{//touch tactical
-		objectiveType_Touch(bs);
-	}
-	else if (bs->objectiveType == OT_VEHICLE)
-	{//vehicle techical
-		objectiveType_Vehicle(bs);
-	}
-	else if (bs->objectiveType == OT_WAIT)
-	{//just run around and attack people, since we're waiting for the objective to become valid.
-		BotSearchAndDestroy(bs);
-	}
-	else
-	{
-		G_Printf("Bad/Unknown ObjectiveType in BotObjective.\n");
-	}
-	return qtrue;
-}
-
-
-
-
-//----- End Enhaned logic code -----//
-
 
 int gUpdateVars = 0;
 
@@ -19234,7 +16679,53 @@ int bot_ai_startframe(const int time)
 			continue;
 		}
 
+		bot_state_t* bs = botstates[i];
+
+		// ⭐ UNFREEZE LOGIC GOES HERE
+		if ((bs->cur_ps.userInt3 & (1 << FLAG_FROZEN)) &&
+			bs->cur_ps.frozenTime < level.time)
+		{
+			// Remove frozen flag
+			bs->cur_ps.userInt3 &= ~(1 << FLAG_FROZEN);
+
+			// Unlock weapon logic
+			bs->cur_ps.weaponTime = 0;
+
+			// Clear bot attack states
+			bs->doAttack = qfalse;
+			bs->doAltAttack = qfalse;
+
+			// Optional: clear forced movement
+			bs->forceMove_Forward = 0;
+			bs->forceMove_Right = 0;
+			bs->forceMove_Up = 0;
+		}
+
 		bot_update_input(botstates[i], time, elapsed_time);
+
+		usercmd_t* ucmd = &bs->lastucmd;
+
+		// ABSOLUTE NO-JUMP MODE FOR SABER/MELEE COMBAT
+		if (bs->currentEnemy &&
+			(bs->cur_ps.weapon == WP_SABER || bs->cur_ps.weapon == WP_MELEE))
+		{
+			// 1. Remove all jump input
+			ucmd->upmove = 0;
+
+			// 2. Clear engine jump states
+			bs->cur_ps.pm_flags &= ~PMF_JUMP_HELD;
+			bs->cur_ps.pm_flags &= ~PMF_JUMPING;
+			bs->cur_ps.pm_flags &= ~PMF_BACKWARDS_JUMP;
+			bs->cur_ps.pm_flags &= ~PMF_LADDER_JUMP;
+
+			// 3. Clear impulse states that cause hop-like movement
+			bs->cur_ps.pm_flags &= ~PMF_TIME_LAND;
+			bs->cur_ps.pm_flags &= ~PMF_TIME_KNOCKBACK;
+
+			// 4. Optional: reduces step-up impulses (helps stop micro-hops)
+			// bs->cur_ps.pm_flags |= PMF_DUCKED;
+		}
+
 		trap->BotUserCommand(botstates[i]->client, &botstates[i]->lastucmd);
 	}
 

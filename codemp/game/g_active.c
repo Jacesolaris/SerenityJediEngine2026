@@ -4491,8 +4491,7 @@ static void ClientThink_real(gentity_t* ent)
 	}
 
 	// spectators don't do much
-	if (client->ps.clientNum < MAX_CLIENTS && (client->sess.sessionTeam == TEAM_SPECTATOR || client->tempSpectate >
-		level.time))
+	if (client->ps.clientNum < MAX_CLIENTS && (client->sess.sessionTeam == TEAM_SPECTATOR || client->tempSpectate > level.time))
 	{
 		if (client->sess.spectatorState == SPECTATOR_SCOREBOARD)
 		{

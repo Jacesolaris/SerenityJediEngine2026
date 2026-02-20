@@ -1140,7 +1140,7 @@ void NPC_ChangeWeapon(const int new_weapon)
 	{
 		if (NPC->client->ps.weapon == WP_SABER)
 		{
-			wp_saber_add_g2_saber_models(NPC);
+			WP_SaberAddG2SaberModels(NPC);
 			G_RemoveHolsterModels(NPC);
 		}
 		else if (NPC->client->ps.weapon == WP_DROIDEKA)
@@ -1172,7 +1172,7 @@ void NPC_ChangeNPCWeapon(gentity_t* NPC, const int new_weapon)
 	{
 		if (NPC->client->ps.weapon == WP_SABER)
 		{
-			wp_saber_add_g2_saber_models(NPC);
+			WP_SaberAddG2SaberModels(NPC);
 			G_RemoveHolsterModels(NPC);
 		}
 		else if (NPC->client->ps.weapon == WP_DROIDEKA)
@@ -1321,7 +1321,7 @@ extern qboolean IsSurrendering(const gentity_t* self);
 extern qboolean IsRespecting(const gentity_t* self);
 extern qboolean IsCowering(const gentity_t* self);
 extern qboolean IsAnimRequiresResponce(const gentity_t* self);
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern void WP_DeactivateSaber(const gentity_t* self, qboolean clear_length = qfalse);
 extern qboolean PM_SaberInAttack(int move);
 extern qboolean PM_SaberInStart(int move);

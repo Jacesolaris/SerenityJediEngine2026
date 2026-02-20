@@ -25,7 +25,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/q_shared.h"
 #include "bg_public.h"
 #include "bg_vehicles.h"
-#include "bg_weapons.h"
 
 #ifdef _GAME
 #include "g_local.h"
@@ -34,6 +33,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #elif UI_BUILD
 #include "ui/ui_local.h"
 #endif
+#include <assert.h>
+#include "anims.h"
+#include <qcommon\q_platform.h>
+#include <qcommon\q_math.h>
+#include <qcommon\q_string.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern stringID_table_t animTable[MAX_ANIMATIONS + 1];
 
@@ -1386,43 +1392,64 @@ int BG_VehicleGetIndex(const char* vehicleName)
 	return VEH_VehicleIndexForName(vehicleName);
 }
 
-//We get the vehicle name passed in as modelname
-//with a $ in front of it.
-//we are expected to then get the model for the
-//vehicle and stomp over modelname with it.
 void BG_GetVehicleModelName(char* modelName, const char* vehicleName, const size_t len)
 {
-	const char* vehName = &vehicleName[1];
-	const int vIndex = BG_VehicleGetIndex(vehName);
+	assert(vehicleName);
+	assert(modelName);
+	assert(len > 0);
+
+	// Must start with '$'
 	assert(vehicleName[0] == '$');
 
-	if (vIndex == VEHICLE_NONE)
-		Com_Error(ERR_DROP, "BG_GetVehicleModelName:  couldn't find vehicle %s", vehName);
+	const char* vehName = &vehicleName[1];
+	const int vIndex = BG_VehicleGetIndex(vehName);
 
+	// Explicit bounds check to satisfy static analysis
+	if (vIndex < 0 || vIndex >= MAX_VEHICLES)
+	{
+		Com_Error(ERR_DROP,
+			"BG_GetVehicleModelName: invalid vehicle index %d for '%s'",
+			vIndex, vehName);
+	}
+
+	// Now safe to index
 	Q_strncpyz(modelName, g_vehicleInfo[vIndex].model, len);
 }
 
 void BG_GetVehicleSkinName(char* skinname, const int len)
 {
-	char* vehName = &skinname[1];
-	const int vIndex = BG_VehicleGetIndex(vehName);
+	assert(skinname);
+	assert(len > 0);
+
+	// Must start with '$'
 	assert(skinname[0] == '$');
 
-	if (vIndex == VEHICLE_NONE)
-		Com_Error(ERR_DROP, "BG_GetVehicleSkinName:  couldn't find vehicle %s", vehName);
+	char* vehName = &skinname[1];
+	const int vIndex = BG_VehicleGetIndex(vehName);
 
-	if (!VALIDSTRING(g_vehicleInfo[vIndex].skin))
-		skinname[0] = 0;
-	else
+	// Explicit bounds check to satisfy static analysis
+	if (vIndex < 0 || vIndex >= MAX_VEHICLES)
 	{
-		if (Q_stricmp(g_vehicleInfo[vIndex].name, "swoop") == 0)
-		{
-			// if this is the swoop vehicle, set the golden skin
-			strcpy(g_vehicleInfo[vIndex].skin, "gold");
-		}
-
-		Q_strncpyz(skinname, g_vehicleInfo[vIndex].skin, len);
+		Com_Error(ERR_DROP,
+			"BG_GetVehicleSkinName: invalid vehicle index %d for '%s'",
+			vIndex, vehName);
 	}
+
+	// Now safe to index g_vehicleInfo
+	if (!VALIDSTRING(g_vehicleInfo[vIndex].skin))
+	{
+		skinname[0] = 0;
+		return;
+	}
+
+	// Special case: swoop uses golden skin
+	if (Q_stricmp(g_vehicleInfo[vIndex].name, "swoop") == 0)
+	{
+		// This is safe because we validated vIndex above
+		strcpy(g_vehicleInfo[vIndex].skin, "gold");
+	}
+
+	Q_strncpyz(skinname, g_vehicleInfo[vIndex].skin, len);
 }
 
 #if defined(_GAME) || defined(_CGAME)

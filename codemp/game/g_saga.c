@@ -61,7 +61,7 @@ int gSiegeBeginTime = Q3_INFINITE;
 int g_preroundState = 0; //default to starting as spec (1 is starting ingame)
 
 void LogExit(const char* string);
-void SetTeamQuick(const gentity_t* ent, int team, qboolean doBegin);
+void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin);
 
 static char gParseObjectives[MAX_SIEGE_INFO_SIZE];
 char gObjectiveCfgStr[1024];
@@ -607,7 +607,7 @@ void SiegeDoTeamAssign(void)
 	//yeah, this is great...
 	while (i < MAX_CLIENTS)
 	{
-		const gentity_t* ent = &g_entities[i];
+		gentity_t* ent = &g_entities[i];
 
 		if (ent->inuse && ent->client &&
 			ent->client->pers.connected == CON_CONNECTED)
@@ -800,7 +800,7 @@ void G_ValidateSiegeClassForTeam(const gentity_t* ent, const int team)
 }
 
 //bypass most of the normal checks in SetTeam
-void SetTeamQuick(const gentity_t* ent, const int team, const qboolean doBegin)
+void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin)
 {
 	char userinfo[MAX_INFO_STRING];
 
@@ -815,8 +815,28 @@ void SetTeamQuick(const gentity_t* ent, const int team, const qboolean doBegin)
 
 	if (team == TEAM_SPECTATOR)
 	{
-		ent->client->sess.spectatorState = SPECTATOR_FREE;
+		ent->client->sess.spectatorState = SPECTATOR_FOLLOW; // SPECTATOR_FREE;
 		Info_SetValueForKey(userinfo, "team", "s");
+
+		// --- REQUIRED spectator reset to prevent out-of-bounds ---
+		ent->client->ps.pm_type = PM_SPECTATOR;
+		ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
+
+		VectorClear(ent->client->ps.velocity);
+		ent->client->ps.pm_flags = 0;
+		ent->client->ps.pm_time = 0;
+
+		// Clear collision box
+		VectorClear(ent->r.mins);
+		VectorClear(ent->r.maxs);
+		ent->r.contents = 0;
+
+		// Safe spectator spawn
+		VectorCopy(level.intermission_origin, ent->client->ps.origin);
+		VectorCopy(level.intermission_angle, ent->client->ps.viewangles);
+
+		trap->LinkEntity((sharedEntity_t*)ent);
+		// ----------------------------------------------------------
 	}
 	else
 	{

@@ -2269,6 +2269,7 @@ public:
 	//drawing progress bar (is there a less bandwidth-eating way to do
 	//this without a lot of hassle?)
 	int			hackingBaseTime;
+	int         saberstuckinwalltimer;
 
 #endif // !JK2_MODE
 
@@ -2528,6 +2529,7 @@ public:
 
 		saved_game.write<int32_t>(hackingTime);
 		saved_game.write<int32_t>(hackingBaseTime);
+		saved_game.write<int32_t>(saberstuckinwalltimer);
 #endif // !JK2_MODE
 	}
 
@@ -2787,6 +2789,7 @@ public:
 
 		saved_game.read<int32_t>(hackingTime);
 		saved_game.read<int32_t>(hackingBaseTime);
+		saved_game.read<int32_t>(saberstuckinwalltimer);
 #endif // !JK2_MODE
 	}
 }; // PlayerStateBase

@@ -37,6 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_saga.h"
 
 #include "ui/menudef.h"			// for the voice chats
+#include "teams.h"
 
 extern qboolean in_camera;
 //rww - for getting bot commands...
@@ -47,7 +48,7 @@ void WP_SetSaber(int entNum, saberInfo_t* sabers, int saberNum, const char* sabe
 
 void Cmd_NPC_f(gentity_t* ent);
 void Cmd_AdminNPC_f(gentity_t* ent);
-void SetTeamQuick(const gentity_t* ent, int team, qboolean doBegin);
+void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin);
 extern void G_RemoveWeather(void);
 extern void G_SetTauntAnim(gentity_t* ent, int taunt);
 
@@ -933,7 +934,7 @@ void SetTeam(gentity_t* ent, const char* s)
 	else if (!Q_stricmp(s, "spectator") || !Q_stricmp(s, "s") || !Q_stricmp(s, "spectate"))
 	{
 		team = TEAM_SPECTATOR;
-		spec_state = SPECTATOR_FREE;
+		spec_state = SPECTATOR_FOLLOW; // SPECTATOR_FREE;
 	}
 	else if (g_gametype.integer == GT_SINGLE_PLAYER)
 	{
@@ -1193,9 +1194,8 @@ void StopFollowing(gentity_t* ent)
 	ent->r.svFlags &= ~SVF_BOT;
 	ent->client->ps.clientNum = ent - g_entities;
 	ent->client->ps.weapon = WP_NONE;
-	G_LeaveVehicle(ent, qfalse); // clears m_iVehicleNum as well
+	G_LeaveVehicle(ent, qfalse);
 	ent->client->ps.emplacedIndex = 0;
-	//ent->client->ps.m_iVehicleNum = 0;
 	ent->client->ps.viewangles[ROLL] = 0.0f;
 	ent->client->ps.forceHandExtend = HANDEXTEND_NONE;
 	ent->client->ps.forceHandExtendTime = 0;
@@ -1209,17 +1209,37 @@ void StopFollowing(gentity_t* ent)
 	ent->client->ps.torsoTimer = 0;
 	ent->client->ps.duelInProgress = qfalse;
 	ent->client->ps.isJediMaster = qfalse;
-	// major exploit if you are spectating somebody and they are JM and you reconnect
-	ent->client->ps.cloakFuel = 100; // so that fuel goes away after stop following them
-	ent->client->ps.jetpackFuel = 100; // so that fuel goes away after stop following them
+	ent->client->ps.cloakFuel = 100;
+	ent->client->ps.jetpackFuel = 100;
 	ent->client->ps.sprintFuel = 100;
 	ent->health = ent->client->ps.stats[STAT_HEALTH] = 100;
-	// so that you don't keep dead angles if you were spectating a dead person
 	ent->client->ps.bobCycle = 0;
 	ent->client->ps.pm_type = PM_SPECTATOR;
 	ent->client->ps.eFlags &= ~EF_DISINTEGRATION;
 	for (int i = 0; i < PW_NUM_POWERUPS; i++)
 		ent->client->ps.powerups[i] = 0;
+
+	// --- REQUIRED spectator reset to prevent out-of-bounds ---
+	ent->client->ps.pm_type = PM_SPECTATOR;
+	ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
+
+	// Clear movement
+	VectorClear(ent->client->ps.velocity);
+	ent->client->ps.pm_flags = 0;
+	ent->client->ps.pm_time = 0;
+
+	// Clear collision (THIS is the correct place)
+	VectorClear(ent->r.mins);
+	VectorClear(ent->r.maxs);
+	ent->r.contents = 0; // no collision at all
+
+	// Safe spectator spawn
+	VectorCopy(level.intermission_origin, ent->client->ps.origin);
+	VectorCopy(level.intermission_angle, ent->client->ps.viewangles);
+
+	// Make sure the entity is linked with no collision
+	trap->LinkEntity((sharedEntity_t*)ent);
+	// -----------------------------------------------------------
 }
 
 /*
@@ -3489,6 +3509,7 @@ void Cmd_ToggleSaber_f(gentity_t* ent)
 		else
 		{
 			ent->client->ps.saberHolstered = 2;
+
 			if (ent->client->saber[0].soundOff)
 			{
 				G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOff);
@@ -3500,6 +3521,12 @@ void Cmd_ToggleSaber_f(gentity_t* ent)
 			}
 			ent->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCK);
 			ent->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCKANDATTACK);
+
+			// Clear any lingering saber‑combat state
+			ent->client->ps.duelInProgress = qfalse;
+			ent->client->ps.saberLockFrame = 0;
+			ent->client->ps.saberLockTime = 0;
+
 			//prevent anything from being done for 400ms after holster
 			ent->client->ps.weaponTime = 400;
 		}

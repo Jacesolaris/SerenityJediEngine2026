@@ -39,7 +39,7 @@ class CMiniHeap : public IHeapAllocator
 private:
 	char* mHeap;
 	char* mCurrentHeap;
-	int mSize;
+	int   mSize;
 
 public:
 	// reset the heap back to the start
@@ -49,13 +49,15 @@ public:
 	}
 
 	// initialise the heap
-	inline CMiniHeap::CMiniHeap(const int size)
+	inline CMiniHeap(const int size)
+		: mHeap(nullptr)
+		, mCurrentHeap(nullptr)
+		, mSize(size)
 	{
 		mHeap = static_cast<char*>(malloc(size));
-		mSize = size;
 		if (mHeap)
 		{
-			CMiniHeap::ResetHeap();
+			mCurrentHeap = mHeap;   // or ResetHeap();
 		}
 	}
 
@@ -71,7 +73,8 @@ public:
 	// give me some space from the heap please
 	char* MiniHeapAlloc(const int size) override
 	{
-		if (static_cast<size_t>(size) < mSize - (reinterpret_cast<size_t>(mCurrentHeap) - reinterpret_cast<size_t>(mHeap)))
+		size_t used = static_cast<size_t>(mCurrentHeap - mHeap);
+		if (static_cast<size_t>(size) < (static_cast<size_t>(mSize) - used))
 		{
 			char* tempAddress = mCurrentHeap;
 			mCurrentHeap += size;

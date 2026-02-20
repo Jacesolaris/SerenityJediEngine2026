@@ -4048,7 +4048,7 @@ void CG_Weapon_f()
 						if (cg_entities[0].gent->client->ps.dualSabers)
 						{
 							G_RemoveHolsterModels(cg_entities[0].gent);
-							wp_saber_add_g2_saber_models(cg_entities[0].gent, qtrue);
+							WP_SaberAddG2SaberModels(cg_entities[0].gent, qtrue);
 						}
 					}
 				}

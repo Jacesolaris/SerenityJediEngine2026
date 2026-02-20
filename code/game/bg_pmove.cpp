@@ -59,7 +59,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 extern qboolean G_DoDismemberment(gentity_t* self, vec3_t point, int mod, int hit_loc, qboolean force = qfalse);
 extern qboolean G_EntIsUnlockedDoor(int entityNum);
 extern qboolean G_EntIsDoor(int entityNum);
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
 extern qboolean Q3_TaskIDPending(const gentity_t* ent, taskID_t taskType);
 extern qboolean WP_SaberLose(gentity_t* self, vec3_t throw_dir);
@@ -12118,7 +12118,7 @@ static void PM_FinishWeaponChange()
 					if (pm->gent && pm->ps->dualSabers && pm->gent->weaponModel[1] == -1)
 					{
 						G_RemoveHolsterModels(pm->gent);
-						wp_saber_add_g2_saber_models(pm->gent, qtrue);
+						WP_SaberAddG2SaberModels(pm->gent, qtrue);
 					}
 				}
 				pm->ps->SetSaberLength(0.0f);
@@ -12126,7 +12126,7 @@ static void PM_FinishWeaponChange()
 
 			if (pm->gent)
 			{
-				wp_saber_add_g2_saber_models(pm->gent);
+				WP_SaberAddG2SaberModels(pm->gent);
 			}
 		}
 		else
@@ -13838,7 +13838,7 @@ void PM_SetSaberMove(saber_moveName_t new_move)
 			if (pm->ps->dualSabers && pm->gent->weaponModel[1] == -1)
 			{
 				G_RemoveHolsterModels(pm->gent);
-				wp_saber_add_g2_saber_models(pm->gent, qtrue);
+				WP_SaberAddG2SaberModels(pm->gent, qtrue);
 			}
 			break;
 		default:
@@ -13923,7 +13923,7 @@ extern saber_moveName_t PM_NPC_Force_Leap_Attack(void);
 extern saber_moveName_t PM_SaberFlipOverAttackMove(void);
 extern qboolean PM_Can_Do_Kill_Lunge(void);
 extern qboolean PM_Can_Do_Kill_Lunge_back(void);
-int Next_Kill_Attack_Move_Check[MAX_CLIENTS]; // Next special move check.
+int Next_Kill_Attack_Move_Check[32]; // Next special move check.
 saber_moveName_t PM_DoAI_Fake(const int curmove);
 
 saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
@@ -14008,166 +14008,185 @@ saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 		return LS_NONE;
 	}
 
-
-
-	if (g_spskill->integer == 2
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_ALT_ATTACK_POWER)
-		&& !pm->ps->forcePowersActive
-		&& !in_camera)
+	if (pm->gent &&
+		pm->gent->NPC &&
+		pm->gent->client &&
+		(pm->gent->client->NPC_class != CLASS_VADER))
 	{
-		// Some special bot stuff.
-		if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time
-			&& g_attackskill->integer >= 0)
+		if (g_spskill->integer > 1
+			&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, SABER_KATA_ATTACK_POWER)
+			&& !pm->ps->forcePowersActive
+			&& !in_camera)
 		{
-			int check_val = 0; // Times 500 for next check interval.
-
-			if (PM_Can_Do_Kill_Lunge_back())
-			{   // BACKSTAB
-				if ((pm->ps->pm_flags & PMF_DUCKED) || pm->cmd.upmove < 0)
-				{
-					newmove = LS_A_BACK_CR;
-				}
-				else
-				{
-					int choice = rand() % 4;
-
-					switch (choice)
-					{
-					case 0:
-						newmove = LS_A_BACK;
-						break;
-
-					case 1:
-						newmove = PM_SaberBackflipAttackMove();
-						break;
-
-					case 2:
-						newmove = LS_A_BACKFLIP_ATK;
-						break;
-
-					case 3:
-					default:
-						newmove = LS_A_BACKSTAB;
-						break;
-					}
-				}
-			}
-			else if (PM_Can_Do_Kill_Lunge())
+			// Some special bot stuff.
+			if (Next_Kill_Attack_Move_Check[pm->ps->clientNum] <= level.time
+				&& g_attackskill->integer >= 0)
 			{
-				if (pm->ps->pm_flags & PMF_DUCKED)
-				{
-					newmove = PM_SaberLungeAttackMove(qtrue);
+				int check_val = 0; // Times 500 for next check interval.
 
-					if (d_attackinfo->integer)
+				if (PM_Can_Do_Kill_Lunge_back())
+				{ //BACKSTAB
+					if ((pm->ps->pm_flags & PMF_DUCKED) || pm->cmd.upmove < 0)
 					{
-						gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 0\n");
+						newmove = LS_A_BACK_CR;
+					}
+					else
+					{
+						int choice = rand() % 3;
+
+						if (choice == 1)
+						{
+							newmove = LS_A_BACK;
+						}
+						else if (choice == 2)
+						{
+							newmove = PM_SaberBackflipAttackMove();
+						}
+						else if (choice == 3)
+						{
+							newmove = LS_A_BACKFLIP_ATK;
+						}
+						else
+						{
+							newmove = LS_A_BACKSTAB;
+						}
 					}
 				}
-				else
+				else if (PM_Can_Do_Kill_Lunge())
 				{
-					const int choice = rand() % 9;
-
-					switch (choice)
+					if (pm->ps->pm_flags & PMF_DUCKED)
 					{
-					case 0:
-						newmove = PM_NPC_Force_Leap_Attack();
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 1\n");
-						break;
-
-					case 1:
-						newmove = PM_DoAI_Fake(qtrue);
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 2\n");
-						break;
-
-					case 2:
-						newmove = LS_A1_SPECIAL;
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 3\n");
-						break;
-
-					case 3:
-						newmove = LS_A2_SPECIAL;
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 4\n");
-						break;
-
-					case 4:
-						newmove = LS_A3_SPECIAL;
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 5\n");
-						break;
-
-					case 5:
-						newmove = LS_A4_SPECIAL;
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 6\n");
-						break;
-
-					case 6:
-						newmove = LS_A5_SPECIAL;
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 7\n");
-						break;
-
-					case 7:
-						if (pm->ps->saberAnimLevel == SS_DUAL)
-						{
-							newmove = LS_DUAL_SPIN_PROTECT;
-						}
-						else if (pm->ps->saberAnimLevel == SS_STAFF)
-						{
-							newmove = LS_STAFF_SOULCAL;
-						}
-						else
-						{
-							newmove = LS_A_JUMP_T__B_;
-						}
-
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 8\n");
-						break;
-
-					case 8:
-						if (pm->ps->saberAnimLevel == SS_DUAL)
-						{
-							newmove = LS_JUMPATTACK_DUAL;
-						}
-						else if (pm->ps->saberAnimLevel == SS_STAFF)
-						{
-							newmove = LS_JUMPATTACK_STAFF_RIGHT;
-						}
-						else
-						{
-							newmove = LS_SPINATTACK;
-						}
-
-						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 9\n");
-						break;
-
-					default:
 						newmove = PM_SaberLungeAttackMove(qtrue);
+
 						if (d_attackinfo->integer)
-							gi.Printf(S_COLOR_MAGENTA "Next_Kill_Attack_Move_Check 10\n");
-						break;
+						{
+							gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 0\n");
+						}
 					}
+					else
+					{
+						const int choice = rand() % 9;
+
+						switch (choice)
+						{
+						case 0:
+							newmove = PM_NPC_Force_Leap_Attack();
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 1\n");
+							}
+							break;
+						case 1:
+							newmove = PM_DoAI_Fake(qtrue);
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 2\n");
+							}
+							break;
+						case 2:
+							newmove = LS_A1_SPECIAL;
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 3\n");
+							}
+							break;
+						case 3:
+							newmove = LS_A2_SPECIAL;
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 4\n");
+							}
+							break;
+						case 4:
+							newmove = LS_A3_SPECIAL;
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 5\n");
+							}
+							break;
+						case 5:
+							newmove = LS_JUMPATTACK_STAFF_RIGHT;
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 6\n");
+							}
+							break;
+						case 6:
+							newmove = LS_JUMPATTACK_STAFF_LEFT;
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 7\n");
+							}
+							break;
+						case 7:
+							if (pm->ps->saberAnimLevel == SS_DUAL)
+							{
+								newmove = LS_DUAL_SPIN_PROTECT;
+							}
+							else if (pm->ps->saberAnimLevel == SS_STAFF)
+							{
+								newmove = LS_STAFF_SOULCAL;
+							}
+							else
+							{
+								newmove = LS_A_JUMP_T__B_;
+							}
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 8\n");
+							}
+							break;
+						case 8:
+							if (pm->ps->saberAnimLevel == SS_DUAL)
+							{
+								newmove = LS_JUMPATTACK_DUAL;
+							}
+							else if (pm->ps->saberAnimLevel == SS_STAFF)
+							{
+								newmove = LS_JUMPATTACK_STAFF_RIGHT;
+							}
+							else
+							{
+								newmove = LS_SPINATTACK;
+							}
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 9\n");
+							}
+							break;
+						default:
+							newmove = PM_SaberFlipOverAttackMove();
+
+							if (d_attackinfo->integer)
+							{
+								gi.Printf(S_COLOR_MAGENTA"Next_Kill_Attack_Move_Check 10\n");
+							}
+							break;
+						}
+					}
+					pm->ps->weaponstate = WEAPON_FIRING;
+					WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 				}
 
-				pm->ps->weaponstate = WEAPON_FIRING;
-				WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
+				check_val = g_attackskill->integer;
+
+				if (check_val <= 0)
+				{
+					check_val = 1;
+				}
+
+				Next_Kill_Attack_Move_Check[pm->ps->clientNum] =
+					level.time + (90000 / check_val); // 20 secs / g_attackskill->integer
 			}
-
-			check_val = g_attackskill->integer;
-
-			if (check_val <= 0)
-			{
-				check_val = 1;
-			}
-
-			Next_Kill_Attack_Move_Check[pm->ps->clientNum] =
-				level.time + (90000 / check_val); // 20 secs / g_attackskill->integer
 		}
 	}
 
@@ -19282,7 +19301,7 @@ static void PM_WeaponWampa()
 		if (pm->ps->dualSabers && pm->gent->weaponModel[1] == -1)
 		{
 			G_RemoveHolsterModels(pm->gent);
-			wp_saber_add_g2_saber_models(pm->gent, qtrue);
+			WP_SaberAddG2SaberModels(pm->gent, qtrue);
 		}
 		pm->ps->SaberActivateTrail(150);
 		PM_SetAnim(pm, SETANIM_BOTH, BOTH_HANG_ATTACK, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);

@@ -693,7 +693,7 @@ static void NPC_BSGM_Attack(void)
 		{
 			//time to smack
 			//recheck enemyDist4 and InFront
-			if (enemyDist4 < MELEE_DIST_SQUARED && in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
+			if (enemyDist4 < MELEE_DIST_SQUARED && InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
 				NPCS.NPC->client->ps.viewangles, 0.3f))
 			{
 				vec3_t smack_dir;
@@ -834,7 +834,7 @@ static void NPC_BSGM_Attack(void)
 		//Okay, we're not in a special attack, see if we should switch weapons or start a special attack
 		if (!NPCS.NPC->client->ps.powerups[PW_GALAK_SHIELD]
 			&& enemyDist4 < MELEE_DIST_SQUARED
-			&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)
 			&& NPCS.NPC->enemy->localAnimIndex <= 1) //within 80 and in front
 		{
@@ -864,7 +864,7 @@ static void NPC_BSGM_Attack(void)
 		}
 		else if (!NPCS.NPC->lockCount && NPCS.NPC->locationDamage[HL_GENERIC1] > GENERATOR_HEALTH
 			&& TIMER_Done(NPCS.NPC, "attackDelay")
-			&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)
 			&& (!Q_irand(0, 10 * (2 - g_npcspskill.integer)) && enemyDist4 > MIN_LOB_DIST_SQUARED && enemyDist4 <
 				MAX_LOB_DIST_SQUARED

@@ -52,12 +52,12 @@ extern int wp_saber_must_bolt_block(gentity_t* self, const gentity_t* atk, qbool
 	int rSaberNum,
 	int rBladeNum);
 void wp_flechette_alt_blow(gentity_t* ent);
+void wp_stasis_missile_blow(gentity_t* ent);
 extern qboolean G_DoDodge(gentity_t* self, gentity_t* shooter, vec3_t dmg_origin, int hit_loc, int* dmg, int mod);
 extern qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self);
 extern qboolean PM_RunningAnim(int anim);
 vec3_t g_crosshairWorldCoord = { 0, 0, 0 };
 extern qboolean PM_SaberInParry(int move);
-extern gentity_t* jedi_find_enemy_in_cone(const gentity_t* self, gentity_t* fallback, float minDot);
 extern qboolean PM_SaberInReflect(int move);
 extern qboolean PM_SaberInIdle(int move);
 extern qboolean PM_SaberInAttack(int move);
@@ -307,7 +307,7 @@ static void g_reflect_missile_to_attacker(const gentity_t* ent, gentity_t* missi
 	}
 }
 
-void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward)
+void G_ReflectMissileAuto(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
 	int isowner = 0;
@@ -373,64 +373,121 @@ void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward)
 
 static qhandle_t stasisLoopSound = 0;
 gentity_t* tgt_list[MAX_GENTITIES];
+
 void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
+	vec3_t dir;
 	static qboolean registered = qfalse;
 
+	//
+	// ⭐ 1. UNFREEZE CHECK — after 10 seconds, restore full speed
+	//
+	if (missile->s.userFloat1 > 0 && level.time >= missile->s.userFloat1)
+	{
+		// Get direction from current velocity
+		VectorNormalize2(missile->s.pos.trDelta, dir);
+
+		// Full speed (normalized)
+		VectorScale(dir, 1.0f, missile->s.pos.trDelta);
+
+		// Reset trajectory so movement resumes
+		missile->s.pos.trTime = level.time;
+		VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
+
+		missile->s.userFloat1 = 0; // clear flag
+		return;
+	}
+
+	//
+	// Register looping stasis sound once
+	//
 	if (!registered)
 	{
 		stasisLoopSound = G_SoundIndex("sound/effects/blaster_stasis_loop.wav");
 		registered = qtrue;
 	}
 
-	//save the original speed
-	const float speed = VectorNormalize(missile->s.pos.trDelta) / 50;
-
-	if (ent->client)
+	//
+	// ⭐ 2. STASIS START — set unfreeze timer and extend lifetime
+	//
+	if (missile->s.userFloat1 == 0)
 	{
-		vec3_t missile_dir;
-		AngleVectors(ent->client->ps.viewangles, missile_dir, 0, 0);
-		VectorCopy(missile_dir, bounce_dir);
-		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
-		VectorNormalize(bounce_dir);
+		missile->s.userFloat1 = level.time + 10000;      // unfreeze after 10 seconds
+
+		missile->nextthink = level.time + 20000;         // explode after 20 seconds
+		missile->think = wp_stasis_missile_blow;         // your custom blow effect
+	}
+
+	//
+	// ⭐ 3. Compute direction once
+	//
+	VectorNormalize2(missile->s.pos.trDelta, dir);
+
+	//
+	// ⭐ 4. Slow-motion speed during stasis
+	//
+	float slowSpeed = 1.0f / 200.0f;   // your slow-motion factor
+	float fullSpeed = 1.0f;            // normalized full speed
+
+	//
+	// ⭐ 5. Apply correct speed depending on timer
+	//
+	if (level.time < missile->s.userFloat1)
+	{
+		// Still in stasis → slow speed
+		VectorScale(dir, slowSpeed, missile->s.pos.trDelta);
 	}
 	else
 	{
-		VectorCopy(forward, bounce_dir);
-		VectorNormalize(bounce_dir);
+		// After 10 seconds → full speed
+		VectorScale(dir, fullSpeed, missile->s.pos.trDelta);
 	}
 
-	for (int i = 0; i < 3; i++)
-	{
-		bounce_dir[i] += Q_flrand(-1.0f, 1.0f);
-	}
-
-	VectorNormalize(bounce_dir);
-	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
+	//
+	// Looping stasis sound
+	//
 	missile->s.loopSound = stasisLoopSound;
 
-	missile->s.pos.trTime = level.time; // move a bit on the very first frame
+	//
+	// Update trajectory base
+	//
+	missile->s.pos.trTime = level.time;
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
-	if (missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART)
+
+	//
+	// Transfer ownership
+	//
+	if (missile->s.weapon != WP_SABER &&
+		missile->s.weapon != G2_MODEL_PART)
 	{
-		//you are mine, now!
 		missile->r.ownerNum = ent->s.number;
 	}
 
-	if (missile->s.weapon == WP_ROCKET_LAUNCHER || missile->s.weapon == WP_THERMAL)
+	//
+	// ⭐ 6. Rocket/Thermal proximity logic preserved
+	//
+	if (missile->s.weapon == WP_ROCKET_LAUNCHER ||
+		missile->s.weapon == WP_THERMAL)
 	{
 		qboolean blow = qfalse;
 
-		// if it isn't time to auto-explode, do a small proximity check
 		if (ent->delay > level.time)
 		{
-			const int count = G_RadiusList(ent->r.currentOrigin, 200, ent, qtrue, tgt_list);
+			const int count = G_RadiusList(ent->r.currentOrigin,
+				200,
+				ent,
+				qtrue,
+				tgt_list);
 
 			for (int i = 0; i < count; i++)
 			{
-				if (tgt_list[i]->client && tgt_list[i]->health > 0 && ent->activator && tgt_list[i]->s.number != ent->
-					activator->s.number)
+				gentity_t* tgt = tgt_list[i];
+
+				if (tgt->client &&
+					tgt->health > 0 &&
+					ent->activator &&
+					tgt->s.number != ent->activator->s.number)
 				{
 					blow = qtrue;
 					break;
@@ -439,18 +496,12 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward)
 		}
 		else
 		{
-			// well, we must die now
 			blow = qtrue;
 		}
 
 		if (blow)
 		{
-			missile->think = wp_flechette_alt_blow;;
-			missile->nextthink = 0;
-		}
-		else
-		{
-			missile->think = 0;
+			missile->think = wp_flechette_alt_blow;
 			missile->nextthink = 0;
 		}
 	}

@@ -50,7 +50,7 @@ extern void wp_saber_update(gentity_t* self, const usercmd_t* ucmd);
 extern void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd);
 extern void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd);
 extern void WP_BlockPointsUpdate(const gentity_t* self);
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern void NPC_SetLookTarget(const gentity_t* self, int entNum, int clear_time);
 extern qboolean PM_LockAngles(gentity_t* ent, usercmd_t* ucmd);
 extern qboolean PM_AdjustAnglesToGripper(gentity_t* gent, usercmd_t* cmd);
@@ -397,7 +397,7 @@ static qboolean G_ValidateLookEnemy(gentity_t* self, gentity_t* enemy)
 			return qfalse;
 		}
 
-		if (enemy->health <= 0 && (level.time - enemy->s.time > 3000 || !in_front(
+		if (enemy->health <= 0 && (level.time - enemy->s.time > 3000 || !InFront(
 			enemy->currentOrigin, self->currentOrigin, self->client->ps.viewangles, 0.2f) || DistanceHorizontal(
 				enemy->currentOrigin, self->currentOrigin) > 16384)) //>128
 		{
@@ -409,7 +409,7 @@ static qboolean G_ValidateLookEnemy(gentity_t* self, gentity_t* enemy)
 		}
 	}
 
-	if ((!in_front(enemy->currentOrigin, self->currentOrigin, self->client->ps.viewangles, 0.0f) || !G_ClearLOS(
+	if ((!InFront(enemy->currentOrigin, self->currentOrigin, self->client->ps.viewangles, 0.0f) || !G_ClearLOS(
 		self, self->client->renderInfo.eyePoint, enemy))
 		&& (DistanceHorizontalSquared(enemy->currentOrigin, self->currentOrigin) > 65536 || fabs(
 			enemy->currentOrigin[2] - self->currentOrigin[2]) > 384))
@@ -1815,7 +1815,7 @@ void G_MatchPlayerWeapon(gentity_t* ent)
 			{
 				//FIXME: AddSound/Sight Event
 				const int num_sabers = wp_saber_init_blade_data(ent);
-				wp_saber_add_g2_saber_models(ent);
+				WP_SaberAddG2SaberModels(ent);
 				G_RemoveHolsterModels(ent);
 				for (int saberNum = 0; saberNum < num_sabers; saberNum++)
 				{

@@ -26,6 +26,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_saga.h"
 #include <qcommon/q_shared.h>
 #include "g_local.h"
+#include <qcommon/q_math.h>
+#include <qcommon/q_platform.h>
+#include "bg_weapons.h"
 
 #define MAX_CHAT_BUFFER_SIZE 8192
 #define MAX_CHAT_LINE_SIZE 128
@@ -152,7 +155,16 @@ typedef int bot_route_t[MAX_WPARRAY_SIZE];
 //data area for objective depandancy
 //we assume that the dependancy stuff is only for the attacking team since the defenders
 //never seem to have attackable objectives.
-int ObjectiveDependancy[MAX_OBJECTIVES][MAX_OBJECTIVEDEPENDANCY]; 
+int ObjectiveDependancy[MAX_OBJECTIVES][MAX_OBJECTIVEDEPENDANCY];
+
+//Defines the top list of weapons that we care about getting or having ammo for
+//while not immediately caring about it. 
+//IE, the point at which we'll abandon going after our kill target, the flag, etc.
+//IE the top 5, the top 10, etc...
+#define FAVWEAPCARELEVEL_INTERRUPT 1
+
+//The debounce time for most of the higher level thinking (like the desire to get weapons/ammo).
+#define HIGHTHINKDEBOUNCE	5000
 
 int next_point[MAX_CLIENTS];
 
@@ -391,6 +403,7 @@ typedef struct bot_state_s
 	botskills_t skills;
 
 	botattachment_t loved[MAX_LOVED_ONES];
+
 	int lovednum;
 
 	int loved_death_thresh;
@@ -538,7 +551,7 @@ typedef struct bot_state_s
 	int saberEngageEmote; // 0 = none, ACTION_GLOAT, ACTION_FLOURISH
 	int nextSaberEmoteTime; int fallbackTurnTime;
 	float fallbackTurnYaw;
-	float saberStyleDebounce; 
+	float saberStyleDebounce;
 	int spacingState; // 0 = HOLD, 1 = BACKUP, 2 = CLOSE
 
 	//end rww
@@ -608,12 +621,3 @@ extern int gLevelFlags;
 extern float floattime;
 
 #define FloatTime() floattime
-
-typedef enum
-{
-	BBEHAVE_NONE,  //use this if you don't want a behavior function to be run
-	BBEHAVE_STILL, //bot stands still
-	BBEHAVE_MOVETO, //Move to the current inputted goalPosition;
-	BBEHAVE_ATTACK,  //Attack given entity
-	BBEHAVE_VISUALSCAN	//visually scanning around
-} bot_bbeave_t;

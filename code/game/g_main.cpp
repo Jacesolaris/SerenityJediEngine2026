@@ -269,7 +269,7 @@ qboolean stop_icarus = qfalse;
 
 extern char* G_GetLocationForEnt(const gentity_t* ent);
 extern void CP_FindCombatPointWaypoints();
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 
 void G_RunFrame(int levelTime);
 void ClearNPCGlobals();
@@ -467,7 +467,7 @@ static void G_DynamicMusicUpdate()
 		if (level.dmState == DM_EXPLORE)
 		{
 			//only do these visibility checks if you're still in exploration mode
-			if (!in_front(ent->currentOrigin, player->currentOrigin, player->client->ps.viewangles, 0.0f))
+			if (!InFront(ent->currentOrigin, player->currentOrigin, player->client->ps.viewangles, 0.0f))
 			{
 				//not in front
 				continue;
@@ -2417,7 +2417,7 @@ void G_RunFrame(const int levelTime)
 
 extern qboolean player_locked;
 
-void g_load_save_write_misc_data()
+void G_LoadSave_WriteMiscData()
 {
 	ojk::SavedGameHelper saved_game(
 		gi.saved_game);
@@ -2427,7 +2427,7 @@ void g_load_save_write_misc_data()
 		player_locked);
 }
 
-void g_load_save_read_misc_data()
+void G_LoadSave_ReadMiscData()
 {
 	ojk::SavedGameHelper saved_game(
 		gi.saved_game);

@@ -119,7 +119,7 @@ using thinkFunc_t = enum
 	//personal assault sentry
 	thinkF_ion_cannon_think,
 	thinkF_maglock_link,
-	thinkF_wp_flechette_alt_blow,
+	thinkF_WP_flechette_alt_blow,
 	thinkF_WP_prox_mine_think,
 	thinkF_camera_aim,
 	thinkF_fx_explosion_trail_link,
@@ -155,6 +155,10 @@ using thinkFunc_t = enum
 	thinkF_Weapon_StunFree,
 
 	thinkF_asteroid_move_to_start,
+
+	thinkF_wp_stasis_missile_blow,
+
+	thinkF_WP_SaberBallisticsThink,
 };
 
 // THINK functions...
@@ -237,7 +241,7 @@ extern void WP_Explode(gentity_t* self);
 extern void pas_think(gentity_t* ent);
 extern void ion_cannon_think(gentity_t* self);
 extern void maglock_link(gentity_t* self);
-extern void wp_flechette_alt_blow(gentity_t* ent);
+extern void WP_flechette_alt_blow(gentity_t* ent);
 extern void WP_prox_mine_think(gentity_t* ent);
 extern void camera_aim(gentity_t* self);
 extern void fx_explosion_trail_link(gentity_t* self);
@@ -272,7 +276,10 @@ extern void Weapon_StunFree(gentity_t* ent);
 
 extern void asteroid_move_to_start(gentity_t* self);
 
-//	void		(*clThink)(centity_s *cent);	//Think func for equivalent centity
+extern void wp_stasis_missile_blow(gentity_t* ent);
+
+extern void WP_SaberBallisticsThink(gentity_t* ent);
+
 using clThinkFunc_t = enum
 {
 	clThinkF_NULL = 0,

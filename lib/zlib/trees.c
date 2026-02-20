@@ -505,64 +505,73 @@ tree_desc* desc; /* the tree descriptor */
 	ush f; /* frequency */
 	int overflow = 0; /* number of elements with bit length too large */
 
-	for (bits = 0; bits <= MAX_BITS; bits++) s->bl_count[bits] = 0;
+	/* Clamp to the table size so bl_count[] is never indexed out of range */
+	if (max_length > MAX_BITS)
+		max_length = MAX_BITS;
 
-	/* In a first pass, compute the optimal bit lengths (which may
-	 * overflow in the case of the bit length tree).
-	 */
-	tree[s->heap[s->heap_max]].Len = 0; /* root of the heap */
+	for (bits = 0; bits <= MAX_BITS; bits++)
+		s->bl_count[bits] = 0;
 
-	for (h = s->heap_max + 1; h < HEAP_SIZE; h++)
-	{
+	/* compute optimal bit lengths */
+	tree[s->heap[s->heap_max]].Len = 0;
+
+	for (h = s->heap_max + 1; h < HEAP_SIZE; h++) {
 		n = s->heap[h];
 		bits = tree[tree[n].Dad].Len + 1;
-		if (bits > max_length) bits = max_length, overflow++;
+		if (bits > max_length) {
+			bits = max_length;
+			overflow++;
+		}
 		tree[n].Len = (ush)bits;
-		/* We overwrite tree[n].Dad which is no longer needed */
 
-		if (n > max_code) continue; /* not a leaf node */
+		if (n > max_code)
+			continue;
 
 		s->bl_count[bits]++;
-		xbits = 0;
-		if (n >= base) xbits = extra[n - base];
+		xbits = (n >= base) ? extra[n - base] : 0;
 		f = tree[n].Freq;
 		s->opt_len += (ulg)f * (bits + xbits);
-		if (stree) s->static_len += (ulg)f * (stree[n].Len + xbits);
+		if (stree)
+			s->static_len += (ulg)f * (stree[n].Len + xbits);
 	}
-	if (overflow == 0) return;
+
+	if (overflow == 0)
+		return;
 
 	Trace((stderr, "\nbit length overflow\n"));
-	/* This happens for example on obj2 and pic of the Calgary corpus */
 
-	/* Find the first bit length which could increase: */
-	do
-	{
+	/* Fix overflow safely */
+	do {
 		bits = max_length - 1;
-		while (s->bl_count[bits] == 0) bits--;
-		s->bl_count[bits]--; /* move one leaf down the tree */
-		s->bl_count[bits + 1] += 2; /* move one overflow item as its brother */
+
+		/* SAFE: prevent bits from going below 1 */
+		while (bits > 1 && s->bl_count[bits] == 0)
+			bits--;
+
+		/* If bits == 1 and bl_count[1] == 0, break to avoid underflow */
+		if (bits == 1 && s->bl_count[1] == 0)
+			break;
+
+		s->bl_count[bits]--;
+		s->bl_count[bits + 1] += 2;
 		s->bl_count[max_length]--;
-		/* The brother of the overflow item also moves one step up,
-		 * but this does not affect bl_count[max_length]
-		 */
 		overflow -= 2;
 	} while (overflow > 0);
 
-	/* Now recompute all bit lengths, scanning in increasing frequency.
-	 * h is still equal to HEAP_SIZE. (It is simpler to reconstruct all
-	 * lengths instead of fixing only the wrong ones. This idea is taken
-	 * from 'ar' written by Haruhiko Okumura.)
-	 */
-	for (bits = max_length; bits != 0; bits--)
-	{
+	/* recompute all bit lengths */
+	for (bits = max_length; bits != 0; bits--) {
+		/* FINAL FIX: clamp bits to valid range before indexing */
+		if (bits < 0 || bits > MAX_BITS)
+			continue;
+
 		n = s->bl_count[bits];
-		while (n != 0)
-		{
+		while (n != 0) {
 			m = s->heap[--h];
-			if (m > max_code) continue;
-			if ((unsigned)tree[m].Len != (unsigned)bits)
-			{
-				Trace((stderr, "code %d bits %d->%d\n", m, tree[m].Len, bits));
+			if (m > max_code)
+				continue;
+			if ((unsigned)tree[m].Len != (unsigned)bits) {
+				Trace((stderr, "code %d bits %d->%d\n",
+					m, tree[m].Len, bits));
 				s->opt_len += ((long)bits - (long)tree[m].Len)
 					* (long)tree[m].Freq;
 				tree[m].Len = (ush)bits;
@@ -1062,7 +1071,7 @@ int last; /* one if this is the last block for a file */
 	}
 	Tracev((stderr, "\ncomprlen %lu(%lu) ", s->compressed_len >> 3,
 		s->compressed_len - 7 * last));
-	}
+}
 
 /* ===========================================================================
  * Save the match info and tally the frequency counts. Return true if

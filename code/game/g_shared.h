@@ -1554,6 +1554,7 @@ struct gentity_s
 	int npc_roll_direction;
 	int saberPowerTime;
 	qboolean saberPower;
+	int lastKataTime; // timestamp (level.time) when kata is next allowed; 0 = allowed now
 
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const
@@ -1760,6 +1761,7 @@ struct gentity_s
 		saved_game.write<int32_t>(TimeOfWeaponDrop);
 		saved_game.write<int32_t>(saberPowerTime);
 		saved_game.write<int32_t>(saberPower);
+		saved_game.write<int32_t>(lastKataTime);
 	}
 
 	void sg_import(
@@ -1967,6 +1969,7 @@ struct gentity_s
 		saved_game.read<int32_t>(TimeOfWeaponDrop);
 		saved_game.read<int32_t>(saberPowerTime);
 		saved_game.read<int32_t>(saberPower);
+		saved_game.read<int32_t>(lastKataTime);
 	}
 };
 #endif //#ifdef GAME_INCLUDE

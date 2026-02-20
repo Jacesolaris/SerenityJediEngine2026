@@ -34,17 +34,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_local.h"
 #include "b_local.h"
 #include "wp_saber.h"
-#include "g_vehicles.h"
-#include "../qcommon/tri_coll_test.h"
-#include "../cgame/cg_local.h"
 #include <qcommon\q_math.h>
 #include <qcommon\q_shared.h>
 #include "bg_public.h"
+#include <qcommon/q_color.h>
 
 //////////Defines////////////////
 extern qboolean PM_KickingAnim(int anim);
 extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps);
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern qboolean PM_SaberInKnockaway(int move);
 extern qboolean PM_SaberInBounce(int move);
 extern qboolean BG_InSlowBounce(const playerState_t* ps);
@@ -63,7 +61,6 @@ extern qboolean WP_SaberLose(gentity_t* self, vec3_t throw_dir);
 extern cvar_t* g_saberAutoBlocking;
 extern qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2);
 extern qboolean walk_check(const gentity_t* self);
-extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean PM_SuperBreakWinAnim(int anim);
 extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern qboolean WP_SaberBlockNonRandom(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
@@ -73,7 +70,7 @@ extern void G_Stagger(gentity_t* hit_ent);
 extern void g_fatigue_bp_knockaway(gentity_t* blocker);
 extern void G_StaggerAttacker(gentity_t* atk);
 extern void G_BounceAttacker(gentity_t* atk);
-extern void wp_block_points_regenerate(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
 extern saber_moveName_t PM_SaberBounceForAttack(int move);
 extern void WP_SaberDrop(const gentity_t* self, gentity_t* saber);
 extern qboolean pm_saber_innonblockable_attack(int anim);
@@ -86,7 +83,7 @@ extern void G_StartStasisEffect(const gentity_t* ent, int me_flags = 0, int leng
 extern void CGCam_BlockShakeSP(float intensity, int duration);
 extern int G_GetParryForBlock(int block);
 extern qboolean WP_SaberDisarmed(gentity_t* self, vec3_t throw_dir);
-extern void wp_block_points_regenerate_over_ride(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
 // Saber Blocks
 extern qboolean WP_SaberMBlock(gentity_t* victim, gentity_t* attacker, int saberNum, int blade_num);
 extern qboolean WP_SaberParry(gentity_t* blocker, gentity_t* attacker, int saberNum, int blade_num);
@@ -145,7 +142,7 @@ qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker
 	vec3_t parrier_move{};
 	vec3_t hit_pos;
 	vec3_t hit_flat{}; //flatten 2D version of the hitPos.
-	const qboolean in_front_of_me = in_front(attacker->client->ps.origin, blocker->client->ps.origin, blocker->client->ps.viewangles, 0.0f);
+	const qboolean InFront_of_me = InFront(attacker->client->ps.origin, blocker->client->ps.origin, blocker->client->ps.viewangles, 0.0f);
 
 	if (blocker->s.number < MAX_CLIENTS || G_ControlledByPlayer(blocker))
 	{
@@ -155,7 +152,7 @@ qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker
 		}
 	}
 
-	if (!in_front_of_me)
+	if (!InFront_of_me)
 	{
 		//can't parry attacks to the rear.
 		return qfalse;
@@ -392,7 +389,7 @@ static void sab_beh_add_mishap_blocker(gentity_t* blocker, const int saberNum)
 				else
 				{
 					sab_beh_saber_should_be_disarmed_blocker(blocker, saberNum);
-					wp_block_points_regenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
+					WP_BlockPointsRegenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
 					if (d_blockinfo->integer || g_DebugSaberCombat->integer)
 					{
 						gi.Printf(S_COLOR_RED"NPC blocker lost his saber\n");
@@ -668,7 +665,7 @@ static qboolean sab_beh_attack_vs_attack(gentity_t* attacker, gentity_t* blocker
 		{
 			//Low points = bad blocks
 			sab_beh_saber_should_be_disarmed_blocker(blocker, saberNum);
-			wp_block_points_regenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
+			WP_BlockPointsRegenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
 		}
 		else
 		{
@@ -687,7 +684,7 @@ static qboolean sab_beh_attack_vs_attack(gentity_t* attacker, gentity_t* blocker
 		{
 			//Low points = bad blocks
 			sab_beh_saber_should_be_disarmed_attacker(attacker, saberNum);
-			wp_block_points_regenerate_over_ride(attacker, BLOCKPOINTS_FATIGUE);
+			WP_BlockPointsRegenerate_over_ride(attacker, BLOCKPOINTS_FATIGUE);
 		}
 		else
 		{
@@ -969,7 +966,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 
 			blocker->client->ps.saberEventFlags |= SEF_PARRIED;
 
-			wp_block_points_regenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
+			WP_BlockPointsRegenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
 			blocker->client->ps.saberFatigueChainCount = MISHAPLEVEL_NONE;
 
 			return qtrue;
@@ -978,7 +975,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 		// Failed vs unblockable
 		if (bp < BLOCKPOINTS_TEN) {
 			sab_beh_saber_should_be_disarmed_blocker(blocker, saberNum);
-			wp_block_points_regenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
+			WP_BlockPointsRegenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
 		}
 		else {
 			g_fatigue_bp_knockaway(blocker);
@@ -1008,10 +1005,10 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 
 			// Regenerate BP
 			if (attacker->NPC && !G_ControlledByPlayer(attacker)) {
-				wp_block_points_regenerate(attacker, BLOCKPOINTS_FATIGUE);
+				WP_BlockPointsRegenerate(attacker, BLOCKPOINTS_FATIGUE);
 			}
 			else if (!blocker->client->ps.saberInFlight) {
-				wp_block_points_regenerate(blocker, BLOCKPOINTS_FATIGUE);
+				WP_BlockPointsRegenerate(blocker, BLOCKPOINTS_FATIGUE);
 			}
 
 			if ((d_blockinfo->integer || g_DebugSaberCombat->integer) &&
@@ -1085,7 +1082,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 			attacker->client->ps.saberEventFlags |= SEF_BLOCKED;
 			wp_saber_clear_damage_for_ent_num(attacker, blocker->s.number, saberNum, blade_num);
 
-			wp_block_points_regenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
+			WP_BlockPointsRegenerate_over_ride(blocker, BLOCKPOINTS_FATIGUE);
 			blocker->client->ps.saberFatigueChainCount = MISHAPLEVEL_NONE;
 			PM_AddBlockFatigue(&attacker->client->ps, BLOCKPOINTS_TEN);
 

@@ -502,7 +502,7 @@ static void Svcmd_SaberAttackCycle_f()
 					G_RemoveHolsterModels(self);
 					if (!self->client->ps.saberInFlight)
 					{
-						wp_saber_add_g2_saber_models(self, qfalse);
+						WP_SaberAddG2SaberModels(self, qfalse);
 					}
 					wp_saber_add_holstered_g2_saber_models(self, qtrue);
 					NPC_SetAnim(self, SETANIM_TORSO, BOTH_S6_S1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -520,7 +520,7 @@ static void Svcmd_SaberAttackCycle_f()
 						G_RemoveHolsterModels(self);
 						if (!self->client->ps.saberInFlight)
 						{
-							wp_saber_add_g2_saber_models(self, qfalse);
+							WP_SaberAddG2SaberModels(self, qfalse);
 						}
 						wp_saber_add_holstered_g2_saber_models(self, qtrue);
 					}
@@ -531,7 +531,7 @@ static void Svcmd_SaberAttackCycle_f()
 			{
 				//turn on the second one
 				G_RemoveHolsterModels(self);
-				wp_saber_add_g2_saber_models(self, qtrue);
+				WP_SaberAddG2SaberModels(self, qtrue);
 				self->client->ps.saber[1].Activate();
 			}
 			return;

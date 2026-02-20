@@ -60,7 +60,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-08,Month-02,Year-26,BuildNum-01" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-20,Month-02,Year-26,BuildNum-03" // build date
 
 #define	STEPSIZE		18
 
@@ -239,6 +239,7 @@ typedef enum {
 	HANDEXTEND_FLAMETHROWER_HOLD,
 	HANDEXTEND_RESIST_HOLD,
 	HANDEXTEND_SUPEREPUSH,
+	HANDEXTEND_SABERCATCH,
 } forceHandAnims_t;
 
 typedef enum

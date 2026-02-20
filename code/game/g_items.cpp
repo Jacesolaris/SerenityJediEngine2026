@@ -560,7 +560,7 @@ static int Pickup_Weapon(gentity_t* ent, gentity_t* other)
 			if (ent->item->giTag == WP_SABER)
 			{
 				other->client->ps.SaberActivate();
-				wp_saber_add_g2_saber_models(other);
+				WP_SaberAddG2SaberModels(other);
 				G_RemoveHolsterModels(ent);
 			}
 			else
@@ -1207,7 +1207,6 @@ free fall from their spawn points
 */
 extern int delayedShutDown;
 extern cvar_t* g_saber;
-extern cvar_t* com_outcast;
 extern cvar_t* g_debugItems;
 extern cvar_t* g_fixJOItems;
 

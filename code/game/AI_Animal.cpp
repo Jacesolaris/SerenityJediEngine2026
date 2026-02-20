@@ -44,8 +44,11 @@ ratl::vector_vs<gentity_t*, MAX_PACKS> mPacks;
 ////////////////////////////////////////////////////////////////////////////////////////
 static gentity_t* NPC_AnimalUpdateLeader()
 {
+	// SAFETY CHECKS
+	if (!NPC || !NPC->client)
+		return nullptr;
+
 	// Find The Closest Pack Leader, Not Counting Myself
-	//---------------------------------------------------
 	gentity_t* closestLeader = nullptr;
 	float closestDist = 0;
 	int myLeaderNum = 0;
@@ -53,7 +56,6 @@ static gentity_t* NPC_AnimalUpdateLeader()
 	for (int i = 0; i < mPacks.size(); i++)
 	{
 		// Dump Dead Leaders
-		//-------------------
 		if (mPacks[i] == nullptr || mPacks[i]->health <= 0)
 		{
 			if (mPacks[i] == NPC->client->leader)
@@ -71,7 +73,6 @@ static gentity_t* NPC_AnimalUpdateLeader()
 		}
 
 		// Don't Count Self
-		//------------------
 		if (mPacks[i] == NPC)
 		{
 			myLeaderNum = i;
@@ -87,60 +88,48 @@ static gentity_t* NPC_AnimalUpdateLeader()
 	}
 
 	// In Joining Distance?
-	//----------------------
 	if (closestLeader && closestDist < JOIN_PACK_DISTANCE)
 	{
 		// Am I Already A Leader?
-		//------------------------
 		if (NPC->client->leader == NPC)
 		{
-			mPacks.erase_swap(myLeaderNum); // Erase Myself From The Leader List
+			mPacks.erase_swap(myLeaderNum);
 		}
 
 		// Join The Pack!
-		//----------------
 		NPC->client->leader = closestLeader;
 	}
 
 	// Do I Have A Leader?
-	//---------------------
 	if (NPC->client->leader)
 	{
 		// AM I A Leader?
-		//----------------
 		if (NPC->client->leader != NPC)
 		{
 			// If Our Leader Is Dead, Clear Him Out
-
 			if (NPC->client->leader->health <= 0 || NPC->client->leader->inuse == 0)
 			{
 				NPC->client->leader = nullptr;
 			}
-
 			// If My Leader Isn't His Own Leader, Then, Use His Leader
-			//---------------------------------------------------------
 			else if (NPC->client->leader->client->leader != NPC->client->leader)
 			{
-				// Eh.  Can this get more confusing?
 				NPC->client->leader = NPC->client->leader->client->leader;
 			}
-
 			// If Our Leader Is Too Far Away, Clear Him Out
-			//------------------------------------------------------
 			else if (Distance(NPC->client->leader->currentOrigin, NPC->currentOrigin) > LEAVE_PACK_DISTANCE)
 			{
 				NPC->client->leader = nullptr;
 			}
 		}
 	}
-
 	// If We Couldn't Find A Leader, Then Become One
-	//-----------------------------------------------
 	else if (!mPacks.full())
 	{
 		NPC->client->leader = NPC;
 		mPacks.push_back(NPC);
 	}
+
 	return NPC->client->leader;
 }
 

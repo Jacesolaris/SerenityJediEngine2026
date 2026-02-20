@@ -47,7 +47,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 constexpr auto TASER_DAMAGE = 20;
 extern cvar_t* g_DebugSaberCombat;
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 qboolean LogAccuracyHit(const gentity_t* target, const gentity_t* attacker);
 extern qboolean PM_SaberInParry(int move);
 extern qboolean PM_SaberInReflect(int move);
@@ -206,7 +206,7 @@ G_ReflectMissile
 ================
 */
 
-void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward)
+void G_ReflectMissileAuto(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
 	int i;
@@ -379,7 +379,7 @@ void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward)
 	}
 }
 
-void g_reflect_missile_npc(gentity_t* ent, gentity_t* missile, vec3_t forward)
+void G_ReflectMissileNPC(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
 	int i;
@@ -1282,7 +1282,7 @@ static void G_SpawnNoghriGasCloud(gentity_t* ent)
 
 extern qboolean W_AccuracyLoggableWeapon(int weapon, qboolean alt_fire, int mod);
 
-void g_missile_impacted(gentity_t* ent, gentity_t* other, vec3_t impact_pos, vec3_t normal, const int hit_loc = HL_NONE)
+void G_MissileImpacted(gentity_t* ent, gentity_t* other, vec3_t impact_pos, vec3_t normal, const int hit_loc = HL_NONE)
 {
 	// impact damage
 	if (other->takedamage)
@@ -1916,7 +1916,7 @@ static void g_missile_impact(gentity_t* ent, trace_t* trace, const int hit_loc =
 			ent->methodOfDeath != MOD_CONC_ALT)
 		{
 			if (!other->owner || !other->owner->client || other->owner->client->ps.saberInFlight
-				|| in_front(ent->currentOrigin, other->owner->currentOrigin, other->owner->client->ps.viewangles,
+				|| InFront(ent->currentOrigin, other->owner->currentOrigin, other->owner->client->ps.viewangles,
 					SABER_REFLECT_MISSILE_CONE)
 				&& !WP_DoingForcedAnimationForForcePowers(other))
 			{
@@ -1953,7 +1953,7 @@ static void g_missile_impact(gentity_t* ent, trace_t* trace, const int hit_loc =
 			g_missile_reflect_effect(ent, trace->plane.normal);
 		}
 	}
-	g_missile_impacted(ent, other, trace->endpos, trace->plane.normal, hit_loc);
+	G_MissileImpacted(ent, other, trace->endpos, trace->plane.normal, hit_loc);
 }
 
 /*
@@ -2426,7 +2426,7 @@ void g_run_missile(gentity_t* ent)
 					&& (Q_irand(
 						0, other->owner->client->ps.forcePowerLevel[FP_SABER_DEFENSE] * other->owner->client->ps.
 						forcePowerLevel[FP_SABER_DEFENSE]) == 0
-						|| !in_front(ent->currentOrigin, other->owner->currentOrigin,
+						|| !InFront(ent->currentOrigin, other->owner->currentOrigin,
 							other->owner->client->ps.viewangles, SABER_REFLECT_MISSILE_CONE)))
 				{
 					//Jedi cannot block shots from behind!	//re-trace from here, ignoring the lightsaber
@@ -2638,8 +2638,10 @@ gentity_t* fire_stun(gentity_t* self, vec3_t start, vec3_t dir)
 	return stun;
 }
 
+
 static qhandle_t stasisLoopSound = 0;
 gentity_t* tgt_list[MAX_GENTITIES];
+
 void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 {
 	vec3_t	bounce_dir;
@@ -2656,10 +2658,35 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 	{
 		blocker = ent->owner;
 	}
-	const qboolean missile_in_stasis = blocker->client->ps.ManualBlockingFlags & 1 << MBF_MISSILESTASIS ? qtrue : qfalse;
+
+	qboolean missile_in_stasis = qfalse;
+
+	if (missile->userFloat1 == 0)
+	{
+		missile->userFloat1 = level.time + 10000;   // unfreeze at t+10s
+		missile->nextthink = level.time + 20000;   // explode at t+20s
+		missile->e_ThinkFunc = thinkF_wp_stasis_missile_blow;
+
+		missile_in_stasis = qtrue;
+	}
+	else if (level.time < missile->userFloat1)
+	{
+		missile_in_stasis = qtrue;
+	}
+
+	//
+	// ⭐ PHASE 2 — Unfreeze at 10 seconds
+	//
+	if (!missile_in_stasis && missile->userFloat1 > 0 && level.time >= missile->userFloat1)
+	{
+		missile->userFloat1 = 0;
+
+		// resume normal physics
+		missile->s.pos.trTime = level.time;
+	}
 
 	//save the original speed
-	const float stasisspeed = VectorNormalize(missile->s.pos.trDelta) / 50;
+	const float stasisspeed = VectorNormalize(missile->s.pos.trDelta) / 150;
 	const float normalspeed = VectorNormalize(missile->s.pos.trDelta) / 25;
 
 	if (ent &&
@@ -2714,6 +2741,7 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 			}
 			missile->owner = blocker;
 		}
+
 		if (missile->s.weapon == WP_ROCKET_LAUNCHER || missile->s.weapon == WP_THERMAL)
 		{//stop homing
 			qboolean	blow = qfalse;
@@ -2738,7 +2766,7 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 
 			if (blow)
 			{
-				missile->e_ThinkFunc = thinkF_wp_flechette_alt_blow;
+				missile->e_ThinkFunc = thinkF_WP_flechette_alt_blow;
 				missile->nextthink = level.time + 2000;
 			}
 			else
@@ -2789,7 +2817,7 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 
 			if (blow)
 			{
-				missile->e_ThinkFunc = thinkF_wp_flechette_alt_blow;
+				missile->e_ThinkFunc = thinkF_WP_flechette_alt_blow;
 				missile->nextthink = level.time + 2000;
 			}
 			else

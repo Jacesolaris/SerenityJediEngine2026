@@ -29,6 +29,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "snd_ambient.h"
 #include "FXExport.h"
 #include "FxUtil.h"
+#include <ghoul2\G2_gore.h>
 
 extern IHeapAllocator* G2VertSpaceClient;
 extern botlib_export_t* botlib_export;
@@ -895,6 +896,11 @@ static void CL_G2API_SetRagDoll(void* ghoul2, sharedRagDollParams_t* params)
 
 	rdParams.RagPhase = static_cast<CRagDollParams::ERagPhase>(params->RagPhase);
 	rdParams.effectorsToTurnOff = static_cast<CRagDollParams::ERagEffector>(params->effectorsToTurnOff);
+
+	if (Q_isnan(rdParams.position[0]) || Q_isnan(rdParams.position[1]) || Q_isnan(rdParams.position[2])) {
+		Com_Printf("^1CL_G2API_SetRagDoll: rejecting NaN position from shared params\n");
+		return;
+	}
 
 	re->G2API_SetRagDoll(*static_cast<CGhoul2Info_v*>(ghoul2), &rdParams);
 }

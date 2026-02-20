@@ -3455,7 +3455,7 @@ void NPC_BSST_Attack(void)
 				if (enemyDist < MELEE_DIST_SQUARED
 					&& !NPCS.NPC->client->ps.weaponTime //not firing
 					&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-					&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
+					&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
 						NPCS.NPC->client->ps.viewangles, 0.3f))
 				{
 					vec3_t smack_dir;
@@ -3512,7 +3512,7 @@ void NPC_BSST_Attack(void)
 		if (enemyDist < MELEE_DIST_SQUARED
 			&& !NPCS.NPC->client->ps.weaponTime //not firing
 			&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-			&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)) //within 80 and in front
 		{
 			//enemy within 80, if very close, use melee attack to slap away
@@ -3558,7 +3558,7 @@ void NPC_BSST_Attack(void)
 				if (enemyDist < MELEE_DIST_SQUARED
 					&& !NPCS.NPC->client->ps.weaponTime //not firing
 					&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-					&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
+					&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
 						NPCS.NPC->client->ps.viewangles, 0.3f))
 				{
 					vec3_t smack_dir;
@@ -3618,7 +3618,7 @@ void NPC_BSST_Attack(void)
 		if (enemyDist < MELEE_DIST_SQUARED
 			&& !NPCS.NPC->client->ps.weaponTime //not firing
 			&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-			&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)) //within 80 and in front
 		{
 			//enemy within 80, if very close, use melee attack to slap away
@@ -3637,7 +3637,7 @@ void NPC_BSST_Attack(void)
 		else if (enemyDist < MELEE_DIST_SQUARED
 			&& !NPCS.NPC->client->ps.weaponTime //not firing
 			&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-			&& !in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& !InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				-0.25f)) //within 80 and generally behind
 		{
 			//enemy within 80, if very close, use melee attack to slap away
@@ -3675,7 +3675,7 @@ void NPC_BSST_Attack(void)
 				if (enemyDist < MELEE_DIST_SQUARED
 					&& !NPCS.NPC->client->ps.weaponTime //not firing
 					&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-					&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
+					&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
 						NPCS.NPC->client->ps.viewangles, 0.3f))
 				{
 					vec3_t smack_dir;
@@ -3741,7 +3741,7 @@ void NPC_BSST_Attack(void)
 		if (enemyDist < MELEE_DIST_SQUARED
 			&& !NPCS.NPC->client->ps.weaponTime //not firing
 			&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-			&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)) //within 80 and in front
 		{
 			//enemy within 80, if very close, use melee attack to slap away
@@ -3788,7 +3788,7 @@ void NPC_BSST_Attack(void)
 				if (enemyDist < MELEE_DIST_SQUARED
 					&& !NPCS.NPC->client->ps.weaponTime //not firing
 					&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-					&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
+					&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin,
 						NPCS.NPC->client->ps.viewangles, 0.3f))
 				{
 					vec3_t smack_dir;
@@ -3849,7 +3849,7 @@ void NPC_BSST_Attack(void)
 		if (enemyDist < MELEE_DIST_SQUARED
 			&& !NPCS.NPC->client->ps.weaponTime //not firing
 			&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-			&& in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)) //within 80 and in front
 		{
 			//enemy within 80, if very close, use melee attack to slap away
@@ -3868,7 +3868,7 @@ void NPC_BSST_Attack(void)
 		else if (enemyDist < MELEE_DIST_SQUARED
 			&& !NPCS.NPC->client->ps.weaponTime //not firing
 			&& !PM_InKnockDown(&NPCS.NPC->client->ps) //not knocked down
-			&& !in_front(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
+			&& !InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				-0.25f)) //within 80 and generally behind
 		{
 			//enemy within 80, if very close, use melee attack to slap away

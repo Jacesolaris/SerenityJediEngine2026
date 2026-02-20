@@ -13293,6 +13293,26 @@ static void PM_Weapon(void)
 			default:;
 			}
 			break;
+		case HANDEXTEND_SABERCATCH:
+
+			switch (pm->ps->fd.saberAnimLevel)
+			{
+			case SS_FAST:
+			case SS_TAVION:
+			case SS_MEDIUM:
+			case SS_STRONG:
+			case SS_DESANN:
+				desiredAnim = BOTH_STAND1TO2;
+				break;
+			case SS_DUAL:
+				desiredAnim = BOTH_SABERTHROW2STOP;
+				break;
+			case SS_STAFF:
+				desiredAnim = BOTH_SABERTHROW1STOP;
+				break;
+			default:;
+			}
+			break;
 		case HANDEXTEND_CHOKE:
 			if (pm->ps->stats[STAT_HEALTH] > 50)
 			{

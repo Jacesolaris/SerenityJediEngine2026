@@ -117,7 +117,7 @@ qboolean CanSee(const gentity_t* ent)
 	return qfalse;
 }
 
-qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, const float thresh_hold = 0.0f)
+qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, const float thresh_hold = 0.0f)
 {
 	vec3_t dir, forward, angles;
 

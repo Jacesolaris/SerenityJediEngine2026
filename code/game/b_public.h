@@ -405,6 +405,10 @@ public:
 	int ffireDebounce;
 	int ffireFadeDebounce;
 	int kataDebounceTime;
+	int lastKataTime; // timestamp (level.time) when kata is next allowed; 0 = allowed now
+	int nextKillAttackCheck;
+	int nextKillAttackBackCheck;
+	int lastKataEnemy;
 
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const
@@ -526,6 +530,10 @@ public:
 		saved_game.write<int32_t>(ffireDebounce);
 		saved_game.write<int32_t>(ffireFadeDebounce);
 		saved_game.write<int32_t>(kataDebounceTime);
+		saved_game.write<int32_t>(lastKataTime);
+		saved_game.write<int32_t>(nextKillAttackCheck);
+		saved_game.write<int32_t>(nextKillAttackBackCheck);
+		saved_game.write<int32_t>(lastKataEnemy);
 	}
 
 	void sg_import(
@@ -648,6 +656,10 @@ public:
 		saved_game.read<int32_t>(ffireDebounce);
 		saved_game.read<int32_t>(ffireFadeDebounce);
 		saved_game.read<int32_t>(kataDebounceTime);
+		saved_game.read<int32_t>(lastKataTime);
+		saved_game.read<int32_t>(nextKillAttackCheck);
+		saved_game.read<int32_t>(nextKillAttackBackCheck);
+		saved_game.read<int32_t>(lastKataEnemy);
 	}
 }; // gNPC_t
 

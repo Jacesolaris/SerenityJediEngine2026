@@ -193,53 +193,6 @@ typedef enum
 #define		MAX_OBJECTIVES			6
 #define		MAX_OBJECTIVEDEPENDANCY	6
 
-typedef enum
-{
-	BOTORDER_NONE,
-	//no order
-	BOTORDER_KNEELBEFOREZOD,
-	//Kneel before the ordered person
-	BOTORDER_SEARCHANDDESTROY,
-	//Attack mode.  If given an entity the bot will search for
-	//and then attack that entity.  If NULL, the bot will just
-	//hunt around and attack enemies.
-	BOTORDER_OBJECTIVE,
-	//Do objective play for seige.  Bot will defend or attack objective
-	//based on who's objective it is.
-	BOTORDER_DEFEND,
-	//Basic defend order.  Used for CoOp Bots automatically for CoOp.
-	BOTORDER_JEDIMASTER,
-	//jedimaster tactics.
-	BOTORDER_SABERDUELCHALLENGE,
-	//enter into a saber challenge with the objective entity
-	BOTORDER_RESUPPLY,
-	//Go grab/use the tactic entity (used for making the bots pick up ammo).
-	BOTORDER_JETPACK_COMBAT,
-	BOTORDER_SABER_DUEL,
-	BOTORDER_FLANK,
-
-	BOTORDER_MAX
-} Botorder_t;
-
-typedef enum
-{
-	OT_NONE,
-	//no OT selected or bad OT
-	OT_ATTACK,
-	//Attack this objective, for destroyable stationary objectives
-	OT_DEFEND,
-	//Defend this objective, for destroyable stationary objectives
-	//or touch objectives
-	OT_CAPTURE,
-	//Capture this objective
-	OT_DEFENDCAPTURE,
-	//prevent capture of this objective
-	OT_TOUCH,
-	OT_VEHICLE,
-	//get this vehicle to the related trigger_once.
-	OT_WAIT //This is used by the bots to while they are waiting for a vehicle to respawn
-} Botorderobjective_t;
-
 #define MAX_GEN_NPCTYPES 32
 #define MAX_GEN_COUNT 32
 #define MAX_GEN_FIRSTGOALS 8
@@ -1125,7 +1078,7 @@ struct gclient_s
 	int VaderBreathTime;
 
 	int			sphereshieldToggleTime;
-	int			overloadToggleTime; 
+	int			overloadToggleTime;
 	int respawnPending;   // time when the client should retry spawning
 };
 
@@ -1839,7 +1792,7 @@ qboolean HasSetSaberOnly(void);
 void WP_ForcePowerStop(gentity_t* self, forcePowers_t forcePower);
 void WP_SaberPositionUpdate(gentity_t* self, usercmd_t* ucmd);
 void wp_saber_init_blade_data(const gentity_t* ent);
-void WP_InitForcePowers(const gentity_t* ent);
+void WP_InitForcePowers(gentity_t* ent);
 void WP_SpawnInitForcePowers(gentity_t* ent);
 void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd);
 int ForcePowerUsableOn(const gentity_t* attacker, const gentity_t* other, forcePowers_t forcePower);
@@ -1891,7 +1844,7 @@ float NPC_GetHFOVPercentage(vec3_t spot, vec3_t from, vec3_t facing, float hFOV)
 float NPC_GetVFOVPercentage(vec3_t spot, vec3_t from, vec3_t facing, float vFOV);
 
 extern void G_SetEnemy(gentity_t* self, gentity_t* enemy);
-qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold);
+qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold);
 
 // ai_main.c
 #define MAX_FILEPATH			144

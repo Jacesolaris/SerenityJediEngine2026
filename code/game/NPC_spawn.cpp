@@ -498,7 +498,7 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 		if (ent->client->ps.weapon == WP_SABER)
 		{
 			//this is our current weapon, add the models now
-			wp_saber_add_g2_saber_models(ent);
+			WP_SaberAddG2SaberModels(ent);
 			G_RemoveHolsterModels(ent);
 		}
 		jedi_clear_timers(ent);

@@ -27,6 +27,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "server/server.h"
 #include <cassert>
 #include <ctime>
+#include <iterator>
+#include <cstddef>
+#include <cstdint>
+#include <qcommon/q_string.h>
+#include <string.h>
+#include <qcommon/q_platform.h>
+#include <cstdlib>
+#include <game/bg_public.h>
 
 //#define _NEWHUFFTABLE_		// Build "c:\\netchan.bin"
 //#define _USINGNEWHUFFTABLE_		// Build a new frequency table to cut and paste.
@@ -440,15 +448,6 @@ void MSG_WriteString(msg_t* sb, const char* s)
 		}
 		Q_strncpyz(string, s, sizeof string);
 
-		// eurofix: eliminating this means you can chat in european languages. WTF are "old clients" anyway?	-ste
-		//
-		//		// get rid of 0xff chars, because old clients don't like them
-		//		for ( int i = 0 ; i < l ; i++ ) {
-		//			if ( ((byte *)string)[i] > 127 ) {
-		//				string[i] = '.';
-		//			}
-		//		}
-
 		MSG_WriteData(sb, string, l + 1);
 	}
 }
@@ -472,21 +471,11 @@ void MSG_WriteBigString(msg_t* sb, const char* s)
 		}
 		Q_strncpyz(string, s, sizeof string);
 
-		// eurofix: remove this so we can chat in european languages...	-ste
-		/*
-				// get rid of 0xff chars, because old clients don't like them
-				for ( int i = 0 ; i < l ; i++ ) {
-					if ( ((byte *)string)[i] > 127 ) {
-						string[i] = '.';
-					}
-				}
-		*/
-
 		MSG_WriteData(sb, string, l + 1);
 	}
 }
 
-void MSG_WriteAngle(msg_t* sb, const float f)
+static void MSG_WriteAngle(msg_t* sb, const float f)
 {
 	MSG_WriteByte(sb, static_cast<int>(f * 256 / 360) & 255);
 }
@@ -678,7 +667,7 @@ extern cvar_t* cl_shownet;
 
 #define	LOG(x) if( cl_shownet && cl_shownet->integer == 4 ) { Com_Printf("%s ", x ); };
 
-void MSG_WriteDelta(msg_t* msg, const int oldV, const int newV, const int bits)
+static void MSG_WriteDelta(msg_t* msg, const int oldV, const int newV, const int bits)
 {
 	if (oldV == newV)
 	{
@@ -689,7 +678,7 @@ void MSG_WriteDelta(msg_t* msg, const int oldV, const int newV, const int bits)
 	MSG_WriteBits(msg, newV, bits);
 }
 
-int MSG_ReadDelta(msg_t* msg, const int oldV, const int bits)
+static int MSG_ReadDelta(msg_t* msg, const int oldV, const int bits)
 {
 	if (MSG_ReadBits(msg, 1))
 	{
@@ -698,7 +687,7 @@ int MSG_ReadDelta(msg_t* msg, const int oldV, const int bits)
 	return oldV;
 }
 
-void MSG_WriteDeltaFloat(msg_t* msg, const float oldV, const float newV)
+static void MSG_WriteDeltaFloat(msg_t* msg, const float oldV, const float newV)
 {
 	byteAlias_t fi{};
 	if (oldV == newV)
@@ -711,7 +700,7 @@ void MSG_WriteDeltaFloat(msg_t* msg, const float oldV, const float newV)
 	MSG_WriteBits(msg, fi.i, 32);
 }
 
-float MSG_ReadDeltaFloat(msg_t* msg, const float oldV)
+static float MSG_ReadDeltaFloat(msg_t* msg, const float oldV)
 {
 	if (MSG_ReadBits(msg, 1))
 	{
@@ -742,7 +731,7 @@ uint32_t kbitmask[32] = {
 	0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF,
 };
 
-void MSG_WriteDeltaKey(msg_t* msg, const int key, const int oldV, const int newV, const int bits)
+static void MSG_WriteDeltaKey(msg_t* msg, const int key, const int oldV, const int newV, const int bits)
 {
 	if (oldV == newV)
 	{
@@ -753,7 +742,7 @@ void MSG_WriteDeltaKey(msg_t* msg, const int key, const int oldV, const int newV
 	MSG_WriteBits(msg, (newV ^ key) & (1 << bits) - 1, bits);
 }
 
-int MSG_ReadDeltaKey(msg_t* msg, int key, const int oldV, int bits)
+static int MSG_ReadDeltaKey(msg_t* msg, int key, const int oldV, int bits)
 {
 	if (MSG_ReadBits(msg, 1))
 	{
@@ -768,7 +757,7 @@ int MSG_ReadDeltaKey(msg_t* msg, int key, const int oldV, int bits)
 	return oldV;
 }
 
-void MSG_WriteDeltaKeyFloat(msg_t* msg, const int key, const float oldV, const float newV)
+static void MSG_WriteDeltaKeyFloat(msg_t* msg, const int key, const float oldV, const float newV)
 {
 	byteAlias_t fi{};
 	if (oldV == newV)
@@ -781,7 +770,7 @@ void MSG_WriteDeltaKeyFloat(msg_t* msg, const int key, const float oldV, const f
 	MSG_WriteBits(msg, fi.i ^ key, 32);
 }
 
-float MSG_ReadDeltaKeyFloat(msg_t* msg, const int key, const float oldV)
+static float MSG_ReadDeltaKeyFloat(msg_t* msg, const int key, const float oldV)
 {
 	if (MSG_ReadBits(msg, 1))
 	{

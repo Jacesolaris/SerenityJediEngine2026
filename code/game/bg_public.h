@@ -194,10 +194,6 @@ constexpr auto DEFAULT_BLOCK_TIME_MAX_MILLISECONDS = 300;
 #define FATIGUE_CARTWHEEL_ATARU -FATIGUE_JUMP + 1
 #define FATIGUE_JUMPATTACK		-FATIGUE_JUMP + 4
 
-constexpr auto MAX_LEAVE_TIME = 2500;
-constexpr auto MAX_RETURN_TIME = 2000;
-constexpr auto MAX_DISARM_TIME = 1750;
-
 /*
 ===================================================================================
 

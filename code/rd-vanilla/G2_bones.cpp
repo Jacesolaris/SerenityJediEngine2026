@@ -1179,8 +1179,12 @@ static int G2_Set_Bone_Rag(boneInfo_v& blist, const char* boneName, const CGhoul
 
 		G2_GetBoneMatrixLow(ghoul2, bone.boneNumber, scale, bone.originalTrueBoneMatrix, bone.basepose, bone.baseposeInv);
 		//		bone.parentRawBoneIndex=G2_GetParentBoneMatrixLow(ghoul2,bone.boneNumber,scale,bone.parentTrueBoneMatrix,bone.baseposeParent,bone.baseposeInvParent);
-		assert(!Q_isnan(bone.originalTrueBoneMatrix.matrix[1][1]));
-		assert(!Q_isnan(bone.originalTrueBoneMatrix.matrix[1][3]));
+		if (Q_isnan(bone.originalTrueBoneMatrix.matrix[1][1]) ||
+			Q_isnan(bone.originalTrueBoneMatrix.matrix[1][3]))
+		{
+			Com_Printf("^1G2_Set_Bone_Rag: NAN detected in bone '%s' (index %d)\n",
+				boneName, index);
+		}
 		bone.originalOrigin[0] = bone.originalTrueBoneMatrix.matrix[0][3];
 		bone.originalOrigin[1] = bone.originalTrueBoneMatrix.matrix[1][3];
 		bone.originalOrigin[2] = bone.originalTrueBoneMatrix.matrix[2][3];
@@ -2460,7 +2464,7 @@ static void G2_RagDollCurrentPosition(CGhoul2Info_v& ghoul2_v, const int g2_inde
 	G2_GenerateWorldMatrix(angles, position);
 	G2_ConstructGhoulSkeleton(ghoul2_v, frameNum, false, scale);
 
-	float total_wt = 0.0f;
+	float totalWt = 0.0f;
 	for (int i = 0; i < numRags; i++)
 	{
 		boneInfo_t& bone = *ragBoneData[i];
@@ -2476,7 +2480,11 @@ static void G2_RagDollCurrentPosition(CGhoul2Info_v& ghoul2_v, const int g2_inde
 		for (int k = 0; k < 3; k++)
 		{
 			ragEffectors[i].currentOrigin[k] = ragBones[i].matrix[k][3];
-			assert(!Q_isnan(ragEffectors[i].currentOrigin[k]));
+			if (Q_isnan(ragEffectors[i].currentOrigin[k]))
+			{
+				Com_Printf("^1G2_RagDollCurrentPosition: NAN in bone %d axis %d (value=%f)\n",
+					i, k, ragEffectors[i].currentOrigin[k]);
+			}
 			if (!i)
 			{
 				// set mins, maxs and cm
@@ -2498,12 +2506,16 @@ static void G2_RagDollCurrentPosition(CGhoul2Info_v& ghoul2_v, const int g2_inde
 			}
 		}
 
-		total_wt += cmweight;
+		totalWt += cmweight;
 	}
 
-	assert(total_wt > 0.0f);
+	if (totalWt <= 0.0f)
 	{
-		const float wtInv = 1.0f / total_wt;
+		Com_Printf("^1G2_RagDollCurrentPosition: totalWt is ZERO or negative — ragdoll invalid\n");
+		return; // optional: bail out safely
+	}
+	{
+		const float wtInv = 1.0f / totalWt;
 		for (int k = 0; k < 3; k++)
 		{
 			ragBoneMaxs[k] -= position[k];
@@ -3104,20 +3116,40 @@ void G2_RagGetAnimMatrix(CGhoul2Info& ghoul2, const int boneNum, mdxaBone_t& mat
 
 static void G2_RagGetWorldAnimMatrix(CGhoul2Info& ghoul2, const boneInfo_t& bone, CRagDollUpdateParams* params, mdxaBone_t& retMatrix)
 {
-	static mdxaBone_t true_base_matrix, base_bone_matrix;
+	static mdxaBone_t true_base_matrix, baseBoneMatrix;
+
+	// validate params->position / worldMatrix before using them
+	if (!params || Q_isnan(params->position[0]) || Q_isnan(params->position[1]) || Q_isnan(params->position[2])) {
+		Com_Printf("^1G2_RagGetWorldAnimMatrix: invalid params->position, aborting bone world matrix\n");
+		// return a safe fallback: identity rotation + base translation (no world transform)
+		memcpy(&retMatrix, &baseBoneMatrix, sizeof(mdxaBone_t));
+		return;
+	}
 
 	//get matrix for the settleFrame to use as an ideal
 	G2_RagGetAnimMatrix(ghoul2, bone.boneNumber, true_base_matrix, params->settleFrame);
-	assert(bone.hasAnimFrameMatrix == params->settleFrame);
+	if (bone.hasAnimFrameMatrix != params->settleFrame)
+	{
+		Com_Printf("^1G2_RagGetWorldAnimMatrix: bone %d hasAnimFrameMatrix mismatch (expected %d, got %d)\n",
+			bone.boneNumber, params->settleFrame, bone.hasAnimFrameMatrix);
+	}
 
 	G2_RagGetBoneBasePoseMatrixLow(ghoul2, bone.boneNumber,
-		true_base_matrix, base_bone_matrix, params->scale);
+		true_base_matrix, baseBoneMatrix, params->scale);
 
 	//Use params to multiply world coordinate/dir matrix into the
 	//bone matrix and give us a useable world position
-	Multiply_3x4Matrix(&retMatrix, &worldMatrix, &base_bone_matrix);
+	Multiply_3x4Matrix(&retMatrix, &worldMatrix, &baseBoneMatrix);
 
-	assert(!Q_isnan(retMatrix.matrix[2][3]));
+#ifdef _DEBUG_BONE_NAMES
+	const char* boneName = G2_Get_Bone_Name(&ghoul2, ghoul2.mBlist, bone.boneNumber);
+
+	if (Q_isnan(retMatrix.matrix[2][3]))
+	{
+		Com_Printf("^1NAN in world anim matrix for bone '%s' (%d)\n",
+			boneName ? boneName : "<unknown>", bone.boneNumber);
+	}
+#endif
 }
 
 //get the current pelvis Z direction and the base anim matrix Z direction

@@ -33,7 +33,7 @@ extern void NPC_AimAdjust(int change);
 extern qboolean WP_LobFire(const gentity_t* self, vec3_t start, vec3_t target, vec3_t mins, vec3_t maxs, int clipmask,
 	vec3_t velocity, qboolean trace_path, int ignore_ent_num, int enemy_num,
 	float min_speed, float max_speed, float ideal_speed, qboolean must_hit);
-extern qboolean in_front(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
+extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern void G_SoundAtSpot(vec3_t org, int sound_index, qboolean broadcast);
 extern void G_SoundOnEnt(const gentity_t* ent, soundChannel_t channel, const char* sound_path);
 extern qboolean PM_CrouchAnim(int anim);
@@ -715,7 +715,7 @@ static void NPC_BSGM_Attack()
 		{
 			//time to smack
 			//recheck enemyDist and InFront
-			if (enemyDist < MELEE_DIST_SQUARED && in_front(NPC->enemy->currentOrigin, NPC->currentOrigin,
+			if (enemyDist < MELEE_DIST_SQUARED && InFront(NPC->enemy->currentOrigin, NPC->currentOrigin,
 				NPC->client->ps.viewangles, 0.3f))
 			{
 				vec3_t smack_dir;
@@ -855,7 +855,7 @@ static void NPC_BSGM_Attack()
 		//Okay, we're not in a special attack, see if we should switch weapons or start a special attack
 		if (!NPC->client->ps.powerups[PW_GALAK_SHIELD]
 			&& enemyDist < MELEE_DIST_SQUARED
-			&& in_front(NPC->enemy->currentOrigin, NPC->currentOrigin, NPC->client->ps.viewangles, 0.3f)
+			&& InFront(NPC->enemy->currentOrigin, NPC->currentOrigin, NPC->client->ps.viewangles, 0.3f)
 			&& g_standard_humanoid(NPC->enemy)) //within 80 and in front
 		{
 			//our shield is down, and enemy within 80, if very close, use melee attack to slap away
@@ -884,7 +884,7 @@ static void NPC_BSGM_Attack()
 		}
 		else if (!NPC->lockCount && NPC->locationDamage[HL_GENERIC1] > GENERATOR_HEALTH
 			&& TIMER_Done(NPC, "attackDelay")
-			&& in_front(NPC->enemy->currentOrigin, NPC->currentOrigin, NPC->client->ps.viewangles, 0.3f)
+			&& InFront(NPC->enemy->currentOrigin, NPC->currentOrigin, NPC->client->ps.viewangles, 0.3f)
 			&& (!Q_irand(0, 10 * (2 - g_spskill->integer)) && enemyDist > MIN_LOB_DIST_SQUARED && enemyDist <
 				MAX_LOB_DIST_SQUARED
 				|| !TIMER_Done(NPC, "noLob") && !TIMER_Done(NPC, "noRapid"))

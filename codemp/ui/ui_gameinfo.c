@@ -144,7 +144,7 @@ UI_LoadArenas
 #define MAPSBUFSIZE (MAX_MAPS * 64)
 void UI_LoadArenas(void)
 {
-	char		dirlist[MAPSBUFSIZE];
+	static char		dirlist[MAPSBUFSIZE];
 	int			dirlen = 0;
 
 	ui_numArenas = 0;
@@ -243,7 +243,7 @@ void UI_LoadArenas(void)
 
 void UI_LoadSPArenas(void)
 {
-	char		dirlist[MAPSBUFSIZE];
+	static char		dirlist[MAPSBUFSIZE];
 	int			dirlen = 0;
 
 	ui_numArenas = 0;

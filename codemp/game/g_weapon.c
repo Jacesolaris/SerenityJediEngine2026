@@ -2128,6 +2128,43 @@ void wp_flechette_alt_blow(gentity_t* ent)
 	laserTrapExplode(ent);
 }
 
+static void StasismissileExplode(gentity_t* self)
+{
+	vec3_t v;
+	self->takedamage = qfalse;
+
+	if (self->activator)
+	{
+		g_radius_damage(self->r.currentOrigin, self->activator, self->splashDamage, self->splashRadius, self, self, MOD_BRYAR_PISTOL);
+	}
+
+	VectorCopy(self->s.pos.trDelta, v);
+	//Explode outward from the surface
+
+	if (self->s.time == -2)
+	{
+		v[0] = 0;
+		v[1] = 0;
+		v[2] = 0;
+	}
+
+	G_PlayEffect(EFFECT_SPARK_EXPLOSION, self->r.currentOrigin, v);
+
+	self->think = G_FreeEntity;
+	self->nextthink = level.time;
+}
+
+//----------------------------------------------
+void wp_stasis_missile_blow(gentity_t* ent)
+//----------------------------------------------
+{
+	ent->s.pos.trDelta[0] = 1;
+	ent->s.pos.trDelta[1] = 0;
+	ent->s.pos.trDelta[2] = 0;
+
+	StasismissileExplode(ent);
+}
+
 //------------------------------------------------------------------------------
 static void WP_CreateFlechetteBouncyThing(vec3_t start, vec3_t fwd, gentity_t* self)
 //------------------------------------------------------------------------------

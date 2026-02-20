@@ -6023,7 +6023,7 @@ extern void PlayerPain(gentity_t* self, int damage);
 extern qboolean gSiegeRoundBegun;
 extern qboolean gSiegeRoundEnded;
 extern qboolean g_dontPenalizeTeam; //g_cmds.c
-void SetTeamQuick(const gentity_t* ent, int team, qboolean doBegin);
+void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin);
 
 void ClientBegin(const int clientNum, const qboolean allowTeamReset)
 {

@@ -1297,7 +1297,8 @@ static qhandle_t RE_RegisterModel_Actual(const char* name) {
 		// if we have a valid model and are biased
 		// so that we won't see any higher detail ones,
 		// stop loading them
-		if (lod <= r_lodbias->integer) {
+		if (r_lodbias && lod <= r_lodbias->integer)
+		{
 			break;
 		}
 	}

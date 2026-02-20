@@ -616,7 +616,7 @@ saber_moveName_t transitionMove[Q_NUM_QUADS][Q_NUM_QUADS] =
 	}
 };
 
-saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
+static saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 {
 	saber_moveName_t auto_move = LS_NONE;
 
@@ -2570,55 +2570,141 @@ saber_moveName_t PM_SaberLungeAttackMove(const qboolean noSpecials)
 }
 
 #define SPECIAL_ATTACK_DISTANCE 128
+// Optional: per‑client cooldown (MP‑safe)
+static int killLungeCooldownTime[MAX_CLIENTS] = { 0 };
+#define	KILL_LUNGE_COOLDOWN_MS	60000// 1 minute
+
 qboolean PM_Can_Do_Kill_Lunge(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, back;
-	const vec3_t trmins = { -15, -15, -8 };
-	const vec3_t trmaxs = { 15, 15, 8 };
+	vec3_t fwd, end;
+	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
+	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
 
+	if (!pm || !pm->ps)
+		return qfalse;
+
+	const int clientNum = pm->ps->clientNum;
+
+	// ---------------------------------------------------------
+	// Optional: Player cooldown (MP‑safe)
+	// ---------------------------------------------------------
+	if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+	{
+		if (pm->cmd.serverTime < killLungeCooldownTime[clientNum])
+			return qfalse;
+	}
+
+	// ---------------------------------------------------------
+	// Build forward vector (flat)
+	// ---------------------------------------------------------
 	VectorCopy(pm->ps->viewangles, flatAng);
 	flatAng[PITCH] = 0;
 
-	AngleVectors(flatAng, fwd, 0, 0);
+	AngleVectors(flatAng, fwd, NULL, NULL);
 
-	back[0] = pm->ps->origin[0] + fwd[0] * SPECIAL_ATTACK_DISTANCE;
-	back[1] = pm->ps->origin[1] + fwd[1] * SPECIAL_ATTACK_DISTANCE;
-	back[2] = pm->ps->origin[2] + fwd[2] * SPECIAL_ATTACK_DISTANCE;
+	end[0] = pm->ps->origin[0] + fwd[0] * SPECIAL_ATTACK_DISTANCE;
+	end[1] = pm->ps->origin[1] + fwd[1] * SPECIAL_ATTACK_DISTANCE;
+	end[2] = pm->ps->origin[2] + fwd[2] * SPECIAL_ATTACK_DISTANCE;
 
-	pm->trace(&tr, pm->ps->origin, trmins, trmaxs, back, pm->ps->clientNum, MASK_PLAYERSOLID);
+	// ---------------------------------------------------------
+	// MP trace signature (no EG2 collision)
+	// ---------------------------------------------------------
+	pm->trace(
+		&tr,
+		pm->ps->origin,
+		trmins,
+		trmaxs,
+		end,
+		pm->ps->clientNum,
+		MASK_PLAYERSOLID
+	);
 
-	if (tr.fraction != 1.0 && tr.entityNum >= 0 && tr.entityNum < MAX_CLIENTS)
+	// ---------------------------------------------------------
+	// Did we hit a valid player?
+	// ---------------------------------------------------------
+	if (tr.fraction != 1.0f &&
+		tr.entityNum >= 0 &&
+		tr.entityNum < MAX_CLIENTS)
 	{
-		//We don't have real entity access here so we can't do an in depth check. But if it's a client, I guess that's reason enough to attack
+		// Start cooldown
+		if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+		{
+			killLungeCooldownTime[clientNum] =
+				pm->cmd.serverTime + KILL_LUNGE_COOLDOWN_MS;
+		}
+
 		return qtrue;
 	}
 
 	return qfalse;
 }
 
+// Optional MP‑safe cooldown
+static int killLungeBackCooldown[MAX_CLIENTS] = { 0 };
+
 qboolean PM_Can_Do_Kill_Lunge_back(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, back;
-	vec3_t trmins = { -15, -15, -8 };
-	vec3_t trmaxs = { 15, 15, 8 };
+	vec3_t fwd, end;
+	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
+	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
 
+	if (!pm || !pm->ps)
+		return qfalse;
+
+	const int clientNum = pm->ps->clientNum;
+
+	// ---------------------------------------------------------
+	// Optional: MP cooldown
+	// ---------------------------------------------------------
+	if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+	{
+		if (pm->cmd.serverTime < killLungeBackCooldown[clientNum])
+			return qfalse;
+	}
+
+	// ---------------------------------------------------------
+	// Build backward direction
+	// ---------------------------------------------------------
 	VectorCopy(pm->ps->viewangles, flatAng);
 	flatAng[PITCH] = 0;
 
-	AngleVectors(flatAng, fwd, 0, 0);
+	AngleVectors(flatAng, fwd, NULL, NULL);
 
-	back[0] = pm->ps->origin[0] - fwd[0] * SPECIAL_ATTACK_DISTANCE;
-	back[1] = pm->ps->origin[1] - fwd[1] * SPECIAL_ATTACK_DISTANCE;
-	back[2] = pm->ps->origin[2] - fwd[2] * SPECIAL_ATTACK_DISTANCE;
+	end[0] = pm->ps->origin[0] - fwd[0] * SPECIAL_ATTACK_DISTANCE;
+	end[1] = pm->ps->origin[1] - fwd[1] * SPECIAL_ATTACK_DISTANCE;
+	end[2] = pm->ps->origin[2] - fwd[2] * SPECIAL_ATTACK_DISTANCE;
 
-	pm->trace(&tr, pm->ps->origin, trmins, trmaxs, back, pm->ps->clientNum, MASK_PLAYERSOLID);
+	// ---------------------------------------------------------
+	// MP trace signature (no EG2 collision)
+	// ---------------------------------------------------------
+	pm->trace(
+		&tr,
+		pm->ps->origin,
+		trmins,
+		trmaxs,
+		end,
+		pm->ps->clientNum,
+		MASK_PLAYERSOLID
+	);
 
-	if (tr.fraction != 1.0 && tr.entityNum >= 0 && (tr.entityNum < MAX_CLIENTS))
-	{ //We don't have real entity access here so we can't do an indepth check. But if it's a client and it's behind us, I guess that's reason enough to stab backward
+	// ---------------------------------------------------------
+	// Did we hit a valid player behind us?
+	// ---------------------------------------------------------
+	if (tr.fraction != 1.0f &&
+		tr.entityNum >= 0 &&
+		tr.entityNum < MAX_CLIENTS)
+	{
+		// Start cooldown
+		if (clientNum >= 0 && clientNum < MAX_CLIENTS)
+		{
+			killLungeBackCooldown[clientNum] =
+				pm->cmd.serverTime + KILL_LUNGE_COOLDOWN_MS;
+		}
+
 		return qtrue;
 	}
 
