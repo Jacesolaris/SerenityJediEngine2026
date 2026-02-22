@@ -9336,9 +9336,10 @@ void thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* trac
 	{
 		return;
 	}
-	if (other
-		&& other->s.number == ENTITYNUM_WORLD //hit solid object.
-		&& saber_own->client->ps.fd.forcePowerLevel[FP_SABERTHROW] >= FORCE_LEVEL_3)
+	if (other &&
+		!(other->r.svFlags & SVF_BOT) &&
+		other->s.number == ENTITYNUM_WORLD &&
+		saber_own->client->ps.fd.forcePowerLevel[FP_SABERTHROW] >= FORCE_LEVEL_3)
 	{
 		// Reject floors and ceilings
 		if (trace->plane.normal[2] >= 0.8f || trace->plane.normal[2] <= -0.8f)

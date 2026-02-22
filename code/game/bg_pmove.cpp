@@ -1297,8 +1297,6 @@ static qboolean pm_check_jump()
 
 #include <cstdlib>// for malloc, free, calloc, realloc
 #include <qcommon/q_color.h>
-#include <qcommon/q_color.h>
-#include <qcommon/q_color.h>
 
 	// Note: If there are multiple large arrays/structs, repeat the above pattern for each.
 	// If the function is called very frequently and performance is critical, consider making the arrays static and reusing them, but only if thread safety and reentrancy are not concerns.

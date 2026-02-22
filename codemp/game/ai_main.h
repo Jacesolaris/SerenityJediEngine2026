@@ -553,6 +553,7 @@ typedef struct bot_state_s
 	float fallbackTurnYaw;
 	float saberStyleDebounce;
 	int spacingState; // 0 = HOLD, 1 = BACKUP, 2 = CLOSE
+	int nextStyleSwitchTime;
 
 	//end rww
 } bot_state_t;

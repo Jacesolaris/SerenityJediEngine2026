@@ -38,6 +38,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_math.h>
 #include "w_force.h"
 #include "g_public.h"
+#include "anims.h"
 
 #define METROID_JUMP 1
 
@@ -1669,19 +1670,16 @@ void ForceHeal(gentity_t* self)
 			self->client->ps.weapon != WP_NONE &&
 			self->client->ps.saberHolstered != 2))
 	{
-		//can't initiate a heal while taking pain or attacking
 		return;
 	}
 
 	if (self->client->ps.saberLockTime > level.time)
 	{
-		//FIXME: can this be a way to break out?
 		return;
 	}
 
 	if (self->health >= self->client->ps.stats[STAT_MAX_HEALTH])
 	{
-		// Shield Heal skill. Done when player has full HP
 		if (self->client->ps.stats[STAT_ARMOR] < 100)
 		{
 			self->client->ps.stats[STAT_ARMOR] += 25;
@@ -1692,58 +1690,82 @@ void ForceHeal(gentity_t* self)
 			}
 
 			WP_ForcePowerDrain(&self->client->ps, FP_HEAL, 0);
-
 			G_Sound(self, CHAN_AUTO, G_SoundIndex("sound/player/pickupshield.wav"));
 		}
 		return;
 	}
 
+	// ------------------------------------------------------------
+	// HEAL AMOUNT
+	// ------------------------------------------------------------
 	if (self->client->ps.fd.forcePowerLevel[FP_HEAL] == FORCE_LEVEL_3)
 	{
-		self->health += 25; //This was 50, but that angered the Balance God.
-
+		self->health += 25;
 		if (self->health > self->client->ps.stats[STAT_MAX_HEALTH])
-		{
 			self->health = self->client->ps.stats[STAT_MAX_HEALTH];
-		}
+
 		WP_ForcePowerDrain(&self->client->ps, FP_HEAL, 0);
 	}
 	else if (self->client->ps.fd.forcePowerLevel[FP_HEAL] == FORCE_LEVEL_2)
 	{
 		self->health += 10;
-
 		if (self->health > self->client->ps.stats[STAT_MAX_HEALTH])
-		{
 			self->health = self->client->ps.stats[STAT_MAX_HEALTH];
-		}
+
 		WP_ForcePowerDrain(&self->client->ps, FP_HEAL, 0);
 	}
 	else
 	{
 		self->health += 5;
-
 		if (self->health > self->client->ps.stats[STAT_MAX_HEALTH])
-		{
 			self->health = self->client->ps.stats[STAT_MAX_HEALTH];
-		}
+
 		WP_ForcePowerDrain(&self->client->ps, FP_HEAL, 0);
 	}
 
+	// ------------------------------------------------------------
+	// BOT: Change saber style after healing
+	// ------------------------------------------------------------
+	if (self->r.svFlags & SVF_BOT)
+	{
+		playerState_t* ps = &self->client->ps;
+
+		// Only switch if saber is active
+		if (ps->weapon == WP_SABER && ps->saberHolstered == 0)
+		{
+			// Cooldown so bots don't spam-switch
+			if (level.time > self->client->botLastStyleSwitch + 1500)
+			{
+				// 40% chance to switch stance after healing
+				if (Q_irand(0, 100) < 40)
+				{
+					Cmd_SaberAttackCycle_f(self);
+				}
+
+				self->client->botLastStyleSwitch = level.time;
+			}
+		}
+	}
+
+	// ------------------------------------------------------------
+	// ANIMATION & FX
+	// ------------------------------------------------------------
 	if (self->client->ps.fd.forcePowerLevel[FP_HEAL] < FORCE_LEVEL_2)
 	{
-		G_SetAnim(self, &self->client->pers.cmd, SETANIM_BOTH, BOTH_FORCEHEAL_START, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+		G_SetAnim(self, &self->client->pers.cmd, SETANIM_BOTH, BOTH_FORCEHEAL_START,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 		self->client->ps.saber_move = self->client->ps.saberBounceMove = LS_READY;
 		self->client->ps.saberBlocked = BLOCKED_NONE;
 	}
 	else
 	{
-		//just a quick gesture
-		G_SetAnim(self, &self->client->pers.cmd, SETANIM_TORSO, BOTH_FORCE_ABSORB, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+		G_SetAnim(self, &self->client->pers.cmd, SETANIM_TORSO, BOTH_FORCE_ABSORB,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 		self->client->ps.saber_move = self->client->ps.saberBounceMove = LS_READY;
 		self->client->ps.saberBlocked = BLOCKED_NONE;
 	}
-	G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/weapons/force/heal.wav"));
 
+	G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/weapons/force/heal.wav"));
 	G_PlayBoltedEffect(G_EffectIndex("force/heal2.efx"), self, "thoracic");
 }
 

@@ -1080,6 +1080,7 @@ struct gclient_s
 	int			sphereshieldToggleTime;
 	int			overloadToggleTime;
 	int respawnPending;   // time when the client should retry spawning
+	int botLastStyleSwitch;
 };
 
 //animations

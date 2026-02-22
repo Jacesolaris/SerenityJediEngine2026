@@ -107,9 +107,9 @@ qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker
 	//determines if self (who is blocking) is actively blocking (parrying)
 	vec3_t p_angles;
 	vec3_t p_right;
-	vec3_t parrier_move;
+	vec3_t parrier_move = { 0 };
 	vec3_t hit_pos;
-	vec3_t hit_flat; //flatten 2D version of the hitPos.
+	vec3_t hit_flat = { 0 }; //flatten 2D version of the hitPos.
 	const qboolean InFront_of_me = InFront(attacker->client->ps.origin, blocker->client->ps.origin, blocker->client->ps.viewangles, 0.0f);
 
 	if (!(blocker->r.svFlags & SVF_BOT))
