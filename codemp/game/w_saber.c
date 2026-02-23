@@ -35,6 +35,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_local.h"
 #include "w_saber.h"
 #include "ai_main.h"
+#include <qcommon\q_color.h>
 
 #define SABER_BOX_SIZE 16.0f
 #define SABER_BIG_BOX_SIZE 16.0f
@@ -3426,8 +3427,7 @@ int WP_SaberBlockCost(gentity_t* defender, const gentity_t* attacker, vec3_t hit
 		if (attacker->client->ps.userInt3 & 1 << FLAG_ATTACKFAKE)
 		{
 			//attacker is in an attack fake
-			if (attacker->client->ps.fd.saberAnimLevel == SS_STRONG
-				&& !g_accurate_blocking(defender, attacker, hit_loc))
+			if (attacker->client->ps.fd.saberAnimLevel == SS_STRONG	&& !g_accurate_blocking(defender, attacker, hit_loc))
 			{
 				//Red does additional DP damage with attack fakes if they aren't parried.
 				saber_block_cost = BasicSaberBlockCost(attacker->client->ps.fd.saberAnimLevel) * 1.35;
@@ -7415,7 +7415,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, usercmd_t* ucmd)
 	int entity_list[MAX_GENTITIES];
 	int num_listed_entities;
 	int i, e;
-	vec3_t mins, maxs;
+	vec3_t mins = { 0 }, maxs = { 0 };
 	float closest_dist, radius = 256;
 	vec3_t forward, fwdangles = { 0 };
 	trace_t trace;
@@ -12874,7 +12874,14 @@ qboolean Block_Button_Held(const gentity_t* defender)
 
 qboolean manual_saberblocking(const gentity_t* defender)
 {
+	const qboolean saber_in_kill_move = PM_SaberInKillMove(defender->client->ps.saber_move);
+
 	if (defender->r.svFlags & SVF_BOT && defender->client->ps.weapon != WP_SABER)
+	{
+		return qfalse;
+	}
+	
+	if (saber_in_kill_move)
 	{
 		return qfalse;
 	}

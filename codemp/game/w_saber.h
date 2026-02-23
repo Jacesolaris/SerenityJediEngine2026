@@ -32,6 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
 
 #pragma once
+#include <qcommon\q_shared.h>
 
 #define ARMOR_EFFECT_TIME	500
 
@@ -118,7 +119,7 @@ extern float forcePushPullRadius[NUM_FORCE_POWER_LEVELS];
 #define DODGE_SABERBLOCK		     15
 #define DODGE_LOWDPBOOST		     10
 #define DODGE_LOWFPBOOST		     5
-#define BOT_PARRYRATE			     100
+#define BOT_PARRYRATE			     50
 #define SABBEH_RUN_MODIFIER		     2
 #define MELEE_SWING1_DAMAGE		     3
 #define MELEE_SWING2_DAMAGE		     5

@@ -6396,7 +6396,7 @@ tryTorso:
 
 		f = torsoAnim;
 
-		pm_saber_start_trans_anim(self->s.number, self->client->ps.fd.saberAnimLevel, self->client->ps.weapon, f,
+		PM_SaberStartTransAnim(self->s.number, self->client->ps.fd.saberAnimLevel, self->client->ps.weapon, f,
 			&animSpeedScale, self->client->ps.userInt3);
 
 		animSpeed = 50.0f / bgAllAnims[self->localAnimIndex].anims[f].frameLerp;

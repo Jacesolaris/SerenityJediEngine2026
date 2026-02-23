@@ -3314,7 +3314,7 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 
 		animSpeed *= anim_speed_mult;
 
-		pm_saber_start_trans_anim(cent->currentState.number, cent->currentState.fireflag, cent->currentState.weapon,
+		PM_SaberStartTransAnim(cent->currentState.number, cent->currentState.fireflag, cent->currentState.weapon,
 			new_animation, &animSpeed, cent->currentState.userInt3);
 
 		if (torso_only)

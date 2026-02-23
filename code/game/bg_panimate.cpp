@@ -1884,7 +1884,7 @@ qboolean PM_SaberInAttack(const int move)
 	return qfalse;
 }
 
-qboolean PM_SaberInAttackback(const int move)
+static qboolean PM_SaberInAttackback(const int move)
 {
 	if (!in_camera && (move == LS_A_BACK || move == LS_A_BACK_CR || move == LS_A_BACKSTAB))
 	{
@@ -3641,7 +3641,7 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 {
 	vec3_t fwd_angles, jump_fwd;
 
-	//see if we have an overridden (or cancelled) kata move
+	// see if we have an overridden (or cancelled) kata move
 	if (pm->ps->saber[0].jumpAtkFwdMove != LS_INVALID)
 	{
 		if (pm->ps->saber[0].jumpAtkFwdMove != LS_NONE)
@@ -3649,6 +3649,7 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 			return static_cast<saber_moveName_t>(pm->ps->saber[0].jumpAtkFwdMove);
 		}
 	}
+
 	if (pm->ps->dualSabers)
 	{
 		if (pm->ps->saber[1].jumpAtkFwdMove != LS_INVALID)
@@ -3659,11 +3660,13 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 			}
 		}
 	}
-	//no overrides, cancelled?
+
+	// no overrides, cancelled?
 	if (pm->ps->saber[0].jumpAtkFwdMove == LS_NONE)
 	{
 		return LS_NONE;
 	}
+
 	if (pm->ps->dualSabers)
 	{
 		if (pm->ps->saber[1].jumpAtkFwdMove == LS_NONE)
@@ -3674,7 +3677,7 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 
 	if (pm->ps->saberAnimLevel == SS_DUAL || pm->ps->saberAnimLevel == SS_STAFF)
 	{
-		pm->cmd.upmove = 0; //no jump just yet
+		pm->cmd.upmove = 0; // no jump just yet
 
 		if (pm->ps->saberAnimLevel == SS_STAFF)
 		{
@@ -3684,9 +3687,12 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 			}
 			return LS_JUMPATTACK_STAFF_RIGHT;
 		}
+
 		return LS_JUMPATTACK_DUAL;
 	}
-	else if (pm->ps->saberAnimLevel == SS_FAST || pm->ps->saberAnimLevel == SS_TAVION || pm->ps->saberAnimLevel == SS_MEDIUM)
+	else if (pm->ps->saberAnimLevel == SS_FAST ||
+		pm->ps->saberAnimLevel == SS_TAVION ||
+		pm->ps->saberAnimLevel == SS_MEDIUM)
 	{
 		VectorCopy(pm->ps->viewangles, fwd_angles);
 		fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
@@ -3694,17 +3700,21 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 		VectorScale(jump_fwd, 150, pm->ps->velocity);
 		pm->ps->velocity[2] = 250;
 
-		if (pm->gent && pm->gent->enemy)
+		if (pm->gent &&
+			pm->gent->enemy &&
+			pm->gent->enemy->inuse)
 		{
-			//go higher for taller enemies
+			// go higher for taller enemies
 			pm->ps->velocity[2] *= (pm->gent->enemy->maxs[2] - pm->gent->enemy->mins[2]) / 64.0f;
-			//go higher for enemies higher than you, lower for those lower than you
+
+			// go higher for enemies higher than you, lower for those lower than you
 			const float z_diff = pm->gent->enemy->currentOrigin[2] - pm->ps->origin[2];
 			pm->ps->velocity[2] += z_diff * 1.5f;
-			//clamp to decent-looking values
+
+			// clamp to decent-looking values
 			if (z_diff <= 0 && pm->ps->velocity[2] < 200)
 			{
-				//if we're on same level, don't let me jump so low, I clip into the ground
+				// if we're on same level, don't let me jump so low, I clip into the ground
 				pm->ps->velocity[2] = 200;
 			}
 			else if (pm->ps->velocity[2] < 50)
@@ -3716,23 +3726,31 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 				pm->ps->velocity[2] = 400;
 			}
 		}
-		pm->ps->forceJumpZStart = pm->ps->origin[2]; //so we don't take damage if we land at same height
+
+		pm->ps->forceJumpZStart = pm->ps->origin[2]; // so we don't take damage if we land at same height
 		pm->ps->pm_flags |= PMF_JUMPING | PMF_SLOW_MO_FALL;
 
 		PM_AddEvent(EV_JUMP);
 
-		if (pm->gent && pm->gent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3)
+		if (pm->gent &&
+			pm->gent->client &&
+			pm->gent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3)
 		{
-			//short burst
+			// short burst
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jumpsmall.mp3");
 		}
-		else
+		else if (pm->gent)
 		{
-			//holding it
+			// holding it
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jump.mp3");
 		}
+
 		pm->cmd.upmove = 0;
-		pm->gent->angle = pm->ps->viewangles[YAW]; //so we know what yaw we started this at
+
+		if (pm->gent)
+		{
+			pm->gent->angle = pm->ps->viewangles[YAW]; // so we know what yaw we started this at
+		}
 
 		if (pm->ps->saberAnimLevel == SS_MEDIUM)
 		{
@@ -3750,19 +3768,24 @@ saber_moveName_t PM_NPC_Force_Leap_Attack()
 		AngleVectors(fwd_angles, jump_fwd, nullptr, nullptr);
 		VectorScale(jump_fwd, 150, pm->ps->velocity);
 		pm->ps->velocity[2] = 180;
-		pm->ps->forceJumpZStart = pm->ps->origin[2]; //so we don't take damage if we land at same height
+		pm->ps->forceJumpZStart = pm->ps->origin[2]; // so we don't take damage if we land at same height
 		pm->ps->pm_flags |= PMF_JUMPING | PMF_SLOW_MO_FALL;
+
 		PM_AddEvent(EV_JUMP);
-		if (pm->gent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3)
+
+		if (pm->gent &&
+			pm->gent->client &&
+			pm->gent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3)
 		{
-			//short burst
+			// short burst
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jumpsmall.mp3");
 		}
-		else
+		else if (pm->gent)
 		{
-			//holding it
+			// holding it
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jump.mp3");
 		}
+
 		pm->cmd.upmove = 0;
 		return LS_A_JUMP_T__B_;
 	}
@@ -3919,7 +3942,7 @@ static qboolean PM_CheckJumpForwardAttackMove()
 
 saber_moveName_t PM_SaberFlipOverAttackMove()
 {
-	//see if we have an overridden (or cancelled) kata move
+	// Check for overridden (or cancelled) kata move
 	if (pm->ps->saber[0].jumpAtkFwdMove != LS_INVALID)
 	{
 		if (pm->ps->saber[0].jumpAtkFwdMove != LS_NONE)
@@ -3927,6 +3950,7 @@ saber_moveName_t PM_SaberFlipOverAttackMove()
 			return static_cast<saber_moveName_t>(pm->ps->saber[0].jumpAtkFwdMove);
 		}
 	}
+
 	if (pm->ps->dualSabers)
 	{
 		if (pm->ps->saber[1].jumpAtkFwdMove != LS_INVALID)
@@ -3937,11 +3961,13 @@ saber_moveName_t PM_SaberFlipOverAttackMove()
 			}
 		}
 	}
-	//no overrides, cancelled?
+
+	// No overrides, cancelled?
 	if (pm->ps->saber[0].jumpAtkFwdMove == LS_NONE)
 	{
 		return LS_NONE;
 	}
+
 	if (pm->ps->dualSabers)
 	{
 		if (pm->ps->saber[1].jumpAtkFwdMove == LS_NONE)
@@ -3961,6 +3987,7 @@ saber_moveName_t PM_SaberFlipOverAttackMove()
 	fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
 	AngleVectors(fwd_angles, jumpFwd, nullptr, nullptr);
 
+	// Forward velocity
 	if (pm->ps->saberAnimLevel == SS_FAST || pm->ps->saberAnimLevel == SS_TAVION)
 	{
 		VectorScale(jumpFwd, 200, pm->ps->velocity);
@@ -3970,20 +3997,24 @@ saber_moveName_t PM_SaberFlipOverAttackMove()
 		VectorScale(jumpFwd, 150, pm->ps->velocity);
 	}
 
+	// Base vertical velocity
 	pm->ps->velocity[2] = 250;
-	//250 is normalized for a standing enemy at your z level, about 64 tall... adjust for actual maxs[2]-mins[2] of enemy and for zdiff in origins
-	if (pm->gent && pm->gent->enemy)
+
+	// Adjust jump height based on enemy size and height difference
+	if (pm->gent &&
+		pm->gent->enemy &&
+		pm->gent->enemy->inuse)
 	{
-		//go higher for taller enemies
+		// Taller enemies → higher jump
 		pm->ps->velocity[2] *= (pm->gent->enemy->maxs[2] - pm->gent->enemy->mins[2]) / 64.0f;
-		//go higher for enemies higher than you, lower for those lower than you
+
+		// Height difference adjustment
 		const float z_diff = pm->gent->enemy->currentOrigin[2] - pm->ps->origin[2];
 		pm->ps->velocity[2] += z_diff * 1.5f;
-		//clamp to decent-looking values
-		//FIXME: still jump too low sometimes
+
+		// Clamp to good-looking values
 		if (z_diff <= 0 && pm->ps->velocity[2] < 200)
 		{
-			//if we're on same level, don't let me jump so low, I clip into the ground
 			pm->ps->velocity[2] = 200;
 		}
 		else if (pm->ps->velocity[2] < 50)
@@ -3995,24 +4026,30 @@ saber_moveName_t PM_SaberFlipOverAttackMove()
 			pm->ps->velocity[2] = 400;
 		}
 	}
-	pm->ps->forceJumpZStart = pm->ps->origin[2]; //so we don't take damage if we land at same height
+
+	pm->ps->forceJumpZStart = pm->ps->origin[2];
 	pm->ps->pm_flags |= PMF_JUMPING | PMF_SLOW_MO_FALL;
 
 	PM_AddEvent(EV_JUMP);
 
-	if (pm->gent && pm->gent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3)
+	// Safe pointer chain check for sound selection
+	if (pm->gent &&
+		pm->gent->client &&
+		pm->gent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3)
 	{
-		//short burst
 		G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jumpsmall.mp3");
 	}
-	else
+	else if (pm->gent)
 	{
-		//holding it
 		G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jump.mp3");
 	}
+
 	pm->cmd.upmove = 0;
 
-	pm->gent->angle = pm->ps->viewangles[YAW]; //so we know what yaw we started this at
+	if (pm->gent)
+	{
+		pm->gent->angle = pm->ps->viewangles[YAW];
+	}
 
 	WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 
@@ -4020,6 +4057,7 @@ saber_moveName_t PM_SaberFlipOverAttackMove()
 	{
 		return LS_A_FLIP_STAB;
 	}
+
 	return LS_A_FLIP_SLASH;
 }
 
@@ -5781,7 +5819,7 @@ void PM_SetTorsoAnimTimer(gentity_t* ent, int* torsoAnimTimer, const int time)
 	}
 }
 
-void pm_saber_start_trans_anim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent,
+void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent,
 	const int fatigued)
 {
 	char buf[128];
@@ -5973,26 +6011,8 @@ void pm_saber_start_trans_anim(const int saberAnimLevel, const int anim, float* 
 			}
 			else if (saberAnimLevel == SS_MEDIUM)
 			{
-				if (gent
-					&& gent->client
-					&& gent->s.number < MAX_CLIENTS)
-				{
-					if (gent->client->ps.saberFatigueChainCount >= MISHAPLEVEL_LIGHT)
-					{//Slow down saber moves...
-						constexpr float fatiguedanimscale = 0.96f;
-						*animSpeed *= fatiguedanimscale;
-					}
-					else
-					{
-						constexpr float realisticanimscale = 0.98f;
-						*animSpeed *= realisticanimscale;
-					}
-				}
-				else
-				{
-					constexpr float npcanimscale = 0.90f;
-					*animSpeed *= npcanimscale;
-				}
+				constexpr float realisticanimscale = 0.98f;
+				*animSpeed *= realisticanimscale;
 			}
 			else if (saberAnimLevel == SS_STRONG)
 			{
@@ -6128,7 +6148,7 @@ void PM_SetAnimFinal(int* torso_anim, int* legs_anim, const int setAnimParts, in
 
 	// Lower Offensive Skill Slows Down The Saber Start Attack Animations
 	//--------------------------------------------------------------------
-	pm_saber_start_trans_anim(gent->client->ps.saberAnimLevel, anim, &time_scale_mod, gent, gent->userInt3);
+	PM_SaberStartTransAnim(gent->client->ps.saberAnimLevel, anim, &time_scale_mod, gent, gent->userInt3);
 
 	// SETUP VALUES FOR INCOMMING ANIMATION
 	//======================================
@@ -7149,24 +7169,26 @@ static void PM_TorsoAnimLightsaber()
 		else
 		{
 			qboolean saber_in_air = qtrue;
+
 			if (pm->ps->saberInFlight)
 			{
-				//guiding saber
-				if (PM_SaberInBrokenParry(pm->ps->saber_move) || pm->ps->saberBlocked == BLOCKED_PARRY_BROKEN ||
+				// guiding saber
+				if (PM_SaberInBrokenParry(pm->ps->saber_move) ||
+					pm->ps->saberBlocked == BLOCKED_PARRY_BROKEN ||
 					PM_DodgeAnim(pm->ps->torsoAnim))
 				{
-					//we're stuck in a broken parry
 					saber_in_air = qfalse;
 				}
-				if (pm->ps->saberEntityNum < ENTITYNUM_NONE && pm->ps->saberEntityNum > 0) //player is 0
+
+				int saberEntNum = pm->ps->saberEntityNum;
+
+				if (saberEntNum > 0 &&
+					saberEntNum < ENTITYNUM_WORLD &&
+					g_entities[saberEntNum].inuse &&
+					g_entities[saberEntNum].s.pos.trType == TR_STATIONARY)
 				{
-					//
-					if (&g_entities[pm->ps->saberEntityNum] != nullptr && g_entities[pm->ps->saberEntityNum].s.pos.
-						trType == TR_STATIONARY)
-					{
-						//fell to the ground and we're not trying to pull it back
-						saber_in_air = qfalse;
-					}
+					// fell to the ground and we're not trying to pull it back
+					saber_in_air = qfalse;
 				}
 			}
 			if (pm->ps->saberInFlight
@@ -7444,15 +7466,14 @@ void PM_TorsoAnimation()
 			}
 			else
 			{
-				if (pm->ps->saberEntityNum < ENTITYNUM_NONE && pm->ps->saberEntityNum > 0) //player is 0
+				int saberEntNum = pm->ps->saberEntityNum;
+
+				if (saberEntNum > 0 &&
+					saberEntNum < ENTITYNUM_WORLD &&
+					g_entities[saberEntNum].inuse &&
+					g_entities[saberEntNum].s.pos.trType == TR_STATIONARY)
 				{
-					//
-					if (&g_entities[pm->ps->saberEntityNum] != nullptr && g_entities[pm->ps->saberEntityNum].s.pos.
-						trType == TR_STATIONARY)
-					{
-						//fell to the ground and we're not trying to pull it back
-						saber_in_air = qfalse;
-					}
+					saber_in_air = qfalse;
 				}
 
 				if (pm->ps->saberInFlight
@@ -10115,6 +10136,40 @@ qboolean PM_StaggerAnim(const int anim)
 	case BOTH_H1_S1_BL:
 	case BOTH_H1_S1_B_:
 	case BOTH_H1_S1_BR:
+		return qtrue;
+	default:;
+	}
+	return qfalse;
+}
+
+qboolean PM_SaberInKillMove(const int move)
+{
+	switch (move)
+	{
+	case LS_A_BACK:
+	case LS_A_BACK_CR:
+	case LS_A_BACKSTAB:
+	case LS_A_BACKSTAB_B:
+	case LS_ROLL_STAB:
+	case LS_A_JUMP_T__B_:
+	case LS_A_JUMP_PALP_:
+	case LS_A_FLIP_STAB:
+	case LS_A_FLIP_SLASH:
+	case LS_LEAP_ATTACK:
+	case LS_STABDOWN:
+	case LS_STABDOWN_BACKHAND:
+	case LS_STABDOWN_STAFF:
+	case LS_STABDOWN_DUAL:
+	case LS_A1_SPECIAL:
+	case LS_A2_SPECIAL:
+	case LS_A3_SPECIAL:
+	case LS_A4_SPECIAL:
+	case LS_A5_SPECIAL:
+	case LS_GRIEVOUS_SPECIAL:
+	case LS_UPSIDE_DOWN_ATTACK:
+	case LS_PULL_ATTACK_STAB:
+	case LS_PULL_ATTACK_SWING:
+	case LS_SPINATTACK_ALORA:
 		return qtrue;
 	default:;
 	}

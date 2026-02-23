@@ -217,6 +217,7 @@ extern qboolean npc_is_dark_jedi(const gentity_t* self);
 extern qboolean npc_is_light_jedi(const gentity_t* self);
 extern qboolean PM_SaberInMassiveBounce(int anim);
 extern void npc_check_speak(gentity_t* speaker_npc);
+extern qboolean PM_SaberInKillMove(int move);
 //////////////////////////////////////////////////
 extern qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, int saberNum, int blade_num, vec3_t hit_loc);
 extern qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, int saberNum, int blade_num, vec3_t hit_loc);
@@ -2407,7 +2408,7 @@ void wp_saber_clear_damage_for_ent_num(gentity_t* attacker, const int entityNum,
 	}
 }
 
-extern void pm_saber_start_trans_anim(int saberAnimLevel, int anim, float* animSpeed, const gentity_t* gent, int fatigued);
+extern void PM_SaberStartTransAnim(int saberAnimLevel, int anim, float* animSpeed, const gentity_t* gent, int fatigued);
 extern float PM_GetTimeScaleMod(const gentity_t* gent);
 
 static int g_get_attack_damage(const gentity_t* self, const int min_dmg, const int max_dmg, const float mult_point)
@@ -2420,7 +2421,7 @@ static int g_get_attack_damage(const gentity_t* self, const int min_dmg, const i
 
 	//Be sure to scale by the proper anim speed just as if we were going to play the animation
 
-	pm_saber_start_trans_anim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &time_scale_mod, self,
+	PM_SaberStartTransAnim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &time_scale_mod, self,
 		self->userInt3);
 
 	const int speed_dif = attack_anim_length - attack_anim_length * anim_speed_factor;
@@ -2461,7 +2462,7 @@ static float g_get_anim_point(const gentity_t* self)
 	float anim_speed_factor = 1.0f;
 
 	//Be sure to scale by the proper anim speed just as if we were going to play the animation
-	pm_saber_start_trans_anim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &anim_speed_factor, self,
+	PM_SaberStartTransAnim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &anim_speed_factor, self,
 		self->userInt3);
 
 	const int speed_dif = attack_anim_length - attack_anim_length * anim_speed_factor;
@@ -10076,8 +10077,7 @@ void WP_SaberReturn(const gentity_t* self, gentity_t* saber)
 	}
 	if (self->s.number < MAX_CLIENTS || G_ControlledByPlayer(self))
 	{
-		if ( /*self->client->ps.forcePower < BLOCKPOINTS_FIVE || self->client->ps.blockPoints < BLOCKPOINTS_TWELVE ||*/
-			is_holding_block_button || is_holding_block_button_and_attack || self->client->buttons & BUTTON_BLOCK)
+		if ( is_holding_block_button || is_holding_block_button_and_attack || self->client->buttons & BUTTON_BLOCK)
 		{
 			WP_SaberDrop(self, saber);
 			return;
@@ -11675,8 +11675,15 @@ qboolean Block_Button_Held(const gentity_t* defender)
 
 qboolean manual_saberblocking(const gentity_t* defender)
 {
+	const qboolean saber_in_kill_move = PM_SaberInKillMove(defender->client->ps.saber_move);
+
 	if (defender->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(defender)
 		&& defender->client->ps.weapon != WP_SABER)
+	{
+		return qfalse;
+	}
+
+	if (saber_in_kill_move)
 	{
 		return qfalse;
 	}
@@ -11686,8 +11693,9 @@ qboolean manual_saberblocking(const gentity_t* defender)
 		return qfalse;
 	}
 
-	if (defender->s.eFlags & EF_FORCE_DRAINED || defender->s.eFlags & EF_FORCE_GRIPPED || defender->s.eFlags &
-		EF_FORCE_GRABBED)
+	if (defender->s.eFlags & EF_FORCE_DRAINED 
+		|| defender->s.eFlags & EF_FORCE_GRIPPED 
+		|| defender->s.eFlags &	EF_FORCE_GRABBED)
 	{
 		return qfalse;
 	}
@@ -14518,7 +14526,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 		// NPC branch
 		if (self->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(self))
 		{
-			if (Jedi_WaitingAmbush(self))
+			if (self->NPC && Jedi_WaitingAmbush(self))
 			{
 				Jedi_Ambush(self);
 			}
@@ -14530,21 +14538,26 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 				self->client->moveType == MT_FLYSWIM &&
 				incoming->methodOfDeath != MOD_ROCKET_ALT)
 			{
-				if (!Q_irand(0, 1))
+				// hovering Boba/Mando/RocketTrooper
+				if (self->NPC)
 				{
-					self->NPC->standTime = 0;
-					self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] =
-						level.time + Q_irand(1000, 2000);
+					if (!Q_irand(0, 1))
+					{
+						self->NPC->standTime = 0;
+						self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] =
+							level.time + Q_irand(1000, 2000);
+					}
+
+					if (!Q_irand(0, 1))
+					{
+						TIMER_Set(self, "heightChange", Q_irand(1000, 3000));
+						self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] =
+							level.time + Q_irand(1000, 2000);
+					}
 				}
 
-				if (!Q_irand(0, 1))
-				{
-					TIMER_Set(self, "heightChange", Q_irand(1000, 3000));
-					self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] =
-						level.time + Q_irand(1000, 2000);
-				}
 			}
-			else if (jedi_saber_block_go(self, &self->NPC->last_ucmd, nullptr, nullptr, incoming) != EVASION_NONE)
+			else if (self->NPC &&jedi_saber_block_go(self, &self->NPC->last_ucmd, nullptr, nullptr, incoming) != EVASION_NONE)
 			{
 				// NPCs that SHOULD activate saber on block
 				if (self->client->NPC_class != CLASS_ROCKETTROOPER &&
@@ -14664,7 +14677,7 @@ void wp_saber_update(gentity_t* self, const usercmd_t* ucmd)
 	// Saber NOT in flight
 	if (!self->client->ps.saberInFlight)
 	{
-		qboolean always_block[MAX_SABERS][MAX_BLADES] = { 0 };
+		qboolean always_block[MAX_SABERS][MAX_BLADES] = { qfalse };
 		qboolean force_block = qfalse;
 		qboolean no_blocking = qfalse;
 
