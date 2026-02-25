@@ -27,6 +27,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "cg_headers.h"
 
 #include "cg_media.h"	//just for cgs....
+#include <bg_public.h>
+#include <weapons.h>
 
 void CG_TargetCommand_f();
 extern qboolean player_locked;

@@ -938,7 +938,7 @@ typedef enum {
 #define MAX_TERRAINS		1//32 //rwwRMG: inserted
 #define MAX_LOCATIONS		64
 
-#define	GENTITYNUM_BITS		10	// don't need to send any more 
+#define	GENTITYNUM_BITS		12	// don't need to send any more 
 #define	MAX_GENTITIES		(1<<GENTITYNUM_BITS)
 
 // entity_nums are communicated with GENTITY_BITS, so any reserved

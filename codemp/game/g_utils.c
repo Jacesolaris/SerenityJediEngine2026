@@ -782,91 +782,185 @@ void G_SetMovedir(vec3_t angles, vec3_t movedir)
 
 void G_InitGentity(gentity_t* e)
 {
+	if (!e)
+	{
+		Com_Printf("^1G_InitGentity: ERROR — called with NULL entity pointer\n");
+		return;
+	}
+
 	e->inuse = qtrue;
 	e->classname = "noclass";
 	e->s.number = e - g_entities;
 	e->r.ownerNum = ENTITYNUM_NONE;
-	e->s.modelGhoul2 = 0; //assume not
+	e->s.modelGhoul2 = 0;
 
-	trap->ICARUS_FreeEnt((sharedEntity_t*)e); //ICARUS information must be added after this point
+	trap->ICARUS_FreeEnt((sharedEntity_t*)e);
 }
 
-//give us some decent info on all the active ents -rww
+static const char* DecodeEF(int ef)
+{
+	static char buffer[512];
+	buffer[0] = '\0';
+
+#define ADD_FLAG(str) \
+    do { \
+        if (buffer[0]) \
+            Q_strcat(buffer, sizeof(buffer), ", "); \
+        Q_strcat(buffer, sizeof(buffer), (str)); \
+    } while (0)
+
+	if (ef & EF_G2ANIMATING)       ADD_FLAG("G2ANIMATING");
+	if (ef & EF_DEAD)              ADD_FLAG("DEAD");
+	if (ef & EF_RADAROBJECT)       ADD_FLAG("RADAROBJECT");
+	if (ef & EF_TELEPORT_BIT)      ADD_FLAG("TELEPORT_BIT");
+	if (ef & EF_SHADER_ANIM)       ADD_FLAG("SHADER_ANIM");
+	if (ef & EF_PLAYER_EVENT)      ADD_FLAG("PLAYER_EVENT");
+	if (ef & EF_RAG)               ADD_FLAG("RAG");
+	if (ef & EF_PERMANENT)         ADD_FLAG("PERMANENT");
+	if (ef & EF_NODRAW)            ADD_FLAG("NODRAW");
+	if (ef & EF_FIRING)            ADD_FLAG("FIRING");
+	if (ef & EF_ALT_FIRING)        ADD_FLAG("ALT_FIRING");
+	if (ef & EF_JETPACK_ACTIVE)    ADD_FLAG("JETPACK_ACTIVE");
+	if (ef & EF_DISABLE_SHADER_ANIM) ADD_FLAG("DISABLE_SHADER_ANIM");
+	if (ef & EF_TALK)              ADD_FLAG("TALK");
+	if (ef & EF_CONNECTION)        ADD_FLAG("CONNECTION");
+	if (ef & EF_WALK)              ADD_FLAG("WALK");
+	if (ef & EF_ANIM_ONCE)         ADD_FLAG("ANIM_ONCE");
+	if (ef & EF_ANIM_ALLFAST)      ADD_FLAG("ANIM_ALLFAST");
+	if (ef & EF_SPOTLIGHT)         ADD_FLAG("SPOTLIGHT");
+	if (ef & EF_BODYPUSH)          ADD_FLAG("BODYPUSH");
+	if (ef & EF_DOUBLE_AMMO)       ADD_FLAG("DOUBLE_AMMO");
+	if (ef & EF_SEEKERDRONE)       ADD_FLAG("SEEKERDRONE");
+	if (ef & EF_MISSILE_STICK)     ADD_FLAG("MISSILE_STICK");
+	if (ef & EF_ITEMPLACEHOLDER)   ADD_FLAG("ITEMPLACEHOLDER");
+	if (ef & EF_SOUNDTRACKER)      ADD_FLAG("SOUNDTRACKER");
+	if (ef & EF_DROPPEDWEAPON)     ADD_FLAG("DROPPEDWEAPON");
+	if (ef & EF_DISINTEGRATION)    ADD_FLAG("DISINTEGRATION");
+	if (ef & EF_INVULNERABLE)      ADD_FLAG("INVULNERABLE");
+	if (ef & EF_CLIENTSMOOTH)      ADD_FLAG("CLIENTSMOOTH");
+	if (ef & EF_JETPACK)           ADD_FLAG("JETPACK");
+	if (ef & EF_JETPACK_FLAMING)   ADD_FLAG("JETPACK_FLAMING");
+	if (ef & EF_FORCE_VISIBLE)     ADD_FLAG("FORCE_VISIBLE");
+
+#undef ADD_FLAG
+
+	if (!buffer[0])
+		return "None";
+
+	return buffer;
+}
+
+static const char* DecodeEF2(int ef2)
+{
+	static char buffer[512];
+	buffer[0] = '\0';
+
+#define ADD_FLAG(str) \
+    do { \
+        if (buffer[0]) \
+            Q_strcat(buffer, sizeof(buffer), ", "); \
+        Q_strcat(buffer, sizeof(buffer), (str)); \
+    } while (0)
+
+	if (ef2 & EF2_HELD_BY_MONSTER) ADD_FLAG("HELD_BY_MONSTER");
+	if (ef2 & EF2_USE_ALT_ANIM)    ADD_FLAG("USE_ALT_ANIM");
+	if (ef2 & EF2_ALERTED)         ADD_FLAG("ALERTED");
+	if (ef2 & EF2_GENERIC_NPC_FLAG)ADD_FLAG("GENERIC_NPC_FLAG");
+	if (ef2 & EF2_FLYING)          ADD_FLAG("FLYING");
+	if (ef2 & EF2_HYPERSPACE)      ADD_FLAG("HYPERSPACE");
+	if (ef2 & EF2_BRACKET_ENTITY)  ADD_FLAG("BRACKET_ENTITY");
+	if (ef2 & EF2_SHIP_DEATH)      ADD_FLAG("SHIP_DEATH");
+	if (ef2 & EF2_NOT_USED_1)      ADD_FLAG("NOT_USED_1");
+	if (ef2 & EF2_BOWCASTERSCOPE)  ADD_FLAG("BOWCASTERSCOPE");
+	if (ef2 & EF2_PLAYERHIT)       ADD_FLAG("PLAYERHIT");
+
+#undef ADD_FLAG
+
+	if (!buffer[0])
+		return "None";
+
+	return buffer;
+}
+
 static void G_SpewEntList(void)
 {
-	int i = 0;
 	int numNPC = 0;
 	int numProjectile = 0;
 	int numTempEnt = 0;
 	int numTempEntST = 0;
-	gentity_t* ent;
-	char* str;
 
 #ifdef _DEBUG
 	fileHandle_t fh;
 	trap->FS_Open("entspew.txt", &fh, FS_WRITE);
 #endif
 
-	while (i < ENTITYNUM_MAX_NORMAL)
+	Com_Printf("\n^3================ MP ENTITY SPEW ================\n");
+
+	for (int i = 0; i < ENTITYNUM_MAX_NORMAL; i++)
 	{
-		ent = &g_entities[i];
-		if (ent->inuse)
+		gentity_t* ent = &g_entities[i];
+
+		if (!ent->inuse)
+			continue;
+
+		const char* className =
+			(ent->classname && ent->classname[0]) ? ent->classname : "Unknown";
+
+		// NPC detection (MP uses ET_NPC)
+		if (ent->s.eType == ET_NPC)
+			numNPC++;
+
+		// Projectiles
+		if (ent->s.eType == ET_MISSILE)
+			numProjectile++;
+
+		// Temp ents
+		if (ent->freeAfterEvent)
 		{
-			char className[MAX_STRING_CHARS];
-			if (ent->s.eType == ET_NPC)
-			{
-				numNPC++;
-			}
-			else if (ent->s.eType == ET_MISSILE)
-			{
-				numProjectile++;
-			}
-			else if (ent->freeAfterEvent)
-			{
-				numTempEnt++;
-				if (ent->s.eFlags & EF_SOUNDTRACKER)
-				{
-					numTempEntST++;
-				}
-				str = va("TEMPENT %4i: EV %i\n", ent->s.number, ent->s.eType - ET_EVENTS);
-				Com_Printf(str);
-#ifdef _DEBUG
-				if (fh)
-				{
-					trap->FS_Write(str, strlen(str), fh);
-				}
-#endif
-			}
-			if (ent->classname && ent->classname[0])
-			{
-				strcpy(className, ent->classname);
-			}
-			else
-			{
-				strcpy(className, "Unknown");
-			}
-			str = va("ENT %4i: Classname %s\n", ent->s.number, className);
-			Com_Printf(str);
-#ifdef _DEBUG
-			if (fh)
-			{
-				trap->FS_Write(str, strlen(str), fh);
-			}
-#endif
+			numTempEnt++;
+			if (ent->s.eFlags & EF_SOUNDTRACKER)
+				numTempEntST++;
 		}
-		i++;
+
+		const char* efDecoded = DecodeEF(ent->s.eFlags);
+		const char* ef2Decoded = DecodeEF2(ent->s.eFlags2);
+
+		char* line = va(
+			"ENT %4i: Class %-24s  eType %-3d  Health %-4d\n"
+			"          EF  [%s]\n"
+			"          EF2 [%s]\n",
+			i, className, ent->s.eType, ent->health,
+			efDecoded, ef2Decoded
+		);
+
+		Com_Printf("%s", line);
+
+#ifdef _DEBUG
+		if (fh)
+			trap->FS_Write(line, strlen(line), fh);
+#endif
 	}
-	str = va("TempEnt count: %i\nTempEnt ST: %i\nNPC count: %i\nProjectile count: %i\n", numTempEnt, numTempEntST,
-		numNPC, numProjectile);
-	Com_Printf(str);
+
+	char* totals = va(
+		"\nTotals:\n"
+		"  NPCs:          %d\n"
+		"  Projectiles:   %d\n"
+		"  TempEnts:      %d\n"
+		"  TempEnt ST:    %d\n",
+		numNPC, numProjectile, numTempEnt, numTempEntST
+	);
+
+	Com_Printf("%s", totals);
 
 #ifdef _DEBUG
 	if (fh)
 	{
-		trap->FS_Write(str, strlen(str), fh);
+		trap->FS_Write(totals, strlen(totals), fh);
 		trap->FS_Close(fh);
 	}
 #endif
+
+	Com_Printf("^3=================================================\n\n");
 }
 
 /*
@@ -887,156 +981,160 @@ angles and bad trails.
 
 static gentity_t* find_remove_able_gent(void)
 {
-	//returns an entity that we can remove to prevent the game from overloading
-	//on map entities.
-	//We first search for stuff that's immediately safe to remove
-	//and then start searching for things that aren't mission critical to remove.
 	int i;
-
 	gentity_t* e = &g_entities[MAX_CLIENTS];
-	for (i = MAX_CLIENTS; i < level.num_entities; i++)
+
+	// 1. Remove harmless items first
+	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
 	{
-		if (stricmp(e->classname, "item_shield") == 0
-			|| stricmp(e->classname, "item_seeker") == 0
-			|| stricmp(e->classname, "misc_model_gun_rack") == 0
-			|| stricmp(e->classname, "misc_model_ammo_rack") == 0
-			|| stricmp(e->classname, "misc_model_cargo_small") == 0
-			|| stricmp(e->classname, "misc_ammo_floor_unit") == 0
-			|| stricmp(e->classname, "misc_shield_floor_unit") == 0
-			|| stricmp(e->classname, "ammo_blaster") == 0
-			|| stricmp(e->classname, "ammo_powercell") == 0
-			|| stricmp(e->classname, "item_binoculars") == 0
-			|| stricmp(e->classname, "item_shield_lrg_instant") == 0
-			|| stricmp(e->classname, "item_medpak_instant") == 0)
+		if (e->classname &&
+			(stricmp(e->classname, "item_shield") == 0 ||
+				stricmp(e->classname, "item_seeker") == 0 ||
+				stricmp(e->classname, "misc_model_gun_rack") == 0 ||
+				stricmp(e->classname, "misc_model_ammo_rack") == 0 ||
+				stricmp(e->classname, "misc_model_cargo_small") == 0 ||
+				stricmp(e->classname, "misc_ammo_floor_unit") == 0 ||
+				stricmp(e->classname, "misc_shield_floor_unit") == 0 ||
+				stricmp(e->classname, "ammo_blaster") == 0 ||
+				stricmp(e->classname, "ammo_powercell") == 0 ||
+				stricmp(e->classname, "item_binoculars") == 0 ||
+				stricmp(e->classname, "item_shield_lrg_instant") == 0 ||
+				stricmp(e->classname, "item_medpak_instant") == 0))
 		{
 			return e;
 		}
 	}
 
-	//we can easily dump player corpses
+	// 2. Player corpses
 	e = &g_entities[MAX_CLIENTS];
-
 	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
 	{
 		if (e->s.eType == ET_BODY)
+			return e;
+	}
+
+	// 3. Dead NPCs
+	e = &g_entities[MAX_CLIENTS];
+	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
+	{
+		if (e->s.eType == ET_NPC &&
+			e->NPC &&
+			e->health <= 0 &&
+			e->NPC->timeOfDeath + 1000 < level.time)
 		{
-			//found one!
 			return e;
 		}
 	}
 
-	//dead NPCs can be removed as well
+	// 4. Scripted NPCs stuck in death anim
 	e = &g_entities[MAX_CLIENTS];
 	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
 	{
-		if (e->s.eType == ET_NPC
-			&& e->NPC
-			&& e->health <= 0
-			&& e->NPC->timeOfDeath + 1000 < level.time)
-			//NPC has been dead long enough for all the death related code to run.
+		if (e->s.eType == ET_NPC &&
+			e->client &&
+			e->health > 0 &&
+			BG_InDeathAnim(e->client->ps.legsAnim))
 		{
-			//found one
 			return e;
 		}
 	}
 
-	//try looking for scripted NPCs that are acting like dead bodies next.
+	// 5. Light entities
 	e = &g_entities[MAX_CLIENTS];
 	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
 	{
-		if (e->s.eType == ET_NPC && e->client && e->health > 0
-			&& BG_InDeathAnim(e->client->ps.legsAnim))
-		{
-			//found one
+		if (e->classname && strcmp(e->classname, "light") == 0)
 			return e;
-		}
 	}
 
-	//light entities?
+	// 6. Large breakable models
 	e = &g_entities[MAX_CLIENTS];
 	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
 	{
-		if (strcmp(e->classname, "light") == 0)
-		{
-			//found one
+		if (e->classname && strcmp(e->classname, "misc_model_breakable") == 0)
 			return e;
-		}
 	}
 
-	//large entities?
-	e = &g_entities[MAX_CLIENTS];
-	for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
-	{
-		if (strcmp(e->classname, "misc_model_breakable") == 0)
-		{
-			//found one
-			return e;
-		}
-	}
-	//crap!  we couldn't find anything.  Ideally, this function should have enough things
-	//to be able to remove to have this never happen.
 	return NULL;
 }
 
 gentity_t* G_Spawn(void)
 {
-	gentity_t* e = NULL; // shut up warning
-	int i = 0; // shut up warning
+	gentity_t* e = NULL;
+	int i = 0;
+
+	// Pass 1 and 2: try to reuse an existing free entity
 	for (int force = 0; force < 2; force++)
 	{
-		// if we go through all entities and can't find one to free,
-		// override the normal minimum times before use
 		e = &g_entities[MAX_CLIENTS];
 
 		for (i = MAX_CLIENTS; i < level.num_entities; i++, e++)
 		{
 			if (e->inuse)
+				continue;
+
+			// Avoid reusing entities freed too recently
+			if (!force &&
+				e->freetime > level.startTime + 2000 &&
+				level.time - e->freetime < 1000)
 			{
 				continue;
 			}
 
-			// the first couple seconds of server time can involve a lot of
-			// freeing and allocating, so relax the replacement policy
-			if (!force && e->freetime > level.startTime + 2000 && level.time - e->freetime < 1000)
-			{
-				continue;
-			}
-
-			// reuse this slot
+			// Found a free slot
 			G_InitGentity(e);
 			return e;
 		}
 
-		if (i != MAX_GENTITIES)
-		{
+		// IMPORTANT FIX:
+		// If we did NOT reach the end of the active entity list,
+		// break out and do NOT force reuse yet.
+		if (i != level.num_entities)
 			break;
-		}
 	}
 
+	// No free slot found — try to remove something safely
 	if (i == ENTITYNUM_MAX_NORMAL)
 	{
-		//in case we can't find an open entity, search for something we can safely replace
-		//to keep the game running.  This isn't the best solution but it's better than
-		//having the game shut down.
 		e = find_remove_able_gent();
 		if (e)
 		{
-			//found something we can replace
 			G_FreeEntity(e);
 			G_InitGentity(e);
 			return e;
 		}
 
 		G_SpewEntList();
-		Com_Printf("G_Spawn: no free entities removing redundant entities to make space for spawner\n");
+		Com_Printf("^1G_Spawn: no free entities — attempting to recover\n");
 	}
 
-	// open up a new slot
+	// HARD LIMIT CHECK — this is the critical fix
+	if (level.num_entities >= MAX_GENTITIES)
+	{
+		G_SpewEntList();
+		Com_Printf("^1G_Spawn: HARD LIMIT REACHED (%d). Cannot spawn more entities.\n",
+			MAX_GENTITIES);
+		return NULL;
+	}
+
+	// Allocate a new entity slot
 	level.num_entities++;
 
-	// let the server system know that there are more entities
-	trap->LocateGameData((sharedEntity_t*)level.gentities, level.num_entities, sizeof(gentity_t), &level.clients[0].ps,
-		sizeof level.clients[0]);
+	trap->LocateGameData(
+		(sharedEntity_t*)level.gentities,
+		level.num_entities,
+		sizeof(gentity_t),
+		&level.clients[0].ps,
+		sizeof(level.clients[0])
+	);
+
+	e = &g_entities[level.num_entities - 1];
+
+	if (!e)
+	{
+		Com_Printf("^1G_Spawn: ERROR — new entity slot is NULL\n");
+		return NULL;
+	}
 
 	G_InitGentity(e);
 	return e;

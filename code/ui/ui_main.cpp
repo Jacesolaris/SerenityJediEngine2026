@@ -6843,9 +6843,7 @@ static void UI_UpdateSaberHilt(const qboolean second_saber)
 		char skinPath[MAX_QPATH];
 		//successfully found a model
 		ItemParse_asset_model_go(item, modelPath); //set the model
-		//get the customSkin, if any
-		//COM_StripExtension( modelPath, skinPath, sizeof(skinPath) );
-		//COM_DefaultExtension( skinPath, sizeof( skinPath ), ".skin" );
+
 		if (UI_SaberSkinForSaber(model, skinPath))
 		{
 			ItemParse_model_g2skin_go(item, skinPath); //apply the skin

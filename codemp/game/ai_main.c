@@ -45,6 +45,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_public.h"
 #include <stdlib.h>
 #include "b_public.h"
+#include <qcommon\q_color.h>
 //
 
 #define BOT_THINK_TIME	1000/bot_fps.integer
@@ -14461,8 +14462,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 						}
 					}
 				}
-
-
 
 				if (bs->cur_ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY || bs->cur_ps.stats[STAT_HEALTH] < 50)
 				{

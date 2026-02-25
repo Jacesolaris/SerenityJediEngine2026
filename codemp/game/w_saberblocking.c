@@ -36,6 +36,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "w_saber.h"
 #include "ai_main.h"
 #include <qcommon\q_color.h>
+#include "g_public.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_math.h>
 
 //////////Defines////////////////
 extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);
@@ -104,98 +107,113 @@ static void sab_beh_saber_should_be_disarmed_blocker(gentity_t* blocker, const g
 
 qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker, vec3_t hit_loc)
 {
-	//determines if self (who is blocking) is actively blocking (parrying)
-	vec3_t p_angles;
-	vec3_t p_right;
+	vec3_t p_angles, p_right;
 	vec3_t parrier_move = { 0 };
-	vec3_t hit_pos;
-	vec3_t hit_flat = { 0 }; //flatten 2D version of the hitPos.
-	const qboolean InFront_of_me = InFront(attacker->client->ps.origin, blocker->client->ps.origin, blocker->client->ps.viewangles, 0.0f);
+	vec3_t hit_pos, hit_flat = { 0 };
 
+	// Slight tolerance so attacks slightly off-center can still be blocked
+	const qboolean in_front_of_me =
+		InFront(attacker->client->ps.origin,
+			blocker->client->ps.origin,
+			blocker->client->ps.viewangles,
+			0.3f);
+
+	// Player must be holding block (NPCs exempt)
 	if (!(blocker->r.svFlags & SVF_BOT))
 	{
-		if (!(blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
-		{
+		if (!(blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)))
 			return qfalse;
-		}
 	}
 
-	if (!InFront_of_me)
-	{
-		//can't parry attacks to the rear.
+	// Cannot block from behind
+	if (!in_front_of_me)
 		return qfalse;
-	}
+
+	// Already in knockaway → allow continued parry
 	if (PM_SaberInKnockaway(blocker->client->ps.saber_move))
-	{
-		//already in parry move, continue parrying anything that hits us as long as
-		//the attacker is in the same general area that we're facing.
 		return qtrue;
-	}
 
+	// Cannot parry while kicking
 	if (PM_KickingAnim(blocker->client->ps.legsAnim))
-	{
-		//can't parry in kick.
 		return qfalse;
-	}
 
-	if (BG_SaberInNonIdleDamageMove(&blocker->client->ps, blocker->localAnimIndex)
-		|| PM_SaberInBounce(blocker->client->ps.saber_move) || BG_InSlowBounce(&blocker->client->ps))
-	{
-		//can't parry if we're transitioning into a block from an attack state.
+	// Cannot parry while transitioning or bouncing
+	if (BG_SaberInNonIdleDamageMove(&blocker->client->ps, blocker->localAnimIndex) ||
+		PM_SaberInBounce(blocker->client->ps.saber_move) ||
+		BG_InSlowBounce(&blocker->client->ps))
 		return qfalse;
-	}
 
+	// Cannot parry while ducked
 	if (blocker->client->ps.pm_flags & PMF_DUCKED)
-	{
-		//can't parry while ducked or running
 		return qfalse;
-	}
 
+	// Cannot parry while knocked down
 	if (PM_InKnockDown(&blocker->client->ps))
-	{
-		//can't block while knocked down or getting up from knockdown, or we are staggered.
 		return qfalse;
-	}
 
-	if (blocker->client->ps.ManualblockStartTime >= 3000) //3 sec
-	{
-		//cant perfect parry if your too slow
+	// Held block too long → too slow to parry
+	if (level.time - blocker->client->ps.ManualblockStartTime >= 3000)
 		return qfalse;
-	}
 
-	//set up flatten version of the location of the incoming attack in orientation
-	//to the player.
+	// ------------------------------------------------------------
+	// Directional parry correctness
+	// ------------------------------------------------------------
+
+	// Vector from blocker to hit location
 	VectorSubtract(hit_loc, blocker->client->ps.origin, hit_pos);
+
+	// Blocker's right vector (yaw only)
 	VectorSet(p_angles, 0, blocker->client->ps.viewangles[YAW], 0);
 	AngleVectors(p_angles, NULL, p_right, NULL);
+
+	// Flatten hit into blocker's local plane
 	hit_flat[0] = 0;
 	hit_flat[1] = DotProduct(p_right, hit_pos);
-
-	//just bump the hit pos down for the blocking since the average left/right slice happens at about origin +10
-	hit_flat[2] = hit_pos[2] - 10;
+	hit_flat[2] = hit_pos[2] - (attacker->client->ps.viewheight * 0.25f);
 	VectorNormalize(hit_flat);
 
-	//set up the vector for the direction the player is trying to parry in.
+	// Player's intended parry direction
 	parrier_move[0] = 0;
 	parrier_move[1] = blocker->client->pers.cmd.rightmove;
 	parrier_move[2] = -blocker->client->pers.cmd.forwardmove;
+
+	if (VectorLength(parrier_move) < 0.1f)
+		return qfalse; // no directional input → no parry
+
 	VectorNormalize(parrier_move);
+
+	// ------------------------------------------------------------
+	// Style-based threshold
+	// ------------------------------------------------------------
+	float threshold = 0.40f; // MP default
+
+	switch (blocker->client->ps.fd.saberAnimLevel)
+	{
+	case SS_FAST:
+		threshold = 0.55f;
+		break;
+
+	case SS_STRONG:
+		threshold = 0.35f;
+		break;
+
+	default:
+		threshold = 0.40f;
+		break;
+	}
 
 	const float block_dot = DotProduct(hit_flat, parrier_move);
 
-	if (block_dot >= 0.4f)
-	{
-		//player successfully blocked in the right direction to do a full parry.
+	if (block_dot >= threshold)
 		return qtrue;
-	}
-	//player didn't parry in the correct direction, do blockPoints punishment
+
+	// ------------------------------------------------------------
+	// NPC fallback
+	// ------------------------------------------------------------
 	if (blocker->r.svFlags & SVF_BOT)
 	{
-		//bots just randomly parry to make up for them not intelligently parrying.
 		if (BOT_PARRYRATE * botstates[blocker->s.number]->settings.skill > Q_irand(0, 999))
-		{
 			return qtrue;
-		}
 	}
 
 	return qfalse;

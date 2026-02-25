@@ -1471,8 +1471,18 @@ killProj:
 G_RunMissile
 ================
 */
-extern int g_real_trace(gentity_t* attacker, trace_t* tr, vec3_t start, vec3_t mins, vec3_t maxs, vec3_t end,
-	int pass_entity_num, int contentmask, int rSaberNum, int rBladeNum);
+extern int g_real_trace(
+	gentity_t* attacker,
+	trace_t* tr,
+	vec3_t start,
+	vec3_t mins,
+	vec3_t maxs,
+	vec3_t end,
+	const int pass_entity_num,
+	const int contentmask,
+	const int rSaberNum,
+	const int rBladeNum
+);
 
 void g_run_missile(gentity_t* ent)
 {
