@@ -158,7 +158,7 @@ typedef int bot_route_t[MAX_WPARRAY_SIZE];
 int ObjectiveDependancy[MAX_OBJECTIVES][MAX_OBJECTIVEDEPENDANCY];
 
 //Defines the top list of weapons that we care about getting or having ammo for
-//while not immediately caring about it. 
+//while not immediately caring about it.
 //IE, the point at which we'll abandon going after our kill target, the flag, etc.
 //IE the top 5, the top 10, etc...
 #define FAVWEAPCARELEVEL_INTERRUPT 1
@@ -554,6 +554,7 @@ typedef struct bot_state_s
 	float saberStyleDebounce;
 	int spacingState; // 0 = HOLD, 1 = BACKUP, 2 = CLOSE
 	int nextStyleSwitchTime;
+	int landingReleaseTime;
 
 	//end rww
 } bot_state_t;

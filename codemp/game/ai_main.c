@@ -46,6 +46,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include "b_public.h"
 #include <qcommon\q_color.h>
+#include "anims.h"
+#include "surfaceflags.h"
 //
 
 #define BOT_THINK_TIME	1000/bot_fps.integer
@@ -782,10 +784,9 @@ static void ai_mod_jump(bot_state_t* bs)
 		if (bot->s.groundEntityNum != ENTITYNUM_NONE)
 		{
 			VectorClear(bot->client->ps.velocity);
-			NPC_SetAnim(bot, SETANIM_BOTH, BOTH_LAND1,
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-			bs->BOTjumpState = JS_LANDING; 
-			
+			NPC_SetAnim(bot, SETANIM_BOTH, BOTH_LAND1, SETANIM_FLAG_OVERRIDE);
+			bs->BOTjumpState = JS_LANDING;
+
 			if (bs->cur_ps.weapon == WP_SABER &&
 				Q_irand(0, 1000) < 5) // 0.5% per frame ≈ every 3–6 seconds
 			{
@@ -805,16 +806,25 @@ static void ai_mod_jump(bot_state_t* bs)
 
 	case JS_LANDING:
 	{
-		// Optional: small chance to hover a bit on landing if jetpacker
+		// Optional hover for jetpackers
 		if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & (1 << HI_JETPACK) &&
 			Q_irand(0, 5) < 2)
 		{
 			AI_EnableJetpack(bs);
 		}
 
-		if (bot->client->ps.legsTimer > 0)
+		// Initialise a short landing delay (prevents instant attacks but avoids freezing)
+		if (!bs->landingReleaseTime)
+		{
+			bs->landingReleaseTime = level.time + 300; // 0.3 seconds feels natural
+		}
+
+		// Hold movement/attacks only during this short window
+		if (level.time < bs->landingReleaseTime)
 			return;
 
+		// Landing complete — reset state
+		bs->landingReleaseTime = 0;
 		bs->BOTjumpState = JS_WAITING;
 		bot->flags &= ~FL_NO_KNOCKBACK;
 	}
@@ -11239,7 +11249,7 @@ void standard_bot_ai(bot_state_t* bs)
 		bs->tacticEntity = NULL;
 		bs->objectiveType = 0;
 		bs->MiscBotFlags = 0;
-		bs->cur_ps.saberFatigueChainCount = MISHAPLEVEL_NONE; 
+		bs->cur_ps.saberFatigueChainCount = MISHAPLEVEL_NONE;
 		bs->cur_ps.fd.blockPoints = BLOCK_POINTS_MAX; //reset block points on death so bots don't get stuck in a bad block state after dying
 
 		if (rand() % 10 < 5 &&
@@ -12453,8 +12463,6 @@ void standard_bot_ai(bot_state_t* bs)
 						}
 					}
 				}
-
-
 
 				saber_combat_handling(bs);
 
@@ -14605,7 +14613,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 	if (bs->shootGoal &&
 		bs->shootGoal->health > 0 && bs->shootGoal->takedamage)
 	{
-		vec3_t dif;
+		vec3_t dif = { 0 };
 		dif[0] = (bs->shootGoal->r.absmax[0] + bs->shootGoal->r.absmin[0]) / 2;
 		dif[1] = (bs->shootGoal->r.absmax[1] + bs->shootGoal->r.absmin[1]) / 2;
 		dif[2] = (bs->shootGoal->r.absmax[2] + bs->shootGoal->r.absmin[2]) / 2;
@@ -15296,11 +15304,15 @@ static int find_movement_quad(const playerState_t* ps, vec3_t move_dir)
 	return 0;
 }
 
+// Returns:
+//   0 = normal move
+//   1 = jump
+//   2 = crouch
+//  -1 = blocked (caller will try strafing or evade)
 static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t move_dir, const int target_num, vec3_t hit_normal)
 {
-	vec3_t mins;
-	vec3_t maxs;
-	vec3_t traceto_mod;
+	vec3_t mins, maxs;
+	vec3_t traceto_mod = { 0 };
 	vec3_t tracefrom_mod;
 	vec3_t save_normal;
 	trace_t tr;
@@ -15308,151 +15320,143 @@ static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t move_dir, const 
 
 	VectorClear(save_normal);
 
-	//set the mins/maxs for the standard obstruction checks.
+	// Standard player bounding box
 	VectorCopy(g_entities[bs->client].r.maxs, maxs);
 	VectorCopy(g_entities[bs->client].r.mins, mins);
 
-	//boost up the trace box as much as we can normally step up
+	// Allow stepping up small ledges
 	mins[2] += STEPSIZE;
 
-	//Ok, check for obstructions then.
+	// Predict forward movement
 	traceto_mod[0] = bs->origin[0] + move_dir[0] * 20;
 	traceto_mod[1] = bs->origin[1] + move_dir[1] * 20;
 	traceto_mod[2] = bs->origin[2] + move_dir[2] * 20;
 
-	//obstruction trace
+	// Check for obstruction
 	trap->Trace(&tr, bs->origin, mins, maxs, traceto_mod, bs->client, MASK_PLAYERSOLID, qfalse, 0, 0);
 
-	if (tr.fraction == 1 //trace is clear
-		|| tr.entityNum == target_num //is our ignore target
-		|| bs->currentEnemy && bs->currentEnemy->s.number == tr.entityNum) //is our current enemy
+	// ------------------------------------------------------------
+	// CASE 1: Path is clear → normal movement
+	// ------------------------------------------------------------
+	if (tr.fraction == 1 ||
+		tr.entityNum == target_num ||
+		(bs->currentEnemy && bs->currentEnemy->s.number == tr.entityNum))
 	{
-		//nothing blocking our path
 		move_command = 0;
 	}
 	else if (tr.entityNum == ENTITYNUM_WORLD)
 	{
-		//world object, check to see if we can walk on it.
+		// Walkable slope
 		if (tr.plane.normal[2] >= 0.7f)
-		{
-			//you're probably moving up a steep ledge that's still walkable
 			move_command = 0;
+	}
+	// ------------------------------------------------------------
+	// CASE 2: Player blocking → maybe jump over them
+	// (FIXED: only jump if VERY close)
+	// ------------------------------------------------------------
+	else if (tr.entityNum < MAX_CLIENTS &&
+		bs->cur_ps.fd.forcePowerLevel[FP_LEVITATION] >= FORCE_LEVEL_1)
+	{
+		float dist2 = DistanceSquared(bs->origin, g_entities[tr.entityNum].r.currentOrigin);
+
+		// FIX #1: Only hop if the player is right in front of us
+		if (dist2 < 64.0f * 64.0f)
+		{
+			move_command = 1;
 		}
 	}
-	//check to see if this is another player.  If so, we should be able to jump over them easily.
-	//RAFIXME - add force power/force jump skill check?
-	else if (tr.entityNum < MAX_CLIENTS
-		//not a bot or a bot that isn't jumping.
-		&& (!botstates[tr.entityNum] || !botstates[tr.entityNum]->inuse
-			|| botstates[tr.entityNum]->jumpTime < level.time)
-		&& bs->cur_ps.fd.forcePowerLevel[FP_LEVITATION] >= FORCE_LEVEL_1)
-	{
-		//another player who isn't our objective and isn't our current enemy.  Hop over them.  Don't hop
-		//over bots who are already hopping.
-		move_command = 1;
-	}
 
+	// ------------------------------------------------------------
+	// CASE 3: Try hopping over obstacle
+	// ------------------------------------------------------------
 	if (move_command == -1)
 	{
-		//our initial path is blocked. Try other methods to get around it.
-		//Save the normal of the object so we can move around it if we can't jump/duck around it.
 		VectorCopy(tr.plane.normal, save_normal);
 
-		//Check to see if we can successfully hop over this obsticle.
 		VectorCopy(bs->origin, tracefrom_mod);
-
-		//RAFIXME - make this based on Force jump skill level/force power availible.
 		tracefrom_mod[2] += 20;
 		traceto_mod[2] += 20;
 
 		trap->Trace(&tr, tracefrom_mod, mins, maxs, traceto_mod, bs->client, MASK_PLAYERSOLID, qfalse, 0, 0);
 
-		if (tr.fraction == 1 //trace is clear
-			|| tr.entityNum == target_num //is our ignore target
-			|| bs->currentEnemy && bs->currentEnemy->s.number == tr.entityNum) //is our current enemy
+		if (tr.fraction == 1 ||
+			tr.entityNum == target_num ||
+			(bs->currentEnemy && bs->currentEnemy->s.number == tr.entityNum))
 		{
-			//the hop check was clean.
 			move_command = 1;
 		}
-		//check the slope of the thing blocking us
-		else if (tr.entityNum == ENTITYNUM_WORLD)
+		else if (tr.entityNum == ENTITYNUM_WORLD && tr.plane.normal[2] >= 0.7f)
 		{
-			//world object
-			if (tr.plane.normal[2] >= 0.7f)
-			{
-				//you could hop to this, which is a steep ledge that's still walkable
-				move_command = 1;
-			}
+			move_command = 1;
 		}
 
+		// ------------------------------------------------------------
+		// CASE 4: Try crouching under obstacle
+		// ------------------------------------------------------------
 		if (move_command == -1)
 		{
-			//our hop would be blocked by something.  let's try crawling under obsticle.
-			//just move the traceto_mod down from the hop trace position.  This is faster
-			//than redoing it from scratch.
 			traceto_mod[2] -= 20;
-
-			maxs[2] = CROUCH_MAXS_2; //set our trace box to be the size of a crouched player.
+			maxs[2] = CROUCH_MAXS_2;
 
 			trap->Trace(&tr, bs->origin, mins, maxs, traceto_mod, bs->client, MASK_PLAYERSOLID, qfalse, 0, 0);
 
-			if (tr.fraction == 1 //trace is clear
-				|| tr.entityNum == target_num //is our ignore target
-				|| bs->currentEnemy && bs->currentEnemy->s.number == tr.entityNum) //is our current enemy
+			if (tr.fraction == 1 ||
+				tr.entityNum == target_num ||
+				(bs->currentEnemy && bs->currentEnemy->s.number == tr.entityNum))
 			{
-				//we can duck under this object.
 				move_command = 2;
 			}
-			//check the slope of the thing blocking us
-			else if (tr.entityNum == ENTITYNUM_WORLD)
+			else if (tr.entityNum == ENTITYNUM_WORLD && tr.plane.normal[2] >= 0.7f)
 			{
-				//world object
-				if (tr.plane.normal[2] >= 0.7f)
-				{
-					//you could hop to this, which is a steep ledge that's still walkable
-					move_command = 2;
-				}
+				move_command = 2;
 			}
 		}
 	}
 
+	// ------------------------------------------------------------
+	// CLIFF CHECK — prevent walking off huge drops
+	// ------------------------------------------------------------
 	if (move_command != -1)
 	{
-		//we found a way around our current obsticle, check to make sure we're not going to go off a cliff.
 		traceto_mod[0] = bs->origin[0] + move_dir[0] * 45;
 		traceto_mod[1] = bs->origin[1] + move_dir[1] * 45;
 		traceto_mod[2] = bs->origin[2] + move_dir[2] * 45;
 
 		VectorCopy(traceto_mod, tracefrom_mod);
-
-		//check for 50+ feet drops
-		traceto_mod[2] -= 532;
+		traceto_mod[2] -= 532; // 50+ foot drop
 
 		trap->Trace(&tr, tracefrom_mod, mins, maxs, traceto_mod, bs->client, MASK_PLAYERSOLID, qfalse, 0, 0);
+
 		if (tr.fraction == 1 && !tr.startsolid)
 		{
-			//CLIFF!
-			move_command = -1;
+			move_command = -1; // cliff detected
 		}
 
+		// Avoid jumping into lava/slime
 		if (bs->jumpTime < level.time)
 		{
-			const int contents = trap->PointContents(tr.endpos, -1);
+			int contents = trap->PointContents(tr.endpos, -1);
 			if (contents & (CONTENTS_SLIME | CONTENTS_LAVA))
-			{
-				//the fall point is inside something we don't want to move into
 				move_command = -1;
-			}
 		}
 	}
 
+	// ------------------------------------------------------------
+	// FIX #2: Global jump cooldown
+	// ------------------------------------------------------------
+	if (move_command == 1 && bs->jumpTime > level.time)
+	{
+		move_command = -1; // too soon to jump again
+	}
+
+	// ------------------------------------------------------------
+	// If blocked, return the surface normal for strafe logic
+	// ------------------------------------------------------------
 	if (move_command == -1)
 	{
-		//couldn't find a way to move in this direction.  Save the normal vector so we can use it to move around
-		//this object.  Note, we even do this when we can hop/crawl around something but the fall check fails
-		//so we can follow the railing or whatever this is.
 		VectorCopy(save_normal, hit_normal);
 	}
+
 	return move_command;
 }
 
@@ -15558,16 +15562,24 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 	return qfalse;
 }
 
+// Attempts to move the bot in move_dir.
+// Uses jump/crouch/fall logic first, then tries strafing and evasion.
+// move_dir is modified if a better direction is found.
 void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 {
-	vec3_t dir = { 0, 0, 0 };
+	vec3_t dir;
 	vec3_t hit_normal;
-	int i = 7;
+	int movecom;
 	int quad;
-	VectorClear(hit_normal);
-	int movecom = trace_jump_crouch_fall(bs, move_dir, target_num, hit_normal);
+	int i = 7; // number of alternative directions to try
 
+	VectorClear(hit_normal);
 	VectorCopy(move_dir, dir);
+
+	// ------------------------------------------------------------
+	// FIRST: Try moving directly (normal / jump / crouch)
+	// ------------------------------------------------------------
+	movecom = trace_jump_crouch_fall(bs, move_dir, target_num, hit_normal);
 
 	if (movecom != -1)
 	{
@@ -15575,65 +15587,60 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 		return;
 	}
 
-	//try moving around the edge of the blocking object if that's the problem.
+	// ------------------------------------------------------------
+	// SECOND: Try sliding around the obstacle using its surface normal
+	// ------------------------------------------------------------
 	if (try_move_around_obsticle(bs, dir, target_num, hit_normal, 0, qtrue))
 	{
-		//found a way.
 		VectorCopy(dir, move_dir);
 		return;
 	}
 
-	//restore the original moveDir incase our obsticle code choked.
+	// Restore original direction
 	VectorCopy(move_dir, dir);
 
+	// ------------------------------------------------------------
+	// THIRD: If recently evading, try the same evade direction again
+	// ------------------------------------------------------------
 	if (bs->evadeTime > level.time)
 	{
-		//try the current evade direction to prevent spazing
 		adjust_move_direction(bs, dir, bs->evadeDir);
+
 		movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
 		if (movecom != -1)
 		{
 			movement_command(bs, movecom, dir);
 			VectorCopy(dir, move_dir);
-			bs->evadeTime = level.time + 500;
+			bs->evadeTime = level.time + 500; // extend evade window
 			return;
 		}
-		i--;
+
+		i--; // reduce remaining attempts
 	}
 
-	//Since our default direction didn't work we need to switch melee strafe directions if
-	//we are melee strafing.
-	//0 = no strafe
-	//1 = strafe right
-	//2 = strafe left
+	// ------------------------------------------------------------
+	// FOURTH: Randomize melee strafe direction occasionally
+	// ------------------------------------------------------------
 	if (bs->meleeStrafeTime > level.time)
 	{
-		bs->meleeStrafeDir = Q_irand(0, 2);
+		bs->meleeStrafeDir = Q_irand(0, 2); // 0 = none, 1 = right, 2 = left
 		bs->meleeStrafeTime = level.time + Q_irand(500, 1800);
 	}
 
+	// Determine the forward movement quadrant
 	const int fwdstrafe = find_movement_quad(&bs->cur_ps, move_dir);
 
-	if (Q_irand(0, 1))
-	{
-		//try strafing left
-		quad = fwdstrafe - 2;
-	}
-	else
-	{
-		quad = fwdstrafe + 2;
-	}
-
+	// Pick left or right strafe first
+	quad = (Q_irand(0, 1)) ? (fwdstrafe - 2) : (fwdstrafe + 2);
 	quad = adjust_quad(quad);
 
-	//reset Dir to original moveDir
+	// ------------------------------------------------------------
+	// FIFTH: Try first strafe direction
+	// ------------------------------------------------------------
 	VectorCopy(move_dir, dir);
-
-	//shift movedir for quad
 	adjust_move_direction(bs, dir, quad);
 
 	movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
-
 	if (movecom != -1)
 	{
 		movement_command(bs, movecom, dir);
@@ -15644,18 +15651,16 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	}
 	i--;
 
-	//no luck, try the other full strafe direction
+	// ------------------------------------------------------------
+	// SIXTH: Try the opposite strafe direction
+	// ------------------------------------------------------------
 	quad += 4;
 	quad = adjust_quad(quad);
 
-	//reset Dir to original moveDir
 	VectorCopy(move_dir, dir);
-
-	//shift movedir for quad
 	adjust_move_direction(bs, dir, quad);
 
 	movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
-
 	if (movecom != -1)
 	{
 		movement_command(bs, movecom, dir);
@@ -15666,27 +15671,29 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	}
 	i--;
 
-	//still no dice
+	// ------------------------------------------------------------
+	// SEVENTH: Try all remaining quadrants (full 360° sweep)
+	// ------------------------------------------------------------
 	for (; i > 0; i--)
 	{
 		quad++;
 		quad = adjust_quad(quad);
 
-		if (quad == fwdstrafe || quad == adjust_quad(fwdstrafe - 2) || quad == adjust_quad(fwdstrafe + 2)
-			|| bs->evadeTime > level.time && quad == bs->evadeDir)
+		// Skip directions we've already tried
+		if (quad == fwdstrafe ||
+			quad == adjust_quad(fwdstrafe - 2) ||
+			quad == adjust_quad(fwdstrafe + 2) ||
+			(bs->evadeTime > level.time && quad == bs->evadeDir))
 		{
-			//Already did those directions
 			continue;
 		}
 
 		VectorCopy(move_dir, dir);
-
-		//shift movedir for quad
 		adjust_move_direction(bs, dir, quad);
+
 		movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
 		if (movecom != -1)
 		{
-			//find a good direction
 			movement_command(bs, movecom, dir);
 			VectorCopy(dir, move_dir);
 			bs->evadeDir = quad;
@@ -15694,6 +15701,9 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 			return;
 		}
 	}
+
+	// If we reach here, no movement direction worked.
+	// Caller will decide what to do next.
 }
 
 extern void npc_conversation_animation();

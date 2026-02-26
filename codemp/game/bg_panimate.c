@@ -30,13 +30,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
 ///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
-///								    https://www.moddb.com/mods/serenityjediengine-20											///
+///								    https://www.moddb.com/mods/movie-duels											            ///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
 
 #include "qcommon/q_shared.h"
 #include "bg_public.h"
-#include "bg_local.h"
 #include "anims.h"
 #include "cgame/animtable.h"
 
@@ -47,6 +46,16 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #elif UI_BUILD
 #include "ui/ui_local.h"
 #endif
+#include "bg_weapons.h"
+#include <math.h>
+#include <string.h>
+#include <assert.h>
+#include <qcommon\q_string.h>
+#include <stdlib.h>
+#include <qcommon\q_math.h>
+#include <qcommon\qfiles.h>
+#include <qcommon\q_color.h>
+#include <qcommon\q_platform.h>
 
 qboolean PM_SaberInTransition(int move);
 qboolean PM_SaberInDeflect(int move);
@@ -5340,109 +5349,96 @@ static void ParseAnimationEvtBlock(const char* aeb_filename, animevent_t* anim_e
 ======================
 BG_ParseAnimationEvtFile
 
-Read a configuration file containing animation events
-models/players/kyle/mpanimevents.cfg, etc
+Loads and parses an animation-event configuration file:
+	models/players/<model>/mpanimevents.cfg
 
-This file's presence is not required
-
+Supports:
+- optional "include" directives
+- upper/lower event blocks
+- caching to avoid re-parsing
+- recursive include protection
 ======================
 */
 bgLoadedEvents_t bgAllEvents[MAX_ANIM_FILES];
 int bgNumAnimEvents = 1;
 static int bg_animParseIncluding = 0;
 
+// Single shared text buffer for animation event parsing.
+// Replaces the old 80 KB stack allocation.
+static char bgAnimEvtTextBuffer[80000];
+
 int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, const int eventFileIndex)
 {
-	const char* text_p;
-	char text[80000];
+	const char* text_p = NULL;
+	char* text = bgAnimEvtTextBuffer;      // static global buffer
 	char sfilename[MAX_QPATH];
 	fileHandle_t f;
 	int i;
 	int used_index = -1;
-	int forced_index;
 
 	assert(animFileIndex < MAX_ANIM_FILES);
 	assert(eventFileIndex < MAX_ANIM_FILES);
 
-	if (eventFileIndex == -1)
-	{
-		forced_index = 0;
-	}
-	else
-	{
-		forced_index = eventFileIndex;
-	}
+	// Determine which event index to use
+	const int forced_index = (eventFileIndex == -1) ? 0 : eventFileIndex;
 
+	// Skip if already parsed (unless inside an include)
 	if (bg_animParseIncluding <= 0)
 	{
-		//if we should be parsing an included file, skip this part
 		if (bgAllEvents[forced_index].eventsParsed)
-		{
-			//already cached this one
 			return forced_index;
-		}
 	}
 
 	animevent_t* legs_anim_events = bgAllEvents[forced_index].legsAnimEvents;
 	animevent_t* torso_anim_events = bgAllEvents[forced_index].torsoAnimEvents;
 	const animation_t* animations = bgAllAnims[animFileIndex].anims;
 
+	// Check if this file was already loaded (avoid duplicates)
 	if (bg_animParseIncluding <= 0)
 	{
-		//if we should be parsing an included file, skip this part
-		//Go through and see if this filename is already in the table.
-		i = 0;
-		while (i < bgNumAnimEvents && forced_index != 0)
+		for (i = 0; i < bgNumAnimEvents && forced_index != 0; i++)
 		{
 			if (!Q_stricmp(as_filename, bgAllEvents[i].filename))
-			{
-				//looks like we have it already.
 				return i;
-			}
-			i++;
 		}
 	}
 
-	// Load and parse mpanimevents.cfg file
-	Com_sprintf(sfilename, sizeof sfilename, "%smpanimevents.cfg", as_filename);
+	// Build full path to mpanimevents.cfg
+	Com_sprintf(sfilename, sizeof(sfilename), "%smpanimevents.cfg", as_filename);
 
+	// Initialize event arrays (only when not inside an include)
 	if (bg_animParseIncluding <= 0)
 	{
-		//should already be done if we're including
-		//initialize anim event array
 		for (i = 0; i < MAX_ANIM_EVENTS; i++)
 		{
-			//Type of event
 			torso_anim_events[i].eventType = AEV_NONE;
 			legs_anim_events[i].eventType = AEV_NONE;
-			//Frame to play event on
+
 			torso_anim_events[i].keyFrame = -1;
 			legs_anim_events[i].keyFrame = -1;
-			//we allow storage of one string, temporarily (in case we have to look up an index later, then make sure to set stringData to NULL so we only do the look-up once)
+
 			torso_anim_events[i].stringData = NULL;
 			legs_anim_events[i].stringData = NULL;
-			//Unique IDs, can be soundIndex of sound file to play OR effect index or footstep type, etc.
+
 			for (int j = 0; j < AED_ARRAY_SIZE; j++)
 			{
 				torso_anim_events[i].eventData[j] = -1;
 				legs_anim_events[i].eventData[j] = -1;
 			}
+
 			torso_anim_events[i].ambtime = 0;
 			legs_anim_events[i].ambtime = 0;
-
 			torso_anim_events[i].ambrandom = 0;
 			legs_anim_events[i].ambrandom = 0;
 		}
 	}
 
-	// load the file
+	// Load file
 	const int len = trap->FS_Open(sfilename, &f, FS_READ);
 	if (len <= 0)
-	{
-		//no file
-		goto fin;
-	}
-	if (len >= sizeof text - 1)
+		goto finish;
+
+	if (len >= (int)sizeof(bgAnimEvtTextBuffer) - 1)
 	{
 		trap->FS_Close(f);
 #ifndef FINAL_BUILD
@@ -5450,64 +5446,65 @@ int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, c
 #else
 		Com_Printf("File %s too long\n", sfilename);
 #endif
-		goto fin;
+		goto finish;
 	}
 
 	trap->FS_Read(text, len, f);
-	text[len] = 0;
+	text[len] = '\0';
 	trap->FS_Close(f);
 
-	// parse the text
 	text_p = text;
 
 	COM_BeginParseSession("BG_ParseAnimationEvtFile");
 
-	// read information for batches of sounds (UPPER or LOWER)
+	// Parse tokens
 	while (1)
 	{
-		// Get base frame of sequence
 		const char* token = COM_Parse(&text_p);
 		if (!token || !token[0])
-		{
 			break;
-		}
 
-		if (!Q_stricmp(token, "include")) // grab from another mpanimevents.cfg
+		// include <otherfile>
+		if (!Q_stricmp(token, "include"))
 		{
-			//NOTE: you REALLY should NOT do this after the main block of UPPERSOUNDS and LOWERSOUNDS
 			const char* include_filename = COM_Parse(&text_p);
-			if (include_filename != NULL)
+			if (include_filename)
 			{
 				char full_i_path[MAX_QPATH];
-				strcpy(full_i_path, va("models/players/%s/", include_filename));
+				Com_sprintf(full_i_path, sizeof(full_i_path),
+					"models/players/%s/", include_filename);
+
 				bg_animParseIncluding++;
 				BG_ParseAnimationEvtFile(full_i_path, animFileIndex, forced_index);
 				bg_animParseIncluding--;
 			}
+			continue;
 		}
 
-		if (!Q_stricmp(token, "UPPEREVENTS")) // A batch of upper sounds
+		// UPPER or LOWER event blocks
+		if (!Q_stricmp(token, "UPPEREVENTS"))
 		{
 			ParseAnimationEvtBlock(as_filename, torso_anim_events, animations, &text_p);
 		}
-		else if (!Q_stricmp(token, "LOWEREVENTS")) // A batch of lower sounds
+		else if (!Q_stricmp(token, "LOWEREVENTS"))
 		{
 			ParseAnimationEvtBlock(as_filename, legs_anim_events, animations, &text_p);
 		}
 	}
 
 	used_index = forced_index;
-fin:
-	//Mark this anim set so that we know we tried to load he sounds, don't care if the load failed
+
+finish:
+
+	// Mark as parsed (only when not inside include)
 	if (bg_animParseIncluding <= 0)
 	{
-		//if we should be parsing an included file, skip this part
 		bgAllEvents[forced_index].eventsParsed = qtrue;
-		strcpy(bgAllEvents[forced_index].filename, as_filename);
-		if (forced_index)
-		{
+		Q_strncpyz(bgAllEvents[forced_index].filename, as_filename,
+			sizeof(bgAllEvents[forced_index].filename));
+
+		if (forced_index != 0)
 			bgNumAnimEvents++;
-		}
 	}
 
 	return used_index;

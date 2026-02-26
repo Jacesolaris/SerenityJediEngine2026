@@ -25,6 +25,22 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "rd-common/tr_types.h"
 #include "sys/sys_local.h"
 #include "sdl_icon.h"
+#include <string.h>
+#include <VersionHelpers.h>
+#include <SDL_video.h>
+#include <sys\sys_public.h>
+#include <SDL_error.h>
+#include <SDL_rect.h>
+#include <cmath>
+#include <qcommon\q_color.h>
+#include <SDL_stdinc.h>
+#include <qcommon\q_string.h>
+#include <search.h>
+#include <SDL_surface.h>
+#include <SDL_pixels.h>
+#include <SDL_version.h>
+#include <begin_code.h>
+#include <qcommon\q_math.h>
 
 enum rserr_t
 {
@@ -571,7 +587,10 @@ static rserr_t GLimp_SetMode(glconfig_t* glConfig, const windowDesc_t* windowDes
 			}
 
 			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-			SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, !r_allowSoftwareGL->integer);
+			SDL_GL_SetAttribute(
+				SDL_GL_ACCELERATED_VISUAL,
+				(r_allowSoftwareGL->integer == 0) ? 1 : 0
+			);
 
 			if ((screen = SDL_CreateWindow(windowTitle, x, y,
 				glConfig->vidWidth, glConfig->vidHeight, flags)) == nullptr)
@@ -831,7 +850,7 @@ void WIN_Shutdown()
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
-void GLimp_EnableLogging(qboolean enable)
+static void GLimp_EnableLogging(qboolean enable)
 {
 }
 
@@ -847,6 +866,7 @@ void WIN_SetGamma(const glconfig_t* glConfig, byte red[256], byte green[256], by
 	if (!glConfig->deviceSupportsGamma || r_ignorehwgamma->integer > 0)
 		return;
 
+	// Build 16-bit gamma table
 	for (i = 0; i < 256; i++)
 	{
 		table[0][i] = static_cast<Uint16>(red[i]) << 8 | red[i];
@@ -855,30 +875,24 @@ void WIN_SetGamma(const glconfig_t* glConfig, byte red[256], byte green[256], by
 	}
 
 #if defined(_WIN32)
-	// Win2K and newer put this odd restriction on gamma ramps...
+	// Windows 2000+ gamma clamp using modern VersionHelpers
+	if (IsWindowsXPOrGreater())   // XP = NT 5.1, matches original "major >= 5 && NT"
 	{
-		OSVERSIONINFO vinfo{};
+		Com_DPrintf("performing gamma clamp.\n");
 
-		vinfo.dwOSVersionInfoSize = sizeof vinfo;
-		// ReSharper disable once CppDeprecatedEntity
-		GetVersionExA(&vinfo);
-		if (vinfo.dwMajorVersion >= 5 && vinfo.dwPlatformId == VER_PLATFORM_WIN32_NT)
+		for (j = 0; j < 3; j++)
 		{
-			Com_DPrintf("performing gamma clamp.\n");
-			for (j = 0; j < 3; j++)
+			for (i = 0; i < 128; i++)
 			{
-				for (i = 0; i < 128; i++)
-				{
-					table[j][i] = Q_min(table[j][i], (128 + i) << 8);
-				}
-
-				table[j][127] = Q_min(table[j][127], 254 << 8);
+				table[j][i] = Q_min(table[j][i], static_cast<Uint16>((128 + i) << 8));
 			}
+
+			table[j][127] = Q_min(table[j][127], static_cast<Uint16>(254 << 8));
 		}
 	}
 #endif
 
-	// enforce constantly increasing
+	// Enforce monotonic increase
 	for (j = 0; j < 3; j++)
 	{
 		for (i = 1; i < 256; i++)

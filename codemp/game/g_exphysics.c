@@ -30,12 +30,18 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
  *
  *****************************************************************************/
 #include "g_local.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_math.h>
+#include <assert.h>
+#include "g_public.h"
+#include "bg_public.h"
+#include <qcommon\q_platform.h>
 
 #define MAX_GRAVITY_PULL 512
 
- //Run physics on the object (purely origin-related) using custom epVelocity entity
- //state value. Origin smoothing on the client is expected to compensate for choppy
- //movement.
+ // Run physics on the object (purely origin-related) using custom epVelocity entity
+ // state value. Origin smoothing on the client is expected to compensate for choppy
+ // movement.
 void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboolean autoKill, int* g2Bolts,
 	int numG2Bolts)
 {
@@ -50,7 +56,7 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 	if (gravity)
 	{
 		vec3_t ground;
-		//factor it in before we do anything.
+		// factor it in before we do anything.
 		VectorCopy(ent->r.currentOrigin, ground);
 		ground[2] -= 0.1f;
 
@@ -72,7 +78,7 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 
 			if (ent->epGravFactor > MAX_GRAVITY_PULL)
 			{
-				//cap it off if needed
+				// cap it off if needed
 				ent->epGravFactor = MAX_GRAVITY_PULL;
 			}
 
@@ -80,17 +86,17 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 		}
 		else
 		{
-			//if we're sitting on something then reset the gravity factor.
+			// if we're sitting on something then reset the gravity factor.
 			ent->epGravFactor = 0;
 		}
 	}
 
 	if (!ent->epVelocity[0] && !ent->epVelocity[1] && !ent->epVelocity[2])
 	{
-		//nothing to do if we have no velocity even after gravity.
+		// nothing to do if we have no velocity even after gravity.
 		if (ent->touch)
 		{
-			//call touch if we're in something
+			// call touch if we're in something
 			trap->Trace(&tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, ent->r.currentOrigin, ent->s.number,
 				ent->clipmask, qfalse, 0, 0);
 			if (tr.startsolid || tr.allsolid)
@@ -101,17 +107,34 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 		return;
 	}
 
-	//get the projected origin based on velocity.
+	// get the projected origin based on velocity.
 	VectorMA(ent->r.currentOrigin, velScaling, ent->epVelocity, projectedOrigin);
 
-	VectorScale(ent->epVelocity, 1.0f - mass, ent->epVelocity); //scale it down based on mass
+	// Clamp extreme step to avoid tunneling into solids
+	{
+		const float maxStep = 128.0f;
+		for (int i = 0; i < 3; i++)
+		{
+			float delta = projectedOrigin[i] - ent->r.currentOrigin[i];
+			if (delta > maxStep)
+			{
+				projectedOrigin[i] = ent->r.currentOrigin[i] + maxStep;
+			}
+			else if (delta < -maxStep)
+			{
+				projectedOrigin[i] = ent->r.currentOrigin[i] - maxStep;
+			}
+		}
+	}
+
+	VectorScale(ent->epVelocity, 1.0f - mass, ent->epVelocity); // scale it down based on mass
 
 	VectorCopy(ent->epVelocity, vNorm);
 	vTotal = VectorNormalize(vNorm);
 
 	if (vTotal < 1 && ent->s.groundEntityNum != ENTITYNUM_NONE)
 	{
-		//we've pretty much stopped moving anyway, just clear it out then.
+		// we've pretty much stopped moving anyway, just clear it out then.
 		VectorClear(ent->epVelocity);
 		ent->epGravFactor = 0;
 		trap->LinkEntity((sharedEntity_t*)ent);
@@ -120,48 +143,48 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 
 	if (ent->ghoul2 && g2Bolts)
 	{
-		//Have we been passed a bolt index array to clip against points on the skeleton?
+		// Have we been passed a bolt index array to clip against points on the skeleton?
 		vec3_t tMins, tMaxs;
 		vec3_t trajDif;
-		vec3_t gbmAngles;
+		vec3_t gbmAngles = { 0 };
 		vec3_t collisionRootPos;
 		mdxaBone_t matrix;
 		trace_t bestCollision;
 		qboolean hasFirstCollision = qfalse;
 		int i = 0;
 
-		//Maybe we could use a trap call and get the default radius for the bone specified,
-		//but this will do at least for now.
+		// Maybe we could use a trap call and get the default radius for the bone specified,
+		// but this will do at least for now.
 		VectorSet(tMins, -3, -3, -3);
 		VectorSet(tMaxs, 3, 3, 3);
 
 		gbmAngles[PITCH] = gbmAngles[ROLL] = 0;
 		gbmAngles[YAW] = ent->s.apos.trBase[YAW];
 
-		//Get the difference relative to the entity origin and projected origin, to add to each bolt position.
+		// Get the difference relative to the entity origin and projected origin, to add to each bolt position.
 		VectorSubtract(ent->r.currentOrigin, projectedOrigin, trajDif);
 
 		while (i < numG2Bolts)
 		{
 			vec3_t projectedBoneOrg;
 			vec3_t boneOrg;
-			//Get the position of the actual bolt for this frame
+			// Get the position of the actual bolt for this frame
 			trap->G2API_GetBoltMatrix(ent->ghoul2, 0, g2Bolts[i], &matrix, gbmAngles, ent->r.currentOrigin, level.time,
 				NULL, ent->modelScale);
 			BG_GiveMeVectorFromMatrix(&matrix, ORIGIN, boneOrg);
 
-			//Now add the projected positional difference into the result
+			// Now add the projected positional difference into the result
 			VectorAdd(boneOrg, trajDif, projectedBoneOrg);
 
 			trap->Trace(&tr, boneOrg, tMins, tMaxs, projectedBoneOrg, ent->s.number, ent->clipmask, qfalse, 0, 0);
 
 			if (tr.fraction != 1.0 || tr.startsolid || tr.allsolid)
 			{
-				//we've hit something
-				//Store the "deepest" collision we have
+				// we've hit something
+				// Store the "deepest" collision we have
 				if (!hasFirstCollision)
 				{
-					//don't have one yet so just use this one
+					// don't have one yet so just use this one
 					bestCollision = tr;
 					VectorCopy(boneOrg, collisionRootPos);
 					hasFirstCollision = qtrue;
@@ -170,20 +193,17 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 				{
 					if (tr.allsolid && !bestCollision.allsolid)
 					{
-						//If the whole trace is solid then this one is deeper
 						bestCollision = tr;
 						VectorCopy(boneOrg, collisionRootPos);
 					}
 					else if (tr.startsolid && !bestCollision.startsolid && !bestCollision.allsolid)
 					{
-						//Next deepest is if it's startsolid
 						bestCollision = tr;
 						VectorCopy(boneOrg, collisionRootPos);
 					}
 					else if (!bestCollision.startsolid && !bestCollision.allsolid &&
 						tr.fraction < bestCollision.fraction)
 					{
-						//and finally, if neither is startsolid/allsolid, but the new one has a smaller fraction, then it's closer to an impact point so we will use it
 						bestCollision = tr;
 						VectorCopy(boneOrg, collisionRootPos);
 					}
@@ -195,27 +215,58 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 
 		if (hasFirstCollision)
 		{
-			//at least one bolt collided
-			//We'll get the offset between the collided bolt and endpos, then trace there
-			//from the origin so that our desired position becomes that point.
+			// at least one bolt collided
+			// We'll get the offset between the collided bolt and endpos, then trace there
+			// from the origin so that our desired position becomes that point.
+			vec3_t trajDif;
 			VectorSubtract(collisionRootPos, bestCollision.endpos, trajDif);
 
 			VectorAdd(ent->r.currentOrigin, trajDif, projectedOrigin);
 		}
 	}
 
-	//If we didn't collide with any bolts projectedOrigin will still be the original desired
-	//projected position so all is well. If we did then projectedOrigin will be modified
-	//to provide us with a relative position which does not place the bolt in a solid.
+	// If we didn't collide with any bolts projectedOrigin will still be the original desired
+	// projected position so all is well. If we did then projectedOrigin will be modified
+	// to provide us with a relative position which does not place the bolt in a solid.
 	trap->Trace(&tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, projectedOrigin, ent->s.number, ent->clipmask,
 		qfalse, 0, 0);
 
+	// Penetration recovery: if we start in solid, try nudging up a bit
 	if (tr.startsolid || tr.allsolid)
 	{
-		//can't go anywhere from here
-#ifdef _DEBUG
-		Com_Printf("ExPhys object in solid (%i)\n", ent->s.number);
-#endif
+		vec3_t recoverPos;
+		trace_t tr2;
+
+		VectorCopy(ent->r.currentOrigin, recoverPos);
+		recoverPos[2] += 4.0f;
+
+		trap->Trace(&tr2, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, recoverPos,
+			ent->s.number, ent->clipmask, qfalse, 0, 0);
+
+		if (!tr2.startsolid && !tr2.allsolid)
+		{
+			// Recovery successful
+			G_SetOrigin(ent, tr2.endpos);
+			trap->LinkEntity((sharedEntity_t*)ent);
+
+			// Clamp velocity to avoid immediately re-entering solid
+			const float maxVel = 256.0f;
+			for (int i = 0; i < 3; i++)
+			{
+				if (ent->epVelocity[i] > maxVel) ent->epVelocity[i] = maxVel;
+				if (ent->epVelocity[i] < -maxVel) ent->epVelocity[i] = -maxVel;
+			}
+
+			return;
+		}
+
+		// Recovery failed — only warn once
+		if (!ent->exPhysWarned)
+		{
+			Com_Printf("ExPhys object in solid (%i)\n", ent->s.number);
+			ent->exPhysWarned = qtrue;
+		}
+
 		if (autoKill)
 		{
 			ent->think = G_FreeEntity;
@@ -224,44 +275,43 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 		return;
 	}
 
-	//Go ahead and set it to the trace endpoint regardless of what it hit
+	// Go ahead and set it to the trace endpoint regardless of what it hit
 	G_SetOrigin(ent, tr.endpos);
 	trap->LinkEntity((sharedEntity_t*)ent);
 
 	if (tr.fraction == 1.0f)
 	{
-		//Nothing was in the way.
+		// Nothing was in the way.
 		return;
 	}
 
 	if (bounce)
 	{
-		vTotal *= bounce; //scale it by bounce
+		vTotal *= bounce; // scale it by bounce
 
-		VectorScale(tr.plane.normal, vTotal, vNorm); //scale the trace plane normal by the bounce factor
+		VectorScale(tr.plane.normal, vTotal, vNorm); // scale the trace plane normal by the bounce factor
 
 		if (vNorm[2] > 0)
 		{
 			ent->epGravFactor -= vNorm[2] * (1.0f - mass);
-			//The lighter it is the more gravity will be reduced by bouncing vertically.
+			// The lighter it is the more gravity will be reduced by bouncing vertically.
 			if (ent->epGravFactor < 0)
 			{
 				ent->epGravFactor = 0;
 			}
 		}
 
-		//call touch first so we can check velocity upon impact if we want
+		// call touch first so we can check velocity upon impact if we want
 		if (tr.entityNum != ENTITYNUM_NONE && ent->touch)
 		{
-			//then call the touch function
 			ent->touch(ent, &g_entities[tr.entityNum], &tr);
 		}
 
-		VectorAdd(ent->epVelocity, vNorm, ent->epVelocity); //add it into the existing velocity.
+		VectorAdd(ent->epVelocity, vNorm, ent->epVelocity); // add it into the existing velocity.
 	}
 	else
 	{
-		//if no bounce, kill when it hits something.
+		// if no bounce, kill when it hits something.
 		ent->epVelocity[0] = 0;
 		ent->epVelocity[1] = 0;
 

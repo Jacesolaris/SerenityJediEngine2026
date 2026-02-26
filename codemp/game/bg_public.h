@@ -2015,7 +2015,7 @@ void	BG_InitAnimsets();
 void	BG_ClearAnimsets();
 int		bg_parse_animation_file(const char* filename, animation_t* anim_set, qboolean is_humanoid);
 #ifndef _GAME
-int		BG_ParseAnimationEvtFile(const char* as_filename, int animFileIndex, int eventFileIndex);
+int		BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, const int eventFileIndex);
 #endif
 
 qboolean BG_HasAnimation(int anim_index, int animation);

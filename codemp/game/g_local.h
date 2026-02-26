@@ -535,6 +535,7 @@ struct gentity_s
 	int reloadTime; //Every 0.2 seconds reload a bullet
 	int reloadCooldown;
 	int TimeOfWeaponDrop;
+	qboolean exPhysWarned;
 };
 
 #define DAMAGEREDIRECT_HEAD		1

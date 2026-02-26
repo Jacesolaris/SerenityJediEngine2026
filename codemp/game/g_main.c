@@ -4530,11 +4530,15 @@ void G_RunFrame(const int levelTime)
 				// tempEntities or dropped items completely go away after their event
 				if (ent->s.eFlags & EF_SOUNDTRACKER)
 				{
-					//don't trigger the event again..
+					// previously: only cleared event fields and left entity in-use -> leak
 					ent->s.event = 0;
 					ent->s.eventParm = 0;
 					ent->s.eType = 0;
 					ent->eventTime = 0;
+
+					// FIX: free the sound-tracker temp entity so it doesn't accumulate
+					G_FreeEntity(ent);
+					continue;
 				}
 				else
 				{
