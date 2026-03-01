@@ -67,7 +67,7 @@ extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern void Boba_FlyStart(gentity_t* self);
 extern qboolean in_camera;
 extern qboolean PM_RunningAnim(int anim);
-extern void G_ReflectMissileAuto(gentity_t* ent, gentity_t* missile, vec3_t forward);
+extern void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern void g_reflect_missile_bot(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
@@ -6793,7 +6793,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 					}
 					else
 					{
-						G_ReflectMissileAuto(self, push_target[x], forward);
+						g_reflect_missile_auto(self, push_target[x], forward);
 					}
 				}
 			}

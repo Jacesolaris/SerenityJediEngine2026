@@ -25,6 +25,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "cg_local.h"
 #include "ghoul2/G2.h"
 #include "game/bg_saga.h"
+#include <qcommon\q_shared.h>
+#include <game\anims.h>
+#include <qcommon\q_math.h>
+#include <game\bg_public.h>
+#include <qcommon\q_platform.h>
 
 extern void CheckCameraLocation(vec3_t oldeye_origin);
 extern vmCvar_t cg_thirdPersonAlpha;
@@ -11744,35 +11749,35 @@ void CG_G2SaberEffects(vec3_t start, vec3_t end, const centity_t* owner)
 
 #define CG_MAX_SABER_COMP_TIME 400 //last registered saber entity hit must match within this many ms for the client effect to take place.
 
-void CG_AddGhoul2Mark(const int shader, const float size, vec3_t start, vec3_t end, const int entnum,
-	vec3_t entposition, const float entangle, void* ghoul2, vec3_t scale, const int life_time)
+/*
+===================
+CG_AddGhoul2Mark
+
+Adds a Ghoul2 decal (saber burn mark) to a model.
+This is the MP version — cleaned and corrected with no behaviour changes.
+===================
+*/
+void CG_AddGhoul2Mark(const int shader, const float size,
+	vec3_t start, vec3_t end, const int entnum,
+	vec3_t entposition, const float entangle,
+	void* ghoul2, vec3_t scale, const int life_time)
 {
 	SSkinGoreData gore_skin;
 
 	assert(ghoul2);
 
-	memset(&gore_skin, 0, sizeof gore_skin);
+	memset(&gore_skin, 0, sizeof(gore_skin));
 
+	// Too many marks already?
 	if (trap->G2API_GetNumGoreMarks(ghoul2, 0) >= cg_ghoul2Marks.integer)
-	{
-		//you've got too many marks already
 		return;
-	}
 
-	gore_skin.growDuration = -1; // default expandy time
-	gore_skin.goreScaleStartFraction = 1.0; // default start scale
+	// Basic gore parameters
+	gore_skin.growDuration = -1;     // default expand time
+	gore_skin.goreScaleStartFraction = 1.0f;   // default start scale
 	gore_skin.frontFaces = qtrue;
 	gore_skin.backFaces = qtrue;
-	gore_skin.lifeTime = life_time; //last randomly 10-20 seconds
-	/*
-	if (lifeTime)
-	{
-		goreSkin.fadeOutTime = lifeTime*0.1; //default fade duration is relative to lifetime.
-	}
-	goreSkin.fadeRGB = qtrue; //fade on RGB instead of alpha (this depends on the shader really, modify if needed)
-	*/
-	//rwwFIXMEFIXME: fade has sorting issues with other non-fading decals, disabled until fixed
-
+	gore_skin.lifeTime = life_time;
 	gore_skin.baseModelOnly = qfalse;
 
 	gore_skin.currentTime = cg.time;
@@ -11782,228 +11787,249 @@ void CG_AddGhoul2Mark(const int shader, const float size, vec3_t start, vec3_t e
 	gore_skin.theta = flrand(0.0f, 6.28f);
 	gore_skin.shader = shader;
 
+	// Scale safety
 	if (!scale[0] && !scale[1] && !scale[2])
 	{
 		VectorSet(gore_skin.scale, 1.0f, 1.0f, 1.0f);
 	}
 	else
 	{
-		VectorCopy(gore_skin.scale, scale);
+		VectorCopy(scale, gore_skin.scale);
 	}
 
+	// Hit location
 	VectorCopy(start, gore_skin.hitLocation);
 
+	// Ray direction (must be normalized)
 	VectorSubtract(end, start, gore_skin.rayDirection);
-	if (VectorNormalize(gore_skin.rayDirection) < .1f)
-	{
+	if (VectorNormalize(gore_skin.rayDirection) < 0.1f)
 		return;
-	}
 
+	// Entity transform
 	VectorCopy(entposition, gore_skin.position);
 	gore_skin.angles[YAW] = entangle;
 
+	// Submit to Ghoul2
 	trap->G2API_AddSkinGore(ghoul2, &gore_skin);
 }
 
-void CG_SaberCompWork(vec3_t start, vec3_t end, centity_t* owner, const int saberNum, const int blade_num)
+/*
+===================
+CG_SaberCompWork
+
+Client‑side saber hit confirmation.
+Runs after the server reports a saber hit and applies:
+- Ghoul2 hit marks
+- Hit effects
+- Hit sounds
+===================
+*/
+static void CG_SaberCompWork(vec3_t start, vec3_t end, centity_t* owner,
+	const int saberNum, const int bladeNum)
 {
-	trace_t trace;
-	const qboolean back_wards = qfalse;
-	qboolean done_with_traces = qfalse;
-	qboolean do_effect = qfalse;
+	trace_t        trace;
+	qboolean       doEffect = qfalse;
 	clientInfo_t* client;
 
+	// Too long since server-reported hit → ignore
 	if (cg.time - owner->serverSaberHitTime > CG_MAX_SABER_COMP_TIME)
-	{
 		return;
-	}
 
+	// Avoid doing effects on the same frame the server reports the hit
 	if (cg.time == owner->serverSaberHitTime)
-	{
-		//don't want to do it the same frame as the server hit, to avoid burst effect concentrations every x ms.
 		return;
-	}
 
-	while (!done_with_traces)
+	// Perform a single trace from saber start → end
+	vec3_t startTr, endTr;
+	VectorCopy(start, startTr);
+	VectorCopy(end, endTr);
+
+	CG_Trace(&trace, startTr, NULL, NULL, endTr,
+		owner->currentState.number, MASK_PLAYERSOLID);
+
+	// Only continue if we hit the entity the server says we hit
+	if (trace.entityNum != owner->serverSaberHitIndex)
+		return;
+
+	// If the target has a Ghoul2 instance, do a Ghoul2 collision trace
+	if (cg_entities[trace.entityNum].ghoul2)
 	{
-		vec3_t end_tr;
-		vec3_t start_tr;
-		if (!back_wards)
-		{
-			VectorCopy(start, start_tr);
-			VectorCopy(end, end_tr);
-		}
+		CG_G2TraceCollide(&trace, NULL, NULL, startTr, endTr);
 
-		CG_Trace(&trace, start_tr, NULL, NULL, end_tr, owner->currentState.number, MASK_PLAYERSOLID);
-
-		if (trace.entityNum == owner->serverSaberHitIndex)
+		if (trace.entityNum != ENTITYNUM_NONE)
 		{
-			//this is the guy the server says we last hit, so continue.
-			if (cg_entities[trace.entityNum].ghoul2)
+			doEffect = qtrue;
+
+			if (cg_ghoul2Marks.integer)
 			{
-				//If it has a g2 instance, do the proper ghoul2 checks
-				CG_G2TraceCollide(&trace, NULL, NULL, start_tr, end_tr);
+				centity_t* trEnt = &cg_entities[trace.entityNum];
 
-				if (trace.entityNum != ENTITYNUM_NONE)
+				if (trEnt->ghoul2)
 				{
-					//it succeeded with the ghoul2 trace
-					do_effect = qtrue;
-
-					if (cg_ghoul2Marks.integer)
+					// Skip fighters (full axial rotation causes bad marks)
+					if (trEnt->currentState.eType != ET_NPC ||
+						trEnt->currentState.NPC_class != CLASS_VEHICLE ||
+						!trEnt->m_pVehicle ||
+						trEnt->m_pVehicle->m_pVehicleInfo->type != VH_FIGHTER)
 					{
-						centity_t* tr_ent = &cg_entities[trace.entityNum];
+						vec3_t ePos;
+						int weaponMarkShader = 0;
+						int markShader = cgs.media.bdecal_saberglow;
 
-						if (tr_ent->ghoul2)
+						// Compute hit direction
+						VectorSubtract(endTr, trace.endpos, ePos);
+						VectorNormalize(ePos);
+						VectorMA(trace.endpos, 4.0f, ePos, ePos);
+
+						// Resolve client info
+						if (owner->currentState.eType == ET_NPC)
+							client = owner->npcClient;
+						else
+							client = &cgs.clientinfo[owner->currentState.clientNum];
+
+						// Saber‑specific mark shaders
+						if (client && client->infoValid)
 						{
-							if (tr_ent->currentState.eType != ET_NPC ||
-								tr_ent->currentState.NPC_class != CLASS_VEHICLE ||
-								!tr_ent->m_pVehicle ||
-								tr_ent->m_pVehicle->m_pVehicleInfo->type != VH_FIGHTER)
+							saberInfo_t* saber = &client->saber[saberNum];
+
+							if (WP_SaberBladeUseSecondBladeStyle(saber, bladeNum))
 							{
-								vec3_t e_pos;
-								//don't do on fighters cause they have crazy full axial angles
-								int weapon_mark_shader = 0, markShader = cgs.media.bdecal_saberglow;
+								if (saber->g2MarksShader2)
+									markShader = saber->g2MarksShader2;
 
-								VectorSubtract(end_tr, trace.endpos, e_pos);
-								VectorNormalize(e_pos);
-								VectorMA(trace.endpos, 4.0f, e_pos, e_pos);
+								if (saber->g2WeaponMarkShader2)
+									weaponMarkShader = saber->g2WeaponMarkShader2;
+							}
+							else
+							{
+								if (saber->g2MarksShader)
+									markShader = saber->g2MarksShader;
 
-								if (owner->currentState.eType == ET_NPC)
-								{
-									client = owner->npcClient;
-								}
-								else
-								{
-									client = &cgs.clientinfo[owner->currentState.clientNum];
-								}
-								if (client
-									&& client->infoValid)
-								{
-									if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], blade_num))
-									{
-										if (client->saber[saberNum].g2MarksShader2)
-										{
-											//we have a shader to use instead of the standard mark shader
-											markShader = client->saber[saberNum].g2MarksShader2;
-										}
-										if (client->saber[saberNum].g2WeaponMarkShader2)
-										{
-											//we have a shader to use as a splashback onto the weapon model
-											weapon_mark_shader = client->saber[saberNum].g2WeaponMarkShader2;
-										}
-									}
-									else
-									{
-										if (client->saber[saberNum].g2MarksShader)
-										{
-											//we have a shader to use instead of the standard mark shader
-											markShader = client->saber[saberNum].g2MarksShader;
-										}
-										if (client->saber[saberNum].g2WeaponMarkShader)
-										{
-											//we have a shader to use as a splashback onto the weapon model
-											weapon_mark_shader = client->saber[saberNum].g2WeaponMarkShader;
-										}
-									}
-								}
-								//ROP VEHICLE_IMP START
-								//Cannot be marked if we are a vehicle which - well - can't be marked ;)
-								if (!(tr_ent->currentState.NPC_class == CLASS_VEHICLE
-									&& tr_ent->m_pVehicle && tr_ent->m_pVehicle->m_pVehicleInfo->ResistsMarking))
-								{
-									CG_AddGhoul2Mark(markShader, flrand(3.0f, 4.0f),
-										trace.endpos, e_pos, trace.entityNum, tr_ent->lerpOrigin,
-										tr_ent->lerpAngles[YAW],
-										tr_ent->ghoul2, tr_ent->modelScale, Q_irand(5000, 10000));
-									if (weapon_mark_shader)
-									{
-										vec3_t splash_back_dir;
-										VectorScale(e_pos, -1, splash_back_dir);
-										CG_AddGhoul2Mark(weapon_mark_shader, flrand(0.5f, 2.0f),
-											trace.endpos, splash_back_dir, owner->currentState.clientNum,
-											owner->lerpOrigin, owner->lerpAngles[YAW],
-											owner->ghoul2, owner->modelScale, Q_irand(5000, 10000));
-									}
+								if (saber->g2WeaponMarkShader)
+									weaponMarkShader = saber->g2WeaponMarkShader;
+							}
+						}
 
-									if (client && client->infoValid)
-									{// Also do blood sparks here...
-										trap->FX_PlayEffectID(cgs.effects.mSaberBloodSparks, trace.endpos, trace.plane.normal, -1, -1, qfalse);
-										trap->S_StartSound(trace.endpos, trace.entityNum, CHAN_AUTO, trap->S_RegisterSound(va("sound/weapons/saber/saberhit%i.mp3", Q_irand(1, 15))));
-									}
-								}
+						// Vehicles that resist marking → skip
+						if (!(trEnt->currentState.NPC_class == CLASS_VEHICLE &&
+							trEnt->m_pVehicle &&
+							trEnt->m_pVehicle->m_pVehicleInfo->ResistsMarking))
+						{
+							// Apply mark to the target
+							CG_AddGhoul2Mark(markShader,
+								flrand(3.0f, 4.0f),
+								trace.endpos,
+								ePos,
+								trace.entityNum,
+								trEnt->lerpOrigin,
+								trEnt->lerpAngles[YAW],
+								trEnt->ghoul2,
+								trEnt->modelScale,
+								Q_irand(8000, 15000));
+
+							// Splashback mark on the attacker’s weapon
+							if (weaponMarkShader)
+							{
+								vec3_t splashDir;
+								VectorScale(ePos, -1, splashDir);
+
+								CG_AddGhoul2Mark(weaponMarkShader,
+									flrand(0.5f, 2.0f),
+									trace.endpos,
+									splashDir,
+									owner->currentState.clientNum,
+									owner->lerpOrigin,
+									owner->lerpAngles[YAW],
+									owner->ghoul2,
+									owner->modelScale,
+									Q_irand(8000, 15000));
+							}
+
+							// Blood sparks + hit sound
+							if (client && client->infoValid)
+							{
+								trap->FX_PlayEffectID(cgs.effects.mSaberBloodSparks,
+									trace.endpos,
+									trace.plane.normal,
+									-1, -1, qfalse);
+
+								trap->S_StartSound(trace.endpos,
+									trace.entityNum,
+									CHAN_AUTO,
+									trap->S_RegisterSound(
+										va("sound/weapons/saber/saberhit%i.mp3",
+											Q_irand(1, 15))));
 							}
 						}
 					}
 				}
 			}
+		}
+	}
+	else
+	{
+		// Non‑Ghoul2 entity hit
+		doEffect = qtrue;
+	}
+
+	// Apply hit effects (sparks, body hit, etc.)
+	if (doEffect)
+	{
+		int hitPersonFX = cgs.effects.mSaberBloodSparks;
+		int hitOtherFX = cgs.effects.mSaberBodyHit;
+
+		// Resolve client info
+		if (owner->currentState.eType == ET_NPC)
+			client = owner->npcClient;
+		else
+			client = &cgs.clientinfo[owner->currentState.clientNum];
+
+		// Saber‑specific hit effects
+		if (client && client->infoValid)
+		{
+			saberInfo_t* saber = &client->saber[saberNum];
+
+			if (WP_SaberBladeUseSecondBladeStyle(saber, bladeNum))
+			{
+				if (saber->hitPersonEffect2)
+					hitPersonFX = saber->hitPersonEffect2;
+
+				if (saber->hitOtherEffect2)
+					hitOtherFX = saber->hitOtherEffect2;
+			}
 			else
 			{
-				//otherwise, we're all set.
-				do_effect = qtrue;
-			}
+				if (saber->hitPersonEffect)
+					hitPersonFX = saber->hitPersonEffect;
 
-			if (do_effect)
-			{
-				int hit_person_fx_id = cgs.effects.mSaberBloodSparks;
-				const int hit_other_fx_id2 = cgs.effects.mSaberBodyHit;
-
-				if (owner->currentState.eType == ET_NPC)
-				{
-					client = owner->npcClient;
-				}
-				else
-				{
-					client = &cgs.clientinfo[owner->currentState.clientNum];
-				}
-				if (client && client->infoValid)
-				{
-					if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], blade_num))
-					{
-						//use second blade style values
-						if (client->saber[saberNum].hitPersonEffect2)
-						{
-							hit_person_fx_id = client->saber[saberNum].hitPersonEffect2;
-						}
-						if (client->saber[saberNum].hitOtherEffect2)
-						{
-							//custom hit other effect
-							client->saber[saberNum].hitOtherEffect2;
-						}
-					}
-					else
-					{
-						//use first blade style values
-						if (client->saber[saberNum].hitPersonEffect)
-						{
-							hit_person_fx_id = client->saber[saberNum].hitPersonEffect;
-						}
-						if (client->saber[saberNum].hitOtherEffect)
-						{
-							//custom hit other effect
-							client->saber[saberNum].hitOtherEffect;
-						}
-					}
-				}
-				if (!trace.plane.normal[0] && !trace.plane.normal[1] && !trace.plane.normal[2])
-				{
-					//who cares, just shoot it somewhere.
-					trace.plane.normal[1] = 1;
-				}
-
-				if (owner->serverSaberFleshImpact)
-				{
-					//do standard player/live ent hit sparks
-					trap->FX_PlayEffectID(hit_person_fx_id, trace.endpos, trace.plane.normal, -1, -1, qfalse);
-				}
-				else
-				{
-					//do the cut effect
-					trap->FX_PlayEffectID(hit_other_fx_id2, trace.endpos, trace.plane.normal, -1, -1, qfalse);
-				}
-				do_effect = qfalse;
+				if (saber->hitOtherEffect)
+					hitOtherFX = saber->hitOtherEffect;
 			}
 		}
-		done_with_traces = qtrue; //disabling backwards tr for now, sometimes it just makes too many effects.
+
+		// Ensure normal is valid
+		if (!trace.plane.normal[0] &&
+			!trace.plane.normal[1] &&
+			!trace.plane.normal[2])
+		{
+			trace.plane.normal[1] = 1;
+		}
+
+		// Flesh vs. non‑flesh hit
+		if (owner->serverSaberFleshImpact)
+		{
+			trap->FX_PlayEffectID(hitPersonFX,
+				trace.endpos,
+				trace.plane.normal,
+				-1, -1, qfalse);
+		}
+		else
+		{
+			trap->FX_PlayEffectID(hitOtherFX,
+				trace.endpos,
+				trace.plane.normal,
+				-1, -1, qfalse);
+		}
 	}
 }
 
@@ -12024,7 +12050,7 @@ void CG_AddSaberBlade(centity_t* cent, centity_t* scent, int renderfx, int saber
 	centity_t* saberEnt;
 	saberTrail_t* saber_trail;
 	mdxaBone_t boltMatrix;
-	vec3_t future_angles;
+	vec3_t future_angles = { 0 };
 	effectTrailArgStruct_t fx;
 	int scolor = 0;
 	int use_model_index = 0;

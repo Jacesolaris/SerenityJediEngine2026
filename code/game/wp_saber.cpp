@@ -88,11 +88,11 @@ extern void G_SetViewEntity(gentity_t* self, gentity_t* viewEntity);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
 extern void CG_ChangeWeapon(int num);
-extern void cg_saber_do_weapon_hit_marks(const gclient_t* client, const gentity_t* saberEnt, gentity_t* hit_ent,
+extern void CG_SaberDoWeaponHitMarks(const gclient_t* client, const gentity_t* saberEnt, gentity_t* hit_ent,
 	int saberNum, int blade_num, vec3_t hit_pos, vec3_t hit_dir, vec3_t uaxis,
 	float size_time_scale);
 extern void G_AngerAlert(const gentity_t* self);
-extern void G_ReflectMissileAuto(gentity_t* ent, gentity_t* missile, vec3_t forward);
+extern void g_reflect_missile_auto(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern void G_ReflectMissileNPC(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern int G_CheckLedgeDive(gentity_t* self, float check_dist, const vec3_t check_vel, qboolean try_opposite,
 	qboolean try_perp);
@@ -3170,7 +3170,7 @@ static qboolean wp_saber_apply_damage(gentity_t* ent, const float base_damage, c
 
 							if (damage > 10) //only if doing damage move
 							{
-								cg_saber_do_weapon_hit_marks(ent->client,
+								CG_SaberDoWeaponHitMarks(ent->client,
 									ent->client->ps.saberInFlight
 									? &g_entities[ent->client->ps.saberEntityNum]
 									: nullptr,
@@ -6134,562 +6134,306 @@ static void WP_SaberRadiusDamage(gentity_t* ent, vec3_t point, const float radiu
 	}
 }
 
-void G_Stagger(gentity_t* hit_ent)
+
+
+// ============================================================
+//  SHARED HELPERS
+// ============================================================
+
+static QINLINE int clamp_int(int v, int lo, int hi)
 {
-	if (PM_InGetUp(&hit_ent->client->ps) || PM_InForceGetUp(&hit_ent->client->ps))
-	{
-		return;
-	}
+	return (v < lo) ? lo : (v > hi ? hi : v);
+}
 
-	const int anim_choice = irand(0, 6);
-	// this could possibly be based on animation done when the clash happend, but this should do for now.
-	int use_anim;
-
-	switch (anim_choice)
+static QINLINE void G_HandleMassiveBounce_SP(gentity_t* ent)
+{
+	if (PM_SaberInMassiveBounce(ent->client->ps.torsoAnim))
 	{
-	default:
-	case 0:
-		use_anim = BOTH_BASHED1;
-		break;
-	case 1:
-		use_anim = BOTH_H1_S1_T_;
-		break;
-	case 2:
-		use_anim = BOTH_H1_S1_TR;
-		break;
-	case 3:
-		use_anim = BOTH_H1_S1_TL;
-		break;
-	case 4:
-		use_anim = BOTH_H1_S1_BL;
-		break;
-	case 5:
-		use_anim = BOTH_H1_S1_B_;
-		break;
-	case 6:
-		use_anim = BOTH_H1_S1_BR;
-		break;
+		ent->client->ps.saber_move = LS_NONE;
+		ent->client->ps.saberBlocked = BLOCKED_NONE;
+		ent->client->ps.weaponTime = ent->client->ps.torsoAnimTimer;
+		ent->client->MassiveBounceAnimTime = ent->client->ps.torsoAnimTimer + level.time;
 	}
-
-	NPC_SetAnim(hit_ent, SETANIM_TORSO, use_anim, SETANIM_AFLAG_PACE);
-
-	if (PM_SaberInMassiveBounce(hit_ent->client->ps.torsoAnim))
+	else if (!in_camera)
 	{
-		hit_ent->client->ps.saber_move = LS_NONE;
-		hit_ent->client->ps.saberBlocked = BLOCKED_NONE;
-		hit_ent->client->ps.weaponTime = hit_ent->client->ps.torsoAnimTimer;
-		hit_ent->client->MassiveBounceAnimTime = hit_ent->client->ps.torsoAnimTimer + level.time;
-	}
-	else
-	{
-		hit_ent->client->ps.saber_move = LS_READY;
-	}
-
-	if (hit_ent->client->ps.saberAnimLevel == SS_DUAL)
-	{
-		SabBeh_AnimateMassiveDualSlowBounce(use_anim);
-	}
-	else if (hit_ent->client->ps.saberAnimLevel == SS_STAFF)
-	{
-		SabBeh_AnimateMassiveStaffSlowBounce(use_anim);
+		ent->client->ps.saber_move = LS_READY;
 	}
 }
 
-void g_fatigue_bp_knockaway(gentity_t* blocker)
+static QINLINE void G_PlayTorsoAnim_SP(gentity_t* ent, int anim)
 {
-	if (PM_InGetUp(&blocker->client->ps) || PM_InForceGetUp(&blocker->client->ps))
-	{
-		return;
-	}
+	NPC_SetAnim(ent, SETANIM_TORSO, anim, SETANIM_AFLAG_PACE);
+}
 
-	const int anim_choice = irand(0, 5);
+// ============================================================
+//  MASSIVE BOUNCE STYLE REMAP (DUAL / STAFF)
+// ============================================================
 
-	if (blocker->client->ps.saberAnimLevel == SS_DUAL)
+static int SabBeh_AnimateMassiveDualSlowBounce(const int anim)
+{
+	switch (anim)
 	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K6_S6_T_, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K6_S6_TR, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K6_S6_TL, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K6_S6_BL, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K6_S6_B_, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K6_S6_BR, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (blocker->client->ps.saberAnimLevel == SS_STAFF)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K7_S7_T_, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K7_S7_TR, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K7_S7_TL, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K7_S7_BL, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K7_S7_B_, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K7_S7_BR, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K1_S1_T_, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K1_S1_TR_OLD, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K1_S1_TL_OLD, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K1_S1_BL, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K1_S1_B_, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(blocker, SETANIM_TORSO, BOTH_K1_S1_BR, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-
-	if (PM_SaberInMassiveBounce(blocker->client->ps.torsoAnim))
-	{
-		blocker->client->ps.saber_move = LS_NONE;
-		blocker->client->ps.saberBlocked = BLOCKED_NONE;
-		blocker->client->ps.weaponTime = blocker->client->ps.torsoAnimTimer;
-		blocker->client->MassiveBounceAnimTime = blocker->client->ps.torsoAnimTimer + level.time;
-	}
-	else
-	{
-		if (!in_camera)
-		{
-			blocker->client->ps.saber_move = LS_READY;
-		}
+	case BOTH_H1_S1_T_: return BOTH_H6_S6_T_;
+	case BOTH_H1_S1_TR: return BOTH_H6_S6_TR;
+	case BOTH_H1_S1_TL: return BOTH_H6_S6_TL;
+	case BOTH_H1_S1_BR: return BOTH_H6_S6_BR;
+	case BOTH_H1_S1_BL: return BOTH_H6_S6_BL;
+	case BOTH_H1_S1_B_: return BOTH_H6_S6_B_;
+	default:            return anim;
 	}
 }
 
-// Attack stagger
-void G_StaggerAttacker(gentity_t* atk)
+static int SabBeh_AnimateMassiveStaffSlowBounce(const int anim)
 {
-	if (PM_InGetUp(&atk->client->ps) || PM_InForceGetUp(&atk->client->ps))
+	switch (anim)
 	{
-		return;
-	}
-
-	const int anim_choice = irand(0, 7);
-
-	if (atk->client->ps.saberAnimLevel == SS_DUAL)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6_BR_S6, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6__R_S6, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6_TR_S6, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6_T__S6, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6_TL_S6, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6__L_S6, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6_BL_S6, SETANIM_AFLAG_PACE);
-			break;
-		case 7:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V6_B__S6, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_STAFF)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7_BR_S7, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7__R_S7, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7_TR_S7, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7_T__S7, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7_TL_S7, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7__L_S7, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7_BL_S7, SETANIM_AFLAG_PACE);
-			break;
-		case 7:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V7_B__S7, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1_BR_S1, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1__R_S1, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1_TR_S1, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1_T__S1, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1_TL_S1, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1__L_S1, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1_BL_S1, SETANIM_AFLAG_PACE);
-			break;
-		case 7:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_V1_B__S1, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-
-	if (PM_SaberInMassiveBounce(atk->client->ps.torsoAnim))
-	{
-		atk->client->ps.saber_move = LS_NONE;
-		atk->client->ps.saberBlocked = BLOCKED_NONE;
-		atk->client->ps.weaponTime = atk->client->ps.torsoAnimTimer;
-		atk->client->MassiveBounceAnimTime = atk->client->ps.torsoAnimTimer + level.time;
-	}
-	else
-	{
-		if (!in_camera)
-		{
-			atk->client->ps.saber_move = LS_READY;
-		}
+	case BOTH_H1_S1_T_: return BOTH_H7_S7_T_;
+	case BOTH_H1_S1_TR: return BOTH_H7_S7_TR;
+	case BOTH_H1_S1_TL: return BOTH_H7_S7_TL;
+	case BOTH_H1_S1_BR: return BOTH_H7_S7_BR;
+	case BOTH_H1_S1_BL: return BOTH_H7_S7_BL;
+	case BOTH_H1_S1_B_: return BOTH_H7_S7_B_;
+	default:            return anim;
 	}
 }
 
-// Attack bounce
-void G_BounceAttacker(gentity_t* atk)
+// ============================================================
+//  STUMBLE (PAIN‑STYLE REACTION)
+// ============================================================
+
+static const int stumble_sp[7] =
 {
-	if (PM_InGetUp(&atk->client->ps) || PM_InForceGetUp(&atk->client->ps))
-	{
-		return;
-	}
-
-	const int anim_choice = irand(0, 6);
-
-	if (atk->client->ps.saberAnimLevel == SS_DUAL)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B6__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_STAFF)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B7__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_FAST)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B1__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_MEDIUM)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B2__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_STRONG)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B3__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_DESANN)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B4__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-	else if (atk->client->ps.saberAnimLevel == SS_TAVION)
-	{
-		switch (anim_choice)
-		{
-		default:
-		case 0:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5_BL___, SETANIM_AFLAG_PACE);
-			break;
-		case 1:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5_BR___, SETANIM_AFLAG_PACE);
-			break;
-		case 2:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5_TL___, SETANIM_AFLAG_PACE);
-			break;
-		case 3:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5_TR___, SETANIM_AFLAG_PACE);
-			break;
-		case 4:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5_T____, SETANIM_AFLAG_PACE);
-			break;
-		case 5:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5__L___, SETANIM_AFLAG_PACE);
-			break;
-		case 6:
-			NPC_SetAnim(atk, SETANIM_TORSO, BOTH_B5__R___, SETANIM_AFLAG_PACE);
-			break;
-		}
-	}
-
-	if (PM_SaberInMassiveBounce(atk->client->ps.torsoAnim))
-	{
-		atk->client->ps.saber_move = LS_NONE;
-		atk->client->ps.saberBlocked = BLOCKED_NONE;
-		atk->client->ps.weaponTime = atk->client->ps.torsoAnimTimer;
-		atk->client->MassiveBounceAnimTime = atk->client->ps.torsoAnimTimer + level.time;
-	}
-	else
-	{
-		if (!in_camera)
-		{
-			atk->client->ps.saber_move = LS_READY;
-		}
-	}
-}
+	BOTH_BASHED1,
+	BOTH_PAIN3,
+	BOTH_PAIN2,
+	BOTH_PAIN15,
+	BOTH_PAIN12,
+	BOTH_PAIN5,
+	BOTH_PAIN7
+};
 
 void G_Stumble(gentity_t* hit_ent)
 {
-	if (PM_SaberInBashedAnim(hit_ent->client->ps.torsoAnim))
-	{
+	if (!hit_ent || !hit_ent->client)
 		return;
-	}
+
+	if (PM_SaberInBashedAnim(hit_ent->client->ps.torsoAnim))
+		return;
 
 	if (PM_InGetUp(&hit_ent->client->ps) || PM_InForceGetUp(&hit_ent->client->ps))
-	{
 		return;
-	}
 
-	const int anim_choice = irand(0, 6);
-	// this could possibly be based on animation done when the clash happend, but this should do for now.
-	int use_anim;
+	const int anim = stumble_sp[irand(0, 6)];
 
-	switch (anim_choice)
-	{
-	default:
-	case 0:
-		use_anim = BOTH_BASHED1;
-		break;
-	case 1:
-		use_anim = BOTH_PAIN3;
-		break;
-	case 2:
-		use_anim = BOTH_PAIN2;
-		break;
-	case 3:
-		use_anim = BOTH_PAIN15;
-		break;
-	case 4:
-		use_anim = BOTH_PAIN12;
-		break;
-	case 5:
-		use_anim = BOTH_PAIN5;
-		break;
-	case 6:
-		use_anim = BOTH_PAIN7;
-		break;
-	}
+	G_PlayTorsoAnim_SP(hit_ent, anim);
+	G_HandleMassiveBounce_SP(hit_ent);
+}
 
-	NPC_SetAnim(hit_ent, SETANIM_TORSO, use_anim, SETANIM_AFLAG_PACE);
+// ============================================================
+//  STAGGER (VICTIM)
+// ============================================================
 
-	if (PM_SaberInBashedAnim(hit_ent->client->ps.torsoAnim))
-	{
-		hit_ent->client->ps.saber_move = LS_NONE;
-		hit_ent->client->ps.saberBlocked = BLOCKED_NONE;
-		hit_ent->client->ps.weaponTime = hit_ent->client->ps.torsoAnimTimer;
-		hit_ent->client->MassiveBounceAnimTime = hit_ent->client->ps.torsoAnimTimer + level.time;
-	}
+static const int stag_hit_sp[7] =
+{
+	BOTH_BASHED1,
+	BOTH_H1_S1_T_,
+	BOTH_H1_S1_TR,
+	BOTH_H1_S1_TL,
+	BOTH_H1_S1_BL,
+	BOTH_H1_S1_B_,
+	BOTH_H1_S1_BR
+};
+
+void G_Stagger(gentity_t* hit_ent)
+{
+	if (!hit_ent || !hit_ent->client)
+		return;
+
+	if (PM_InGetUp(&hit_ent->client->ps) || PM_InForceGetUp(&hit_ent->client->ps))
+		return;
+
+	const int anim = stag_hit_sp[irand(0, 6)];
+
+	G_PlayTorsoAnim_SP(hit_ent, anim);
+	G_HandleMassiveBounce_SP(hit_ent);
+
+	const int style = hit_ent->client->ps.saberAnimLevel;
+
+	if (style == SS_DUAL)
+		SabBeh_AnimateMassiveDualSlowBounce(anim);
+	else if (style == SS_STAFF)
+		SabBeh_AnimateMassiveStaffSlowBounce(anim);
+}
+
+// ============================================================
+//  STAGGER (ATTACKER)
+// ============================================================
+
+static const int stag_dual_sp[8] =
+{
+	BOTH_V6_BR_S6, BOTH_V6__R_S6, BOTH_V6_TR_S6, BOTH_V6_T__S6,
+	BOTH_V6_TL_S6, BOTH_V6__L_S6, BOTH_V6_BL_S6, BOTH_V6_B__S6
+};
+
+static const int stag_staff_sp[8] =
+{
+	BOTH_V7_BR_S7, BOTH_V7__R_S7, BOTH_V7_TR_S7, BOTH_V7_T__S7,
+	BOTH_V7_TL_S7, BOTH_V7__L_S7, BOTH_V7_BL_S7, BOTH_V7_B__S7
+};
+
+static const int stag_fast_sp[8] =
+{
+	BOTH_V1_BR_S1, BOTH_V1__R_S1, BOTH_V1_TR_S1, BOTH_V1_T__S1,
+	BOTH_V1_TL_S1, BOTH_V1__L_S1, BOTH_V1_BL_S1, BOTH_V1_B__S1
+};
+
+static const int* stag_table_sp[] =
+{
+	stag_fast_sp,   // SS_NONE
+	stag_fast_sp,   // SS_FAST
+	stag_fast_sp,   // SS_MEDIUM
+	stag_fast_sp,   // SS_STRONG
+	stag_fast_sp,   // SS_DESANN
+	stag_fast_sp,   // SS_TAVION
+	stag_dual_sp,   // SS_DUAL
+	stag_staff_sp   // SS_STAFF
+};
+
+void G_StaggerAttacker(gentity_t* atk)
+{
+	if (!atk || !atk->client)
+		return;
+
+	if (PM_InGetUp(&atk->client->ps) || PM_InForceGetUp(&atk->client->ps))
+		return;
+
+	const int style = clamp_int(atk->client->ps.saberAnimLevel, 0, SS_STAFF);
+	const int anim = stag_table_sp[style][irand(0, 7)];
+
+	G_PlayTorsoAnim_SP(atk, anim);
+	G_HandleMassiveBounce_SP(atk);
+}
+
+// ============================================================
+//  BOUNCE (ATTACKER)
+// ============================================================
+
+static const int bounce_dual_sp[7] =
+{
+	BOTH_B6_BL___, BOTH_B6_BR___, BOTH_B6_TL___, BOTH_B6_TR___,
+	BOTH_B6_T____, BOTH_B6__L___, BOTH_B6__R___
+};
+
+static const int bounce_staff_sp[7] =
+{
+	BOTH_B7_BL___, BOTH_B7_BR___, BOTH_B7_TL___, BOTH_B7_TR___,
+	BOTH_B7_T____, BOTH_B7__L___, BOTH_B7__R___
+};
+
+static const int bounce_fast_sp[7] =
+{
+	BOTH_B1_BL___, BOTH_B1_BR___, BOTH_B1_TL___, BOTH_B1_TR___,
+	BOTH_B1_T____, BOTH_B1__L___, BOTH_B1__R___
+};
+
+static const int bounce_medium_sp[7] =
+{
+	BOTH_B2_BL___, BOTH_B2_BR___, BOTH_B2_TL___, BOTH_B2_TR___,
+	BOTH_B2_T____, BOTH_B2__L___, BOTH_B2__R___
+};
+
+static const int bounce_strong_sp[7] =
+{
+	BOTH_B3_BL___, BOTH_B3_BR___, BOTH_B3_TL___, BOTH_B3_TR___,
+	BOTH_B3_T____, BOTH_B3__L___, BOTH_B3__R___
+};
+
+static const int bounce_desann_sp[7] =
+{
+	BOTH_B4_BL___, BOTH_B4_BR___, BOTH_B4_TL___, BOTH_B4_TR___,
+	BOTH_B4_T____, BOTH_B4__L___, BOTH_B4__R___
+};
+
+static const int bounce_tavion_sp[7] =
+{
+	BOTH_B5_BL___, BOTH_B5_BR___, BOTH_B5_TL___, BOTH_B5_TR___,
+	BOTH_B5_T____, BOTH_B5__L___, BOTH_B5__R___
+};
+
+static const int* bounce_table_sp[] =
+{
+	bounce_fast_sp,    // SS_NONE
+	bounce_fast_sp,    // SS_FAST
+	bounce_medium_sp,  // SS_MEDIUM
+	bounce_strong_sp,  // SS_STRONG
+	bounce_desann_sp,  // SS_DESANN
+	bounce_tavion_sp,  // SS_TAVION
+	bounce_dual_sp,    // SS_DUAL
+	bounce_staff_sp    // SS_STAFF
+};
+
+void G_BounceAttacker(gentity_t* atk)
+{
+	if (!atk || !atk->client)
+		return;
+
+	if (PM_InGetUp(&atk->client->ps) || PM_InForceGetUp(&atk->client->ps))
+		return;
+
+	const int style = clamp_int(atk->client->ps.saberAnimLevel, 0, SS_STAFF);
+	const int anim = bounce_table_sp[style][irand(0, 6)];
+
+	G_PlayTorsoAnim_SP(atk, anim);
+	G_HandleMassiveBounce_SP(atk);
+}
+
+// ============================================================
+//  KNOCKAWAY (BROKEN‑PARRY / FATIGUE)
+// ============================================================
+
+static const int knock_dual_sp[6] =
+{
+	BOTH_K6_S6_T_, BOTH_K6_S6_TR, BOTH_K6_S6_TL,
+	BOTH_K6_S6_BL, BOTH_K6_S6_B_, BOTH_K6_S6_BR
+};
+
+static const int knock_staff_sp[6] =
+{
+	BOTH_K7_S7_T_, BOTH_K7_S7_TR, BOTH_K7_S7_TL,
+	BOTH_K7_S7_BL, BOTH_K7_S7_B_, BOTH_K7_S7_BR
+};
+
+static const int knock_fast_sp[6] =
+{
+	BOTH_K1_S1_T_, BOTH_K1_S1_TR_OLD, BOTH_K1_S1_TL_OLD,
+	BOTH_K1_S1_BL, BOTH_K1_S1_B_, BOTH_K1_S1_BR
+};
+
+static const int* knock_table_sp[] =
+{
+	knock_fast_sp,   // SS_NONE
+	knock_fast_sp,   // SS_FAST
+	knock_fast_sp,   // SS_MEDIUM
+	knock_fast_sp,   // SS_STRONG
+	knock_fast_sp,   // SS_DESANN
+	knock_fast_sp,   // SS_TAVION
+	knock_dual_sp,   // SS_DUAL
+	knock_staff_sp   // SS_STAFF
+};
+
+void g_fatigue_bp_knockaway(gentity_t* blocker)
+{
+	if (!blocker || !blocker->client)
+		return;
+
+	if (PM_InGetUp(&blocker->client->ps) || PM_InForceGetUp(&blocker->client->ps))
+		return;
+
+	const int style = clamp_int(blocker->client->ps.saberAnimLevel, 0, SS_STAFF);
+	const int anim = knock_table_sp[style][irand(0, 5)];
+
+	G_PlayTorsoAnim_SP(blocker, anim);
+	G_HandleMassiveBounce_SP(blocker);
 }
 
 /*
@@ -7875,7 +7619,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int blade_num)
 						}
 						else
 						{
-							G_ReflectMissileAuto(ent, &g_entities[ent->client->ps.saberEntityNum], new_dir);
+							g_reflect_missile_auto(ent, &g_entities[ent->client->ps.saberEntityNum], new_dir);
 						}
 					}
 					Jedi_PlayDeflectSound(hit_owner);
@@ -7896,7 +7640,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int blade_num)
 						}
 						else
 						{
-							G_ReflectMissileAuto(ent, &g_entities[ent->client->ps.saberEntityNum], new_dir);
+							g_reflect_missile_auto(ent, &g_entities[ent->client->ps.saberEntityNum], new_dir);
 						}
 					}
 					WP_SaberDrop(ent, &g_entities[ent->client->ps.saberEntityNum]);
@@ -8931,7 +8675,7 @@ static void WP_SaberInFlightReflectCheck(gentity_t* self)
 			if (self->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(self))
 				G_ReflectMissileNPC(self, m, forward);
 			else
-				G_ReflectMissileAuto(self, m, forward);
+				g_reflect_missile_auto(self, m, forward);
 
 			VectorNormalize2(m->s.pos.trDelta, fx_dir);
 			G_PlayEffect("blaster/deflect", m->currentOrigin, fx_dir);
@@ -17307,7 +17051,7 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 							}
 							else
 							{
-								G_ReflectMissileAuto(self, push_target[x], right);
+								g_reflect_missile_auto(self, push_target[x], right);
 							}
 							WP_SaberDrop(push_target[x]->owner, push_target[x]);
 						}
@@ -17351,7 +17095,7 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 							}
 							else
 							{
-								G_ReflectMissileAuto(self, push_target[x], forward);
+								g_reflect_missile_auto(self, push_target[x], forward);
 							}
 						}
 						else
@@ -18434,7 +18178,7 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 						}
 						else
 						{
-							G_ReflectMissileAuto(self, push_target[x], right);
+							g_reflect_missile_auto(self, push_target[x], right);
 						}
 						WP_SaberDrop(push_target[x]->owner, push_target[x]);
 					}
@@ -18473,7 +18217,7 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 					}
 					else
 					{
-						G_ReflectMissileAuto(self, push_target[x], forward);
+						g_reflect_missile_auto(self, push_target[x], forward);
 					}
 				}
 				else

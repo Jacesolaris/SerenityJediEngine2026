@@ -13080,9 +13080,22 @@ void PM_SetSaberMove(saber_moveName_t new_move)
 		//continuing with a kata, increment attack counter
 		pm->ps->saberAttackChainCount++;
 
-		if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_MAX)
+		if (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) //player
+		{// Only add fatigue every 2 swings (half as fast)
+			if ((pm->ps->saberAttackChainCount & 1) == 0)  // even number
+			{
+				if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_MAX)
+				{
+					pm->ps->saberFatigueChainCount++;
+				}
+			}
+		}
+		else
 		{
-			pm->ps->saberFatigueChainCount++;
+			if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_MAX)
+			{
+				pm->ps->saberFatigueChainCount++;
+			}
 		}
 	}
 
@@ -18651,11 +18664,27 @@ void PM_WeaponLightsaber()
 					{
 						newmove = PM_SaberAttackForMovement(pm->cmd.forwardmove, pm->cmd.rightmove, curmove);
 
-						if ((PM_SaberInBounce(curmove) || PM_SaberInBrokenParry(curmove))
-							&& saber_moveData[newmove].startQuad == saber_moveData[curmove].endQuad)
+						if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_TEN)
 						{
-							//this attack would be a repeat of the last (which was blocked), so don't actually use it, use the default chain attack for this bounce
-							newmove = saber_moveData[curmove].chain_attack;
+							if ((PM_SaberInBounce(curmove) || PM_SaberInBrokenParry(curmove))
+								&& saber_moveData[newmove].startQuad == saber_moveData[curmove].endQuad)
+							{
+								//this attack would be a repeat of the last (which was blocked), so don't actually use it, use the default chain attack for this bounce
+								newmove = saber_moveData[curmove].chain_attack;
+							}
+						}
+						else
+						{
+							if ((PM_SaberInBounce(curmove) || PM_SaberInParry(curmove))
+								&& newmove >= LS_A_TL2BR && newmove <= LS_A_T2B)
+							{
+								//prevent similar attack directions to prevent lightning-like bounce attacks.
+								if (saber_moveData[newmove].startQuad == saber_moveData[curmove].endQuad)
+								{
+									//can't attack in the same direction
+									newmove = LS_READY;
+								}
+							}
 						}
 					}
 

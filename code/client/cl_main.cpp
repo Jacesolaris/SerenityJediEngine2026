@@ -44,6 +44,24 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/stringed_ingame.h"
 #include "sys/sys_loadlib.h"
 #include "qcommon/ojk_saved_game.h"
+#include <qcommon\q_shared.h>
+#include <game\ghoul2_shared.h>
+#include <rd-common\tr_public.h>
+#include <qcommon\qcommon.h>
+#include <qcommon\q_platform.h>
+#include "snd_public.h"
+#include <qcommon\q_string.h>
+#include <sys\sys_public.h>
+#include <string.h>
+#include <cstdlib>
+#include <cstdio>
+#include <qcommon\q_color.h>
+#include "keys.h"
+#include <cstdarg>
+#include <qcommon\qfiles.h>
+#include <qcommon\q_math.h>
+#include <qcommon\cm_public.h>
+#include <server\server.h>
 
 constexpr auto RETRANSMIT_TIMEOUT = 3000; // time between connection packet retransmits;
 
@@ -1327,8 +1345,8 @@ void CL_Init()
 
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 27/02/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 05------------------------------\n");
+	Com_Printf("---------------------Build date 01/03/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 01------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

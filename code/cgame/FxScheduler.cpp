@@ -41,6 +41,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/safe/string.h"
 #include <cmath>
 #include "qcommon/ojk_saved_game_helper.h"
+#include <bg_public.h>
 
 CFxScheduler theFxScheduler;
 

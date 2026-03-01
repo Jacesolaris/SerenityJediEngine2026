@@ -28,13 +28,26 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
 ///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
-///								    https://www.moddb.com/mods/serenityjediengine-20											///
+///								    https://www.moddb.com/mods/movie-duels											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
 
 #include "g_local.h"
 #include "w_saber.h"
 #include "qcommon/q_shared.h"
+#include "bg_vehicles.h"
+#include "b_public.h"
+#include <qcommon\q_math.h>
+#include "bg_weapons.h"
+#include "bg_public.h"
+#include "g_public.h"
+#include "anims.h"
+#include "surfaceflags.h"
+#include <string.h>
+#include <qcommon\q_string.h>
+#include "teams.h"
+#include <qcommon\q_platform.h>
+#include <qcommon\q_color.h>
 
 #define	MISSILE_PRESTEP_TIME	50
 
@@ -72,7 +85,8 @@ extern qboolean WP_SaberBlockBolt(gentity_t* self, vec3_t hitloc, qboolean missi
 void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, vec3_t fwd);
 extern int WP_SaberBoltBlockCost(gentity_t* defender, const gentity_t* attacker);
 extern void WP_BlockPointsDrain(const gentity_t* self, int fatigue);
-extern void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
+extern void G_KnockOver(gentity_t* self, const gentity_t* attacker, const vec3_t push_dir, float strength,
+	qboolean breakSaberLock);
 extern float manual_running_and_saberblocking(const gentity_t* defender);
 extern qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 
@@ -86,6 +100,19 @@ static float vector_bolt_distance(vec3_t v1, vec3_t v2)
 }
 
 /*
+ * Safety helper: validate entity index before indexing g_entities.
+ * Prevents crashes if an entity's ownerNum is invalid/out of range.
+ */
+static gentity_t* G_GetEntitySafe(int idx)
+{
+	if (idx >= 0 && idx < MAX_GENTITIES)
+	{
+		return &g_entities[idx];
+	}
+	return NULL;
+}
+
+/*
 ================
 G_ReflectMissile
 
@@ -94,131 +121,186 @@ G_ReflectMissile
 */
 
 //////////////////// Boltblock new ////////////////////////////////
+
 static void g_manual_block_missile(const gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
+	// Safety: validate pointers (bug fix)
+	if (!ent || !missile)
+	{
+		return;
+	}
+
 	vec3_t bounce_dir;
 
-	//save the original speed
+	// Save original speed
 	const float speed = VectorNormalize(missile->s.pos.trDelta);
 
 	if (ent->client)
 	{
 		vec3_t missile_dir;
-		AngleVectors(ent->client->ps.viewangles, missile_dir, 0, 0);
+
+		// Use blocker view direction
+		AngleVectors(ent->client->ps.viewangles, missile_dir, NULL, NULL);
+
+		// Project missile_dir onto forward
 		VectorCopy(missile_dir, bounce_dir);
 		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 	else
 	{
+		// Fallback: use forward direction
 		VectorCopy(forward, bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 
+	// Add random slop
 	for (int i = 0; i < 3; i++)
 	{
 		bounce_dir[i] += Q_flrand(-1.0f, 1.0f);
 	}
 
 	VectorNormalize(bounce_dir);
+
+	// Reapply original speed
 	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
-	missile->s.pos.trTime = level.time; // move a bit on the very first frame
+
+	// Update trajectory
+	missile->s.pos.trTime = level.time;
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
+
+	// Transfer ownership (except sabers and G2 parts)
 	if (missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART)
 	{
-		//you are mine, now!
 		missile->r.ownerNum = ent->s.number;
 	}
+
+	// Stop homing on rockets
 	if (missile->s.weapon == WP_ROCKET_LAUNCHER)
 	{
-		//stop homing
-		missile->think = 0;
+		missile->think = NULL;
 		missile->nextthink = 0;
 	}
 }
 
 static void g_missile_bouncedoff_saber(const gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
+	// Safety: validate pointers (bug fix)
+	if (!ent || !missile)
+	{
+		return;
+	}
+
 	vec3_t bounce_dir;
 
-	//save the original speed
+	// Save the original speed
 	const float speed = VectorNormalize(missile->s.pos.trDelta);
 
 	if (ent->client)
 	{
 		vec3_t missile_dir;
-		AngleVectors(ent->client->ps.viewangles, missile_dir, 0, 0);
+
+		// Use the blocker’s view direction
+		AngleVectors(ent->client->ps.viewangles, missile_dir, NULL, NULL);
+
+		// Project missile_dir onto forward
 		VectorCopy(missile_dir, bounce_dir);
 		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 	else
 	{
+		// Fallback: use forward direction
 		VectorCopy(forward, bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 
+	// Add heavy random slop (±6)
 	for (int i = 0; i < 3; i++)
 	{
 		bounce_dir[i] += Q_flrand(-6.0f, 6.0f);
 	}
 
 	VectorNormalize(bounce_dir);
+
+	// Reapply original speed
 	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
-	missile->s.pos.trTime = level.time; // move a bit on the very first frame
+
+	// Update trajectory
+	missile->s.pos.trTime = level.time;
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
+
+	// Transfer ownership (except sabers and G2 parts)
 	if (missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART)
 	{
-		//you are mine, now!
 		missile->r.ownerNum = ent->s.number;
 	}
+
+	// Stop homing on rockets
 	if (missile->s.weapon == WP_ROCKET_LAUNCHER)
 	{
-		//stop homing
-		missile->think = 0;
+		missile->think = NULL;
 		missile->nextthink = 0;
 	}
 }
 
+
+
 static void g_deflect_missile_to_attacker(const gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
+	// Safety: validate pointers (prevents crashes if caller passes NULL)
+	if (!ent || !missile)
+	{
+		return;
+	}
+
 	vec3_t bounce_dir;
 
-	//save the original speed
+	// Save original speed (VectorNormalize returns length and normalizes the vector)
 	const float speed = VectorNormalize(missile->s.pos.trDelta);
 
 	if (ent->client)
 	{
 		vec3_t missile_dir;
-		AngleVectors(ent->client->ps.viewangles, missile_dir, 0, 0);
+		// Use the blocker's view direction for aiming the deflection
+		AngleVectors(ent->client->ps.viewangles, missile_dir, NULL, NULL);
+
 		VectorCopy(missile_dir, bounce_dir);
-		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
+		const float proj = DotProduct(forward, missile_dir);
+		VectorScale(bounce_dir, proj, bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 	else
 	{
+		// Fallback: use provided forward vector
 		VectorCopy(forward, bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 
+	// Add some random slop to the deflection
+	const float slop = 1.0f;
 	for (int i = 0; i < 3; i++)
 	{
-		bounce_dir[i] += Q_flrand(-1.0f, 1.0f);
+		bounce_dir[i] += Q_flrand(-slop, slop);
 	}
 
 	VectorNormalize(bounce_dir);
+
+	// Reapply original speed and update trajectory
 	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
 	missile->s.pos.trTime = level.time; // move a bit on the very first frame
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
+
+	// Transfer ownership (except sabers and G2 parts)
 	if (missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART)
 	{
-		//you are mine, now!
 		missile->r.ownerNum = ent->s.number;
 	}
+
+	// Stop homing on rockets
 	if (missile->s.weapon == WP_ROCKET_LAUNCHER)
 	{
-		//stop homing
-		missile->think = 0;
+		missile->think = NULL;
 		missile->nextthink = 0;
 	}
 }
@@ -226,147 +308,218 @@ static void g_deflect_missile_to_attacker(const gentity_t* ent, gentity_t* missi
 static void g_reflect_missile_to_attacker(const gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
-	int isowner = 0;
-	int i;
 
-	if (missile->r.ownerNum == ent->s.number)
-	{
-		//the original owner is bouncing the missile, so don't try to bounce it back at him
-		isowner = 1;
-	}
+	// Is the blocker the original owner?
+	const qboolean is_owner = (missile->r.ownerNum == ent->s.number);
 
-	//save the original speed
+	// Preserve original speed
 	float speed = VectorNormalize(missile->s.pos.trDelta);
 
-	if (&g_entities[missile->r.ownerNum] && missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART && !isowner)
+	//
+	// Determine base bounce direction
+	//
+	if (!is_owner &&
+		missile->s.weapon != WP_SABER &&
+		missile->s.weapon != G2_MODEL_PART)
 	{
-		//bounce back at them if you can
-		VectorSubtract(g_entities[missile->r.ownerNum].r.currentOrigin, missile->r.currentOrigin, bounce_dir);
-		VectorNormalize(bounce_dir);
+		// Bounce back toward the original shooter (safe lookup)
+		gentity_t* origOwner = G_GetEntitySafe(missile->r.ownerNum);
+		if (origOwner)
+		{
+			VectorSubtract(origOwner->r.currentOrigin,
+				missile->r.currentOrigin,
+				bounce_dir);
+			VectorNormalize(bounce_dir);
+		}
+		else
+		{
+			// Fallback: push forward
+			VectorCopy(forward, bounce_dir);
+			VectorNormalize(bounce_dir);
+		}
 	}
-	else if (isowner)
+	else if (is_owner)
 	{
-		//in this case, actually push the missile away from me, and since we're giving boost to our own missile by pushing it, up the velocity
+		// Push the missile away from the owner, with extra speed
 		vec3_t missile_dir;
 
-		speed *= 1.5;
+		speed *= 1.5f;
 
-		VectorSubtract(missile->r.currentOrigin, ent->r.currentOrigin, missile_dir);
+		VectorSubtract(missile->r.currentOrigin,
+			ent->r.currentOrigin,
+			missile_dir);
+
+		// Project current velocity onto missile_dir
 		VectorCopy(missile->s.pos.trDelta, bounce_dir);
 		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 	else
 	{
+		// Default: push away from the defender
 		vec3_t missile_dir;
 
-		VectorSubtract(ent->r.currentOrigin, missile->r.currentOrigin, missile_dir);
+		VectorSubtract(ent->r.currentOrigin,
+			missile->r.currentOrigin,
+			missile_dir);
+
 		VectorCopy(missile->s.pos.trDelta, bounce_dir);
 		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 
+	//
+	// Add slop based on saber state
+	//
 	if (!PM_SaberInIdle(ent->client->ps.saber_move))
 	{
-		//a bit more wild
-		if (PM_SaberInAttack(ent->client->ps.saber_move)
-			|| PM_SaberInTransitionAny(ent->client->ps.saber_move)
-			|| pm_saber_in_special_attack(ent->client->ps.torsoAnim)
-			|| ent->client->ps.fd.blockPoints < BLOCKPOINTS_KNOCKAWAY)
+		float min_slop, max_slop;
+
+		if (PM_SaberInAttack(ent->client->ps.saber_move) ||
+			PM_SaberInTransitionAny(ent->client->ps.saber_move) ||
+			pm_saber_in_special_attack(ent->client->ps.torsoAnim) ||
+			ent->client->ps.fd.blockPoints < BLOCKPOINTS_KNOCKAWAY)
 		{
-			//moderately more wild
-			for (i = 0; i < 3; i++)
-			{
-				bounce_dir[i] += Q_flrand(-0.3f, 0.3f);
-			}
+			// Moderately wild
+			min_slop = -0.3f;
+			max_slop = 0.3f;
 		}
 		else
 		{
-			//mildly more wild
-			for (i = 0; i < 3; i++)
-			{
-				bounce_dir[i] += Q_flrand(-0.1f, 0.1f);
-			}
+			// Mildly wild
+			min_slop = -0.1f;
+			max_slop = 0.1f;
+		}
+
+		for (int i = 0; i < 3; i++)
+		{
+			bounce_dir[i] += Q_flrand(min_slop, max_slop);
 		}
 	}
 
+	//
+	// Apply final velocity
+	//
 	VectorNormalize(bounce_dir);
 	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
-	missile->s.pos.trTime = level.time; // move a bit on the very first frame
+
+	missile->s.pos.trTime = level.time;
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
-	if (missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART)
+
+	//
+	// Transfer ownership unless it's a saber or model part
+	//
+	if (missile->s.weapon != WP_SABER &&
+		missile->s.weapon != G2_MODEL_PART)
 	{
-		//you are mine, now!
 		missile->r.ownerNum = ent->s.number;
 	}
+
+	//
+	// Stop homing rockets
+	//
 	if (missile->s.weapon == WP_ROCKET_LAUNCHER)
 	{
-		//stop homing
-		missile->think = 0;
+		missile->think = NULL;
 		missile->nextthink = 0;
 	}
 }
 
-void G_ReflectMissileAuto(gentity_t* ent, gentity_t* missile, vec3_t forward)
+void g_reflect_missile_auto(const gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
-	int isowner = 0;
 
-	if (missile->r.ownerNum == ent->s.number)
-	{
-		//the original owner is bouncing the missile, so don't try to bounce it back at him
-		isowner = 1;
-	}
+	// Is the blocker the original owner?
+	const qboolean is_owner = (missile->r.ownerNum == ent->s.number);
 
-	//save the original speed
+	// Preserve original speed
 	float speed = VectorNormalize(missile->s.pos.trDelta);
 
-	if (&g_entities[missile->r.ownerNum] && missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART && !
-		isowner)
+	//
+	// Determine base bounce direction
+	//
+	if (!is_owner &&
+		missile->s.weapon != WP_SABER &&
+		missile->s.weapon != G2_MODEL_PART)
 	{
-		//bounce back at them if you can
-		VectorSubtract(g_entities[missile->r.ownerNum].r.currentOrigin, missile->r.currentOrigin, bounce_dir);
-		VectorNormalize(bounce_dir);
+		// Bounce back toward the original shooter (safe lookup)
+		gentity_t* origOwner = G_GetEntitySafe(missile->r.ownerNum);
+		if (origOwner)
+		{
+			VectorSubtract(origOwner->r.currentOrigin,
+				missile->r.currentOrigin,
+				bounce_dir);
+			VectorNormalize(bounce_dir);
+		}
+		else
+		{
+			// Fallback: push forward
+			VectorCopy(forward, bounce_dir);
+			VectorNormalize(bounce_dir);
+		}
 	}
-	else if (isowner)
+	else if (is_owner)
 	{
-		//in this case, actually push the missile away from me, and since we're giving boost to our own missile by pushing it, up the velocity
+		// Push the missile away from the owner, with extra speed
 		vec3_t missile_dir;
 
-		speed *= 1.5;
+		speed *= 1.5f;
 
-		VectorSubtract(missile->r.currentOrigin, ent->r.currentOrigin, missile_dir);
+		VectorSubtract(missile->r.currentOrigin,
+			ent->r.currentOrigin,
+			missile_dir);
+
+		// Project current velocity onto missile_dir
 		VectorCopy(missile->s.pos.trDelta, bounce_dir);
 		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 	else
 	{
+		// Default: push away from the defender
 		vec3_t missile_dir;
 
-		VectorSubtract(ent->r.currentOrigin, missile->r.currentOrigin, missile_dir);
+		VectorSubtract(ent->r.currentOrigin,
+			missile->r.currentOrigin,
+			missile_dir);
+
 		VectorCopy(missile->s.pos.trDelta, bounce_dir);
 		VectorScale(bounce_dir, DotProduct(forward, missile_dir), bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
+
+	//
+	// Add small random slop (±0.2)
+	//
 	for (int i = 0; i < 3; i++)
 	{
 		bounce_dir[i] += Q_flrand(-0.2f, 0.2f);
 	}
 
+	//
+	// Apply final velocity
+	//
 	VectorNormalize(bounce_dir);
 	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
-	missile->s.pos.trTime = level.time; // move a bit on the very first frame
+
+	missile->s.pos.trTime = level.time;
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
-	if (missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART)
+
+	//
+	// Transfer ownership unless it's a saber or model part
+	//
+	if (missile->s.weapon != WP_SABER &&
+		missile->s.weapon != G2_MODEL_PART)
 	{
-		//you are mine, now!
 		missile->r.ownerNum = ent->s.number;
 	}
+
+	//
+	// Stop homing rockets
+	//
 	if (missile->s.weapon == WP_ROCKET_LAUNCHER)
 	{
-		//stop homing
-		missile->think = 0;
+		missile->think = NULL;
 		missile->nextthink = 0;
 	}
 }
@@ -376,7 +529,7 @@ gentity_t* tgt_list[MAX_GENTITIES];
 
 void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
-	vec3_t bounce_dir;
+	vec3_t bounce_dir = { 0 };
 	vec3_t dir;
 	static qboolean registered = qfalse;
 
@@ -507,7 +660,7 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward)
 	}
 }
 
-void g_reflect_missile_bot(gentity_t* ent, gentity_t* missile, vec3_t forward)
+void g_reflect_missile_bot(const gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
 	vec3_t bounce_dir;
 	int isowner = 0;
@@ -520,12 +673,13 @@ void g_reflect_missile_bot(gentity_t* ent, gentity_t* missile, vec3_t forward)
 
 	//save the original speed
 	float speed = VectorNormalize(missile->s.pos.trDelta);
-
-	if (&g_entities[missile->r.ownerNum] && missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART && !
-		isowner)
+	/* Use safe owner lookup; the original code checked the address of g_entities which
+	 * is always true and could read out-of-range owner indices. */
+	gentity_t* origOwner = G_GetEntitySafe(missile->r.ownerNum);
+	if (origOwner && missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART && !isowner)
 	{
 		//bounce back at them if you can
-		VectorSubtract(g_entities[missile->r.ownerNum].r.currentOrigin, missile->r.currentOrigin, bounce_dir);
+		VectorSubtract(origOwner->r.currentOrigin, missile->r.currentOrigin, bounce_dir);
 		VectorNormalize(bounce_dir);
 	}
 	else if (isowner)
@@ -645,7 +799,7 @@ Explode a missile without an impact
 */
 void g_explode_missile(gentity_t* ent)
 {
-	vec3_t dir;
+	vec3_t dir = { 0 };
 	vec3_t origin;
 
 	BG_EvaluateTrajectory(&ent->s.pos, level.time, origin);
@@ -858,37 +1012,47 @@ G_MissileImpact
 */
 qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 {
-	vec3_t fwd;
+	vec3_t   fwd;
 	qboolean hit_client = qfalse;
 	qboolean is_knocked_saber = qfalse;
-	int missile_dmg;
+	int      missile_dmg;
 
 	gentity_t* other = &g_entities[trace->entityNum];
 
-	// check for bounce
-	auto bounce = (!other->takedamage && ent->flags & (FL_BOUNCE | FL_BOUNCE_HALF)
-		|| (trace->surfaceFlags & SURF_FORCEFIELD || other->flags & FL_SHIELDED));
+	// Initial bounce flag (note: mostly overridden by specific logic below)
+	qboolean bounce =
+		((!other->takedamage && (ent->flags & (FL_BOUNCE | FL_BOUNCE_HALF))) ||
+			((trace->surfaceFlags & SURF_FORCEFIELD) || (other->flags & FL_SHIELDED)));
 
+	//
+	// Generic bounce for grenades / bouncing missiles
+	//
 	if ((!other->takedamage || ent->s.weapon == WP_THERMAL) &&
 		(ent->bounceCount > 0 || ent->bounceCount == -5) &&
-		ent->flags & (FL_BOUNCE | FL_BOUNCE_HALF))
+		(ent->flags & (FL_BOUNCE | FL_BOUNCE_HALF)))
 	{
 		G_BounceMissile(ent, trace);
 
 		if (ent->s.weapon == WP_SABER)
 		{
-			//G_AddEvent(ent, EV_GRENADE_BOUNCE, 0);
+			// Intentionally no event here (commented out in original)
+			// G_AddEvent(ent, EV_GRENADE_BOUNCE, 0);
 		}
 		else
 		{
 			G_AddEvent(ent, EV_GRENADE_BOUNCE, 0);
 		}
+
 		return qtrue;
 	}
-	if (ent->neverFree && ent->s.weapon == WP_SABER && ent->flags & FL_BOUNCE_HALF)
+
+	//
+	// Knocked‑away saber handling
+	//
+	if (ent->neverFree && ent->s.weapon == WP_SABER && (ent->flags & FL_BOUNCE_HALF))
 	{
-		//this is a knocked-away saber
-		if (ent->bounceCount > 0 && ent->bounceCount == -5)
+		// This is a knocked‑away saber
+		if ((ent->bounceCount > 0 || ent->bounceCount == -5))
 		{
 			G_BounceMissile(ent, trace);
 
@@ -896,15 +1060,20 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 			{
 				G_AddEvent(ent, EV_GRENADE_BOUNCE, 0);
 			}
+
 			return qtrue;
 		}
 
 		is_knocked_saber = qtrue;
 	}
 
-	// I would glom onto the FL_BOUNCE code section above, but don't feel like risking breaking something else
-	if (trace->surfaceFlags & SURF_FORCEFIELD && !ent->splashDamage && !ent->splashRadius && (ent->bounceCount > 0 ||
-		ent->bounceCount == -5))
+	//
+	// Forcefield bounce (non‑splash, non‑radius, limited bounces)
+	//
+	if ((trace->surfaceFlags & SURF_FORCEFIELD) &&
+		!ent->splashDamage &&
+		!ent->splashRadius &&
+		(ent->bounceCount > 0 || ent->bounceCount == -5))
 	{
 		G_BounceMissile(ent, trace);
 
@@ -912,15 +1081,21 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 		{
 			ent->flags &= ~FL_BOUNCE_SHRAPNEL;
 		}
+
 		return qtrue;
 	}
 
-	if (other->r.contents & CONTENTS_LIGHTSABER && !is_knocked_saber)
+	//
+	// Duel protection: projectiles cannot affect non‑duel opponents
+	//
+	if ((other->r.contents & CONTENTS_LIGHTSABER) && !is_knocked_saber)
 	{
-		//hit this person's saber, so..
-		const gentity_t* other_owner = &g_entities[other->r.ownerNum];
+		const gentity_t* other_owner = G_GetEntitySafe(other->r.ownerNum);
 
-		if (other_owner->takedamage && other_owner->client && other_owner->client->ps.duelInProgress &&
+		if (other_owner &&
+			other_owner->takedamage &&
+			other_owner->client &&
+			other_owner->client->ps.duelInProgress &&
 			other_owner->client->ps.duelIndex != ent->r.ownerNum)
 		{
 			goto killProj;
@@ -928,54 +1103,66 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 	}
 	else if (!is_knocked_saber)
 	{
-		if (other->takedamage && other->client && other->client->ps.duelInProgress &&
+		if (other->takedamage &&
+			other->client &&
+			other->client->ps.duelInProgress &&
 			other->client->ps.duelIndex != ent->r.ownerNum)
 		{
 			goto killProj;
 		}
 	}
 
-	auto beskar = ((other->flags & FL_DINDJARIN)
-		&& !ent->splashDamage
-		&& !ent->splashRadius
-		&& ent->methodOfDeath != MOD_SABER
-		&& ent->methodOfDeath != MOD_REPEATER_ALT
-		&& ent->methodOfDeath != MOD_FLECHETTE_ALT_SPLASH
-		&& ent->methodOfDeath != MOD_ROCKET
-		&& ent->methodOfDeath != MOD_ROCKET_SPLASH
-		&& ent->methodOfDeath != MOD_CONC_ALT
-		&& ent->methodOfDeath != MOD_THERMAL
-		&& ent->methodOfDeath != MOD_THERMAL_SPLASH
-		&& ent->methodOfDeath != MOD_DEMP2
-		&& ent->methodOfDeath != MOD_DEMP2_ALT
-		&& ent->methodOfDeath != MOD_SEEKER
-		&& ent->methodOfDeath != MOD_CONC
-		&& (!Q_irand(0, 1)));
+	//
+	// Beskar / Boba special bounce flags
+	//
+	qboolean beskar =
+		((other->flags & FL_DINDJARIN) &&
+			!ent->splashDamage &&
+			!ent->splashRadius &&
+			ent->methodOfDeath != MOD_SABER &&
+			ent->methodOfDeath != MOD_REPEATER_ALT &&
+			ent->methodOfDeath != MOD_FLECHETTE_ALT_SPLASH &&
+			ent->methodOfDeath != MOD_ROCKET &&
+			ent->methodOfDeath != MOD_ROCKET_SPLASH &&
+			ent->methodOfDeath != MOD_CONC_ALT &&
+			ent->methodOfDeath != MOD_THERMAL &&
+			ent->methodOfDeath != MOD_THERMAL_SPLASH &&
+			ent->methodOfDeath != MOD_DEMP2 &&
+			ent->methodOfDeath != MOD_DEMP2_ALT &&
+			ent->methodOfDeath != MOD_SEEKER &&
+			ent->methodOfDeath != MOD_CONC &&
+			!Q_irand(0, 1));
 
-	auto boba_fett = ((other->flags & FL_BOBAFETT)
-		&& !ent->splashDamage
-		&& !ent->splashRadius
-		&& ent->methodOfDeath != MOD_SABER
-		&& ent->methodOfDeath != MOD_REPEATER_ALT
-		&& ent->methodOfDeath != MOD_FLECHETTE_ALT_SPLASH
-		&& ent->methodOfDeath != MOD_ROCKET
-		&& ent->methodOfDeath != MOD_ROCKET_SPLASH
-		&& ent->methodOfDeath != MOD_CONC_ALT
-		&& ent->methodOfDeath != MOD_THERMAL
-		&& ent->methodOfDeath != MOD_THERMAL_SPLASH
-		&& ent->methodOfDeath != MOD_DEMP2
-		&& ent->methodOfDeath != MOD_DEMP2_ALT
-		&& ent->methodOfDeath != MOD_SEEKER
-		&& ent->methodOfDeath != MOD_CONC);
+	qboolean boba_fett =
+		((other->flags & FL_BOBAFETT) &&
+			!ent->splashDamage &&
+			!ent->splashRadius &&
+			ent->methodOfDeath != MOD_SABER &&
+			ent->methodOfDeath != MOD_REPEATER_ALT &&
+			ent->methodOfDeath != MOD_FLECHETTE_ALT_SPLASH &&
+			ent->methodOfDeath != MOD_ROCKET &&
+			ent->methodOfDeath != MOD_ROCKET_SPLASH &&
+			ent->methodOfDeath != MOD_CONC_ALT &&
+			ent->methodOfDeath != MOD_THERMAL &&
+			ent->methodOfDeath != MOD_THERMAL_SPLASH &&
+			ent->methodOfDeath != MOD_DEMP2 &&
+			ent->methodOfDeath != MOD_DEMP2_ALT &&
+			ent->methodOfDeath != MOD_SEEKER &&
+			ent->methodOfDeath != MOD_CONC);
 
+	//
+	// Heavy‑weapon missiles: never bounce, no beskar/boba tricks
+	//
 	if (ent->dflags & DAMAGE_HEAVY_WEAP_CLASS)
 	{
-		// heavy class missiles generally never bounce.
 		bounce = qfalse;
 		beskar = qfalse;
 		boba_fett = qfalse;
 	}
 
+	//
+	// Targets that only take damage from heavy weapons
+	//
 	if (other->flags & FL_DMG_BY_HEAVY_WEAP_ONLY)
 	{
 		if (ent->methodOfDeath != MOD_REPEATER_ALT &&
@@ -1000,18 +1187,19 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 			}
 			else
 			{
-				//oh well
 				AngleVectors(other->r.currentAngles, fwd, NULL, NULL);
 			}
 
 			g_manual_block_missile(other, ent, fwd);
-
-			g_missile_bounce_effect(ent, ent->r.currentOrigin, fwd, trace->entityNum == ENTITYNUM_WORLD);
+			g_missile_bounce_effect(ent, ent->r.currentOrigin, fwd, (trace->entityNum == ENTITYNUM_WORLD));
 			return qtrue;
 		}
 	}
 
-	if (other->flags & FL_SHIELDED &&
+	//
+	// Shielded targets (non‑heavy, non‑explosive types)
+	//
+	if ((other->flags & FL_SHIELDED) &&
 		ent->s.weapon != WP_ROCKET_LAUNCHER &&
 		ent->s.weapon != WP_THERMAL &&
 		ent->s.weapon != WP_TRIP_MINE &&
@@ -1035,65 +1223,92 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 		}
 
 		g_manual_block_missile(other, ent, fwd);
-
-		g_missile_bounce_effect(ent, ent->r.currentOrigin, fwd, trace->entityNum == ENTITYNUM_WORLD);
+		g_missile_bounce_effect(ent, ent->r.currentOrigin, fwd, (trace->entityNum == ENTITYNUM_WORLD));
 		return qtrue;
 	}
 
+	//
+// Beskar / Boba Fett bounce handling
+//
 	if (beskar || boba_fett)
 	{
 		bounce = qfalse;
-		// Check to see if there is a bounce count
+
+		// Handle bounce count
 		if (ent->bounceCount)
 		{
-			// decrement number of bounces and then see if it should be done bouncing
 			if (!--ent->bounceCount)
 			{
-				// He (or she) will bounce no more (after this current bounce, that is).
 				ent->flags &= ~(FL_BOUNCE | FL_BOUNCE_HALF);
 			}
 		}
 
 		G_BounceMissile(ent, trace);
-		G_SetAnim(other, NULL, SETANIM_TORSO, Q_irand(BOTH_PAIN1, BOTH_PAIN3), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+
+		if (other->client)
+		{
+			G_SetAnim(other, NULL, SETANIM_TORSO,
+				Q_irand(BOTH_PAIN1, BOTH_PAIN3),
+				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD,
+				0);
+		}
 
 		if (ent->owner)
 		{
 			G_MissileAddAlerts(ent);
 		}
-		G_MissileBounceBeskarEffect(ent, ent->r.currentOrigin, fwd, trace->entityNum == ENTITYNUM_WORLD);
+
+		G_MissileBounceBeskarEffect(ent,
+			ent->r.currentOrigin,
+			fwd,
+			(trace->entityNum == ENTITYNUM_WORLD));
+
 		return qfalse;
 	}
 
+	//
+	// Sphere shield bounce (PW_SPHERESHIELDED)
+	//
 	if (other && other->client && other->client->ps.powerups[PW_SPHERESHIELDED])
 	{
 		bounce = qfalse;
-		// Check to see if there is a bounce count
+
 		if (ent->bounceCount)
 		{
-			// decrement number of bounces and then see if it should be done bouncing
 			if (!--ent->bounceCount)
 			{
-				// He (or she) will bounce no more (after this current bounce, that is).
 				ent->flags &= ~(FL_BOUNCE | FL_BOUNCE_HALF);
 			}
 		}
 
 		G_BounceMissile(ent, trace);
-		G_MissileBounceBeskarEffect(ent, ent->r.currentOrigin, fwd, trace->entityNum == ENTITYNUM_WORLD);
+
+		G_MissileBounceBeskarEffect(ent,
+			ent->r.currentOrigin,
+			fwd,
+			(trace->entityNum == ENTITYNUM_WORLD));
+
 		return qfalse;
 	}
 
-	// check for hitting a lightsaber
-	if (wp_saber_must_bolt_block(other, ent, qfalse, trace->endpos, -1, -1)
-		&& !WP_DoingForcedAnimationForForcePowers(other))
+	//
+	// Saber bolt block (primary entry point)
+	//
+	if (wp_saber_must_bolt_block(other,
+		ent,
+		qfalse,
+		trace->endpos,
+		-1,
+		-1) &&
+		!WP_DoingForcedAnimationForForcePowers(other))
 	{
-		//play projectile block animation
-		if (other->client && !PM_SaberInAttack(other->client->ps.saber_move)
-			|| other->client && (pm->cmd.buttons & BUTTON_FORCEPOWER
-				|| pm->cmd.buttons & BUTTON_FORCEGRIP
-				|| pm->cmd.buttons & BUTTON_DASH
-				|| pm->cmd.buttons & BUTTON_FORCE_LIGHTNING))
+		// Reset weaponTime if not attacking OR if using force powers
+		if (other->client &&
+			(!PM_SaberInAttack(other->client->ps.saber_move) ||
+				(pm->cmd.buttons & (BUTTON_FORCEPOWER |
+					BUTTON_FORCEGRIP |
+					BUTTON_DASH |
+					BUTTON_FORCE_LIGHTNING))))
 		{
 			other->client->ps.weaponTime = 0;
 		}
@@ -1107,12 +1322,16 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 
 		return qtrue;
 	}
-	if (other->r.contents & CONTENTS_LIGHTSABER && !is_knocked_saber)
-	{
-		//hit this person's saber, so..
-		gentity_t* other_owner = &g_entities[other->r.ownerNum];
 
-		if (other_owner->takedamage && other_owner->client &&
+	//
+	// Fallback: hit the saber geometry (CONTENTS_LIGHTSABER)
+	//
+	if ((other->r.contents & CONTENTS_LIGHTSABER) && !is_knocked_saber)
+	{
+		gentity_t* saber_owner = &g_entities[other->r.ownerNum];
+
+		if (saber_owner->takedamage &&
+			saber_owner->client &&
 			ent->s.weapon != WP_ROCKET_LAUNCHER &&
 			ent->s.weapon != WP_THERMAL &&
 			ent->s.weapon != WP_TRIP_MINE &&
@@ -1122,209 +1341,275 @@ qboolean G_MissileImpact(gentity_t* ent, trace_t* trace)
 			ent->methodOfDeath != MOD_CONC &&
 			ent->methodOfDeath != MOD_CONC_ALT)
 		{
-			if (other_owner->client
-				&& !PM_SaberInAttack(other_owner->client->ps.saber_move)
-				|| other_owner->client && (pm->cmd.buttons & BUTTON_FORCEPOWER
-					|| pm->cmd.buttons & BUTTON_FORCEGRIP
-					|| pm->cmd.buttons & BUTTON_DASH
-					|| pm->cmd.buttons & BUTTON_FORCE_LIGHTNING)
-				&& !WP_DoingForcedAnimationForForcePowers(other))
+			if (saber_owner->client &&
+				(!PM_SaberInAttack(saber_owner->client->ps.saber_move) ||
+					(pm->cmd.buttons & (BUTTON_FORCEPOWER |
+						BUTTON_FORCEGRIP |
+						BUTTON_DASH |
+						BUTTON_FORCE_LIGHTNING))) &&
+				!WP_DoingForcedAnimationForForcePowers(other))
 			{
-				other_owner->client->ps.weaponTime = 0;
+				saber_owner->client->ps.weaponTime = 0;
 			}
 
-			wp_handle_bolt_block(ent, other_owner, trace, fwd);
+			wp_handle_bolt_block(ent, saber_owner, trace, fwd);
 
-			if (other_owner && other_owner->client)
+			if (saber_owner->client)
 			{
-				other_owner->client->ps.saberEventFlags |= SEF_DEFLECTED;
+				saber_owner->client->ps.saberEventFlags |= SEF_DEFLECTED;
 			}
 
 			return qtrue;
 		}
 	}
 
-	// check for sticking
-	if (!other->takedamage && ent->s.eFlags & EF_MISSILE_STICK
-		&& ent->s.weapon != WP_SABER)
+	//
+	// Missile sticking (trip mines, etc.)
+	//
+	if (!other->takedamage &&
+		(ent->s.eFlags & EF_MISSILE_STICK) &&
+		ent->s.weapon != WP_SABER)
 	{
 		laserTrapStick(ent, trace->endpos, trace->plane.normal);
 		G_AddEvent(ent, EV_MISSILE_STICK, 0);
 		return qtrue;
 	}
 
-	// impact damage
+	//
+	// Impact damage (direct hit)
+	//
 	if (other->takedamage && !is_knocked_saber)
 	{
 		missile_dmg = ent->damage;
-		if (G_DoDodge(other, &g_entities[other->r.ownerNum], trace->endpos, -1, &missile_dmg, ent->methodOfDeath))
+
+		// Dodge check (player dodge roll)
+		if (G_DoDodge(other,
+			&g_entities[other->r.ownerNum],
+			trace->endpos,
+			-1,
+			&missile_dmg,
+			ent->methodOfDeath))
 		{
-			//player dodged the damage, have missile continue moving.
-			return qfalse;
+			return qfalse; // missile continues
 		}
+
 		if (missile_dmg)
 		{
 			vec3_t velocity;
 			qboolean did_dmg = qfalse;
 
-			if (LogAccuracyHit(other, &g_entities[ent->r.ownerNum]))
+			gentity_t* ownerEnt = G_GetEntitySafe(ent->r.ownerNum);
+			if (ownerEnt && ownerEnt->client && LogAccuracyHit(other, ownerEnt))
 			{
-				g_entities[ent->r.ownerNum].client->accuracy_hits++;
+				ownerEnt->client->accuracy_hits++;
 				hit_client = qtrue;
 			}
+
 			BG_EvaluateTrajectoryDelta(&ent->s.pos, level.time, velocity);
+
 			if (VectorLength(velocity) == 0)
 			{
 				velocity[2] = 1; // stepped on a grenade
 			}
 
-			if (ent->s.weapon == WP_BOWCASTER || ent->s.weapon == WP_FLECHETTE ||
+			//
+			// Weapon‑specific damage rules
+			//
+			if (ent->s.weapon == WP_BOWCASTER ||
+				ent->s.weapon == WP_FLECHETTE ||
 				ent->s.weapon == WP_ROCKET_LAUNCHER)
 			{
-				if (ent->s.weapon == WP_FLECHETTE && ent->s.eFlags & EF_ALT_FIRING)
+				if (ent->s.weapon == WP_FLECHETTE &&
+					(ent->s.eFlags & EF_ALT_FIRING))
 				{
 					if (ent->think == wp_flechette_alt_blow)
+					{
 						ent->think(ent);
+					}
 				}
 				else
 				{
-					G_Damage(other, ent, &g_entities[ent->r.ownerNum], velocity, ent->r.currentOrigin, missile_dmg,
-						DAMAGE_HALF_ABSORB, ent->methodOfDeath);
+					G_Damage(other,
+						ent,
+						&g_entities[ent->r.ownerNum],
+						velocity,
+						ent->r.currentOrigin,
+						missile_dmg,
+						DAMAGE_HALF_ABSORB,
+						ent->methodOfDeath);
 					did_dmg = qtrue;
 				}
 			}
 			else
 			{
-				gentity_t* owner = &g_entities[ent->r.ownerNum];
-				const float distance = VectorDistance(owner->r.currentOrigin, other->r.currentOrigin);
+				gentity_t* owner = G_GetEntitySafe(ent->r.ownerNum);
+				float distance = owner ? VectorDistance(owner->r.currentOrigin,
+					other->r.currentOrigin) : 999999.0f;
+
 				if (distance <= 100.0f)
 				{
-					G_Damage(other, ent, owner, velocity, ent->r.currentOrigin, missile_dmg * 2, 0, ent->methodOfDeath);
+					G_Damage(other, ent, owner,
+						velocity, ent->r.currentOrigin,
+						missile_dmg * 2, 0,
+						ent->methodOfDeath);
 				}
 				else if (distance <= 300.0f)
 				{
-					G_Damage(other, ent, owner, velocity, ent->r.currentOrigin, missile_dmg * 1.5, 0,
+					G_Damage(other, ent, owner,
+						velocity, ent->r.currentOrigin,
+						missile_dmg * 1.5f, 0,
 						ent->methodOfDeath);
 				}
 				else
 				{
-					G_Damage(other, ent, &g_entities[ent->r.ownerNum], velocity, ent->r.currentOrigin, missile_dmg, 0,
+					G_Damage(other, ent,
+						(owner ? owner : ent),
+						velocity, ent->r.currentOrigin,
+						missile_dmg, 0,
 						ent->methodOfDeath);
 				}
+
 				did_dmg = qtrue;
 			}
 
-			if (did_dmg && other && other->client)
+			//
+			// Droid electrify feedback
+			//
+			if (did_dmg && other->client)
 			{
-				//What I'm wondering is why this isn't in the NPC pain funcs. But this is what SP does, so whatever.
-				const class_t npc_class = other->client->NPC_class;
-				const bclass_t bot_class = other->client->pers.botclass;
+				class_t npc_class = other->client->NPC_class;
+				bclass_t bot_class = other->client->pers.botclass;
 
-				// If we are a robot and we aren't currently doing the full body electricity...
-				if (npc_class == CLASS_SEEKER || npc_class == CLASS_PROBE || npc_class == CLASS_MOUSE ||
-					npc_class == CLASS_SBD || npc_class == CLASS_BATTLEDROID || npc_class == CLASS_DROIDEKA ||
-					npc_class == CLASS_GONK || npc_class == CLASS_R2D2 || npc_class == CLASS_R5D2 || npc_class ==
-					CLASS_REMOTE ||
-					npc_class == CLASS_MARK1 || npc_class == CLASS_MARK2 || npc_class == CLASS_PROTOCOL ||
-					npc_class == CLASS_INTERROGATOR || npc_class == CLASS_ATST || npc_class == CLASS_SENTRY)
+				qboolean is_droid =
+					(npc_class == CLASS_SEEKER ||
+						npc_class == CLASS_PROBE ||
+						npc_class == CLASS_MOUSE ||
+						npc_class == CLASS_SBD ||
+						npc_class == CLASS_BATTLEDROID ||
+						npc_class == CLASS_DROIDEKA ||
+						npc_class == CLASS_GONK ||
+						npc_class == CLASS_R2D2 ||
+						npc_class == CLASS_R5D2 ||
+						npc_class == CLASS_REMOTE ||
+						npc_class == CLASS_MARK1 ||
+						npc_class == CLASS_MARK2 ||
+						npc_class == CLASS_PROTOCOL ||
+						npc_class == CLASS_INTERROGATOR ||
+						npc_class == CLASS_ATST ||
+						npc_class == CLASS_SENTRY);
+
+				qboolean is_bot_droid =
+					(bot_class == BCLASS_BATTLEDROID ||
+						bot_class == BCLASS_DROIDEKA ||
+						bot_class == BCLASS_SBD ||
+						bot_class == BCLASS_REMOTE ||
+						bot_class == BCLASS_R2D2 ||
+						bot_class == BCLASS_R5D2 ||
+						bot_class == BCLASS_PROTOCOL);
+
+				if (is_droid || is_bot_droid)
 				{
-					// special droid only behaviors
 					if (other->client->ps.electrifyTime < level.time + 100)
 					{
-						// ... do the effect for a split second for some more feedback
-						other->client->ps.electrifyTime = level.time + Q_irand(1500, 2000);
-					}
-				}
-				if (bot_class == BCLASS_BATTLEDROID || bot_class == BCLASS_DROIDEKA || bot_class == BCLASS_SBD ||
-					bot_class == BCLASS_REMOTE || bot_class == BCLASS_R2D2 || bot_class == BCLASS_R5D2 || bot_class ==
-					BCLASS_PROTOCOL)
-				{
-					// special droid only behaviors
-					if (other->client->ps.electrifyTime < level.time + 100)
-					{
-						// ... do the effect for a split second for some more feedback
-						other->client->ps.electrifyTime = level.time + Q_irand(1500, 2000);
+						other->client->ps.electrifyTime =
+							level.time + Q_irand(1500, 2000);
 					}
 				}
 			}
 		}
 
+		//
+		// DEMP2 special effects (vehicles, cloak)
+		//
 		if (ent->s.weapon == WP_DEMP2)
 		{
-			//a hit with demp2 decloaks people, disables ships
-			if (other && other->client && other->client->NPC_class == CLASS_VEHICLE)
+			if (other->client &&
+				other->client->NPC_class == CLASS_VEHICLE)
 			{
-				//hit a vehicle
-				if (other->m_pVehicle //valid vehicle ent
-					&& other->m_pVehicle->m_pVehicleInfo //valid stats
-					&& (other->m_pVehicle->m_pVehicleInfo->type == VH_SPEEDER //always affect speeders
-						|| other->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER && ent->classname &&
-						Q_stricmp("vehicle_proj", ent->classname) == 0)
-					//only vehicle ion weapons affect a fighter in this manner
-					&& !FighterIsLanded(other->m_pVehicle, &other->client->ps) //not landed
-					&& !(other->spawnflags & 2)) //and not suspended
+				if (other->m_pVehicle &&
+					other->m_pVehicle->m_pVehicleInfo &&
+					(other->m_pVehicle->m_pVehicleInfo->type == VH_SPEEDER ||
+						(other->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER &&
+							ent->classname &&
+							Q_stricmp("vehicle_proj", ent->classname) == 0)) &&
+					!FighterIsLanded(other->m_pVehicle, &other->client->ps) &&
+					!(other->spawnflags & 2))
 				{
-					//vehicles hit by "ion cannons" lose control
 					if (other->client->ps.electrifyTime > level.time)
 					{
-						//add onto it
-						//FIXME: extern the length of the "out of control" time?
 						other->client->ps.electrifyTime += Q_irand(200, 500);
-						if (other->client->ps.electrifyTime > level.time + 4000)
+
+						if (other->client->ps.electrifyTime >
+							level.time + 4000)
 						{
-							//cap it
-							other->client->ps.electrifyTime = level.time + 4000;
+							other->client->ps.electrifyTime =
+								level.time + 4000;
 						}
 					}
 					else
 					{
-						other->client->ps.electrifyTime = level.time + Q_irand(200, 500);
+						other->client->ps.electrifyTime =
+							level.time + Q_irand(200, 500);
 					}
 				}
 			}
-			else if (other && other->client && other->client->ps.powerups[PW_CLOAKED])
+			else if (other->client &&
+				other->client->ps.powerups[PW_CLOAKED])
 			{
 				Jedi_Decloak(other);
+
 				if (ent->methodOfDeath == MOD_DEMP2_ALT)
 				{
-					//direct hit with alt disables cloak forever
-					//permanently disable the saboteur's cloak
 					other->client->cloakToggleTime = Q3_INFINITE;
 				}
 				else
 				{
-					//temp disable
-					other->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
+					other->client->cloakToggleTime =
+						level.time + Q_irand(3000, 10000);
 				}
 			}
 		}
 	}
 killProj:
 
+	//
+	// Grapple / Hook projectile
+	//
 	if (strcmp(ent->classname, "hook") == 0)
 	{
-		vec3_t v;
+		vec3_t v = { 0 };
 		gentity_t* nent = G_Spawn();
 
 		if (other->takedamage || other->client || other->s.eType == ET_MOVER)
 		{
-			G_PlayEffectID(G_EffectIndex("blaster/flesh_impact"), trace->endpos, trace->plane.normal);
+			G_PlayEffectID(G_EffectIndex("blaster/flesh_impact"),
+				trace->endpos, trace->plane.normal);
 
 			if (other->takedamage && other->client)
 			{
-				G_Damage(other, ent, ent, v, ent->r.currentOrigin, TASER_DAMAGE, DAMAGE_NO_KNOCKBACK, MOD_CRUSH);
+				vec3_t dummy = { 0 };
+				G_Damage(other, ent, ent,
+					dummy, ent->r.currentOrigin,
+					TASER_DAMAGE,
+					DAMAGE_NO_KNOCKBACK,
+					MOD_CRUSH);
 			}
+
 			nent->s.otherentity_num2 = other->s.number;
 			ent->enemy = other;
+
+			// Center of the target
 			v[0] = other->r.currentOrigin[0] + (other->r.mins[0] + other->r.maxs[0]) * 0.5f;
 			v[1] = other->r.currentOrigin[1] + (other->r.mins[1] + other->r.maxs[1]) * 0.5f;
 			v[2] = other->r.currentOrigin[2] + (other->r.mins[2] + other->r.maxs[2]) * 0.5f;
-			SnapVectorTowards(v, ent->s.pos.trBase); // save net bandwidth
+
+			SnapVectorTowards(v, ent->s.pos.trBase);
 		}
 		else
 		{
 			VectorCopy(trace->endpos, v);
-			G_PlayEffectID(G_EffectIndex("impacts/droid_impact1"), trace->endpos, trace->plane.normal);
+			G_PlayEffectID(G_EffectIndex("impacts/droid_impact1"),
+				trace->endpos, trace->plane.normal);
 			ent->enemy = NULL;
 		}
 
@@ -1343,7 +1628,8 @@ killProj:
 		if (!other->takedamage)
 		{
 			ent->parent->client->ps.pm_flags |= PMF_GRAPPLE_PULL;
-			VectorCopy(ent->r.currentOrigin, ent->parent->client->ps.lastHitLoc);
+			VectorCopy(ent->r.currentOrigin,
+				ent->parent->client->ps.lastHitLoc);
 		}
 
 		trap->LinkEntity((sharedEntity_t*)ent);
@@ -1352,14 +1638,19 @@ killProj:
 		return qfalse;
 	}
 
+	//
+	// Stun projectile
+	//
 	if (strcmp(ent->classname, "stun") == 0)
 	{
-		vec3_t v;
+		vec3_t v = { 0 };
 		gentity_t* nent = G_Spawn();
 
 		if (other->takedamage || other->client || other->s.eType == ET_MOVER)
 		{
-			G_PlayEffectID(G_EffectIndex("stunBaton/flesh_impact"), trace->endpos, trace->plane.normal);
+			G_PlayEffectID(G_EffectIndex("stunBaton/flesh_impact"),
+				trace->endpos, trace->plane.normal);
+
 			nent->s.otherentity_num2 = other->s.number;
 			ent->enemy = other;
 
@@ -1367,13 +1658,18 @@ killProj:
 			{
 				other->client->stunDamage = 40;
 				other->client->stunTime = level.time + 1000;
+
 				if (other->client->ps.electrifyTime < level.time + 100)
 				{
-					// ... do the effect for a split second for some more feedback
 					other->client->ps.electrifyTime = level.time + 4000;
 				}
 
-				G_Damage(other, ent, ent, v, ent->r.currentOrigin, TASER_DAMAGE, DAMAGE_NO_KNOCKBACK, MOD_STUN_BATON);
+				vec3_t dummy = { 0 };
+				G_Damage(other, ent, ent,
+					dummy, ent->r.currentOrigin,
+					TASER_DAMAGE,
+					DAMAGE_NO_KNOCKBACK,
+					MOD_STUN_BATON);
 
 				if (other->client->ps.stats[STAT_HEALTH] <= 0)
 				{
@@ -1395,7 +1691,8 @@ killProj:
 		else
 		{
 			VectorCopy(trace->endpos, v);
-			G_PlayEffectID(G_EffectIndex("impacts/droid_impact1"), trace->endpos, trace->plane.normal);
+			G_PlayEffectID(G_EffectIndex("impacts/droid_impact1"),
+				trace->endpos, trace->plane.normal);
 			ent->enemy = NULL;
 		}
 
@@ -1412,9 +1709,9 @@ killProj:
 		return qfalse;
 	}
 
-	// is it cheaper in bandwidth to just remove this ent and create a new
-	// one, rather than changing the missile into the explosion?
-
+	//
+	// Impact events (hit, metal, miss)
+	//
 	if (other->takedamage && other->client && !is_knocked_saber)
 	{
 		G_AddEvent(ent, EV_MISSILE_HIT, DirToByte(trace->plane.normal));
@@ -1429,36 +1726,47 @@ killProj:
 		G_AddEvent(ent, EV_MISSILE_MISS, DirToByte(trace->plane.normal));
 	}
 
+	//
+	// Convert missile to impact entity
+	//
 	if (!is_knocked_saber)
 	{
 		ent->freeAfterEvent = qtrue;
-
-		// change over to a normal entity right at the point of impact
 		ent->s.eType = ET_GENERAL;
 	}
 
-	SnapVectorTowards(trace->endpos, ent->s.pos.trBase); // save net bandwidth
-
+	SnapVectorTowards(trace->endpos, ent->s.pos.trBase);
 	G_SetOrigin(ent, trace->endpos);
 
 	ent->takedamage = qfalse;
-	// splash damage (doesn't apply to person directly hit)
+
+	//
+	// Splash damage
+	//
 	if (ent->splashDamage)
 	{
-		if (g_radius_damage(trace->endpos, ent->parent, ent->splashDamage, ent->splashRadius,
-			other, ent, ent->splashMethodOfDeath))
+		if (g_radius_damage(trace->endpos,
+			ent->parent,
+			ent->splashDamage,
+			ent->splashRadius,
+			other,
+			ent,
+			ent->splashMethodOfDeath))
 		{
-			if (!hit_client
-				&& g_entities[ent->r.ownerNum].client)
+			gentity_t* splashOwner = G_GetEntitySafe(ent->r.ownerNum);
+			if (!hit_client && splashOwner && splashOwner->client)
 			{
-				g_entities[ent->r.ownerNum].client->accuracy_hits++;
+				splashOwner->client->accuracy_hits++;
 			}
 		}
 	}
 
+	//
+	// G2 model parts free themselves
+	//
 	if (ent->s.weapon == G2_MODEL_PART)
 	{
-		ent->freeAfterEvent = qfalse; //it will free itself
+		ent->freeAfterEvent = qfalse;
 	}
 
 	trap->LinkEntity((sharedEntity_t*)ent);
@@ -1468,7 +1776,7 @@ killProj:
 
 /*
 ================
-G_RunMissile
+g_run_missile
 ================
 */
 extern int g_real_trace(
@@ -1688,7 +1996,6 @@ passthrough:
 }
 
 //===========================grapplemod===============================
-#define MISSILE_PRESTEP_TIME 50
 /*
 =================
 fire_grapple
@@ -1754,70 +2061,99 @@ gentity_t* fire_stun(gentity_t* self, vec3_t start, vec3_t dir)
 
 static int ReflectionLevel(const gentity_t* player)
 {
-	//determine reflection level.
-	const qboolean manual_blocking = player->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	const int np_cis_blocking = manual_npc_saberblocking(player);
+	// Determine reflection level.
 
-	if (manual_blocking || np_cis_blocking)
+	// Manual blocking flag (safe bit test)
+	const qboolean manual_blocking =
+		(player->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
+
+	// NPCs may block manually depending on AI logic
+	const int npc_is_blocking = manual_npc_saberblocking(player);
+
+	if (manual_blocking || npc_is_blocking)
 	{
-		//manual reflection, bounce to the crosshair, roughly
+		// Manual reflection: bounce toward crosshair / attacker
 		return FORCE_LEVEL_3;
 	}
-	//just deflect the attack
+
+	// Default: weak deflection
 	return FORCE_LEVEL_1;
 }
 
 void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, vec3_t fwd)
 {
-	//handles all the behavior needed to saber block a blaster bolt.
-	const int other_def_level = ReflectionLevel(blocker);
-	float slop_factor = (MISHAP_MAXINACCURACY - 6) * (FORCE_LEVEL_3 - blocker->client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE]) / FORCE_LEVEL_3;
-	gentity_t* prev_owner = &g_entities[bolt->r.ownerNum];
-	const float distance = vector_bolt_distance(blocker->r.currentOrigin, prev_owner->r.currentOrigin);
-	const qboolean manual_proj_blocking = blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
-	const qboolean accurate_missile_blocking = blocker->client->ps.ManualBlockingFlags & 1 << MBF_ACCURATEMISSILEBLOCKING ? qtrue : qfalse;
+	// Safety: validate pointers (bug fix – previously could crash on NULL)
+	if (!bolt || !blocker || !blocker->client || !trace)
+	{
+		return;
+	}
+
+	// Handles all the behavior needed to saber block a blaster bolt.
+	const int   other_def_level = ReflectionLevel(blocker);
+	float slop_factor =
+		(float)(MISHAP_MAXINACCURACY - 6) *
+		(float)(FORCE_LEVEL_3 - blocker->client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE]) /
+		(float)FORCE_LEVEL_3;
+
+	gentity_t* prev_owner = G_GetEntitySafe(bolt->r.ownerNum);
+	const float distance = prev_owner ? vector_bolt_distance(blocker->r.currentOrigin, prev_owner->r.currentOrigin) : 99999.0f;
+
+	const qboolean manual_proj_blocking =
+		(blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
+	const qboolean accurate_missile_block =
+		(blocker->client->ps.ManualBlockingFlags & (1 << MBF_ACCURATEMISSILEBLOCKING)) ? qtrue : qfalse;
+
 	const int manual_run_blocking = manual_running_and_saberblocking(blocker);
 	const int npc_is_blocking = manual_npc_saberblocking(blocker);
 
-	//create the bolt saber block effect
+	// Visual effect for the bolt being blocked
 	g_missile_reflect_effect(blocker, trace->plane.normal);
 
+	// Base forward direction from blocker view
 	AngleVectors(blocker->client->ps.viewangles, fwd, NULL, NULL);
 
+	//
+	// Low defense level: random deflect away, heavy fatigue
+	//
 	if (other_def_level <= FORCE_LEVEL_1)
 	{
 		const int punish = BLOCKPOINTS_TEN;
-		//only randomly deflect away the bolt
+
+		// Only randomly deflect away the bolt
 		g_missile_bouncedoff_saber(blocker, bolt, fwd);
 
-		if ((d_blockinfo.integer || g_DebugSaberCombat.integer) && !(blocker->r.svFlags & SVF_BOT))
+		if ((d_blockinfo.integer || g_DebugSaberCombat.integer) &&
+			!(blocker->r.svFlags & SVF_BOT))
 		{
-			Com_Printf(S_COLOR_YELLOW"only randomly deflect away the bolt\n");
+			Com_Printf(S_COLOR_YELLOW "only randomly deflect away the bolt\n");
 		}
-		WP_BrokenBoltBlockKnockBack(blocker);
 
+		WP_BrokenBoltBlockKnockBack(blocker);
 		PM_AddBlockFatigue(&blocker->client->ps, punish);
 	}
 	else
 	{
-		float block_points_used_used;
+		float block_points_used;
 
+		//
+		// Very close range: send to enemy
+		//
 		if (distance < 80.0f)
 		{
-			//GOES TO ENEMY
 			g_deflect_missile_to_attacker(blocker, bolt, fwd);
 
-			if ((d_blockinfo.integer || g_DebugSaberCombat.integer) && !(blocker->r.svFlags & SVF_BOT))
+			if ((d_blockinfo.integer || g_DebugSaberCombat.integer) &&
+				!(blocker->r.svFlags & SVF_BOT))
 			{
-				Com_Printf(S_COLOR_YELLOW"GOES TO ENEMY\n");
+				Com_Printf(S_COLOR_YELLOW "GOES TO ENEMY\n");
 			}
 
 			if (blocker->client->ps.fd.blockPoints <= BLOCKPOINTS_THIRTY)
 			{
-				//Low points = bad blocks
+				// Low points = bad blocks
 				if (blocker->client->ps.fd.blockPoints <= BLOCKPOINTS_FATIGUE)
 				{
-					//very Low points = bad blocks
+					// Very low points = broken block
 					WP_BrokenBoltBlockKnockBack(blocker);
 					blocker->client->ps.saberBlocked = BLOCKED_NONE;
 					blocker->client->ps.saber_move = LS_NONE;
@@ -1832,41 +2168,42 @@ void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, v
 				WP_SaberBlockBolt(blocker, bolt->r.currentOrigin, qtrue);
 			}
 
-			if (accurate_missile_blocking)
+			// Block‑point cost
+			if (accurate_missile_block)
 			{
-				// excellent
-				block_points_used_used = 2;
+				block_points_used = 2.0f;
 			}
 			else
 			{
-				block_points_used_used = WP_SaberBoltBlockCost(blocker, bolt);
+				block_points_used = WP_SaberBoltBlockCost(blocker, bolt);
 			}
 
-			if (blocker->client->ps.fd.blockPoints < block_points_used_used)
+			if (blocker->client->ps.fd.blockPoints < block_points_used)
 			{
 				blocker->client->ps.fd.blockPoints = 0;
 			}
 			else
 			{
-				WP_BlockPointsDrain(blocker, block_points_used_used);
+				WP_BlockPointsDrain(blocker, block_points_used);
 			}
 		}
+		//
+		// Manual / running / NPC blocking: send to enemy
+		//
 		else if (manual_proj_blocking || manual_run_blocking || npc_is_blocking)
 		{
-			//GOES TO ENEMY
 			g_reflect_missile_to_attacker(blocker, bolt, fwd);
 
-			if ((d_blockinfo.integer || g_DebugSaberCombat.integer) && !(blocker->r.svFlags & SVF_BOT))
+			if ((d_blockinfo.integer || g_DebugSaberCombat.integer) &&
+				!(blocker->r.svFlags & SVF_BOT))
 			{
-				Com_Printf(S_COLOR_YELLOW"GOES TO ENEMY\n");
+				Com_Printf(S_COLOR_YELLOW "GOES TO ENEMY\n");
 			}
 
 			if (blocker->client->ps.fd.blockPoints <= BLOCKPOINTS_THIRTY)
 			{
-				//Low points = bad blocks
 				if (blocker->client->ps.fd.blockPoints <= BLOCKPOINTS_FATIGUE)
 				{
-					//very Low points = bad blocks
 					WP_BrokenBoltBlockKnockBack(blocker);
 					blocker->client->ps.saberBlocked = BLOCKED_NONE;
 					blocker->client->ps.saber_move = LS_NONE;
@@ -1881,43 +2218,47 @@ void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, v
 				WP_SaberBlockBolt(blocker, bolt->r.currentOrigin, qtrue);
 			}
 
-			if (accurate_missile_blocking)
+			if (accurate_missile_block)
 			{
-				// excellent
-				block_points_used_used = 2;
+				block_points_used = 2.0f;
 			}
 			else
 			{
-				block_points_used_used = WP_SaberBoltBlockCost(blocker, bolt);
+				block_points_used = WP_SaberBoltBlockCost(blocker, bolt);
 			}
 
-			if (blocker->client->ps.fd.blockPoints < block_points_used_used)
+			if (blocker->client->ps.fd.blockPoints < block_points_used)
 			{
 				blocker->client->ps.fd.blockPoints = 0;
 			}
 			else
 			{
-				WP_BlockPointsDrain(blocker, block_points_used_used);
+				WP_BlockPointsDrain(blocker, block_points_used);
 			}
 		}
+		//
+		// Default: send toward crosshair (with slop)
+		//
 		else
 		{
 			vec3_t angs;
 			vec3_t bounce_dir;
-			//GOES TO CROSSHAIR
-			if ((d_blockinfo.integer || g_DebugSaberCombat.integer) && !(blocker->r.svFlags & SVF_BOT))
+
+			if ((d_blockinfo.integer || g_DebugSaberCombat.integer) &&
+				!(blocker->r.svFlags & SVF_BOT))
 			{
-				Com_Printf(S_COLOR_YELLOW"GOES TO CROSSHAIR\n");
+				Com_Printf(S_COLOR_YELLOW "GOES TO CROSSHAIR\n");
 			}
+
 			if (level.time - blocker->client->ps.ManualblockStartTime < 3000)
 			{
-				// good
+				// Good: early manual block, minimal slop
 				vectoangles(fwd, angs);
 				AngleVectors(angs, fwd, NULL, NULL);
 			}
 			else if (blocker->client->pers.cmd.forwardmove >= 0)
 			{
-				//bad if moving forward
+				// Bad if moving forward: more slop
 				slop_factor += Q_irand(1, 5);
 				vectoangles(fwd, angs);
 				angs[PITCH] += flrand(-slop_factor, slop_factor);
@@ -1926,7 +2267,7 @@ void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, v
 			}
 			else
 			{
-				//average after 3 seconds
+				// Average after 3 seconds: moderate slop
 				slop_factor += Q_irand(1, 3);
 				vectoangles(fwd, angs);
 				angs[PITCH] += flrand(-slop_factor, slop_factor);
@@ -1936,10 +2277,8 @@ void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, v
 
 			if (blocker->client->ps.fd.blockPoints <= BLOCKPOINTS_THIRTY)
 			{
-				//Low points = bad blocks
 				if (blocker->client->ps.fd.blockPoints <= BLOCKPOINTS_FATIGUE)
 				{
-					//very Low points = bad blocks
 					WP_BrokenBoltBlockKnockBack(blocker);
 					blocker->client->ps.saberBlocked = BLOCKED_NONE;
 					blocker->client->ps.saber_move = LS_NONE;
@@ -1954,51 +2293,55 @@ void wp_handle_bolt_block(gentity_t* bolt, gentity_t* blocker, trace_t* trace, v
 				wp_saber_block_non_random_missile(blocker, bolt->r.currentOrigin, qtrue);
 			}
 
-			if (accurate_missile_blocking)
+			if (accurate_missile_block)
 			{
-				// excellent
-				block_points_used_used = 2;
+				block_points_used = 2.0f;
 			}
 			else
 			{
-				block_points_used_used = WP_SaberBoltBlockCost(blocker, bolt);
+				block_points_used = WP_SaberBoltBlockCost(blocker, bolt);
 			}
 
-			if (blocker->client->ps.fd.blockPoints < block_points_used_used)
+			if (blocker->client->ps.fd.blockPoints < block_points_used)
 			{
 				blocker->client->ps.fd.blockPoints = 0;
 			}
 			else
 			{
-				WP_BlockPointsDrain(blocker, block_points_used_used);
+				WP_BlockPointsDrain(blocker, block_points_used);
 			}
 
-			//save the original speed
+			// Save the original speed
 			const float speed = VectorNormalize(bolt->s.pos.trDelta);
 
 			VectorCopy(fwd, bounce_dir);
-
 			VectorScale(bounce_dir, speed, bolt->s.pos.trDelta);
-			bolt->s.pos.trTime = level.time; // move a bit on the very first frame
+
+			bolt->s.pos.trTime = level.time;
 			VectorCopy(bolt->r.currentOrigin, bolt->s.pos.trBase);
+
 			if (bolt->s.weapon != WP_SABER && bolt->s.weapon != G2_MODEL_PART)
 			{
-				//you are mine, now!
+				// You are mine now!
 				bolt->r.ownerNum = blocker->s.number;
 			}
+
 			if (bolt->s.weapon == WP_ROCKET_LAUNCHER)
 			{
-				//stop homing
-				bolt->think = 0;
+				// Stop homing
+				bolt->think = NULL;
 				bolt->nextthink = 0;
 			}
 		}
 	}
 
-	//For jedi AI
+	// For Jedi AI
 	blocker->client->ps.saberEventFlags |= SEF_DEFLECTED;
 
+	// Remember original owner for damage credit (may be NULL)
 	bolt->activator = prev_owner;
 
-	blocker->client->ps.ManualMBlockingTime = level.time + (600 - blocker->client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] * 200);
+	// Manual missile‑blocking cooldown
+	blocker->client->ps.ManualMBlockingTime =
+		level.time + (600 - blocker->client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] * 200);
 }

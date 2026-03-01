@@ -518,7 +518,7 @@ void UpdatePlayerCameraPos(void)
 	}
 }
 
-extern void SaberUpdateSelf(gentity_t* ent);
+extern void WP_SaberUpdateSelf(gentity_t* ent);
 extern void WP_SaberRemoveG2Model(gentity_t* saberent);
 
 void EnablePlayerCameraPos(gentity_t* player)
@@ -545,7 +545,7 @@ void EnablePlayerCameraPos(gentity_t* player)
 		{
 			//force the weapon back to our hand.
 			saberent->genericValue5 = 0;
-			saberent->think = SaberUpdateSelf;
+			saberent->think = WP_SaberUpdateSelf;
 			saberent->nextthink = level.time;
 			WP_SaberRemoveG2Model(saberent);
 

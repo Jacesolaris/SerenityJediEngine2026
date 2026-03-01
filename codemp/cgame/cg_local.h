@@ -2047,8 +2047,8 @@ qhandle_t CG_StatusHandle(int task);
 //
 qboolean CG_RagDoll(centity_t* cent, vec3_t forced_angles);
 qboolean CG_G2TraceCollide(trace_t* tr, const vec3_t mins, const vec3_t maxs, const vec3_t last_valid_start, const vec3_t last_valid_end);
-void CG_AddGhoul2Mark(int shader, float size, vec3_t start, vec3_t end, int entnum,
-	vec3_t entposition, float entangle, void* ghoul2, vec3_t scale, int life_time);
+void CG_AddGhoul2Mark(const int shader, const float size, vec3_t start, vec3_t end, const int entnum,
+	vec3_t entposition, const float entangle, void* ghoul2, vec3_t scale, const int life_time);
 
 void CG_CreateNPCClient(clientInfo_t** ci);
 int FindGender(const char* model_path, const centity_t* cent);

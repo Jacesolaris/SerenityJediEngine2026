@@ -36,6 +36,7 @@ constexpr auto LOOK_SWING_SCALE = 0.5f;
 constexpr auto CG_SWINGSPEED = 0.3f;
 
 #include "animtable.h"
+#include <cmath>
 
 extern qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, int blade_num);
 extern void wp_saber_swing_sound(const gentity_t* ent, int saberNum, swingType_t swing_type);
@@ -91,23 +92,31 @@ extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int colo
 //rww - generic function for applying a shader to the skin.
 extern vmCvar_t cg_g2Marks;
 
-void CG_AddGhoul2Mark(const int type, const float size, vec3_t hitloc, vec3_t hitdirection, const int entnum,
+void CG_AddGhoul2Mark(
+	const int type,
+	const float size,
+	vec3_t hitloc,
+	vec3_t hitdirection,
+	const int entnum,
 	vec3_t entposition,
-	const float entangle, CGhoul2Info_v& ghoul2, vec3_t model_scale, const int life_time,
-	const int first_model, vec3_t uaxis)
+	const float entangle,
+	CGhoul2Info_v& ghoul2,
+	vec3_t model_scale,
+	const int life_time,
+	const int first_model,
+	const vec3_t uaxis)   // <-- FIXED
 {
 	if (!cg_g2Marks.integer)
 	{
-		//don't want these
 		return;
 	}
 
 	static SSkinGoreData gore_skin = {};
 
-	gore_skin.growDuration = -1; // do not grow
-	gore_skin.goreScaleStartFraction = 1.0; // default start scale
-	gore_skin.frontFaces = true; // yes front
-	gore_skin.backFaces = false; // no back
+	gore_skin.growDuration = -1;
+	gore_skin.goreScaleStartFraction = 1.0;
+	gore_skin.frontFaces = true;
+	gore_skin.backFaces = false;
 	gore_skin.lifeTime = life_time;
 	gore_skin.firstModel = first_model;
 	gore_skin.currentTime = cg.time;
@@ -117,38 +126,41 @@ void CG_AddGhoul2Mark(const int type, const float size, vec3_t hitloc, vec3_t hi
 	gore_skin.shader = type;
 	gore_skin.theta = flrand(0.0f, 6.28f);
 
-	if (uaxis)
+	// -----------------------------
+	// FIXED: uaxis is now a pointer
+	// -----------------------------
+	if (uaxis != nullptr)
 	{
 		gore_skin.backFaces = true;
 		gore_skin.SSize = 6;
 		gore_skin.TSize = 3;
-		gore_skin.depthStart = -10; //arbitrary depths, just limiting marks to near hit loc
+		gore_skin.depthStart = -10;
 		gore_skin.depthEnd = 15;
 		gore_skin.useTheta = false;
+
 		VectorCopy(uaxis, gore_skin.uaxis);
+
 		if (VectorNormalize(gore_skin.uaxis) < 0.001f)
 		{
-			//too short to make a mark
 			return;
 		}
 	}
 	else
 	{
-		gore_skin.depthStart = -1000;
-		gore_skin.depthEnd = 1000;
+		gore_skin.depthStart = -48;
+		gore_skin.depthEnd = 48;
 		gore_skin.useTheta = true;
 	}
+
 	VectorCopy(model_scale, gore_skin.scale);
 
 	if (VectorCompare(hitdirection, vec3_origin))
 	{
-		//wtf, no dir?  Make one up
 		VectorSubtract(entposition, hitloc, gore_skin.rayDirection);
 		VectorNormalize(gore_skin.rayDirection);
 	}
 	else
 	{
-		//use passed in value
 		VectorCopy(hitdirection, gore_skin.rayDirection);
 	}
 
@@ -7074,98 +7086,186 @@ static void CG_StopWeaponSounds(centity_t* cent)
 }
 
 //--------------- SABER STUFF --------
-void cg_saber_do_weapon_hit_marks(const gclient_t* client, const gentity_t* saberEnt, gentity_t* hit_ent,
-	const int saberNum, const int blade_num,
-	vec3_t hit_pos, vec3_t hit_dir, vec3_t uaxis, const float size_time_scale)
+
+void CG_SaberDoWeaponHitMarks(
+	const gclient_t* client,
+	const gentity_t* saber_ent,
+	gentity_t* hit_ent,
+	const int saber_num,
+	const int blade_num,
+	vec3_t hit_pos,
+	vec3_t hit_dir,
+	vec3_t uaxis,
+	const float size_time_scale)
 {
-	if (client
-		&& size_time_scale > 0.0f
-		&& hit_ent
-		&& hit_ent->client
-		&& hit_ent->ghoul2.size())
+	if (!client ||
+		size_time_scale <= 0.0f ||
+		!hit_ent ||
+		!hit_ent->client ||
+		!hit_ent->ghoul2.size())
 	{
-		//burn mark with glow
-		int life_time = (1.01 - static_cast<float>(hit_ent->health) / hit_ent->max_health) * static_cast<float>(
-			Q_irand(5000, 10000));
-		float size;
-		int weapon_mark_shader = 0, mark_shader = cgs.media.bdecal_saberglowmark;
+		return;
+	}
 
-		//First: do mark decal on hit_ent
-		if (WP_SaberBladeUseSecondBladeStyle(&client->ps.saber[saberNum], blade_num))
-		{
-			if (client->ps.saber[saberNum].g2MarksShader2[0])
-			{
-				//we have a shader to use instead of the standard mark shader
-				mark_shader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2MarksShader2);
-				life_time = Q_irand(20000, 30000); //last longer if overridden
-			}
-		}
-		else
-		{
-			if (client->ps.saber[saberNum].g2MarksShader[0])
-			{
-				//we have a shader to use instead of the standard mark shader
-				mark_shader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2MarksShader);
-				life_time = Q_irand(20000, 30000); //last longer if overridden
-			}
-		}
+	// ----------------------------------------------------------------------
+	// Sanity fix #1: normalize hit_dir (prevents stretched/rotated artifacts)
+	// ----------------------------------------------------------------------
+	if (!VectorNormalize(hit_dir))
+	{
+		VectorSet(hit_dir, 0, 0, 1);
+	}
 
-		if (mark_shader)
-		{
-			life_time = ceil(static_cast<float>(life_time) * size_time_scale);
-			size = Q_flrand(2.0f, 3.0f) * size_time_scale;
-			CG_AddGhoul2Mark(mark_shader, size, hit_pos, hit_dir, hit_ent->s.number,
-				hit_ent->client->ps.origin, hit_ent->client->renderInfo.legsYaw, hit_ent->ghoul2,
-				hit_ent->s.modelScale,
-				life_time, 0, uaxis);
-		}
+	// ----------------------------------------------------------------------
+	// Sanity fix #2: validate uaxis (prevents twisted/inside-body artifacts)
+	// ----------------------------------------------------------------------
+	qboolean use_uaxis = qtrue;
 
-		//now do weaponMarkShader - splashback decal on weapon
-		if (WP_SaberBladeUseSecondBladeStyle(&client->ps.saber[saberNum], blade_num))
-		{
-			if (client->ps.saber[saberNum].g2WeaponMarkShader2[0])
-			{
-				//we have a shader to use instead of the standard mark shader
-				weapon_mark_shader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2WeaponMarkShader2);
-				life_time = Q_irand(7000, 12000); //last longer if overridden
-			}
-		}
-		else
-		{
-			if (client->ps.saber[saberNum].g2WeaponMarkShader[0])
-			{
-				//we have a shader to use instead of the standard mark shader
-				weapon_mark_shader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2WeaponMarkShader);
-				life_time = Q_irand(7000, 12000); //last longer if overridden
-			}
-		}
+	if (VectorNormalize(uaxis) < 0.001f)
+	{
+		// Too small or invalid → disable custom orientation
+		use_uaxis = qfalse;
+		VectorClear(uaxis);
+	}
 
-		if (weapon_mark_shader)
+	// ----------------------------------------------------------------------
+	// Burn mark with glow
+	// ----------------------------------------------------------------------
+	int life_time =
+		(1.01f - (static_cast<float>(hit_ent->health) / hit_ent->max_health)) *
+		static_cast<float>(Q_irand(8000, 15000));
+
+	float size = 0.0f;
+
+	int weapon_mark_shader = 0;
+	int mark_shader = cgs.media.bdecal_saberglowmark;
+
+	const qboolean usingSecondStyle =
+		static_cast<qboolean>(WP_SaberBladeUseSecondBladeStyle(&client->ps.saber[saber_num], blade_num));
+
+	// ----------------------------------------------------------------------
+	// 1. Choose the correct G2 mark shader
+	// ----------------------------------------------------------------------
+	if (usingSecondStyle)
+	{
+		if (client->ps.saber[saber_num].g2MarksShader2[0])
 		{
-			centity_t* splatter_on_cent = saberEnt && client->ps.saberInFlight
-				? &cg_entities[saberEnt->s.number]
-				: &cg_entities[client->ps.clientNum];
-			float yaw_angle;
-			vec3_t back_dir;
-			VectorScale(hit_dir, -1, back_dir);
-			if (!splatter_on_cent->gent->client)
-			{
-				yaw_angle = splatter_on_cent->lerpAngles[YAW];
-			}
-			else
-			{
-				yaw_angle = splatter_on_cent->gent->client->renderInfo.legsYaw;
-			}
-			life_time = ceil(static_cast<float>(life_time) * size_time_scale);
-			size = Q_flrand(1.0f, 3.0f) * size_time_scale;
-			if (splatter_on_cent->gent->ghoul2.size() > saberNum + 1)
-			{
-				CG_AddGhoul2Mark(weapon_mark_shader, size, hit_pos, back_dir, splatter_on_cent->currentState.number,
-					splatter_on_cent->lerpOrigin, yaw_angle, splatter_on_cent->gent->ghoul2,
-					splatter_on_cent->currentState.modelScale,
-					life_time, saberNum + 1, uaxis/*splashBackDir*/);
-			}
+			mark_shader = cgi_R_RegisterShader(client->ps.saber[saber_num].g2MarksShader2);
+			life_time = Q_irand(20000, 30000);
 		}
+	}
+	else
+	{
+		if (client->ps.saber[saber_num].g2MarksShader[0])
+		{
+			mark_shader = cgi_R_RegisterShader(client->ps.saber[saber_num].g2MarksShader);
+			life_time = Q_irand(20000, 30000);
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// 2. Apply the burn mark to the hit entity
+	// ----------------------------------------------------------------------
+	if (mark_shader)
+	{
+		life_time = static_cast<int>(ceilf(static_cast<float>(life_time) * size_time_scale));
+		size = Q_flrand(2.0f, 3.0f) * size_time_scale;
+
+		CG_AddGhoul2Mark(
+			mark_shader,
+			size,
+			hit_pos,
+			hit_dir,
+			hit_ent->s.number,
+			hit_ent->client->ps.origin,
+			hit_ent->client->renderInfo.legsYaw,
+			hit_ent->ghoul2,
+			hit_ent->s.modelScale,
+			life_time,
+			0,
+			use_uaxis ? uaxis : nullptr);
+	}
+
+	// ----------------------------------------------------------------------
+	// 3. Weapon splashback decal
+	// ----------------------------------------------------------------------
+	if (usingSecondStyle)
+	{
+		if (client->ps.saber[saber_num].g2WeaponMarkShader2[0])
+		{
+			weapon_mark_shader =
+				cgi_R_RegisterShader(client->ps.saber[saber_num].g2WeaponMarkShader2);
+			life_time = Q_irand(7000, 12000);
+		}
+	}
+	else
+	{
+		if (client->ps.saber[saber_num].g2WeaponMarkShader[0])
+		{
+			weapon_mark_shader =
+				cgi_R_RegisterShader(client->ps.saber[saber_num].g2WeaponMarkShader);
+			life_time = Q_irand(7000, 12000);
+		}
+	}
+
+	if (!weapon_mark_shader)
+	{
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// 4. Determine which entity receives the splashback mark
+	// ----------------------------------------------------------------------
+	centity_t* splatter_on_cent = nullptr;
+
+	if (saber_ent && client->ps.saberInFlight)
+	{
+		splatter_on_cent = &cg_entities[saber_ent->s.number];
+	}
+	else
+	{
+		splatter_on_cent = &cg_entities[client->ps.clientNum];
+	}
+
+	if (!splatter_on_cent || !splatter_on_cent->gent)
+	{
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// 5. Compute yaw and back direction
+	// ----------------------------------------------------------------------
+	float yaw_angle = 0.0f;
+
+	if (splatter_on_cent->gent->client)
+	{
+		yaw_angle = splatter_on_cent->gent->client->renderInfo.legsYaw;
+	}
+	else
+	{
+		yaw_angle = splatter_on_cent->lerpAngles[YAW];
+	}
+
+	vec3_t back_dir;
+	VectorScale(hit_dir, -1, back_dir);
+
+	life_time = static_cast<int>(ceilf(static_cast<float>(life_time) * size_time_scale));
+	size = Q_flrand(1.0f, 3.0f) * size_time_scale;
+
+	if (splatter_on_cent->gent->ghoul2.size() > saber_num + 1)
+	{
+		CG_AddGhoul2Mark(
+			weapon_mark_shader,
+			size,
+			hit_pos,
+			back_dir,
+			splatter_on_cent->currentState.number,
+			splatter_on_cent->lerpOrigin,
+			yaw_angle,
+			splatter_on_cent->gent->ghoul2,
+			splatter_on_cent->currentState.modelScale,
+			life_time,
+			saber_num + 1,
+			use_uaxis ? uaxis : nullptr);
 	}
 }
 
@@ -11977,87 +12077,145 @@ constexpr auto MAX_MARK_FRAGMENTS = 128;
 constexpr auto MAX_MARK_POINTS = 384;
 extern markPoly_t* CG_AllocMark();
 
-static void CG_CreateSaberMarks(vec3_t start, vec3_t end, vec3_t normal)
+static void CG_CreateSaberMarks(const vec3_t start,
+	const vec3_t end,
+	const vec3_t normal)
 {
-	int i, j;
-	vec3_t axis[3]{}, original_points[4]{};
-	vec3_t markPoints[MAX_MARK_POINTS]{}, projection;
-	polyVert_t* v;
-	markFragment_t markFragments[MAX_MARK_FRAGMENTS], * mf;
-
 	if (!cg_addMarks.integer)
 	{
 		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// 1. Build a stable orthonormal basis
+	// ----------------------------------------------------------------------
+	vec3_t axis[3]{};
+
+	// axis[1] = direction of slash
 	VectorSubtract(end, start, axis[1]);
-	VectorNormalizeFast(axis[1]);
-
-	// create the texture axis
-	VectorCopy(normal, axis[0]);
-	CrossProduct(axis[1], axis[0], axis[2]);
-
-	// create the full polygon that we'll project
-	for (i = 0; i < 3; i++)
+	if (!VectorNormalize(axis[1]))
 	{
-		constexpr float radius = 0.65f;
+		// Degenerate slash direction → bail
+		return;
+	}
+
+	// axis[0] = surface normal (normalised)
+	VectorCopy(normal, axis[0]);
+	if (!VectorNormalize(axis[0]))
+	{
+		VectorSet(axis[0], 0, 0, 1);
+	}
+
+	// axis[2] = perpendicular vector
+	CrossProduct(axis[1], axis[0], axis[2]);
+	if (!VectorNormalize(axis[2]))
+	{
+		// If cross product collapsed, rebuild using a fallback
+		PerpendicularVector(axis[2], axis[0]);
+	}
+
+	// ----------------------------------------------------------------------
+	// 2. Build the quad to project
+	// ----------------------------------------------------------------------
+	vec3_t original_points[4]{};
+	constexpr float radius = 0.65f;
+
+	for (int i = 0; i < 3; i++)
+	{
 		original_points[0][i] = start[i] - radius * axis[1][i] - radius * axis[2][i];
 		original_points[1][i] = end[i] + radius * axis[1][i] - radius * axis[2][i];
 		original_points[2][i] = end[i] + radius * axis[1][i] + radius * axis[2][i];
 		original_points[3][i] = start[i] - radius * axis[1][i] + radius * axis[2][i];
 	}
 
-	VectorScale(normal, -1, projection);
+	// Projection direction (into the surface)
+	vec3_t projection;
+	VectorScale(axis[0], -1, projection);
 
-	// get the fragments
-	const int numFragments = cgi_CM_MarkFragments(4, original_points,
-		projection, MAX_MARK_POINTS, markPoints[0], MAX_MARK_FRAGMENTS,
-		markFragments);
+	// ----------------------------------------------------------------------
+	// 3. Collect mark fragments
+	// ----------------------------------------------------------------------
+	vec3_t mark_points[MAX_MARK_POINTS]{};
+	markFragment_t mark_frags[MAX_MARK_FRAGMENTS]{};
 
-	for (i = 0, mf = markFragments; i < numFragments; i++, mf++)
+	int num_frags = cgi_CM_MarkFragments(
+		4,
+		original_points,
+		projection,
+		MAX_MARK_POINTS,
+		mark_points[0],
+		MAX_MARK_FRAGMENTS,
+		mark_frags
+	);
+
+	if (num_frags <= 0)
 	{
-		polyVert_t verts[MAX_VERTS_ON_POLY]{};
-		// we have an upper limit on the complexity of polygons that we store persistantly
+		return;
+	}
+
+	if (num_frags > MAX_MARK_FRAGMENTS)
+	{
+		num_frags = MAX_MARK_FRAGMENTS;
+	}
+
+	// ----------------------------------------------------------------------
+	// 4. Emit marks
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < num_frags; i++)
+	{
+		markFragment_t* mf = &mark_frags[i];
+
 		if (mf->numPoints > MAX_VERTS_ON_POLY)
 		{
 			mf->numPoints = MAX_VERTS_ON_POLY;
 		}
 
-		for (j = 0, v = verts; j < mf->numPoints; j++, v++)
-		{
-			vec3_t mid;
-			vec3_t delta;
+		polyVert_t verts[MAX_VERTS_ON_POLY]{};
 
-			// Set up our texture coords, this may need some work
-			VectorCopy(markPoints[mf->firstPoint + j], v->xyz);
-			VectorAdd(end, start, mid);
-			VectorScale(mid, 0.5f, mid);
+		// Compute UVs without jitter (fixes shimmering artifacts)
+		vec3_t mid;
+		VectorAdd(start, end, mid);
+		VectorScale(mid, 0.5f, mid);
+
+		for (int j = 0; j < mf->numPoints; j++)
+		{
+			polyVert_t* v = &verts[j];
+			VectorCopy(mark_points[mf->firstPoint + j], v->xyz);
+
+			vec3_t delta;
 			VectorSubtract(v->xyz, mid, delta);
 
-			v->st[0] = 0.5f + DotProduct(delta, axis[1]) * (0.05f + Q_flrand(0.0f, 1.0f) * 0.03f);
-			v->st[1] = 0.5f + DotProduct(delta, axis[2]) * (0.15f + Q_flrand(0.0f, 1.0f) * 0.05f);
+			// Stable, non-random UV mapping
+			v->st[0] = 0.5f + DotProduct(delta, axis[1]) * 0.06f;
+			v->st[1] = 0.5f + DotProduct(delta, axis[2]) * 0.12f;
 		}
 
-		// save it persistantly, do burn first
+		// ------------------------------------------------------------------
+		// Burn mark
+		// ------------------------------------------------------------------
 		markPoly_t* mark = CG_AllocMark();
 		mark->time = cg.time;
 		mark->alphaFade = qtrue;
 		mark->markShader = cgs.media.rivetMarkShader;
 		mark->poly.numVerts = mf->numPoints;
 		mark->color[0] = mark->color[1] = mark->color[2] = mark->color[3] = 255;
-		memcpy(mark->verts, verts, mf->numPoints * sizeof verts[0]);
+		memcpy(mark->verts, verts, mf->numPoints * sizeof(verts[0]));
 
-		// And now do a glow pass
-		// by moving the start time back, we can hack it to fade out way before the burn does
+		// ------------------------------------------------------------------
+		// Glow pass
+		// ------------------------------------------------------------------
 		mark = CG_AllocMark();
 		mark->time = cg.time - 8500;
 		mark->alphaFade = qfalse;
 		mark->markShader = cgs.media.bdecal_saberglow;
 		mark->poly.numVerts = mf->numPoints;
+
+		// Slight variation but no UV jitter
 		mark->color[0] = 215 + Q_flrand(0.0f, 1.0f) * 40.0f;
 		mark->color[1] = 96 + Q_flrand(0.0f, 1.0f) * 32.0f;
 		mark->color[2] = mark->color[3] = Q_flrand(0.0f, 1.0f) * 15.0f;
-		memcpy(mark->verts, verts, mf->numPoints * sizeof verts[0]);
+
+		memcpy(mark->verts, verts, mf->numPoints * sizeof(verts[0]));
 	}
 }
 
@@ -12566,7 +12724,7 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 									trace.endpos, uaxis);
 								VectorScale(axis[0], -1, splash_back_dir);
 
-								cg_saber_do_weapon_hit_marks(client, scent != nullptr ? scent->gent : nullptr, hit_ent,
+								CG_SaberDoWeaponHitMarks(client, scent != nullptr ? scent->gent : nullptr, hit_ent,
 									saberNum, blade_num, trace.endpos, axis[0], uaxis, 0.25f);
 							}
 						}

@@ -42,6 +42,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_weapons.h"
 #include "anims.h"
 #include "bg_vehicles.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
+#include "surfaceflags.h"
 
 //these two defs are shared now because we do clientside ent parsing
 #define	MAX_SPAWN_VARS			64
@@ -60,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-27,Month-02,Year-26,BuildNum-05" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-01,Month-03,Year-26,BuildNum-01" // build date
 
 #define	STEPSIZE		18
 

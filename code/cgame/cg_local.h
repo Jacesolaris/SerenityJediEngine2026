@@ -826,9 +826,9 @@ void CG_DrawCenterString();
 //
 // cg_player.c
 //
-void CG_AddGhoul2Mark(int type, float size, vec3_t hitloc, vec3_t hitdirection,
-	int entnum, vec3_t entposition, float entangle, CGhoul2Info_v& ghoul2, vec3_t model_scale,
-	int life_time = 0, int first_model = 0, vec3_t uaxis = nullptr);
+void CG_AddGhoul2Mark(const int type, const float size, vec3_t hitloc, vec3_t hitdirection,
+	const int entnum, vec3_t entposition, const float entangle, CGhoul2Info_v& ghoul2,
+	vec3_t model_scale, const int life_time = 0, const int first_model = 0, const vec3_t uaxis = nullptr);
 void CG_Player(centity_t* cent);
 void CG_ResetPlayerEntity(centity_t* cent);
 void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent);

@@ -788,11 +788,12 @@ static void ai_mod_jump(bot_state_t* bs)
 			bs->BOTjumpState = JS_LANDING;
 
 			if (bs->cur_ps.weapon == WP_SABER &&
-				Q_irand(0, 1000) < 5) // 0.5% per frame ≈ every 3–6 seconds
+				Q_irand(0, 1000) < 5)
 			{
-				Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
-				bs->nextStyleSwitchTime = level.time + Q_irand(1500, 2500);
+				// schedule a style switch 1.5 seconds after landing
+				bs->nextStyleSwitchTime = level.time + 1500;
 			}
+
 			return;
 		}
 
@@ -822,6 +823,14 @@ static void ai_mod_jump(bot_state_t* bs)
 		// Hold movement/attacks only during this short window
 		if (level.time < bs->landingReleaseTime)
 			return;
+
+		// Perform delayed saber-style switch if scheduled
+		if (bs->nextStyleSwitchTime > 0 &&
+			level.time >= bs->nextStyleSwitchTime)
+		{
+			Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
+			bs->nextStyleSwitchTime = 0;
+		}
 
 		// Landing complete — reset state
 		bs->landingReleaseTime = 0;
