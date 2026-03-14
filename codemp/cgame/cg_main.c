@@ -26,6 +26,19 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "cg_local.h"
 
 #include "ui/ui_shared.h"
+#include <game\bg_weapons.h>
+#include <qcommon\q_string.h>
+#include <stdlib.h>
+#include <string.h>
+#include <qcommon\qfiles.h>
+#include <ui\menudef.h>
+#include <qcommon\q_color.h>
+#include <game\bg_vehicles.h>
+#include <game\bg_public.h>
+#include <qcommon\q_shared.h>
+#include <qcommon\q_platform.h>
+#include <qcommon\q_math.h>
+#include "cg_public.h"
 // display context for new ui stuff
 displayContextDef_t cgDC;
 
@@ -67,7 +80,7 @@ void CG_MiscEnt(void);
 void CG_DoCameraShake(vec3_t origin, float intensity, int radius, int time);
 
 //do we have any force powers that we would normally need to cycle to?
-qboolean CG_NoUseableForce(void)
+static qboolean CG_NoUseableForce(void)
 {
 	int i = FP_HEAL;
 	while (i < NUM_FORCE_POWERS)
@@ -177,7 +190,7 @@ static void C_G2Mark(void)
 
 static void CG_DebugBoxLines(vec3_t mins, vec3_t maxs, const int duration)
 {
-	vec3_t start, end, vert;
+	vec3_t start = { 0 }, end, vert = { 0 };
 	const float x = maxs[0] - mins[0];
 	const float y = maxs[1] - mins[1];
 
@@ -573,7 +586,7 @@ void CG_ParseSiegeState(const char* str)
 	int i = 0;
 	int j = 0;
 	//	int prevState = cgSiegeRoundState;
-	char b[1024];
+	char b[1024] = { 0 };
 
 	while (str[i] && str[i] != '|')
 	{
@@ -1413,9 +1426,11 @@ static void CG_RegisterGraphics(void)
 	cgs.effects.mSaberprfectBlock = trap->FX_RegisterEffect("saber/saber_goodparry.efx");
 	cgs.effects.mSaberBodyHit = trap->FX_RegisterEffect("saber/saber_bodyhit.efx");
 	cgs.effects.mSaberlimb_Bolton = trap->FX_RegisterEffect("saber/limb_bolton.efx");
+
 	cgs.effects.mSaberBloodSparks = trap->FX_RegisterEffect("saber/blood_sparks_mp.efx");
 	cgs.effects.mSaberBloodSparksSmall = trap->FX_RegisterEffect("saber/blood_sparks_25_mp.efx");
 	cgs.effects.mSaberBloodSparksMid = trap->FX_RegisterEffect("saber/blood_sparks_50_mp.efx");
+
 	cgs.effects.mSpawn = trap->FX_RegisterEffect("mp/spawn.efx");
 	cgs.effects.mJediSpawn = trap->FX_RegisterEffect("mp/jedispawn.efx");
 	cgs.effects.mBlasterDeflect = trap->FX_RegisterEffect("blaster/deflect.efx");
@@ -1797,7 +1812,7 @@ int CG_GetTeamNonScoreCount(team_t team);
 
 static void CG_SiegeCountCvars(void)
 {
-	int classGfx[6];
+	int classGfx[6] = { 0 };
 
 	trap->Cvar_Set("ui_tm1_cnt", va("%d", CG_GetTeamNonScoreCount(TEAM_RED)));
 	trap->Cvar_Set("ui_tm2_cnt", va("%d", CG_GetTeamNonScoreCount(TEAM_BLUE)));
@@ -1883,20 +1898,23 @@ static void CG_RegisterClients(void)
 	CG_BuildSpectatorString();
 }
 
-//===========================================================================
-
-/*
-=================
-CG_ConfigString
-=================
-*/
 const char* CG_ConfigString(const int index)
 {
-	if (index < 0 || index >= MAX_CONFIGSTRINGS)
+	// Validate index BEFORE touching the array
+	if ((unsigned)index >= MAX_CONFIGSTRINGS)
 	{
 		trap->Error(ERR_DROP, "CG_ConfigString: bad index: %i", index);
 	}
-	return cgs.gameState.stringData + cgs.gameState.stringOffsets[index];
+
+	const int offset = cgs.gameState.stringOffsets[index];
+
+	// Validate offset (do NOT drop client)
+	if ((unsigned)offset >= (unsigned)cgs.gameState.dataCount)
+	{
+		return "";
+	}
+
+	return cgs.gameState.stringData + offset;
 }
 
 //==================================================================
@@ -2518,14 +2536,21 @@ CG_LoadMenus();
 */
 void CG_LoadMenus(const char* menuFile)
 {
-	const char* p;
-	fileHandle_t f;
+	fileHandle_t f = 0;
+	int          len = 0;
+	const char* p = NULL;
+
+	// Local static buffer for menu file contents
 	static char buf[MAX_MENUDEFFILE];
 
-	int len = trap->FS_Open(menuFile, &f, FS_READ);
+	// ------------------------------------------------------------
+	// 1. Try to load the requested menu file
+	// ------------------------------------------------------------
+	len = trap->FS_Open(menuFile, &f, FS_READ);
 
-	if (!f)
+	if (len <= 0 || f == 0)
 	{
+		// If menuFile is numeric, it's a HUD index → silent fallback
 		if (Q_isanumber(menuFile))
 		{
 			trap->Print(S_COLOR_GREEN "hud menu file skipped, using default\n");
@@ -2535,49 +2560,70 @@ void CG_LoadMenus(const char* menuFile)
 			trap->Print(S_COLOR_YELLOW "hud menu file not found: %s, using default\n", menuFile);
 		}
 
+		// Load default HUD
 		len = trap->FS_Open("ui/sje-hud.txt", &f, FS_READ);
-		if (!f)
+		if (len <= 0 || f == 0)
 		{
-			trap->Error(ERR_DROP, S_COLOR_RED "default hud menu file not found: ui/sje-hud.txt, unable to continue!");
+			trap->Error(ERR_DROP,
+				S_COLOR_RED "default hud menu file not found: ui/sje-hud.txt, unable to continue!");
 		}
 	}
 
+	// ------------------------------------------------------------
+	// 2. Validate file size
+	// ------------------------------------------------------------
 	if (len >= MAX_MENUDEFFILE)
 	{
 		trap->FS_Close(f);
-		trap->Error(ERR_DROP, S_COLOR_RED "menu file too large: %s is %i, max allowed is %i", menuFile, len,
-			MAX_MENUDEFFILE);
+		trap->Error(ERR_DROP,
+			S_COLOR_RED "menu file too large: %s is %i bytes, max allowed is %i",
+			menuFile, len, MAX_MENUDEFFILE);
 	}
 
+	// ------------------------------------------------------------
+	// 3. Read file into buffer
+	// ------------------------------------------------------------
 	trap->FS_Read(buf, len, f);
-	buf[len] = 0.0f;
+	buf[len] = '\0';  // Proper null terminator
 	trap->FS_Close(f);
 
 	p = buf;
 
+	// ------------------------------------------------------------
+	// 4. Parse menu definitions
+	// ------------------------------------------------------------
 	COM_BeginParseSession("CG_LoadMenus");
-	while (1)
+
+	while (qtrue)
 	{
 		const char* token = COM_ParseExt(&p, qtrue);
-		if (!token || token[0] == 0 || token[0] == '}')
+
+		// End of file or malformed token
+		if (!token || token[0] == '\0')
 		{
 			break;
 		}
 
-		if (Q_stricmp(token, "}") == 0)
+		// Closing brace ends parsing
+		if (token[0] == '}' || Q_stricmp(token, "}") == 0)
 		{
 			break;
 		}
 
+		// loadmenu <filename>
 		if (Q_stricmp(token, "loadmenu") == 0)
 		{
-			if (CG_Load_Menu(&p))
+			if (CG_Load_Menu(&p) == qtrue)
 			{
 				continue;
 			}
+
+			// If CG_Load_Menu fails, stop parsing
 			break;
 		}
 	}
+
+	// Done
 }
 
 /*

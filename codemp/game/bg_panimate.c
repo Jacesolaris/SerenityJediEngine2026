@@ -56,6 +56,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\qfiles.h>
 #include <qcommon\q_color.h>
 #include <qcommon\q_platform.h>
+#include "bg_vehicles.h"
 
 qboolean PM_SaberInTransition(int move);
 qboolean PM_SaberInDeflect(int move);
@@ -1061,6 +1062,28 @@ qboolean PM_InKataAnim(const int anim)
 	case BOTH_YODA_SPECIAL:
 	case BOTH_GRIEVOUS_SPIN:
 	case BOTH_GRIEVOUS_PROTECT:
+		return qtrue;
+	default:;
+	}
+	return qfalse;
+}
+
+qboolean PM_InKataBotDashDodgeAnim(const int anim)
+{
+	switch (anim)
+	{
+	case BOTH_A6_SABERPROTECT:
+	case BOTH_A7_SOULCAL:
+	case BOTH_A1_SPECIAL:
+	case BOTH_A2_SPECIAL:
+	case BOTH_A3_SPECIAL:
+	case BOTH_A4_SPECIAL:
+	case BOTH_A5_SPECIAL:
+	case BOTH_YODA_SPECIAL:
+	case BOTH_GRIEVOUS_SPIN:
+	case BOTH_GRIEVOUS_PROTECT:
+	case BOTH_SPINATTACK6:
+	case BOTH_SPINATTACK7:
 		return qtrue;
 	default:;
 	}
@@ -5404,7 +5427,19 @@ int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, c
 	}
 
 	// Build full path to mpanimevents.cfg
-	Com_sprintf(sfilename, sizeof(sfilename), "%smpanimevents.cfg", as_filename);
+	// safe vehicle-based selection of event file
+	if (as_filename && strstr(as_filename, "droideka2"))
+	{
+		Com_sprintf(sfilename, sizeof(sfilename), "models/players/droideka/animevents.cfg");
+	}
+	else if (as_filename && strstr(as_filename, "SBD2/default"))
+	{
+		Com_sprintf(sfilename, sizeof(sfilename), "models/players/SBD/animevents.cfg");
+	}
+	else
+	{
+		Com_sprintf(sfilename, sizeof(sfilename), "%smpanimevents.cfg", as_filename);
+	}
 
 	// Initialize event arrays (only when not inside an include)
 	if (bg_animParseIncluding <= 0)

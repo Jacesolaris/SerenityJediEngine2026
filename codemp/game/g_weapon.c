@@ -38,6 +38,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_local.h"
 #include "botlib/be_aas.h"
 #include "qcommon/q_shared.h"
+#include <qcommon\q_platform.h>
+#include <qcommon\q_math.h>
 
 static vec3_t forward, vright, up;
 static vec3_t muzzle;

@@ -42,7 +42,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "botlib.h"
 #include "be_interface.h"
 #include "be_ea.h"
-#include <qcommon\q_math.h>
 
 constexpr auto MAX_USERMOVE = 400;
 constexpr auto MAX_COMMANDARGUMENTS = 10;
@@ -76,7 +75,7 @@ void EA_SayTeam(const int client, char* str)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-static void EA_Tell(const int client, const int clientto, char* str)
+void EA_Tell(const int client, const int clientto, char* str)
 {
 	botimport.BotClientCommand(client, va("tell %d, %s", clientto, str));
 } //end of the function EA_SayTeam
@@ -86,7 +85,7 @@ static void EA_Tell(const int client, const int clientto, char* str)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-static void EA_UseItem(const int client, char* it)
+void EA_UseItem(const int client, char* it)
 {
 	botimport.BotClientCommand(client, va("use %s", it));
 } //end of the function EA_UseItem
@@ -96,7 +95,7 @@ static void EA_UseItem(const int client, char* it)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-static void EA_DropItem(const int client, char* it)
+void EA_DropItem(const int client, char* it)
 {
 	botimport.BotClientCommand(client, va("drop %s", it));
 } //end of the function EA_DropItem
@@ -106,7 +105,7 @@ static void EA_DropItem(const int client, char* it)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-static void EA_UseInv(const int client, char* inv)
+void EA_UseInv(const int client, char* inv)
 {
 	botimport.BotClientCommand(client, va("invuse %s", inv));
 } //end of the function EA_UseInv
@@ -116,7 +115,7 @@ static void EA_UseInv(const int client, char* inv)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-static void EA_DropInv(const int client, char* inv)
+void EA_DropInv(const int client, char* inv)
 {
 	botimport.BotClientCommand(client, va("invdrop %s", inv));
 } //end of the function EA_DropInv

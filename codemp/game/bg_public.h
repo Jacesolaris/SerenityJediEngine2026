@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-01,Month-03,Year-26,BuildNum-01" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-14,Month-03,Year-26,BuildNum-03" // build date
 
 #define	STEPSIZE		18
 
@@ -271,7 +271,7 @@ typedef enum
 } brokenLimb_t;
 
 //for supplier class items
-#define TOSS_DEBOUNCE_TIME				5000
+#define TOSS_DEBOUNCE_TIME				15000
 
 typedef enum {
 	GT_FFA,				// free for all
@@ -1990,6 +1990,7 @@ qboolean PM_SpinningSaberAnim(int anim);
 qboolean pm_saber_in_special_attack(int anim);
 qboolean PM_SaberInKata(saber_moveName_t saber_move);
 qboolean PM_InKataAnim(int anim);
+qboolean PM_InKataBotDashDodgeAnim(const int anim);
 qboolean PM_KickingAnim(int anim);
 qboolean PM_PunchAnim(int anim);
 qboolean BG_InRoll(const playerState_t* ps, int anim);
@@ -2099,3 +2100,7 @@ extern int force_power_dark_light[NUM_FORCE_POWERS];
 extern const char* gametypeStringShort[GT_MAX_GAME_TYPE];
 const char* BG_GetGametypeString(int gametype);
 int BG_GetGametypeForString(const char* gametype);
+
+#define BOT_SABER_PENDING_MASK     0x1
+#define BOT_PENDING_STAND_ANIM     0x2
+#define BOT_SABER_PENDING_DELAY_MS 400 // milliseconds delay before cycling saber style

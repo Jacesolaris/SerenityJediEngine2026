@@ -38,7 +38,7 @@ void FX_DisruptorMainShot(vec3_t start, vec3_t end)
 		1.0f, 0.0f, 0.0f,
 		WHITE, WHITE, 0.0f,
 		300, trap->R_RegisterShader("gfx/effects/redLine"),
-		FX_SIZE_LINEAR | FX_ALPHA_LINEAR);
+		FX_SIZE_LINEAR | FX_SIZE_LINEAR);
 }
 
 /*
@@ -52,7 +52,7 @@ void FX_DisruptorAltShot(vec3_t start, vec3_t end, const qboolean full_charge)
 		1.0f, 0.0f, 0.0f,
 		WHITE, WHITE, 0.0f,
 		300, trap->R_RegisterShader("gfx/effects/redLine"),
-		FX_SIZE_LINEAR | FX_ALPHA_LINEAR);
+		FX_SIZE_LINEAR | FX_SIZE_LINEAR);
 
 	if (full_charge)
 	{
@@ -63,7 +63,7 @@ void FX_DisruptorAltShot(vec3_t start, vec3_t end, const qboolean full_charge)
 			1.0f, 0.0f, 0.0f,
 			YELLER, YELLER, 0.0f,
 			300, trap->R_RegisterShader("gfx/misc/whiteline2"),
-			FX_SIZE_LINEAR | FX_ALPHA_LINEAR);
+			FX_SIZE_LINEAR | FX_SIZE_LINEAR);
 	}
 }
 
@@ -165,7 +165,7 @@ void fx_kothos_beam(vec3_t start, vec3_t end)
 		1.0f, 0.0f, 0.0f,
 		WHITE, WHITE, 0.0f,
 		175, trap->R_RegisterShader("gfx/misc/dr1"),
-		FX_SIZE_LINEAR | FX_ALPHA_LINEAR);
+		FX_SIZE_LINEAR | FX_SIZE_LINEAR);
 
 	vec3_t YELLER = { 0.8f, 0.7f, 0.0f };
 
@@ -175,5 +175,5 @@ void fx_kothos_beam(vec3_t start, vec3_t end)
 		1.0f, 0.0f, 0.0f,
 		YELLER, YELLER, 0.0f,
 		150, trap->R_RegisterShader("gfx/misc/whiteline2"),
-		FX_SIZE_LINEAR | FX_ALPHA_LINEAR);
+		FX_SIZE_LINEAR | FX_SIZE_LINEAR);
 }

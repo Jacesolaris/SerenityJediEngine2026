@@ -39,6 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "ui/menudef.h"			// for the voice chats
 #include "teams.h"
 #include "anims.h"
+#include "bg_weapons.h"
 
 extern qboolean in_camera;
 //rww - for getting bot commands...
@@ -49,7 +50,7 @@ void WP_SetSaber(int entNum, saberInfo_t* sabers, int saberNum, const char* sabe
 
 void Cmd_NPC_f(gentity_t* ent);
 void Cmd_AdminNPC_f(gentity_t* ent);
-void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin);
+void SetTeamQuick(const gentity_t* ent, const int team, const qboolean doBegin);
 extern void G_RemoveWeather(void);
 extern void G_SetTauntAnim(gentity_t* ent, int taunt);
 
@@ -82,13 +83,13 @@ const gbuyable_t bg_buylist[] =
 	{"launcher", WP_ROCKET_LAUNCHER, IT_WEAPON, 3, 2, WC_HEAVY}, // rocket
 	{"concussion", WP_CONCUSSION, IT_WEAPON, 300, 2, WC_HEAVY}, // mega rifle
 
-	{"energy", AMMO_BLASTER, IT_AMMO, 500, 1, WC_AMMO},
-	{"powercells", AMMO_POWERCELL, IT_AMMO, 300, 1, WC_AMMO},
-	{"bolts", AMMO_METAL_BOLTS, IT_AMMO, 375, 1, WC_AMMO},
-	{"rockets", AMMO_ROCKETS, IT_AMMO, 3, 1, WC_AMMO},
-	{"thermal", AMMO_THERMAL, IT_WEAPON, 3, 1, WC_GRENADE},
-	{"mine", AMMO_TRIPMINE, IT_AMMO, 5, 1, WC_GRENADE},
-	{"detpack", AMMO_DETPACK, IT_AMMO, 5, 1, WC_GRENADE},
+	{"energy", AMMO_BLASTER, IT_AMMO, 999, 0, WC_AMMO},
+	{"powercells", AMMO_POWERCELL, IT_AMMO, 999, 0, WC_AMMO},
+	{"bolts", AMMO_METAL_BOLTS, IT_AMMO, 999, 0, WC_AMMO},
+	{"rockets", AMMO_ROCKETS, IT_AMMO, 3, 0, WC_AMMO},
+	{"thermal", AMMO_THERMAL, IT_AMMO, 3, 0, WC_GRENADE},
+	{"mine", AMMO_TRIPMINE, IT_AMMO, 3, 0, WC_GRENADE},
+	{"detpack", AMMO_DETPACK, IT_AMMO, 3, 0, WC_GRENADE},
 	{"ammo", AMMO_NONE, IT_AMMO, 0, 0, WC_AMMO},
 
 	{"health", 4, IT_HEALTH, 25, 5, WC_ARMOR}, // heath boost
@@ -935,7 +936,7 @@ void SetTeam(gentity_t* ent, const char* s)
 	else if (!Q_stricmp(s, "spectator") || !Q_stricmp(s, "s") || !Q_stricmp(s, "spectate"))
 	{
 		team = TEAM_SPECTATOR;
-		spec_state = SPECTATOR_FOLLOW; // SPECTATOR_FREE;
+		spec_state = SPECTATOR_FREE;
 	}
 	else if (g_gametype.integer == GT_SINGLE_PLAYER)
 	{
@@ -4360,7 +4361,7 @@ command_t commands[] = {
 	{"vote", Cmd_Vote_f, CMD_NOINTERMISSION},
 	{"where", Cmd_Where_f, CMD_NOINTERMISSION},
 	{"sje", Cmd_NPC_f, CMD_CHEATOVERRIDE | CMD_ALIVE},
-	// Movieduels secrect commands
+	// secrect commands
 	{"Adminlogin", Cmd_AdminLogin, 0},
 	{"Adminlogout", Cmd_AdminLogout, 0},
 	{"Adminnpc", Cmd_AdminNPC_f, CMD_CHEATOVERRIDE | CMD_ALIVE},

@@ -24,6 +24,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "g_local.h"
 #include "g_public.h"
+#include <stdlib.h>
+#include <qcommon\q_platform.h>
+#include "bg_public.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_string.h>
 
 /*
 =======================================================================

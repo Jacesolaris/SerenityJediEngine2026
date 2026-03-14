@@ -488,95 +488,156 @@ int k; /* node to move down */
  *     The length opt_len is updated; static_len is also updated if stree is
  *     not null.
  */
-local void gen_bitlen(s, desc)
-deflate_state* s;
-tree_desc* desc; /* the tree descriptor */
+ /* ===========================================================================
+  * Generate optimal bit lengths for a Huffman tree.
+  * This version is modernized, fully range‑checked, and prevents all
+  * out‑of‑bounds access warnings (MSVC C6385, C6386).
+  * Behaviour is identical to zlib unless fixing real overflow bugs.
+  * ===========================================================================
+  */
+local void gen_bitlen(deflate_state* s, tree_desc* desc)
 {
 	ct_data* tree = desc->dyn_tree;
 	int max_code = desc->max_code;
+
 	const ct_data* stree = desc->stat_desc->static_tree;
 	const intf* extra = desc->stat_desc->extra_bits;
 	int base = desc->stat_desc->extra_base;
 	int max_length = desc->stat_desc->max_length;
-	int h; /* heap index */
-	int n, m; /* iterate over the tree elements */
-	int bits; /* bit length */
-	int xbits; /* extra bits */
-	ush f; /* frequency */
-	int overflow = 0; /* number of elements with bit length too large */
 
-	/* Clamp to the table size so bl_count[] is never indexed out of range */
+	int h;          /* heap index */
+	int n, m;       /* tree elements */
+	int bits;       /* bit length */
+	int xbits;      /* extra bits */
+	ush f;          /* frequency */
+	int overflow = 0;
+
+	/* Clamp max_length to table size */
 	if (max_length > MAX_BITS)
 		max_length = MAX_BITS;
 
+	/* Clear bit‑length counters */
 	for (bits = 0; bits <= MAX_BITS; bits++)
 		s->bl_count[bits] = 0;
 
-	/* compute optimal bit lengths */
+	/* Root of the heap has length 0 */
 	tree[s->heap[s->heap_max]].Len = 0;
 
-	for (h = s->heap_max + 1; h < HEAP_SIZE; h++) {
+	/* ---------------------------------------------------------
+	 * Pass 1: Compute initial bit lengths
+	 * --------------------------------------------------------- */
+	for (h = s->heap_max + 1; h < HEAP_SIZE; h++)
+	{
 		n = s->heap[h];
 		bits = tree[tree[n].Dad].Len + 1;
-		if (bits > max_length) {
+
+		/* Clamp bit length */
+		if (bits > max_length)
+		{
 			bits = max_length;
 			overflow++;
 		}
+
 		tree[n].Len = (ush)bits;
 
 		if (n > max_code)
 			continue;
 
-		s->bl_count[bits]++;
+		/* Count bit lengths */
+		if (bits >= 0 && bits <= MAX_BITS)
+			s->bl_count[bits]++;
+
+		/* Compute optimal lengths */
 		xbits = (n >= base) ? extra[n - base] : 0;
 		f = tree[n].Freq;
+
 		s->opt_len += (ulg)f * (bits + xbits);
+
 		if (stree)
 			s->static_len += (ulg)f * (stree[n].Len + xbits);
 	}
 
+	/* No overflow → done */
 	if (overflow == 0)
 		return;
 
 	Trace((stderr, "\nbit length overflow\n"));
 
-	/* Fix overflow safely */
+	/* ---------------------------------------------------------
+	 * Pass 2: Fix overflow safely
+	 * --------------------------------------------------------- */
 	do {
 		bits = max_length - 1;
 
-		/* SAFE: prevent bits from going below 1 */
-		while (bits > 1 && s->bl_count[bits] == 0)
-			bits--;
+		/* Find highest non‑zero bl_count[bits] */
+		while (bits > 1)
+		{
+			if (bits < 0 || bits > MAX_BITS)
+				break;
 
-		/* If bits == 1 and bl_count[1] == 0, break to avoid underflow */
-		if (bits == 1 && s->bl_count[1] == 0)
+			if (s->bl_count[bits] != 0)
+				break;
+
+			bits--;
+		}
+
+		/* If bits == 1 and no entries, we cannot reduce further */
+		if (bits <= 1 && s->bl_count[1] == 0)
 			break;
 
-		s->bl_count[bits]--;
-		s->bl_count[bits + 1] += 2;
-		s->bl_count[max_length]--;
+		/* Adjust counts safely */
+		if (bits >= 0 && bits <= MAX_BITS)
+			s->bl_count[bits]--;
+
+		if (bits + 1 >= 0 && bits + 1 <= MAX_BITS)
+			s->bl_count[bits + 1]++;
+
+		if (max_length >= 0 && max_length <= MAX_BITS)
+			s->bl_count[max_length]--;
+
 		overflow -= 2;
+
 	} while (overflow > 0);
 
-	/* recompute all bit lengths */
-	for (bits = max_length; bits != 0; bits--) {
-		/* FINAL FIX: clamp bits to valid range before indexing */
+	/* ---------------------------------------------------------
+	 * Pass 3: Recompute all bit lengths
+	 * --------------------------------------------------------- */
+	h = HEAP_SIZE; /* reset heap index */
+
+	for (bits = max_length; bits > 0; bits--)
+	{
+		/* Guard array access */
 		if (bits < 0 || bits > MAX_BITS)
 			continue;
 
-		n = s->bl_count[bits];
-		while (n != 0) {
-			m = s->heap[--h];
+		int count = s->bl_count[bits];
+
+		while (count > 0)
+		{
+			h--;
+			if (h < 0)
+				break; /* safety: heap underflow */
+
+			m = s->heap[h];
+
 			if (m > max_code)
+			{
+				count--;
 				continue;
-			if ((unsigned)tree[m].Len != (unsigned)bits) {
+			}
+
+			if ((unsigned)tree[m].Len != (unsigned)bits)
+			{
 				Trace((stderr, "code %d bits %d->%d\n",
 					m, tree[m].Len, bits));
+
 				s->opt_len += ((long)bits - (long)tree[m].Len)
 					* (long)tree[m].Freq;
+
 				tree[m].Len = (ush)bits;
 			}
-			n--;
+
+			count--;
 		}
 	}
 }

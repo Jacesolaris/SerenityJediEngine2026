@@ -40,6 +40,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_string.h>
 #include <stdlib.h>
 #include <string.h>
+#include <qcommon\q_color.h>
+#include <stdio.h>
 
 extern stringID_table_t animTable[MAX_ANIMATIONS + 1];
 
@@ -156,7 +158,7 @@ static int vfieldcmp(const void* a, const void* b)
 
 static qboolean BG_ParseVehWeaponParm(vehWeaponInfo_t* vehWeapon, const char* parmName, const char* pValue)
 {
-	vec3_t vec;
+	vec3_t vec = { 0 };
 	byte* b = (byte*)vehWeapon;
 	int i_fields_read;
 	vehicleType_t vehType;
@@ -732,7 +734,7 @@ static void BG_VehicleClampData(vehicleInfo_t* vehicle)
 
 static qboolean BG_ParseVehicleParm(vehicleInfo_t* vehicle, const char* parmName, const char* pValue)
 {
-	vec3_t vec;
+	vec3_t vec={0};
 	byte* b = (byte*)vehicle;
 	int i_fields_read;
 	vehicleType_t vehType;
@@ -1251,7 +1253,7 @@ static int VEH_VehicleIndexForName(const char* vehicleName)
 
 static void BG_VehWeaponLoadParms(void)
 {
-	int vehExtFNLen;
+	int vehExtFNLen = 0;
 	char vehWeaponExtensionListBuf[2048]; //	The list of file names read in
 	fileHandle_t f;
 
@@ -1315,7 +1317,7 @@ static void BG_VehWeaponLoadParms(void)
 void BG_VehicleLoadParms(void)
 {
 	//HMM... only do this if there's a vehicle on the level?
-	int vehExtFNLen;
+	int vehExtFNLen = 0;
 	char vehExtensionListBuf[2048]; //	The list of file names read in
 	fileHandle_t f;
 
@@ -1392,63 +1394,106 @@ int BG_VehicleGetIndex(const char* vehicleName)
 	return VEH_VehicleIndexForName(vehicleName);
 }
 
+/*
+==============================
+BG_GetVehicleModelName
+
+Retrieves the model name for a vehicle by index.
+Ensures:
+
+- vehicleName begins with '$'
+- index is validated before use
+- static analysis sees all paths as safe
+==============================
+*/
 void BG_GetVehicleModelName(char* modelName, const char* vehicleName, const size_t len)
 {
-	assert(vehicleName);
-	assert(modelName);
+	assert(modelName != NULL);
+	assert(vehicleName != NULL);
 	assert(len > 0);
 
-	// Must start with '$'
+	/* Must start with '$' */
 	assert(vehicleName[0] == '$');
 
 	const char* vehName = &vehicleName[1];
+
+	/* Lookup index */
 	const int vIndex = BG_VehicleGetIndex(vehName);
 
-	// Explicit bounds check to satisfy static analysis
+	/* Explicit bounds check */
 	if (vIndex < 0 || vIndex >= MAX_VEHICLES)
 	{
 		Com_Error(ERR_DROP,
 			"BG_GetVehicleModelName: invalid vehicle index %d for '%s'",
 			vIndex, vehName);
+
+		/* Static analysis safety: execution never reaches here,
+		   but MSVC cannot see that Com_Error() is noreturn. */
+		return;
 	}
 
-	// Now safe to index
+	/* Additional assert for analyzers */
+	assert(vIndex >= 0 && vIndex < MAX_VEHICLES);
+
+	/* Safe to index */
 	Q_strncpyz(modelName, g_vehicleInfo[vIndex].model, len);
 }
 
+/*
+==============================
+BG_GetVehicleSkinName
+
+Retrieves the skin name for a vehicle. The input string must begin
+with '$', and the function replaces it with the resolved skin name.
+
+- Validates index
+- Prevents static-analysis false positives
+- Preserves original behaviour
+==============================
+*/
 void BG_GetVehicleSkinName(char* skinname, const int len)
 {
-	assert(skinname);
+	assert(skinname != NULL);
 	assert(len > 0);
 
-	// Must start with '$'
+	/* Must start with '$' */
 	assert(skinname[0] == '$');
 
 	char* vehName = &skinname[1];
+
+	/* Lookup index */
 	const int vIndex = BG_VehicleGetIndex(vehName);
 
-	// Explicit bounds check to satisfy static analysis
+	/* Explicit bounds check */
 	if (vIndex < 0 || vIndex >= MAX_VEHICLES)
 	{
 		Com_Error(ERR_DROP,
 			"BG_GetVehicleSkinName: invalid vehicle index %d for '%s'",
 			vIndex, vehName);
-	}
 
-	// Now safe to index g_vehicleInfo
-	if (!VALIDSTRING(g_vehicleInfo[vIndex].skin))
-	{
-		skinname[0] = 0;
+		/* Static analysis safety: execution never reaches here,
+		   but MSVC cannot see that Com_Error() is noreturn. */
 		return;
 	}
 
-	// Special case: swoop uses golden skin
+	/* Additional assert for analyzers */
+	assert(vIndex >= 0 && vIndex < MAX_VEHICLES);
+
+	/* If no skin defined, clear the output */
+	if (!VALIDSTRING(g_vehicleInfo[vIndex].skin))
+	{
+		skinname[0] = '\0';
+		return;
+	}
+
+	/* Special case: swoop uses golden skin */
 	if (Q_stricmp(g_vehicleInfo[vIndex].name, "swoop") == 0)
 	{
-		// This is safe because we validated vIndex above
+		/* Safe because vIndex is validated */
 		strcpy(g_vehicleInfo[vIndex].skin, "gold");
 	}
 
+	/* Copy resolved skin name back into caller buffer */
 	Q_strncpyz(skinname, g_vehicleInfo[vIndex].skin, len);
 }
 

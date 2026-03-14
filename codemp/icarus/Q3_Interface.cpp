@@ -34,6 +34,20 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "Q3_Interface.h"
 #include "Q3_Registers.h"
 #include "server/sv_gameapi.h"
+#include <qcommon\q_color.h>
+#include <qcommon\qcommon.h>
+#include "sequencer.h"
+#include "taskmanager.h"
+#include <cstdio>
+#include "interpreter.h"
+#include "tokenizer.h"
+#include <qcommon\q_math.h>
+#include <string.h>
+#include <cstdlib>
+#include <cstdarg>
+#include <qcommon\q_string.h>
+#include <qcommon\q_platform.h>
+#include <qcommon\q_shared.h>
 
 #define stringIDExpand(str, strEnum)	str, strEnum, ENUM2STRING(strEnum)
 //#define stringIDExpand(str, strEnum)	str,strEnum
@@ -380,175 +394,151 @@ Q3_Evaluate
 */
 static int Q3_Evaluate(int p1Type, const char* p1, int p2Type, const char* p2, const int operatorType)
 {
-	float f1 = 0, f2 = 0;
-	vec3_t v1{}, v2{};
-	const char* c1 = nullptr, * c2 = nullptr;
+	float f1 = 0.0f, f2 = 0.0f;
+	vec3_t v1 = { 0.0f, 0.0f, 0.0f };
+	vec3_t v2 = { 0.0f, 0.0f, 0.0f };
+	const char* c1 = NULL;
+	const char* c2 = NULL;
 	int i1 = 0, i2 = 0;
 
-	//Always demote to int on float to integer comparisons
-	if (p1Type == TK_FLOAT && p2Type == TK_INT || p1Type == TK_INT && p2Type == TK_FLOAT)
+	// Always demote to int on float/int comparisons.
+	if ((p1Type == TK_FLOAT && p2Type == TK_INT) ||
+		(p1Type == TK_INT && p2Type == TK_FLOAT))
 	{
 		p1Type = TK_INT;
 		p2Type = TK_INT;
 	}
 
-	//Cannot compare two dissimilar types
+	// Cannot compare dissimilar types.
 	if (p1Type != p2Type)
 	{
 		Q3_DebugPrint(WL_ERROR, "Q3_Evaluate comparing two dissimilar types!\n");
-		return false;
+		return 0;
 	}
 
-	//Format the parameters
+	// Parse parameters based on type.
 	switch (p1Type)
 	{
 	case TK_FLOAT:
-		sscanf(p1, "%f", &f1);
-		sscanf(p2, "%f", &f2);
-		break;
+	{
+		int r1 = sscanf(p1, "%f", &f1);
+		int r2 = sscanf(p2, "%f", &f2);
+		(void)r1; (void)r2; // Explicitly acknowledge return values.
+	}
+	break;
 
 	case TK_INT:
-		sscanf(p1, "%d", &i1);
-		sscanf(p2, "%d", &i2);
-		break;
+	{
+		int r1 = sscanf(p1, "%d", &i1);
+		int r2 = sscanf(p2, "%d", &i2);
+		(void)r1; (void)r2;
+	}
+	break;
 
 	case TK_VECTOR:
-		sscanf(p1, "%f %f %f", &v1[0], &v1[1], &v1[2]);
-		sscanf(p2, "%f %f %f", &v2[0], &v2[1], &v2[2]);
-		break;
+	{
+		int r1 = sscanf(p1, "%f %f %f", &v1[0], &v1[1], &v1[2]);
+		int r2 = sscanf(p2, "%f %f %f", &v2[0], &v2[1], &v2[2]);
+		(void)r1; (void)r2;
+	}
+	break;
 
 	case TK_STRING:
 	case TK_IDENTIFIER:
-		c1 = const_cast<char*>(p1);
-		c2 = const_cast<char*>(p2);
+		c1 = p1;
+		c2 = p2;
 		break;
 
 	default:
 		Q3_DebugPrint(WL_WARNING, "Q3_Evaluate unknown type used!\n");
-		return false;
+		return 0;
 	}
 
-	//Compare them and return the result
-
-	//FIXME: YUCK!!!  Better way to do this?
-
+	// Perform comparison.
 	switch (operatorType)
 	{
-		//
-		//	EQUAL TO
-		//
-
+		// -------------------------
+		// EQUAL TO
+		// -------------------------
 	case TK_EQUALS:
-
 		switch (p1Type)
 		{
-		case TK_FLOAT:
-			return f1 == f2;
-
-		case TK_INT:
-			return i1 == i2;
-
-		case TK_VECTOR:
-			return VectorCompare(v1, v2);
-
+		case TK_FLOAT:     return (f1 == f2);
+		case TK_INT:       return (i1 == i2);
+		case TK_VECTOR:    return VectorCompare(v1, v2);
 		case TK_STRING:
 		case TK_IDENTIFIER:
-			return ~Q_stricmp(c1, c2);
-			//NOTENOTE: The script uses proper string comparison logic (ex. ( a == a ) == true )
-
+			// Q_stricmp returns 0 on match; invert to return 1 on match.
+			return (~Q_stricmp(c1, c2));
 		default:
 			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate unknown type used!\n");
-			return false;
+			return 0;
 		}
 
-		//
-		//	GREATER THAN
-		//
-
+		// -------------------------
+		// GREATER THAN
+		// -------------------------
 	case TK_GREATER_THAN:
-
 		switch (p1Type)
 		{
-		case TK_FLOAT:
-			return f1 > f2;
-
-		case TK_INT:
-			return i1 > i2;
-
+		case TK_FLOAT:  return (f1 > f2);
+		case TK_INT:    return (i1 > i2);
 		case TK_VECTOR:
-			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate vector comparisons of type GREATER THAN cannot be performed!");
-			return false;
-
+			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate vector GREATER THAN comparison invalid!\n");
+			return 0;
 		case TK_STRING:
 		case TK_IDENTIFIER:
-			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate string comparisons of type GREATER THAN cannot be performed!");
-			return false;
-
+			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate string GREATER THAN comparison invalid!\n");
+			return 0;
 		default:
 			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate unknown type used!\n");
-			return false;
+			return 0;
 		}
 
-		//
-		//	LESS THAN
-		//
-
+		// -------------------------
+		// LESS THAN
+		// -------------------------
 	case TK_LESS_THAN:
-
 		switch (p1Type)
 		{
-		case TK_FLOAT:
-			return f1 < f2;
-
-		case TK_INT:
-			return i1 < i2;
-
+		case TK_FLOAT:  return (f1 < f2);
+		case TK_INT:    return (i1 < i2);
 		case TK_VECTOR:
-			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate vector comparisons of type LESS THAN cannot be performed!");
-			return false;
-
+			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate vector LESS THAN comparison invalid!\n");
+			return 0;
 		case TK_STRING:
 		case TK_IDENTIFIER:
-			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate string comparisons of type LESS THAN cannot be performed!");
-			return false;
-
+			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate string LESS THAN comparison invalid!\n");
+			return 0;
 		default:
 			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate unknown type used!\n");
-			return false;
+			return 0;
 		}
 
-		//
-		//	NOT
-		//
-
-	case TK_NOT: //NOTENOTE: Implied "NOT EQUAL TO"
-
+		// -------------------------
+		// NOT (meaning NOT EQUAL)
+		// -------------------------
+	case TK_NOT:
 		switch (p1Type)
 		{
-		case TK_FLOAT:
-			return f1 != f2;
-
-		case TK_INT:
-			return i1 != i2;
-
-		case TK_VECTOR:
-			return !VectorCompare(v1, v2);
-
+		case TK_FLOAT:     return (f1 != f2);
+		case TK_INT:       return (i1 != i2);
+		case TK_VECTOR:    return (!VectorCompare(v1, v2));
 		case TK_STRING:
 		case TK_IDENTIFIER:
-			return Q_stricmp(c1, c2);
-
+			return Q_stricmp(c1, c2); // non-zero means not equal
 		default:
 			Q3_DebugPrint(WL_ERROR, "Q3_Evaluate unknown type used!\n");
-			return false;
+			return 0;
 		}
 
 	default:
 		Q3_DebugPrint(WL_ERROR, "Q3_Evaluate unknown operator used!\n");
-		break;
+		return 0;
 	}
 
-	return false;
+	// Should never reach here.
+	return 0;
 }
 
 /*
@@ -579,67 +569,83 @@ Q3_DebugPrint
 */
 void Q3_DebugPrint(const int level, const char* format, ...)
 {
-	//Don't print messages they don't want to see
-	//if ( g_ICARUSDebug->integer < level )
-	if (!com_developer || !com_developer->integer)
+	// Respect developer mode: do not print if disabled.
+	if (!com_developer || com_developer->integer == 0)
+	{
 		return;
+	}
 
 	va_list argptr;
 	char text[1024];
 
+	// Format the incoming message.
 	va_start(argptr, format);
-	Q_vsnprintf(text, sizeof text, format, argptr);
+	Q_vsnprintf(text, sizeof(text), format, argptr);
 	va_end(argptr);
 
-	//Add the color formatting
+	// Apply color formatting based on severity.
 	switch (level)
 	{
 	case WL_ERROR:
-		Com_Printf(S_COLOR_RED"ERROR: %s", text);
+		Com_Printf(S_COLOR_RED "ERROR: %s", text);
 		break;
 
 	case WL_WARNING:
-		Com_Printf(S_COLOR_YELLOW"WARNING: %s", text);
+		Com_Printf(S_COLOR_YELLOW "WARNING: %s", text);
 		break;
 
 	case WL_DEBUG:
 	{
-		int entNum;
+		int entNum = 0;
 
-		sscanf(text, "%d", &entNum);
+		// FIX: capture sscanf return value to satisfy MSVC C6031.
+		int parsed = sscanf(text, "%d", &entNum);
+		(void)parsed; // Explicitly acknowledge the return value.
 
+		// Entity filter: skip if not matching.
 		if (ICARUS_entFilter >= 0 && ICARUS_entFilter != entNum)
+		{
 			return;
+		}
 
+		// Skip the numeric prefix ("00000 ").
 		char* buffer = text;
 		buffer += 5;
 
+		// Clamp entity index to valid range.
 		if (entNum < 0 || entNum >= MAX_GENTITIES)
+		{
 			entNum = 0;
+		}
 
-		Com_Printf(S_COLOR_BLUE"DEBUG: %s(%d): %s\n", SV_Gentity_num(entNum)->script_targetname, entNum, buffer);
+		Com_Printf(
+			S_COLOR_BLUE "DEBUG: %s(%d): %s\n",
+			SV_Gentity_num(entNum)->script_targetname,
+			entNum,
+			buffer);
 		break;
 	}
+
 	default:
 	case WL_VERBOSE:
-		Com_Printf(S_COLOR_GREEN"INFO: %s", text);
+		Com_Printf(S_COLOR_GREEN "INFO: %s", text);
 		break;
 	}
 }
 
-void CGCam_Anything(void)
+static void CGCam_Anything(void)
 {
 	Q3_DebugPrint(WL_WARNING, "Camera functions NOT SUPPORTED IN MP\n");
 }
 
 //These are useless for MP. Just taking it for now since I don't want to remove all calls to this in ICARUS.
-int AppendToSaveGame(unsigned long chid, const void* data, int length)
+static int AppendToSaveGame(unsigned long chid, const void* data, int length)
 {
 	return 1;
 }
 
 // Changed by BTO (VV) - Visual C++ 7.1 doesn't allow default args on funcion pointers
-int ReadFromSaveGame(unsigned long chid, void* pvAddress, int iLength /* , void **ppvAddressPtr = NULL */)
+static int ReadFromSaveGame(unsigned long chid, void* pvAddress, int iLength /* , void **ppvAddressPtr = NULL */)
 {
 	return 1;
 }

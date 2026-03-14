@@ -938,7 +938,7 @@ typedef enum {
 #define MAX_TERRAINS		1//32 //rwwRMG: inserted
 #define MAX_LOCATIONS		64
 
-#define	GENTITYNUM_BITS		12	// don't need to send any more 
+#define	GENTITYNUM_BITS		12	// don't need to send any more
 #define	MAX_GENTITIES		(1<<GENTITYNUM_BITS)
 
 // entity_nums are communicated with GENTITY_BITS, so any reserved
@@ -1438,6 +1438,8 @@ typedef struct playerState_s {
 
 	int	    communicatingflags;
 	int     frozenTime;
+	int     botPendingStandTime;
+	int     botPendingStyleTime;
 } playerState_t;
 
 typedef struct siegePers_s
@@ -1516,7 +1518,7 @@ typedef struct siegePers_s
 #define FLAG_PERFECTBLOCK   21
 #define FLAG_SLIGHTFATIGUE  22
 
-#define DODGE_BOLTBLOCK			2	//standard DP cost to block a missile bolt
+#define DODGE_BOLTBLOCK			3	//standard DP cost to block a missile bolt
 #define DODGE_BOWCASTERBLOCK	5
 #define DODGE_TUSKENBLOCK	    4
 #define DODGE_REPEATERBLOCK		2  //the cost of blocking repeater shots is lower since the repeater shoots much faster.

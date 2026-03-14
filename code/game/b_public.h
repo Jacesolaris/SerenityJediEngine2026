@@ -25,6 +25,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "bstate.h"
 #include "ai.h"
+#include <qcommon\ojk_saved_game_helper_fwd.h>
+#include "bg_public.h"
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
+#include <qcommon\q_shared.h>
+#include <cstdint>
 
 constexpr auto NPCAI_CHECK_WEAPON = 0x00000001;
 constexpr auto NPCAI_BURST_WEAPON = 0x00000002;

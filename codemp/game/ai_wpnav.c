@@ -402,18 +402,43 @@ checkprint:
 	}
 }
 
+/*
+==========================
+TransferWPData
+
+Copies waypoint data from index `from` to index `to`.
+
+- Validates both source and destination pointers
+- Allocates destination if needed
+- Prevents NULL dereference (fixes C6011)
+- Preserves original behaviour
+==========================
+*/
 static void TransferWPData(const int from, const int to)
 {
-	if (!gWPArray[to])
+	/* Validate source waypoint */
+	if (gWPArray[from] == NULL)
+	{
+		trap->Print(S_COLOR_RED
+			"ERROR: TransferWPData: source waypoint %d is NULL\n", from);
+		return; /* Prevents NULL dereference */
+	}
+
+	/* Ensure destination waypoint exists */
+	if (gWPArray[to] == NULL)
 	{
 		gWPArray[to] = (wpobject_t*)B_Alloc(sizeof(wpobject_t));
+
+		if (gWPArray[to] == NULL)
+		{
+			trap->Print(S_COLOR_RED
+				"FATAL ERROR: TransferWPData: Could not allocate memory for waypoint %d\n",
+				to);
+			return;
+		}
 	}
 
-	if (!gWPArray[to])
-	{
-		trap->Print(S_COLOR_RED "FATAL ERROR: Could not allocated memory for waypoint\n");
-	}
-
+	/* Copy fields safely */
 	gWPArray[to]->flags = gWPArray[from]->flags;
 	gWPArray[to]->weight = gWPArray[from]->weight;
 	gWPArray[to]->associated_entity = gWPArray[from]->associated_entity;
@@ -421,6 +446,7 @@ static void TransferWPData(const int from, const int to)
 	gWPArray[to]->forceJumpTo = gWPArray[from]->forceJumpTo;
 	gWPArray[to]->index = to;
 	gWPArray[to]->inuse = gWPArray[from]->inuse;
+
 	VectorCopy(gWPArray[from]->origin, gWPArray[to]->origin);
 }
 
@@ -443,16 +469,19 @@ static void CreateNewWP(vec3_t origin, const int flags)
 	if (!gWPArray[gWPNum])
 	{
 		trap->Print(S_COLOR_RED "ERROR: Could not allocated memory for waypoint\n");
+		return;   // FIX: prevent null dereference
 	}
 
 	gWPArray[gWPNum]->flags = flags;
-	gWPArray[gWPNum]->weight = 0; //calculated elsewhere
-	gWPArray[gWPNum]->associated_entity = ENTITYNUM_NONE; //set elsewhere
+	gWPArray[gWPNum]->weight = 0;               // calculated elsewhere
+	gWPArray[gWPNum]->associated_entity = ENTITYNUM_NONE;  // set elsewhere
 	gWPArray[gWPNum]->forceJumpTo = 0;
-	gWPArray[gWPNum]->disttonext = 0; //calculated elsewhere
+	gWPArray[gWPNum]->disttonext = 0;               // calculated elsewhere
 	gWPArray[gWPNum]->index = gWPNum;
 	gWPArray[gWPNum]->inuse = 1;
+
 	VectorCopy(origin, gWPArray[gWPNum]->origin);
+
 	gWPNum++;
 }
 
@@ -627,6 +656,7 @@ static int CreateNewWP_InTrail(vec3_t origin, const int flags, const int afterin
 		return 0;
 	}
 
+	// Find the array index that holds waypoint index == afterindex
 	while (i < gWPNum)
 	{
 		if (gWPArray[i] && gWPArray[i]->inuse && gWPArray[i]->index == afterindex)
@@ -635,7 +665,6 @@ static int CreateNewWP_InTrail(vec3_t origin, const int flags, const int afterin
 			foundanindex = 1;
 			break;
 		}
-
 		i++;
 	}
 
@@ -647,29 +676,37 @@ static int CreateNewWP_InTrail(vec3_t origin, const int flags, const int afterin
 
 	i = gWPNum;
 
+	// FIX: ensure we never go below 0
 	while (i >= 0)
 	{
-		if (gWPArray[i] && gWPArray[i]->inuse && gWPArray[i]->index != foundindex)
+		// FIX: ensure gWPArray[i] is valid before dereferencing
+		if (i < gWPNum && gWPArray[i] && gWPArray[i]->inuse && gWPArray[i]->index != foundindex)
 		{
 			TransferWPData(i, i + 1);
 		}
-		else if (gWPArray[i] && gWPArray[i]->inuse && gWPArray[i]->index == foundindex)
+		else if (i < gWPNum && gWPArray[i] && gWPArray[i]->inuse && gWPArray[i]->index == foundindex)
 		{
 			i++;
 
 			if (!gWPArray[i])
 			{
 				gWPArray[i] = (wpobject_t*)B_Alloc(sizeof(wpobject_t));
+				if (!gWPArray[i])   // FIX: allocation failure guard
+				{
+					trap->Print(S_COLOR_RED "ERROR: Could not allocate memory for waypoint\n");
+					return 0;
+				}
 			}
 
 			gWPArray[i]->flags = flags;
-			gWPArray[i]->weight = 0; //calculated elsewhere
-			gWPArray[i]->associated_entity = ENTITYNUM_NONE; //set elsewhere
-			gWPArray[i]->disttonext = 0; //calculated elsewhere
+			gWPArray[i]->weight = 0;
+			gWPArray[i]->associated_entity = ENTITYNUM_NONE;
+			gWPArray[i]->disttonext = 0;
 			gWPArray[i]->forceJumpTo = 0;
 			gWPArray[i]->index = i;
 			gWPArray[i]->inuse = 1;
 			VectorCopy(origin, gWPArray[i]->origin);
+
 			gWPNum++;
 			break;
 		}
@@ -1992,14 +2029,20 @@ static void CalculateJumpRoutes(void)
 
 				gWPArray[i]->forceJumpTo = 0;
 
-				if (gWPArray[i - 1] && gWPArray[i - 1]->inuse && gWPArray[i - 1]->origin[2] + 16 < gWPArray[i]->origin[
-					2])
+				// FIX: ensure i > 0 before checking i-1
+				if (i > 0 &&
+					gWPArray[i - 1] &&
+					gWPArray[i - 1]->inuse &&
+					gWPArray[i - 1]->origin[2] + 16 < gWPArray[i]->origin[2])
 				{
 					nheightdif = gWPArray[i]->origin[2] - gWPArray[i - 1]->origin[2];
 				}
 
-				if (gWPArray[i + 1] && gWPArray[i + 1]->inuse && gWPArray[i + 1]->origin[2] + 16 < gWPArray[i]->origin[
-					2])
+				// FIX: ensure i+1 < gWPNum before checking i+1
+				if (i + 1 < gWPNum &&
+					gWPArray[i + 1] &&
+					gWPArray[i + 1]->inuse &&
+					gWPArray[i + 1]->origin[2] + 16 < gWPArray[i]->origin[2])
 				{
 					pheightdif = gWPArray[i]->origin[2] - gWPArray[i + 1]->origin[2];
 				}
@@ -2013,15 +2056,15 @@ static void CalculateJumpRoutes(void)
 				{
 					if (pheightdif > 500)
 					{
-						gWPArray[i]->forceJumpTo = 999; //FORCE_LEVEL_3; //FJSR
+						gWPArray[i]->forceJumpTo = 999; // FORCE_LEVEL_3
 					}
 					else if (pheightdif > 256)
 					{
-						gWPArray[i]->forceJumpTo = 999; //FORCE_LEVEL_2; //FJSR
+						gWPArray[i]->forceJumpTo = 999; // FORCE_LEVEL_2
 					}
 					else if (pheightdif > 128)
 					{
-						gWPArray[i]->forceJumpTo = 999; //FORCE_LEVEL_1; //FJSR
+						gWPArray[i]->forceJumpTo = 999; // FORCE_LEVEL_1
 					}
 				}
 			}
@@ -2051,9 +2094,9 @@ static int LoadPathData(const char* filename)
 		return 2;
 	}
 
-	if (len >= WPARRAY_BUFFER_SIZE)
+	if (len <= 0 || len >= WPARRAY_BUFFER_SIZE)
 	{
-		trap->Print(S_COLOR_RED "Route file exceeds maximum length\n");
+		trap->Print(S_COLOR_RED "Route file exceeds maximum length or is empty\n");
 		trap->FS_Close(f);
 		return 0;
 	}
@@ -2061,28 +2104,28 @@ static int LoadPathData(const char* filename)
 	char* current_var = B_TempAlloc(2048);
 
 	trap->FS_Read(fileString, len, f);
+	fileString[len] = '\0'; // FIX: ensure null-termination
 
-	if (fileString[i] == 'l')
+	// FIX: ensure we don't read fileString[0] if len == 0
+	if (len > 0 && fileString[i] == 'l')
 	{
-		//contains a "levelflags" entry..
 		char read_l_flags[64];
 		i_cv = 0;
 
-		while (fileString[i] != ' ')
+		while (i < len && fileString[i] != ' ')
 		{
 			i++;
 		}
-		i++;
-		while (fileString[i] != '\n')
-		{
-			read_l_flags[i_cv] = fileString[i];
-			i_cv++;
-			i++;
-		}
-		read_l_flags[i_cv] = 0;
 		i++;
 
+		while (i < len && fileString[i] != '\n' && i_cv < 63)
+		{
+			read_l_flags[i_cv++] = fileString[i++];
+		}
+		read_l_flags[i_cv] = '\0';
+
 		gLevelFlags = atoi(read_l_flags);
+		i++;
 	}
 	else
 	{
@@ -2093,113 +2136,78 @@ static int LoadPathData(const char* filename)
 	{
 		i_cv = 0;
 
-		thiswp.index = 0;
-		thiswp.flags = 0;
-		thiswp.inuse = 0;
-		thiswp.neighbornum = 0;
-		thiswp.origin[0] = 0;
-		thiswp.origin[1] = 0;
-		thiswp.origin[2] = 0;
-		thiswp.weight = 0;
+		// initialize waypoint
+		memset(&thiswp, 0, sizeof(thiswp));
 		thiswp.associated_entity = ENTITYNUM_NONE;
-		thiswp.forceJumpTo = 0;
-		thiswp.disttonext = 0;
-		int nei_num = 0;
 
-		while (nei_num < MAX_NEIGHBOR_SIZE)
+		// --- index ---
+		while (i < len && fileString[i] != ' ' && i_cv < 2047)
 		{
-			thiswp.neighbors[nei_num].num = 0;
-			thiswp.neighbors[nei_num].forceJumpTo = 0;
-
-			nei_num++;
-		}
-
-		while (fileString[i] != ' ')
-		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
-
 		thiswp.index = atoi(current_var);
 
-		i_cv = 0;
-		i++;
+		i++; i_cv = 0;
 
-		while (fileString[i] != ' ')
+		// --- flags ---
+		while (i < len && fileString[i] != ' ' && i_cv < 2047)
 		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
-
 		thiswp.flags = atoi(current_var);
 
-		i_cv = 0;
-		i++;
+		i++; i_cv = 0;
 
-		while (fileString[i] != ' ')
+		// --- weight ---
+		while (i < len && fileString[i] != ' ' && i_cv < 2047)
 		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
-
 		thiswp.weight = atof(current_var);
 
-		i_cv = 0;
-		i++;
-		i++;
+		i++; i++; i_cv = 0;
 
-		while (fileString[i] != ' ')
+		// --- origin[0] ---
+		while (i < len && fileString[i] != ' ' && i_cv < 2047)
 		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
-
 		thiswp.origin[0] = atof(current_var);
 
-		i_cv = 0;
-		i++;
+		i++; i_cv = 0;
 
-		while (fileString[i] != ' ')
+		// --- origin[1] ---
+		while (i < len && fileString[i] != ' ' && i_cv < 2047)
 		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
-
 		thiswp.origin[1] = atof(current_var);
 
-		i_cv = 0;
-		i++;
+		i++; i_cv = 0;
 
-		while (fileString[i] != ')')
+		// --- origin[2] ---
+		while (i < len && fileString[i] != ')' && i_cv < 2047)
 		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
-
 		thiswp.origin[2] = atof(current_var);
 
-		i += 4;
+		i += 4; // skip ") { "
 
-		while (fileString[i] != '}')
+		// --- neighbors ---
+		while (i < len && fileString[i] != '}')
 		{
 			i_cv = 0;
-			while (fileString[i] != ' ' && fileString[i] != '-')
+
+			while (i < len && fileString[i] != ' ' && fileString[i] != '-' && i_cv < 2047)
 			{
-				current_var[i_cv] = fileString[i];
-				i_cv++;
-				i++;
+				current_var[i_cv++] = fileString[i++];
 			}
 			current_var[i_cv] = '\0';
 
@@ -2207,18 +2215,15 @@ static int LoadPathData(const char* filename)
 
 			if (fileString[i] == '-')
 			{
-				i_cv = 0;
-				i++;
+				i++; i_cv = 0;
 
-				while (fileString[i] != ' ')
+				while (i < len && fileString[i] != ' ' && i_cv < 2047)
 				{
-					current_var[i_cv] = fileString[i];
-					i_cv++;
-					i++;
+					current_var[i_cv++] = fileString[i++];
 				}
 				current_var[i_cv] = '\0';
 
-				thiswp.neighbors[thiswp.neighbornum].forceJumpTo = 999; //atoi(currentVar); //FJSR
+				thiswp.neighbors[thiswp.neighbornum].forceJumpTo = 999;
 			}
 			else
 			{
@@ -2226,41 +2231,31 @@ static int LoadPathData(const char* filename)
 			}
 
 			thiswp.neighbornum++;
-
 			i++;
 		}
 
-		i_cv = 0;
-		i++;
-		i++;
+		i++; i++; i_cv = 0;
 
-		while (fileString[i] != '\n')
+		// --- disttonext ---
+		while (i < len && fileString[i] != '\n' && i_cv < 2047)
 		{
-			current_var[i_cv] = fileString[i];
-			i_cv++;
-			i++;
+			current_var[i_cv++] = fileString[i++];
 		}
 		current_var[i_cv] = '\0';
 
 		thiswp.disttonext = atof(current_var);
 
 		CreateNewWP_FromObject(&thiswp);
+
 		i++;
 	}
 
-	B_TempFree(2048); //currentVar
-
+	B_TempFree(2048);
 	trap->FS_Close(f);
 
 	CalculateSiegeGoals();
-
 	CalculateWeightGoals();
-	//calculate weights for idle activity goals when
-	//the bot has absolutely nothing else to do
-
 	CalculateJumpRoutes();
-	//Look at jump points and mark them as requiring
-	//force jumping as needed
 
 	return 1;
 }
@@ -2407,20 +2402,33 @@ static int SavePathData(const char* filename)
 		return 0;
 	}
 
-	if (!RepairPaths(qfalse)) //check if we can see all waypoints from the last. If not, try to branch over.
+	if (!RepairPaths(qfalse))
 	{
 		trap->FS_Close(f);
 		return 0;
 	}
 
-	CalculatePaths(); //make everything nice and connected before saving
-
-	FlagObjects(); //currently only used for flagging waypoints nearest CTF flags
+	CalculatePaths();
+	FlagObjects();
 
 	char* storeString = B_TempAlloc(4096);
 
-	Com_sprintf(fileString, WPARRAY_BUFFER_SIZE, "%i %i %f (%f %f %f) { ", gWPArray[i]->index, gWPArray[i]->flags,
-		gWPArray[i]->weight, gWPArray[i]->origin[0], gWPArray[i]->origin[1], gWPArray[i]->origin[2]);
+	// FIX: ensure waypoint exists
+	if (!gWPArray[i] || !gWPArray[i]->inuse)
+	{
+		trap->FS_Close(f);
+		B_TempFree(4096);
+		return 0;
+	}
+
+	Com_sprintf(fileString, WPARRAY_BUFFER_SIZE,
+		"%i %i %f (%f %f %f) { ",
+		gWPArray[i]->index,
+		gWPArray[i]->flags,
+		gWPArray[i]->weight,
+		gWPArray[i]->origin[0],
+		gWPArray[i]->origin[1],
+		gWPArray[i]->origin[2]);
 
 	int n = 0;
 
@@ -2428,12 +2436,16 @@ static int SavePathData(const char* filename)
 	{
 		if (gWPArray[i]->neighbors[n].forceJumpTo)
 		{
-			Com_sprintf(storeString, 4096, "%s%i-%i ", storeString, gWPArray[i]->neighbors[n].num,
+			Com_sprintf(storeString, 4096, "%s%i-%i ",
+				storeString,
+				gWPArray[i]->neighbors[n].num,
 				gWPArray[i]->neighbors[n].forceJumpTo);
 		}
 		else
 		{
-			Com_sprintf(storeString, 4096, "%s%i ", storeString, gWPArray[i]->neighbors[n].num);
+			Com_sprintf(storeString, 4096, "%s%i ",
+				storeString,
+				gWPArray[i]->neighbors[n].num);
 		}
 		n++;
 	}
@@ -2456,7 +2468,21 @@ static int SavePathData(const char* filename)
 
 	while (i < gWPNum)
 	{
-		Com_sprintf(storeString, 4096, "%i %i %f (%f %f %f) { ", gWPArray[i]->index, gWPArray[i]->flags, gWPArray[i]->weight, gWPArray[i]->origin[0], gWPArray[i]->origin[1], gWPArray[i]->origin[2]);
+		// FIX: skip null or unused waypoints
+		if (!gWPArray[i] || !gWPArray[i]->inuse)
+		{
+			i++;
+			continue;
+		}
+
+		Com_sprintf(storeString, 4096,
+			"%i %i %f (%f %f %f) { ",
+			gWPArray[i]->index,
+			gWPArray[i]->flags,
+			gWPArray[i]->weight,
+			gWPArray[i]->origin[0],
+			gWPArray[i]->origin[1],
+			gWPArray[i]->origin[2]);
 
 		n = 0;
 
@@ -2464,12 +2490,16 @@ static int SavePathData(const char* filename)
 		{
 			if (gWPArray[i]->neighbors[n].forceJumpTo)
 			{
-				Com_sprintf(storeString, 4096, "%s%i-%i ", storeString, gWPArray[i]->neighbors[n].num,
+				Com_sprintf(storeString, 4096, "%s%i-%i ",
+					storeString,
+					gWPArray[i]->neighbors[n].num,
 					gWPArray[i]->neighbors[n].forceJumpTo);
 			}
 			else
 			{
-				Com_sprintf(storeString, 4096, "%s%i ", storeString, gWPArray[i]->neighbors[n].num);
+				Com_sprintf(storeString, 4096, "%s%i ",
+					storeString,
+					gWPArray[i]->neighbors[n].num);
 			}
 			n++;
 		}
@@ -2495,12 +2525,11 @@ static int SavePathData(const char* filename)
 
 	trap->FS_Write(fileString, strlen(fileString), f);
 
-	B_TempFree(4096); //storeString
+	B_TempFree(4096);
 
 	trap->FS_Close(f);
 
-	trap->Print(
-		"Path data has been saved and updated. You may need to restart the level for some things to be properly calculated.\n");
+	trap->Print("Path data has been saved and updated. You may need to restart the level for some things to be properly calculated.\n");
 
 	return 1;
 }

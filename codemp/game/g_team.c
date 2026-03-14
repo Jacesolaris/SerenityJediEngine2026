@@ -23,6 +23,19 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "g_local.h"
 #include "bg_saga.h"
+#include <qcommon\q_string.h>
+#include <search.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+#include "bg_public.h"
+#include "g_public.h"
+#include "g_team.h"
+#include "teams.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_color.h>
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
 
 teamgame_t teamgame;
 
@@ -90,7 +103,7 @@ const char* TeamColorString(const int team)
 
 //plIndex used to print pl->client->pers.netname
 //teamIndex used to print team name
-void PrintCTFMessage(int plIndex, int teamIndex, const int ctfMessage)
+static void PrintCTFMessage(int plIndex, int teamIndex, const int ctfMessage)
 {
 	if (plIndex == -1)
 	{
@@ -283,7 +296,7 @@ void Team_SetFlagStatus(const int team, const flagStatus_t status)
 
 	if (modified)
 	{
-		char st[4];
+		char st[4] = { 0 };
 
 		if (level.gametype == GT_CTF || level.gametype == GT_CTY)
 		{
@@ -549,7 +562,7 @@ static gentity_t* Team_ResetFlag(const int team)
 	return rent;
 }
 
-void Team_ResetFlags(void)
+static void Team_ResetFlags(void)
 {
 	if (level.gametype == GT_CTF || level.gametype == GT_CTY)
 	{
@@ -558,7 +571,7 @@ void Team_ResetFlags(void)
 	}
 }
 
-void Team_ReturnFlagSound(gentity_t* ent, const int team)
+static void Team_ReturnFlagSound(gentity_t* ent, const int team)
 {
 	if (ent == NULL)
 	{
@@ -622,7 +635,7 @@ static void Team_TakeFlagSound(gentity_t* ent, const int team)
 	te->r.svFlags |= SVF_BROADCAST;
 }
 
-void Team_CaptureFlagSound(gentity_t* ent, const int team)
+static void Team_CaptureFlagSound(gentity_t* ent, const int team)
 {
 	if (ent == NULL)
 	{
@@ -717,7 +730,7 @@ static vec3_t minFlagRange = { 50, 36, 36 };
 static vec3_t maxFlagRange = { 44, 36, 36 };
 int Team_TouchEnemyFlag(gentity_t* ent, const gentity_t* other, int team);
 
-int Team_TouchOurFlag(gentity_t* ent, const gentity_t* other, const int team)
+static int Team_TouchOurFlag(gentity_t* ent, const gentity_t* other, const int team)
 {
 	int enemyTeam;
 	gclient_t* cl = other->client;
@@ -1054,10 +1067,10 @@ go to a random point that doesn't telefrag
 */
 #define	MAX_TEAM_SPAWN_POINTS	32
 
-gentity_t* SelectRandomTeamSpawnPoint(const int teamstate, const team_t team, const int siegeClass)
+static gentity_t* SelectRandomTeamSpawnPoint(const int teamstate, const team_t team, const int siegeClass)
 {
 	int selection;
-	gentity_t* spots[MAX_TEAM_SPAWN_POINTS];
+	gentity_t* spots[MAX_TEAM_SPAWN_POINTS] = { 0 };
 	char* classname;
 	qboolean mustBeEnabled = qfalse;
 
@@ -1157,7 +1170,7 @@ gentity_t* SelectRandomTeamSpawnPoint(const int teamstate, const team_t team, co
 		bgSiegeClasses[siegeClass].name[0])
 	{
 		//out of the spots found, see if any have an idealclass to match our class name
-		gentity_t* classSpots[MAX_TEAM_SPAWN_POINTS];
+		gentity_t* classSpots[MAX_TEAM_SPAWN_POINTS] = { 0 };
 		int classCount = 0;
 		int i = 0;
 
@@ -1213,7 +1226,7 @@ static vec3_t player_maxs = { 15, 15, DEFAULT_MAXS_2 };
 extern qboolean CheckforGoodSpawnPoint(vec3_t location, qboolean playersolidcheck);
 
 //checks to see if a certain location would telefrag.
-qboolean PointWouldTelefrag(vec3_t point)
+static qboolean PointWouldTelefrag(vec3_t point)
 {
 	int touch[MAX_GENTITIES];
 	vec3_t mins, maxs;
@@ -1399,12 +1412,12 @@ teamOverLay_t oldOverLayData[MAX_CLIENTS];
 
 void TeamplayInfoMessage(const gentity_t* ent)
 {
-	char string[8192];
+	char string[8192] = { 0 };
 	int i;
 	gentity_t* player;
 	int cnt;
 	int h, a;
-	int clients[TEAM_MAXOVERLAY];
+	int clients[TEAM_MAXOVERLAY] = { 0 };
 	int team;
 
 	if (!ent->client->pers.teamInfo)

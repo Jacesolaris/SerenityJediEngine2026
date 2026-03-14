@@ -84,6 +84,11 @@ static qboolean winsockInitialized = qfalse;
 #include <sys/filio.h>
 #endif
 #include <cstdlib>
+#include <qcommon\q_string.h>
+#include <cstdint>
+#include <cassert>
+#include <string.h>
+#include "q_shared.h"
 
 typedef int SOCKET;
 #define INVALID_SOCKET                -1
@@ -478,8 +483,8 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 	Com_Printf("----- Client Initialization -----\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 01/03/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 01------------------------------\n");
+	Com_Printf("---------------------Build date 14/03/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 03------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

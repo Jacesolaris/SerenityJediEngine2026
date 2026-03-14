@@ -39,6 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "w_force.h"
 #include "g_public.h"
 #include "anims.h"
+#include "surfaceflags.h"
 
 #define METROID_JUMP 1
 
@@ -2613,14 +2614,13 @@ static void ForceSpeedDash(gentity_t* self)
 		self->client->ps.velocity[1] = self->client->ps.velocity[1] * 4;
 
 		ForceDashAnimDash(self);
+
+		G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/dash.mp3"));
 	}
 	else if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
 	{
 		G_SetAnim(self, &self->client->pers.cmd, SETANIM_BOTH, BOTH_FORCEINAIR1, SETANIM_AFLAG_PACE, 0);
 	}
-
-	G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/dash.mp3"));
-	G_PlayBoltedEffect(G_EffectIndex("misc/breath.efx"), self, "*head_front");
 }
 
 void ForceSeeing(gentity_t* self)

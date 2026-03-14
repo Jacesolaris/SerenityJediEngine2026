@@ -1751,26 +1751,54 @@ qboolean G2API_DetachG2Model(CGhoul2Info* ghlInfo)
 qboolean G2API_AttachEnt(int* boltInfo, CGhoul2Info* ghlInfoTo, int toBoltIndex, int entNum, int toModelNum)
 {
 	qboolean ret = qfalse;
+
 	G2ERROR(boltInfo, "NULL boltInfo");
-	if (boltInfo && G2_SetupModelPointers(ghlInfoTo))
+	if (!boltInfo)
 	{
-		// ensure toBoltIndex is within range
-		const int bltCount = static_cast<int>(ghlInfoTo->mBltlist.size());
-		if (bltCount > 0 && toBoltIndex >= 0 && toBoltIndex < bltCount &&
-			(ghlInfoTo->mBltlist[toBoltIndex].boneNumber != -1 || ghlInfoTo->mBltlist[toBoltIndex].surfaceNumber != -1))
-		{
-			toModelNum &= MODEL_AND;
-			toBoltIndex &= BOLT_AND;
-			entNum &= ENTITY_AND;
-			*boltInfo = toBoltIndex << BOLT_SHIFT | toModelNum << MODEL_SHIFT | entNum << ENTITY_SHIFT;
-			ret = qtrue;
-		}
-		else
-		{
-			// clear out on failure so callers do not get garbage
-			*boltInfo = 0;
-		}
+		return qfalse;
 	}
+
+	if (!ghlInfoTo || !G2_SetupModelPointers(ghlInfoTo))
+	{
+		*boltInfo = 0;
+		G2WARNING(ret, "G2API_AttachEnt Failed (no model or setup failed)");
+		return qfalse;
+	}
+
+	const int bltCount = (int)ghlInfoTo->mBltlist.size();
+
+	// validate bolt index bounds
+	if (bltCount <= 0 || toBoltIndex < 0 || toBoltIndex >= bltCount)
+	{
+		Com_Printf("G2API_AttachEnt: invalid toBoltIndex %d for model %s (num bolts %d), entNum %d\n",
+			toBoltIndex,
+			(ghlInfoTo->mFileName && ghlInfoTo->mFileName[0]) ? ghlInfoTo->mFileName : "<unknown>",
+			bltCount,
+			entNum);
+		*boltInfo = 0;
+		G2WARNING(ret, "G2API_AttachEnt Failed (invalid bolt index)");
+		return qfalse;
+	}
+
+	// safe to index now
+	const boltInfo_t& bolt = ghlInfoTo->mBltlist[toBoltIndex];
+	if (bolt.boneNumber != -1 || bolt.surfaceNumber != -1)
+	{
+		toModelNum &= MODEL_AND;
+		toBoltIndex &= BOLT_AND;
+		entNum &= ENTITY_AND;
+
+		*boltInfo = (toBoltIndex << BOLT_SHIFT) |
+			(toModelNum << MODEL_SHIFT) |
+			(entNum << ENTITY_SHIFT);
+
+		ret = qtrue;
+	}
+	else
+	{
+		*boltInfo = 0;
+	}
+
 	G2WARNING(ret, "G2API_AttachEnt Failed");
 	return ret;
 }

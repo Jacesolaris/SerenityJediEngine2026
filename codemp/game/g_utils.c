@@ -27,6 +27,20 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_saga.h"
 #include "qcommon/q_shared.h"
 #include "g_nav.h"
+#include "g_public.h"
+#include "bg_weapons.h"
+#include "anims.h"
+#include "surfaceflags.h"
+#include <assert.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include "bg_public.h"
+#include "bg_vehicles.h"
+#include "teams.h"
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
+#include <qcommon\q_string.h>
 
 typedef struct shaderRemap_s
 {
@@ -236,20 +250,41 @@ NULL will be returned if the end of the list is reached.
 */
 gentity_t* G_Find(gentity_t* from, const int fieldofs, const char* match)
 {
+	// Safety: invalid offset or null match string
+	if (fieldofs <= 0 || !match)
+	{
+		return NULL;
+	}
+
+	// Start search
 	if (!from)
+	{
 		from = g_entities;
+	}
 	else
+	{
 		from++;
+	}
 
 	for (; from < &g_entities[level.num_entities]; from++)
 	{
 		if (!from->inuse)
+		{
 			continue;
-		const char* s = *(char**)((byte*)from + fieldofs);
+		}
+
+		// Extract the string field at offset
+		const char* s = *(const char**)((byte*)from + fieldofs);
+
 		if (!s)
+		{
 			continue;
+		}
+
 		if (!Q_stricmp(s, match))
+		{
 			return from;
+		}
 	}
 
 	return NULL;
@@ -260,36 +295,73 @@ gentity_t* G_Find(gentity_t* from, const int fieldofs, const char* match)
 G_RadiusList - given an origin and a radius, return all entities that are in use that are within the list
 ============
 */
-int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore, const qboolean take_damage, gentity_t* ent_list[MAX_GENTITIES])
+int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore,
+	const qboolean take_damage, gentity_t* ent_list[MAX_GENTITIES])
 {
-	int entity_list[MAX_GENTITIES];
-	vec3_t mins, maxs;
-	vec3_t v;
-	int i;
-	int ent_count = 0;
-
-	if (radius < 1)
+	//====================================================
+	// 0. Safety
+	//====================================================
+	if (!ent_list)
 	{
-		radius = 1;
+		return 0;
 	}
 
-	for (i = 0; i < 3; i++)
+	if (radius < 1.0f)
+	{
+		radius = 1.0f;
+	}
+
+	//====================================================
+	// 1. Use a static entity index buffer (NOT on stack)
+	//====================================================
+	static int entity_index_buffer[MAX_GENTITIES];
+
+	vec3_t mins = { 0 }, maxs = { 0 }, v = { 0 };
+	int ent_count = 0;
+
+	// Build bounding box
+	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = origin[i] - radius;
 		maxs[i] = origin[i] + radius;
 	}
 
-	const int num_listed_entities = trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+	// Query entities
+	const int num_listed = trap->EntitiesInBox(mins, maxs,
+		entity_index_buffer,
+		MAX_GENTITIES);
 
-	for (int e = 0; e < num_listed_entities; e++)
+	//====================================================
+	// 2. Filter entities
+	//====================================================
+	for (int e = 0; e < num_listed; e++)
 	{
-		gentity_t* ent = &g_entities[entity_list[e]];
+		const int entNum = entity_index_buffer[e];
 
-		if (ent == ignore || !ent->inuse || ent->takedamage != take_damage)
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
+		{
 			continue;
+		}
 
-		// find the distance from the edge of the bounding box
-		for (i = 0; i < 3; i++)
+		gentity_t* ent = &g_entities[entNum];
+
+		if (!ent->inuse)
+		{
+			continue;
+		}
+
+		if (ent == ignore)
+		{
+			continue;
+		}
+
+		if (ent->takedamage != take_damage)
+		{
+			continue;
+		}
+
+		// Compute distance from bounding box
+		for (int i = 0; i < 3; i++)
 		{
 			if (origin[i] < ent->r.absmin[i])
 			{
@@ -301,156 +373,205 @@ int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore, const qbo
 			}
 			else
 			{
-				v[i] = 0;
+				v[i] = 0.0f;
 			}
 		}
 
 		const float dist = VectorLength(v);
+
 		if (dist >= radius)
 		{
 			continue;
 		}
 
-		// ok, we are within the radius, add us to the incoming list
-		ent_list[ent_count] = ent;
-		ent_count++;
+		// Add to output list safely
+		if (ent_count < MAX_GENTITIES)
+		{
+			ent_list[ent_count++] = ent;
+		}
+		else
+		{
+			break;
+		}
 	}
-	// we are done, return how many we found
+
 	return ent_count;
 }
 
-//----------------------------------------------------------
 void g_throw(gentity_t* targ, const vec3_t new_dir, const float push)
-//----------------------------------------------------------
 {
-	vec3_t kvel;
-	float mass;
-
-	if (targ
-		&& targ->client
-		&& (targ->client->NPC_class == CLASS_ATST
-			|| targ->client->NPC_class == CLASS_RANCOR
-			|| targ->client->NPC_class == CLASS_SAND_CREATURE))
+	if (!targ)
 	{
-		//much to large to *ever* throw
 		return;
 	}
 
-	if (targ && targ->physicsBounce > 0) //overide the mass
+	//====================================================
+	// 1. Massive creatures cannot be thrown
+	//====================================================
+	if (targ->client &&
+		(targ->client->NPC_class == CLASS_ATST ||
+			targ->client->NPC_class == CLASS_RANCOR ||
+			targ->client->NPC_class == CLASS_SAND_CREATURE))
+	{
+		return;
+	}
+
+	//====================================================
+	// 2. Determine mass
+	//====================================================
+	float mass = 200.0f;
+
+	if (targ->physicsBounce > 0.0f)
 	{
 		mass = targ->physicsBounce;
 	}
+
+	//====================================================
+	// 3. Compute knockback velocity
+	//====================================================
+	vec3_t kvel;
+	const float scale = g_knockback.value * push / mass;
+
+	if (g_gravity.value > 0.0f)
+	{
+		VectorScale(new_dir, scale * 0.8f, kvel);
+		kvel[2] = new_dir[2] * scale * 1.5f;
+	}
 	else
 	{
-		mass = 200;
+		VectorScale(new_dir, scale, kvel);
 	}
 
-	if (g_gravity.value > 0)
-	{
-		VectorScale(new_dir, g_knockback.value * (float)push / mass * 0.8, kvel);
-		kvel[2] = new_dir[2] * g_knockback.value * (float)push / mass * 1.5;
-	}
-	else
-	{
-		VectorScale(new_dir, g_knockback.value * (float)push / mass, kvel);
-	}
-
-	if (targ
-		&& targ->client)
+	//====================================================
+	// 4. Apply velocity
+	//====================================================
+	if (targ->client)
 	{
 		VectorAdd(targ->client->ps.velocity, kvel, targ->client->ps.velocity);
 	}
-	else if (targ->s.pos.trType != TR_STATIONARY
-		&& targ->s.pos.trType != TR_LINEAR_STOP
-		&& targ->s.pos.trType != TR_NONLINEAR_STOP)
+	else
 	{
-		VectorAdd(targ->s.pos.trDelta, kvel, targ->s.pos.trDelta);
-		VectorCopy(targ->r.currentOrigin, targ->s.pos.trBase);
-		targ->s.pos.trTime = level.time;
+		// Non-client entities (props, missiles, etc.)
+		if (targ->s.pos.trType != TR_STATIONARY &&
+			targ->s.pos.trType != TR_LINEAR_STOP &&
+			targ->s.pos.trType != TR_NONLINEAR_STOP)
+		{
+			VectorAdd(targ->s.pos.trDelta, kvel, targ->s.pos.trDelta);
+			VectorCopy(targ->r.currentOrigin, targ->s.pos.trBase);
+			targ->s.pos.trTime = level.time;
+		}
 	}
 
-	// set the timer so that the other client can't cancel
-	// out the movement immediately
-	if (targ->client && !targ->client->ps.pm_time)
+	//====================================================
+	// 5. Apply knockback movement lock (pm_time)
+	//====================================================
+	if (targ->client && targ->client->ps.pm_time == 0)
 	{
-		int t = push * 2;
+		int t = (int)(push * 2.0f);
 
 		if (t < 50)
 		{
 			t = 50;
 		}
-		if (t > 200)
+		else if (t > 200)
 		{
 			t = 200;
 		}
+
 		targ->client->ps.pm_time = t;
 		targ->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
 	}
 }
 
-//----------------------------------------------------------
 void g_kick_throw(gentity_t* targ, const vec3_t new_dir, const float push)
-//----------------------------------------------------------
 {
-	vec3_t kvel;
-	float mass;
-
-	if (targ
-		&& targ->client
-		&& (targ->client->NPC_class == CLASS_ATST
-			|| targ->client->NPC_class == CLASS_RANCOR
-			|| targ->client->NPC_class == CLASS_SAND_CREATURE))
+	//====================================================
+	// 0. Absolute safety: never touch targ before this
+	//====================================================
+	if (!targ)
 	{
-		//much to large to *ever* throw
 		return;
 	}
 
-	if (targ && targ->physicsBounce > 0) //overide the mass
+	//====================================================
+	// 1. Massive creatures cannot be thrown
+	//====================================================
+	if (targ->client)
+	{
+		const int npcClass = targ->client->NPC_class;
+
+		if (npcClass == CLASS_ATST ||
+			npcClass == CLASS_RANCOR ||
+			npcClass == CLASS_SAND_CREATURE)
+		{
+			return;
+		}
+	}
+
+	//====================================================
+	// 2. Determine mass
+	//====================================================
+	float mass = 200.0f;
+
+	if (targ->physicsBounce > 0.0f)
 	{
 		mass = targ->physicsBounce;
 	}
+
+	//====================================================
+	// 3. Compute knockback velocity
+	//====================================================
+	vec3_t kvel;
+	const float scale = g_knockback.value * push / mass;
+
+	if (g_gravity.value > 0.0f)
+	{
+		VectorScale(new_dir, scale * 0.8f, kvel);
+		kvel[2] = new_dir[2] * scale * 1.5f;
+	}
 	else
 	{
-		mass = 200;
+		VectorScale(new_dir, scale, kvel);
 	}
 
-	if (g_gravity.value > 0)
-	{
-		VectorScale(new_dir, g_knockback.value * (float)push / mass * 0.8, kvel);
-		kvel[2] = new_dir[2] * g_knockback.value * (float)push / mass * 1.5;
-	}
-	else
-	{
-		VectorScale(new_dir, g_knockback.value * (float)push / mass, kvel);
-	}
-
-	if (targ
-		&& targ->client)
+	//====================================================
+	// 4. Apply velocity
+	//====================================================
+	if (targ->client)
 	{
 		VectorAdd(targ->client->ps.velocity, kvel, targ->client->ps.velocity);
 	}
-	else if (targ->s.pos.trType != TR_STATIONARY && targ->s.pos.trType != TR_LINEAR_STOP && targ->s.pos.trType !=
-		TR_NONLINEAR_STOP)
+	else
 	{
-		VectorAdd(targ->s.pos.trDelta, kvel, targ->s.pos.trDelta);
-		VectorCopy(targ->r.currentOrigin, targ->s.pos.trBase);
-		targ->s.pos.trTime = level.time;
+		// Non-client entities (props, missiles, etc.)
+		const trType_t trType = targ->s.pos.trType;
+
+		if (trType != TR_STATIONARY &&
+			trType != TR_LINEAR_STOP &&
+			trType != TR_NONLINEAR_STOP)
+		{
+			VectorAdd(targ->s.pos.trDelta, kvel, targ->s.pos.trDelta);
+			VectorCopy(targ->r.currentOrigin, targ->s.pos.trBase);
+			targ->s.pos.trTime = level.time;
+		}
 	}
 
-	// set the timer so that the other client can't cancel
-	// out the movement immediately
-	if (targ->client && !targ->client->ps.pm_time)
+	//====================================================
+	// 5. Apply knockback movement lock (pm_time)
+	//====================================================
+	if (targ->client && targ->client->ps.pm_time == 0)
 	{
-		int t = push * 2;
+		int t = (int)(push * 2.0f);
 
 		if (t < 10)
 		{
 			t = 10;
 		}
-		if (t > 150)
+		else if (t > 150)
 		{
 			t = 150;
 		}
+
 		targ->client->ps.pm_time = t;
 		targ->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
 	}
@@ -599,7 +720,7 @@ gentity_t* G_PickTarget(char* targetname)
 {
 	gentity_t* ent = NULL;
 	int num_choices = 0;
-	gentity_t* choice[MAXCHOICES];
+	gentity_t* choice[MAXCHOICES] = { 0 };
 
 	if (!targetname)
 	{
@@ -1458,34 +1579,27 @@ of ent.  Ent should be unlinked before calling this!
 */
 void g_kill_box(gentity_t* ent)
 {
-	int touch[MAX_GENTITIES];
+	static int touch[MAX_GENTITIES];  // safe and recommended
 	vec3_t mins, maxs;
 
 	VectorAdd(ent->client->ps.origin, ent->r.mins, mins);
 	VectorAdd(ent->client->ps.origin, ent->r.maxs, maxs);
+
 	const int num = trap->EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
 
 	for (int i = 0; i < num; i++)
 	{
 		gentity_t* hit = &g_entities[touch[i]];
+
 		if (!hit->client)
-		{
 			continue;
-		}
 
 		if (hit->s.number == ent->s.number)
-		{
-			//don't telefrag yourself!
 			continue;
-		}
 
 		if (ent->r.ownerNum == hit->s.number)
-		{
-			//don't telefrag your vehicle!
 			continue;
-		}
 
-		// nail it
 		G_Damage(hit, ent, ent, NULL, NULL,
 			100000, DAMAGE_NO_PROTECTION, MOD_TELEFRAG);
 	}
@@ -2317,38 +2431,105 @@ void G_SetOrigin(gentity_t* ent, vec3_t origin)
 
 qboolean G_CheckInSolid(gentity_t* self, const qboolean fix)
 {
-	trace_t trace;
+	if (!self)
+	{
+		return qtrue;
+	}
+
+	trace_t tr;
 	vec3_t end, mins;
 
 	VectorCopy(self->r.currentOrigin, end);
 	end[2] += self->r.mins[2];
+
 	VectorCopy(self->r.mins, mins);
 	mins[2] = 0;
 
-	trap->Trace(&trace, self->r.currentOrigin, mins, self->r.maxs, end, self->s.number, self->clipmask, qfalse, 0, 0);
-	if (trace.allsolid || trace.startsolid)
+	// First trace (your original logic)
+	trap->Trace(&tr, self->r.currentOrigin, mins, self->r.maxs, end,
+		self->s.number, self->clipmask, qfalse, 0, 0);
+
+	if (!tr.allsolid && !tr.startsolid && tr.fraction == 1.0f)
+	{
+		return qfalse; // not in solid
+	}
+
+	// If not allowed to fix, just report solid
+	if (!fix)
 	{
 		return qtrue;
 	}
 
-	if (trace.fraction < 1.0)
+	//===========================================
+	// ⭐ NUDGE ATTEMPT 1: Move to trace end (your original)
+	//===========================================
 	{
-		if (fix)
-		{
-			//Put them at end of trace and check again
-			vec3_t neworg;
+		vec3_t neworg;
+		VectorCopy(tr.endpos, neworg);
+		neworg[2] -= self->r.mins[2];
 
-			VectorCopy(trace.endpos, neworg);
-			neworg[2] -= self->r.mins[2];
-			G_SetOrigin(self, neworg);
+		G_SetOrigin(self, neworg);
+		trap->LinkEntity((sharedEntity_t*)self);
+
+		if (!G_CheckInSolid(self, qfalse))
+		{
+			return qfalse;
+		}
+	}
+
+	//===========================================
+	// ⭐ NUDGE ATTEMPT 2: Try 6 cardinal directions
+	//===========================================
+	static const vec3_t nudges[] =
+	{
+		{  8,  0,  0 },
+		{ -8,  0,  0 },
+		{  0,  8,  0 },
+		{  0, -8,  0 },
+		{  0,  0,  8 },
+		{  0,  0, -8 }
+	};
+
+	for (int i = 0; i < 6; i++)
+	{
+		vec3_t trypos;
+		VectorAdd(self->r.currentOrigin, nudges[i], trypos);
+
+		G_SetOrigin(self, trypos);
+		trap->LinkEntity((sharedEntity_t*)self);
+
+		if (!G_CheckInSolid(self, qfalse))
+		{
+			return qfalse;
+		}
+	}
+
+	//===========================================
+	// ⭐ NUDGE ATTEMPT 3: Spiral search (small radius)
+	//===========================================
+	for (float r = 4.0f; r <= 16.0f; r += 4.0f)
+	{
+		for (float a = 0; a < 360.0f; a += 45.0f)
+		{
+			vec3_t trypos = { 0 };
+			trypos[0] = self->r.currentOrigin[0] + cosf(DEG2RAD(a)) * r;
+			trypos[1] = self->r.currentOrigin[1] + sinf(DEG2RAD(a)) * r;
+			trypos[2] = self->r.currentOrigin[2];
+
+			G_SetOrigin(self, trypos);
 			trap->LinkEntity((sharedEntity_t*)self);
 
-			return G_CheckInSolid(self, qfalse);
+			if (!G_CheckInSolid(self, qfalse))
+			{
+				return qfalse;
+			}
 		}
-		return qtrue;
 	}
 
-	return qfalse;
+	//===========================================
+	// Still solid → give up
+	//===========================================
+	return qtrue;
 }
 
 /*
@@ -2361,7 +2542,7 @@ DebugLine
 */
 static int DebugLine(vec3_t start, vec3_t end, const int color)
 {
-	vec3_t points[4], dir, cross;
+	vec3_t points[4] = { 0 }, dir, cross;
 	const vec3_t up = { 0, 0, 1 };
 
 	VectorCopy(start, points[0]);
@@ -2389,7 +2570,7 @@ static int DebugLine(vec3_t start, vec3_t end, const int color)
 
 void G_ROFF_NotetrackCallback(gentity_t* cent, const char* notetrack)
 {
-	char type[256];
+	char type[256] = { 0 };
 	int i = 0;
 	int addlArg = 0;
 

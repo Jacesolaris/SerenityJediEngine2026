@@ -28,6 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "icarus.h"
 
 #include <cassert>
+#include <vector>
 
 class CSequencer;
 class CTaskManager;
@@ -41,15 +42,15 @@ CTaskManager* gTaskManagers[MAX_GENTITIES];
 // Instance
 
 ICARUS_Instance::ICARUS_Instance(void)
+	: m_GUID(0)
+	, m_interface(NULL)        // FIX: initialize interface pointer
 {
-	m_GUID = 0;
-
-	//to be safe
-	memset(gSequencers, 0, sizeof gSequencers);
-	memset(gTaskManagers, 0, sizeof gTaskManagers);
+	// Clear global sequencer/task manager arrays to a known safe state.
+	memset(gSequencers, 0, sizeof(gSequencers));
+	memset(gTaskManagers, 0, sizeof(gTaskManagers));
 
 #ifdef _DEBUG
-
+	// Debug counters start at zero.
 	m_DEBUG_NumSequencerAlloc = 0;
 	m_DEBUG_NumSequencerFreed = 0;
 	m_DEBUG_NumSequencerResidual = 0;
@@ -57,7 +58,6 @@ ICARUS_Instance::ICARUS_Instance(void)
 	m_DEBUG_NumSequenceAlloc = 0;
 	m_DEBUG_NumSequenceFreed = 0;
 	m_DEBUG_NumSequenceResidual = 0;
-
 #endif
 }
 
@@ -314,30 +314,51 @@ SaveSequenceIDTable
 
 int ICARUS_Instance::SaveSequenceIDTable(void)
 {
-	//Save out the number of sequences to follow
-	const int numSequences = m_sequences.size();
-	m_interface->I_WriteSaveData(INT_ID('#', 'S', 'E', 'Q'), &numSequences, sizeof numSequences);
-
-	//Sequences are saved first, by ID and information
-	sequence_l::iterator sqi;
-
-	//First pass, save all sequences ID for reconstruction
-	const auto idTable = new int[numSequences];
-	int itr = 0;
-
-	if (idTable == nullptr)
-		return false;
-
-	STL_ITERATE(sqi, m_sequences)
+	// Ensure interface is valid before writing.
+	if (m_interface == NULL)
 	{
-		idTable[itr++] = (*sqi)->GetID();
+		return 0; // failure
 	}
 
-	m_interface->I_WriteSaveData(INT_ID('S', 'Q', 'T', 'B'), idTable, sizeof(int) * numSequences);
+	// Number of sequences to save.
+	const int numSequences = static_cast<int>(m_sequences.size());
 
-	delete[] idTable;
+	// Write header: number of sequences.
+	m_interface->I_WriteSaveData(
+		INT_ID('#', 'S', 'E', 'Q'),
+		&numSequences,
+		sizeof(numSequences));
 
-	return true;
+	// Allocate ID table safely using std::vector.
+	std::vector<int> idTable;
+	idTable.resize(numSequences);
+
+	int itr = 0;
+
+	// Fill ID table.
+	sequence_l::iterator sqi;
+	STL_ITERATE(sqi, m_sequences)
+	{
+		// Bounds guard to satisfy MSVC and prevent UB.
+		if (itr >= numSequences)
+		{
+			break;
+		}
+
+		idTable[itr] = (*sqi)->GetID();
+		itr++;
+	}
+
+	// Write ID table to save data.
+	if (numSequences > 0)
+	{
+		m_interface->I_WriteSaveData(
+			INT_ID('S', 'Q', 'T', 'B'),
+			idTable.data(),
+			sizeof(int) * numSequences);
+	}
+
+	return 1; // success
 }
 
 /*

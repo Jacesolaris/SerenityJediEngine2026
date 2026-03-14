@@ -3351,54 +3351,75 @@ Ghoul2 Insert Start
 class CRenderableSurface
 {
 public:
-	// ident of this surface - required so the materials renderer knows what
-	// sort of surface this refers to
+	// Ident of this surface so the renderer knows what type it is
 	int ident;
 
+	// Bone cache for skeletal animation
 	CBoneCache* boneCache;
+
+	// VBO mesh reference
 	mdxmVBOMesh_t* vboMesh;
 
-	// tell the renderer to render shadows for this surface
+	// Whether this surface should generate stencil shadows
 	qboolean genShadows;
+
+	// Dynamic light bitmasks
 	int dlightBits;
 	int pshadowBits;
 
-	// pointer to surface data loaded into file - only used by client renderer
-	// DO NOT USE IN GAME SIDE - if there is a vid restart this will be out of
-	// wack on the game
+	// Pointer to static surface data (client renderer only)
 	mdxmSurface_t* surfaceData;
 
 #ifdef _G2_GORE
-	// alternate texture coordinates
+	// Alternate texture coordinates for gore rendering
 	srfG2GoreSurface_t* alternateTex;
 	void* goreChain;
 
 	float scale;
 	float fade;
 
-	// this is a number between 0 and 1 that dictates the progression of the
-	// bullet impact
+	// Progression of bullet impact (0–1)
 	float impactTime;
 #endif
 
-	CRenderableSurface& operator =(const CRenderableSurface& src)
+	/*
+	==========================
+	Assignment operator
+	==========================
+	*/
+	CRenderableSurface& operator=(const CRenderableSurface& src)
 	{
 		ident = src.ident;
 		boneCache = src.boneCache;
+		vboMesh = src.vboMesh;
 		surfaceData = src.surfaceData;
+
+		genShadows = (src.genShadows ? qtrue : qfalse);
+		dlightBits = src.dlightBits;
+		pshadowBits = src.pshadowBits;
+
 #ifdef _G2_GORE
 		alternateTex = src.alternateTex;
 		goreChain = src.goreChain;
+		scale = src.scale;
+		fade = src.fade;
+		impactTime = src.impactTime;
 #endif
-		vboMesh = src.vboMesh;
-
 		return *this;
 	}
 
+	/*
+	==========================
+	Default constructor
+	==========================
+	*/
 	CRenderableSurface()
 		: ident(SF_MDX)
 		, boneCache(nullptr)
 		, vboMesh(nullptr)
+		, genShadows(qfalse)     // FIXED: initialize genShadows
+		, dlightBits(0)          // FIXED: initialize
+		, pshadowBits(0)         // FIXED: initialize
 		, surfaceData(nullptr)
 #ifdef _G2_GORE
 		, alternateTex(nullptr)
@@ -3410,17 +3431,31 @@ public:
 	{
 	}
 
+	/*
+	==========================
+	Init
+
+	Resets the surface to a clean default state.
+	==========================
+	*/
 	void Init()
 	{
 		ident = SF_MDX;
 		boneCache = nullptr;
+		vboMesh = nullptr;
 		surfaceData = nullptr;
+
+		genShadows = qfalse;
+		dlightBits = 0;
+		pshadowBits = 0;
+
 #ifdef _G2_GORE
 		alternateTex = nullptr;
 		goreChain = nullptr;
+		scale = 1.0f;
+		fade = 0.0f;
+		impactTime = 0.0f;
 #endif
-		vboMesh = nullptr;
-		genShadows = qfalse;
 	}
 };
 

@@ -31,18 +31,41 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "FxScheduler.h"
 #include "../game/wp_saber.h"
 #include "../game/g_vehicles.h"
+#include <qcommon\q_math.h>
+#include <g_shared.h>
+#include <string.h>
+#include <cmath>
+#include <cstdlib>
+#include <iterator>
+#include "cg_camera.h"
+#include "cg_local.h"
+#include "FxUtil.h"
+#include <anims.h>
+#include <bg_public.h>
+#include <ghoul2_shared.h>
+#include <g_local.h>
+#include <g_public.h>
+#include <teams.h>
+#include <weapons.h>
+#include <qcommon\q_shared.h>
+#include <rd-common\mdx_format.h>
+#include <rd-common\tr_types.h>
+#include <qcommon\q_platform.h>
+#include <qcommon\q_string.h>
 
 extern void CG_AddSaberBlade(const centity_t* cent, centity_t* scent, int renderfx, int modelIndex,
 	vec3_t origin, vec3_t angles);
-extern void CG_CheckSaberInWater(const centity_t* cent, const centity_t* scent, int saberNum, int modelIndex,
+extern void CG_CheckSaberInWater(const centity_t* cent,
+	const centity_t* scent,
+	const int saber_num,
+	const int modelIndex,
 	vec3_t origin,
 	vec3_t angles);
 extern void CG_ForcePushBlur(const vec3_t org, qboolean dark_side = qfalse);
 extern void CG_AddForceSightShell(refEntity_t* ent, const centity_t* cent);
 extern qboolean CG_PlayerCanSeeCent(const centity_t* cent);
 
-#define	FX_ALPHA_LINEAR		0x00000001
-#define	FX_SIZE_LINEAR		0x00000100
+constexpr auto FX_SIZE_LINEAR2 = 0x00000100;
 
 /*
 ======================
@@ -502,7 +525,7 @@ static void CG_General(centity_t* cent)
 
 		vec4_t v4DKGREY2 = { 0.15f, 0.15f, 0.15f };
 
-		FX_AddLine(start, end, 0.5f, 0.0f, 0.5f, v4DKGREY2, v4DKGREY2, 15, cgi_R_RegisterShader("gfx/misc/nav_line"), FX_SIZE_LINEAR);
+		FX_AddLine(start, end, 0.5f, 0.0f, 0.5f, v4DKGREY2, v4DKGREY2, 15, cgi_R_RegisterShader("gfx/misc/nav_line"), FX_SIZE_LINEAR2);
 
 		CG_GrappleStartpoint(end);
 		//GOING OUT
@@ -1418,7 +1441,7 @@ static void CG_Missile(centity_t* cent)
 
 		vec4_t v4DKGREY2 = { 0.15f, 0.15f, 0.15f };
 
-		FX_AddLine(start, end, 0.5f, 0.0f, 0.5f, v4DKGREY2, v4DKGREY2, 15, cgi_R_RegisterShader("gfx/misc/whiteline2"), FX_SIZE_LINEAR);
+		FX_AddLine(start, end, 0.5f, 0.0f, 0.5f, v4DKGREY2, v4DKGREY2, 15, cgi_R_RegisterShader("gfx/misc/whiteline2"), FX_SIZE_LINEAR2);
 
 		CG_GrappleStartpoint(end);
 	}

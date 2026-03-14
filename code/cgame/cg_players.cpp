@@ -12221,50 +12221,81 @@ static void CG_CreateSaberMarks(const vec3_t start,
 
 extern void FX_AddPrimitive(CEffect** effect, int kill_time);
 //-------------------------------------------------------
-void CG_CheckSaberInWater(const centity_t* cent, const centity_t* scent, const int saberNum, const int modelIndex,
-	vec3_t origin, vec3_t angles)
+/*
+==========================
+CG_CheckSaberInWater
+
+Determines whether a saber is currently submerged in water/slime
+and sets SEF_INWATER accordingly. Behaviour preserved exactly.
+==========================
+*/
+void CG_CheckSaberInWater(const centity_t* cent,
+	const centity_t* scent,
+	const int saber_num,
+	const int modelIndex,
+	vec3_t origin,
+	vec3_t angles)
 {
-	gclient_t* client = cent->gent->client;
-	if (!client)
+	// Validate cent
+	if (cent == NULL || cent->gent == NULL || cent->gent->client == NULL)
 	{
 		return;
 	}
-	if (!scent ||
+
+	gclient_t* client = cent->gent->client;
+
+	// Validate scent and its ghoul2 model
+	if (scent == NULL ||
+		scent->gent == NULL ||
 		modelIndex == -1 ||
 		scent->gent->ghoul2.size() <= modelIndex ||
 		scent->gent->ghoul2[modelIndex].mBltlist.size() <= 0 ||
-		//using a camera puts away your saber so you have no bolts
 		scent->gent->ghoul2[modelIndex].mModelindex == -1)
 	{
+		// Camera mode or invalid model → no saber bolts
 		return;
 	}
-	if (cent && cent->gent && cent->gent->client
-		&& cent->gent->client->ps.saber[saberNum].saberFlags & SFL_ON_IN_WATER)
+
+	// Saber flagged as "can stay on underwater"
+	if ((cent->gent->client->ps.saber[saber_num].saberFlags & SFL_ON_IN_WATER) != 0)
 	{
-		//saber can stay on underwater
 		return;
 	}
-	if (gi.totalMapContents() & (CONTENTS_WATER | CONTENTS_SLIME))
+
+	// Check global map contents for water/slime
+	if ((gi.totalMapContents() & (CONTENTS_WATER | CONTENTS_SLIME)) != 0)
 	{
 		vec3_t saber_org;
-		mdxaBone_t boltMatrix;
+		mdxaBone_t bolt_matrix;
 
-		// figure out where the actual model muzzle is
-		gi.G2API_GetBoltMatrix(scent->gent->ghoul2, modelIndex, 0, &boltMatrix, angles, origin, cg.time,
+		// Get bolt matrix for saber position
+		gi.G2API_GetBoltMatrix(
+			scent->gent->ghoul2,
+			modelIndex,
+			0,
+			&bolt_matrix,
+			angles,
+			origin,
+			cg.time,
 			cgs.model_draw,
-			scent->currentState.modelScale);
-		// work the matrix axis stuff into the original axis and origins used.
-		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, saber_org);
+			scent->currentState.modelScale
+		);
 
+		// Extract world-space origin of the bolt
+		gi.G2API_GiveMeVectorFromMatrix(bolt_matrix, ORIGIN, saber_org);
+
+		// Check contents at saber tip
 		const int contents = gi.pointcontents(saber_org, cent->currentState.clientNum);
-		if (contents & (CONTENTS_WATER | CONTENTS_SLIME))
+
+		if ((contents & (CONTENTS_WATER | CONTENTS_SLIME)) != 0)
 		{
-			//still in water
+			// Saber is in water
 			client->ps.saberEventFlags |= SEF_INWATER;
 			return;
 		}
 	}
-	//not in water
+
+	// Not in water
 	client->ps.saberEventFlags &= ~SEF_INWATER;
 }
 

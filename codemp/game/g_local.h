@@ -36,6 +36,11 @@ typedef struct gclient_s gclient_t;
 
 //npc stuff
 #include "b_public.h"
+#include "ai.h"
+#include "anims.h"
+#include "teams.h"
+#include <qcommon\q_platform.h>
+#include <qcommon\q_math.h>
 
 extern int gPainMOD;
 extern int gPainHitLoc;
@@ -1348,6 +1353,8 @@ typedef struct level_locals_s
 
 	char mapname[MAX_QPATH];
 	char rawmapname[MAX_QPATH];
+
+	int numDeathmatchSpawns;
 } level_locals_t;
 
 qboolean sje_is_ally(const gentity_t* ent, const gentity_t* other);
@@ -1705,7 +1712,7 @@ const char* G_GetStringEdString(char* refSection, char* refName);
 char* ClientConnect(int clientNum, qboolean firstTime, qboolean isBot);
 qboolean client_userinfo_changed(int clientNum);
 void ClientDisconnect(int clientNum);
-void ClientBegin(int clientNum, qboolean allowTeamReset);
+void ClientBegin(const int clientNum, const qboolean allowTeamReset);
 void G_BreakArm(gentity_t* ent, int arm);
 void G_UpdateClientAnims(gentity_t* self, float animSpeedScale);
 void ClientCommand(int clientNum);
@@ -1876,6 +1883,7 @@ int bot_ai_startframe(const int time);
 qboolean NPC_IsNotHavingEnoughForceSight(const gentity_t* self);
 
 #include "g_team.h" // teamplay specific stuff
+#include <stddef.h>
 
 extern level_locals_t level;
 extern gentity_t g_entities[MAX_GENTITIES];

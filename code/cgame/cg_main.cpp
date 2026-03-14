@@ -30,6 +30,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../qcommon/sstring.h"
 #include "qcommon/ojk_saved_game_helper.h"
 #include "../game/wp_saber.h"
+#include <map>
+#include <g_shared.h>
+#include <qcommon\q_math.h>
+#include <bg_public.h>
+#include <ghoul2_shared.h>
 
 //NOTENOTE: Be sure to change the mirrored code in g_shared.h
 using namePrecache_m = std::map<sstring_t, unsigned char>;

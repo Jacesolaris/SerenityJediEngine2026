@@ -266,45 +266,31 @@ typedef struct bot_state_s
 	vec3_t viewangles; //current view angles
 	vec3_t ideal_viewangles; //ideal view angles
 	vec3_t viewanglespeed;
-
 	//rww - new AI values
 	gentity_t* currentEnemy;
 	gentity_t* revengeEnemy;
-
 	gentity_t* squadLeader;
-
 	gentity_t* lastHurt;
 	gentity_t* lastAttacked;
-
 	gentity_t* wantFlag;
-
 	gentity_t* touchGoal;
 	gentity_t* shootGoal;
-
 	gentity_t* dangerousObject;
-
 	vec3_t staticFlagSpot;
-
 	int revengeHateLevel;
 	int isSquadLeader;
-
 	int squadRegroupInterval;
 	int squadCannotLead;
-
 	int changeStyleDebounce;
 	int changeStaffStyleDebounce;
-
 	int lastDeadTime;
-
 	wpobject_t* wpCurrent;
 	wpobject_t* wpDestination;
 	wpobject_t* wpStoreDest;
 	vec3_t goalAngles;
 	vec3_t goalMovedir;
 	vec3_t goalPosition;
-
 	vec3_t lastEnemyAngles;
-
 	int MiscBotFlags; //misc flags used for TABBot behavior.
 	int miscBotFlagsTimer; //this timer is used for a variety of tactic based
 	//debouncers, it's usage is based on the currentTactic
@@ -476,7 +462,6 @@ typedef struct bot_state_s
 	int tacticObjective;
 	//objective type
 	int objectiveType;
-
 	//Visual scan behavior
 	qboolean doVisualScan;
 	int VisualScanTime;
@@ -555,7 +540,13 @@ typedef struct bot_state_s
 	int spacingState; // 0 = HOLD, 1 = BACKUP, 2 = CLOSE
 	int nextStyleSwitchTime;
 	int landingReleaseTime;
-
+	int kataDashSoundTime;
+	int kataRetreatChangeTime;
+	qboolean forceNoWalk;
+	int strafeDir;
+	int strafeTime;
+	int nextBuyTime;
+	qboolean startingCreditsGiven;
 	//end rww
 } bot_state_t;
 

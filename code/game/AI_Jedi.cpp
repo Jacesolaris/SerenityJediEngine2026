@@ -27,7 +27,27 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_navigator.h"
 #include "../cgame/cg_local.h"
 #include "g_functions.h"
+#include <qcommon/q_math.h>
+#include "bg_public.h"
+#include <qcommon/q_shared.h>
+#include <cmath>
 #include <cgame\cg_camera.h>
+#include "ai.h"
+#include "bstate.h"
+#include "b_public.h"
+#include "ghoul2_shared.h"
+#include "g_local.h"
+#include "g_public.h"
+#include "g_shared.h"
+#include "hitlocs.h"
+#include "statindex.h"
+#include "surfaceflags.h"
+#include "teams.h"
+#include "weapons.h"
+#include <rd-common\mdx_format.h>
+#include <qcommon\q_color.h>
+#include <qcommon\q_platform.h>
+#include <qcommon\q_string.h>
 
 //Externs
 extern qboolean G_ValidEnemy(const gentity_t* self, const gentity_t* enemy);
@@ -1518,6 +1538,9 @@ static qboolean Jedi_Hunt()
 	return qfalse;
 }
 
+// ---------------------------------------------------------
+// RETREAT MODE STARTS HERE
+// ---------------------------------------------------------
 static void Jedi_StartBackOff()
 {
 	TIMER_Set(NPC, "roamTime", -level.time);
@@ -1533,18 +1556,78 @@ static void Jedi_StartBackOff()
 	ucmd.forwardmove = -127;
 	ucmd.rightmove = 0;
 	ucmd.upmove = 0;
-	if (d_JediAI->integer || g_DebugSaberCombat->integer)
+	if (d_JediAI->integer || d_combatinfo->integer || g_DebugSaberCombat->integer)
 	{
 		Com_Printf("%s backing off from spin attack!\n", NPC->NPC_type);
 	}
 	TIMER_Set(NPC, "specialEvasion", 1000);
 	TIMER_Set(NPC, "noRetreat", -level.time);
+
 	if (PM_PainAnim(NPC->client->ps.legsAnim))
 	{
 		NPC->client->ps.legsAnimTimer = 0;
 	}
 	VectorClear(NPC->client->ps.moveDir);
 }
+
+extern void ForceDashAnimDash(gentity_t* self);
+static void JediDirectionalDashDodge(gentity_t* NPC, gentity_t* enemy)
+{
+	// -------------------------------------------------
+	// DETERMINE DODGE DIRECTION BASED ON ATTACK ANGLE
+	// -------------------------------------------------
+	vec3_t toEnemy;
+	VectorSubtract(enemy->currentOrigin, NPC->currentOrigin, toEnemy);
+	VectorNormalize(toEnemy);
+
+	vec3_t fwd, right;
+	AngleVectors(NPC->client->ps.viewangles, fwd, right, NULL);
+
+	float rightdot = DotProduct(toEnemy, right);
+
+	if (rightdot > 0.3f)      // left dodge
+		ucmd.rightmove = -64;
+	else if (rightdot < -0.3f) // right dodge
+		ucmd.rightmove = 64;
+	else                // backward dodge
+		ucmd.forwardmove = -64;   // enemy in front → backward dodge ONLY
+
+	// -------------------------------------------------
+	// VELOCITY BURST
+	// -------------------------------------------------
+
+	if (NPC->client->ps.groundEntityNum != ENTITYNUM_NONE)
+	{
+		NPC->client->ps.velocity[0] = NPC->client->ps.velocity[0] * 2.0f;
+		NPC->client->ps.velocity[1] = NPC->client->ps.velocity[1] * 2.0f;
+
+		// Kill any forward velocity (never dash into enemy)
+		float forwardVel = DotProduct(NPC->client->ps.velocity, fwd);
+		if (forwardVel > 0.0f)
+		{
+			vec3_t forwardPush;
+			VectorScale(fwd, forwardVel, forwardPush);
+			VectorSubtract(NPC->client->ps.velocity, forwardPush, NPC->client->ps.velocity);
+		}
+		// -------------------------------------------------
+		// DASH ANIMATION + SOUND
+		// -------------------------------------------------
+
+		NPC->client->pers.cmd.rightmove = ucmd.rightmove;
+		NPC->client->pers.cmd.forwardmove = ucmd.forwardmove;
+
+		// play dash anim (reads pers.cmd)
+		ForceDashAnimDash(NPC);
+		G_SoundOnEnt(NPC, CHAN_BODY, "sound/weapons/force/dash.mp3");
+
+		// ensure saber state is restored to "ready"
+		// set both current and next to avoid races with other logic
+		NPC->client->ps.saber_move = NPC->client->ps.saberMoveNext = LS_READY;
+	}
+}
+// ---------------------------------------------------------
+// RETREAT MODE ENDS HERE
+// ---------------------------------------------------------
 
 static qboolean Jedi_Retreat()
 {
@@ -2287,6 +2370,10 @@ static void Jedi_TryApplyMeleeSmack(gentity_t* NPC)
 	smack_dir[2] += 20;
 	VectorNormalize(smack_dir);
 
+	// ✔ Play punch sound ONLY on actual hit
+	G_Sound(NPC->enemy,
+		G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+
 	// hurt them
 	G_Sound(NPC->enemy, G_SoundIndex("sound/chars/%s/misc/pain0%d"));
 	G_Damage(NPC->enemy, NPC, NPC, smack_dir, NPC->currentOrigin,
@@ -2351,6 +2438,7 @@ static void Jedi_HandleTeamMeleeWindow(gentity_t* NPC)
 		return;
 	}
 
+	G_Sound(NPC->enemy, G_SoundIndex(va("sound/weapons/melee/swing%d", Q_irand(1, 4))));
 	Jedi_TryApplyMeleeSmack(NPC);
 }
 
@@ -2389,34 +2477,30 @@ static void jedi_combat_distance(const int enemy_dist)
 		}
 	}
 
-	if (enemy_dist < 128
-		&& NPC->enemy
-		&& NPC->enemy->client
-		&& InFront(NPC->enemy->currentOrigin, NPC->currentOrigin, NPC->client->ps.viewangles, 0.7f)
-		&& PM_SaberInKata(static_cast<saber_moveName_t>(NPC->enemy->client->ps.saber_move)))
+	if (enemy_dist < 128 &&
+		!in_camera &&
+		enemy &&
+		enemy->client &&
+		ps->weapon == WP_SABER &&
+		enemy->s.weapon == WP_SABER &&
+		!PM_SaberInMassiveBounce(ps->torsoAnim) &&
+		!PM_SaberInBounce(ps->torsoAnim) &&
+		!PM_SaberInBashedAnim(ps->torsoAnim) &&
+		!PM_InKnockDown(&NPC->client->ps) &&
+		InFront(enemy->currentOrigin, NPC->currentOrigin, ps->viewangles, 0.7f) &&
+		(PM_SaberInKata((saber_moveName_t)enemy->client->ps.saber_move) ||
+			(ps->weapon == WP_SABER && (ps->saberInFlight || ps->saberEntityState == SES_RETURNING))))
 	{
-		// whoa, back off!!!
-		if (Q_irand(0, 1))
+		if (NPC->client->ps.forcePower >= 50)
 		{
-			Jedi_StartBackOff();
-			G_AddVoiceEvent(NPC, Q_irand(EV_COMBAT1, EV_COMBAT3), 3000);
+			NPC->client->ps.forcePower -= 35;
+			JediDirectionalDashDodge(NPC, enemy);
 			return;
 		}
-	}
-
-	if (enemy_dist < 128
-		&& NPC->enemy
-		&& NPC->enemy->client
-		&& (NPC->client->ps.weapon == WP_SABER && (NPC->client->ps.saberInFlight || NPC->client->ps.saberEntityState == SES_RETURNING))
-		&& NPC->enemy->s.weapon == WP_SABER
-		&& InFront(NPC->enemy->currentOrigin, NPC->currentOrigin, NPC->client->ps.viewangles, 0.7f))
-	{
-		// whoa, back off!!!
-		if (Q_irand(0, 1))
+		else
 		{
 			Jedi_StartBackOff();
-			G_AddVoiceEvent(NPC, Q_irand(EV_TAUNT1, EV_TAUNT3), 3000);
-			return;
+			return; // not enough FP to dash
 		}
 	}
 
@@ -3057,7 +3141,10 @@ static void jedi_combat_distance(const int enemy_dist)
 	}
 	else if (enemy_dist > 50)
 	{
-		if (NPC->enemy && (NPC->enemy->client->ps.eFlags & EF_FORCE_GRIPPED || NPC->enemy->client->ps.eFlags & EF_FORCE_GRABBED))
+		if (NPC->enemy != NULL &&
+			NPC->enemy->client != NULL &&
+			((NPC->enemy->client->ps.eFlags & EF_FORCE_GRIPPED) != 0 ||
+				(NPC->enemy->client->ps.eFlags & EF_FORCE_GRABBED) != 0))
 		{
 			if (NPC->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE)
 			{
@@ -4006,11 +4093,22 @@ static evasionType_t jedi_check_flip_evasions(gentity_t* self, const float right
 			return EVASION_OTHER;
 		}
 	}//desann doesn't do these kind of frilly acrobatics
-	else if (self->client->NPC_class != CLASS_DESANN && self->client->NPC_class != CLASS_VADER && Q_irand(0, 1)
-		&& (self->NPC->rank == RANK_CREWMAN || self->NPC->rank >= RANK_LT)
-		&& !PM_InRoll(&self->client->ps)
-		&& !PM_InKnockDown(&self->client->ps)
-		&& !pm_saber_in_special_attack(self->client->ps.torsoAnim))
+	else if (self != NULL &&
+		self->client != NULL &&
+		self->NPC != NULL &&
+		// Not Desann or Vader
+		self->client->NPC_class != CLASS_DESANN &&
+		self->client->NPC_class != CLASS_VADER &&
+		// 50% random chance
+		Q_irand(0, 1) == 1 &&
+		// Rank check
+		(self->NPC->rank == RANK_CREWMAN || self->NPC->rank >= RANK_LT) &&
+		// Not rolling
+		PM_InRoll(&self->client->ps) == qfalse &&
+		// Not knocked down
+		PM_InKnockDown(&self->client->ps) == qfalse &&
+		// Not in special saber attack
+		pm_saber_in_special_attack(self->client->ps.torsoAnim) == qfalse)
 	{
 		vec3_t fwd, right, traceto;
 		const vec3_t fwd_angles = { 0, self->client->ps.viewangles[YAW], 0 };
@@ -6389,89 +6487,125 @@ static void Jedi_EvasionSaber(vec3_t enemy_movedir, const float enemy_dist, vec3
 INTERNAL AI ROUTINES
 ==========================================================================================
 */
+/*
+===============================
+jedi_find_enemy_in_cone
+
+Finds the closest enemy within a forward cone.
+Rules:
+1. Clean structure
+2. Bug fixes only
+3. Fully commented
+4. Behavior preserved
+5. Explicit qtrue/qfalse
+6. No implicit bool→qboolean conversions
+===============================
+*/
 gentity_t* jedi_find_enemy_in_cone(const gentity_t* self, gentity_t* fallback, const float minDot)
 {
-	vec3_t forward, mins{}, maxs{};
-	gentity_t* enemy = fallback;
-	gentity_t* entity_list[MAX_GENTITIES];
-	int e;
-	trace_t tr;
-
-	if (!self->client)
+	// --- Early out: no client, no viewangles, no cone ---
+	if (!self || !self->client)
 	{
-		return enemy;
+		return fallback;
 	}
 
-	AngleVectors(self->client->ps.viewangles, forward, nullptr, nullptr);
+	// --- Forward direction ---
+	vec3_t forward;
+	AngleVectors(self->client->ps.viewangles, forward, NULL, NULL);
 
-	for (e = 0; e < 3; e++)
+	// --- Search bounds (1024 radius cube) ---
+	vec3_t mins{};
+	vec3_t maxs{};
+
+	for (int i = 0; i < 3; i++)
 	{
-		mins[e] = self->currentOrigin[e] - 1024;
-		maxs[e] = self->currentOrigin[e] + 1024;
+		mins[i] = self->currentOrigin[i] - 1024.0f;
+		maxs[i] = self->currentOrigin[i] + 1024.0f;
 	}
-	const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
-	for (e = 0; e < num_listed_entities; e++)
+	// --- Large array moved static to avoid stack bloat ---
+	static gentity_t* entity_list[MAX_GENTITIES];
+
+	const int numListed = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+	// Track best enemy found
+	gentity_t* bestEnemy = fallback;
+	float bestDist = Q3_INFINITE;
+
+	// --- Iterate through all entities in the box ---
+	for (int e = 0; e < numListed; e++)
 	{
-		constexpr float best_dist = Q3_INFINITE;
-		vec3_t dir;
 		gentity_t* check = entity_list[e];
-		if (check == self)
+
+		if (!check)
 		{
-			//me
 			continue;
 		}
-		if (!check->inuse)
+		if (check == self)
 		{
-			//freed
+			continue;
+		}
+		if (check->inuse == qfalse)
+		{
 			continue;
 		}
 		if (!check->client)
 		{
-			//not a client - FIXME: what about turrets?
+			// NOTE: Turrets are ignored (matches original behavior)
 			continue;
 		}
 		if (check->client->playerTeam != self->client->enemyTeam)
 		{
-			//not an enemy - FIXME: what about turrets?
 			continue;
 		}
 		if (check->health <= 0)
 		{
-			//dead
 			continue;
 		}
 
-		if (!gi.inPVS(check->currentOrigin, self->currentOrigin))
+		// --- PVS check ---
+		if (gi.inPVS(check->currentOrigin, self->currentOrigin) == qfalse)
 		{
-			//can't potentially see them
 			continue;
 		}
 
+		// --- Direction + distance ---
+		vec3_t dir;
 		VectorSubtract(check->currentOrigin, self->currentOrigin, dir);
 		const float dist = VectorNormalize(dir);
 
+		// --- Cone check ---
 		if (DotProduct(dir, forward) < minDot)
 		{
-			//not in front
 			continue;
 		}
 
-		//really should have a clear LOS to this thing...
-		gi.trace(&tr, self->currentOrigin, vec3_origin, vec3_origin, check->currentOrigin, self->s.number, MASK_SHOT,
-			static_cast<EG2_Collision>(0), 0);
+		// --- Line of sight check ---
+		trace_t tr;
+		gi.trace(&tr,
+			self->currentOrigin,
+			vec3_origin,
+			vec3_origin,
+			check->currentOrigin,
+			self->s.number,
+			MASK_SHOT,
+			static_cast<EG2_Collision>(0),
+			0);
+
 		if (tr.fraction < 1.0f && tr.entityNum != check->s.number)
 		{
-			//must have clear shot
 			continue;
 		}
 
-		if (dist < best_dist)
+		// --- Closest enemy wins ---
+		if (dist < bestDist)
 		{
-			enemy = check;
+			bestDist = dist;
+			bestEnemy = check;
 		}
 	}
-	return enemy;
+
+	return bestEnemy;
 }
 
 void jedi_set_enemy_info(vec3_t enemy_dest, vec3_t enemy_dir, float* enemy_dist, vec3_t enemy_movedir,
@@ -10820,10 +10954,8 @@ static void Jedi_Attack()
 	if (VectorCompare(NPC->client->ps.moveDir, vec3_origin) &&
 		(ucmd.forwardmove || ucmd.rightmove))
 	{
-		// Using ucmds to move this turn, not NAV
 		if (ucmd.buttons & BUTTON_WALKING)
 		{
-			// NAV system overrides speed, so reapply walk speed
 			NPC->client->ps.speed = NPCInfo->stats.walkSpeed;
 		}
 		else
@@ -10831,6 +10963,7 @@ static void Jedi_Attack()
 			NPC->client->ps.speed = NPCInfo->stats.runSpeed;
 		}
 	}
+
 	if (PM_SaberInStart(curmove) || PM_SaberInTransition(curmove))
 	{
 		ucmd.buttons |= BUTTON_ATTACK;
@@ -11042,24 +11175,42 @@ static float Twins_DangerDist()
 	}
 }
 
-static qboolean Jedi_InSpecialMove()
+/*
+===========================
+Jedi_InSpecialMove
+
+Central handler for special Jedi/NPC scripted moves.
+Rules:
+1. Clean, modern structure
+2. Fix bugs only
+3. Commented
+4. Preserve behavior
+5. Explicit qtrue/qfalse
+6. No implicit bool→qboolean conversions
+===========================
+*/
+static qboolean Jedi_InSpecialMove(void)
 {
-	if (NPC->client->ps.torsoAnim == BOTH_KYLE_PA_1
-		|| NPC->client->ps.torsoAnim == BOTH_KYLE_PA_2
-		|| NPC->client->ps.torsoAnim == BOTH_KYLE_PA_3
-		|| NPC->client->ps.torsoAnim == BOTH_PLAYER_PA_1
-		|| NPC->client->ps.torsoAnim == BOTH_PLAYER_PA_2
-		|| NPC->client->ps.torsoAnim == BOTH_PLAYER_PA_3
-		|| NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRAB_END
-		|| NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRABBED)
+	// --- Simple special torso anims that just lock facing ---
+
+	if (NPC->client->ps.torsoAnim == BOTH_KYLE_PA_1 ||
+		NPC->client->ps.torsoAnim == BOTH_KYLE_PA_2 ||
+		NPC->client->ps.torsoAnim == BOTH_KYLE_PA_3 ||
+		NPC->client->ps.torsoAnim == BOTH_PLAYER_PA_1 ||
+		NPC->client->ps.torsoAnim == BOTH_PLAYER_PA_2 ||
+		NPC->client->ps.torsoAnim == BOTH_PLAYER_PA_3 ||
+		NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRAB_END ||
+		NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRABBED)
 	{
 		NPC_UpdateAngles(qtrue, qtrue);
 		return qtrue;
 	}
 
-	if (Jedi_InNoAIAnim(NPC))
+	// --- No‑AI anims: face enemy or just update angles ---
+
+	if (Jedi_InNoAIAnim(NPC) == qtrue)
 	{
-		//in special anims, don't do force powers or attacks, just face the enemy
+		// In special anims, don't do force powers or attacks, just face the enemy
 		if (NPC->enemy)
 		{
 			NPC_FaceEnemy(qtrue);
@@ -11071,18 +11222,21 @@ static qboolean Jedi_InSpecialMove()
 		return qtrue;
 	}
 
-	if (NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRAB_START
-		|| NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRAB_HOLD)
+	// --- Force drain grab start/hold ---
+
+	if (NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRAB_START ||
+		NPC->client->ps.torsoAnim == BOTH_FORCE_DRAIN_GRAB_HOLD)
 	{
-		if (!TIMER_Done(NPC, "draining"))
+		if (TIMER_Done(NPC, "draining") == qfalse)
 		{
-			//FIXME: what do we do if we ran out of power?  NPC's can't?
-			//FIXME: don't keep turning to face enemy or we'll end up spinning around
+			// Still draining: keep button held
 			ucmd.buttons |= BUTTON_FORCE_DRAIN;
 		}
 		NPC_UpdateAngles(qtrue, qtrue);
 		return qtrue;
 	}
+
+	// --- Tavion sword power heal ---
 
 	if (NPC->client->ps.torsoAnim == BOTH_TAVION_SWORDPOWER)
 	{
@@ -11095,22 +11249,37 @@ static qboolean Jedi_InSpecialMove()
 		return qtrue;
 	}
 
+	// --- Scepter start ---
+
 	if (NPC->client->ps.torsoAnim == BOTH_SCEPTER_START)
 	{
 		if (NPC->client->ps.torsoAnimTimer <= 100)
 		{
-			//go into the hold
+			// Transition into hold
 			NPC->s.loopSound = G_SoundIndex("sound/weapons/scepter/loop.wav");
-			G_PlayEffect(G_EffectIndex("scepter/beam.efx"), NPC->weaponModel[1], NPC->genericBolt1, NPC->s.number, NPC->currentOrigin, 10000, qtrue);
-			NPC->client->ps.legsAnimTimer = NPC->client->ps.torsoAnimTimer = 0;
-			NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_SCEPTER_HOLD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			G_PlayEffect(G_EffectIndex("scepter/beam.efx"),
+				NPC->weaponModel[1],
+				NPC->genericBolt1,
+				NPC->s.number,
+				NPC->currentOrigin,
+				10000,
+				qtrue);
+
+			NPC->client->ps.legsAnimTimer = 0;
+			NPC->client->ps.torsoAnimTimer = 0;
+
+			NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_SCEPTER_HOLD,
+				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+
 			NPC->client->ps.torsoAnimTimer += 200;
 			NPC->painDebounceTime = level.time + NPC->client->ps.torsoAnimTimer;
 			NPC->client->ps.pm_time = NPC->client->ps.torsoAnimTimer;
 			NPC->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
+
 			VectorClear(NPC->client->ps.velocity);
 			VectorClear(NPC->client->ps.moveDir);
 		}
+
 		if (NPC->enemy)
 		{
 			NPC_FaceEnemy(qtrue);
@@ -11121,25 +11290,40 @@ static qboolean Jedi_InSpecialMove()
 		}
 		return qtrue;
 	}
+
+	// --- Scepter hold ---
+
 	if (NPC->client->ps.torsoAnim == BOTH_SCEPTER_HOLD)
 	{
 		if (NPC->client->ps.torsoAnimTimer <= 100)
 		{
+			// Transition to stop
 			NPC->s.loopSound = 0;
-			G_StopEffect(G_EffectIndex("scepter/beam.efx"), NPC->weaponModel[1], NPC->genericBolt1, NPC->s.number);
-			NPC->client->ps.legsAnimTimer = NPC->client->ps.torsoAnimTimer = 0;
-			NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_SCEPTER_STOP, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			G_StopEffect(G_EffectIndex("scepter/beam.efx"),
+				NPC->weaponModel[1],
+				NPC->genericBolt1,
+				NPC->s.number);
+
+			NPC->client->ps.legsAnimTimer = 0;
+			NPC->client->ps.torsoAnimTimer = 0;
+
+			NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_SCEPTER_STOP,
+				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+
 			NPC->painDebounceTime = level.time + NPC->client->ps.torsoAnimTimer;
 			NPC->client->ps.pm_time = NPC->client->ps.torsoAnimTimer;
 			NPC->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
+
 			VectorClear(NPC->client->ps.velocity);
 			VectorClear(NPC->client->ps.moveDir);
 		}
 		else
 		{
+			// Maintain beam and apply damage
 			NPC->s.loopSound = G_SoundIndex("sound/weapons/scepter/loop.wav");
 			Tavion_ScepterDamage();
 		}
+
 		if (NPC->enemy)
 		{
 			NPC_FaceEnemy(qtrue);
@@ -11150,6 +11334,9 @@ static qboolean Jedi_InSpecialMove()
 		}
 		return qtrue;
 	}
+
+	// --- Scepter stop ---
+
 	if (NPC->client->ps.torsoAnim == BOTH_SCEPTER_STOP)
 	{
 		if (NPC->enemy)
@@ -11162,10 +11349,12 @@ static qboolean Jedi_InSpecialMove()
 		}
 		return qtrue;
 	}
+
+	// --- Tavion scepter ground slam ---
+
 	if (NPC->client->ps.torsoAnim == BOTH_TAVION_SCEPTERGROUND)
 	{
-		if (NPC->client->ps.torsoAnimTimer <= 1200
-			&& !NPC->count)
+		if (NPC->client->ps.torsoAnimTimer <= 1200 && NPC->count == 0)
 		{
 			Tavion_ScepterSlam();
 			NPC->count = 1;
@@ -11174,17 +11363,21 @@ static qboolean Jedi_InSpecialMove()
 		return qtrue;
 	}
 
-	if (Jedi_CultistDestroyer(NPC))
+	// --- Cultist destroyer self‑destruct logic ---
+
+	if (Jedi_CultistDestroyer(NPC) == qtrue)
 	{
-		if (!NPC->takedamage)
+		if (NPC->takedamage == qfalse)
 		{
-			//ready to explode
+			// Ready to explode
 			if (NPC->useDebounceTime <= level.time)
 			{
-				NPC->client->playerTeam = TEAM_FREE; //FIXME: will this destroy wampas, tusken & rancors?
+				// Free team so explosion doesn't break special cases
+				NPC->client->playerTeam = TEAM_FREE;
 				WP_Explode(NPC);
 				return qtrue;
 			}
+
 			if (NPC->enemy)
 			{
 				NPC_FaceEnemy(qfalse);
@@ -11193,35 +11386,44 @@ static qboolean Jedi_InSpecialMove()
 		}
 	}
 
+	// --- Reborn special behavior (Kothos twins / Rosh heal logic) ---
+
 	if (NPC->client->NPC_class == CLASS_REBORN)
 	{
+		// --- Kothos twins healing Rosh ---
+
 		if (NPCInfo->aiFlags & NPCAI_HEAL_ROSH)
 		{
 			if (!NPC->client->leader)
 			{
-				//find Rosh
-				NPC->client->leader = G_Find(nullptr, FOFS(NPC_type), "rosh_dark");
+				// Find Rosh
+				NPC->client->leader = G_Find(NULL, FOFS(NPC_type), "rosh_dark");
 			}
+
 			if (NPC->client->leader)
 			{
-				qboolean helping_rosh = qfalse;
+				qboolean helpingRosh = qfalse;
+
 				NPC->flags |= FL_LOCK_PLAYER_WEAPONS;
 				NPC->client->leader->flags |= FL_UNDYING;
+
 				if (NPC->client->leader->client)
 				{
 					NPC->client->leader->client->ps.forcePowersKnown |= FORCE_POWERS_ROSH_FROM_TWINS;
 				}
-				if (NPC->client->leader->client->ps.legsAnim == BOTH_FORCEHEAL_START)
+
+				if (NPC->client->leader->client &&
+					NPC->client->leader->client->ps.legsAnim == BOTH_FORCEHEAL_START)
 				{
-					if (TIMER_Done(NPC, "healRoshDebounce"))
+					if (TIMER_Done(NPC, "healRoshDebounce") == qtrue)
 					{
-						if (Kothos_HealRosh())
+						if (Kothos_HealRosh() == qtrue)
 						{
-							helping_rosh = qtrue;
+							helpingRosh = qtrue;
 						}
 						else
 						{
-							//can't get to him!
+							// Can't get to him, follow instead
 							NPC_BSJedi_FollowLeader();
 							NPC_UpdateAngles(qtrue, qtrue);
 							return qtrue;
@@ -11229,80 +11431,97 @@ static qboolean Jedi_InSpecialMove()
 					}
 				}
 
-				if (helping_rosh)
+				if (helpingRosh == qtrue)
 				{
+					// Stop offensive force powers while helping Rosh
 					WP_ForcePowerStop(NPC, FP_LIGHTNING_STRIKE);
 					WP_ForcePowerStop(NPC, FP_LIGHTNING);
 					WP_ForcePowerStop(NPC, FP_DRAIN);
 					WP_ForcePowerStop(NPC, FP_GRIP);
 					WP_ForcePowerStop(NPC, FP_GRASP);
+
 					NPC_FaceEntity(NPC->client->leader, qtrue);
 					return qtrue;
 				}
-				if (NPC->enemy && DistanceSquared(NPC->enemy->currentOrigin, NPC->currentOrigin) < Twins_DangerDist())
+
+				// Too close to enemy, retreat/attack logic
+				if (NPC->enemy &&
+					DistanceSquared(NPC->enemy->currentOrigin, NPC->currentOrigin) < Twins_DangerDist())
 				{
-					if (NPC->enemy && Kothos_Retreat())
+					if (NPC->enemy && Kothos_Retreat() == qtrue)
 					{
 						NPC_FaceEnemy(qtrue);
-						if (TIMER_Done(NPC, "attackDelay"))
+
+						if (TIMER_Done(NPC, "attackDelay") == qtrue)
 						{
-							if (NPC->painDebounceTime > level.time
-								|| NPC->health < 100 && Q_irand(-20, (g_spskill->integer + 1) * 10) > 0
-								|| !Q_irand(0, 80 - g_spskill->integer * 20))
+							if (NPC->painDebounceTime > level.time ||
+								(NPC->health < 100 &&
+									Q_irand(-20, (g_spskill->integer + 1) * 10) > 0) ||
+								!Q_irand(0, 80 - g_spskill->integer * 20))
 							{
 								NPC->flags &= ~FL_LOCK_PLAYER_WEAPONS;
-								switch (Q_irand(0, 7 + g_spskill->integer)) //on easy: no lightning
+
+								switch (Q_irand(0, 7 + g_spskill->integer))
 								{
 								case 0:
 								case 1:
 								case 2:
 								case 3:
 									ForceThrow(NPC, qfalse, qfalse);
-									NPC->client->ps.weaponTime = Q_irand(1000, 3000) + (2 - g_spskill->integer) * 1000;
-									if (NPC->painDebounceTime <= level.time
-										&& NPC->health >= 100)
+									NPC->client->ps.weaponTime =
+										Q_irand(1000, 3000) + (2 - g_spskill->integer) * 1000;
+									if (NPC->painDebounceTime <= level.time &&
+										NPC->health >= 100)
 									{
 										TIMER_Set(NPC, "attackDelay", NPC->client->ps.weaponTime);
 									}
 									break;
+
 								case 4:
 								case 5:
 									ForceDrain2(NPC);
-									NPC->client->ps.weaponTime = Q_irand(3000, 6000) + (2 - g_spskill->integer) * 2000;
+									NPC->client->ps.weaponTime =
+										Q_irand(3000, 6000) + (2 - g_spskill->integer) * 2000;
 									TIMER_Set(NPC, "draining", NPC->client->ps.weaponTime);
-									if (NPC->painDebounceTime <= level.time
-										&& NPC->health >= 100)
+									if (NPC->painDebounceTime <= level.time &&
+										NPC->health >= 100)
 									{
 										TIMER_Set(NPC, "attackDelay", NPC->client->ps.weaponTime);
 									}
 									break;
+
 								case 6:
 								case 7:
-									if (NPC->enemy && InFOV(NPC->enemy->currentOrigin, NPC->currentOrigin,
-										NPC->client->ps.viewangles, 20, 30))
+									if (NPC->enemy &&
+										InFOV(NPC->enemy->currentOrigin,
+											NPC->currentOrigin,
+											NPC->client->ps.viewangles,
+											20,
+											30) == qtrue)
 									{
-										NPC->client->ps.weaponTime = Q_irand(3000, 6000) + (2 - g_spskill->integer) *
-											2000;
+										NPC->client->ps.weaponTime =
+											Q_irand(3000, 6000) + (2 - g_spskill->integer) * 2000;
 										TIMER_Set(NPC, "gripping", 3000);
-										if (NPC->painDebounceTime <= level.time
-											&& NPC->health >= 100)
+										if (NPC->painDebounceTime <= level.time &&
+											NPC->health >= 100)
 										{
 											TIMER_Set(NPC, "attackDelay", NPC->client->ps.weaponTime);
 										}
 									}
 									break;
+
 								case 8:
 								case 9:
 								default:
 									ForceLightning(NPC);
 									if (NPC->client->ps.forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
 									{
-										NPC->client->ps.weaponTime = Q_irand(3000, 6000) + (2 - g_spskill->integer) *
-											2000;
+										NPC->client->ps.weaponTime =
+											Q_irand(3000, 6000) + (2 - g_spskill->integer) * 2000;
 										TIMER_Set(NPC, "holdLightning", NPC->client->ps.weaponTime);
 									}
-									if (NPC->painDebounceTime <= level.time
-										&& NPC->health >= 100)
+									if (NPC->painDebounceTime <= level.time &&
+										NPC->health >= 100)
 									{
 										TIMER_Set(NPC, "attackDelay", NPC->client->ps.weaponTime);
 									}
@@ -11314,16 +11533,19 @@ static qboolean Jedi_InSpecialMove()
 						{
 							NPC->flags &= ~FL_LOCK_PLAYER_WEAPONS;
 						}
+
 						Jedi_TimersApply();
 						return qtrue;
 					}
+
 					NPC->flags &= ~FL_LOCK_PLAYER_WEAPONS;
 				}
-				else if (!G_ClearLOS(NPC, NPC->client->leader)
-					|| DistanceSquared(NPC->currentOrigin, NPC->client->leader->currentOrigin) > 512 * 512)
+				else if (G_ClearLOS(NPC, NPC->client->leader) == qfalse ||
+					DistanceSquared(NPC->currentOrigin,
+						NPC->client->leader->currentOrigin) > (512.0f * 512.0f))
 				{
-					//can't see Rosh or too far away, catch up with him
-					if (!TIMER_Done(NPC, "attackDelay"))
+					// Can't see Rosh or too far away, catch up
+					if (TIMER_Done(NPC, "attackDelay") == qfalse)
 					{
 						NPC->flags &= ~FL_LOCK_PLAYER_WEAPONS;
 					}
@@ -11333,51 +11555,63 @@ static qboolean Jedi_InSpecialMove()
 				}
 				else
 				{
-					if (!TIMER_Done(NPC, "attackDelay"))
+					// Near Rosh, idle/face enemy
+					if (TIMER_Done(NPC, "attackDelay") == qfalse)
 					{
 						NPC->flags &= ~FL_LOCK_PLAYER_WEAPONS;
 					}
+
 					STEER::Activate(NPC);
 					STEER::Stop(NPC);
 					STEER::DeActivate(NPC, &ucmd);
+
 					NPC_FaceEnemy(qtrue);
 					return qtrue;
 				}
 			}
+
 			NPC_UpdateAngles(qtrue, qtrue);
 		}
+		// --- Rosh special behavior (being healed by twins) ---
+
 		else if (NPCInfo->aiFlags & NPCAI_ROSH)
 		{
 			if (NPC->flags & FL_UNDYING)
 			{
-				//Vil and/or Dasariah still around to heal me
-				if (NPC->health == 1 //need healing
-					|| NPC->client->ps.powerups[PW_INVINCIBLE] > level.time) //being healed
+				// Vil/Dasariah still around to heal me
+				if (NPC->health == 1 ||
+					NPC->client->ps.powerups[PW_INVINCIBLE] > level.time)
 				{
-					//FIXME: custom anims
-					if (Rosh_TwinPresent())
+					if (Rosh_TwinPresent() == qtrue)
 					{
-						if (!NPC->client->ps.weaponTime)
+						if (NPC->client->ps.weaponTime == 0)
 						{
-							//not attacking
-							if (NPC->client->ps.legsAnim != BOTH_FORCEHEAL_START
-								&& NPC->client->ps.legsAnim != BOTH_FORCEHEAL_STOP)
+							if (NPC->client->ps.legsAnim != BOTH_FORCEHEAL_START &&
+								NPC->client->ps.legsAnim != BOTH_FORCEHEAL_STOP)
 							{
-								//get down and wait for Vil or Dasariah to help us
-								//FIXME: sound?
-								NPC->client->ps.legsAnimTimer = NPC->client->ps.torsoAnimTimer = 0;
+								// Get down and wait for healing
+								NPC->client->ps.legsAnimTimer = 0;
+								NPC->client->ps.torsoAnimTimer = 0;
+
 								NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_FORCEHEAL_START,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-								NPC->client->ps.torsoAnimTimer = NPC->client->ps.legsAnimTimer = -1;
+
+								NPC->client->ps.torsoAnimTimer = -1;
+								NPC->client->ps.legsAnimTimer = -1;
+
 								NPC->client->ps.SaberDeactivate();
 								NPCInfo->ignorePain = qtrue;
 							}
 						}
+
 						NPC->client->ps.saberBlocked = BLOCKED_NONE;
-						NPC->client->ps.saber_move = NPC->client->ps.saberMoveNext = LS_NONE;
+						NPC->client->ps.saber_move = LS_NONE;
+						NPC->client->ps.saberMoveNext = LS_NONE;
+
 						NPC->painDebounceTime = level.time + 500;
 						NPC->client->ps.pm_time = 500;
 						NPC->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
+
 						VectorClear(NPC->client->ps.velocity);
 						VectorClear(NPC->client->ps.moveDir);
 						return qtrue;
@@ -11387,36 +11621,49 @@ static qboolean Jedi_InSpecialMove()
 		}
 	}
 
-	if (PM_SuperBreakWinAnim(NPC->client->ps.torsoAnim))
+	// --- Super break win anim ---
+
+	if (PM_SuperBreakWinAnim(NPC->client->ps.torsoAnim) == qtrue)
 	{
 		NPC_FaceEnemy(qtrue);
+
 		if (NPC->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
 			VectorClear(NPC->client->ps.velocity);
 		}
+
 		VectorClear(NPC->client->ps.moveDir);
-		ucmd.rightmove = ucmd.forwardmove = ucmd.upmove = 0;
+		ucmd.rightmove = 0;
+		ucmd.forwardmove = 0;
+		ucmd.upmove = 0;
+
 		return qtrue;
 	}
 
 	return qfalse;
 }
 
-void NPC_CheckEvasion()
+void NPC_CheckEvasion(void)
 {
 	vec3_t enemy_dir, enemy_movedir, enemy_dest;
-	float enemy_dist, enemy_movespeed;
+	float enemy_dist = 0.0f;
+	float enemy_movespeed = 0.0f;
 
-	if (in_camera)
+	// Camera mode disables AI evasion
+	if (in_camera == qtrue)
 	{
 		return;
 	}
 
-	if (!NPC->enemy || !NPC->enemy->inuse || NPC->enemy->NPC && NPC->enemy->health <= 0)
+	// Validate enemy pointer
+	if (NPC->enemy == NULL ||
+		NPC->enemy->inuse == qfalse ||
+		(NPC->enemy->NPC != NULL && NPC->enemy->health <= 0))
 	{
 		return;
 	}
 
+	// Only certain classes are allowed to evade
 	switch (NPC->client->NPC_class)
 	{
 	case CLASS_BARTENDER:
@@ -11447,90 +11694,98 @@ void NPC_CheckEvasion()
 	case CLASS_NOGHRI:
 	case CLASS_UGNAUGHT:
 	case CLASS_WOOKIE:
-		// OK... EVADE AWAY!!!
 		break;
+
 	default:
-		// NOT OK...
 		return;
 	}
 
-	//See where enemy will be 300 ms from now
+	// Predict enemy position 300ms ahead
 	jedi_set_enemy_info(enemy_dest, enemy_dir, &enemy_dist, enemy_movedir, &enemy_movespeed, 300);
 
+	// Saber enemy → use saber evasion
 	if (NPC->enemy->s.weapon == WP_SABER)
 	{
 		Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
+		return;
 	}
-	else
+
+	// Non‑saber enemy
+	if (NPC->enemy->client != NULL)
 	{
-		//do we need to do any evasion for other kinds of enemies?
-		if (NPC->enemy->client)
+		vec3_t shot_dir;
+		vec3_t ang;
+
+		VectorSubtract(NPC->currentOrigin, NPC->enemy->currentOrigin, shot_dir);
+		vectoangles(shot_dir, ang);
+
+		// Enemy firing directly at us
+		if (NPC->enemy->client->ps.weaponstate == WEAPON_FIRING &&
+			in_field_of_vision(NPC->enemy->client->ps.viewangles, 90, ang) == qtrue)
 		{
-			vec3_t shot_dir, ang;
-
-			VectorSubtract(NPC->currentOrigin, NPC->enemy->currentOrigin, shot_dir);
-			vectoangles(shot_dir, ang);
-
-			if (NPC->enemy->client->ps.weaponstate == WEAPON_FIRING && in_field_of_vision(NPC->enemy->client->ps.viewangles, 90, ang))
+			if (NPC->enemy->s.weapon == WP_SABER)
 			{
-				// They are shooting at us. Evade!!!
-				if (NPC->enemy->s.weapon == WP_SABER)
-				{
-					Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
-				}
-				else
-				{
-					NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER, 1000, 3000);
-				}
-			}
-			else if (in_field_of_vision(NPC->enemy->client->ps.viewangles, 60, ang))
-			{
-				// Randomly (when they are targetting us)... Evade!!!
-				if (NPC->enemy->s.weapon == WP_SABER)
-				{
-					Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
-				}
-				else
-				{
-					NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER, 1000, 3000);
-				}
+				Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
 			}
 			else
 			{
-				gentity_t* entity_list[MAX_GENTITIES];
+				NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER, 1000, 3000);
+			}
+			return;
+		}
 
-				vec3_t mins{};
-				vec3_t maxs{};
+		// Enemy looking toward us
+		if (in_field_of_vision(NPC->enemy->client->ps.viewangles, 60, ang) == qtrue)
+		{
+			if (NPC->enemy->s.weapon == WP_SABER)
+			{
+				Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
+			}
+			else
+			{
+				NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER, 1000, 3000);
+			}
+			return;
+		}
 
-				for (int e = 0; e < 3; e++)
+		// --- Missile scan ---
+		static gentity_t* entity_list[MAX_GENTITIES];
+		vec3_t mins{};
+		vec3_t maxs{};
+
+		for (int e = 0; e < 3; e++)
+		{
+			mins[e] = NPC->currentOrigin[e] - 256.0f;
+			maxs[e] = NPC->currentOrigin[e] + 256.0f;
+		}
+
+		const int num_ents = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+		for (int i = 0; i < num_ents; i++)
+		{
+			const gentity_t* missile = entity_list[i];
+
+			if (missile == NULL)
+			{
+				continue;
+			}
+			if (missile->inuse == qfalse)
+			{
+				continue;
+			}
+
+			if (missile->s.eType == ET_MISSILE)
+			{
+				// Missile incoming → evade
+				if (NPC->enemy->s.weapon == WP_SABER)
 				{
-					mins[e] = NPC->currentOrigin[e] - 256;
-					maxs[e] = NPC->currentOrigin[e] + 256;
+					Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
 				}
-
-				const int num_ents = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
-
-				for (int i = 0; i < num_ents; i++)
+				else
 				{
-					const gentity_t* missile = &g_entities[i];
-
-					if (!missile) continue;
-					if (!missile->inuse) continue;
-
-					if (missile->s.eType == ET_MISSILE)
-					{
-						// Missile incoming!!! Evade!!!
-						if (NPC->enemy->s.weapon == WP_SABER)
-						{
-							Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
-						}
-						else
-						{
-							NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER, 1000, 3000);
-						}
-						return;
-					}
+					NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER, 1000, 3000);
 				}
+				return;
 			}
 		}
 	}

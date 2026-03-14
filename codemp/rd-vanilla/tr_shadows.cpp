@@ -408,7 +408,7 @@ because otherwise shadows from different body parts would
 overlap and double darken.
 =================
 */
-void RB_ShadowFinish(void)
+void RB_ShadowFinish(void) 
 {
 	if (r_shadows->integer != 2) {
 		return;

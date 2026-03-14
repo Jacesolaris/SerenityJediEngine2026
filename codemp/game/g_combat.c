@@ -2824,7 +2824,7 @@ extern qboolean g_dontFrickinCheck;
 extern qboolean g_endPDuel;
 extern qboolean g_noPDuelCheck;
 extern void saberReactivate(gentity_t* saberent, gentity_t* saber_owner);
-extern void saberBackToOwner(gentity_t* saberent);
+extern void WP_saberBackToOwner(gentity_t* saberent);
 void AddFatigueKillBonus(const gentity_t* attacker, const gentity_t* victim, int means_of_death);
 extern void BubbleShield_TurnOff(gentity_t* self);
 void G_CheckForblowingup(gentity_t* ent, const gentity_t* enemy, int damage);
@@ -3031,7 +3031,7 @@ void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker
 		self->client->saberKnockedTime = 0;
 		saberReactivate(saberEnt, self);
 		saberEnt->r.contents = CONTENTS_LIGHTSABER;
-		saberEnt->think = saberBackToOwner;
+		saberEnt->think = WP_saberBackToOwner;
 		saberEnt->nextthink = level.time;
 		G_RunObject(saberEnt);
 	}
@@ -7390,17 +7390,17 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 					Boba_FlyStop(targ);
 				}
 
-				if (client->nextbotclass == BCLASS_PROTOCOL || client->nextbotclass == BCLASS_SEEKER ||
-					client->nextbotclass == BCLASS_R2D2 || client->nextbotclass == BCLASS_R5D2 ||
-					client->nextbotclass == BCLASS_MOUSE || client->nextbotclass == BCLASS_GONK)
+				if (client->botclass == BCLASS_PROTOCOL || client->botclass == BCLASS_SEEKER ||
+					client->botclass == BCLASS_R2D2 || client->botclass == BCLASS_R5D2 ||
+					client->botclass == BCLASS_MOUSE || client->botclass == BCLASS_GONK)
 				{
 					// DEMP2 does more damage to these guys.
 					take *= 2;
 				}
-				else if (client->nextbotclass == BCLASS_PROBE || client->nextbotclass == BCLASS_INTERROGATOR ||
-					client->nextbotclass == BCLASS_MARK1 || client->nextbotclass == BCLASS_MARK2 ||
-					client->nextbotclass == BCLASS_SENTRY || client->nextbotclass == BCLASS_SBD ||
-					client->nextbotclass == BCLASS_BATTLEDROID || client->nextbotclass == BCLASS_DROIDEKA)
+				else if (client->botclass == BCLASS_PROBE || client->botclass == BCLASS_INTERROGATOR ||
+					client->botclass == BCLASS_MARK1 || client->botclass == BCLASS_MARK2 ||
+					client->botclass == BCLASS_SENTRY || client->botclass == BCLASS_SBD ||
+					client->botclass == BCLASS_BATTLEDROID || client->botclass == BCLASS_DROIDEKA)
 				{
 					// DEMP2 does way more damage to these guys.
 					take *= 5;

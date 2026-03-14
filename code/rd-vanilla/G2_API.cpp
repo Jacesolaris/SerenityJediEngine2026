@@ -610,9 +610,31 @@ public:
 		{
 			return false;
 		}
-		assert(handle > 0); //negative handle???
-		assert((handle & G2_INDEX_MASK) >= 0 && (handle & G2_INDEX_MASK) < MAX_G2_MODELS); //junk handle
-		if (mIds[handle & G2_INDEX_MASK] != handle) // not a valid handle, could be old
+		// Keep the original positive-handle check but avoid asserts that crash in non-debug builds.
+		if (handle <= 0)
+		{
+#ifndef FINAL_BUILD
+			Com_Printf("G2InfoArray::IsValid: invalid handle %d (not positive)\n", handle);
+#endif
+			return false;
+		}
+
+		// Validate the index without crashing in release builds. In debug builds print a message for diagnostics.
+		const int idx = handle & G2_INDEX_MASK;
+#ifndef FINAL_BUILD
+		if (idx < 0 || idx >= MAX_G2_MODELS)
+		{
+			Com_Printf("G2InfoArray::IsValid: junk handle %d (idx=%d)\n", handle, idx);
+			return false;
+		}
+#else
+		if (idx >= MAX_G2_MODELS)
+		{
+			return false;
+		}
+#endif
+
+		if (mIds[idx] != handle) // not a valid handle, could be old
 		{
 			return false;
 		}
@@ -1706,26 +1728,54 @@ qboolean G2API_DetachG2Model(CGhoul2Info* ghlInfo)
 qboolean G2API_AttachEnt(int* boltInfo, CGhoul2Info* ghlInfoTo, int toBoltIndex, int entNum, int toModelNum)
 {
 	qboolean ret = qfalse;
+
 	G2ERROR(boltInfo, "NULL boltInfo");
-	if (boltInfo && G2_SetupModelPointers(ghlInfoTo))
+	if (!boltInfo)
 	{
-		// ensure toBoltIndex is within range
-		const int bltCount = static_cast<int>(ghlInfoTo->mBltlist.size());
-		if (bltCount > 0 && toBoltIndex >= 0 && toBoltIndex < bltCount &&
-			(ghlInfoTo->mBltlist[toBoltIndex].boneNumber != -1 || ghlInfoTo->mBltlist[toBoltIndex].surfaceNumber != -1))
-		{
-			toModelNum &= MODEL_AND;
-			toBoltIndex &= BOLT_AND;
-			entNum &= ENTITY_AND;
-			*boltInfo = toBoltIndex << BOLT_SHIFT | toModelNum << MODEL_SHIFT | entNum << ENTITY_SHIFT;
-			ret = qtrue;
-		}
-		else
-		{
-			// clear out on failure so callers do not get garbage
-			*boltInfo = 0;
-		}
+		return qfalse;
 	}
+
+	if (!ghlInfoTo || !G2_SetupModelPointers(ghlInfoTo))
+	{
+		*boltInfo = 0;
+		G2WARNING(ret, "G2API_AttachEnt Failed (no model or setup failed)");
+		return qfalse;
+	}
+
+	const int bltCount = (int)ghlInfoTo->mBltlist.size();
+
+	// validate bolt index bounds
+	if (bltCount <= 0 || toBoltIndex < 0 || toBoltIndex >= bltCount)
+	{
+		Com_Printf("G2API_AttachEnt: invalid toBoltIndex %d for model %s (num bolts %d), entNum %d\n",
+			toBoltIndex,
+			(ghlInfoTo->mFileName && ghlInfoTo->mFileName[0]) ? ghlInfoTo->mFileName : "<unknown>",
+			bltCount,
+			entNum);
+		*boltInfo = 0;
+		G2WARNING(ret, "G2API_AttachEnt Failed (invalid bolt index)");
+		return qfalse;
+	}
+
+	// safe to index now
+	const boltInfo_t& bolt = ghlInfoTo->mBltlist[toBoltIndex];
+	if (bolt.boneNumber != -1 || bolt.surfaceNumber != -1)
+	{
+		toModelNum &= MODEL_AND;
+		toBoltIndex &= BOLT_AND;
+		entNum &= ENTITY_AND;
+
+		*boltInfo = (toBoltIndex << BOLT_SHIFT) |
+			(toModelNum << MODEL_SHIFT) |
+			(entNum << ENTITY_SHIFT);
+
+		ret = qtrue;
+	}
+	else
+	{
+		*boltInfo = 0;
+	}
+
 	G2WARNING(ret, "G2API_AttachEnt Failed");
 	return ret;
 }

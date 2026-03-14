@@ -27,7 +27,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
 
 // NOTENOTE This is not the best, DO NOT CHANGE THESE!
-#define	FX_ALPHA_LINEAR		0x00000001
 #define	FX_SIZE_LINEAR		0x00000100
 
 // Bryar

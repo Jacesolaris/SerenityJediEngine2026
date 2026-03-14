@@ -39,6 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_public.h"
 #include <qcommon/q_color.h>
 #include "g_shared.h"
+#include <qcommon\q_platform.h>
 
 //////////Defines////////////////
 extern qboolean PM_KickingAnim(int anim);

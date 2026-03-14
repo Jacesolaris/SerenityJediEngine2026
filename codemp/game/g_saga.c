@@ -31,6 +31,17 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 #include "g_local.h"
 #include "bg_saga.h"
+#include "surfaceflags.h"
+#include <qcommon\q_math.h>
+#include "g_public.h"
+#include <assert.h>
+#include <string.h>
+#include <qcommon\q_string.h>
+#include <stdlib.h>
+#include "bg_public.h"
+#include "bg_weapons.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_platform.h>
 
 #define SIEGEITEM_STARTOFFRADAR 8
 
@@ -61,14 +72,14 @@ int gSiegeBeginTime = Q3_INFINITE;
 int g_preroundState = 0; //default to starting as spec (1 is starting ingame)
 
 void LogExit(const char* string);
-void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin);
+void SetTeamQuick(const gentity_t* ent, const int team, const qboolean doBegin);
 
 static char gParseObjectives[MAX_SIEGE_INFO_SIZE];
 char gObjectiveCfgStr[1024];
 
 //go through all classes on a team and register their
 //weapons and items for precaching.
-void G_SiegeRegisterWeaponsAndHoldables(const int team)
+static void G_SiegeRegisterWeaponsAndHoldables(const int team)
 {
 	const siegeTeam_t* stm = BG_SiegeFindThemeForTeam(team);
 
@@ -109,7 +120,7 @@ void G_SiegeRegisterWeaponsAndHoldables(const int team)
 
 //tell clients that this team won and print it on their scoreboard for intermission
 //or whatever.
-void SiegeSetCompleteData(const int team)
+static void SiegeSetCompleteData(const int team)
 {
 	trap->SetConfigstring(CS_SIEGE_WINTEAM, va("%i", team));
 }
@@ -381,7 +392,7 @@ failure:
 	siege_valid = 0;
 }
 
-void G_SiegeSetObjectiveComplete(const int team, const int objective, const qboolean failIt)
+static void G_SiegeSetObjectiveComplete(const int team, const int objective, const qboolean failIt)
 {
 	char* p = NULL;
 	int on_objective = 0;
@@ -437,7 +448,7 @@ void G_SiegeSetObjectiveComplete(const int team, const int objective, const qboo
 }
 
 //Returns qtrue if objective complete currently, otherwise qfalse
-qboolean G_SiegeGetCompletionStatus(const int team, const int objective)
+static qboolean G_SiegeGetCompletionStatus(const int team, const int objective)
 {
 	char* p = NULL;
 	int on_objective = 0;
@@ -486,7 +497,7 @@ qboolean G_SiegeGetCompletionStatus(const int team, const int objective)
 	return qfalse;
 }
 
-void UseSiegeTarget(gentity_t* other, gentity_t* en, const char* target)
+static void UseSiegeTarget(gentity_t* other, gentity_t* en, const char* target)
 {
 	//actually use the player which triggered the object which triggered the siege objective to trigger the target
 	gentity_t* ent;
@@ -533,7 +544,7 @@ void UseSiegeTarget(gentity_t* other, gentity_t* en, const char* target)
 	}
 }
 
-void SiegeBroadcast_OBJECTIVECOMPLETE(const int team, const int client, const int objective)
+static void SiegeBroadcast_OBJECTIVECOMPLETE(const int team, const int client, const int objective)
 {
 	vec3_t nomatter;
 
@@ -546,7 +557,7 @@ void SiegeBroadcast_OBJECTIVECOMPLETE(const int team, const int client, const in
 	te->s.trickedentindex = objective;
 }
 
-void SiegeBroadcast_ROUNDOVER(const int winningteam, const int winningclient)
+static void SiegeBroadcast_ROUNDOVER(const int winningteam, const int winningclient)
 {
 	vec3_t nomatter;
 
@@ -558,7 +569,7 @@ void SiegeBroadcast_ROUNDOVER(const int winningteam, const int winningclient)
 	te->s.weapon = winningclient;
 }
 
-void BroadcastObjectiveCompletion(const int team, const int objective, const int client)
+static void BroadcastObjectiveCompletion(const int team, const int objective, const int client)
 {
 	if (client != ENTITYNUM_NONE && g_entities[client].client && g_entities[client].client->sess.sessionTeam == team)
 	{
@@ -570,7 +581,7 @@ void BroadcastObjectiveCompletion(const int team, const int objective, const int
 	//trap->Print("Broadcast goal completion team %i objective %i final %i\n", team, objective, final);
 }
 
-void AddSiegeWinningTeamPoints(const int team, const int winner)
+static void AddSiegeWinningTeamPoints(const int team, const int winner)
 {
 	int i = 0;
 
@@ -635,7 +646,7 @@ void SiegeDoTeamAssign(void)
 	}
 }
 
-void SiegeTeamSwitch(const int winTeam, const int winTime)
+static void SiegeTeamSwitch(const int winTeam, const int winTime)
 {
 	trap->SiegePersGet(&g_siegePersistant);
 	if (g_siegePersistant.beatingTime)
@@ -659,7 +670,7 @@ void SiegeTeamSwitch(const int winTeam, const int winTime)
 	}
 }
 
-void SiegeRoundComplete(const int winningteam, int winningclient)
+static void SiegeRoundComplete(const int winningteam, int winningclient)
 {
 	vec3_t nomatter;
 	char teamstr[1024];
@@ -800,7 +811,7 @@ void G_ValidateSiegeClassForTeam(const gentity_t* ent, const int team)
 }
 
 //bypass most of the normal checks in SetTeam
-void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin)
+void SetTeamQuick(const gentity_t* ent, const int team, const qboolean doBegin)
 {
 	char userinfo[MAX_INFO_STRING];
 
@@ -815,28 +826,8 @@ void SetTeamQuick(gentity_t* ent, int team, qboolean doBegin)
 
 	if (team == TEAM_SPECTATOR)
 	{
-		ent->client->sess.spectatorState = SPECTATOR_FOLLOW; // SPECTATOR_FREE;
+		ent->client->sess.spectatorState = SPECTATOR_FREE;
 		Info_SetValueForKey(userinfo, "team", "s");
-
-		// --- REQUIRED spectator reset to prevent out-of-bounds ---
-		ent->client->ps.pm_type = PM_SPECTATOR;
-		ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
-
-		VectorClear(ent->client->ps.velocity);
-		ent->client->ps.pm_flags = 0;
-		ent->client->ps.pm_time = 0;
-
-		// Clear collision box
-		VectorClear(ent->r.mins);
-		VectorClear(ent->r.maxs);
-		ent->r.contents = 0;
-
-		// Safe spectator spawn
-		VectorCopy(level.intermission_origin, ent->client->ps.origin);
-		VectorCopy(level.intermission_angle, ent->client->ps.viewangles);
-
-		trap->LinkEntity((sharedEntity_t*)ent);
-		// ----------------------------------------------------------
 	}
 	else
 	{
@@ -885,7 +876,7 @@ void SiegeRespawn(gentity_t* ent)
 	}
 }
 
-void SiegeBeginRound(const int entNum)
+static void SiegeBeginRound(const int entNum)
 {
 	//entNum is just used as something to fire targets from.
 	char targname[1024];
@@ -1056,7 +1047,7 @@ void SiegeCheckTimers(void)
 	}
 }
 
-void SiegeObjectiveCompleted(const int team, const int objective, const int final, const int client)
+static void SiegeObjectiveCompleted(const int team, const int objective, const int final, const int client)
 {
 	int goals_completed, goals_required;
 
@@ -1111,7 +1102,7 @@ void SiegeObjectiveCompleted(const int team, const int objective, const int fina
 	}
 }
 
-void siegeTriggerUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
+static void siegeTriggerUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
 {
 	char teamstr[64];
 	static char desiredobjective[MAX_SIEGE_INFO_SIZE];
@@ -1238,7 +1229,7 @@ void SP_info_siege_objective(gentity_t* ent)
 	trap->LinkEntity((sharedEntity_t*)ent);
 }
 
-void SiegeIconUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
+static void SiegeIconUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
 {
 	//toggle it on and off
 	if (ent->s.eFlags & EF_RADAROBJECT)
@@ -1295,7 +1286,7 @@ void SP_info_siege_radaricon(gentity_t* ent)
 	trap->LinkEntity((sharedEntity_t*)ent);
 }
 
-void decompTriggerUse(const gentity_t* ent, gentity_t* other, gentity_t* activator)
+static void decompTriggerUse(const gentity_t* ent, gentity_t* other, gentity_t* activator)
 {
 	int final = 0;
 	char teamstr[1024];
@@ -1389,7 +1380,7 @@ void SP_info_siege_decomplete(gentity_t* ent)
 	}
 }
 
-void siegeEndUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
+static void siegeEndUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
 {
 	LogExit("Round ended");
 }
@@ -1455,7 +1446,7 @@ static void SiegeItemRespawnOnOriginalSpot(gentity_t* ent, gentity_t* carrier)
 	ent->s.time2 = 0;
 }
 
-void SiegeItemThink(gentity_t* ent)
+static void SiegeItemThink(gentity_t* ent)
 {
 	gentity_t* carrier = NULL;
 
@@ -1596,7 +1587,7 @@ void SiegeItemThink(gentity_t* ent)
 	ent->nextthink = level.time + FRAMETIME / 2;
 }
 
-void SiegeItemTouch(gentity_t* self, gentity_t* other, const trace_t* trace)
+static void SiegeItemTouch(gentity_t* self, gentity_t* other, const trace_t* trace)
 {
 	if (!other || !other->inuse ||
 		!other->client || other->s.eType == ET_NPC)
@@ -1675,13 +1666,13 @@ void SiegeItemTouch(gentity_t* self, gentity_t* other, const trace_t* trace)
 	self->s.time2 = 0xFFFFFFFF;
 }
 
-void SiegeItemPain(gentity_t* self, gentity_t* attacker, int damage)
+static void SiegeItemPain(gentity_t* self, gentity_t* attacker, int damage)
 {
 	// Time 2 is used to pulse the radar icon to show its under attack
 	self->s.time2 = level.time;
 }
 
-void SiegeItemDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath)
+static void SiegeItemDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath)
 {
 	self->takedamage = qfalse; //don't die more than once
 
@@ -1705,7 +1696,7 @@ void SiegeItemDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, in
 	}
 }
 
-void SiegeItemUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
+static void SiegeItemUse(gentity_t* ent, gentity_t* other, gentity_t* activator)
 {
 	//once used, become active
 	if (ent->spawnflags & SIEGEITEM_STARTOFFRADAR)

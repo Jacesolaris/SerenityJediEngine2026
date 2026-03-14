@@ -48,6 +48,20 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "wp_saber.h"
 #include "g_vehicles.h"
 #include <cmath>
+#include <cgame\cg_camera.h>
+#include "bg_public.h"
+#include <qcommon\q_platform.h>
+#include <qcommon\q_math.h>
+#include "ghoul2_shared.h"
+#include "surfaceflags.h"
+#include "ai.h"
+#include "teams.h"
+#include "b_local.h"
+#include "weapons.h"
+#include <cstdlib>
+#include "statindex.h"
+#include <qcommon\q_string.h>
+#include "g_functions.h"
 
 extern pmove_t* pm;
 extern pml_t pml;
@@ -115,7 +129,6 @@ qboolean PM_CheckLungeAttackMove();
 extern qboolean PM_SpinningSaberAnim(int anim);
 extern qboolean PM_BounceAnim(int anim);
 qboolean PM_SaberReturnAnim(int anim);
-extern qboolean PM_InKataAnim(int anim);
 qboolean PM_StandingAtReadyAnim(int anim);
 extern qboolean PM_WalkingOrRunningAnim(int anim);
 extern qboolean IsSurrendering(const gentity_t* self);
@@ -2754,7 +2767,7 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 	if (pm->ps->forceRageRecoveryTime > level.time)
 	{
 		//rage recovery, only 1 swing at a time (tired)
-		if (pm->ps->saberAttackChainCount > 0)
+		if (pm->ps->saberAttackChainCount > MISHAPLEVEL_NONE)
 		{
 			//swung once
 			return qtrue;
@@ -2762,16 +2775,16 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 		//allow one attack
 		return qfalse;
 	}
-	if (pm->ps->forcePowersActive & 1 << FP_RAGE)
+	else if (pm->ps->forcePowersActive & 1 << FP_RAGE)
 	{
 		//infinite chaining when raged
 		return qfalse;
 	}
-	if (pm->ps->saber[0].maxChain == -1)
+	else if (pm->ps->saber[0].maxChain == -1)
 	{
 		return qfalse;
 	}
-	if (pm->ps->saber[0].maxChain != 0)
+	else if (pm->ps->saber[0].maxChain != 0)
 	{
 		if (pm->ps->saberAttackChainCount >= pm->ps->saber[0].maxChain)
 		{
@@ -2789,24 +2802,24 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 	{
 		return qfalse;
 	}
-	if (pm->ps->saberAnimLevel == SS_DUAL)
+	else if (pm->ps->saberAnimLevel == SS_DUAL)
 	{
 		return qfalse;
 	}
-	if (pm->ps->saberAnimLevel == FORCE_LEVEL_3)
+	else if (pm->ps->saberAnimLevel == FORCE_LEVEL_3)
 	{
 		if (curmove == LS_NONE || newmove == LS_NONE)
 		{
-			if (pm->ps->saberAnimLevel >= FORCE_LEVEL_3 && pm->ps->saberAttackChainCount > Q_irand(0, 1))
+			if (pm->ps->saberAnimLevel >= FORCE_LEVEL_3 && pm->ps->saberAttackChainCount > Q_irand(MISHAPLEVEL_NONE, MISHAPLEVEL_MIN))
 			{
 				return qtrue;
 			}
 		}
-		else if (pm->ps->saberAttackChainCount > Q_irand(2, 3))
+		else if (pm->ps->saberAttackChainCount > Q_irand(MISHAPLEVEL_TWO, MISHAPLEVEL_THREE))
 		{
 			return qtrue;
 		}
-		else if (pm->ps->saberAttackChainCount > 0)
+		else if (pm->ps->saberAttackChainCount > MISHAPLEVEL_NONE)
 		{
 			const int chain_angle = PM_SaberAttackChainAngle(curmove, newmove);
 			if (chain_angle < 135 || chain_angle > 215)
@@ -2817,7 +2830,7 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 			if (chain_angle == 180)
 			{
 				//continues the momentum perfectly, allow it to chain 66% of the time
-				if (pm->ps->saberAttackChainCount > 1)
+				if (pm->ps->saberAttackChainCount > MISHAPLEVEL_MIN)
 				{
 					return qtrue;
 				}
@@ -2825,7 +2838,7 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 			else
 			{
 				//would continue the movement somewhat, 50% chance of continuing
-				if (pm->ps->saberAttackChainCount > 2)
+				if (pm->ps->saberAttackChainCount > MISHAPLEVEL_TWO)
 				{
 					return qtrue;
 				}
@@ -2834,8 +2847,31 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 	}
 	else
 	{
+		if (newmove == LS_A_TL2BR ||
+			newmove == LS_A_L2R ||
+			newmove == LS_A_BL2TR ||
+			newmove == LS_A_BR2TL ||
+			newmove == LS_A_R2L ||
+			newmove == LS_A_TR2BL)
+		{ //lower chaining tolerance for spinning saber anims
+			int chainTolerance;
+
+			if (pm->ps->saberAnimLevel == FORCE_LEVEL_1)
+			{
+				chainTolerance = 5;
+			}
+			else
+			{
+				chainTolerance = 3;
+			}
+
+			if (pm->ps->saberAttackChainCount >= chainTolerance && Q_irand(MISHAPLEVEL_MIN, pm->ps->saberAttackChainCount) > chainTolerance)
+			{
+				return qtrue;
+			}
+		}
 		if ((pm->ps->saberAnimLevel == FORCE_LEVEL_2 || pm->ps->saberAnimLevel == SS_DUAL)
-			&& pm->ps->saberAttackChainCount > Q_irand(2, 5))
+			&& pm->ps->saberAttackChainCount > Q_irand(MISHAPLEVEL_TWO, MISHAPLEVEL_LIGHT))
 		{
 			return qtrue;
 		}
@@ -3229,7 +3265,6 @@ saber_moveName_t PM_AttackForEnemyPos(const qboolean allow_fb, const qboolean al
 	else if (allow_fb)
 	{
 		//back attack allowed
-		//if ( !PM_InKnockDown( pm->ps ) )
 		if (!(pm->ps->saber[0].saberFlags & SFL_NO_BACK_ATTACK)
 			&& (!pm->ps->dualSabers || !(pm->ps->saber[1].saberFlags & SFL_NO_BACK_ATTACK)))
 		{
@@ -4579,7 +4614,7 @@ qboolean PM_Can_Do_Kill_Lunge(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, back;
+	vec3_t fwd, back{};
 	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
 	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
 
@@ -4651,7 +4686,7 @@ qboolean PM_Can_Do_Kill_Lunge_back(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, back;
+	vec3_t fwd, back{};
 	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
 	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
 

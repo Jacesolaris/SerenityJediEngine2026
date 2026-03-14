@@ -61,7 +61,7 @@ void QDECL Com_Error(const int level, const char* error, ...)
 }
 
 // HUNK
-void* Hunk_AllocateTempMemory(int size)
+void* Hunk_AllocateTempMemory(const int size)
 {
 	return ri->Hunk_AllocateTempMemory(size);
 }

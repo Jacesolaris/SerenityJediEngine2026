@@ -42,6 +42,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 extern stringID_table_t animTable[MAX_ANIMATIONS + 1];
 extern stringID_table_t saber_moveTable[];
 #endif
+#include "anims.h"
+#include <qcommon\q_platform.h>
+#include "bg_vehicles.h"
+#include <qcommon\q_math.h>
 
 extern qboolean BG_SabersOff(const playerState_t* ps);
 saberInfo_t* BG_MySaber(int clientNum, int saberNum);
@@ -765,10 +769,9 @@ static saber_moveName_t PM_NPCSaberAttackFromQuad(const int quad)
 		return LS_NONE;
 	}
 
-
 #ifdef _GAME
 	if (bot_thinklevel.integer >= 1 &&
-		BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER,qfalse) &&
+		BG_EnoughForcePowerForMove(SABER_KATA_ATTACK_POWER, qfalse) &&
 		!pm->ps->fd.forcePowersActive &&
 		!in_camera)
 	{
@@ -966,7 +969,7 @@ saber_moveName_t PM_AttackMoveForQuad(const int quad)
 	return LS_NONE;
 }
 
-qboolean PM_SaberKataDone(int curmove, int newmove);
+qboolean PM_SaberKataDone(const int curmove, const int newmove);
 int PM_ReturnforQuad(int quad);
 
 saber_moveName_t PM_SaberAnimTransitionMove(const saber_moveName_t curmove, const saber_moveName_t newmove)
@@ -1431,6 +1434,12 @@ static int PM_SaberAttackChainAngle(const int move1, const int move2)
 qboolean PM_SaberKataDone(const int curmove, const int newmove)
 {
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
+
+	if (!saber1)
+	{
+		return qfalse;
+	}
+
 	if (pm->ps->m_iVehicleNum)
 	{
 		//never continue kata on vehicle
@@ -1451,22 +1460,25 @@ qboolean PM_SaberKataDone(const int curmove, const int newmove)
 		//allow one attack
 		return qfalse;
 	}
-	if (pm->ps->fd.forcePowersActive & 1 << FP_RAGE)
+	else if (pm->ps->fd.forcePowersActive & 1 << FP_RAGE)
 	{
 		//infinite chaining when raged
 		return qfalse;
 	}
-	if (saber1[0].maxChain == -1)
+	else if (saber1[0].maxChain == -1)
 	{
 		return qfalse;
 	}
-	if (saber1[0].maxChain != 0)
+	else if (saber1[0].maxChain != 0)
 	{
 		if (pm->ps->saberAttackChainCount >= saber1[0].maxChain)
 		{
 			return qtrue;
 		}
-		return qfalse;
+		else
+		{
+			return qfalse;
+		}
 	}
 
 	if (pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_TAVION)
@@ -1478,24 +1490,24 @@ qboolean PM_SaberKataDone(const int curmove, const int newmove)
 	{
 		return qfalse;
 	}
-	if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+	else if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 	{
 		return qfalse;
 	}
-	if (pm->ps->fd.saberAnimLevel == FORCE_LEVEL_3)
+	else if (pm->ps->fd.saberAnimLevel == FORCE_LEVEL_3)
 	{
 		if (curmove == LS_NONE || newmove == LS_NONE)
 		{
-			if (pm->ps->fd.saberAnimLevel >= FORCE_LEVEL_3 && pm->ps->saberAttackChainCount > Q_irand(0, 1))
+			if (pm->ps->fd.saberAnimLevel >= FORCE_LEVEL_3 && pm->ps->saberAttackChainCount > PM_irand_timesync(MISHAPLEVEL_NONE, MISHAPLEVEL_MIN))
 			{
 				return qtrue;
 			}
 		}
-		else if (pm->ps->saberAttackChainCount > Q_irand(2, 3))
+		else if (pm->ps->saberAttackChainCount > PM_irand_timesync(MISHAPLEVEL_TWO, MISHAPLEVEL_THREE))
 		{
 			return qtrue;
 		}
-		else if (pm->ps->saberAttackChainCount > 0)
+		else if (pm->ps->saberAttackChainCount > MISHAPLEVEL_NONE)
 		{
 			const int chain_angle = PM_SaberAttackChainAngle(curmove, newmove);
 			if (chain_angle < 135 || chain_angle > 215)
@@ -1503,10 +1515,10 @@ qboolean PM_SaberKataDone(const int curmove, const int newmove)
 				//if trying to chain to a move that doesn't continue the momentum
 				return qtrue;
 			}
-			if (chain_angle == 180)
+			else if (chain_angle == 180)
 			{
 				//continues the momentum perfectly, allow it to chain 66% of the time
-				if (pm->ps->saberAttackChainCount > 1)
+				if (pm->ps->saberAttackChainCount > MISHAPLEVEL_MIN)
 				{
 					return qtrue;
 				}
@@ -1514,7 +1526,7 @@ qboolean PM_SaberKataDone(const int curmove, const int newmove)
 			else
 			{
 				//would continue the movement somewhat, 50% chance of continuing
-				if (pm->ps->saberAttackChainCount > 2)
+				if (pm->ps->saberAttackChainCount > MISHAPLEVEL_TWO)
 				{
 					return qtrue;
 				}
@@ -1523,8 +1535,31 @@ qboolean PM_SaberKataDone(const int curmove, const int newmove)
 	}
 	else
 	{
+		if (newmove == LS_A_TL2BR ||
+			newmove == LS_A_L2R ||
+			newmove == LS_A_BL2TR ||
+			newmove == LS_A_BR2TL ||
+			newmove == LS_A_R2L ||
+			newmove == LS_A_TR2BL)
+		{ //lower chaining tolerance for spinning saber anims
+			int chainTolerance;
+
+			if (pm->ps->fd.saberAnimLevel == FORCE_LEVEL_1)
+			{
+				chainTolerance = 5;
+			}
+			else
+			{
+				chainTolerance = 3;
+			}
+
+			if (pm->ps->saberAttackChainCount >= chainTolerance && PM_irand_timesync(MISHAPLEVEL_MIN, pm->ps->saberAttackChainCount) > chainTolerance)
+			{
+				return qtrue;
+			}
+		}
 		if ((pm->ps->fd.saberAnimLevel == FORCE_LEVEL_2 || pm->ps->fd.saberAnimLevel == SS_DUAL)
-			&& pm->ps->saberAttackChainCount > Q_irand(2, 5))
+			&& pm->ps->saberAttackChainCount > Q_irand(MISHAPLEVEL_TWO, MISHAPLEVEL_LIGHT))
 		{
 			return qtrue;
 		}
@@ -1625,6 +1660,9 @@ extern gentity_t g_entities[];
 #include "cgame/cg_local.h"
 #endif
 #include "teams.h"
+#include "bg_weapons.h"
+#include "surfaceflags.h"
+#include <math.h>
 
 static int PM_SaberLockLoseAnim(playerState_t* genemy, const qboolean victory, const qboolean super_break)
 {
@@ -2324,7 +2362,7 @@ static qboolean PM_CanBackstab(void)
 {
 	trace_t tr;
 	vec3_t flat_ang;
-	vec3_t fwd, back;
+	vec3_t fwd, back = { 0 };
 	const vec3_t trmins = { -15, -15, -8 };
 	const vec3_t trmaxs = { 15, 15, 8 };
 
@@ -2655,7 +2693,7 @@ qboolean PM_Can_Do_Kill_Lunge(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, end;
+	vec3_t fwd, end = { 0 };
 	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
 	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
 
@@ -2725,7 +2763,7 @@ qboolean PM_Can_Do_Kill_Lunge_back(void)
 {
 	trace_t tr;
 	vec3_t flatAng;
-	vec3_t fwd, end;
+	vec3_t fwd, end = { 0 };
 	const vec3_t trmins = { -15.0f, -15.0f, -8.0f };
 	const vec3_t trmaxs = { 15.0f,  15.0f,  8.0f };
 
@@ -6224,10 +6262,10 @@ weapChecks:
 		}
 
 		if (curmove >= LS_PARRY_UP && curmove <= LS_REFLECT_LL)
-		{//from a parry or reflection, can go directly into an attack			
+		{//from a parry or reflection, can go directly into an attack
 #ifdef _GAME
-				qboolean  bot = (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT);
-				qboolean  npc = (pm_entSelf->s.eType == ET_NPC);
+			qboolean  bot = (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT);
+			qboolean  npc = (pm_entSelf->s.eType == ET_NPC);
 
 			if (bot || npc)
 			{

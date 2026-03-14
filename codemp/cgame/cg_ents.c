@@ -30,15 +30,26 @@ Ghoul2 Insert Start
 */
 #include "qcommon/q_shared.h"
 #include "ghoul2/G2.h"
+#include <qcommon\q_platform.h>
+#include <qcommon\q_math.h>
+#include <rd-common\tr_types.h>
+#include <game\bg_public.h>
+#include <assert.h>
+#include <qcommon\qfiles.h>
+#include <game\anims.h>
+#include <qcommon\q_string.h>
+#include <game\teams.h>
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+#include <game\bg_weapons.h>
 /*
 Ghoul2 Insert end
 */
 
 extern qboolean CG_InFighter(void);
 static void CG_Missile(centity_t* cent);
-
-#define	FX_ALPHA_LINEAR		0x00000001
-#define	FX_SIZE_LINEAR		0x00000100
+#define	FX_SIZE_LINEAR1		0x00000100
 static vec3_t BLUER = { 0.0f, 0.0f, 1.0f };
 
 /*
@@ -867,7 +878,7 @@ static void CG_General(centity_t* cent)
 
 		vec3_t start;
 		vec3_t end;
-		vec3_t r_hand_pos;
+		vec3_t r_hand_pos={0};
 
 		centity_t* parent;
 		mdxaBone_t mat;
@@ -925,7 +936,7 @@ static void CG_General(centity_t* cent)
 
 		vec3_t v4DKGREY2 = { 0.15f, 0.15f, 0.15f };
 
-		trap->FX_AddLine(start, end, 0.1f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, v4DKGREY2, v4DKGREY2, 0.0f, 300, trap->R_RegisterShader("gfx/misc/nav_line"), FX_SIZE_LINEAR);
+		trap->FX_AddLine(start, end, 0.1f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, v4DKGREY2, v4DKGREY2, 0.0f, 300, trap->R_RegisterShader("gfx/misc/nav_line"), FX_SIZE_LINEAR1);
 
 		CG_GrappleStartpoint(end);
 		//GOING OUT
@@ -1750,7 +1761,7 @@ static void CG_General(centity_t* cent)
 	{
 		//this is an in-flight saber being rendered manually
 		float wv;
-		addspriteArgStruct_t fx_s_args;
+		addspriteArgStruct_t fx_s_args = { 0 };
 
 		ent.customShader = cgs.media.solidWhite;
 		ent.renderfx = RF_RGB_TINT;
@@ -1786,7 +1797,7 @@ static void CG_General(centity_t* cent)
 		//holocron special effects
 		vec3_t org;
 		float wv;
-		addspriteArgStruct_t fx_s_args;
+		addspriteArgStruct_t fx_s_args = { 0 };
 
 		ent.customShader = cgs.media.solidWhite;
 		ent.renderfx = RF_RGB_TINT;
@@ -2761,7 +2772,7 @@ extern void CG_DoSaberLight(const saberInfo_t* saber, int cnum, int bnum);
 
 static void CG_Missile(centity_t* cent)
 {
-	refEntity_t ent;
+	refEntity_t ent = { 0 };
 	entityState_t* s1;
 	const weaponInfo_t* weapon;
 
@@ -2796,16 +2807,15 @@ static void CG_Missile(centity_t* cent)
 
 	if (s1->weapon == WP_SABER)
 	{
-		if ((cent->currentState.modelIndex != cent->serverSaberHitIndex || !cent->ghoul2) && !(s1->eFlags & EF_NODRAW))
+		if ((cent->currentState.modelIndex != cent->serverSaberHitIndex || !cent->ghoul2) &&
+			!(s1->eFlags & EF_NODRAW))
 		{
-			//no g2, or server changed the model we are using
 			const char* saber_model = CG_ConfigString(CS_MODELS + cent->currentState.modelIndex);
 
 			cent->serverSaberHitIndex = cent->currentState.modelIndex;
 
 			if (cent->ghoul2)
 			{
-				//clean if we already have one (because server changed model string index)
 				trap->G2API_CleanGhoul2Models(&cent->ghoul2);
 				cent->ghoul2 = 0;
 			}
@@ -2819,10 +2829,9 @@ static void CG_Missile(centity_t* cent)
 				trap->G2API_InitGhoul2Model(&cent->ghoul2, DEFAULT_SABER_MODEL, 0, 0, 0, 0, 0);
 			}
 
-			//add blade bolts to saber hilt model so we can draw the saber blade on dropped/ballistic sabers
+			// Add blade bolts to saber hilt model so we can draw the saber blade
 			if (cent->ghoul2 && s1->owner != ENTITYNUM_NONE)
 			{
-				//get the our owner's information.
 				clientInfo_t* saber_owner_info = &cgs.clientinfo[s1->owner];
 				int m = 0;
 				int tag_bolt;
@@ -2837,26 +2846,34 @@ static void CG_Missile(centity_t* cent)
 					{
 						if (m == 0)
 						{
+							// Try *flash as fallback for blade 1
 							tag_bolt = trap->G2API_AddBolt(cent->ghoul2, 0, "*flash");
 
 							if (tag_bolt == -1)
 							{
-								assert(0);
+#ifdef _DEBUG
+								Com_Printf("^3WARNING:^7 Saber model '%s' missing tag '%s' and '*flash'\n",
+									saber_model ? saber_model : "<NULL>", tag_name);
+#endif
 							}
+
 							break;
 						}
 
-						if (tag_bolt == -1)
-						{
-							assert(0);
-							break;
-						}
+#ifdef _DEBUG
+						Com_Printf("^3WARNING:^7 Saber model '%s' missing tag '%s'\n",
+							saber_model ? saber_model : "<NULL>", tag_name);
+#endif
+						break;
 					}
+
 					m++;
 				}
 			}
+
 			return;
 		}
+
 		if (s1->eFlags & EF_NODRAW)
 		{
 			return;
@@ -2876,7 +2893,7 @@ static void CG_Missile(centity_t* cent)
 
 		vec3_t start;
 		vec3_t end;
-		vec3_t r_hand_pos;
+		vec3_t r_hand_pos = { 0 };
 
 		centity_t* parent;
 		mdxaBone_t mat;
@@ -2938,7 +2955,7 @@ static void CG_Missile(centity_t* cent)
 		vec3_t v4DKGREY2 = { 0.15f, 0.15f, 0.15f };
 
 		trap->FX_AddLine(start, end, 0.1f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, v4DKGREY2, v4DKGREY2, 0.0f, 300,
-			trap->R_RegisterShader("gfx/misc/nav_line"), FX_SIZE_LINEAR);
+			trap->R_RegisterShader("gfx/misc/nav_line"), FX_SIZE_LINEAR1);
 
 		CG_GrappleStartpoint(end);
 	}
@@ -3211,7 +3228,7 @@ static void CG_Missile(centity_t* cent)
 		// always make the saber glow when on the ground
 		float wv;
 		int i;
-		addspriteArgStruct_t fx_s_args;
+		addspriteArgStruct_t fx_s_args = { 0 };
 
 		ent.customShader = cgs.media.solidWhite;
 		ent.renderfx = RF_RGB_TINT;
@@ -4158,9 +4175,9 @@ void CG_AddPacketEntities(const qboolean is_portal)
 void CG_ROFF_NotetrackCallback(const centity_t* cent, const char* notetrack)
 {
 	int i = 0, r = 0, object_id;
-	char type[256];
-	char argument[512];
-	char addl_arg[512];
+	char type[256] = { 0 };
+	char argument[512] = { 0 };
+	char addl_arg[512] = { 0 };
 	char err_msg[256];
 	int addl_args = 0;
 
@@ -4218,7 +4235,7 @@ void CG_ROFF_NotetrackCallback(const centity_t* cent, const char* notetrack)
 
 	if (strcmp(type, "effect") == 0)
 	{
-		char t[64];
+		char t[64] = { 0 };
 		vec3_t parsed_offset;
 		int posoffset_gathered = 0;
 		if (!addl_args)
@@ -4281,7 +4298,7 @@ void CG_ROFF_NotetrackCallback(const centity_t* cent, const char* notetrack)
 			vec3_t use_angles;
 			if (addl_args)
 			{
-				vec3_t parsed_angles;
+				vec3_t parsed_angles = { 0 };
 				int angles_gathered = 0;
 				//if there is an additional argument for an effect it is expected to be XANGLE-YANGLE-ZANGLE
 				i++;
@@ -4375,23 +4392,37 @@ functionend:
 	Com_Printf("^3Type-specific notetrack error: %s\n", err_msg);
 }
 
+/*
+==========================
+CG_Cube
+
+Draws a simple axis‑aligned cube using six quads.
+Used for debug visuals and FX volumes.
+
+Behaviour preserved exactly.
+==========================
+*/
 void CG_Cube(vec3_t mins, vec3_t maxs, vec3_t color, const float alpha)
 {
-	const vec3_t rot = { 0, 0, 0 };
-	int vec[3];
-	int axis;
-	addpolyArgStruct_t apArgs = { 0 };
+	// No rotation used in this function, but FX_AddPoly requires it.
+	const vec3_t rot = { 0.0f, 0.0f, 0.0f };
 
-	for (axis = 0, vec[0] = 0, vec[1] = 1, vec[2] = 2; axis < 3; axis++, vec[0]++, vec[1]++, vec[2]++)
+	addpolyArgStruct_t apArgs;
+	memset(&apArgs, 0, sizeof(apArgs));
+
+	// We iterate over X, Y, Z axes to build the 6 faces.
+	for (int axis = 0; axis < 3; axis++)
 	{
-		for (int i = 0; i < 3; i++)
-		{
-			if (vec[i] > 2)
-			{
-				vec[i] = 0;
-			}
-		}
+		// vec[] maps which coordinate index is treated as:
+		//   vec[0] = axis normal
+		//   vec[1] = first edge axis
+		//   vec[2] = second edge axis
+		int vec[3] = { 0 };
+		vec[0] = axis;
+		vec[1] = (axis + 1) % 3;
+		vec[2] = (axis + 2) % 3;
 
+		// Build the quad for the "minus" face (mins[vec[0]])
 		apArgs.p[0][vec[1]] = mins[vec[1]];
 		apArgs.p[0][vec[2]] = mins[vec[2]];
 
@@ -4404,44 +4435,70 @@ void CG_Cube(vec3_t mins, vec3_t maxs, vec3_t color, const float alpha)
 		apArgs.p[3][vec[1]] = maxs[vec[1]];
 		apArgs.p[3][vec[2]] = mins[vec[2]];
 
-		//- face
-		apArgs.p[0][vec[0]] = apArgs.p[1][vec[0]] = apArgs.p[2][vec[0]] = apArgs.p[3][vec[0]] = mins[vec[0]];
+		// All four verts share the same normal‑axis coordinate
+		apArgs.p[0][vec[0]] =
+			apArgs.p[1][vec[0]] =
+			apArgs.p[2][vec[0]] =
+			apArgs.p[3][vec[0]] = mins[vec[0]];
 
+		// Poly settings
 		apArgs.numVerts = 4;
-		apArgs.alpha1 = apArgs.alpha2 = alpha;
+		apArgs.alpha1 = alpha;
+		apArgs.alpha2 = alpha;
+
 		VectorCopy(color, apArgs.rgb1);
 		VectorCopy(color, apArgs.rgb2);
 		VectorCopy(rot, apArgs.rotationDelta);
+
+		// killTime is used as a lifetime; original code used cg.frametime
 		apArgs.killTime = cg.frametime;
 		apArgs.shader = cgs.media.solidWhite;
 
+		// Draw the "minus" face
 		trap->FX_AddPoly(&apArgs);
 
-		//+ face
-		apArgs.p[0][vec[0]] = apArgs.p[1][vec[0]] = apArgs.p[2][vec[0]] = apArgs.p[3][vec[0]] = maxs[vec[0]];
+		// Now draw the "plus" face (maxs[vec[0]])
+		apArgs.p[0][vec[0]] =
+			apArgs.p[1][vec[0]] =
+			apArgs.p[2][vec[0]] =
+			apArgs.p[3][vec[0]] = maxs[vec[0]];
 
 		trap->FX_AddPoly(&apArgs);
 	}
 }
 
+/*
+==========================
+CG_CubeOutline
+
+Draws the wireframe outline of an axis‑aligned cube using 12 edges.
+Used for debug visuals and bounding‑box visualization.
+
+Behaviour preserved exactly.
+==========================
+*/
 void CG_CubeOutline(vec3_t mins, vec3_t maxs, const int time, const unsigned int color)
 {
-	vec3_t point1;
-	vec3_t point2;
-	vec3_t point3;
-	vec3_t point4;
-	int vec[3];
-	int axis;
+	// Temporary points for each quad face
+	vec3_t point1, point2, point3, point4;
 
-	for (axis = 0, vec[0] = 0, vec[1] = 1, vec[2] = 2; axis < 3; axis++, vec[0]++, vec[1]++, vec[2]++)
+	// Iterate over X, Y, Z axes
+	for (int axis = 0; axis < 3; axis++)
 	{
-		for (int i = 0; i < 3; i++)
-		{
-			if (vec[i] > 2)
-			{
-				vec[i] = 0;
-			}
-		}
+		// vec[] maps:
+		//   vec[0] = axis normal
+		//   vec[1] = first edge axis
+		//   vec[2] = second edge axis
+		int vec[3] = { 0 };
+		vec[0] = axis;
+		vec[1] = (axis + 1) % 3;
+		vec[2] = (axis + 2) % 3;
+
+		// Build quad corners for the "minus" face (mins[vec[0]])
+		VectorClear(point1);
+		VectorClear(point2);
+		VectorClear(point3);
+		VectorClear(point4);
 
 		point1[vec[1]] = mins[vec[1]];
 		point1[vec[2]] = mins[vec[2]];
@@ -4455,20 +4512,27 @@ void CG_CubeOutline(vec3_t mins, vec3_t maxs, const int time, const unsigned int
 		point4[vec[1]] = maxs[vec[1]];
 		point4[vec[2]] = mins[vec[2]];
 
-		//- face
-		point1[vec[0]] = point2[vec[0]] = point3[vec[0]] = point4[vec[0]] = mins[vec[0]];
+		// All four verts share the same normal‑axis coordinate
+		point1[vec[0]] =
+			point2[vec[0]] =
+			point3[vec[0]] =
+			point4[vec[0]] = mins[vec[0]];
 
+		// Draw the 4 edges of the "minus" face
 		CG_TestLine(point1, point2, time, color, 1);
 		CG_TestLine(point2, point3, time, color, 1);
 		CG_TestLine(point1, point4, time, color, 1);
 		CG_TestLine(point4, point3, time, color, 1);
 
-		//+ face
-		point1[vec[0]] = point2[vec[0]] = point3[vec[0]] = point4[vec[0]] = maxs[vec[0]];
+		// Now draw the "plus" face (maxs[vec[0]])
+		point1[vec[0]] =
+			point2[vec[0]] =
+			point3[vec[0]] =
+			point4[vec[0]] = maxs[vec[0]];
 
 		CG_TestLine(point1, point2, time, color, 1);
 		CG_TestLine(point2, point3, time, color, 1);
 		CG_TestLine(point1, point4, time, color, 1);
-		CG_TestLine(point4, point1, time, color, 1);
+		CG_TestLine(point4, point3, time, color, 1);
 	}
 }

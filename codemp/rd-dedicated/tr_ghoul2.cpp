@@ -690,14 +690,10 @@ void G2_GetBoneMatrixLow(const CGhoul2Info& ghoul2, const int boneNum, const vec
 	{
 		for (int j = 0; j < 4; j++)
 		{
-			if (Q_isnan(retMatrix.matrix[i][j]))
-			{
-				Com_Printf("^1G2_GetBoneMatrixLow: NAN detected in retMatrix at [%d][%d]\n", i, j);
-				Com_Printf("^1NAN in bone %d (%s)\n", boneNum, boneCache.mod->name);
-			}
+			assert(!Q_isnan(retMatrix.matrix[i][j]));
 		}
 	}
-#endif // _DEBUG
+#endif// _DEBUG
 }
 
 int G2_GetParentBoneMatrixLow(const CGhoul2Info& ghoul2, const int boneNum, const vec3_t scale, mdxaBone_t& retMatrix, mdxaBone_t*& retBasepose, mdxaBone_t*& retBaseposeInv)

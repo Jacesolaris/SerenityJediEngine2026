@@ -29,6 +29,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "say.h"
 
 #include "ai.h"
+#include <qcommon\q_math.h>
+#include "b_public.h"
+#include "g_shared.h"
+#include <qcommon\q_shared.h>
+#include "bstate.h"
 
 #define	AI_TIMERS 0//turn on to see print-outs of AI/nav timing
 //
@@ -95,7 +100,6 @@ extern visibility_t enemyVisibility;
 
 //AI_Default
 extern qboolean NPC_CheckInvestigate(int alert_event_num);
-extern qboolean NPC_StandTrackAndShoot(gentity_t* NPC);
 extern void NPC_BSIdle();
 extern void NPC_BSPointShoot(qboolean shoot);
 extern void NPC_BSStandGuard();

@@ -22,6 +22,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "game/g_public.h"
 #include "Q3_Registers.h"
+#include <cstdio>
+#include <qcommon\q_math.h>
 
 extern void Q3_DebugPrint(int level, const char* format, ...);
 
@@ -186,18 +188,22 @@ Q3_GetVectorVariable
 
 int Q3_GetVectorVariable(const char* name, vec3_t value)
 {
-	//Check the strings
+	// Look up the vector variable by name.
 	const auto vvi = varVectors.find(name);
 
 	if (vvi != varVectors.end())
 	{
 		const char* str = (*vvi).second.c_str();
 
-		sscanf(str, "%f %f %f", &value[0], &value[1], &value[2]);
-		return true;
+		// FIX: Capture sscanf return value to satisfy MSVC C6031.
+		int parsed = sscanf(str, "%f %f %f", &value[0], &value[1], &value[2]);
+		(void)parsed; // Explicitly acknowledge the return value.
+
+		// Behaviour preserved: always return true if the variable exists.
+		return 1;
 	}
 
-	return false;
+	return 0;
 }
 
 /*
@@ -387,7 +393,7 @@ Q3_VariableLoadStrings
 -------------------------
 */
 
-void Q3_VariableLoadStrings(int type, varString_m& fmap)
+static void Q3_VariableLoadStrings(int type, varString_m& fmap)
 {
 	/*
 	int		numFloats;
@@ -430,7 +436,7 @@ Q3_VariableLoad
 -------------------------
 */
 
-int Q3_VariableLoad(void)
+static int Q3_VariableLoad(void)
 {
 	Q3_InitVariables();
 

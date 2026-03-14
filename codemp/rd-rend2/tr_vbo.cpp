@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef _G2_GORE
 #include "G2_gore_r2.h"
 #endif
-#include <cassert>
 
 uint32_t R_VboPackTangent(vec4_t v)
 {
@@ -599,9 +598,7 @@ void RB_UpdateVBOs(unsigned int attribBits)
 		if ((currentFrame->dynamicVboWriteOffset + totalVertexDataSize) > frameVbo->vertexesSize)
 		{
 			// TODO: Eh...resize?
-			//assert(!"This shouldn't happen"); 
-			Com_Printf("^1WARNING: Dynamic VBO overflow — skipping draw this frame\n");
-
+			assert(!"This shouldn't happen");
 			return;
 		}
 
@@ -654,8 +651,7 @@ void RB_UpdateVBOs(unsigned int attribBits)
 		if ((currentFrame->dynamicIboWriteOffset + totalIndexDataSize) > frameIbo->indexesSize)
 		{
 			// TODO: Resize the buffer?
-			//assert(!"This shouldn't happen"); 
-			Com_Printf("^1WARNING: Dynamic VBO overflow — skipping draw this frame\n");
+			assert(!"This shouldn't happen");
 			return;
 		}
 

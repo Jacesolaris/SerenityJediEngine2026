@@ -788,7 +788,7 @@ static const char* TruncateGLExtensionsString(const char* extensions_string, con
 	int num_extensions = 0;
 	size_t extensions_len = strlen(extensions_string);
 
-	while ((q = strchr(p, ' ')) != nullptr && num_extensions < max_extensions)
+	while ((q = strchr(p, ' ')) != nullptr && num_extensions <= max_extensions)
 	{
 		p = q + 1;
 		num_extensions++;

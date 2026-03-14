@@ -39,6 +39,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_public.h"
 #include <qcommon\q_shared.h>
 #include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
+#include "bg_public.h"
 
 //////////Defines////////////////
 extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);
@@ -69,7 +71,7 @@ extern qboolean ButterFingers(gentity_t* saberent, gentity_t* saber_owner, const
 extern qboolean pm_saber_innonblockable_attack(int anim);
 extern qboolean pm_saber_in_special_attack(int anim);
 extern int G_GetParryForBlock(int block);
-extern qboolean WP_SaberMBlockDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
+extern qboolean WP_SaberMBlockDirection(gentity_t* self, vec3_t hitloc, const qboolean missileBlock);
 extern qboolean WP_SaberBlockNonRandom(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean WP_SaberBouncedSaberDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
@@ -1004,7 +1006,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 	if (is_holding_block_button_and_attack) { //Holding Block Button + attack button
 		//perfect Blocking
 		if (m_blocking) { // A perfectly timed block
-			WP_SaberMBlockDirection(blocker, hit_loc, qfalse);
+			WP_SaberMBlockDirection(blocker, hit_loc,qfalse);
 
 			if (attacker->client->ps.saberFatigueChainCount >= MISHAPLEVEL_THIRTEEN) {
 				sab_beh_add_mishap_attacker(attacker, blocker);
@@ -1149,7 +1151,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 				}
 			}
 			else {
-				WP_SaberMBlockDirection(blocker, hit_loc, qfalse);
+				WP_SaberMBlockDirection(blocker, hit_loc,qfalse);
 
 				if (blocker->r.svFlags & SVF_BOT) { //NPC only
 					g_do_m_block_response(blocker);

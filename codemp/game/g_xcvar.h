@@ -1,3 +1,4 @@
+
 /*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
@@ -20,6 +21,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, see <http://www.gnu.org/licenses/>.
 ===========================================================================
 */
+#include "g_local.h"
+#include <qcommon\q_shared.h>
 
 #ifdef XCVAR_PROTO
 #define XCVAR_DEF( name, defVal, update, flags, announce ) extern vmCvar_t name;
@@ -195,13 +198,7 @@ XCVAR_DEF(g_dodgemulti, "10.0", NULL, CVAR_LATCH, qfalse)
 XCVAR_DEF(g_ffaRespawnTimer, "1", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_deathfx, "1", NULL, CVAR_ARCHIVE, qtrue)
 
-XCVAR_DEF(g_Enhanced_SaberDamage, "0", NULL, CVAR_NONE, qtrue)
 XCVAR_DEF(g_Enhanced_saberTweaks, "0", NULL, CVAR_NONE, qtrue)
-XCVAR_DEF(g_Enhanced_saberBlockChanceMax, "0.75", NULL, CVAR_NONE, qtrue)
-XCVAR_DEF(g_Enhanced_saberBlockChanceMin, "0.0", NULL, CVAR_NONE, qtrue)
-XCVAR_DEF(g_Enhanced_saberBlockChanceScale, "0.5", NULL, CVAR_NONE, qtrue)
-XCVAR_DEF(g_Enhanced_saberBlockStanceParity, "3.0", NULL, CVAR_NONE, qtrue)
-XCVAR_DEF(g_Enhanced_SaberBlocking, "0", NULL, CVAR_NONE, qtrue)
 
 XCVAR_DEF(SJE_clientMOTD, "", NULL, CVAR_ARCHIVE, qfalse)
 XCVAR_DEF(SJE_MOTD, "", NULL, CVAR_ARCHIVE, qfalse)

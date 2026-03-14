@@ -1183,7 +1183,6 @@ static const void* RB_StretchPic(const void* data) {
 	}
 
 	shader_t* shader = cmd->shader;
-	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();
@@ -1261,7 +1260,6 @@ static const void* RB_RotatePic(const void* data)
 		}
 
 		shader = cmd->shader;
-		shader = (shader->remappedShader) ? shader->remappedShader : shader;
 		if (shader != tess.shader) {
 			if (tess.numIndexes) {
 				RB_EndSurface();
@@ -1356,7 +1354,6 @@ static const void* RB_RotatePic2(const void* data)
 			}
 
 			shader = cmd->shader;
-			shader = (shader->remappedShader) ? shader->remappedShader : shader;
 			if (shader != tess.shader) {
 				if (tess.numIndexes) {
 					RB_EndSurface();

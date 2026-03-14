@@ -25,9 +25,22 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "cg_local.h"
 #include "fx_local.h"
-#include "ui/ui_shared.h"
 #include "ui/ui_public.h"
 #include "ghoul2/G2.h"
+#include <qcommon\qfiles.h>
+#include <stdlib.h>
+#include <game\surfaceflags.h>
+#include <assert.h>
+#include <game\bg_weapons.h>
+#include <game\bg_vehicles.h>
+#include <qcommon\q_color.h>
+#include <qcommon\q_string.h>
+#include <game\teams.h>
+#include <qcommon\q_shared.h>
+#include <qcommon\q_math.h>
+#include <string.h>
+#include <game\bg_public.h>
+#include <qcommon\q_platform.h>
 //==========================================================================
 
 extern qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, int blade_num);
@@ -37,14 +50,11 @@ extern qboolean CG_InATST(void);
 extern int cg_saberFlashTime;
 extern vec3_t cg_saberFlashPos;
 extern char* showPowersName[];
-extern float ShortestLineSegBewteen2LineSegs(vec3_t start1, vec3_t end1, vec3_t start2, vec3_t end2, vec3_t close_pnt1,
-	vec3_t close_pnt2);
-
+extern float ShortestLineSegBewteen2LineSegs(vec3_t start1, vec3_t end1, vec3_t start2, vec3_t end2, vec3_t close_pnt1,	vec3_t close_pnt2);
 extern int cg_siegeDeathTime;
 extern int cg_siegeDeathDelay;
 extern int cg_vehicleAmmoWarning;
 extern int cg_vehicleAmmoWarningTime;
-
 extern qboolean PM_InKnockDownOnly(int anim);
 void CG_BounceEffect(int weapon, vec3_t origin, vec3_t normal);
 
@@ -2768,7 +2778,7 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 		if (cent->currentState.number >= MAX_CLIENTS && cent->currentState.eType != ET_NPC)
 		{
 			//special case for turret firing
-			vec3_t gunpoint, gunangle;
+			vec3_t gunpoint = { 0 }, gunangle = { 0 };
 			mdxaBone_t matrix;
 
 			weaponInfo_t* weapon_info = &cg_weapons[WP_TURRET];
@@ -4363,21 +4373,53 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 
 				e_id = 0;
 
-				//if the effect is already registered go ahead grab it
+				// if the effect is already registered go ahead grab it
 				if (cgs.gameEffects[es->eventParm])
 					e_id = cgs.gameEffects[es->eventParm];
 				else
 				{
-					//else it must be registered before using it
+					// else it must be registered before using it
 					s = CG_ConfigString(CS_EFFECTS + es->eventParm);
 					if (s && s[0])
 						e_id = trap->FX_RegisterEffect(s);
 				}
 
-				if (es->bolt1 == -1 || !e_id) //we don't have this particular bone or effect so can't play it
-					break;
+				// Validate bolt index in C (avoid C++ types/constructs)
+				const int boltIdx = es->generic1;
+				qboolean haveBolt = qfalse;
 
-				//attach the effect on the entity
+				if (boltIdx >= 0)
+				{
+					mdxaBone_t boltMatrix;
+
+					// Try model 0 first. If the bolt isn't found there, try model indices 1..3 as a best-effort fallback.
+					// G2API_GetBoltMatrix_NoRecNoRot returns a qboolean indicating success for a given model/bolt.
+					if (trap->G2API_GetBoltMatrix_NoRecNoRot(effect_on->ghoul2, 0, boltIdx, &boltMatrix,
+						effect_on->lerpAngles, effect_on->lerpOrigin, cg.time, NULL, effect_on->modelScale))
+					{
+						haveBolt = qtrue;
+					}
+					else
+					{
+						for (int mi = 1; mi <= 3 && !haveBolt; ++mi)
+						{
+							if (trap->G2API_GetBoltMatrix_NoRecNoRot(effect_on->ghoul2, mi, boltIdx, &boltMatrix,
+								effect_on->lerpAngles, effect_on->lerpOrigin, cg.time, NULL, effect_on->modelScale))
+							{
+								haveBolt = qtrue;
+								break;
+							}
+						}
+					}
+				}
+
+				if (!haveBolt || !e_id) // we don't have this particular bone or effect so can't play it
+				{
+					Com_Printf("EV_PLAY_EFFECT_BOLTED: invalid bolt index %d for entity %d, effect %d\n", boltIdx, es->owner, es->eventParm);
+					break;
+				}
+
+				// attach the effect on the entity
 				trap->FX_PlayBoltedEffectID(e_id, es->origin, effect_on->ghoul2,
 					es->generic1, es->owner, 0, 0, qtrue);
 			}

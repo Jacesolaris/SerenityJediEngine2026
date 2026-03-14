@@ -35,6 +35,21 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "g_local.h"
 #include "bg_saga.h"
+#include <assert.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include "anims.h"
+#include "bg_public.h"
+#include "bg_vehicles.h"
+#include "bg_weapons.h"
+#include "b_public.h"
+#include "g_public.h"
+#include "surfaceflags.h"
+#include "teams.h"
+#include <qcommon\q_shared.h>
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
 
 extern void player_Cloak(gentity_t* self);
 extern void Jedi_Cloak(gentity_t* self);
@@ -43,7 +58,6 @@ extern int IsPressingKickButton(const gentity_t* self);
 qboolean PM_SaberInTransition(int move);
 qboolean PM_SaberInStart(int move);
 qboolean PM_SaberInReturn(int move);
-qboolean saberCheckKnockdown_DuelLoss(gentity_t* saberent, gentity_t* saberOwner, const gentity_t* other);
 extern void BG_ReduceSaberMishapLevel(playerState_t* ps);
 extern qboolean G_ValidSaberStyle(const gentity_t* ent, int saber_style);
 extern qboolean BG_SprintAnim(int anim);
@@ -4222,6 +4236,7 @@ static void ClientThink_real(gentity_t* ent)
 	qboolean controlledByPlayer = qfalse;
 	qboolean killJetFlags = qtrue;
 	qboolean isFollowing;
+	playerState_t* ps = &ent->client->ps;
 
 	client = ent->client;
 
@@ -4266,6 +4281,28 @@ static void ClientThink_real(gentity_t* ent)
 	{
 		ent->client->ps.stats[STAT_HOLDABLE_ITEMS] |= 1 << HI_SHIELD;
 		ent->forceFieldThink = 0;
+	}
+
+	//// Delayed BOTH_STAND1TO2 animation
+	if (ps->userInt1 & BOT_PENDING_STAND_ANIM && ent->client->ps.weapon == WP_SABER)
+	{
+		if (level.time >= ps->botPendingStandTime)
+		{
+			G_SetAnim(ent, NULL, SETANIM_TORSO, BOTH_STAND1TO2,
+				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+
+			ps->userInt1 &= ~BOT_PENDING_STAND_ANIM;
+		}
+	}
+
+	// Delayed saber-style switch
+	if (ps->userInt1 & BOT_SABER_PENDING_MASK && ent->client->ps.weapon == WP_SABER)
+	{
+		if (level.time >= ps->botPendingStyleTime)
+		{
+			Cmd_SaberAttackCycle_f(ent);
+			ps->userInt1 &= ~BOT_SABER_PENDING_MASK;
+		}
 	}
 
 	// This code was moved here from clientThink to fix a problem with g_synchronousClients
@@ -5741,7 +5778,7 @@ static void ClientThink_real(gentity_t* ent)
 #endif
 			{
 				float pDif = 40.0f;
-				vec3_t bolt_org, pBoltOrg;
+				vec3_t bolt_org = { 0 }, pBoltOrg;
 				vec3_t tAngles;
 				vec3_t vDif;
 				vec3_t entDir, otherAngles;
@@ -5839,7 +5876,7 @@ static void ClientThink_real(gentity_t* ent)
 				else
 				{
 					//see if we can move to be next to the hand.. if it's not clear, break the throw.
-					vec3_t intendedOrigin;
+					vec3_t intendedOrigin = { 0 };
 					trace_t tr;
 					trace_t tr2;
 
@@ -5894,7 +5931,7 @@ static void ClientThink_real(gentity_t* ent)
 			}
 		}
 	}
-	else if (ent->client->ps.heldByClient)
+	else if (ent && ent->client && ent->client->ps.heldByClient)
 	{
 		ent->client->ps.heldByClient = 0;
 	}
