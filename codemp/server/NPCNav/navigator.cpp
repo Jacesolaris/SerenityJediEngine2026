@@ -21,17 +21,26 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "qcommon/q_shared.h"
-
 #include <algorithm>
-
 #include "navigator.h"
 #include "game/g_nav.h"
-#include <ctime>
-#ifdef __linux__
-unsigned int timeGetTime(void);
-#endif
-
 #include "../sv_gameapi.h"
+#include <qcommon\qcommon.h>
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
+#include <game\bg_public.h>
+#include <vector>
+#include <cassert>
+#include <icarus\icarus.h>
+#include <string.h>
+#include <utility>
+#include <server\server.h>
+#include <map>
+#include <game\surfaceflags.h>
+#include <game\g_public.h>
+#include <list>
+#include <cmath>
+#include <memory>
 
 //Global navigator
 CNavigator navigator;
@@ -40,6 +49,33 @@ CNavigator navigator;
 
 cvar_t* d_altRoutes;
 cvar_t* d_patched;
+
+#ifdef __linux__
+#include <time.h>
+// ----------------------------------------------------------------------
+// Linux replacement for Windows timeGetTime()
+// Returns milliseconds since an arbitrary monotonic starting point.
+// Matches Windows behaviour closely enough for JKA timing systems.
+// ----------------------------------------------------------------------
+unsigned int timeGetTime(void)
+{
+	struct timespec ts;
+
+	// CLOCK_MONOTONIC is guaranteed to be non-decreasing
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+	{
+		// Fallback: return 0 on failure (extremely rare)
+		return 0u;
+	}
+
+	unsigned int ms =
+		(unsigned int)(ts.tv_sec * 1000u) +
+		(unsigned int)(ts.tv_nsec / 1000000u);
+
+	return ms;
+}
+#endif
+
 
 static void NAV_CvarInit()
 {
@@ -480,6 +516,7 @@ CNavigator
 */
 
 CNavigator::CNavigator(void)
+	: pathsCalculated(qfalse)   // Explicit initialization (fixes C26495)
 {
 #if 0 // RAVEN... why u make it so hard to double link list cvars
 	if (!d_altRoutes || !d_patched)
@@ -489,8 +526,7 @@ CNavigator::CNavigator(void)
 #endif
 }
 
-CNavigator::~CNavigator(void)
-= default;
+CNavigator::~CNavigator(void) = default;
 
 /*
 -------------------------
@@ -1239,8 +1275,8 @@ CollectNearestNodes
 -------------------------
 */
 
-#define	NODE_COLLECT_MAX	16		//Maximum # of nodes collected at any time
-#define NODE_COLLECT_RADIUS	512		//Default radius to search for nodes in
+constexpr auto NODE_COLLECT_MAX = 16;		//Maximum # of nodes collected at any time
+constexpr auto NODE_COLLECT_RADIUS = 512;		//Default radius to search for nodes in
 #define NODE_COLLECT_RADIUS_SQR		( NODE_COLLECT_RADIUS * NODE_COLLECT_RADIUS )
 
 int CNavigator::CollectNearestNodes(vec3_t origin, const int radius, const int maxCollect, nodeChain_l& nodeChain)
@@ -1318,7 +1354,7 @@ int CNavigator::GetBestPathBetweenEnts(sharedEntity_t* ent, sharedEntity_t* goal
 	if (m_nodes.size() == 0)
 		return NODE_NONE;
 
-#define	MAX_Z_DELTA	18
+constexpr auto MAX_Z_DELTA = 18;
 
 	nodeChain_l nodeChain;
 	nodeChain_l::iterator nci;
@@ -1536,7 +1572,7 @@ int CNavigator::GetNearestNode(sharedEntity_t* ent, const int lastID, const int 
 
 	/////////////////////////////////////////////////
 
-#define	MAX_Z_DELTA	18
+constexpr auto MAX_Z_DELTA = 18;
 
 	/////////////////////////////////////////////////
 
@@ -1719,8 +1755,8 @@ void CNavigator::SetCheckedNode(const int wayPoint, const int ent, const byte va
 	CheckedNodes[wayPoint * MAX_GENTITIES + ent] = value;
 }
 
-#define	CHECK_FAILED_EDGE_INTERVAL	1000
-#define	CHECK_FAILED_EDGE_INTITIAL	5000//10000
+constexpr auto CHECK_FAILED_EDGE_INTERVAL = 1000;
+constexpr auto CHECK_FAILED_EDGE_INTITIAL = 5000;//10000
 
 void CNavigator::CheckFailedNodes(sharedEntity_t* ent) const
 {
@@ -1739,7 +1775,7 @@ void CNavigator::CheckFailedNodes(sharedEntity_t* ent) const
 				vec3_t nodePos;
 				failed++;
 				//-1 because 0 is a valid node but also the default, so we add one when we add one
-				m_nodes[ent->failedWaypoints[j] - 1]->GetPosition(nodePos);
+				m_nodes[static_cast<std::vector<CNode*, std::allocator<CNode*>>::size_type>(ent->failedWaypoints[j]) - 1]->GetPosition(nodePos);
 				if (!GVM_NAV_ClearPathToPoint(ent->s.number, ent->r.mins, ent->r.maxs, nodePos,
 					CONTENTS_SOLID | CONTENTS_MONSTERCLIP | CONTENTS_BOTCLIP, ENTITYNUM_NONE))
 				{

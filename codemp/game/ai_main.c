@@ -10572,7 +10572,7 @@ static qboolean bot_buy_item(bot_state_t* bs, const char* msg)
 			if (bs->cur_ps.persistant[PERS_SCORE] < bg_buylist[i].price)
 			{
 				// Allow retry sooner if too expensive
-				bs->nextPurchase = level.time + 2000;
+				bs->nextPurchase = level.time + 6000;
 				return qfalse;
 			}
 
@@ -11799,7 +11799,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 	if (bs->cur_ps.ammo[weaponData[bs->cur_ps.weapon].ammoIndex] < weaponData[bs->cur_ps.weapon].energyPerShot)
 	{
-		if (g_AllowBotBuyItem.integer)
+		if (g_AllowBotBuyItem.integer && level.time >= bs->nextBuyTime)
 		{
 			if (g_entities[bs->client].client->ps.weapon == WP_BLASTER ||
 				g_entities[bs->client].client->ps.weapon == WP_BRYAR_PISTOL ||
@@ -11835,6 +11835,9 @@ void standard_bot_ai(bot_state_t* bs)
 			{
 				bot_buy_item(bs, "detpack");
 			}
+
+			// Set cooldown AFTER buying
+			bs->nextBuyTime = level.time + Q_irand(120000, 180000);
 		}
 		else
 		{
@@ -13916,7 +13919,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 
 	if (bs->cur_ps.ammo[weaponData[bs->cur_ps.weapon].ammoIndex] < weaponData[bs->cur_ps.weapon].energyPerShot)
 	{
-		if (g_AllowBotBuyItem.integer)
+		if (g_AllowBotBuyItem.integer && level.time >= bs->nextBuyTime)
 		{
 			if (g_entities[bs->client].client->ps.weapon == WP_BLASTER ||
 				g_entities[bs->client].client->ps.weapon == WP_BRYAR_PISTOL ||
@@ -13952,6 +13955,9 @@ void Enhanced_bot_ai(bot_state_t* bs)
 			{
 				bot_buy_item(bs, "detpack");
 			}
+
+			// Set cooldown AFTER buying
+			bs->nextBuyTime = level.time + Q_irand(120000, 180000);
 		}
 		else
 		{

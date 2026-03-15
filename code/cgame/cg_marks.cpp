@@ -71,20 +71,31 @@ CG_FreeMarkPoly
 
 static void CG_FreeMarkPoly(markPoly_t* le)
 {
-	if (!le->prevMark)
+	// ------------------------------------------------------------------
+	// SAFETY: prevMark must exist. If not, this mark is not in the
+	// active list and freeing it is invalid.
+	// CG_Error does not return, but we add an explicit return to satisfy
+	// static analysis and avoid NULL dereference warnings.
+	// ------------------------------------------------------------------
+	if (le->prevMark == NULL)
 	{
-		CG_Error("CG_FreeLocalEntity: not active");
+		CG_Error("CG_FreeMarkPoly: not active");
+		return; // unreachable, but required for static analysis
 	}
 
-	// unlink from active list
+	// ------------------------------------------------------------------
+	// Unlink from active list
+	// ------------------------------------------------------------------
 	le->prevMark->nextMark = le->nextMark;
 
-	if (le->nextMark)  // SAFETY FIX
+	if (le->nextMark != NULL)
 	{
 		le->nextMark->prevMark = le->prevMark;
 	}
 
-	// push onto free list
+	// ------------------------------------------------------------------
+	// Push onto free list
+	// ------------------------------------------------------------------
 	le->nextMark = cg_freeMarkPolys;
 	cg_freeMarkPolys = le;
 }

@@ -531,9 +531,9 @@ if(BuildMPEngine)
 
 	if(WIN32)
 		set(MPEngineWin32Files
-			"${MPDir}/win32/iconmp.ico"
+			"${MPDir}/win32/SerenityJediEngine2026-MP.ico"
 			"${MPDir}/win32/resource.h"
-			"${MPDir}/win32/SerenityJediEngine2026.rc"
+			"${MPDir}/win32/SerenityJediEngine2026-MP.rc"
 			)
 
 		set(MPEngineFiles ${MPEngineFiles} ${MPEngineWin32Files})
@@ -654,7 +654,7 @@ if(BuildMPDed)
 	set(MPDedFiles ${MPDedFiles} ${MPDedNullFiles})
 	if(WIN32)
 		set(MPDedWin32Files
-			"${MPDir}/win32/SerenityJediEngine2026ded.rc"
+			"${MPDir}/win32/SerenityJediEngine2026-DED.rc"
 			)
 		source_group("win32" FILES ${MPDedWin32Files})
 		set(MPDedFiles ${MPDedFiles} ${MPDedWin32Files})

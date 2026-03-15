@@ -25,6 +25,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // not necessarily every single frame
 
 #include "cg_headers.h"
+#include <string.h>
+#include <qcommon\q_shared.h>
+#include "cg_public.h"
+#include "cg_local.h"
+#include <bg_public.h>
+#include <qcommon\q_math.h>
+#include <g_shared.h>
 
 /*
 ==================
@@ -125,53 +132,52 @@ The transition point from snap to nextSnap has passed
 */
 static void CG_TransitionSnapshot()
 {
-	centity_t* cent;
-	int i;
+	centity_t* cent = NULL;
+	int i = 0;
 
-	if (!cg.snap)
+	// ------------------------------------------------------------------
+	// SAFETY: cg.snap and cg.nextSnap must exist.
+	// CG_Error does not return, but we add explicit returns to satisfy
+	// static analysis and avoid false-positive NULL dereference warnings.
+	// ------------------------------------------------------------------
+	if (cg.snap == NULL)
 	{
 		CG_Error("CG_TransitionSnapshot: NULL cg.snap");
+		return; // unreachable, but required for static analysis
 	}
-	if (!cg.nextSnap)
+
+	if (cg.nextSnap == NULL)
 	{
 		CG_Error("CG_TransitionSnapshot: NULL cg.nextSnap");
+		return; // unreachable, but required for static analysis
 	}
 
-	// execute any server string commands before transitioning entities
+	// Execute any server string commands before transitioning entities
 	CG_ExecuteNewServerCommands(cg.nextSnap->serverCommandSequence);
 
-	// clear the currentValid flag for all entities in the existing snapshot
+	// Clear currentValid flag for all entities in the existing snapshot
 	for (i = 0; i < cg.snap->numEntities; i++)
 	{
 		cent = &cg_entities[cg.snap->entities[i].number];
 		cent->currentValid = qfalse;
 	}
 
-	// move nextSnap to snap and do the transitions
+	// Move nextSnap to snap and do the transitions
 	snapshot_t* oldFrame = cg.snap;
 	cg.snap = cg.nextSnap;
 
 	for (i = 0; i < cg.snap->numEntities; i++)
 	{
-		if (true)
-			//cg.snap->entities[ i ].number != 0 ) // I guess the player adds his/her events elsewhere, so doing this also gives us double events for the player!
-		{
-			cent = &cg_entities[cg.snap->entities[i].number];
-			CG_TransitionEntity(cent);
-		}
+		cent = &cg_entities[cg.snap->entities[i].number];
+		CG_TransitionEntity(cent);
 	}
 
-	cg.nextSnap = nullptr;
+	cg.nextSnap = NULL;
 
-	// check for playerstate transition events
-	if (oldFrame)
+	// Playerstate transition events
+	if (oldFrame != NULL)
 	{
-		// if we are not doing client side movement prediction for any
-		// reason, then the client events and view changes will be issued now
-		//if ( cg_timescale.value >= 1.0f )
-		{
-			CG_TransitionPlayerState(&cg.snap->ps, &oldFrame->ps);
-		}
+		CG_TransitionPlayerState(&cg.snap->ps, &oldFrame->ps);
 	}
 }
 
@@ -341,101 +347,121 @@ of an interpolating one)
 */
 void CG_ProcessSnapshots()
 {
-	snapshot_t* snap;
-	int n;
+	snapshot_t* snap = NULL;
+	int n = 0;
 
-	// see what the latest snapshot the client system has is
+	// ------------------------------------------------------------------
+	// Query latest snapshot number from engine
+	// ------------------------------------------------------------------
 	cgi_GetCurrentSnapshotNumber(&n, &cg.latestSnapshotTime);
+
 	if (n != cg.latestSnapshotNum)
 	{
 		if (n < cg.latestSnapshotNum)
 		{
-			// this should never happen
 			CG_Error("CG_ProcessSnapshots: n < cg.latestSnapshotNum");
+			return; // unreachable, but required for static analysis
 		}
+
 		cg.latestSnapshotNum = n;
 	}
 
-	// If we have yet to receive a snapshot, check for it.
-	// Once we have gotten the first snapshot, cg.snap will
-	// always have valid data for the rest of the game
-	if (!cg.snap)
+	// ------------------------------------------------------------------
+	// If we have not yet received our first snapshot, try to read it.
+	// ------------------------------------------------------------------
+	if (cg.snap == NULL)
 	{
 		snap = CG_ReadNextSnapshot();
-		if (!snap)
+
+		if (snap == NULL)
 		{
-			// we can't continue until we get a snapshot
+			// Cannot continue until we get a snapshot
 			return;
 		}
 
-		// set our weapon selection to what
-		// the playerstate is currently using
 		CG_SetInitialSnapshot(snap);
 	}
 
-	// loop until we either have a valid nextSnap with a serverTime
-	// greater than cg.time to interpolate towards, or we run
-	// out of available snapshots
-	do
+	// ------------------------------------------------------------------
+	// Main snapshot processing loop
+	// ------------------------------------------------------------------
+	while (qtrue)
 	{
-		// if we don't have a nextframe, try to read a new one in
-		if (!cg.nextSnap)
+		// If we do not have a next snapshot, try to read one
+		if (cg.nextSnap == NULL)
 		{
 			snap = CG_ReadNextSnapshot();
 
-			// if we still don't have a nextframe, we will just have to
-			// extrapolate
-			if (!snap)
+			if (snap == NULL)
 			{
+				// No more snapshots available → extrapolate
 				break;
 			}
 
 			CG_SetNextSnap(snap);
 
-			// if time went backwards, we have a level restart
+			// SAFETY: ensure nextSnap is valid before dereferencing
+			if (cg.nextSnap == NULL)
+			{
+				CG_Error("CG_ProcessSnapshots: cg.nextSnap became NULL after CG_SetNextSnap");
+				return;
+			}
+
+			// Level restart detection
 			if (cg.nextSnap->serverTime < cg.snap->serverTime)
 			{
-				// restart the level
 				CG_RestartLevel();
-				continue; // we might also get a nextsnap
+				continue;
 			}
 		}
 
-		// if our time is < nextFrame's, we have a nice interpolating state
+		// If our current time is before nextSnap, we can interpolate
 		if (cg.time < cg.nextSnap->serverTime)
 		{
 			break;
 		}
 
-		// we have passed the transition from nextFrame to frame
+		// We have passed the transition point → advance snapshot
 		CG_TransitionSnapshot();
-	} while (true);
+	}
 
+	// ------------------------------------------------------------------
+	// Time correction logic
+	// ------------------------------------------------------------------
 	if (cg.snap->serverTime > cg.time)
 	{
 		cg.time = cg.snap->serverTime;
 #if _DEBUG
-		Com_Printf("CG_ProcessSnapshots: cg.snap->serverTime > cg.time");
+		Com_Printf("CG_ProcessSnapshots: cg.snap->serverTime > cg.time\n");
 #endif
 	}
-	if (cg.nextSnap != nullptr && cg.nextSnap->serverTime <= cg.time)
+
+	if (cg.nextSnap != NULL && cg.nextSnap->serverTime <= cg.time)
 	{
 		cg.time = cg.nextSnap->serverTime - 1;
 #if _DEBUG
-		Com_Printf("CG_ProcessSnapshots: cg.nextSnap->serverTime <= cg.time");
+		Com_Printf("CG_ProcessSnapshots: cg.nextSnap->serverTime <= cg.time\n");
 #endif
 	}
-	// assert our valid conditions upon exiting
-	if (cg.snap == nullptr)
+
+	// ------------------------------------------------------------------
+	// Final validity assertions
+	// ------------------------------------------------------------------
+	if (cg.snap == NULL)
 	{
 		CG_Error("CG_ProcessSnapshots: cg.snap == NULL");
+		return;
 	}
+
 	if (cg.snap->serverTime > cg.time)
 	{
 		CG_Error("CG_ProcessSnapshots: cg.snap->serverTime > cg.time");
+		return;
 	}
-	if (cg.nextSnap != nullptr && cg.nextSnap->serverTime <= cg.time)
+
+	if (cg.nextSnap != NULL && cg.nextSnap->serverTime <= cg.time)
 	{
 		CG_Error("CG_ProcessSnapshots: cg.nextSnap->serverTime <= cg.time");
+		return;
 	}
 }

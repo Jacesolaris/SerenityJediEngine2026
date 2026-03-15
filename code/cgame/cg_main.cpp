@@ -35,6 +35,26 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_math.h>
 #include <bg_public.h>
 #include <ghoul2_shared.h>
+#include <statindex.h>
+#include <g_vehicles.h>
+#include "FxPrimitives.h"
+#include <g_public.h>
+#include "FxUtil.h"
+#include <qcommon\q_color.h>
+#include <surfaceflags.h>
+#include <icarus\StdAfx.h>
+#include <cassert>
+#include <string.h>
+#include <cstdarg>
+#include <qcommon\q_string.h>
+#include <weapons.h>
+#include "cg_camera.h"
+#include <iterator>
+#include <rd-common\tr_types.h>
+#include <qcommon\q_shared.h>
+#include <g_items.h>
+#include <qcommon\q_platform.h>
+#include "cg_local.h"
 
 //NOTENOTE: Be sure to change the mirrored code in g_shared.h
 using namePrecache_m = std::map<sstring_t, unsigned char>;

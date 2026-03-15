@@ -817,33 +817,44 @@ Sets cg.snap, cg.oldFrame, and cg.backlerp
 cg.time should be between oldFrameTime and frameTime after exit
 ===============
 */
-static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new_animation, const int entNum)
+static qboolean CG_RunLerpFrame(clientInfo_t* ci,
+	lerpFrame_t* lf,
+	const int new_animation,
+	const int entNum)
 {
 	qboolean newFrame = qfalse;
 
-	// see if the animation sequence is switching
-	//FIXME: allow multiple-frame overlapped lerping between sequences? - Possibly last 3 of last seq and first 3 of next seq?
-	if (new_animation != lf->animationNumber || !lf->animation)
+	// Handle animation change
+	if (new_animation != lf->animationNumber || lf->animation == NULL)
 	{
 		CG_SetLerpFrameAnimation(ci, lf, new_animation);
 	}
 
-	// if we have passed the current frame, move it to
-	// oldFrame and calculate a new frame
+	// SAFETY CHECK:
+	// If animation failed to initialize, avoid NULL dereference.
+	if (lf->animation == NULL)
+	{
+#ifdef _DEBUG
+		Com_Printf("^1WARNING:^7 CG_RunLerpFrame: NULL animation for ent %d (anim %d)\n",
+			entNum, new_animation);
+#endif
+		return qfalse;
+	}
+
+	// If we have passed the current frame time, advance the frame
 	if (cg.time >= lf->frameTime)
 	{
 		lf->oldFrame = lf->frame;
 		lf->oldFrameTime = lf->frameTime;
 
-		// get the next frame based on the animation
 		const animation_t* anim = lf->animation;
-		//Do we need to speed up or slow down the anim?
 		int anim_frame_time = abs(anim->frameLerp);
 
-		//special hack for player to ensure quick weapon change
+		// Special hack for player weapon switching
 		if (entNum == 0)
 		{
-			if (lf->animationNumber == TORSO_DROPWEAP1 || lf->animationNumber == TORSO_RAISEWEAP1)
+			if (lf->animationNumber == TORSO_DROPWEAP1 ||
+				lf->animationNumber == TORSO_RAISEWEAP1)
 			{
 				anim_frame_time = 50;
 			}
@@ -859,12 +870,13 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new
 		}
 
 		int f = (lf->frameTime - lf->animationTime) / anim_frame_time;
+
+		// Handle looping / end-of-animation logic
 		if (f >= anim->numFrames)
 		{
-			//Reached the end of the anim
-			//FIXME: Need to set a flag here to TASK_COMPLETE
 			f -= anim->numFrames;
-			if (anim->loopFrames != -1) //Before 0 meant no loop
+
+			if (anim->loopFrames != -1)
 			{
 				if (anim->numFrames - anim->loopFrames == 0)
 				{
@@ -872,7 +884,7 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new
 				}
 				else
 				{
-					f %= anim->numFrames - anim->loopFrames;
+					f %= (anim->numFrames - anim->loopFrames);
 				}
 				f += anim->loopFrames;
 			}
@@ -883,12 +895,11 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new
 				{
 					f = 0;
 				}
-				// the animation is stuck at the end, so it
-				// can immediately transition to another sequence
 				lf->frameTime = cg.time;
 			}
 		}
 
+		// Reverse animation support
 		if (anim->frameLerp < 0)
 		{
 			lf->frame = anim->firstFrame + anim->numFrames - 1 - f;
@@ -906,6 +917,7 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new
 		newFrame = qtrue;
 	}
 
+	// Clamp future times
 	if (lf->frameTime > cg.time + 200)
 	{
 		lf->frameTime = cg.time;
@@ -915,14 +927,17 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new
 	{
 		lf->oldFrameTime = cg.time;
 	}
-	// calculate current lerp value
+
+	// Compute backlerp
 	if (lf->frameTime == lf->oldFrameTime)
 	{
-		lf->backlerp = 0;
+		lf->backlerp = 0.0f;
 	}
 	else
 	{
-		lf->backlerp = 1.0 - static_cast<float>(cg.time - lf->oldFrameTime) / (lf->frameTime - lf->oldFrameTime);
+		lf->backlerp =
+			1.0f - (float)(cg.time - lf->oldFrameTime) /
+			(float)(lf->frameTime - lf->oldFrameTime);
 	}
 
 	return newFrame;
@@ -3705,18 +3720,29 @@ static void CG_PlayerAngles(centity_t* cent, vec3_t legs[3], vec3_t torso[3], ve
 CG_PlayerPowerups
 ===============
 */
-//extern void CG_Seeker( centity_t *cent );
 static void CG_PlayerPowerups(const centity_t* cent)
 {
+	// ------------------------------------------------------------------
+	// SAFETY: gent or client may be NULL for many entity types.
+	// If we cannot resolve team or forcePower safely, bail out.
+	// ------------------------------------------------------------------
+	if (cent->gent == NULL)
+	{
+		return;
+	}
+
+	gclient_t* client = cent->gent->client;
+
+	// Resolve team
 	team_t team = TEAM_NEUTRAL;
 
-	if (cent->gent && cent->gent->client)
+	if (client != NULL)
 	{
-		team = cent->gent->client->playerTeam;
+		team = client->playerTeam;
 	}
-	else if (cent->gent && cent->gent->owner)
+	else if (cent->gent->owner != NULL)
 	{
-		if (cent->gent->owner->client)
+		if (cent->gent->owner->client != NULL)
 		{
 			team = cent->gent->owner->client->playerTeam;
 		}
@@ -3725,10 +3751,13 @@ static void CG_PlayerPowerups(const centity_t* cent)
 			team = cent->gent->owner->noDamageTeam;
 		}
 	}
-	if (!cent->currentState.powerups)
+
+	// No powerups → nothing to draw
+	if (cent->currentState.powerups == 0)
 	{
 		return;
 	}
+
 	const int health = cg.snap->ps.stats[STAT_HEALTH];
 
 	if (health < 1)
@@ -3736,47 +3765,73 @@ static void CG_PlayerPowerups(const centity_t* cent)
 		return;
 	}
 
-	if ((cent->currentState.powerups & 1 << PW_FORCE_PUSH || cent->currentState.powerups & 1 << PW_FORCE_PUSH_RHAND)
-		&& health > 1 && cent->gent->client->ps.forcePower > 80)
+	// ------------------------------------------------------------------
+	// Force Push aura
+	// ------------------------------------------------------------------
+	const qboolean hasPush =
+		(((cent->currentState.powerups & (1 << PW_FORCE_PUSH)) ? qtrue : qfalse) ||
+			((cent->currentState.powerups & (1 << PW_FORCE_PUSH_RHAND)) ? qtrue : qfalse))
+		? qtrue
+		: qfalse;
+
+	if (hasPush == qtrue &&
+		health > 1 &&
+		client != NULL &&
+		client->ps.forcePower > 80)
 	{
+		const int radius = 60 + (rand() & 20);
+
 		switch (team)
 		{
 		case TEAM_ENEMY:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 60 + (rand() & 20), 1, 0.2f, 0.2f); //red
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 1.0f, 0.2f, 0.2f);
 			break;
+
 		case TEAM_PLAYER:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 60 + (rand() & 20), 0.2f, 0.2f, 1); //blue
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 0.2f, 0.2f, 1.0f);
 			break;
+
 		case TEAM_FREE:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 60 + (rand() & 20), 0.9f, 0.9f, 0.9f); //white
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 0.9f, 0.9f, 0.9f);
 			break;
+
 		case TEAM_NEUTRAL:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 60 + (rand() & 20), 0.0f, 0.0f, 0.0f); //clear
-			break;
 		default:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 60 + (rand() & 20), 0.0f, 0.0f, 0.0f); //clear
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 0.0f, 0.0f, 0.0f);
 			break;
 		}
 	}
 
-	if (cent->currentState.powerups & 1 << PW_MEDITATE && health > 1 && cent->gent->client->ps.forcePower > 80)
+	// ------------------------------------------------------------------
+	// Meditate aura
+	// ------------------------------------------------------------------
+	const qboolean hasMeditate =
+		((cent->currentState.powerups & (1 << PW_MEDITATE)) ? qtrue : qfalse);
+
+	if (hasMeditate == qtrue &&
+		health > 1 &&
+		client != NULL &&
+		client->ps.forcePower > 80)
 	{
+		const int radius = 150 + (rand() & 31);
+
 		switch (team)
 		{
 		case TEAM_ENEMY:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 150 + (rand() & 31), 1, 0.2f, 0.2f); //red
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 1.0f, 0.2f, 0.2f);
 			break;
+
 		case TEAM_PLAYER:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 150 + (rand() & 31), 0.2f, 0.2f, 1); //blue
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 0.2f, 0.2f, 1.0f);
 			break;
+
 		case TEAM_FREE:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 150 + (rand() & 31), 0.9f, 0.9f, 0.9f); //white
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 0.9f, 0.9f, 0.9f);
 			break;
+
 		case TEAM_NEUTRAL:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 150 + (rand() & 31), 0.0f, 0.0f, 0.0f); //clear
-			break;
 		default:
-			cgi_R_AddLightToScene(cent->lerpOrigin, 150 + (rand() & 31), 0.0f, 0.0f, 0.0f); //clear
+			cgi_R_AddLightToScene(cent->lerpOrigin, radius, 0.0f, 0.0f, 0.0f);
 			break;
 		}
 	}

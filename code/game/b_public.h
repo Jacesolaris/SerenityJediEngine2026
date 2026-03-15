@@ -67,7 +67,7 @@ constexpr auto NPCAI_HEAL_ROSH = 0x10000000;
 constexpr auto NPCAI_JUMP = 0x20000000; //Jump Now;
 constexpr auto NPCAI_BOSS_CHARACTER = 0x40000000; //Boss NPC flag for certain immunities/defenses;
 constexpr auto NPCAI_NO_JEDI_DELAY = 0x80000000; //Reborn/Jedi don't taunt enemy before attacking;
-constexpr auto NPCAI_BOSS_SERENITYJEDIENGINE = 0x100000000; //MOVIEDUELSS INCINEMATIC LIGHTNING ABSORB GUYS;
+constexpr auto NPCAI_BOSS_SERENITYJEDIENGINE = 0x100000000; //INCINEMATIC LIGHTNING ABSORB GUYS;
 
 //Script flags
 constexpr auto SCF_CROUCHED = 0x00000001; //Force ucmd.upmove to be -127;

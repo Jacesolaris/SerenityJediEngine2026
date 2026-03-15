@@ -23,6 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "FxSystem.h"
+#include <qcommon\q_shared.h>
 
 constexpr auto MAX_EFFECTS = 1800;
 

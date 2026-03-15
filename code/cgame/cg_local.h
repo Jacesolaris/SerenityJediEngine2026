@@ -32,6 +32,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	GAME_INCLUDE
 #include "../game/g_shared.h"
 #include "cg_camera.h"
+#include "cg_public.h"
+#include <rd-common\tr_types.h>
+#include <qcommon\q_math.h>
+#include <qcommon\q_platform.h>
 
 // The entire cgame module is unloaded and reloaded on each level change,
 // so there is NO persistant data between levels on the client side.
@@ -730,7 +734,7 @@ void CG_NewClientinfo(int clientNum);
 //
 // cg_main.c
 //
-const char* CG_ConfigString(int index);
+const char* CG_ConfigString(const int index);
 const char* CG_Argv(int arg);
 
 void QDECL CG_Printf(const char* msg, ...);
