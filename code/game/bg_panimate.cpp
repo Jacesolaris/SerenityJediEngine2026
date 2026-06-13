@@ -2763,6 +2763,12 @@ static int PM_SaberAttackChainAngle(const int move1, const int move2)
 
 qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NONE)
 {
+	//prevent crash when global pm is corrupted or null
+	if ((uintptr_t)pm == (uintptr_t)-1 || !pm || !pm->ps)
+	{
+		Com_Printf("PM_SaberKataDone: pm corrupted (0x%llX) or null\n", (unsigned long long)(uintptr_t)pm);
+		return qtrue;
+	}
 	if (pm->ps->forceRageRecoveryTime > level.time)
 	{
 		//rage recovery, only 1 swing at a time (tired)

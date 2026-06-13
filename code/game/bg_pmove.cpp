@@ -17485,6 +17485,12 @@ void PM_WeaponLightsaber()
 	int anim = -1;
 	int newmove = LS_NONE;
 
+	if ((uintptr_t)pm == (uintptr_t)-1 || pm == nullptr || pm->ps == nullptr)
+	{
+		Com_Printf("PM_WeaponLightsaber: pm corrupted (0x%llX) or null\n", (unsigned long long)(uintptr_t)pm);
+		return;
+	}
+
 	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
 	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
 	const qboolean walking_blocking = pm->ps->ManualBlockingFlags & 1 << MBF_BLOCKWALKING ? qtrue : qfalse;
@@ -21083,6 +21089,17 @@ void Pmove(pmove_t* pmove)
 
 	pm = pmove;
 
+	// one-time .bss layout dump to help diagnose pm corruption (0xFF..FF)
+	{
+		static qboolean pm_layout_printed = qfalse;
+		if (!pm_layout_printed)
+		{
+			pm_layout_printed = qtrue;
+			Com_Printf("^1PM LAYOUT: &Flying=%p &pm=%p &pml=%p &pm_ladderScale=%p &c_pmove=%p\n",
+				&Flying, &pm, &pml, &pm_ladderScale, &c_pmove);
+		}
+	}
+
 	// this counter lets us debug movement problems with a journal by setting a conditional breakpoint fot the previous frame
 	c_pmove++;
 
@@ -21619,6 +21636,12 @@ void Pmove(pmove_t* pmove)
 
 void PM_SaberFakeFlagUpdate(const int new_move)
 {
+	//prevent crash when global pm is corrupted or null
+	if ((uintptr_t)pm == (uintptr_t)-1 || !pm || !pm->ps)
+	{
+		Com_Printf("PM_SaberFakeFlagUpdate: pm corrupted (0x%llX) or null\n", (unsigned long long)(uintptr_t)pm);
+		return;
+	}
 	//checks to see if the attack fake flag needs to be removed.
 	if (!PM_SaberInTransition(new_move) && !PM_SaberInStart(new_move) && !PM_SaberInAttackPure(new_move))
 	{
