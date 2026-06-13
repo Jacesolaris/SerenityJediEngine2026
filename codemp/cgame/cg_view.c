@@ -1107,27 +1107,6 @@ static void CG_OffsetFighterView(void)
 }
 
 //======================================================================
-
-void CG_ZoomDown_f(void)
-{
-	if (cg.zoomed)
-	{
-		return;
-	}
-	cg.zoomed = qtrue;
-	cg.zoomTime = cg.time;
-}
-
-void CG_ZoomUp_f(void)
-{
-	if (!cg.zoomed)
-	{
-		return;
-	}
-	cg.zoomed = qfalse;
-	cg.zoomTime = cg.time;
-}
-
 /*
 ====================
 CG_CalcFovFromX
@@ -1601,7 +1580,7 @@ static qboolean CG_ThirdPersonActionCam(void)
 
 vec3_t cg_lastTurretViewAngles = { 0 };
 
-qboolean CG_CheckPassengerTurretView(void)
+static qboolean CG_CheckPassengerTurretView(void)
 {
 	if (cg.predictedPlayerState.m_iVehicleNum //in a vehicle
 		&& cg.predictedPlayerState.generic1) //as a passenger
@@ -1894,7 +1873,7 @@ extern vec3_t cg_skyOriPos;
 extern float cg_skyOriScale;
 extern qboolean cg_noFogOutsidePortal;
 
-void CG_DrawSkyBoxPortal(const char* cstr)
+static void CG_DrawSkyBoxPortal(const char* cstr)
 {
 	refdef_t backuprefdef = cg.refdef;
 
@@ -2106,7 +2085,7 @@ static void CG_PlayBufferedSounds(void)
 	}
 }
 
-void CG_UpdateSoundTrackers()
+static void CG_UpdateSoundTrackers()
 {
 	for (int num = 0; num < ENTITYNUM_NONE; num++)
 	{
@@ -2149,7 +2128,7 @@ Screen Effect stuff starts here
 
 cgscreffects_t cgScreenEffects;
 
-void CG_SE_UpdateMusic(void)
+static void CG_SE_UpdateMusic(void)
 {
 	if (cgScreenEffects.music_volume_multiplier < 0.1)
 	{
@@ -2203,7 +2182,7 @@ CG_CalcScreenEffects
 Currently just for screen shaking (and music volume management)
 =================
 */
-void CG_CalcScreenEffects(void)
+static void CG_CalcScreenEffects(void)
 {
 	CG_SE_UpdateMusic();
 }
@@ -2332,7 +2311,7 @@ static void CG_AddRefentForAutoMap(const centity_t* cent)
 }
 
 //add all entities that would be on the radar
-void CG_AddRadarAutomapEnts(void)
+static void CG_AddRadarAutomapEnts(void)
 {
 	int i = 0;
 
@@ -2361,7 +2340,7 @@ int cg_autoMapInputTime = 0;
 #define	SIDEFRAME_WIDTH			16
 #define	SIDEFRAME_HEIGHT		32
 
-void CG_DrawAutoMap(void)
+static void CG_DrawAutoMap(void)
 {
 	refdef_t refdef;
 	trace_t tr;
@@ -2530,7 +2509,7 @@ static plane_t frustum[4];
 //
 //	CG_SetupFrustum
 //
-void CG_SetupFrustum(void)
+static void CG_SetupFrustum(void)
 {
 	float ang = cg.refdef.fov_x / 180 * M_PI * 0.5f;
 	float xs = sin(ang);
@@ -2561,7 +2540,7 @@ void CG_SetupFrustum(void)
 //
 //	CG_CullPoint - returns true if culled
 //
-qboolean CG_CullPoint(vec3_t pt)
+static qboolean CG_CullPoint(vec3_t pt)
 {
 	// check against frustum planes
 	for (int i = 0; i < 4; i++)
@@ -2618,6 +2597,7 @@ extern int CinematicNum;
 void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, const qboolean demoPlayback)
 {
 	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+	const qboolean holding_block_button = (cg.predictedPlayerState.pm_flags & PMF_BLOCK_HELD) ? qtrue : qfalse;
 	const char* cstr;
 	float mSensitivity = cg.zoomSensitivity;
 	static centity_t* veh = NULL;
@@ -2773,12 +2753,15 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 			// ---------------------------------------------------------
 			// Precision mode for joystick: slow aim when WALK held
 			// ---------------------------------------------------------
-			if (in_joystick.integer &&
-				(holding_walking_button))
+			if ((in_joystick.integer) && //if we are using a joystick
+				((cg.snap->ps.weapon != WP_SABER) || //if we are not using a saber
+					((cg.snap->ps.weapon == WP_SABER) && (!cg.snap->ps.saberHolstered) && !holding_block_button)) && // if we are using a saber, it is not active and we are not holding block
+				(holding_walking_button)) //and we are holding the walk button
 			{
-				mPitchOverride = 0.05f;
-				mYawOverride = 0.05f;
+				mPitchOverride = 0.05f; //slow down the pitch
+				mYawOverride = 0.05f; //slow down the yaw
 			}
+
 			trap->SetUserCmdValue(cg.weaponSelect, mSensitivity, mPitchOverride, mYawOverride, 0.0f, cg.forceSelect,cg.itemSelect, qfalse);
 		}
 	}

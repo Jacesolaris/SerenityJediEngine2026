@@ -10650,6 +10650,11 @@ static saberCombo_t JediChooseCombo(gentity_t* self)
 	combo.length = 0;
 	combo.useForcePushFinisher = qfalse;
 
+	if (in_camera)
+	{
+		return combo; // don't do this in camera mode
+	}
+
 	if (!self || !self->enemy)
 	{
 		return combo;

@@ -881,173 +881,210 @@ static void Player_RestoreFromPrevLevel(gentity_t* ent)
 {
 	gclient_t* client = ent->client;
 
-	assert(client);
-	if (client) // though I can't see it not being true...
+	// Safety check: client must exist
+	if (client == nullptr)
 	{
-		char s[MAX_STRING_CHARS];
-
-		gi.Cvar_VariableStringBuffer(sCVARNAME_PLAYERSAVE, s, sizeof s);
-
-		if (strlen(s)) // actually this would be safe anyway because of the way sscanf() works, but this is clearer
-		{
-			char saber1Name[MAX_QPATH];
-			char saber0Name[MAX_QPATH];
-			//				|general info				  |-force powers |-saber 1										   |-saber 2										  |-general saber
-			int saber1BladeActive[8]{};
-			int saber2BladeActive[8]{};
-			unsigned int saber1BladeColor[8]{};
-			unsigned int saber2BladeColor[8]{};
-
-			sscanf(
-				s,
-				"%i %i %i %i %i %i %i %f %f %f %i %i %i %i %i %s %i %i %i %i %i %i %i %i %u %u %u %u %u %u %u %u %s %i %i %i %i %i %i %i %i %u %u %u %u %u %u %u %u %i %i %i %i",
-				&client->ps.stats[STAT_HEALTH],
-				&client->ps.stats[STAT_ARMOR],
-				&client->ps.stats[STAT_WEAPONS],
-				&client->ps.stats[STAT_ITEMS],
-				&client->ps.weapon,
-				&client->ps.weaponstate,
-				&client->ps.batteryCharge,
-				&client->ps.viewangles[0],
-				&client->ps.viewangles[1],
-				&client->ps.viewangles[2],
-				//force power data
-				&client->ps.forcePowersKnown,
-				&client->ps.forcePower,
-				&client->ps.forcePowerMax,
-				&client->ps.forcePowerRegenRate,
-				&client->ps.forcePowerRegenAmount,
-				//saber 1 data
-				saber0Name,
-				&saber1BladeActive[0],
-				&saber1BladeActive[1],
-				&saber1BladeActive[2],
-				&saber1BladeActive[3],
-				&saber1BladeActive[4],
-				&saber1BladeActive[5],
-				&saber1BladeActive[6],
-				&saber1BladeActive[7],
-				&saber1BladeColor[0],
-				&saber1BladeColor[1],
-				&saber1BladeColor[2],
-				&saber1BladeColor[3],
-				&saber1BladeColor[4],
-				&saber1BladeColor[5],
-				&saber1BladeColor[6],
-				&saber1BladeColor[7],
-				//saber 2 data
-				saber1Name,
-				&saber2BladeActive[0],
-				&saber2BladeActive[1],
-				&saber2BladeActive[2],
-				&saber2BladeActive[3],
-				&saber2BladeActive[4],
-				&saber2BladeActive[5],
-				&saber2BladeActive[6],
-				&saber2BladeActive[7],
-				&saber2BladeColor[0],
-				&saber2BladeColor[1],
-				&saber2BladeColor[2],
-				&saber2BladeColor[3],
-				&saber2BladeColor[4],
-				&saber2BladeColor[5],
-				&saber2BladeColor[6],
-				&saber2BladeColor[7],
-				//general saber data
-				&client->ps.saberStylesKnown,
-				&client->ps.saberAnimLevel,
-				&client->ps.saberLockEnemy,
-				&client->ps.saberLockTime
-			);
-			for (int j = 0; j < 8; j++)
-			{
-				client->ps.saber[0].blade[j].active = saber1BladeActive[j] ? qtrue : qfalse;
-				client->ps.saber[0].blade[j].color = static_cast<saber_colors_t>(saber1BladeColor[j]);
-				client->ps.saber[1].blade[j].active = saber2BladeActive[j] ? qtrue : qfalse;
-				client->ps.saber[1].blade[j].color = static_cast<saber_colors_t>(saber2BladeColor[j]);
-			}
-
-			ent->health = client->ps.stats[STAT_HEALTH];
-
-			if (ent->client->ps.saber[0].name && gi.bIsFromZone(ent->client->ps.saber[0].name, TAG_G_ALLOC))
-			{
-				gi.Free(ent->client->ps.saber[0].name);
-			}
-			ent->client->ps.saber[0].name = nullptr;
-
-			if (ent->client->ps.saber[1].name && gi.bIsFromZone(ent->client->ps.saber[1].name, TAG_G_ALLOC))
-			{
-				gi.Free(ent->client->ps.saber[1].name);
-			}
-			ent->client->ps.saber[1].name = nullptr;
-			//NOTE: if sscanf can get a "(null)" out of strings that had NULL string pointers plugged into the original string
-			if (saber0Name[0] && Q_stricmp("(null)", saber0Name) != 0)
-			{
-				ent->client->ps.saber[0].name = G_NewString(saber0Name);
-			}
-			if (saber1Name[0] && Q_stricmp("(null)", saber1Name) != 0)
-			{
-				//have a second saber
-				ent->client->ps.saber[1].name = G_NewString(saber1Name);
-				ent->client->ps.dualSabers = qtrue;
-			}
-			else
-			{
-				//have only 1 saber
-				ent->client->ps.dualSabers = qfalse;
-			}
-
-			// slight issue with ths for the moment in that although it'll correctly restore angles it doesn't take into account
-			//	the overall map orientation, so (eg) exiting east to enter south will be out by 90 degrees, best keep spawn angles for now
-			//
-			//			VectorClear (ent->client->pers.cmd_angles);
-			//
-			//			SetClientViewAngle( ent, ent->client->ps.viewangles);
-
-			//ammo
-			gi.Cvar_VariableStringBuffer("playerammo", s, sizeof s);
-			int i = 0;
-			const char* var = strtok(s, " ");
-			while (var != nullptr)
-			{
-				/* While there are tokens in "s" */
-				client->ps.ammo[i++] = atoi(var);
-				/* Get next token: */
-				var = strtok(nullptr, " ");
-			}
-			assert(i == AMMO_MAX);
-
-			//inventory
-			gi.Cvar_VariableStringBuffer("playerinv", s, sizeof s);
-			i = 0;
-			var = strtok(s, " ");
-			while (var != nullptr)
-			{
-				/* While there are tokens in "s" */
-				client->ps.inventory[i++] = atoi(var);
-				/* Get next token: */
-				var = strtok(nullptr, " ");
-			}
-			assert(i == INV_MAX);
-
-			// the new JK2 stuff - force powers, etc...
-			//
-			gi.Cvar_VariableStringBuffer("playerfplvl", s, sizeof s);
-			i = 0;
-			var = strtok(s, " ");
-			while (var != nullptr)
-			{
-				/* While there are tokens in "s" */
-				client->ps.forcePowerLevel[i++] = atoi(var);
-				/* Get next token: */
-				var = strtok(nullptr, " ");
-			}
-			assert(i == NUM_FORCE_POWERS);
-
-			client->ps.forceGripentity_num = client->ps.forceDrainentity_num = ENTITYNUM_NONE;
-		}
+		gi.Printf("Player_RestoreFromPrevLevel: NULL client on entity %d\n", ent->s.number);
+		return;
 	}
+
+	char s[MAX_STRING_CHARS];
+
+	// Load the main player-save string
+	gi.Cvar_VariableStringBuffer(sCVARNAME_PLAYERSAVE, s, sizeof(s));
+
+	// If nothing stored, nothing to restore
+	if (s[0] == '\0')
+	{
+		return;
+	}
+
+	char saber1Name[MAX_QPATH];
+	char saber0Name[MAX_QPATH];
+
+	// Per-blade active flags and colors for both sabers
+	int           saber1BladeActive[8] = { 0 };
+	int           saber2BladeActive[8] = { 0 };
+	unsigned int  saber1BladeColor[8] = { 0u };
+	unsigned int  saber2BladeColor[8] = { 0u };
+
+	// We expect a fixed number of fields from the save string
+	const int expectedFields = 53;
+
+	const int numScanned = sscanf(
+		s,
+		"%i %i %i %i %i %i %i %f %f %f %i %i %i %i %i %s %i %i %i %i %i %i %i %i %u %u %u %u %u %u %u %u %s %i %i %i %i %i %i %i %i %u %u %u %u %u %u %u %u %i %i %i %i",
+		&client->ps.stats[STAT_HEALTH],
+		&client->ps.stats[STAT_ARMOR],
+		&client->ps.stats[STAT_WEAPONS],
+		&client->ps.stats[STAT_ITEMS],
+		&client->ps.weapon,
+		&client->ps.weaponstate,
+		&client->ps.batteryCharge,
+		&client->ps.viewangles[0],
+		&client->ps.viewangles[1],
+		&client->ps.viewangles[2],
+		// force power data
+		&client->ps.forcePowersKnown,
+		&client->ps.forcePower,
+		&client->ps.forcePowerMax,
+		&client->ps.forcePowerRegenRate,
+		&client->ps.forcePowerRegenAmount,
+		// saber 1 data
+		saber0Name,
+		&saber1BladeActive[0],
+		&saber1BladeActive[1],
+		&saber1BladeActive[2],
+		&saber1BladeActive[3],
+		&saber1BladeActive[4],
+		&saber1BladeActive[5],
+		&saber1BladeActive[6],
+		&saber1BladeActive[7],
+		&saber1BladeColor[0],
+		&saber1BladeColor[1],
+		&saber1BladeColor[2],
+		&saber1BladeColor[3],
+		&saber1BladeColor[4],
+		&saber1BladeColor[5],
+		&saber1BladeColor[6],
+		&saber1BladeColor[7],
+		// saber 2 data
+		saber1Name,
+		&saber2BladeActive[0],
+		&saber2BladeActive[1],
+		&saber2BladeActive[2],
+		&saber2BladeActive[3],
+		&saber2BladeActive[4],
+		&saber2BladeActive[5],
+		&saber2BladeActive[6],
+		&saber2BladeActive[7],
+		&saber2BladeColor[0],
+		&saber2BladeColor[1],
+		&saber2BladeColor[2],
+		&saber2BladeColor[3],
+		&saber2BladeColor[4],
+		&saber2BladeColor[5],
+		&saber2BladeColor[6],
+		&saber2BladeColor[7],
+		// general saber data
+		&client->ps.saberStylesKnown,
+		&client->ps.saberAnimLevel,
+		&client->ps.saberLockEnemy,
+		&client->ps.saberLockTime
+	);
+
+	// Handle malformed or incomplete save data gracefully
+	if (numScanned != expectedFields)
+	{
+		gi.Printf(
+			"Player_RestoreFromPrevLevel: sscanf read %d fields, expected %d. Save data may be corrupt.\n",
+			numScanned, expectedFields);
+		return;
+	}
+
+	// Restore saber blade states and colors
+	for (int j = 0; j < 8; j++)
+	{
+		client->ps.saber[0].blade[j].active = (saber1BladeActive[j] != 0) ? qtrue : qfalse;
+		client->ps.saber[0].blade[j].color = static_cast<saber_colors_t>(saber1BladeColor[j]);
+
+		client->ps.saber[1].blade[j].active = (saber2BladeActive[j] != 0) ? qtrue : qfalse;
+		client->ps.saber[1].blade[j].color = static_cast<saber_colors_t>(saber2BladeColor[j]);
+	}
+
+	// Sync entity health with playerstate
+	ent->health = client->ps.stats[STAT_HEALTH];
+
+	// Free any existing saber names that came from the game alloc zone
+	if (ent->client->ps.saber[0].name && gi.bIsFromZone(ent->client->ps.saber[0].name, TAG_G_ALLOC))
+	{
+		gi.Free(ent->client->ps.saber[0].name);
+	}
+	ent->client->ps.saber[0].name = nullptr;
+
+	if (ent->client->ps.saber[1].name && gi.bIsFromZone(ent->client->ps.saber[1].name, TAG_G_ALLOC))
+	{
+		gi.Free(ent->client->ps.saber[1].name);
+	}
+	ent->client->ps.saber[1].name = nullptr;
+
+	// NOTE: if sscanf can get a "(null)" out of strings that had NULL string pointers plugged into the original string
+	if (saber0Name[0] != '\0' && Q_stricmp("(null)", saber0Name) != 0)
+	{
+		ent->client->ps.saber[0].name = G_NewString(saber0Name);
+	}
+
+	if (saber1Name[0] != '\0' && Q_stricmp("(null)", saber1Name) != 0)
+	{
+		// Have a second saber
+		ent->client->ps.saber[1].name = G_NewString(saber1Name);
+		ent->client->ps.dualSabers = qtrue;
+	}
+	else
+	{
+		// Have only 1 saber
+		ent->client->ps.dualSabers = qfalse;
+	}
+
+	// slight issue with this for the moment in that although it'll correctly restore angles it doesn't take into account
+	// the overall map orientation, so (eg) exiting east to enter south will be out by 90 degrees, best keep spawn angles for now
+	//
+	// VectorClear (ent->client->pers.cmd_angles);
+	// SetClientViewAngle( ent, ent->client->ps.viewangles );
+
+	// Restore ammo
+	gi.Cvar_VariableStringBuffer("playerammo", s, sizeof(s));
+	int         i = 0;
+	const char* var = strtok(s, " ");
+	while (var != nullptr)
+	{
+		client->ps.ammo[i++] = atoi(var);
+		var = strtok(nullptr, " ");
+	}
+	if (i != AMMO_MAX)
+	{
+		gi.Printf(
+			"Player_RestoreFromPrevLevel: ammo count mismatch (%d of %d)\n",
+			i, AMMO_MAX);
+	}
+
+	// Restore inventory
+	gi.Cvar_VariableStringBuffer("playerinv", s, sizeof(s));
+	i = 0;
+	var = strtok(s, " ");
+	while (var != nullptr)
+	{
+		client->ps.inventory[i++] = atoi(var);
+		var = strtok(nullptr, " ");
+	}
+	if (i != INV_MAX)
+	{
+		gi.Printf(
+			"Player_RestoreFromPrevLevel: inventory count mismatch (%d of %d)\n",
+			i, INV_MAX);
+	}
+
+	// Restore force power levels
+	gi.Cvar_VariableStringBuffer("playerfplvl", s, sizeof(s));
+	i = 0;
+	var = strtok(s, " ");
+	while (var != nullptr)
+	{
+		client->ps.forcePowerLevel[i++] = atoi(var);
+		var = strtok(nullptr, " ");
+	}
+	if (i != NUM_FORCE_POWERS)
+	{
+		gi.Printf(
+			"Player_RestoreFromPrevLevel: force power count mismatch (%d of %d)\n",
+			i, NUM_FORCE_POWERS);
+	}
+
+	// Clear any lingering grip/drain targets
+	client->ps.forceGripentity_num = ENTITYNUM_NONE;
+	client->ps.forceDrainentity_num = ENTITYNUM_NONE;
 }
+
 
 static void G_SetSkin(gentity_t* ent)
 {

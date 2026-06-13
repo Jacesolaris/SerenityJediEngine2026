@@ -2763,12 +2763,6 @@ static int PM_SaberAttackChainAngle(const int move1, const int move2)
 
 qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NONE)
 {
-	//prevent crash when global pm is corrupted or null
-	if ((uintptr_t)pm == (uintptr_t)-1 || !pm || !pm->ps)
-	{
-		Com_Printf("PM_SaberKataDone: pm corrupted (0x%llX) or null\n", (unsigned long long)(uintptr_t)pm);
-		return qtrue;
-	}
 	if (pm->ps->forceRageRecoveryTime > level.time)
 	{
 		//rage recovery, only 1 swing at a time (tired)
@@ -3352,6 +3346,11 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 {
 	vec3_t fwd_angles, jumpFwd;
 
+	if (in_camera)
+	{
+		return LS_NONE; // don't do this in camera mode
+	}
+
 	WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 
 	//see if we have an overridden (or cancelled) lunge move
@@ -3484,6 +3483,10 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 
 qboolean PM_CheckLungeAttackMove()
 {
+	if (in_camera)
+	{
+		return qfalse; // don't do this in camera mode
+	}
 	//check to see if it's cancelled?
 	if (pm->ps->saber[0].lungeAtkMove == LS_NONE)
 	{
@@ -4495,7 +4498,7 @@ saberMoveName_t PM_CheckPullAttack()
 		&& pm->ps->saberAnimLevel <= SS_STRONG
 		&& G_TryingPullAttack(pm->gent, &pm->cmd, qfalse)
 		&& pm->cmd.buttons & BUTTON_ATTACK //attacking
-		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK, qtrue, isPlayer))
+		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK, qfalse, isPlayer))
 	{
 		qboolean do_move = g_saberNewControlScheme->integer ? qtrue : qfalse;
 		//in new control scheme, can always do this, even if there's no-one to do it to

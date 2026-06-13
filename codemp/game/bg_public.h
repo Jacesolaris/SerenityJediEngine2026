@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-12,Month-06,Year-26,BuildNum-07" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-13,Month-06,Year-26,BuildNum-07" // build date
 
 #define	STEPSIZE		18
 

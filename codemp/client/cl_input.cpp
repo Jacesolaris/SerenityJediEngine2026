@@ -1119,14 +1119,7 @@ static void CL_JoystickMove(usercmd_t* cmd)
 	{
 		if (cl_mYawOverride)
 		{
-			if (cl_mSensitivityOverride)
-			{
-				cl.viewangles[YAW] += cl_mYawOverride * cl_mSensitivityOverride * yaw / 2.0f;
-			}
-			else
-			{
-				cl.viewangles[YAW] += cl_mYawOverride * OVERRIDE_MOUSE_SENSITIVITY * yaw / 2.0f;
-			}
+			cl.viewangles[YAW] += 5.0f * cl_mYawOverride * yaw;
 		}
 		else
 		{
@@ -1144,20 +1137,13 @@ static void CL_JoystickMove(usercmd_t* cmd)
 	{
 		if (cl_mPitchOverride)
 		{
-			if (cl_mSensitivityOverride)
-			{
-				cl.viewangles[PITCH] += cl_mPitchOverride * cl_mSensitivityOverride * forward / 2.0f;
-			}
-			else
-			{
-				cl.viewangles[PITCH] += cl_mPitchOverride * OVERRIDE_MOUSE_SENSITIVITY * forward / 2.0f;
-			}
+			cl.viewangles[PITCH] += 5.0f * cl_mPitchOverride * forward;
 		}
 		else
 		{
 			cl.viewangles[PITCH] -= anglespeed * ((forward / 11.38) * j_sensitivity->value);
 		}
-		cmd->forwardmove = ClampCharMove(cmd->forwardmove + (int)pitch);
+		cmd->forwardmove = ClampCharMove(cmd->forwardmove - (int)pitch);
 	}
 	else
 	{
@@ -1172,14 +1158,7 @@ static void CL_JoystickMove(usercmd_t* cmd)
 	{
 		if (cl_mYawOverride)
 		{
-			if (cl_mSensitivityOverride)
-			{
-				cl.viewangles[YAW] += cl_mYawOverride * cl_mSensitivityOverride * cl.joystickAxis[AXIS_SIDE] / 2.0f;
-			}
-			else
-			{
-				cl.viewangles[YAW] += cl_mYawOverride * OVERRIDE_MOUSE_SENSITIVITY * cl.joystickAxis[AXIS_SIDE] / 2.0f;
-			}
+			cl.viewangles[YAW] += 5.0f * cl_mYawOverride * cl.joystickAxis[AXIS_SIDE];
 		}
 		else
 		{
@@ -1191,18 +1170,11 @@ static void CL_JoystickMove(usercmd_t* cmd)
 		cmd->rightmove = ClampChar(cmd->rightmove + cl.joystickAxis[AXIS_SIDE]);
 	}
 
-	if (in_mlooking || cl_freelook->integer)
+	if (in_mlooking)
 	{
 		if (cl_mPitchOverride)
 		{
-			if (cl_mSensitivityOverride)
-			{
-				cl.viewangles[PITCH] += cl_mPitchOverride * cl_mSensitivityOverride * cl.joystickAxis[AXIS_FORWARD] / 2.0f;
-			}
-			else
-			{
-				cl.viewangles[PITCH] += cl_mPitchOverride * OVERRIDE_MOUSE_SENSITIVITY * cl.joystickAxis[AXIS_FORWARD] / 2.0f;
-			}
+			cl.viewangles[PITCH] += 5.0f * cl_mPitchOverride * cl.joystickAxis[AXIS_FORWARD];
 		}
 		else
 		{

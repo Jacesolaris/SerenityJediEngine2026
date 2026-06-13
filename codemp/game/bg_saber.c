@@ -6684,13 +6684,13 @@ static void PM_SaberFatigue(playerState_t* ps, const int new_move)
 			{//single sabers
 				if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_MAX)
 				{
-					if ((pm->ps->saberAttackChainCount & 1) == 0)  // even number
-					{
-						if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_MAX)
-						{
-							pm->ps->saberFatigueChainCount++;
-						}
-					}
+					//if ((pm->ps->saberAttackChainCount & 1) == 0)  // even number
+					//{
+					//	if (pm->ps->saberFatigueChainCount < MISHAPLEVEL_MAX)
+					//	{
+					//		pm->ps->saberFatigueChainCount++;
+					//	}
+					//}
 				}
 			}
 		}
