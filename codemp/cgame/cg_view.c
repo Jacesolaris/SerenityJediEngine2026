@@ -85,7 +85,7 @@ can then be moved around
 */
 void CG_TestModel_f(void)
 {
-	vec3_t angles = {0};
+	vec3_t angles = { 0 };
 
 	memset(&cg.testModelEntity, 0, sizeof cg.testModelEntity);
 	if (trap->Cmd_Argc() < 2)
@@ -2574,6 +2574,111 @@ qboolean CG_CullPointAndRadius(const vec3_t pt, const float radius)
 
 //=========================================================================
 
+static qboolean Holding_Gun_And_Walking(void)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+	const centity_t* cent = &cg_entities[cg.snap->ps.clientNum];
+
+	if (holding_walking_button)
+	{
+		switch (cent->currentState.weapon)
+		{
+		case WP_MELEE:
+		case WP_STUN_BATON:
+		case WP_BRYAR_PISTOL:
+		case WP_BLASTER:
+		case WP_DISRUPTOR:
+		case WP_BOWCASTER:
+		case WP_REPEATER:
+		case WP_DEMP2:
+		case WP_FLECHETTE:
+		case WP_ROCKET_LAUNCHER:
+		case WP_THERMAL:
+		case WP_TRIP_MINE:
+		case WP_DET_PACK:
+		case WP_CONCUSSION:
+		case WP_BRYAR_OLD:
+		case WP_EMPLACED_GUN:
+		case WP_TURRET:
+			// Is Gunner...
+			return qtrue;
+		default:
+			// NOT Gunner...
+			break;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Holding_Gun_And_Walking_And_Blocking(void)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+	const qboolean holding_block_button = (cg.predictedPlayerState.pm_flags & PMF_BLOCK_HELD) ? qtrue : qfalse;
+	const centity_t* cent = &cg_entities[cg.snap->ps.clientNum];
+
+	if (holding_block_button && holding_walking_button)
+	{
+		switch (cent->currentState.weapon)
+		{
+		case WP_MELEE:
+		case WP_STUN_BATON:
+		case WP_BRYAR_PISTOL:
+		case WP_BLASTER:
+		case WP_DISRUPTOR:
+		case WP_BOWCASTER:
+		case WP_REPEATER:
+		case WP_DEMP2:
+		case WP_FLECHETTE:
+		case WP_ROCKET_LAUNCHER:
+		case WP_THERMAL:
+		case WP_TRIP_MINE:
+		case WP_DET_PACK:
+		case WP_CONCUSSION:
+		case WP_BRYAR_OLD:
+		case WP_EMPLACED_GUN:
+		case WP_TURRET:
+			// Is Gunner...
+			return qtrue;
+		default:
+			// NOT Gunner...
+			break;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Holding_Saber_And_Its_Turned_On(void)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+
+	if (holding_walking_button)
+	{
+		if ((cg.snap->ps.weapon == WP_SABER) && (!cg.snap->ps.saberHolstered)) // saber is active
+		{
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Holding_Saber_And_Its_Turned_Off(void)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+
+	if (holding_walking_button)
+	{
+		if ((cg.snap->ps.weapon == WP_SABER) && (cg.snap->ps.saberHolstered)) // saber is off
+		{
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
 /*
 =================
 CG_DrawActiveFrame
@@ -2596,8 +2701,6 @@ extern int CinematicNum;
 
 void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, const qboolean demoPlayback)
 {
-	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
-	const qboolean holding_block_button = (cg.predictedPlayerState.pm_flags & PMF_BLOCK_HELD) ? qtrue : qfalse;
 	const char* cstr;
 	float mSensitivity = cg.zoomSensitivity;
 	static centity_t* veh = NULL;
@@ -2744,7 +2847,7 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 				mPitchOverride = 0.08f;
 				mYawOverride = 0.08f;
 			}
-			trap->SetUserCmdValue(cg.weaponSelect, mSensitivity, mPitchOverride, mYawOverride, 0.0f, cg.forceSelect,cg.itemSelect, qtrue);
+			trap->SetUserCmdValue(cg.weaponSelect, mSensitivity, mPitchOverride, mYawOverride, 0.0f, cg.forceSelect, cg.itemSelect, qtrue);
 			veh = NULL;
 			//this is done because I don't want an extra assign each frame because I am so perfect and super efficient.
 		}
@@ -2752,17 +2855,32 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 		{
 			// ---------------------------------------------------------
 			// Precision mode for joystick: slow aim when WALK held
-			// ---------------------------------------------------------
-			if ((in_joystick.integer) && //if we are using a joystick
-				((cg.snap->ps.weapon != WP_SABER) || //if we are not using a saber
-					((cg.snap->ps.weapon == WP_SABER) && (!cg.snap->ps.saberHolstered) && !holding_block_button)) && // if we are using a saber, it is not active and we are not holding block
-				(holding_walking_button)) //and we are holding the walk button
-			{
-				mPitchOverride = 0.05f; //slow down the pitch
-				mYawOverride = 0.05f; //slow down the yaw
+			//
+			if ((in_joystick.integer && cg_scaleJoystickSensitivity.integer))
+			{ // scale sensitivity based on joystick settings
+				if (Holding_Gun_And_Walking())
+				{
+					mPitchOverride = 0.05f; //slow down the pitch
+					mYawOverride = 0.05f; //slow down the yaw
+				}
+				if (Holding_Gun_And_Walking_And_Blocking())
+				{
+					mPitchOverride = 0.025f; //slow down the pitch for aiming guns
+					mYawOverride = 0.025f; //slow down the yaw  for aiming guns
+				}
+				if (Holding_Saber_And_Its_Turned_On())
+				{
+					mPitchOverride = 0.07f; // faster up and downpitch for saber combat
+					mYawOverride = 0.07f; // faster side to side yaw for saber dueling
+				}
+				if (Holding_Saber_And_Its_Turned_Off())
+				{
+					mPitchOverride = 0.06f; //slow down the pitch
+					mYawOverride = 0.06f; //slow down the yaw
+				}
 			}
 
-			trap->SetUserCmdValue(cg.weaponSelect, mSensitivity, mPitchOverride, mYawOverride, 0.0f, cg.forceSelect,cg.itemSelect, qfalse);
+			trap->SetUserCmdValue(cg.weaponSelect, mSensitivity, mPitchOverride, mYawOverride, 0.0f, cg.forceSelect, cg.itemSelect, qfalse);
 		}
 	}
 

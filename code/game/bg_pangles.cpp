@@ -267,136 +267,177 @@ static void BG_IK_MoveLimb(CGhoul2Info_v& ghoul2, const int boltIndex, const cha
 
 static void PM_IKUpdate(gentity_t* ent)
 {
-	//The bone we're holding them by and the next bone after that
-	const auto anim_bone = "lower_lumbar";
-	const auto first_bone = "lradius";
-	const auto second_bone = "lhumerus";
-	const auto default_bolt_name = "*r_hand";
+	// ---------------------------------------------------------
+	// Safety: ent may be NULL in MP (bg_pmove caller does not guarantee validity)
+	// ---------------------------------------------------------
+	if (ent == NULL)
+	{
+		Com_Printf("PM_IKUpdate: ent was NULL\n");
+		return;
+	}
 
-	if (!ent->client)
+	// Must have a client to perform IK
+	if (ent->client == NULL)
 	{
 		return;
 	}
+
+	// Bone names used for IK
+	const char* anim_bone = "lower_lumbar";
+	const char* first_bone = "lradius";
+	const char* second_bone = "lhumerus";
+	const char* default_bolt_name = "*r_hand";
+
+	// ---------------------------------------------------------
+	// CASE 1: Being held by another client
+	// ---------------------------------------------------------
 	if (ent->client->ps.heldByClient <= ENTITYNUM_WORLD)
 	{
-		//then put our arm in this client's hand
 		gentity_t* holder = &g_entities[ent->client->ps.heldByClient];
 
-		if (holder && holder->inuse && holder->client && holder->ghoul2.size())
+		// Validate holder
+		if (holder == NULL || holder->inuse == qfalse || holder->client == NULL || holder->ghoul2.size() == 0)
 		{
-			if (!ent->client->ps.heldByBolt)
-			{
-				//bolt wasn't set
-				ent->client->ps.heldByBolt = gi.G2API_AddBolt(&holder->ghoul2[0], default_bolt_name);
-			}
-		}
-		else
-		{
-			//they're gone, stop holding me
+			// Holder invalid → release
 			ent->client->ps.heldByClient = 0;
 			return;
 		}
 
-		if (ent->client->ps.heldByBolt)
+		// Ensure we have a bolt index
+		if (ent->client->ps.heldByBolt == 0)
+		{
+			ent->client->ps.heldByBolt = gi.G2API_AddBolt(&holder->ghoul2[0], default_bolt_name);
+		}
+
+		if (ent->client->ps.heldByBolt != 0)
 		{
 			mdxaBone_t boltMatrix;
 			vec3_t bolt_org;
 			vec3_t t_angles;
 
+			// Holder's yaw only
 			VectorCopy(holder->client->ps.viewangles, t_angles);
-			t_angles[PITCH] = t_angles[ROLL] = 0;
+			t_angles[PITCH] = 0.0f;
+			t_angles[ROLL] = 0.0f;
 
-			gi.G2API_GetBoltMatrix(holder->ghoul2, 0, ent->client->ps.heldByBolt, &boltMatrix, t_angles,
-				holder->client->ps.origin, level.time, nullptr, holder->s.modelScale);
+			gi.G2API_GetBoltMatrix(holder->ghoul2, 0, ent->client->ps.heldByBolt,
+				&boltMatrix, t_angles, holder->client->ps.origin,
+				level.time, NULL, holder->s.modelScale);
+
 			gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, bolt_org);
 
+			// Add bolt to grabbed entity
 			const int grabbedByBolt = gi.G2API_AddBolt(&ent->ghoul2[0], first_bone);
-			if (grabbedByBolt)
+
+			if (grabbedByBolt != 0)
 			{
-				//point the limb
-				BG_IK_MoveLimb(ent->ghoul2, grabbedByBolt, anim_bone, first_bone, second_bone,
-					level.time, &ent->s, ent->client->clientInfo.animFileIndex,
-					ent->client->ps.torsoAnim/*BOTH_DEAD1*/, bolt_org, &ent->client->ps.ikStatus,
-					ent->client->ps.origin, ent->client->ps.viewangles, ent->s.modelScale,
+				// ---------------------------------------------------------
+				// IK limb movement
+				// ---------------------------------------------------------
+				BG_IK_MoveLimb(ent->ghoul2, grabbedByBolt,
+					anim_bone, first_bone, second_bone,
+					level.time, &ent->s,
+					ent->client->clientInfo.animFileIndex,
+					ent->client->ps.torsoAnim,
+					bolt_org, &ent->client->ps.ikStatus,
+					ent->client->ps.origin,
+					ent->client->ps.viewangles,
+					ent->s.modelScale,
 					500, qfalse);
 
-				//now see if we need to be turned and/or pulled
-				vec3_t grab_diff, grabbed_by_org;
+				// ---------------------------------------------------------
+				// Turning and pulling logic
+				// ---------------------------------------------------------
+				vec3_t grabbed_by_org;
+				vec3_t grab_diff;
 
 				VectorCopy(ent->client->ps.viewangles, t_angles);
-				t_angles[PITCH] = t_angles[ROLL] = 0;
+				t_angles[PITCH] = 0.0f;
+				t_angles[ROLL] = 0.0f;
 
-				gi.G2API_GetBoltMatrix(ent->ghoul2, 0, grabbedByBolt, &boltMatrix, t_angles, ent->client->ps.origin,
-					level.time, nullptr, ent->s.modelScale);
+				gi.G2API_GetBoltMatrix(ent->ghoul2, 0, grabbedByBolt,
+					&boltMatrix, t_angles, ent->client->ps.origin,
+					level.time, NULL, ent->s.modelScale);
+
 				gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, grabbed_by_org);
 
-				//check for turn
+				// Turning
 				vec3_t org2_targ, org2_bolt;
 				VectorSubtract(bolt_org, ent->currentOrigin, org2_targ);
-				const float org2_targ_yaw = vectoyaw(org2_targ);
 				VectorSubtract(grabbed_by_org, ent->currentOrigin, org2_bolt);
+
+				const float org2_targ_yaw = vectoyaw(org2_targ);
 				const float org2_bolt_yaw = vectoyaw(org2_bolt);
+
 				if (org2_targ_yaw - 1.0f > org2_bolt_yaw)
 				{
-					ent->currentAngles[YAW]++;
+					ent->currentAngles[YAW] += 1.0f;
 					G_SetAngles(ent, ent->currentAngles);
 				}
 				else if (org2_targ_yaw + 1.0f < org2_bolt_yaw)
 				{
-					ent->currentAngles[YAW]--;
+					ent->currentAngles[YAW] -= 1.0f;
 					G_SetAngles(ent, ent->currentAngles);
 				}
 
-				//check for pull
+				// Pulling
 				VectorSubtract(bolt_org, grabbed_by_org, grab_diff);
+
 				if (VectorLength(grab_diff) > 128.0f)
 				{
-					//too far, release me
-					ent->client->ps.heldByClient = holder->client->ps.heldClient = ENTITYNUM_NONE;
+					// Too far → release
+					ent->client->ps.heldByClient = ENTITYNUM_NONE;
+					holder->client->ps.heldClient = ENTITYNUM_NONE;
 				}
-				else if (true)
+				else
 				{
-					//pull me along
 					trace_t trace;
 					vec3_t dest_org;
+
 					VectorAdd(ent->currentOrigin, grab_diff, dest_org);
-					gi.trace(&trace, ent->currentOrigin, ent->mins, ent->maxs, dest_org, ent->s.number,
-						ent->clipmask & ~holder->contents, static_cast<EG2_Collision>(0), 0);
+
+					gi.trace(&trace, ent->currentOrigin, ent->mins, ent->maxs,
+						dest_org, ent->s.number,
+						ent->clipmask & ~holder->contents,
+						static_cast<EG2_Collision>(0), 0);
+
 					G_SetOrigin(ent, trace.endpos);
-					//FIXME: better yet: do an actual slidemove to the new pos?
-					//FIXME: if I'm alive, just tell me to walk some?
 				}
-				//FIXME: if I need to turn to keep my bone facing him, do so...
 			}
-			//don't let us fall?
+
+			// Prevent falling
 			VectorClear(ent->client->ps.velocity);
-			//FIXME: also make the holder point his holding limb at you?
 		}
 	}
-	else if (ent->client->ps.ikStatus)
+	// ---------------------------------------------------------
+	// CASE 2: IK active but not held by anyone
+	// ---------------------------------------------------------
+	else if (ent->client->ps.ikStatus == qtrue)
 	{
-		//make sure we aren't IKing if we don't have anyone to hold onto us.
-		if (ent && ent->inuse && ent->client && ent->ghoul2.size())
+		if (ent->inuse == qfalse || ent->ghoul2.size() == 0)
 		{
-			if (!ent->client->ps.heldByBolt)
-			{
-				ent->client->ps.heldByBolt = gi.G2API_AddBolt(&ent->ghoul2[0], default_bolt_name);
-			}
-		}
-		else
-		{
-			//This shouldn't happen, but just in case it does, we'll have a fail safe.
 			ent->client->ps.heldByBolt = 0;
 			ent->client->ps.ikStatus = qfalse;
+			return;
 		}
 
-		if (ent->client->ps.heldByBolt)
+		if (ent->client->ps.heldByBolt == 0)
 		{
-			BG_IK_MoveLimb(ent->ghoul2, ent->client->ps.heldByBolt, anim_bone, first_bone, second_bone,
-				level.time, &ent->s, ent->client->clientInfo.animFileIndex,
-				ent->client->ps.torsoAnim/*BOTH_DEAD1*/, vec3_origin,
-				&ent->client->ps.ikStatus, ent->client->ps.origin,
-				ent->client->ps.viewangles, ent->s.modelScale, 500, qtrue);
+			ent->client->ps.heldByBolt = gi.G2API_AddBolt(&ent->ghoul2[0], default_bolt_name);
+		}
+
+		if (ent->client->ps.heldByBolt != 0)
+		{
+			BG_IK_MoveLimb(ent->ghoul2, ent->client->ps.heldByBolt,
+				anim_bone, first_bone, second_bone,
+				level.time, &ent->s,
+				ent->client->clientInfo.animFileIndex,
+				ent->client->ps.torsoAnim,
+				vec3_origin, &ent->client->ps.ikStatus,
+				ent->client->ps.origin,
+				ent->client->ps.viewangles,
+				ent->s.modelScale,
+				500, qtrue);
 		}
 	}
 }
@@ -1266,117 +1307,134 @@ qboolean PM_AdjustAngleForWallJump(gentity_t* ent, usercmd_t* ucmd, const qboole
 
 qboolean pm_adjust_angles_for_bf_kick(gentity_t* self, usercmd_t* ucmd, vec3_t fwd_angs, const qboolean aim_front)
 {
-	gentity_t* entity_list[MAX_GENTITIES];
+	// ---------------------------------------------------------
+	// Large static buffer to avoid MSVC C6262 (excessive stack use)
+	// ---------------------------------------------------------
+	static gentity_t* entity_list[MAX_GENTITIES];
+
 	vec3_t mins{}, maxs{};
-	const int radius = self->maxs[0] * 1.5f + self->maxs[0] * 1.5f + STAFF_KICK_RANGE + 24.0f;
-	//a little wide on purpose
 	vec3_t center, v_fwd;
+
+	const float radius = (self->maxs[0] * 1.5f) + (self->maxs[0] * 1.5f) + STAFF_KICK_RANGE + 24.0f;
+
 	float best_dist = Q3_INFINITE;
 	float best_dot = -1.1f;
 	float best_yaw = Q3_INFINITE;
 
-	AngleVectors(fwd_angs, v_fwd, nullptr, nullptr);
+	// Forward vector from input angles
+	AngleVectors(fwd_angs, v_fwd, NULL, NULL);
 
 	VectorCopy(self->currentOrigin, center);
 
+	// Build bounding box for entity search
 	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = center[i] - radius;
 		maxs[i] = center[i] + radius;
 	}
 
+	// Query nearby entities
 	const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
+	// ---------------------------------------------------------
+	// Find best target to adjust yaw toward
+	// ---------------------------------------------------------
 	for (int e = 0; e < num_listed_entities; e++)
 	{
-		vec3_t vec2_ent;
 		const gentity_t* ent = entity_list[e];
 
+		if (ent == NULL)
+			continue;
 		if (ent == self)
 			continue;
 		if (ent->owner == self)
 			continue;
-		if (!ent->inuse)
+		if (ent->inuse == qfalse)
 			continue;
-		//not a client?
-		if (!ent->client)
+		if (ent->client == NULL)
 			continue;
-		//ally?
 		if (ent->client->playerTeam == self->client->playerTeam)
 			continue;
-		//on the ground
 		if (PM_InKnockDown(&ent->client->ps))
 			continue;
-		//dead?
-		if (ent->health <= 0)
-		{
-			if (level.time - ent->s.time > 2000)
-			{
-				//died more than 2 seconds ago, forget him
-				continue;
-			}
-		}
-		//too far?
+
+		// Dead for too long?
+		if (ent->health <= 0 && (level.time - ent->s.time) > 2000)
+			continue;
+
+		// Distance check
+		vec3_t vec2_ent;
 		VectorSubtract(ent->currentOrigin, center, vec2_ent);
 		const float dist_to_ent = VectorNormalize(vec2_ent);
+
 		if (dist_to_ent > radius)
 			continue;
 
-		if (!aim_front)
+		// Reverse aim direction if needed
+		if (aim_front == qfalse)
 		{
-			//aim away from them
-			VectorScale(vec2_ent, -1, vec2_ent);
+			VectorScale(vec2_ent, -1.0f, vec2_ent);
 		}
+
 		const float dot = DotProduct(vec2_ent, v_fwd);
+
 		if (dot < 0.0f)
-		{
-			//never turn all the way around
 			continue;
-		}
-		if (dot > best_dot || best_dot - dot < 0.25f && dist_to_ent - best_dist > 8.0f)
+
+		// Better target?
+		if (dot > best_dot || (best_dot - dot < 0.25f && dist_to_ent - best_dist > 8.0f))
 		{
-			//more in front... OR: still relatively close to in front and significantly closer
 			best_dot = dot;
 			best_dist = dist_to_ent;
 			best_yaw = vectoyaw(vec2_ent);
 		}
 	}
+
+	// ---------------------------------------------------------
+	// Apply yaw adjustment if a target was found
+	// ---------------------------------------------------------
 	if (best_yaw != Q3_INFINITE && best_yaw != fwd_angs[YAW])
 	{
-		//aim us at them
 		AngleNormalize180(best_yaw);
 		AngleNormalize180(fwd_angs[YAW]);
+
 		const float ang_diff = AngleSubtract(best_yaw, fwd_angs[YAW]);
-		AngleNormalize180(ang_diff);
+
 		if (fabs(ang_diff) <= 3.0f)
 		{
 			self->client->ps.viewangles[YAW] = best_yaw;
 		}
 		else if (ang_diff > 0.0f)
 		{
-			//more than 3 degrees higher
 			self->client->ps.viewangles[YAW] += 3.0f;
 		}
 		else
 		{
-			//must be more than 3 less than
 			self->client->ps.viewangles[YAW] -= 3.0f;
 		}
+
 		if (self->client->ps.viewEntity <= 0 || self->client->ps.viewEntity >= ENTITYNUM_WORLD)
 		{
-			//don't clamp angles when looking through a viewEntity
 			SetClientViewAngle(self, self->client->ps.viewangles);
 		}
-		ucmd->angles[YAW] = ANGLE2SHORT(self->client->ps.viewangles[YAW]) - self->client->ps.delta_angles[YAW];
+
+		ucmd->angles[YAW] =
+			ANGLE2SHORT(self->client->ps.viewangles[YAW]) - self->client->ps.delta_angles[YAW];
+
 		return qtrue;
 	}
-	//lock these angles
+
+	// ---------------------------------------------------------
+	// No target found — lock angles
+	// ---------------------------------------------------------
 	if (self->client->ps.viewEntity <= 0 || self->client->ps.viewEntity >= ENTITYNUM_WORLD)
 	{
-		//don't clamp angles when looking through a viewEntity
 		SetClientViewAngle(self, self->client->ps.viewangles);
 	}
-	ucmd->angles[YAW] = ANGLE2SHORT(self->client->ps.viewangles[YAW]) - self->client->ps.delta_angles[YAW];
+
+	ucmd->angles[YAW] =
+		ANGLE2SHORT(self->client->ps.viewangles[YAW]) - self->client->ps.delta_angles[YAW];
+
 	return qtrue;
 }
 

@@ -29,7 +29,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 constexpr auto TIMER_LAND = 130;
 constexpr auto TIMER_GESTURE = 34 * 66 + 50;
 
-constexpr auto OVERCLIP = 1.001F;
+constexpr auto OVERCLIP = 1.001f;
 
 // all of the locals will be zeroed before each
 // pmove, just to make damn sure we don't have

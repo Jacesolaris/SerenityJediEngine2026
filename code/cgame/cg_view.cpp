@@ -1985,91 +1985,99 @@ CG_DrawSkyBoxPortal
 */
 extern void cgi_CM_SnapPVS(vec3_t origin, byte* buffer);
 
-static void CG_DrawSkyBoxPortal()
+static void CG_DrawSkyBoxPortal(void)
 {
-	const char* cstr;
+	const char* cstr = CG_ConfigString(CS_SKYBOXORG);
 
-	cstr = CG_ConfigString(CS_SKYBOXORG);
-
-	if (!cstr || !strlen(cstr))
+	// No skybox present
+	if (cstr == NULL || cstr[0] == '\0')
 	{
-		// no skybox in this map
 		return;
 	}
 
+	// Backup current refdef
 	const refdef_t backuprefdef = cg.refdef;
 
-	// asdf
+	// Begin parsing
 	COM_BeginParseSession();
-	const char* token = COM_ParseExt(&cstr, qfalse);
-	if (!token || !token[0])
-	{
-		CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring\n");
-	}
-	cg.refdef.vieworg[0] = atof(token);
 
-	token = COM_ParseExt(&cstr, qfalse);
-	if (!token || !token[0])
-	{
-		CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring\n");
-	}
-	cg.refdef.vieworg[1] = atof(token);
+	const char* token = NULL;
 
-	token = COM_ParseExt(&cstr, qfalse);
-	if (!token || !token[0])
-	{
-		CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring\n");
-	}
-	cg.refdef.vieworg[2] = atof(token);
-
-	// setup fog the first time, ignore this part of the configstring after that
-	token = COM_ParseExt(&cstr, qfalse);
-	if (!token || !token[0])
-	{
-		CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring.  No fog state\n");
-	}
-	if (atoi(token))
-	{
-		// this camera has fog
-		token = COM_ParseExt(&cstr, qfalse);
-		if (!VALIDSTRING(token))
+	// ---------------------------------------------------------
+	// Helper lambda for safe token parsing
+	// ---------------------------------------------------------
+	auto ParseRequiredToken = [&](const char* errorMsg) -> const char*
 		{
-			CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring.  No fog[0]\n");
-		}
+			token = COM_ParseExt(&cstr, qfalse);
 
-		token = COM_ParseExt(&cstr, qfalse);
-		if (!VALIDSTRING(token))
-		{
-			CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring.  No fog[1]\n");
-		}
+			if (token == NULL || token[0] == '\0')
+			{
+				CG_Printf(errorMsg);
+				COM_EndParseSession();
+				cg.refdef = backuprefdef;
+				return NULL;
+			}
+			return token;
+		};
 
-		token = COM_ParseExt(&cstr, qfalse);
-		if (!VALIDSTRING(token))
-		{
-			CG_Error("CG_DrawSkyBoxPortal: error parsing skybox configstring.  No fog[2]\n");
-		}
+	// ---------------------------------------------------------
+	// Parse vieworg X Y Z
+	// ---------------------------------------------------------
+	token = ParseRequiredToken("CG_DrawSkyBoxPortal: missing vieworg[0]\n");
+	if (token == NULL) return;
+	cg.refdef.vieworg[0] = static_cast<float>(atof(token));
 
+	token = ParseRequiredToken("CG_DrawSkyBoxPortal: missing vieworg[1]\n");
+	if (token == NULL) return;
+	cg.refdef.vieworg[1] = static_cast<float>(atof(token));
+
+	token = ParseRequiredToken("CG_DrawSkyBoxPortal: missing vieworg[2]\n");
+	if (token == NULL) return;
+	cg.refdef.vieworg[2] = static_cast<float>(atof(token));
+
+	// ---------------------------------------------------------
+	// Fog state
+	// ---------------------------------------------------------
+	token = ParseRequiredToken("CG_DrawSkyBoxPortal: missing fog state\n");
+	if (token == NULL) return;
+
+	const qboolean hasFog = (atoi(token) != 0) ? qtrue : qfalse;
+
+	if (hasFog == qtrue)
+	{
+		// fog[0]
+		if (ParseRequiredToken("CG_DrawSkyBoxPortal: missing fog[0]\n") == NULL) return;
+
+		// fog[1]
+		if (ParseRequiredToken("CG_DrawSkyBoxPortal: missing fog[1]\n") == NULL) return;
+
+		// fog[2]
+		if (ParseRequiredToken("CG_DrawSkyBoxPortal: missing fog[2]\n") == NULL) return;
+
+		// Skip fog range + density (not used after first time)
 		COM_ParseExt(&cstr, qfalse);
 		COM_ParseExt(&cstr, qfalse);
 	}
 
 	COM_EndParseSession();
-	//inherit fov and axis from whatever the player is doing (regular, camera overrides or zoomed, whatever)
-	if (!cg.hyperspace)
+
+	// ---------------------------------------------------------
+	// Render skybox portal
+	// ---------------------------------------------------------
+	if (cg.hyperspace == qfalse)
 	{
-		CG_AddPacketEntities(qtrue); //rww - There was no proper way to put real entities inside the portal view before.
-		//This will put specially flagged entities in the render.
-		//Add effects flagged to play only in portals
-		theFxScheduler.AddScheduledEffects(true);
+		CG_AddPacketEntities(qtrue);
+		theFxScheduler.AddScheduledEffects(qtrue);
 	}
 
-	cg.refdef.rdflags |= RDF_SKYBOXPORTAL; //mark portal scene specialness
-	cg.refdef.rdflags |= RDF_DRAWSKYBOX; //drawk portal skies
+	cg.refdef.rdflags |= RDF_SKYBOXPORTAL;
+	cg.refdef.rdflags |= RDF_DRAWSKYBOX;
 
-	cgi_CM_SnapPVS(cg.refdef.vieworg, cg.refdef.areamask); //fill in my areamask for this view origin
-	// draw the skybox
+	cgi_CM_SnapPVS(cg.refdef.vieworg, cg.refdef.areamask);
+
 	cgi_R_RenderScene(&cg.refdef);
 
+	// Restore original refdef
 	cg.refdef = backuprefdef;
 }
 
@@ -2100,6 +2108,132 @@ static void CG_RunEmplacedWeapon()
 }
 
 //=========================================================================
+
+static qboolean Holding_Gun_And_Walking(const gentity_t* self)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+
+	if (holding_walking_button)
+	{
+		switch (self->client->ps.weapon)
+		{
+		case WP_MELEE:
+		case WP_STUN_BATON:
+		case WP_BLASTER_PISTOL:
+		case WP_BLASTER:
+		case WP_DISRUPTOR:
+		case WP_BOWCASTER:
+		case WP_REPEATER:
+		case WP_DEMP2:
+		case WP_FLECHETTE:
+		case WP_ROCKET_LAUNCHER:
+		case WP_THERMAL:
+		case WP_TRIP_MINE:
+		case WP_DET_PACK:
+		case WP_CONCUSSION:
+		case WP_ATST_MAIN:
+		case WP_ATST_SIDE:
+		case WP_BRYAR_PISTOL:
+		case WP_SBD_PISTOL:
+		case WP_EMPLACED_GUN:
+		case WP_BOT_LASER:
+		case WP_TURRET:
+		case WP_TIE_FIGHTER:
+		case WP_RAPID_FIRE_CONC:
+		case WP_JAWA:
+		case WP_TUSKEN_RIFLE:
+		case WP_TUSKEN_STAFF:
+		case WP_SCEPTER:
+		case WP_NOGHRI_STICK:
+			// Is Gunner...
+			return qtrue;
+		default:
+			// NOT Gunner...
+			break;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Holding_Gun_And_Walking_And_Blocking(const gentity_t* self)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+	const qboolean holding_block_button = (cg.predictedPlayerState.pm_flags & PMF_BLOCK_HELD) ? qtrue : qfalse;
+
+	if (holding_block_button && holding_walking_button)
+	{
+		switch (self->client->ps.weapon)
+		{
+		case WP_MELEE:
+		case WP_STUN_BATON:
+		case WP_BLASTER_PISTOL:
+		case WP_BLASTER:
+		case WP_DISRUPTOR:
+		case WP_BOWCASTER:
+		case WP_REPEATER:
+		case WP_DEMP2:
+		case WP_FLECHETTE:
+		case WP_ROCKET_LAUNCHER:
+		case WP_THERMAL:
+		case WP_TRIP_MINE:
+		case WP_DET_PACK:
+		case WP_CONCUSSION:
+		case WP_ATST_MAIN:
+		case WP_ATST_SIDE:
+		case WP_BRYAR_PISTOL:
+		case WP_SBD_PISTOL:
+		case WP_EMPLACED_GUN:
+		case WP_BOT_LASER:
+		case WP_TURRET:
+		case WP_TIE_FIGHTER:
+		case WP_RAPID_FIRE_CONC:
+		case WP_JAWA:
+		case WP_TUSKEN_RIFLE:
+		case WP_TUSKEN_STAFF:
+		case WP_SCEPTER:
+		case WP_NOGHRI_STICK:
+			// Is Gunner...
+			return qtrue;
+		default:
+			// NOT Gunner...
+			break;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Holding_Saber_And_Its_Turned_Off(const gentity_t* self)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+
+	if (holding_walking_button)
+	{
+		if ((cg.snap->ps.weapon == WP_SABER) && (!cg.snap->ps.SaberActive()))
+		{
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Holding_Saber_And_Its_Turned_On(const gentity_t* self)
+{
+	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
+
+	if (holding_walking_button)
+	{
+		if ((cg.snap->ps.weapon == WP_SABER) && (cg.snap->ps.SaberActive()))
+		{
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
 /*
 =================
 CG_DrawActiveFrame
@@ -2116,9 +2250,6 @@ static qboolean cg_rangedFogging = qfalse; //so we know if we should go back to 
 
 void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView)
 {
-	const qboolean holding_walking_button = (cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) ? qtrue : qfalse;
-	const qboolean holding_block_button = (cg.predictedPlayerState.pm_flags & PMF_BLOCK_HELD) ? qtrue : qfalse;
-
 	qboolean inwater = qfalse;
 
 	cg.time = serverTime;
@@ -2168,7 +2299,6 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView)
 	theFxHelper.AdjustTime(cg.frametime);
 
 	// let the client system know what our weapon and zoom settings are
-	//FIXME: should really send forcePowersActive over network onto cg.snap->ps...
 	const int fpActive = cg_entities[0].gent->client->ps.forcePowersActive;
 	const bool matrixMode = !!(fpActive & (1 << FP_SPEED | 1 << FP_RAGE));
 	float speed = cg.refdef.fov_y / 75.0 * (matrixMode ? 1.0f : cg_timescale.value);
@@ -2185,12 +2315,18 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView)
 	float mYawOverride = 0.0f;
 
 	if (cg.snap->ps.clientNum == 0 && cg_scaleVehicleSensitivity.integer)
-	{
+	{ // Only scale the sensitivity for the local player, not bots or spectators
 		//pointless check, but..
-		if (cg_entities[0].gent != NULL &&
+		if (cg_entities[0].gent != nullptr &&
 			(cg_entities[0].gent->s.eFlags & EF_LOCKED_TO_WEAPON))
 		{
 			speed *= 0.25f;
+		}
+		if (cg_entities[0].gent != nullptr &&
+			cg_entities[0].gent->s.eFlags & EF_IN_ATST)
+		{
+			mPitchOverride = 0.01f;
+			mYawOverride = 0.0075f;
 		}
 		const Vehicle_t* p_veh;
 
@@ -2225,13 +2361,29 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView)
 	// ---------------------------------------------------------
 	// Precision mode for joystick: slow aim when WALK held
 	// ---------------------------------------------------------
-	if ((in_joystick->integer) && //if we are using a joystick
-		((cg.snap->ps.weapon != WP_SABER) || //if we are not using a saber
-			((cg.snap->ps.weapon == WP_SABER) && (!cg.snap->ps.SaberActive()) && !holding_block_button)) && // if we are using a saber, it is not active and we are not holding block
-		(holding_walking_button)) //and we are holding the walk button
+
+	if (cg.snap->ps.clientNum == 0 && (in_joystick->integer && cg_scaleJoystickSensitivity.integer))
 	{
-		mPitchOverride = 0.05f; //slow down the pitch
-		mYawOverride = 0.05f; //slow down the yaw
+		if (Holding_Gun_And_Walking(&g_entities[0]))
+		{
+			mPitchOverride = 0.05f; //slow down the pitch
+			mYawOverride = 0.05f; //slow down the yaw
+		}
+		if (Holding_Gun_And_Walking_And_Blocking(&g_entities[0]))
+		{
+			mPitchOverride = 0.025f; //slow down the pitch for aiming guns
+			mYawOverride = 0.025f; //slow down the yaw  for aiming guns
+		}
+		if (Holding_Saber_And_Its_Turned_On(&g_entities[0]))
+		{
+			mPitchOverride = 0.10f; // faster up and downpitch for saber combat
+			mYawOverride = 0.10f; // faster side to side yaw for saber dueling
+		}
+		if (Holding_Saber_And_Its_Turned_Off(&g_entities[0]))
+		{
+			mPitchOverride = 0.10f; //slow down the pitch
+			mYawOverride = 0.10f; //slow down the yaw
+		}
 	}
 
 	cgi_SetUserCmdValue(cg.weaponSelect, speed, mPitchOverride, mYawOverride);

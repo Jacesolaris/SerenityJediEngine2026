@@ -423,6 +423,7 @@ vmCvar_t cg_fovViewmodel;
 vmCvar_t cg_fovViewmodelAdjust;
 
 vmCvar_t cg_scaleVehicleSensitivity;
+vmCvar_t cg_scaleJoystickSensitivity;
 
 vmCvar_t cg_SaberInnonblockableAttackWarning;
 vmCvar_t cg_IsSaberDoingAttackDamage;
@@ -630,6 +631,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_fovViewmodelAdjust, "cg_fovViewmodelAdjust", "1", CVAR_ARCHIVE},
 
 	{&cg_scaleVehicleSensitivity, "cg_scaleVehicleSensitivity", "1", CVAR_ARCHIVE},
+	{&cg_scaleJoystickSensitivity, "cg_scaleJoystickSensitivity", "1", CVAR_ARCHIVE},
 
 	{&cg_trueguns, "cg_trueguns", "1", CVAR_ARCHIVE},
 	{&cg_fpls, "cg_fpls", "1", CVAR_ARCHIVE},
@@ -2317,20 +2319,23 @@ static void CG_RegisterGraphics()
 		}
 	}
 
-	for (i = 1; i < MAX_TERRAINS; i++)
+	for (int i = 1; i < MAX_TERRAINS; i++)
 	{
 		const char* terrainInfo = CG_ConfigString(CS_TERRAINS + i);
-		if (!terrainInfo[0])
+
+		// If MAX_TERRAINS == 1, this loop never runs — avoid MSVC warning C6294
+		if (terrainInfo == NULL || terrainInfo[0] == '\0')
 		{
 			break;
 		}
+
 		CG_LoadingString("Creating terrain");
 
 		const int terrain_id = cgi_CM_RegisterTerrain(terrainInfo);
 
 		cgi_RMG_Init(terrain_id, terrainInfo);
 
-		// Send off the terrainInfo to the renderer
+		// Send terrainInfo to renderer
 		cgi_RE_InitRendererTerrain(terrainInfo);
 	}
 
