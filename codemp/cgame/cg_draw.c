@@ -8875,8 +8875,8 @@ static void CG_DrawCrosshairItem(void)
 
 		float distSq = VectorLengthSquared(diff);
 
-		// Only show hint if within 512 units
-		if (distSq < (512.0f * 512.0f))
+		// Only show hint if within 256 units
+		if (distSq < (256.0f * 256.0f))
 		{
 			CG_DrawPic(50, 285, 32, 32, cgs.media.useableHint);
 		}
@@ -9152,8 +9152,8 @@ static void CG_DrawCrosshairNames(void)
 
 			float distSq = VectorLengthSquared(diff);
 
-			// Only show hint if within 512 units
-			if (distSq < (512.0f * 512.0f))
+			// Only show hint if within 256 units
+			if (distSq < (256.0f * 256.0f))
 			{
 				CG_DrawPic(50, 285, 32, 32, cgs.media.useableHint);
 			}

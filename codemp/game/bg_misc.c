@@ -3263,13 +3263,13 @@ int BG_EmplacedView(vec3_t base_angles, vec3_t angles, float* new_yaw, const flo
 
 //To see if the client is trying to use one of the included skins not meant for MP.
 //I don't much care for hardcoded strings, but this seems the best way to go.
-qboolean BG_IsValidCharacterModel(const char* model_name, const char* skin_name)
+qboolean BG_IsValidCharacterModel(const char* modelName, const char* skin_name)
 {
 	if (!Q_stricmp(skin_name, "menu"))
 	{
 		return qfalse;
 	}
-	if (!Q_stricmp(model_name, "kyle"))
+	if (!Q_stricmp(modelName, "kyle"))
 	{
 		if (!Q_stricmp(skin_name, "fpls"))
 		{
@@ -3287,9 +3287,9 @@ qboolean BG_IsValidCharacterModel(const char* model_name, const char* skin_name)
 	return qtrue;
 }
 
-qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, const int team, float* colors)
+qboolean BG_ValidateSkinForTeam(const char* modelName, char* skin_name, const int team, float* colors)
 {
-	if (strlen(model_name) > 5 && Q_stricmpn(model_name, "jedi_", 5) == 0)
+	if (strlen(modelName) > 5 && Q_stricmpn(modelName, "jedi_", 5) == 0)
 	{
 		//argh, it's a custom player skin!
 		if (team == TEAM_RED && colors)
@@ -3315,7 +3315,7 @@ qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, const i
 			if (Q_stricmp("blue", skin_name) == 0
 				|| Q_stricmp("default", skin_name) == 0
 				|| strchr(skin_name, '|') //a multi-skin playerModel
-				|| !BG_IsValidCharacterModel(model_name, skin_name))
+				|| !BG_IsValidCharacterModel(modelName, skin_name))
 			{
 				Q_strncpyz(skin_name, "red", MAX_QPATH);
 				return qfalse;
@@ -3343,7 +3343,7 @@ qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, const i
 				}
 			}
 			//if file does not exist, set to "red"
-			if (!BG_FileExists(va("models/players/%s/model_%s.skin", model_name, skin_name)))
+			if (!BG_FileExists(va("models/players/%s/model_%s.skin", modelName, skin_name)))
 			{
 				Q_strncpyz(skin_name, "red", MAX_QPATH);
 			}
@@ -3357,7 +3357,7 @@ qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, const i
 			if (Q_stricmp("red", skin_name) == 0
 				|| Q_stricmp("default", skin_name) == 0
 				|| strchr(skin_name, '|') //a multi-skin playerModel
-				|| !BG_IsValidCharacterModel(model_name, skin_name))
+				|| !BG_IsValidCharacterModel(modelName, skin_name))
 			{
 				Q_strncpyz(skin_name, "blue", MAX_QPATH);
 				return qfalse;
@@ -3385,7 +3385,7 @@ qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, const i
 				}
 			}
 			//if file does not exist, set to "blue"
-			if (!BG_FileExists(va("models/players/%s/model_%s.skin", model_name, skin_name)))
+			if (!BG_FileExists(va("models/players/%s/model_%s.skin", modelName, skin_name)))
 			{
 				Q_strncpyz(skin_name, "blue", MAX_QPATH);
 			}
@@ -3820,7 +3820,7 @@ PLAYER ANGLES
 =============================================================================
 */
 
-int BG_ModelCache(const char* model_name, const char* skin_name)
+int BG_ModelCache(const char* modelName, const char* skin_name)
 {
 #ifdef _GAME
 	void* g2 = NULL;
@@ -3829,7 +3829,7 @@ int BG_ModelCache(const char* model_name, const char* skin_name)
 		trap->R_RegisterSkin(skin_name);
 
 	//I could hook up a precache ghoul2 function, but oh well, this works
-	trap->G2API_InitGhoul2Model(&g2, model_name, 0, 0, 0, 0, 0);
+	trap->G2API_InitGhoul2Model(&g2, modelName, 0, 0, 0, 0, 0);
 	//now get rid of it
 	if (g2)
 		trap->G2API_CleanGhoul2Models(&g2);
@@ -3845,9 +3845,9 @@ int BG_ModelCache(const char* model_name, const char* skin_name)
 #endif // _CGAME
 	}
 #ifdef _CGAME
-	return trap->R_RegisterModel(model_name);
+	return trap->R_RegisterModel(modelName);
 #else // !_CGAME
-	return trap->R_RegisterModel(model_name);
+	return trap->R_RegisterModel(modelName);
 #endif // _CGAME
 #endif // _GAME
 }

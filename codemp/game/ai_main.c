@@ -9377,7 +9377,7 @@ static void saber_combat_handling(bot_state_t* bs)
 			PM_InKnockDown(ps) == qfalse)
 		{
 			JediDirectionalDashAttack(bs, enemyPos);
-			bs->DashInTime = level.time + Q_irand(5000, 10000);
+			bs->DashInTime = level.time + Q_irand(3000, 6000);
 #ifdef _DEBUG
 			//Com_Printf("Standard_dash_to_attack\n");
 #endif
@@ -9548,7 +9548,7 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 			PM_InKnockDown(ps) == qfalse)
 		{
 			JediDirectionalDashAttack(bs, enemyPos);
-			bs->DashInTime = level.time + Q_irand(5000, 10000);
+			bs->DashInTime = level.time + Q_irand(3000, 6000);
 #ifdef _DEBUG
 			//Com_Printf("Enhanced_dash_to_attack\n");
 #endif

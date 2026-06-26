@@ -286,8 +286,7 @@ void G_StopEffect(const char* name, const int modelIndex, const int boltIndex, c
 extern void cgi_S_StartSound(const vec3_t origin, int entityNum, int entchannel, sfxHandle_t sfx);
 #include "../cgame/cg_media.h"	//access to cgs
 #include <icarus\IcarusInterface.h>
-extern qboolean CG_TryPlayCustomSound(vec3_t origin, int entityNum, soundChannel_t channel, const char* sound_name,
-	int custom_sound_set);
+extern qboolean CG_TryPlayCustomSound(vec3_t origin, const int entityNum, const soundChannel_t channel, const char* sound_name, const int custom_sound_set);
 extern cvar_t* g_timescale;
 //NOTE: Do NOT Try to use this before the cgame DLL is valid, it will NOT work!
 void G_SoundOnEnt(const gentity_t* ent, const soundChannel_t channel, const char* sound_path)
@@ -907,7 +906,6 @@ static gentity_t* find_remove_able_gent(void)
 	return NULL;
 }
 
-
 static const char* DecodeEF(int ef)
 {
 	static char buffer[512];
@@ -1072,7 +1070,6 @@ static void G_SpewEntList_SP(void)
 
 	Com_Printf("^3=================================================\n\n");
 }
-
 
 gentity_t* G_Spawn(void)
 {

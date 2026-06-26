@@ -55,7 +55,6 @@ void GL_Bind(image_t* image) {
 	}
 
 	if (glState.currenttextures[glState.currenttmu] != texnum) {
-
 		// SAFE: only write frameUsed if image is valid
 		if (image) {
 			image->frameUsed = tr.frameCount;
@@ -78,9 +77,6 @@ void GL_Bind(image_t* image) {
 		}
 	}
 }
-
-
-
 
 /*
 ** GL_SelectTexture
@@ -534,7 +530,7 @@ static void RB_Hyperspace(void) {
 	qglClearBufferfv(GL_COLOR, 0, v);
 }
 
-static void SetViewportAndScissor(void) 
+static void SetViewportAndScissor(void)
 {
 	GL_SetProjectionMatrix(backEnd.viewParms.projectionMatrix);
 
@@ -1149,23 +1145,45 @@ static void RB_DrawItems(
 	}
 }
 
+/*
+=====================
+RB_AddDrawItem
+
+Adds a draw item to a pass, or draws immediately if no pass is provided.
+Replaces assert with a debug print to avoid hard crashes.
+=====================
+*/
 void RB_AddDrawItem(Pass* pass, uint32_t sortKey, const DrawItem& drawItem)
 {
-	// There will be no pass if we are drawing a 2D object.
+	// If pass is NULL, this is a 2D draw call → draw immediately.
 	if (pass)
 	{
+		// Check for overflow in the pass draw list.
 		if (pass->numDrawItems >= pass->maxDrawItems)
 		{
-			assert(!"Ran out of space for pass");
+			// Replaces assert(!"Ran out of space for pass");
+#ifdef _DEBUG
+			Com_Printf(
+				S_COLOR_RED
+				"RB_AddDrawItem: Ran out of space for pass (max=%d)\n"
+				S_COLOR_WHITE,
+				pass->maxDrawItems
+			);
+#endif
 			return;
 		}
 
+		// Store sort key and draw item.
 		pass->sortKeys[pass->numDrawItems] = sortKey;
-		pass->drawItems[pass->numDrawItems++] = drawItem;
+		pass->drawItems[pass->numDrawItems] = drawItem;
+
+		// Increment count explicitly.
+		pass->numDrawItems++;
 	}
 	else
 	{
-		uint32_t drawOrder[] = { 0 };
+		// No pass → immediate draw.
+		uint32_t drawOrder[1] = { 0 };
 		RB_DrawItems(1, &drawItem, drawOrder);
 	}
 }
@@ -1233,7 +1251,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 
 		if (shader->useSimpleDepthShader == qtrue)
 			shader = tr.defaultShader;
-
 
 		if (*drawSurf->surface == SF_MDX)
 		{

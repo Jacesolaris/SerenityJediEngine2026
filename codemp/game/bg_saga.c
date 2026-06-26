@@ -1523,7 +1523,7 @@ siegeTeam_t* BG_SiegeFindThemeForTeam(const int team)
 #if defined(_GAME) || defined(_CGAME) //only for game/cgame
 //precache all the sabers for the active classes for the team
 extern qboolean WP_SaberParseParms(const char* saber_name, saberInfo_t* saber); //bg_saberLoad.cpp
-extern int BG_ModelCache(const char* model_name, const char* skin_name); //bg_misc.c
+extern int BG_ModelCache(const char* modelName, const char* skin_name); //bg_misc.c
 
 void BG_PrecacheSabersForSiegeTeam(const int team)
 {

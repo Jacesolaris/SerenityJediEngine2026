@@ -67,7 +67,7 @@ extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimF
 extern gentity_t* NPC_Spawn_Do(gentity_t* pEnt, qboolean fullSpawnNow);
 extern qboolean G_ClearLineOfSight(const vec3_t point1, const vec3_t point2, int ignore, int clipmask);
 
-extern qboolean G_SetG2PlayerModelInfo(gentity_t* pEnt, const char* model_name,
+extern qboolean G_SetG2PlayerModelInfo(gentity_t* pEnt, const char* modelName,
 	const char* surf_off, const char* surf_on);
 extern void G_RemovePlayerModel(gentity_t* pEnt);
 extern void G_ChangePlayerModel(gentity_t* pEnt, const char* newModel);

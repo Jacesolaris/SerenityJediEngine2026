@@ -60,7 +60,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 using namePrecache_m = std::map<sstring_t, unsigned char>;
 extern namePrecache_m* as_preCacheMap;
 extern void CG_RegisterNPCCustomSounds(clientInfo_t* ci);
-extern int G_ParseAnimFileSet(const char* skeletonName, const char* model_name = nullptr);
+extern int G_ParseAnimFileSet(const char* skeletonName, const char* modelName = nullptr);
 extern void CG_DrawDataPadInventorySelect();
 extern void G_StartNextItemEffect(gentity_t* ent, int me_flags = 0, int length = 1000, float time_scale = 0.0f,
 	int spin_time = 0);

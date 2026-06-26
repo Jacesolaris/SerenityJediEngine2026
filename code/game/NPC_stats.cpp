@@ -54,7 +54,7 @@ extern qboolean is_outcast_map();
 
 extern cvar_t* g_allowAlignmentChange;
 
-extern qboolean G_StandardHumanoid(const char* gla_name);
+extern qboolean G_StandardHumanoid(const char* GLAName);
 
 constexpr auto MAX_MODELS_PER_LEVEL = 60;
 
@@ -875,7 +875,7 @@ static void G_ParseAnimationEvtFile(const int glaIndex, const char* events_direc
 	const int i_real_gla_index = -1,
 	const bool model_specific = false)
 {
-	char text[80000]{};
+	static char text[80000]{};
 	const char* text_p = text;
 	fileHandle_t f;
 	char events_path[MAX_QPATH];
@@ -921,8 +921,8 @@ static void G_ParseAnimationEvtFile(const int glaIndex, const char* events_direc
 
 	if (model_specific)
 	{
-		const hstring model_name(events_directory);
-		modelIndex = model_name.handle();
+		const hstring modelName(events_directory);
+		modelIndex = modelName.handle();
 	}
 
 	// read information for batches of sounds (UPPER or LOWER)
@@ -960,11 +960,9 @@ models/players/visor/animation.cfg, etc
 
 ======================
 */
-extern qboolean PM_SaberInParry(int move);
-
 static qboolean G_ParseAnimationFile(const int glaIndex, const char* skeletonName, const int fileIndex)
 {
-	char text[120000]{};
+	static char text[120000];
 	const char* text_p = text;
 	animation_t* animations = level.knownAnimFileSets[fileIndex].animations;
 	char skeleton_path[MAX_QPATH];
@@ -1147,7 +1145,7 @@ static qboolean G_ParseAnimationFile(const int glaIndex, const char* skeletonNam
 // the animation event file.
 //
 ////////////////////////////////////////////////////////////////////////
-int G_ParseAnimFileSet(const char* skeletonName, const char* model_name = nullptr)
+int G_ParseAnimFileSet(const char* skeletonName, const char* modelName = nullptr)
 {
 	int fileIndex;
 
@@ -1265,12 +1263,12 @@ int G_ParseAnimFileSet(const char* skeletonName, const char* model_name = nullpt
 
 	// Tack Any Additional Per Model Events
 	//--------------------------------------
-	if (model_name)
+	if (modelName)
 	{
 		// Quick Search To See If We've Already Loaded This Model
 		//--------------------------------------------------------
 		int cur_model = 0;
-		const hstring cur_model_name(model_name);
+		const hstring cur_model_name(modelName);
 		while (cur_model < MAX_MODELS_PER_LEVEL && !modelsAlreadyDone[cur_model].empty())
 		{
 			if (modelsAlreadyDone[cur_model] == cur_model_name)
@@ -1291,14 +1289,14 @@ int G_ParseAnimFileSet(const char* skeletonName, const char* model_name = nullpt
 
 		// Only Do The Event File If The Model Is Not The Same As The Skeleton
 		//---------------------------------------------------------------------
-		if (Q_stricmp(skeletonName, model_name) != 0)
+		if (Q_stricmp(skeletonName, modelName) != 0)
 		{
 			const int i_gla_index_to_check_for_skip = Q_stricmp(skeletonName, "_humanoid")
 				? -1
 				: gi.G2API_PrecacheGhoul2Model(
 					"models/players/_humanoid/_humanoid.gla"); // ;-)
 
-			G_ParseAnimationEvtFile(0, model_name, fileIndex, i_gla_index_to_check_for_skip, true);
+			G_ParseAnimationEvtFile(0, modelName, fileIndex, i_gla_index_to_check_for_skip, true);
 		}
 	}
 
@@ -1307,37 +1305,37 @@ int G_ParseAnimFileSet(const char* skeletonName, const char* model_name = nullpt
 
 extern cvar_t* g_char_model;
 
-void G_LoadAnimFileSet(gentity_t* ent, const char* p_model_name)
+void G_LoadAnimFileSet(gentity_t* ent, const char* pModelName)
 {
 	//load its animation config
-	char* model_name;
+	char* modelName;
 	char* stripped_name;
 
 	if (ent->playerModel == -1)
 	{
 		return;
 	}
-	if (Q_stricmp("player", p_model_name) == 0)
+	if (Q_stricmp("player", pModelName) == 0)
 	{
 		//model is actually stored on console
-		model_name = g_char_model->string;
+		modelName = g_char_model->string;
 	}
 	else
 	{
-		model_name = const_cast<char*>(p_model_name);
+		modelName = const_cast<char*>(pModelName);
 	}
 	//get the location of the animation.cfg
-	const char* gla_name = gi.G2API_GetGLAName(&ent->ghoul2[ent->playerModel]);
+	const char* GLAName = gi.G2API_GetGLAName(&ent->ghoul2[ent->playerModel]);
 	//now load and parse the animation.cfg, animevents.cfg and set the animFileIndex
-	if (!gla_name)
+	if (!GLAName)
 	{
-		Com_Printf(S_COLOR_RED"Failed find animation file name models/players/%s\n", model_name);
+		Com_Printf(S_COLOR_RED"Failed find animation file name models/players/%s\n", modelName);
 		stripped_name = "_humanoid"; //take a guess, maybe it's right?
 	}
 	else
 	{
 		char anim_name[MAX_QPATH];
-		Q_strncpyz(anim_name, gla_name, sizeof anim_name);
+		Q_strncpyz(anim_name, GLAName, sizeof anim_name);
 		char* slash = strrchr(anim_name, '/');
 		if (slash)
 		{
@@ -1347,11 +1345,11 @@ void G_LoadAnimFileSet(gentity_t* ent, const char* p_model_name)
 	}
 
 	//now load and parse the animation.cfg, animevents.cfg and set the animFileIndex
-	ent->client->clientInfo.animFileIndex = G_ParseAnimFileSet(stripped_name, model_name);
+	ent->client->clientInfo.animFileIndex = G_ParseAnimFileSet(stripped_name, modelName);
 
 	if (ent->client->clientInfo.animFileIndex < 0)
 	{
-		Com_Printf(S_COLOR_RED"Failed to load animation file set models/players/%s/animation.cfg\n", model_name);
+		Com_Printf(S_COLOR_RED"Failed to load animation file set models/players/%s/animation.cfg\n", modelName);
 #ifndef FINAL_BUILD
 		Com_Error(ERR_FATAL, "Failed to load animation file set models/players/%s/animation.cfg\n", modelName);
 #endif
@@ -1445,11 +1443,11 @@ void NPC_PrecacheAnimationCFG(const char* npc_type)
 			const int handle = gi.G2API_PrecacheGhoul2Model(va("models/players/%s/model.glm", value));
 			if (handle > 0) //FIXME: isn't 0 a valid handle?
 			{
-				const char* gla_name = gi.G2API_GetAnimFileNameIndex(handle);
-				if (gla_name)
+				const char* GLAName = gi.G2API_GetAnimFileNameIndex(handle);
+				if (GLAName)
 				{
 					char anim_name[MAX_QPATH];
-					Q_strncpyz(anim_name, gla_name, sizeof anim_name);
+					Q_strncpyz(anim_name, GLAName, sizeof anim_name);
 					char* slash = strrchr(anim_name, '/');
 					if (slash)
 					{
@@ -2100,7 +2098,7 @@ static void NPC_BuildRandom()
 extern cvar_t* com_outcast;
 extern void G_MatchPlayerWeapon(gentity_t* ent);
 extern void G_InitPlayerFromCvars(gentity_t* ent);
-extern void g_set_g2_player_model(gentity_t* ent, const char* model_name, const char* customSkin, const char* surf_off, const char* surf_on);
+extern void g_set_g2_player_model(gentity_t* ent, const char* modelName, const char* customSkin, const char* surf_off, const char* surf_on);
 
 qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 {
@@ -3961,7 +3959,7 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 				}
 				const char* saber_name = G_NewString(value);
 				WP_SaberParseParms(saber_name, &npc->client->ps.saber[0]);
-				//if it requires a specific style, make sure we know how to use it
+				//if it requires a specific style, make sure we know to use it
 				if (npc->client->ps.saber[0].stylesLearned)
 				{
 					npc->client->ps.saberStylesKnown |= npc->client->ps.saber[0].stylesLearned;
@@ -4407,453 +4405,674 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 	return qtrue;
 }
 
-void NPC_LoadParms() //jka version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms
+// Loads and concatenates all .npc definition files into NPCParms.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
 
-	//set where to store the first one
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
+
+	// Set where to store the first concatenated NPC definition
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/npcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/npcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/npcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/npcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/npcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
 			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a standalone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms1() //jko version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms1  (JKO version)
+// Loads and concatenates all .npc definition files from ext_data/jkonpcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms1()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
 
-	//set where to store the first one
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
+
+	// Set where to store the first concatenated NPC definition
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/jkonpcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/jkonpcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/jkonpcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/jkonpcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/jkonpcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms1: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a standalone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms1: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms2() //creative version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms2  (Creative version)
+// Loads and concatenates all .npc definition files from ext_data/mod_npcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms2()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/mod_npcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/mod_npcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/mod_npcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/mod_npcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/mod_npcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms2: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a standalone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms2: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms3() //yav version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms3  (YAV version)
+// Loads and concatenates all .npc definition files from ext_data/yavnpcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms3()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/yavnpcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/yavnpcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/yavnpcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
+
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/yavnpcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/yavnpcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms3: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a standalone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms3: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms4() //playing darkforces
+// -----------------------------------------------------------------------------
+// NPC_LoadParms4  (Playing Dark Forces version)
+// Loads and concatenates all .npc definition files from ext_data/jkonpcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms4()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/jkonpcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/jkonpcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/jkonpcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/jkonpcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/jkonpcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms4: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			// don't let previous file end on a } because that must be a stand-alone token
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		len = COM_Compress(buffer);
+
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms4: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		strcat(marker, buffer);
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms5() //playing kotor
+// -----------------------------------------------------------------------------
+// NPC_LoadParms5  (KOTOR version)
+// Loads and concatenates all .npc definition files from ext_data/mod_npcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms5()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/mod_npcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/mod_npcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/mod_npcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/mod_npcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/mod_npcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms5: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a stand‑alone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms5: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms6() //survival version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms6  (Survival version)
+// Loads and concatenates all .npc definition files from ext_data/mod_npcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms6()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/mod_npcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/mod_npcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/mod_npcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/mod_npcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/mod_npcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms6: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a stand‑alone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms6: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms7() //nina version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms7  (Nina version)
+// Loads and concatenates all .npc definition files from ext_data/mod_npcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms7()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/mod_npcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/mod_npcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/mod_npcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/mod_npcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/mod_npcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms7: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a stand‑alone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms7: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }
 
-void NPC_LoadParms8() //veng version
+// -----------------------------------------------------------------------------
+// NPC_LoadParms8  (Vengeance version)
+// Loads and concatenates all .npc definition files from ext_data/mod_npcs.
+// NOTE: Original version used a 16 KB stack buffer. This version moves that
+//       buffer to static storage to avoid MSVC C6262 stack warnings.
+// -----------------------------------------------------------------------------
+void NPC_LoadParms8()
 {
 	int npc_ext_fn_len = 0;
 	char* buffer = nullptr;
-	char npc_extension_list_buf[16384]; //	The list of file names read in
+
+	// Large filename list buffer moved off stack → static storage (BSS)
+	static char npc_extension_list_buf[16384];
 
 	int totallen = 0;
 	char* marker = NPCParms;
 	marker[0] = '\0';
 
-	//now load in the .npc definitions
-	const int file_cnt = gi.FS_GetFileList("ext_data/mod_npcs", ".npc", npc_extension_list_buf, sizeof npc_extension_list_buf);
+	// Get list of all .npc files in ext_data/mod_npcs
+	const int file_cnt = gi.FS_GetFileList(
+		"ext_data/mod_npcs",
+		".npc",
+		npc_extension_list_buf,
+		sizeof(npc_extension_list_buf)
+	);
 
 	char* hold_char = npc_extension_list_buf;
 
 	for (int i = 0; i < file_cnt; i++, hold_char += npc_ext_fn_len + 1)
 	{
-		npc_ext_fn_len = strlen(hold_char);
+		npc_ext_fn_len = (int)strlen(hold_char);
 
-		int len = gi.FS_ReadFile(va("ext_data/mod_npcs/%s", hold_char), reinterpret_cast<void**>(&buffer));
+		int len = gi.FS_ReadFile(
+			va("ext_data/mod_npcs/%s", hold_char),
+			reinterpret_cast<void**>(&buffer)
+		);
 
 		if (len == -1)
 		{
-			gi.Printf("NPC_LoadParms: error reading file %s\n", hold_char);
+			gi.Printf("NPC_LoadParms8: error reading file %s\n", hold_char);
+			continue;
 		}
-		else
+
+		// Ensure previous file does not end with '}' (must be a stand‑alone token)
+		if (totallen > 0 && *(marker - 1) == '}')
 		{
-			if (totallen && *(marker - 1) == '}')
-			{
-				//don't let previous file end on a } because that must be a stand-alone token
-				strcat(marker, " ");
-				totallen++;
-				marker++;
-			}
-			len = COM_Compress(buffer);
-
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				G_Error("NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
-					hold_char);
-			}
-			strcat(marker, buffer);
-			gi.FS_FreeFile(buffer);
-
-			totallen += len;
-			marker += len;
+			strcat(marker, " ");
+			totallen++;
+			marker++;
 		}
+
+		// Compress the loaded buffer
+		len = COM_Compress(buffer);
+
+		// Ensure we have enough space in NPCParms
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
+		{
+			G_Error(
+				"NPC_LoadParms8: ran out of space before reading %s\n"
+				"(you must make the .npc files smaller)",
+				hold_char
+			);
+		}
+
+		// Append compressed data
+		strcat(marker, buffer);
+
+		// Free file buffer
+		gi.FS_FreeFile(buffer);
+
+		totallen += len;
+		marker += len;
 	}
 }

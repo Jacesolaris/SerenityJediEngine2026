@@ -2146,17 +2146,17 @@ is used for determining where the lightsaber should be, and for per-poly collisi
 */
 void* g2SaberInstance = NULL;
 
-qboolean BG_IsValidCharacterModel(const char* model_name, const char* skin_name);
-qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, int team, float* colors);
+qboolean BG_IsValidCharacterModel(const char* modelName, const char* skin_name);
+qboolean BG_ValidateSkinForTeam(const char* modelName, char* skin_name, int team, float* colors);
 void BG_GetVehicleModelName(char* modelName, const char* vehicleName, size_t len);
 
 void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 {
 	int handle;
 #if 0
-	char		/**gla_name,*/* slash;
+	char		/**GLAName,*/* slash;
 #endif
-	char gla_name[MAX_QPATH] = { 0 };
+	char GLAName[MAX_QPATH] = { 0 };
 	const vec3_t tempVec = { 0, 0, 0 };
 
 	if (strlen(modelname) >= MAX_QPATH)
@@ -2327,10 +2327,10 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 			{
 				trap->G2API_SetSkin(ent->ghoul2, 0, skinHandle, skinHandle);
 
-				gla_name[0] = 0;
-				trap->G2API_GetGLAName(ent->ghoul2, 0, gla_name);
+				GLAName[0] = 0;
+				trap->G2API_GetGLAName(ent->ghoul2, 0, GLAName);
 
-				if (!gla_name[0] || !strstr(gla_name, "players/_humanoid/") && ent->s.number < MAX_CLIENTS && !
+				if (!GLAName[0] || !strstr(GLAName, "players/_humanoid/") && ent->s.number < MAX_CLIENTS && !
 					G_PlayerHasCustomSkeleton(ent))
 				{
 					//a bad model
@@ -2377,7 +2377,7 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 
 	// The model is now loaded.
 
-	gla_name[0] = 0;
+	GLAName[0] = 0;
 
 	if (!bgpa_ftext_loaded)
 	{
@@ -2392,25 +2392,25 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 	{
 		ent->localAnimIndex = -1;
 
-		gla_name[0] = 0;
-		trap->G2API_GetGLAName(ent->ghoul2, 0, gla_name);
+		GLAName[0] = 0;
+		trap->G2API_GetGLAName(ent->ghoul2, 0, GLAName);
 
-		if (gla_name[0] &&
-			!strstr(gla_name, "players/_humanoid/"))
+		if (GLAName[0] &&
+			!strstr(GLAName, "players/_humanoid/"))
 		{
 			//it doesn't use humanoid anims.
-			char* slash = Q_strrchr(gla_name, '/');
+			char* slash = Q_strrchr(GLAName, '/');
 			if (slash)
 			{
 				strcpy(slash, "/animation.cfg");
 
-				ent->localAnimIndex = bg_parse_animation_file(gla_name, NULL, qfalse);
+				ent->localAnimIndex = bg_parse_animation_file(GLAName, NULL, qfalse);
 			}
 		}
 		else
 		{
 			//humanoid index.
-			if (strstr(gla_name, "players/rockettrooper/"))
+			if (strstr(GLAName, "players/rockettrooper/"))
 			{
 				ent->localAnimIndex = 1;
 			}
@@ -2427,10 +2427,10 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 	}
 	else
 	{
-		gla_name[0] = 0;
-		trap->G2API_GetGLAName(ent->ghoul2, 0, gla_name);
+		GLAName[0] = 0;
+		trap->G2API_GetGLAName(ent->ghoul2, 0, GLAName);
 
-		if (strstr(gla_name, "players/rockettrooper/"))
+		if (strstr(GLAName, "players/rockettrooper/"))
 		{
 			//assert(!"Should not have gotten in here with rockettrooper skel");
 			ent->localAnimIndex = 1;
@@ -9478,65 +9478,65 @@ void ClientDisconnect(const int clientNum)
 
 qboolean g_standard_humanoid(gentity_t* self)
 {
-	char gla_name[MAX_QPATH];
+	char GLAName[MAX_QPATH];
 
 	if (!self || !self->ghoul2)
 	{
 		return qfalse;
 	}
 
-	trap->G2API_GetGLAName(&self->ghoul2, 0, gla_name);
+	trap->G2API_GetGLAName(&self->ghoul2, 0, GLAName);
 
-	assert(gla_name);
+	assert(GLAName);
 
-	if (gla_name)
+	if (GLAName)
 	{
-		if (!Q_stricmpn("models/players/_humanoid", gla_name, 24))
+		if (!Q_stricmpn("models/players/_humanoid", GLAName, 24))
 		{
 			//only _humanoid skeleton is expected to have these
 			return qtrue;
 		}
-		if (!Q_stricmpn("models/players/JK2anims/", gla_name, 24))
+		if (!Q_stricmpn("models/players/JK2anims/", GLAName, 24))
 		{
 			//only _humanoid skeleton is expected to have these
 			return qtrue;
 		}
-		if (!Q_stricmpn("models/players/_humanoid_sbd", gla_name, 24)) ///_humanoid", gla_name, 36) )
+		if (!Q_stricmpn("models/players/_humanoid_sbd", GLAName, 24)) ///_humanoid", GLAName, 36) )
 		{
 			//only _humanoid skeleton is expected to have these
 			return qtrue;
 		}
-		if (!Q_stricmpn("models/players/_humanoid_yoda", gla_name, 24)) ///_humanoid", gla_name, 36) )
+		if (!Q_stricmpn("models/players/_humanoid_yoda", GLAName, 24)) ///_humanoid", GLAName, 36) )
 		{
 			//only _humanoid skeleton is expected to have these
 			return qtrue;
 		}
-		if (!Q_stricmp("models/players/protocol/protocol", gla_name))
+		if (!Q_stricmp("models/players/protocol/protocol", GLAName))
 		{
 			//protocol droid duplicates many of these
 			return qtrue;
 		}
-		if (!Q_stricmp("models/players/assassin_droid/model", gla_name))
+		if (!Q_stricmp("models/players/assassin_droid/model", GLAName))
 		{
 			//assassin_droid duplicates many of these
 			return qtrue;
 		}
-		if (!Q_stricmp("models/players/saber_droid/model", gla_name))
+		if (!Q_stricmp("models/players/saber_droid/model", GLAName))
 		{
 			//saber_droid duplicates many of these
 			return qtrue;
 		}
-		if (!Q_stricmp("models/players/hazardtrooper/hazardtrooper", gla_name))
+		if (!Q_stricmp("models/players/hazardtrooper/hazardtrooper", GLAName))
 		{
 			//hazardtrooper duplicates many of these
 			return qtrue;
 		}
-		if (!Q_stricmp("models/players/rockettrooper/rockettrooper", gla_name))
+		if (!Q_stricmp("models/players/rockettrooper/rockettrooper", GLAName))
 		{
 			//rockettrooper duplicates many of these
 			return qtrue;
 		}
-		if (!Q_stricmp("models/players/wampa/wampa", gla_name))
+		if (!Q_stricmp("models/players/wampa/wampa", GLAName))
 		{
 			//rockettrooper duplicates many of these
 			return qtrue;

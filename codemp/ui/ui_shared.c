@@ -7836,20 +7836,20 @@ qboolean ItemParse_asset_model_go(itemDef_t* item, const char* name, int* runTim
 			{ //does the menu request this model be playing an animation?
 //					DC->g2hilev_SetAnim(&item->ghoul2[0], "model_root", modelPtr->g2anim);
 
-				char gla_name[MAX_QPATH];
+				char GLAName[MAX_QPATH];
 
-				gla_name[0] = 0;
-				trap->G2API_GetGLAName(item->ghoul2, 0, gla_name);
+				GLAName[0] = 0;
+				trap->G2API_GetGLAName(item->ghoul2, 0, GLAName);
 
-				if (gla_name[0])
+				if (GLAName[0])
 				{
-					char* slash = Q_strrchr(gla_name, '/');
+					char* slash = Q_strrchr(GLAName, '/');
 
 					if (slash)
 					{ //If this isn't true the gla path must be messed up somehow.
 						strcpy(slash, "/animation.cfg");
 
-						const int animIndex = UI_ParseAnimationFile(gla_name, NULL, qfalse);
+						const int animIndex = UI_ParseAnimationFile(GLAName, NULL, qfalse);
 						if (animIndex != -1)
 						{ //We parsed out the animation info for whatever model this is
 							const animation_t* anim = &bgAllAnims[animIndex].anims[modelPtr->g2anim];

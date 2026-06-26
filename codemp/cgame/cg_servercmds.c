@@ -697,8 +697,8 @@ void CG_HandleNPCSounds(const centity_t* cent)
 	}
 }
 
-int CG_HandleAppendedSkin(const char* model_name);
-void CG_CacheG2AnimInfo(const char* model_name);
+int CG_HandleAppendedSkin(const char* modelName);
+void CG_CacheG2AnimInfo(const char* modelName);
 
 // nmckenzie: DUEL_HEALTH - fixme - we could really clean this up immensely with some helper functions.
 void SetDuelistHealthsFromConfigString(const char* str)

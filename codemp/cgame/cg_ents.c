@@ -1467,16 +1467,16 @@ static void CG_General(centity_t* cent)
 		//If the game says this guy uses a ghoul2 model and the g2 instance handle is null, then initialize it
 		if (!cent->ghoul2 && !cent->currentState.bolt1)
 		{
-			const char* model_name = CG_ConfigString(CS_MODELS + cent->currentState.modelIndex);
+			const char* modelName = CG_ConfigString(CS_MODELS + cent->currentState.modelIndex);
 
-			trap->G2API_InitGhoul2Model(&cent->ghoul2, model_name, 0, 0, 0, 0, 0);
+			trap->G2API_InitGhoul2Model(&cent->ghoul2, modelName, 0, 0, 0, 0, 0);
 			if (cent->ghoul2 && trap->G2API_SkinlessModel(cent->ghoul2, 0))
 			{
 				int skin = 0;
 				int l;
 				char skin_name[MAX_QPATH];
 				//well, you'd never want a skinless model, so try to get his skin...
-				Q_strncpyz(skin_name, model_name, MAX_QPATH);
+				Q_strncpyz(skin_name, modelName, MAX_QPATH);
 				l = strlen(skin_name);
 				while (l > 0 && skin_name[l] != '/')
 				{

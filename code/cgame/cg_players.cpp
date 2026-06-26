@@ -578,9 +578,7 @@ static sfxHandle_t CG_CustomSound(const int entityNum, const char* sound_name, c
 	return 0;
 }
 
-qboolean CG_TryPlayCustomSound(vec3_t origin, const int entityNum, const soundChannel_t channel,
-	const char* sound_name,
-	const int custom_sound_set)
+qboolean CG_TryPlayCustomSound(vec3_t origin, const int entityNum, const soundChannel_t channel, const char* sound_name, const int custom_sound_set)
 {
 	const sfxHandle_t sound_index = CG_CustomSound(entityNum, sound_name, custom_sound_set);
 	if (!sound_index)
@@ -15235,24 +15233,16 @@ void CG_Player(centity_t* cent)
 							{
 								//this returns qfalse if it doesn't exist or isn't being rendered
 								if (G_GetRootSurfNameWithVariant(cent->gent, "r_hand", hand_name, sizeof hand_name))
-									//!gi.G2API_GetSurfaceRenderStatus( &cent->gent->ghoul2[cent->gent->playerModel], "r_hand" ) )//surf is still on
 								{
-									CG_AddSaberBladeGo(cent, cent, ent.renderfx, cent->gent->weaponModel[saberNum],
-										ent.origin, tempAngles, saberNum,
-										blade_num);
-									//CG_AddSaberBlades( cent, ent.renderfx, ent.origin, tempAngles, saberNum );
+									CG_AddSaberBladeGo(cent, cent, ent.renderfx, cent->gent->weaponModel[saberNum], ent.origin, tempAngles, saberNum, blade_num);
 								} //else, the limb will draw the blade itself
 							}
 							else if (saberNum == 1)
 							{
 								//this returns qfalse if it doesn't exist or isn't being rendered
 								if (G_GetRootSurfNameWithVariant(cent->gent, "l_hand", hand_name, sizeof hand_name))
-									//!gi.G2API_GetSurfaceRenderStatus( &cent->gent->ghoul2[cent->gent->playerModel], "l_hand" ) )//surf is still on
 								{
-									CG_AddSaberBladeGo(cent, cent, ent.renderfx, cent->gent->weaponModel[saberNum],
-										ent.origin, tempAngles, saberNum,
-										blade_num);
-									//CG_AddSaberBlades( cent, ent.renderfx, ent.origin, tempAngles, saberNum );
+									CG_AddSaberBladeGo(cent, cent, ent.renderfx, cent->gent->weaponModel[saberNum], ent.origin, tempAngles, saberNum, blade_num);
 								} //else, the limb will draw the blade itself
 							}
 						} //in-flight saber draws it's own blade
@@ -15263,16 +15253,10 @@ void CG_Player(centity_t* cent)
 						{
 							cent->gent->client->ps.saber[saberNum].blade[blade_num].length = 0;
 						}
-						//if ( cent->gent->client->ps.saberEventFlags&SEF_INWATER )
-						{
-							CG_CheckSaberInWater(cent, cent, saberNum, cent->gent->weaponModel[saberNum], ent.origin,
-								tempAngles);
-						}
+						CG_CheckSaberInWater(cent, cent, saberNum, cent->gent->weaponModel[saberNum], ent.origin, tempAngles);
 					}
 					if (cent->currentState.weapon == WP_SABER
-						&& (cent->gent->client->ps.saber[saberNum].blade[blade_num].length > 0 || cent->gent->client->
-							ps.
-							saberInFlight))
+						&& (cent->gent->client->ps.saber[saberNum].blade[blade_num].length > 0 || cent->gent->client->ps.saberInFlight))
 					{
 						calcedMp = qtrue;
 					}

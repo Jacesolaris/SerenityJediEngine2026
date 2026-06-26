@@ -435,7 +435,7 @@ CLIENT INFO
 */
 #define MAX_SURF_LIST_SIZE	1024
 
-static qboolean CG_ParseSurfsFile(const char* model_name, const char* skin_name, char* surf_off, char* surf_on)
+static qboolean CG_ParseSurfsFile(const char* modelName, const char* skin_name, char* surf_off, char* surf_on)
 {
 	const char* text_p;
 	const char* value;
@@ -456,7 +456,7 @@ static qboolean CG_ParseSurfsFile(const char* model_name, const char* skin_name,
 	}
 
 	// Load and parse .surf file
-	Com_sprintf(sfilename, sizeof sfilename, "models/players/%s/model_%s.surf", model_name, skin_name);
+	Com_sprintf(sfilename, sizeof sfilename, "models/players/%s/model_%s.surf", modelName, skin_name);
 
 	// load the file
 	const int len = trap->FS_Open(sfilename, &f, FS_READ);
@@ -538,14 +538,14 @@ static qboolean CG_ParseSurfsFile(const char* model_name, const char* skin_name,
 CG_RegisterClientModelname
 ==========================
 */
-qboolean BG_IsValidCharacterModel(const char* model_name, const char* skin_name);
-qboolean BG_ValidateSkinForTeam(const char* model_name, char* skin_name, int team, float* colors);
+qboolean BG_IsValidCharacterModel(const char* modelName, const char* skin_name);
+qboolean BG_ValidateSkinForTeam(const char* modelName, char* skin_name, int team, float* colors);
 
-static qboolean CG_RegisterClientModelname(clientInfo_t* ci, const char* model_name, const char* skin_name,
+static qboolean CG_RegisterClientModelname(clientInfo_t* ci, const char* modelName, const char* skin_name,
 	const char* team_name, const int clientNum)
 {
 	char afilename[MAX_QPATH];
-	char gla_name[MAX_QPATH] = { 0 };
+	char GLAName[MAX_QPATH] = { 0 };
 	const vec3_t temp_vec = { 0, 0, 0 };
 	qboolean bad_model = qfalse;
 	char surf_off[MAX_SURF_LIST_SIZE];
@@ -555,14 +555,14 @@ static qboolean CG_RegisterClientModelname(clientInfo_t* ci, const char* model_n
 retryModel:
 	if (bad_model)
 	{
-		if (model_name && model_name[0])
+		if (modelName && modelName[0])
 		{
 			Com_Printf(
 				"WARNING: Attempted to load an unsupported multi player model %s! (bad or missing bone, or missing animation sequence)\n",
-				model_name);
+				modelName);
 		}
 
-		model_name = DEFAULT_MODEL;
+		modelName = DEFAULT_MODEL;
 		skin_name = "default";
 
 		bad_model = qfalse;
@@ -574,9 +574,9 @@ retryModel:
 		trap->G2API_CleanGhoul2Models(&ci->ghoul2Model);
 	}
 
-	if (!BG_IsValidCharacterModel(model_name, skin_name))
+	if (!BG_IsValidCharacterModel(modelName, skin_name))
 	{
-		model_name = DEFAULT_MODEL;
+		modelName = DEFAULT_MODEL;
 		skin_name = "default";
 	}
 
@@ -598,11 +598,11 @@ retryModel:
 		&& strstr(skin_name, "lower"))
 	{
 		//three part skin
-		use_skin_name = va("models/players/%s/|%s", model_name, skin_name);
+		use_skin_name = va("models/players/%s/|%s", modelName, skin_name);
 	}
 	else
 	{
-		use_skin_name = va("models/players/%s/model_%s.skin", model_name, skin_name);
+		use_skin_name = va("models/players/%s/model_%s.skin", modelName, skin_name);
 	}
 
 	const int check_skin = trap->R_RegisterSkin(use_skin_name);
@@ -614,9 +614,9 @@ retryModel:
 	else
 	{
 		//fallback to the default skin
-		ci->torsoSkin = trap->R_RegisterSkin(va("models/players/%s/model_default.skin", model_name, skin_name));
+		ci->torsoSkin = trap->R_RegisterSkin(va("models/players/%s/model_default.skin", modelName, skin_name));
 	}
-	Com_sprintf(afilename, sizeof afilename, "models/players/%s/model.glm", model_name);
+	Com_sprintf(afilename, sizeof afilename, "models/players/%s/model.glm", modelName);
 	const int handle = trap->G2API_InitGhoul2Model(&ci->ghoul2Model, afilename, 0, ci->torsoSkin, 0, 0, 0);
 
 	if (handle < 0)
@@ -628,12 +628,12 @@ retryModel:
 
 	trap->G2API_SetSkin(ci->ghoul2Model, 0, ci->torsoSkin, ci->torsoSkin);
 
-	gla_name[0] = 0;
+	GLAName[0] = 0;
 
-	trap->G2API_GetGLAName(ci->ghoul2Model, 0, gla_name);
-	if (gla_name[0] != 0)
+	trap->G2API_GetGLAName(ci->ghoul2Model, 0, GLAName);
+	if (GLAName[0] != 0)
 	{
-		if (!strstr(gla_name, "players/_humanoid/")) //only allow rockettrooper in siege
+		if (!strstr(GLAName, "players/_humanoid/")) //only allow rockettrooper in siege
 		{
 			//Bad!
 			bad_model = qtrue;
@@ -643,12 +643,12 @@ retryModel:
 
 	if (!bgpa_ftext_loaded)
 	{
-		if (gla_name[0] == 0/*gla_name == NULL*/)
+		if (GLAName[0] == 0/*GLAName == NULL*/)
 		{
 			bad_model = qtrue;
 			goto retryModel;
 		}
-		Q_strncpyz(afilename, gla_name, sizeof afilename);
+		Q_strncpyz(afilename, GLAName, sizeof afilename);
 		char* slash = Q_strrchr(afilename, '/');
 		if (slash)
 		{
@@ -680,7 +680,7 @@ retryModel:
 		BG_ParseAnimationEvtFile("models/players/_humanoid/", 0, -1);
 	}
 
-	if (CG_ParseSurfsFile(model_name, skin_name, surf_off, surf_on))
+	if (CG_ParseSurfsFile(modelName, skin_name, surf_off, surf_on))
 	{
 		//turn on/off any surfs
 		const char* token;
@@ -800,7 +800,7 @@ retryModel:
 		goto retryModel;
 	}
 
-	if (!Q_stricmp(model_name, "boba_fett"))
+	if (!Q_stricmp(modelName, "boba_fett"))
 	{
 		//special case, turn off the jetpack surfs
 		trap->G2API_SetSurfaceOnOff(ci->ghoul2Model, "torso_rjet", TURN_OFF);
@@ -816,7 +816,7 @@ retryModel:
 	Q_strncpyz(ci->teamName, team_name, sizeof ci->teamName);
 
 	// Model icon for drawing the portrait on screen
-	ci->modelIcon = trap->R_RegisterShaderNoMip(va("models/players/%s/icon_%s", model_name, skin_name));
+	ci->modelIcon = trap->R_RegisterShaderNoMip(va("models/players/%s/icon_%s", modelName, skin_name));
 	if (!ci->modelIcon)
 	{
 		int i = 0;
@@ -833,7 +833,7 @@ retryModel:
 		if (skin_name[i] == '|')
 		{
 			//looks like it actually may be a custom model skin, let's try getting the icon...
-			ci->modelIcon = trap->R_RegisterShaderNoMip(va("models/players/%s/%s", model_name, icon_name));
+			ci->modelIcon = trap->R_RegisterShaderNoMip(va("models/players/%s/%s", modelName, icon_name));
 		}
 	}
 	return qtrue;
@@ -903,17 +903,17 @@ static void CG_ColorFromInt(const int val, vec3_t color)
 static int CG_G2SkelForModel(void* g2)
 {
 	int anim_index = -1;
-	char gla_name[MAX_QPATH] = { 0 };
+	char GLAName[MAX_QPATH] = { 0 };
 
-	gla_name[0] = 0;
-	trap->G2API_GetGLAName(g2, 0, gla_name);
+	GLAName[0] = 0;
+	trap->G2API_GetGLAName(g2, 0, GLAName);
 
-	char* slash = Q_strrchr(gla_name, '/');
+	char* slash = Q_strrchr(GLAName, '/');
 	if (slash)
 	{
 		strcpy(slash, "/animation.cfg");
 
-		anim_index = bg_parse_animation_file(gla_name, NULL, qfalse);
+		anim_index = bg_parse_animation_file(GLAName, NULL, qfalse);
 	}
 
 	return anim_index;
@@ -923,7 +923,7 @@ static int CG_G2SkelForModel(void* g2)
 static int CG_G2EvIndexForModel(void* g2, const int anim_index)
 {
 	int evt_index = -1;
-	char gla_name[MAX_QPATH] = { 0 };
+	char GLAName[MAX_QPATH] = { 0 };
 
 	if (anim_index == -1)
 	{
@@ -931,16 +931,16 @@ static int CG_G2EvIndexForModel(void* g2, const int anim_index)
 		return -1;
 	}
 
-	gla_name[0] = 0;
-	trap->G2API_GetGLAName(g2, 0, gla_name);
+	GLAName[0] = 0;
+	trap->G2API_GetGLAName(g2, 0, GLAName);
 
-	char* slash = Q_strrchr(gla_name, '/');
+	char* slash = Q_strrchr(GLAName, '/');
 	if (slash)
 	{
 		slash++;
 		*slash = 0;
 
-		evt_index = BG_ParseAnimationEvtFile(gla_name, anim_index, bgNumAnimEvents);
+		evt_index = BG_ParseAnimationEvtFile(GLAName, anim_index, bgNumAnimEvents);
 	}
 
 	return evt_index;
@@ -13731,12 +13731,12 @@ qboolean CG_ThereIsAMaster(void)
 //Checks to see if the model string has a * appended with a custom skin name after.
 //If so, it terminates the model string correctly, parses the skin name out, and returns
 //the handle of the registered skin.
-int CG_HandleAppendedSkin(const char* model_name)
+int CG_HandleAppendedSkin(const char* modelName)
 {
 	qhandle_t skin_id = 0;
 
 	//see if it has a skin name
-	char* p = Q_strrchr(model_name, '*');
+	char* p = Q_strrchr(modelName, '*');
 
 	if (p)
 	{
@@ -13759,7 +13759,7 @@ int CG_HandleAppendedSkin(const char* model_name)
 			//got it, register the skin under the model path.
 			char base_folder[MAX_QPATH];
 
-			strcpy(base_folder, model_name);
+			strcpy(base_folder, modelName);
 			p = Q_strrchr(base_folder, '/'); //go back to the first /, should be the path point
 
 			if (p)
@@ -13791,16 +13791,16 @@ int CG_HandleAppendedSkin(const char* model_name)
 void BG_GetVehicleModelName(char* modelName, const char* vehicleName, size_t len);
 void BG_GetVehicleSkinName(char* skinname, int len);
 
-void CG_CacheG2AnimInfo(const char* model_name)
+void CG_CacheG2AnimInfo(const char* modelName)
 {
 	void* g2 = NULL;
 	char use_model[MAX_QPATH] = { 0 };
 	char use_skin[MAX_QPATH] = { 0 };
 
-	Q_strncpyz(use_model, model_name, sizeof use_model);
-	Q_strncpyz(use_skin, model_name, sizeof use_skin);
+	Q_strncpyz(use_model, modelName, sizeof use_model);
+	Q_strncpyz(use_skin, modelName, sizeof use_skin);
 
-	if (model_name[0] == '$')
+	if (modelName[0] == '$')
 	{
 		//it's a vehicle name actually, let's precache the whole vehicle
 		BG_GetVehicleModelName(use_model, use_model, sizeof use_model);
@@ -13821,22 +13821,22 @@ void CG_CacheG2AnimInfo(const char* model_name)
 
 	if (g2)
 	{
-		char gla_name[MAX_QPATH] = { 0 };
+		char GLAName[MAX_QPATH] = { 0 };
 		char original_model_name[MAX_QPATH];
 
 		int anim_index = -1;
 
-		gla_name[0] = 0;
-		trap->G2API_GetGLAName(g2, 0, gla_name);
+		GLAName[0] = 0;
+		trap->G2API_GetGLAName(g2, 0, GLAName);
 
 		Q_strncpyz(original_model_name, use_model, sizeof original_model_name);
 
-		char* slash = Q_strrchr(gla_name, '/');
+		char* slash = Q_strrchr(GLAName, '/');
 		if (slash)
 		{
 			strcpy(slash, "/animation.cfg");
 
-			anim_index = bg_parse_animation_file(gla_name, NULL, qfalse);
+			anim_index = bg_parse_animation_file(GLAName, NULL, qfalse);
 		}
 
 		if (anim_index != -1)
@@ -13924,16 +13924,16 @@ static void CG_G2AnimEntModelLoad(centity_t* cent)
 
 	if (c_model_name && c_model_name[0])
 	{
-		char model_name[MAX_QPATH];
+		char modelName[MAX_QPATH];
 		int skin_id;
 
-		strcpy(model_name, c_model_name);
+		strcpy(modelName, c_model_name);
 
-		if (cent->currentState.NPC_class == CLASS_VEHICLE && model_name[0] == '$')
+		if (cent->currentState.NPC_class == CLASS_VEHICLE && modelName[0] == '$')
 		{
 			//vehicles pass their veh names over as model names, then we get the model name from the veh type
 			//create a vehicle object clientside for this type
-			const char* vehType = &model_name[1];
+			const char* vehType = &modelName[1];
 			const int iVehIndex = BG_VehicleGetIndex(vehType);
 
 			switch (g_vehicleInfo[iVehIndex].type)
@@ -13968,26 +13968,26 @@ static void CG_G2AnimEntModelLoad(centity_t* cent)
 			//attach the handles for fx cgame-side
 			CG_RegisterVehicleAssets(cent->m_pVehicle);
 
-			BG_GetVehicleModelName(model_name, model_name, sizeof model_name);
+			BG_GetVehicleModelName(modelName, modelName, sizeof modelName);
 			if (cent->m_pVehicle->m_pVehicleInfo->skin &&
 				cent->m_pVehicle->m_pVehicleInfo->skin[0])
 			{
 				//use a custom skin
-				skin_id = trap->R_RegisterSkin(va("models/players/%s/model_%s.skin", model_name,
+				skin_id = trap->R_RegisterSkin(va("models/players/%s/model_%s.skin", modelName,
 					cent->m_pVehicle->m_pVehicleInfo->skin));
 			}
 			else
 			{
-				skin_id = trap->R_RegisterSkin(va("models/players/%s/model_default.skin", model_name));
+				skin_id = trap->R_RegisterSkin(va("models/players/%s/model_default.skin", modelName));
 			}
-			strcpy(model_name, va("models/players/%s/model.glm", model_name));
+			strcpy(modelName, va("models/players/%s/model.glm", modelName));
 
 			//this sound is *only* used for vehicles now
 			cgs.media.noAmmoSound = trap->S_RegisterSound("sound/weapons/noammo.wav");
 		}
 		else
 		{
-			skin_id = CG_HandleAppendedSkin(model_name); //get the skin if there is one.
+			skin_id = CG_HandleAppendedSkin(modelName); //get the skin if there is one.
 		}
 
 		if (cent->ghoul2)
@@ -13996,12 +13996,12 @@ static void CG_G2AnimEntModelLoad(centity_t* cent)
 			trap->G2API_CleanGhoul2Models(&cent->ghoul2);
 		}
 
-		trap->G2API_InitGhoul2Model(&cent->ghoul2, model_name, 0, skin_id, 0, 0, 0);
+		trap->G2API_InitGhoul2Model(&cent->ghoul2, modelName, 0, skin_id, 0, 0, 0);
 
 		if (cent->ghoul2)
 		{
 			char* slash;
-			char gla_name[MAX_QPATH] = { 0 };
+			char GLAName[MAX_QPATH] = { 0 };
 			char original_model_name[MAX_QPATH];
 			char* saber;
 
@@ -14109,21 +14109,21 @@ static void CG_G2AnimEntModelLoad(centity_t* cent)
 
 			cent->localAnimIndex = -1;
 
-			gla_name[0] = 0;
-			trap->G2API_GetGLAName(cent->ghoul2, 0, gla_name);
+			GLAName[0] = 0;
+			trap->G2API_GetGLAName(cent->ghoul2, 0, GLAName);
 
-			strcpy(original_model_name, model_name);
+			strcpy(original_model_name, modelName);
 
-			if (gla_name[0] &&
-				!strstr(gla_name, "players/_humanoid/"))
+			if (GLAName[0] &&
+				!strstr(GLAName, "players/_humanoid/"))
 			{
 				//it doesn't use humanoid anims.
-				slash = Q_strrchr(gla_name, '/');
+				slash = Q_strrchr(GLAName, '/');
 				if (slash)
 				{
 					strcpy(slash, "/animation.cfg");
 
-					cent->localAnimIndex = bg_parse_animation_file(gla_name, NULL, qfalse);
+					cent->localAnimIndex = bg_parse_animation_file(GLAName, NULL, qfalse);
 				}
 			}
 			else
@@ -14140,7 +14140,7 @@ static void CG_G2AnimEntModelLoad(centity_t* cent)
 				trap->G2API_AddBolt(cent->ghoul2, 0, "*r_hand_cap_r_arm");
 				trap->G2API_AddBolt(cent->ghoul2, 0, "*l_hand_cap_l_arm");
 
-				if (strstr(gla_name, "players/rockettrooper/"))
+				if (strstr(GLAName, "players/rockettrooper/"))
 				{
 					cent->localAnimIndex = 1;
 				}
@@ -14652,7 +14652,7 @@ int FindGender(const char* model_path, const centity_t* cent)
 {
 	fileHandle_t f;
 	qboolean is_female = qfalse;
-	char model_name[MAX_QPATH];
+	char modelName[MAX_QPATH];
 
 	if (cent->currentState.NPC_class != CLASS_PLAYER)
 	{
@@ -14661,9 +14661,9 @@ int FindGender(const char* model_path, const centity_t* cent)
 		return GENDER_MALE;
 	}
 
-	strcpy(model_name, model_path);
+	strcpy(modelName, model_path);
 
-	char* temp = Q_strrchr(model_name, '/');
+	char* temp = Q_strrchr(modelName, '/');
 
 	if (!temp)
 	{
@@ -14674,7 +14674,7 @@ int FindGender(const char* model_path, const centity_t* cent)
 
 	*temp = '\0';
 
-	const int f_len = trap->FS_Open(va("%s/sounds.cfg", model_name), &f, FS_READ);
+	const int f_len = trap->FS_Open(va("%s/sounds.cfg", modelName), &f, FS_READ);
 
 	if (f)
 	{
@@ -14699,7 +14699,7 @@ int FindGender(const char* model_path, const centity_t* cent)
 	}
 	else
 	{
-		Com_Printf("FindGender Error: Couldnt find sounds.cfg for %s\n", model_name);
+		Com_Printf("FindGender Error: Couldnt find sounds.cfg for %s\n", modelName);
 	}
 
 	if (is_female)

@@ -9058,7 +9058,7 @@ static void Jedi_Combat()
 							PM_InKnockDown(&NPC->client->ps) == qfalse)
 						{//try to dash to TargetPosition
 							JediDirectionalDashAttack(NPC, NPC->enemy);
-							TIMER_Set(NPC, "DashInTime", Q_irand(5000, 10000));
+							TIMER_Set(NPC, "DashInTime", Q_irand(3000, 6000));
 							if (d_JediAI->integer || g_DebugSaberCombat->integer)
 							{
 								Com_Printf(S_COLOR_RED"Debug: NPC dashing to player...\n");

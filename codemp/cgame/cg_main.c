@@ -1278,8 +1278,8 @@ static void CG_RegisterEffects(void)
 //===================================================================================
 
 extern char* forceHolocronModels[];
-int CG_HandleAppendedSkin(const char* model_name);
-void CG_CacheG2AnimInfo(const char* model_name);
+int CG_HandleAppendedSkin(const char* modelName);
+void CG_CacheG2AnimInfo(const char* modelName);
 
 /*
 =================

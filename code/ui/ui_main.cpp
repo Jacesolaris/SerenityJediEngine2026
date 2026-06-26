@@ -2532,14 +2532,14 @@ static int UI_G2SetAnim(CGhoul2Info* ghlInfo, const char* boneName, const int an
 {
 	int animIndex;
 
-	const char* gla_name = re.G2API_GetGLAName(ghlInfo);
+	const char* GLAName = re.G2API_GetGLAName(ghlInfo);
 
-	if (!gla_name || !gla_name[0])
+	if (!GLAName || !GLAName[0])
 	{
 		return 0;
 	}
 
-	UI_ParseAnimFileSet(gla_name, &animIndex);
+	UI_ParseAnimFileSet(GLAName, &animIndex);
 
 	if (animIndex != -1)
 	{

@@ -139,7 +139,7 @@ void CrystalAmmoSettings(gentity_t* ent)
 */
 //------------------------------------------------------------
 #include "anims.h"
-extern int G_ParseAnimFileSet(const char* skeletonName, const char* model_name = nullptr);
+extern int G_ParseAnimFileSet(const char* skeletonName, const char* modelName = nullptr);
 int temp_animFileIndex;
 
 void set_MiscAnim(gentity_t* ent)

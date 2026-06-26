@@ -2682,19 +2682,19 @@ static qboolean NPC_VehiclePrecache(const gentity_t* spawner)
 		if (tempG2)
 		{
 			//now, cache the anim config.
-			char gla_name[1024];
+			char GLAName[1024];
 
-			gla_name[0] = 0;
-			trap->G2API_GetGLAName(tempG2, 0, gla_name);
+			GLAName[0] = 0;
+			trap->G2API_GetGLAName(tempG2, 0, GLAName);
 
-			if (gla_name[0])
+			if (GLAName[0])
 			{
-				char* slash = Q_strrchr(gla_name, '/');
+				char* slash = Q_strrchr(GLAName, '/');
 				if (slash)
 				{
 					strcpy(slash, "/animation.cfg");
 
-					bg_parse_animation_file(gla_name, NULL, qfalse);
+					bg_parse_animation_file(GLAName, NULL, qfalse);
 				}
 			}
 			trap->G2API_CleanGhoul2Models(&tempG2);
