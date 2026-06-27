@@ -76,7 +76,6 @@ unsigned int timeGetTime(void)
 }
 #endif
 
-
 static void NAV_CvarInit()
 {
 	d_altRoutes = Cvar_Get("d_altRoutes", "0", CVAR_CHEAT);
@@ -1354,7 +1353,7 @@ int CNavigator::GetBestPathBetweenEnts(sharedEntity_t* ent, sharedEntity_t* goal
 	if (m_nodes.size() == 0)
 		return NODE_NONE;
 
-constexpr auto MAX_Z_DELTA = 18;
+	constexpr auto MAX_Z_DELTA = 18;
 
 	nodeChain_l nodeChain;
 	nodeChain_l::iterator nci;
@@ -1572,7 +1571,7 @@ int CNavigator::GetNearestNode(sharedEntity_t* ent, const int lastID, const int 
 
 	/////////////////////////////////////////////////
 
-constexpr auto MAX_Z_DELTA = 18;
+	constexpr auto MAX_Z_DELTA = 18;
 
 	/////////////////////////////////////////////////
 

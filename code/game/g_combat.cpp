@@ -8820,7 +8820,7 @@ extern void G_GetMassAndVelocityForEnt(const gentity_t* ent, float* mass, vec3_t
 ============
 G_RadiusDamage
 ============
-*/void G_RadiusDamage(const vec3_t origin, gentity_t* attacker, const float damage, float radius,const gentity_t* ignore, const int mod)
+*/void G_RadiusDamage(const vec3_t origin, gentity_t* attacker, const float damage, float radius, const gentity_t* ignore, const int mod)
 {
 	// ---------------------------------------------------------
 	// Static array avoids stack overflow (fixes C6262)

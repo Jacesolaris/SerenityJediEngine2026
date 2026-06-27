@@ -878,7 +878,7 @@ static void CG_General(centity_t* cent)
 
 		vec3_t start;
 		vec3_t end;
-		vec3_t r_hand_pos={0};
+		vec3_t r_hand_pos = { 0 };
 
 		centity_t* parent;
 		mdxaBone_t mat;

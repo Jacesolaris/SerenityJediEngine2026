@@ -79,7 +79,6 @@ void GL_Bind(image_t* image) {
 	}
 }
 
-
 /*
 ** GL_SelectTexture
 */

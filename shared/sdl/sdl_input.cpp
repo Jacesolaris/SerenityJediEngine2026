@@ -777,7 +777,6 @@ static void IN_InitJoystick(void)
 	SDL_GameControllerEventState(SDL_QUERY);
 }
 
-
 void IN_Init(void* windowData)
 {
 	if (!SDL_WasInit(SDL_INIT_VIDEO))

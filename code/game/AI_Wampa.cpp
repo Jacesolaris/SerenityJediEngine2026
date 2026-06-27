@@ -852,7 +852,7 @@ void NPC_BSWampa_Default()
 							NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_HOLD_IDLE/*BOTH_ATTACK4*/, SETANIM_FLAG_NORMAL);
 						}
 					}
-					else if (NPC->client->ps.legsAnim == BOTH_STAND2TO1	&& !NPC->client->ps.legsAnimTimer)
+					else if (NPC->client->ps.legsAnim == BOTH_STAND2TO1 && !NPC->client->ps.legsAnimTimer)
 					{
 						NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_HOLD_IDLE, SETANIM_FLAG_NORMAL);
 					}

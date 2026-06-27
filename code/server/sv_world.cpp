@@ -916,7 +916,6 @@ SV_ClipMoveToEntities
 	}
 }
 
-
 /*
 ==================
 SV_Trace

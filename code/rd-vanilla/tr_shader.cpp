@@ -3437,9 +3437,9 @@ shader_t* R_FindShader(const char* name, const int* lightmapIndexes, const byte*
 	if (!image)
 	{
 		if (strncmp(name, "levelshots", 10) != 0 && strcmp(name, "*off") != 0)
-		{	
+		{
 #ifdef _DEBUG
-			ri.Printf(PRINT_DEVELOPER,S_COLOR_RED "Couldn't find image for shader %s\n", name);
+			ri.Printf(PRINT_DEVELOPER, S_COLOR_RED "Couldn't find image for shader %s\n", name);
 #endif
 		}
 		shader.defaultShader = true;

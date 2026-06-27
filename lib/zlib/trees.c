@@ -596,7 +596,6 @@ local void gen_bitlen(deflate_state* s, tree_desc* desc)
 			s->bl_count[max_length]--;
 
 		overflow -= 2;
-
 	} while (overflow > 0);
 
 	/* ---------------------------------------------------------
@@ -1132,7 +1131,7 @@ int last; /* one if this is the last block for a file */
 	}
 	Tracev((stderr, "\ncomprlen %lu(%lu) ", s->compressed_len >> 3,
 		s->compressed_len - 7 * last));
-}
+	}
 
 /* ===========================================================================
  * Save the match info and tally the frequency counts. Return true if

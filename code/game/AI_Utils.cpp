@@ -230,7 +230,6 @@ static void AI_SortGroupByPathCostToEnemy(AIGroupInfo_t* group)
 	}
 }
 
-
 static qboolean AI_FindSelfInPreviousGroup(const gentity_t* self)
 {
 	//go through other groups made this frame and see if any of those contain me already

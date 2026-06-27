@@ -126,7 +126,6 @@ void NPC_Blocked(gentity_t* self, gentity_t* blocker)
 	self->NPC->blockingEntNum = blocker->s.number;
 }
 
-
 /*
 -------------------------
 NPC_SetMoveGoal

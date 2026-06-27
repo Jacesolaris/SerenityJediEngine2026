@@ -47,388 +47,388 @@ extern vmCvar_t r_ratiofix;
 //
 static bool SV_Map_(const ForceReload_e eForceReload)
 {
-    char expanded[MAX_QPATH] = { 0 };
+	char expanded[MAX_QPATH] = { 0 };
 
-    // Tracks whether this map belongs to any known category
-    bool not_jk_map = true;
+	// Tracks whether this map belongs to any known category
+	bool not_jk_map = true;
 
-    // -------------------------------------------------
-    // MAP GROUP DEFINITIONS
-    // -------------------------------------------------
-    const char* JKO_Maps[] =
-    {
-        "kejim_post","kejim_base","kejim_impb",
-        "artus_mine","artus_detention","artus_topside",
-        "valley","yavin_temple","yavin_trial",
-        "ns_streets","ns_hideout","ns_starpad",
-        "bespin_undercity","bespin_streets","bespin_platform",
-        "cairn_bay","cairn_assembly","cairn_reactor","cairn_dock1",
-        "doom_comm","doom_detention","doom_shields",
-        "yavin_swamp","yavin_canyon","yavin_courtyard","yavin_final",
-        "demo","jodemo","pit"
-    };
+	// -------------------------------------------------
+	// MAP GROUP DEFINITIONS
+	// -------------------------------------------------
+	const char* JKO_Maps[] =
+	{
+		"kejim_post","kejim_base","kejim_impb",
+		"artus_mine","artus_detention","artus_topside",
+		"valley","yavin_temple","yavin_trial",
+		"ns_streets","ns_hideout","ns_starpad",
+		"bespin_undercity","bespin_streets","bespin_platform",
+		"cairn_bay","cairn_assembly","cairn_reactor","cairn_dock1",
+		"doom_comm","doom_detention","doom_shields",
+		"yavin_swamp","yavin_canyon","yavin_courtyard","yavin_final",
+		"demo","jodemo","pit"
+	};
 
-    const char* JKA_Maps[] =
-    {
-        "academy1","academy2","academy3","academy4","academy5","academy6",
-        "hoth2","hoth3",
-        "kor1","kor2",
-        "t1_danger","t1_fatal","t1_inter","t1_rail","t1_sour","t1_surprise",
-        "t2_dpred","t2_rancor","t2_rogue","t2_trip","t2_wedge",
-        "t3_bounty","t3_byss","t3_hevil","t3_rift","t3_stamp",
-        "taspir1","taspir2",
-        "vjun1","vjun2","vjun3",
-        "yavin1","yavin1b","yavin2",
-        "ladder"
-    };
+	const char* JKA_Maps[] =
+	{
+		"academy1","academy2","academy3","academy4","academy5","academy6",
+		"hoth2","hoth3",
+		"kor1","kor2",
+		"t1_danger","t1_fatal","t1_inter","t1_rail","t1_sour","t1_surprise",
+		"t2_dpred","t2_rancor","t2_rogue","t2_trip","t2_wedge",
+		"t3_bounty","t3_byss","t3_hevil","t3_rift","t3_stamp",
+		"taspir1","taspir2",
+		"vjun1","vjun2","vjun3",
+		"yavin1","yavin1b","yavin2",
+		"ladder"
+	};
 
-    const char* DF_Maps[] =
-    {
-        "dtention","executor","fuelstat","gromas","jabship",
-        "narshada","robotics","secbase","sewers","talay","testbase"
-    };
+	const char* DF_Maps[] =
+	{
+		"dtention","executor","fuelstat","gromas","jabship",
+		"narshada","robotics","secbase","sewers","talay","testbase"
+	};
 
-    const char* Surv_Maps[] =
-    {
-        "asajjsurv","asajjwin",
-        "clonesurv","clonewin",
-        "headtoheadsurv",
-        "immysurv","immywin",
-        "izzysurv","izzywin"
-    };
+	const char* Surv_Maps[] =
+	{
+		"asajjsurv","asajjwin",
+		"clonesurv","clonewin",
+		"headtoheadsurv",
+		"immysurv","immywin",
+		"izzysurv","izzywin"
+	};
 
-    const char* Izzy_Maps[] = { "izzysurv","izzywin" };
-    const char* Immy_Maps[] = { "immysurv","immywin" };
-    const char* Asajj_Maps[] = { "asajjsurv","asajjwin" };
+	const char* Izzy_Maps[] = { "izzysurv","izzywin" };
+	const char* Immy_Maps[] = { "immysurv","immywin" };
+	const char* Asajj_Maps[] = { "asajjsurv","asajjwin" };
 
-    const char* Kotor_Maps[] =
-    {
-        "CitadelStationDocks126HangarThief","Credits",
-        "DantooineMasterVrookLastStand","DarthRevanEncounter",
-        "DarthSionDuel","DarthSionFinalDuel",
-        "DxunDuelWithTheSithLords","DxunMandalorianOutpostUnderAttack",
-        "KreiaVision","MalakVision",
-        "NarShaddaaZezKaiEllDuel","NihilusLastStand",
-        "OnderonMasterKavarDuel","PeragusFightwithHK50",
-        "TelosAtrisDuel",
-        "TelosCitadelStationUnderAttackPart1",
-        "TelosCitadelStationUnderAttackPart2",
-        "TelosCitadelStationUnderAttackPart3",
-        "TrayusCoreFight","VisasDuel"
-    };
+	const char* Kotor_Maps[] =
+	{
+		"CitadelStationDocks126HangarThief","Credits",
+		"DantooineMasterVrookLastStand","DarthRevanEncounter",
+		"DarthSionDuel","DarthSionFinalDuel",
+		"DxunDuelWithTheSithLords","DxunMandalorianOutpostUnderAttack",
+		"KreiaVision","MalakVision",
+		"NarShaddaaZezKaiEllDuel","NihilusLastStand",
+		"OnderonMasterKavarDuel","PeragusFightwithHK50",
+		"TelosAtrisDuel",
+		"TelosCitadelStationUnderAttackPart1",
+		"TelosCitadelStationUnderAttackPart2",
+		"TelosCitadelStationUnderAttackPart3",
+		"TrayusCoreFight","VisasDuel"
+	};
 
-    const char* Nina_Maps[] =
-    {
-        "conclusion","nina01","nina02","nina03","nina04",
-        "nina_05","nina_06","nina_06_","nina_07","intro_07",
-        "nina_08","intro_08","nina_09","nina_10","yavin_cine"
-    };
+	const char* Nina_Maps[] =
+	{
+		"conclusion","nina01","nina02","nina03","nina04",
+		"nina_05","nina_06","nina_06_","nina_07","intro_07",
+		"nina_08","intro_08","nina_09","nina_10","yavin_cine"
+	};
 
-    const char* Yavin_Maps[] =
-    {
-        "level_jedi_council1","level_jedi_council2","level_jedi_council3",
-        "level_jedi_council4","level_jedi_council5","level_jedi_council6",
-        "level0","level1","level1_comm_station","level1_comm_station_c",
-        "level1_lava","level1_outside",
-        "level2","level2_caves","level2_saber_shipment",
-        "level2_transport_entry","level2_transport_entry_c",
-        "level3","level3_old_reactor","level3_power_reserves",
-        "level4","level4_crystal_cavern","level4_lower_lake",
-        "level4_weapons_cache",
-        "level5","level5_apprentice","level5_fueling_station",
-        "level5_sith_command_ship",
-        "level6","level6_defeat_council","level6_outskirts",
-        "level6_outskirts_sith","level6_queen","level6_queen_sith",
-        "level6_sith",
-        "level7_fanfare","level7_fanfare_dark","level7_fanfare_sith"
-    };
+	const char* Yavin_Maps[] =
+	{
+		"level_jedi_council1","level_jedi_council2","level_jedi_council3",
+		"level_jedi_council4","level_jedi_council5","level_jedi_council6",
+		"level0","level1","level1_comm_station","level1_comm_station_c",
+		"level1_lava","level1_outside",
+		"level2","level2_caves","level2_saber_shipment",
+		"level2_transport_entry","level2_transport_entry_c",
+		"level3","level3_old_reactor","level3_power_reserves",
+		"level4","level4_crystal_cavern","level4_lower_lake",
+		"level4_weapons_cache",
+		"level5","level5_apprentice","level5_fueling_station",
+		"level5_sith_command_ship",
+		"level6","level6_defeat_council","level6_outskirts",
+		"level6_outskirts_sith","level6_queen","level6_queen_sith",
+		"level6_sith",
+		"level7_fanfare","level7_fanfare_dark","level7_fanfare_sith"
+	};
 
-    const char* Veng_Maps[] = { "Part_1","Part_2","Part_3","Part_4" };
+	const char* Veng_Maps[] = { "Part_1","Part_2","Part_3","Part_4" };
 
-    const char* NoCubeMapping_Maps[] = { "yavin1","yavin1b" };
+	const char* NoCubeMapping_Maps[] = { "yavin1","yavin1b" };
 
-    // -------------------------------------------------
-    // GET MAP NAME
-    // -------------------------------------------------
-    char* map = Cmd_Argv(1);
-    if (!*map)
-    {
-        Com_Printf("no map specified\n");
-        return false;
-    }
+	// -------------------------------------------------
+	// GET MAP NAME
+	// -------------------------------------------------
+	char* map = Cmd_Argv(1);
+	if (!*map)
+	{
+		Com_Printf("no map specified\n");
+		return false;
+	}
 
-    // Disallow backslashes
-    if (strchr(map, '\\'))
-    {
-        Com_Printf("Can't have mapnames with a \\\n");
-        return false;
-    }
+	// Disallow backslashes
+	if (strchr(map, '\\'))
+	{
+		Com_Printf("Can't have mapnames with a \\\n");
+		return false;
+	}
 
-    // Build BSP path
-    Com_sprintf(expanded, sizeof(expanded), "maps/%s.bsp", map);
+	// Build BSP path
+	Com_sprintf(expanded, sizeof(expanded), "maps/%s.bsp", map);
 
-    // Check map exists
-    if (FS_ReadFile(expanded, nullptr) == -1)
-    {
-        Com_Printf("Can't find map %s\n", expanded);
+	// Check map exists
+	if (FS_ReadFile(expanded, nullptr) == -1)
+	{
+		Com_Printf("Can't find map %s\n", expanded);
 
-        extern cvar_t* com_buildScript;
-        if (com_buildScript != nullptr && com_buildScript->integer != 0)
-        {
-            Com_Error(ERR_FATAL, "Can't find map %s\n", expanded);
-        }
-        return false;
-    }
+		extern cvar_t* com_buildScript;
+		if (com_buildScript != nullptr && com_buildScript->integer != 0)
+		{
+			Com_Error(ERR_FATAL, "Can't find map %s\n", expanded);
+		}
+		return false;
+	}
 
-    // Clamp SP skill
-    if (g_spskill->integer > 2)
-    {
-        Cvar_Set("g_spskill", "2");
-    }
+	// Clamp SP skill
+	if (g_spskill->integer > 2)
+	{
+		Cvar_Set("g_spskill", "2");
+	}
 
-    // -------------------------------------------------
-    // MAP TYPE DETECTION + com_outcast MODE ASSIGNMENT
-    // -------------------------------------------------
+	// -------------------------------------------------
+	// MAP TYPE DETECTION + com_outcast MODE ASSIGNMENT
+	// -------------------------------------------------
 
-    // JKA maps → com_outcast = 0
-    for (auto& jka_map : JKA_Maps)
-    {
-        if (strcmp(map, jka_map) == 0)
-        {
-            if (com_outcast->integer != 0)
-            {
-                Cvar_Set("com_outcast", "0");
-            }
-            not_jk_map = false;
-            break;
-        }
-    }
+	// JKA maps → com_outcast = 0
+	for (auto& jka_map : JKA_Maps)
+	{
+		if (strcmp(map, jka_map) == 0)
+		{
+			if (com_outcast->integer != 0)
+			{
+				Cvar_Set("com_outcast", "0");
+			}
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // JKO maps → com_outcast = 1 + Kyle loadout
-    for (auto& jko_map : JKO_Maps)
-    {
-        if (strcmp(map, jko_map) == 0)
-        {
-            if (com_outcast->integer != 1)
-            {
-                Cvar_Set("com_outcast", "1");
-            }
+	// JKO maps → com_outcast = 1 + Kyle loadout
+	for (auto& jko_map : JKO_Maps)
+	{
+		if (strcmp(map, jko_map) == 0)
+		{
+			if (com_outcast->integer != 1)
+			{
+				Cvar_Set("com_outcast", "1");
+			}
 
-            // Kyle defaults
-            Cvar_Set("g_char_model", "kyle");
-            Cvar_Set("g_char_skin_head", "model_default");
-            Cvar_Set("g_char_skin_torso", "model_default");
-            Cvar_Set("g_char_skin_legs", "model_default");
-            Cvar_Set("g_saber", "kyle");
-            Cvar_Set("g_saber_color", "blue");
-            Cvar_Set("g_saber2", "none");
-            Cvar_Set("snd", "kyle");
-            Cvar_Set("sex", "m");
+			// Kyle defaults
+			Cvar_Set("g_char_model", "kyle");
+			Cvar_Set("g_char_skin_head", "model_default");
+			Cvar_Set("g_char_skin_torso", "model_default");
+			Cvar_Set("g_char_skin_legs", "model_default");
+			Cvar_Set("g_saber", "kyle");
+			Cvar_Set("g_saber_color", "blue");
+			Cvar_Set("g_saber2", "none");
+			Cvar_Set("snd", "kyle");
+			Cvar_Set("sex", "m");
 
-            not_jk_map = false;
-            break;
-        }
-    }
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // Yavin campaign → com_outcast = 3
-    for (auto& Yavin_map : Yavin_Maps)
-    {
-        if (strcmp(map, Yavin_map) == 0)
-        {
-            if (com_outcast->integer != 3)
-            {
-                Cvar_Set("com_outcast", "3");
-            }
-            not_jk_map = false;
-            break;
-        }
-    }
+	// Yavin campaign → com_outcast = 3
+	for (auto& Yavin_map : Yavin_Maps)
+	{
+		if (strcmp(map, Yavin_map) == 0)
+		{
+			if (com_outcast->integer != 3)
+			{
+				Cvar_Set("com_outcast", "3");
+			}
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // Dark Forces → com_outcast = 4 + DF Kyle loadout
-    for (auto& DF_map : DF_Maps)
-    {
-        if (strcmp(map, DF_map) == 0)
-        {
-            if (com_outcast->integer != 4)
-            {
-                Cvar_Set("com_outcast", "4");
-            }
+	// Dark Forces → com_outcast = 4 + DF Kyle loadout
+	for (auto& DF_map : DF_Maps)
+	{
+		if (strcmp(map, DF_map) == 0)
+		{
+			if (com_outcast->integer != 4)
+			{
+				Cvar_Set("com_outcast", "4");
+			}
 
-            Cvar_Set("g_char_model", "df2_kyle");
-            Cvar_Set("g_char_skin_head", "head_a1");
-            Cvar_Set("g_char_skin_torso", "torso_a1");
-            Cvar_Set("g_char_skin_legs", "lower_a1");
-            Cvar_Set("g_saber", "kyle");
-            Cvar_Set("g_saber_color", "blue");
-            Cvar_Set("g_saber2", "none");
-            Cvar_Set("snd", "kyle");
-            Cvar_Set("sex", "m");
+			Cvar_Set("g_char_model", "df2_kyle");
+			Cvar_Set("g_char_skin_head", "head_a1");
+			Cvar_Set("g_char_skin_torso", "torso_a1");
+			Cvar_Set("g_char_skin_legs", "lower_a1");
+			Cvar_Set("g_saber", "kyle");
+			Cvar_Set("g_saber_color", "blue");
+			Cvar_Set("g_saber2", "none");
+			Cvar_Set("snd", "kyle");
+			Cvar_Set("sex", "m");
 
-            not_jk_map = false;
-            break;
-        }
-    }
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // KOTOR → com_outcast = 5
-    for (auto& Kotor_map : Kotor_Maps)
-    {
-        if (strcmp(map, Kotor_map) == 0)
-        {
-            if (com_outcast->integer != 5)
-            {
-                Cvar_Set("com_outcast", "5");
-            }
-            not_jk_map = false;
-            break;
-        }
-    }
+	// KOTOR → com_outcast = 5
+	for (auto& Kotor_map : Kotor_Maps)
+	{
+		if (strcmp(map, Kotor_map) == 0)
+		{
+			if (com_outcast->integer != 5)
+			{
+				Cvar_Set("com_outcast", "5");
+			}
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // Survival → com_outcast = 6 + character overrides
-    for (auto& Surv_map : Surv_Maps)
-    {
-        if (strcmp(map, Surv_map) == 0)
-        {
-            if (com_outcast->integer != 6)
-            {
-                Cvar_Set("com_outcast", "6");
-            }
+	// Survival → com_outcast = 6 + character overrides
+	for (auto& Surv_map : Surv_Maps)
+	{
+		if (strcmp(map, Surv_map) == 0)
+		{
+			if (com_outcast->integer != 6)
+			{
+				Cvar_Set("com_outcast", "6");
+			}
 
-            // Izzy
-            for (auto& Izzy_map : Izzy_Maps)
-            {
-                if (strcmp(map, Izzy_map) == 0)
-                {
-                    Cvar_Set("g_char_model", "izzyv3");
-                    Cvar_Set("g_char_skin_head", "head_a1");
-                    Cvar_Set("g_char_skin_torso", "torso_a1");
-                    Cvar_Set("g_char_skin_legs", "lower_a1");
-                    Cvar_Set("g_saber", "izzysith");
-                    Cvar_Set("g_saber_color", "orange");
-                    Cvar_Set("g_saber2", "none");
-                    Cvar_Set("snd", "jaden_male");
-                    Cvar_Set("sex", "m");
-                }
-            }
+			// Izzy
+			for (auto& Izzy_map : Izzy_Maps)
+			{
+				if (strcmp(map, Izzy_map) == 0)
+				{
+					Cvar_Set("g_char_model", "izzyv3");
+					Cvar_Set("g_char_skin_head", "head_a1");
+					Cvar_Set("g_char_skin_torso", "torso_a1");
+					Cvar_Set("g_char_skin_legs", "lower_a1");
+					Cvar_Set("g_saber", "izzysith");
+					Cvar_Set("g_saber_color", "orange");
+					Cvar_Set("g_saber2", "none");
+					Cvar_Set("snd", "jaden_male");
+					Cvar_Set("sex", "m");
+				}
+			}
 
-            // Immy
-            for (auto& Immy_map : Immy_Maps)
-            {
-                if (strcmp(map, Immy_map) == 0)
-                {
-                    Cvar_Set("g_char_model", "Immy");
-                    Cvar_Set("g_char_skin_head", "head_a1");
-                    Cvar_Set("g_char_skin_torso", "torso_a1");
-                    Cvar_Set("g_char_skin_legs", "lower_a1");
-                    Cvar_Set("g_saber", "dual_1");
-                    Cvar_Set("g_saber_color", "purple");
-                    Cvar_Set("g_saber2", "none");
-                    Cvar_Set("snd", "jaden_fmle");
-                    Cvar_Set("sex", "f");
-                }
-            }
+			// Immy
+			for (auto& Immy_map : Immy_Maps)
+			{
+				if (strcmp(map, Immy_map) == 0)
+				{
+					Cvar_Set("g_char_model", "Immy");
+					Cvar_Set("g_char_skin_head", "head_a1");
+					Cvar_Set("g_char_skin_torso", "torso_a1");
+					Cvar_Set("g_char_skin_legs", "lower_a1");
+					Cvar_Set("g_saber", "dual_1");
+					Cvar_Set("g_saber_color", "purple");
+					Cvar_Set("g_saber2", "none");
+					Cvar_Set("snd", "jaden_fmle");
+					Cvar_Set("sex", "f");
+				}
+			}
 
-            // Asajj
-            for (auto& Asajj_map : Asajj_Maps)
-            {
-                if (strcmp(map, Asajj_map) == 0)
-                {
-                    Cvar_Set("g_char_model", "asajj");
-                    Cvar_Set("g_char_skin_head", "head_a1");
-                    Cvar_Set("g_char_skin_torso", "torso_a1");
-                    Cvar_Set("g_char_skin_legs", "lower_a1");
-                    Cvar_Set("g_saber_color", "red");
-                    Cvar_Set("snd", "asajj");
-                    Cvar_Set("sex", "f");
-                }
-            }
+			// Asajj
+			for (auto& Asajj_map : Asajj_Maps)
+			{
+				if (strcmp(map, Asajj_map) == 0)
+				{
+					Cvar_Set("g_char_model", "asajj");
+					Cvar_Set("g_char_skin_head", "head_a1");
+					Cvar_Set("g_char_skin_torso", "torso_a1");
+					Cvar_Set("g_char_skin_legs", "lower_a1");
+					Cvar_Set("g_saber_color", "red");
+					Cvar_Set("snd", "asajj");
+					Cvar_Set("sex", "f");
+				}
+			}
 
-            not_jk_map = false;
-            break;
-        }
-    }
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // Nina → com_outcast = 7
-    for (auto& Nina_map : Nina_Maps)
-    {
-        if (strcmp(map, Nina_map) == 0)
-        {
-            if (com_outcast->integer != 7)
-            {
-                Cvar_Set("com_outcast", "7");
-            }
+	// Nina → com_outcast = 7
+	for (auto& Nina_map : Nina_Maps)
+	{
+		if (strcmp(map, Nina_map) == 0)
+		{
+			if (com_outcast->integer != 7)
+			{
+				Cvar_Set("com_outcast", "7");
+			}
 
-            Cvar_Set("g_char_model", "jedi_nina");
-            Cvar_Set("snd", "tavion");
-            Cvar_Set("sex", "f");
+			Cvar_Set("g_char_model", "jedi_nina");
+			Cvar_Set("snd", "tavion");
+			Cvar_Set("sex", "f");
 
-            not_jk_map = false;
-            break;
-        }
-    }
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // Vengeance → com_outcast = 8
-    for (auto& veng_map : Veng_Maps)
-    {
-        if (strcmp(map, veng_map) == 0)
-        {
-            if (com_outcast->integer != 8)
-            {
-                Cvar_Set("com_outcast", "8");
-            }
+	// Vengeance → com_outcast = 8
+	for (auto& veng_map : Veng_Maps)
+	{
+		if (strcmp(map, veng_map) == 0)
+		{
+			if (com_outcast->integer != 8)
+			{
+				Cvar_Set("com_outcast", "8");
+			}
 
-            Cvar_Set("g_char_model", "mara_ponytail");
-            Cvar_Set("snd", "jaden_fmle");
-            Cvar_Set("sex", "f");
+			Cvar_Set("g_char_model", "mara_ponytail");
+			Cvar_Set("snd", "jaden_fmle");
+			Cvar_Set("sex", "f");
 
-            not_jk_map = false;
-            break;
-        }
-    }
+			not_jk_map = false;
+			break;
+		}
+	}
 
-    // Disable cube mapping on specific maps
-    for (auto& NoCubeMapping_Map : NoCubeMapping_Maps)
-    {
-        if (strcmp(map, NoCubeMapping_Map) == 0)
-        {
-            if (r_cubeMapping->integer != 0)
-            {
-                Cvar_Set("r_cubeMapping", "0");
-            }
-            break;
-        }
-    }
+	// Disable cube mapping on specific maps
+	for (auto& NoCubeMapping_Map : NoCubeMapping_Maps)
+	{
+		if (strcmp(map, NoCubeMapping_Map) == 0)
+		{
+			if (r_cubeMapping->integer != 0)
+			{
+				Cvar_Set("r_cubeMapping", "0");
+			}
+			break;
+		}
+	}
 
-    // -------------------------------------------------
-    // RESET WEATHER / FREEZE / RATIOFIX
-    // -------------------------------------------------
-    if (g_Weather->integer >= 0)
-    {
-        Cvar_Set("r_weather", "0");
-    }
+	// -------------------------------------------------
+	// RESET WEATHER / FREEZE / RATIOFIX
+	// -------------------------------------------------
+	if (g_Weather->integer >= 0)
+	{
+		Cvar_Set("r_weather", "0");
+	}
 
-    if (debugNPCFreeze->integer >= 0)
-    {
-        Cvar_Set("d_npcfreeze", "0");
-    }
+	if (debugNPCFreeze->integer >= 0)
+	{
+		Cvar_Set("d_npcfreeze", "0");
+	}
 
-    if (r_ratiofix.integer >= 0)
-    {
-        Cvar_Set("r_ratiofix", "0");
-    }
+	if (r_ratiofix.integer >= 0)
+	{
+		Cvar_Set("r_ratiofix", "0");
+	}
 
-    // -------------------------------------------------
-    // WIPE AUTOSAVE (unless special "_" map)
-    // -------------------------------------------------
-    if (map[0] != '_')
-    {
-        SG_WipeSavegame("auto");
-    }
+	// -------------------------------------------------
+	// WIPE AUTOSAVE (unless special "_" map)
+	// -------------------------------------------------
+	if (map[0] != '_')
+	{
+		SG_WipeSavegame("auto");
+	}
 
-    // -------------------------------------------------
-    // START THE MAP
-    // -------------------------------------------------
-    SV_SpawnServer(map, eForceReload, qtrue);
-    return true;
+	// -------------------------------------------------
+	// START THE MAP
+	// -------------------------------------------------
+	SV_SpawnServer(map, eForceReload, qtrue);
+	return true;
 }
 
 // Save out some player data for later restore if this is a spawn point with KEEP_PREV (spawnflags&1) set...

@@ -1638,7 +1638,8 @@ public:
 #else
 		surfaceData(0)
 #endif
-	{}
+	{
+	}
 
 #ifdef _G2_GORE
 	void Init()

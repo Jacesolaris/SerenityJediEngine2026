@@ -868,7 +868,6 @@ void Player_CacheFromPrevLevel()
 	}
 }
 
-
 /*
 ============
 Player_RestoreFromPrevLevel
@@ -1085,12 +1084,11 @@ static void Player_RestoreFromPrevLevel(gentity_t* ent)
 	client->ps.forceDrainentity_num = ENTITYNUM_NONE;
 }
 
-
 static void G_SetSkin(gentity_t* ent)
 {
 	char skinName[MAX_QPATH];
 	//ok, lets register the skin name, and then pass that name to the config strings so the client can get it too.
-	if (Q_stricmp("hoth2", level.mapname) == 0 	||
+	if (Q_stricmp("hoth2", level.mapname) == 0 ||
 		Q_stricmp("hoth3", level.mapname) == 0)
 	{
 		Com_sprintf(skinName, sizeof skinName, "models/players/%s/|%s|%s|%s", g_char_model->string,

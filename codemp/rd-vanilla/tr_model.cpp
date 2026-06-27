@@ -766,7 +766,7 @@ static qboolean ServerLoadMDXA(model_t* mod, void* buffer, const char* mod_name,
 
 		for (k = 0; k < 7; k++)
 			LS(pwIn[k]);
-}
+	}
 #endif
 	return qtrue;
 }
@@ -966,7 +966,7 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 				LL(v->uiNmWeightsAndBoneIndexes);
 
 				v++;
-		}
+			}
 #endif
 			if (isAnOldModelFile)
 			{
@@ -987,11 +987,11 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 
 			// find the next surface
 			surf = (mdxmSurface_t*)((byte*)surf + surf->ofsEnd);
-	}
+		}
 
 		// find the next LOD
 		lod = (mdxmLOD_t*)((byte*)lod + lod->ofsEnd);
-}
+	}
 
 	return qtrue;
 }
@@ -1350,7 +1350,7 @@ fail:
 	mod->type = MOD_BAD;
 	RE_InsertModelIntoHash(name, mod);
 	return 0;
-	}
+}
 
 // wrapper function needed to avoid problems with mid-function returns so I can safely use this bool to tell the
 //	z_malloc-fail recovery code whether it's safe to ditch any model caches...
@@ -1469,7 +1469,7 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 			LF(tag->axis[1][j]);
 			LF(tag->axis[2][j]);
 		}
-}
+	}
 #endif
 
 	// swap all the surfaces
@@ -1544,12 +1544,12 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 			LS(xyz->xyz[2]);
 
 			LS(xyz->normal);
-	}
+		}
 #endif
 
 		// find the next surface
 		surf = (md3Surface_t*)((byte*)surf + surf->ofsEnd);
-}
+	}
 
 	return qtrue;
 }
@@ -1649,7 +1649,7 @@ void R_model_list_f(void) {
 #if	0		// not working right with new hunk
 	if (tr.world) {
 		ri->Printf(PRINT_ALL, "\n%8i : %s\n", tr.world->dataSize, tr.world->name);
-}
+	}
 #endif
 }
 

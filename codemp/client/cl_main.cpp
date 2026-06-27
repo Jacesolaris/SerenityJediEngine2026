@@ -415,7 +415,6 @@ static void CL_Record_f(void)
 	// the rest of the demo file will be copied from net messages
 }
 
-
 /*
 =======================================================================
 

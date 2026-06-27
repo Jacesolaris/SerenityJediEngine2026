@@ -233,7 +233,6 @@ static void CG_TransitionSnapshot(void)
 	}
 }
 
-
 /*
 ===================
 CG_SetNextSnap

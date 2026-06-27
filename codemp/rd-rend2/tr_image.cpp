@@ -1595,7 +1595,7 @@ static void RawImage_ScaleToPower2(byte** data, int* inout_width, int* inout_hei
 		int finalwidth, finalheight;
 		//int startTime, endTime;
 
-		//startTime = ri->Milliseconds();
+		//startTime = ri.Milliseconds();
 
 		finalwidth = scaled_width << r_imageUpsample->integer;
 		finalheight = scaled_height << r_imageUpsample->integer;
@@ -1612,7 +1612,7 @@ static void RawImage_ScaleToPower2(byte** data, int* inout_width, int* inout_hei
 			finalheight >>= 1;
 		}
 
-		*resampledBuffer = (byte*)ri->Hunk_AllocateTempMemory(finalwidth * finalheight * 4);
+		*resampledBuffer = (byte*)Hunk_AllocateTempMemory(finalwidth * finalheight * 4);
 
 		if (scaled_width != width || scaled_height != height)
 		{
@@ -1652,9 +1652,9 @@ static void RawImage_ScaleToPower2(byte** data, int* inout_width, int* inout_hei
 			FillInNormalizedZ(*resampledBuffer, *resampledBuffer, scaled_width, scaled_height);
 		}
 
-		//endTime = ri->Milliseconds();
+		//endTime = ri.Milliseconds();
 
-		//ri->Printf(PRINT_ALL, "upsampled %dx%d to %dx%d in %dms\n", width, height, scaled_width, scaled_height, endTime - startTime);
+		//ri.Printf(PRINT_ALL, "upsampled %dx%d to %dx%d in %dms\n", width, height, scaled_width, scaled_height, endTime - startTime);
 
 		*data = *resampledBuffer;
 		width = scaled_width;
@@ -1663,41 +1663,12 @@ static void RawImage_ScaleToPower2(byte** data, int* inout_width, int* inout_hei
 	else if (scaled_width != width || scaled_height != height) {
 		if (data && resampledBuffer)
 		{
-			*resampledBuffer = (byte*)ri->Hunk_AllocateTempMemory(scaled_width * scaled_height * 4);
+			*resampledBuffer = (byte*)Hunk_AllocateTempMemory(scaled_width * scaled_height * 4);
 			ResampleTexture(*data, width, height, *resampledBuffer, scaled_width, scaled_height);
 			*data = *resampledBuffer;
 		}
 		width = scaled_width;
 		height = scaled_height;
-	}
-
-	//
-	// perform optional picmip operation
-	//
-	if (picmip) {
-		scaled_width >>= r_picmip->integer;
-		scaled_height >>= r_picmip->integer;
-	}
-
-	//
-	// clamp to minimum size
-	//
-	if (scaled_width < 1) {
-		scaled_width = 1;
-	}
-	if (scaled_height < 1) {
-		scaled_height = 1;
-	}
-
-	//
-	// clamp to the current upper OpenGL limit
-	// scale both axis down equally so we don't have to
-	// deal with a half mip resampling
-	//
-	while (scaled_width > glConfig.maxTextureSize
-		|| scaled_height > glConfig.maxTextureSize) {
-		scaled_width >>= 1;
-		scaled_height >>= 1;
 	}
 
 	*inout_width = width;
@@ -2086,7 +2057,36 @@ static void Upload32(byte* data, int width, int height, imgType_t type, int flag
 		RawImage_ScaleToPower2(&data, &width, &height, &scaled_width, &scaled_height, type, flags, &resampledBuffer);
 	}
 
-	scaledBuffer = (byte*)ri->Hunk_AllocateTempMemory(sizeof(unsigned) * scaled_width * scaled_height);
+	//
+	// perform optional picmip operation
+	//
+	if (flags & IMGFLAG_PICMIP) {
+		scaled_width >>= r_picmip->integer;
+		scaled_height >>= r_picmip->integer;
+	}
+
+	//
+	// clamp to minimum size
+	//
+	if (scaled_width < 1) {
+		scaled_width = 1;
+	}
+	if (scaled_height < 1) {
+		scaled_height = 1;
+	}
+
+	//
+	// clamp to the current upper OpenGL limit
+	// scale both axis down equally so we don't have to
+	// deal with a half mip resampling
+	//
+	while (scaled_width > glConfig.maxTextureSize
+		|| scaled_height > glConfig.maxTextureSize) {
+		scaled_width >>= 1;
+		scaled_height >>= 1;
+	}
+
+	scaledBuffer = (byte*)Hunk_AllocateTempMemory(sizeof(unsigned) * scaled_width * scaled_height);
 
 	//
 	// scan the texture for each channel's max values
@@ -2149,7 +2149,7 @@ static void Upload32(byte* data, int width, int height, imgType_t type, int flag
 		}
 		Com_Memcpy(scaledBuffer, data, width * height * 4);
 	}
-	else if (!r_simpleMipMaps->integer)
+	else if (!r_simpleMipMaps->integer || (r_picmip->integer && (flags & IMGFLAG_PICMIP)))
 	{
 		// use the normal mip-mapping function to go down from here
 		while (width > scaled_width || height > scaled_height) {
@@ -2204,9 +2204,9 @@ done:
 	GL_CheckErrors();
 
 	if (scaledBuffer != 0)
-		ri->Hunk_FreeTempMemory(scaledBuffer);
+		Hunk_FreeTempMemory(scaledBuffer);
 	if (resampledBuffer != 0)
-		ri->Hunk_FreeTempMemory(resampledBuffer);
+		Hunk_FreeTempMemory(resampledBuffer);
 }
 
 static void EmptyTexture(int width, int height, imgType_t type, int flags,

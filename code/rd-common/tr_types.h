@@ -174,7 +174,6 @@ using miniRefEntity_t = struct
 	// misc
 	float		shaderTime;			// subtracted from refdef time to control effect start times
 	int			frame;				// also used as MODEL_BEAM's diameter
-
 };
 
 using refEntity_t = struct

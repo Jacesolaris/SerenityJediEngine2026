@@ -206,7 +206,6 @@ G_FilterPacket
 	return (g_filterBan.integer == 0) ? qtrue : qfalse;
 }
 
-
 /*
 =================
 AddIP

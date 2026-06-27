@@ -354,7 +354,6 @@ static void CL_ConfigstringModified()
 	}
 }
 
-
 /*
 ===================
 CL_GetServerCommand

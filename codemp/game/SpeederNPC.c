@@ -83,192 +83,192 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUcmd)
 // ProcessMoveCommands the Vehicle.
 static void ProcessMoveCommands(Vehicle_t* p_veh)
 {
-    /************************************************************************************/
-    /*  BEGIN   Here is where we move the vehicle (forward or back or whatever). BEGIN  */
-    /************************************************************************************/
+	/************************************************************************************/
+	/*  BEGIN   Here is where we move the vehicle (forward or back or whatever). BEGIN  */
+	/************************************************************************************/
 
-    // Basic safety: vehicle and parent entity/playerState must exist
-    if (!p_veh || !p_veh->m_pParentEntity || !p_veh->m_pParentEntity->playerState)
-    {
-        Com_Printf("ProcessMoveCommands WARNING: invalid vehicle or parent playerState\n");
-        return;
-    }
+	// Basic safety: vehicle and parent entity/playerState must exist
+	if (!p_veh || !p_veh->m_pParentEntity || !p_veh->m_pParentEntity->playerState)
+	{
+		Com_Printf("ProcessMoveCommands WARNING: invalid vehicle or parent playerState\n");
+		return;
+	}
 
-    float speedInc, speedIdle, speedMin, speedMax;
-    int   curTime;
+	float speedInc, speedIdle, speedMin, speedMax;
+	int   curTime;
 
-    playerState_t* parent_ps = p_veh->m_pParentEntity->playerState;
+	playerState_t* parent_ps = p_veh->m_pParentEntity->playerState;
 
-    // If we're flying, make us accelerate at 40% (about half) acceleration rate.
-    if (p_veh->m_ulFlags & VEH_FLYING)
-    {
-        speedInc = p_veh->m_pVehicleInfo->acceleration * p_veh->m_fTimeModifier * 0.4f;
-    }
-    else if (!parent_ps->m_iVehicleNum)
-    {
-        // Drifts to a stop
-        speedInc = 0.0f;
-    }
-    else
-    {
-        speedInc = p_veh->m_pVehicleInfo->acceleration * p_veh->m_fTimeModifier;
-    }
+	// If we're flying, make us accelerate at 40% (about half) acceleration rate.
+	if (p_veh->m_ulFlags & VEH_FLYING)
+	{
+		speedInc = p_veh->m_pVehicleInfo->acceleration * p_veh->m_fTimeModifier * 0.4f;
+	}
+	else if (!parent_ps->m_iVehicleNum)
+	{
+		// Drifts to a stop
+		speedInc = 0.0f;
+	}
+	else
+	{
+		speedInc = p_veh->m_pVehicleInfo->acceleration * p_veh->m_fTimeModifier;
+	}
 
-    const float speedIdleDec = p_veh->m_pVehicleInfo->decelIdle * p_veh->m_fTimeModifier;
+	const float speedIdleDec = p_veh->m_pVehicleInfo->decelIdle * p_veh->m_fTimeModifier;
 
 #ifdef _GAME
-    curTime = level.time;
+	curTime = level.time;
 #elif _CGAME
-    // FIXME: pass in ucmd? Not sure if this is reliable...
-    curTime = pm->cmd.serverTime;
+	// FIXME: pass in ucmd? Not sure if this is reliable...
+	curTime = pm->cmd.serverTime;
 #endif
 
-    // Turbo trigger: pilot holding alt‑attack, vehicle supports turbo
-    if (p_veh->m_pPilot &&
-        (p_veh->m_ucmd.buttons & BUTTON_ALT_ATTACK) &&
-        p_veh->m_pVehicleInfo->turboSpeed)
-    {
-        if ((parent_ps && parent_ps->electrifyTime > curTime) ||
-            (p_veh->m_pPilot->playerState &&
-                (p_veh->m_pPilot->playerState->weapon == WP_MELEE ||
-                    (p_veh->m_pPilot->playerState->weapon == WP_SABER &&
-                        BG_SabersOff(p_veh->m_pPilot->playerState)))))
-        {
-            if (curTime - p_veh->m_iTurboTime > p_veh->m_pVehicleInfo->turboRecharge)
-            {
-                p_veh->m_iTurboTime = curTime + p_veh->m_pVehicleInfo->turboDuration;
+	// Turbo trigger: pilot holding alt‑attack, vehicle supports turbo
+	if (p_veh->m_pPilot &&
+		(p_veh->m_ucmd.buttons & BUTTON_ALT_ATTACK) &&
+		p_veh->m_pVehicleInfo->turboSpeed)
+	{
+		if ((parent_ps && parent_ps->electrifyTime > curTime) ||
+			(p_veh->m_pPilot->playerState &&
+				(p_veh->m_pPilot->playerState->weapon == WP_MELEE ||
+					(p_veh->m_pPilot->playerState->weapon == WP_SABER &&
+						BG_SabersOff(p_veh->m_pPilot->playerState)))))
+		{
+			if (curTime - p_veh->m_iTurboTime > p_veh->m_pVehicleInfo->turboRecharge)
+			{
+				p_veh->m_iTurboTime = curTime + p_veh->m_pVehicleInfo->turboDuration;
 
-                if (p_veh->m_pVehicleInfo->iTurboStartFX)
-                {
-                    for (int i = 0; i < MAX_VEHICLE_EXHAUSTS && p_veh->m_iExhaustTag[i] != -1; i++)
-                    {
+				if (p_veh->m_pVehicleInfo->iTurboStartFX)
+				{
+					for (int i = 0; i < MAX_VEHICLE_EXHAUSTS && p_veh->m_iExhaustTag[i] != -1; i++)
+					{
 #ifdef _GAME
-                        if (p_veh->m_pParentEntity &&
-                            p_veh->m_pParentEntity->ghoul2 &&
-                            p_veh->m_pParentEntity->playerState)
-                        {
-                            // Play a one‑shot turbo start effect at each exhaust
-                            vec3_t     bolt_org, boltDir;
-                            mdxaBone_t boltMatrix;
+						if (p_veh->m_pParentEntity &&
+							p_veh->m_pParentEntity->ghoul2 &&
+							p_veh->m_pParentEntity->playerState)
+						{
+							// Play a one‑shot turbo start effect at each exhaust
+							vec3_t     bolt_org, boltDir;
+							mdxaBone_t boltMatrix;
 
-                            VectorSet(boltDir, 0.0f, p_veh->m_pParentEntity->playerState->viewangles[YAW], 0.0f);
+							VectorSet(boltDir, 0.0f, p_veh->m_pParentEntity->playerState->viewangles[YAW], 0.0f);
 
-                            trap->G2API_GetBoltMatrix(p_veh->m_pParentEntity->ghoul2, 0, p_veh->m_iExhaustTag[i],
-                                &boltMatrix, boltDir, p_veh->m_pParentEntity->playerState->origin,
-                                level.time, NULL, p_veh->m_pParentEntity->modelScale);
-                            BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, bolt_org);
-                            BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, boltDir);
-                            G_PlayEffectID(p_veh->m_pVehicleInfo->iTurboStartFX, bolt_org, boltDir);
-                        }
+							trap->G2API_GetBoltMatrix(p_veh->m_pParentEntity->ghoul2, 0, p_veh->m_iExhaustTag[i],
+								&boltMatrix, boltDir, p_veh->m_pParentEntity->playerState->origin,
+								level.time, NULL, p_veh->m_pParentEntity->modelScale);
+							BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, bolt_org);
+							BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, boltDir);
+							G_PlayEffectID(p_veh->m_pVehicleInfo->iTurboStartFX, bolt_org, boltDir);
+						}
 #endif
-                    }
-                }
+					}
+				}
 
-                // Instantly jump to turbo speed
-                parent_ps->speed = p_veh->m_pVehicleInfo->turboSpeed;
-            }
-        }
-    }
+				// Instantly jump to turbo speed
+				parent_ps->speed = p_veh->m_pVehicleInfo->turboSpeed;
+			}
+		}
+	}
 
-    // Slide breaking
-    if (p_veh->m_ulFlags & VEH_SLIDEBREAKING)
-    {
-        if (p_veh->m_ucmd.forwardmove >= 0)
-        {
-            p_veh->m_ulFlags &= ~VEH_SLIDEBREAKING;
-        }
-        parent_ps->speed = 0.0f;
-    }
-    else if (curTime > p_veh->m_iTurboTime &&
-        !(p_veh->m_ulFlags & VEH_FLYING) &&
-        p_veh->m_ucmd.forwardmove < 0 &&
-        fabs(p_veh->m_vOrientation[ROLL]) > 25.0f)
-    {
-        p_veh->m_ulFlags |= VEH_SLIDEBREAKING;
-    }
+	// Slide breaking
+	if (p_veh->m_ulFlags & VEH_SLIDEBREAKING)
+	{
+		if (p_veh->m_ucmd.forwardmove >= 0)
+		{
+			p_veh->m_ulFlags &= ~VEH_SLIDEBREAKING;
+		}
+		parent_ps->speed = 0.0f;
+	}
+	else if (curTime > p_veh->m_iTurboTime &&
+		!(p_veh->m_ulFlags & VEH_FLYING) &&
+		p_veh->m_ucmd.forwardmove < 0 &&
+		fabs(p_veh->m_vOrientation[ROLL]) > 25.0f)
+	{
+		p_veh->m_ulFlags |= VEH_SLIDEBREAKING;
+	}
 
-    // Determine max speed and jetpack flag based on turbo state
-    if (curTime < p_veh->m_iTurboTime)
-    {
-        speedMax = p_veh->m_pVehicleInfo->turboSpeed;
-        parent_ps->eFlags |= EF_JETPACK_ACTIVE;
-    }
-    else
-    {
-        speedMax = p_veh->m_pVehicleInfo->speedMax;
-        parent_ps->eFlags &= ~EF_JETPACK_ACTIVE;
-    }
+	// Determine max speed and jetpack flag based on turbo state
+	if (curTime < p_veh->m_iTurboTime)
+	{
+		speedMax = p_veh->m_pVehicleInfo->turboSpeed;
+		parent_ps->eFlags |= EF_JETPACK_ACTIVE;
+	}
+	else
+	{
+		speedMax = p_veh->m_pVehicleInfo->speedMax;
+		parent_ps->eFlags &= ~EF_JETPACK_ACTIVE;
+	}
 
-    speedIdle = p_veh->m_pVehicleInfo->speedIdle;
-    speedMin = p_veh->m_pVehicleInfo->speedMin;
+	speedIdle = p_veh->m_pVehicleInfo->speedIdle;
+	speedMin = p_veh->m_pVehicleInfo->speedMin;
 
-    // Only adjust speed if we're moving or airborne
-    if (parent_ps->speed ||
-        p_veh->m_ucmd.forwardmove ||
-        p_veh->m_ucmd.upmove > 0 ||
-        parent_ps->groundEntityNum == ENTITYNUM_NONE)
-    {
-        if (p_veh->m_ucmd.forwardmove > 0 && speedInc > 0.0f)
-        {
-            parent_ps->speed += speedInc;
-        }
-        else if (p_veh->m_ucmd.forwardmove < 0)
-        {
-            if (parent_ps->speed > speedIdle)
-            {
-                parent_ps->speed -= speedInc;
-            }
-            else if (parent_ps->speed > speedMin)
-            {
-                parent_ps->speed -= speedIdleDec;
-            }
-        }
-        // No input, so coast to stop.
-        else if (parent_ps->speed > 0.0f)
-        {
-            parent_ps->speed -= speedIdleDec;
-            if (parent_ps->speed < 0.0f)
-            {
-                parent_ps->speed = 0.0f;
-            }
-        }
-        else if (parent_ps->speed < 0.0f)
-        {
-            parent_ps->speed += speedIdleDec;
-            if (parent_ps->speed > 0.0f)
-            {
-                parent_ps->speed = 0.0f;
-            }
-        }
-    }
-    else
-    {
-        if (!p_veh->m_pVehicleInfo->strafePerc)
-        {
-            // If in a strafe‑capable vehicle, clear strafing unless using alternate control scheme
-            // p_veh->m_ucmd.rightmove = 0;
-        }
-    }
+	// Only adjust speed if we're moving or airborne
+	if (parent_ps->speed ||
+		p_veh->m_ucmd.forwardmove ||
+		p_veh->m_ucmd.upmove > 0 ||
+		parent_ps->groundEntityNum == ENTITYNUM_NONE)
+	{
+		if (p_veh->m_ucmd.forwardmove > 0 && speedInc > 0.0f)
+		{
+			parent_ps->speed += speedInc;
+		}
+		else if (p_veh->m_ucmd.forwardmove < 0)
+		{
+			if (parent_ps->speed > speedIdle)
+			{
+				parent_ps->speed -= speedInc;
+			}
+			else if (parent_ps->speed > speedMin)
+			{
+				parent_ps->speed -= speedIdleDec;
+			}
+		}
+		// No input, so coast to stop.
+		else if (parent_ps->speed > 0.0f)
+		{
+			parent_ps->speed -= speedIdleDec;
+			if (parent_ps->speed < 0.0f)
+			{
+				parent_ps->speed = 0.0f;
+			}
+		}
+		else if (parent_ps->speed < 0.0f)
+		{
+			parent_ps->speed += speedIdleDec;
+			if (parent_ps->speed > 0.0f)
+			{
+				parent_ps->speed = 0.0f;
+			}
+		}
+	}
+	else
+	{
+		if (!p_veh->m_pVehicleInfo->strafePerc)
+		{
+			// If in a strafe‑capable vehicle, clear strafing unless using alternate control scheme
+			// p_veh->m_ucmd.rightmove = 0;
+		}
+	}
 
-    // Clamp speed to allowed range
-    if (parent_ps->speed > speedMax)
-    {
-        parent_ps->speed = speedMax;
-    }
-    else if (parent_ps->speed < speedMin)
-    {
-        parent_ps->speed = speedMin;
-    }
+	// Clamp speed to allowed range
+	if (parent_ps->speed > speedMax)
+	{
+		parent_ps->speed = speedMax;
+	}
+	else if (parent_ps->speed < speedMin)
+	{
+		parent_ps->speed = speedMin;
+	}
 
-    // Electrified: slow movement
-    if (parent_ps->electrifyTime > curTime)
-    {
-        parent_ps->speed *= p_veh->m_fTimeModifier / 60.0f;
-    }
+	// Electrified: slow movement
+	if (parent_ps->electrifyTime > curTime)
+	{
+		parent_ps->speed *= p_veh->m_fTimeModifier / 60.0f;
+	}
 
-    /********************************************************************************/
-    /*  END Here is where we move the vehicle (forward or back or whatever). END    */
-    /************************************************************************************/
+	/********************************************************************************/
+	/*  END Here is where we move the vehicle (forward or back or whatever). END    */
+	/************************************************************************************/
 }
 
 //MP RULE - ALL PROCESSORIENTCOMMANDS FUNCTIONS MUST BE BG-COMPATIBLE!!!

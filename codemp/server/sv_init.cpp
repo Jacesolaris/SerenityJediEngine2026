@@ -785,7 +785,6 @@ void SV_SpawnServer(char* server, const qboolean killBots, const ForceReload_e e
 	SV_BeginAutoRecordDemos();
 }
 
-
 /*
 ===============
 SV_Init
@@ -977,18 +976,18 @@ void SV_Init(void)
 	Cvar_Get("sv_keywords", "", CVAR_SERVERINFO);
 	Cvar_Get("protocol", va("%i", PROTOCOL_VERSION), CVAR_SERVERINFO | CVAR_ROM);
 	sv_mapname = Cvar_Get("mapname", "nomap", CVAR_SERVERINFO | CVAR_ROM);
-	sv_privateClients = Cvar_Get("sv_privateClients", "0", CVAR_SERVERINFO,"Number of reserved client slots available with password");
+	sv_privateClients = Cvar_Get("sv_privateClients", "0", CVAR_SERVERINFO, "Number of reserved client slots available with password");
 	Cvar_CheckRange(sv_privateClients, 0, MAX_CLIENTS, qtrue);
-	sv_hostname = Cvar_Get("sv_hostname", "*Jedi*", CVAR_SERVERINFO | CVAR_ARCHIVE,"The name of the server that is displayed in the serverlist");
+	sv_hostname = Cvar_Get("sv_hostname", "*Jedi*", CVAR_SERVERINFO | CVAR_ARCHIVE, "The name of the server that is displayed in the serverlist");
 	sv_maxclients = Cvar_Get("sv_maxclients", "8", CVAR_SERVERINFO | CVAR_LATCH, "Max. connected clients");
-	sv_ratePolicy = Cvar_Get("sv_ratePolicy", "1", CVAR_ARCHIVE,"Determines which policy of enforcement is used for client's \"rate\" cvar");
+	sv_ratePolicy = Cvar_Get("sv_ratePolicy", "1", CVAR_ARCHIVE, "Determines which policy of enforcement is used for client's \"rate\" cvar");
 	Cvar_CheckRange(sv_ratePolicy, 1, 2, qtrue);
 	sv_clientRate = Cvar_Get("sv_clientRate", "90000", CVAR_ARCHIVE);
-	sv_minRate = Cvar_Get("sv_minRate", "0", CVAR_ARCHIVE | CVAR_SERVERINFO,"Min bandwidth rate allowed on server. Use 0 for unlimited.");
-	sv_maxRate = Cvar_Get("sv_maxRate", "0", CVAR_ARCHIVE | CVAR_SERVERINFO,"Max bandwidth rate allowed on server. Use 0 for unlimited.");
+	sv_minRate = Cvar_Get("sv_minRate", "0", CVAR_ARCHIVE | CVAR_SERVERINFO, "Min bandwidth rate allowed on server. Use 0 for unlimited.");
+	sv_maxRate = Cvar_Get("sv_maxRate", "0", CVAR_ARCHIVE | CVAR_SERVERINFO, "Max bandwidth rate allowed on server. Use 0 for unlimited.");
 	sv_minPing = Cvar_Get("sv_minPing", "0", CVAR_ARCHIVE | CVAR_SERVERINFO);
 	sv_maxPing = Cvar_Get("sv_maxPing", "0", CVAR_ARCHIVE | CVAR_SERVERINFO);
-	sv_floodProtect = Cvar_Get("sv_floodProtect", "1", CVAR_ARCHIVE | CVAR_SERVERINFO,"Protect against flooding of server commands");
+	sv_floodProtect = Cvar_Get("sv_floodProtect", "1", CVAR_ARCHIVE | CVAR_SERVERINFO, "Protect against flooding of server commands");
 	// systeminfo
 	Cvar_Get("sv_cheats", "1", CVAR_SYSTEMINFO | CVAR_ROM, "Allow cheats on server if set to 1");
 	sv_serverid = Cvar_Get("sv_serverid", "0", CVAR_SYSTEMINFO | CVAR_ROM);

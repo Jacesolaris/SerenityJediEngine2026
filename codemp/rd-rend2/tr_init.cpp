@@ -2189,7 +2189,7 @@ void RE_GetBModelVerts(const int bmodelIndex, vec3_t* verts, vec3_t normal);
 void RE_WorldEffectCommand(const char* command);
 
 static void stub_RE_AddWeatherZone(vec3_t mins, vec3_t maxs) {} // Intentionally left blank. Rend2 reads the zones manually on bsp load
-static void RE_SetRefractionProperties(float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate) { }
+static void RE_SetRefractionProperties(float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate) {}
 
 static void C_LevelLoadBegin(const char* psMapName, ForceReload_e eForceReload)
 {

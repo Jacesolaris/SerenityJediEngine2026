@@ -81,7 +81,6 @@ static void CG_FreeMarkPoly(markPoly_t* le)
 	cg_freeMarkPolys = le;
 }
 
-
 /*
 ===================
 CG_AllocMark
@@ -149,7 +148,7 @@ void CG_ImpactMark(const qhandle_t mark_shader, const vec3_t origin, const vec3_
 	const qboolean alphaFade, const float radius, const qboolean temporary)
 {
 	matrix3_t axis = { 0 };
-	vec3_t original_points[4]= { {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0} };
+	vec3_t original_points[4] = { {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0} };
 	byte colors[4] = { 0 };
 	int i, j;
 	markFragment_t markFragments[MAX_MARK_FRAGMENTS], * mf;

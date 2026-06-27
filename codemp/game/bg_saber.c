@@ -5193,7 +5193,6 @@ void PM_WeaponLightsaber(void)
 	int anim = -1;
 	int newmove = LS_NONE;
 
-
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
 
 	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;

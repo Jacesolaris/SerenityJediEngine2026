@@ -1841,7 +1841,6 @@ void CL_WritePacket(void)
 	Z_Free(data);
 }
 
-
 /*
 =================
 CL_SendCmd

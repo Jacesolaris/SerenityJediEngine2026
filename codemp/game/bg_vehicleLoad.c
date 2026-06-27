@@ -734,7 +734,7 @@ static void BG_VehicleClampData(vehicleInfo_t* vehicle)
 
 static qboolean BG_ParseVehicleParm(vehicleInfo_t* vehicle, const char* parmName, const char* pValue)
 {
-	vec3_t vec={0};
+	vec3_t vec = { 0 };
 	byte* b = (byte*)vehicle;
 	int i_fields_read;
 	vehicleType_t vehType;

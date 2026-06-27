@@ -135,7 +135,7 @@ because a surface may be forced to perform a RB_End due
 to overflow.
 ==============
 */
-void RB_BeginSurface(shader_t* shader, const int fogNum, const int cubemapIndex)
+void RB_BeginSurface(shader_t* shader, int fogNum, int cubemapIndex)
 {
 	tess.numIndexes = 0;
 	tess.firstIndex = 0;
@@ -153,6 +153,7 @@ void RB_BeginSurface(shader_t* shader, const int fogNum, const int cubemapIndex)
 	tess.useInternalVBO = qtrue;
 
 	tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+	tess.entityMergable = (bool)shader->entityMergable;
 	if (tess.shader->clampTime && tess.shaderTime >= tess.shader->clampTime) {
 		tess.shaderTime = tess.shader->clampTime;
 	}

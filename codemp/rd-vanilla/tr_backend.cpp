@@ -73,7 +73,6 @@ void GL_Bind(image_t* image) {
 	}
 
 	if (glState.currenttextures[glState.currenttmu] != texnum) {
-
 		// FIX: only write frameUsed if image is valid
 		if (image) {
 			image->frameUsed = tr.frameCount;
@@ -83,7 +82,6 @@ void GL_Bind(image_t* image) {
 		qglBindTexture(GL_TEXTURE_2D, texnum);
 	}
 }
-
 
 /*
 ** GL_SelectTexture

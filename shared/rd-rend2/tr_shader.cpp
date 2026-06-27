@@ -3368,7 +3368,7 @@ static qboolean CollapseStagesToGLSL(void)
 		{
 			shaderStage_t* pStage = &stages[i];
 			shaderStage_t* diffuse, * lightmap;
-			qboolean parallax, tcgen, diffuselit, vertexlit;
+			qboolean tcgen, diffuselit, vertexlit;
 
 			if (!pStage->active)
 				continue;
@@ -3389,8 +3389,34 @@ static qboolean CollapseStagesToGLSL(void)
 					continue;
 			}
 
+			// Convert glow stages with parallax depth to a lightall stage
+			if (pStage->glow)
+			{
+				if (pStage->bundle[TB_NORMALMAP].image[0])
+				{
+					if (pStage->bundle[TB_NORMALMAP].image[0]->type == IMGTYPE_NORMALHEIGHT)
+					{
+						int defs = LIGHTDEF_USE_LIGHT_VERTEX | LIGHTDEF_USE_PARALLAXMAP;
+						pStage->normalScale[0] =
+							pStage->normalScale[1] = 0.f;
+						pStage->specularScale[0] = 0.f;
+						pStage->specularScale[1] = 0.f;
+						pStage->specularScale[2] = 1.f;
+						pStage->specularScale[3] = 1.f;
+
+						if (pStage->bundle[0].numTexMods)
+						{
+							defs |= LIGHTDEF_USE_TCGEN_AND_TCMOD;
+						}
+
+						pStage->glslShaderGroup = tr.lightallShader;
+						pStage->glslShaderIndex = defs;
+					}
+				}
+				continue;
+			}
+
 			diffuse = pStage;
-			parallax = qfalse;
 			lightmap = NULL;
 			vertexlit = qfalse;
 
@@ -3443,7 +3469,6 @@ static qboolean CollapseStagesToGLSL(void)
 				diffuselit = qtrue;
 			}
 
-			vertexlit = qfalse;
 			if (diffuse->rgbGen == CGEN_VERTEX_LIT || diffuse->rgbGen == CGEN_EXACT_VERTEX_LIT || diffuse->rgbGen == CGEN_VERTEX || diffuse->rgbGen == CGEN_EXACT_VERTEX)
 			{
 				vertexlit = qtrue;
@@ -3505,6 +3530,50 @@ static qboolean CollapseStagesToGLSL(void)
 
 	if (skip)
 	{
+		// In rend2 diffuse and lightmaps are already swapped to
+		// find the diffuse earlier and lightstyle stages are
+		// correctly added after the first lightmap.
+		// Move diffuse after the lightmap stages now.
+		if (stages[1].active &&
+			stages[1].bundle[0].isLightmap &&
+			stages[0].active)
+		{
+			int blendBits = stages[1].stateBits & (GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS);
+
+			if (blendBits == (GLS_DSTBLEND_SRC_COLOR | GLS_SRCBLEND_ZERO)
+				|| blendBits == (GLS_DSTBLEND_ZERO | GLS_SRCBLEND_DST_COLOR))
+			{
+				for (i = 1; i < MAX_SHADER_STAGES; i++)
+				{
+					if (!stages[i + 1].active)
+						continue;
+
+					if (stages[i + 1].bundle[0].tcGen < TCGEN_LIGHTMAP1 ||
+						stages[i + 1].bundle[0].tcGen > TCGEN_LIGHTMAP3 ||
+						stages[i + 1].rgbGen != CGEN_LIGHTMAPSTYLE)
+					{
+						break;
+					}
+				}
+
+				int stateBits0 = stages[0].stateBits;
+				int stateBits1 = stages[1].stateBits;
+				shaderStage_t swapStage;
+
+				swapStage = stages[0];
+
+				for (j = 1; j <= i; j++)
+				{
+					stages[j - 1] = stages[j];
+				}
+
+				stages[i] = swapStage;
+
+				stages[0].stateBits = stateBits0;
+				stages[i].stateBits = stateBits1;
+			}
+		}
+
 		// set default specular scale for skipped shaders that will use metalness workflow by default
 		for (i = 0; i < MAX_SHADER_STAGES; i++)
 		{

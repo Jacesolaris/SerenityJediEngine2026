@@ -135,7 +135,7 @@ because a surface may be forced to perform a RB_End due
 to overflow.
 ==============
 */
-void RB_BeginSurface(shader_t* shader, const int fogNum, const int cubemapIndex)
+void RB_BeginSurface(shader_t* shader, int fogNum, int cubemapIndex)
 {
 	tess.numIndexes = 0;
 	tess.firstIndex = 0;
@@ -153,6 +153,7 @@ void RB_BeginSurface(shader_t* shader, const int fogNum, const int cubemapIndex)
 	tess.useInternalVBO = qtrue;
 
 	tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+	tess.entityMergable = (bool)shader->entityMergable;
 	if (tess.shader->clampTime && tess.shaderTime >= tess.shader->clampTime) {
 		tess.shaderTime = tess.shader->clampTime;
 	}
@@ -1256,7 +1257,6 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 			if (stage->glslShaderIndex & LIGHTDEF_USE_PARALLAXMAP &&
 				stage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK)
 				index |= LIGHTDEF_USE_PARALLAXMAP | LIGHTDEF_USE_LIGHT_VERTEX;
-
 
 			result = &stage->glslShaderGroup[index];
 			backEnd.pc.c_lightallDraws++;

@@ -684,7 +684,7 @@ extern void misc_model_cargo_die(gentity_t* self, const gentity_t* inflictor, ge
 extern void func_train_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int mod,
 	int d_flags = 0, int hit_loc = HL_NONE);
 
-extern void player_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, const int damage, const int means_of_death,const int dflags = 0, const int hit_loc = HL_NONE);
+extern void player_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, const int damage, const int means_of_death, const int dflags = 0, const int hit_loc = HL_NONE);
 
 extern void ExplodeDeath_Wait(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath,
 	int d_flags = 0, int hit_loc = HL_NONE);

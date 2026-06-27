@@ -67,603 +67,603 @@ extern void G_DamageFromKiller(gentity_t* pEnt, gentity_t* pVehEnt, gentity_t* a
 
 static void PM_VehicleImpact(bgEntity_t* pEnt, trace_t* trace)
 {
-    // ------------------------------------------------------------
-    // SAFETY GUARDS
-    // ------------------------------------------------------------
-    if (!pEnt || !pEnt->m_pVehicle)
-    {
-        // No vehicle instance to process
-        return;
-    }
+	// ------------------------------------------------------------
+	// SAFETY GUARDS
+	// ------------------------------------------------------------
+	if (!pEnt || !pEnt->m_pVehicle)
+	{
+		// No vehicle instance to process
+		return;
+	}
 
-    Vehicle_t* p_self_veh = pEnt->m_pVehicle;
+	Vehicle_t* p_self_veh = pEnt->m_pVehicle;
 
-    // If somehow called with no trace, we cannot resolve impact data
-    if (!trace)
-    {
-        return;
-    }
+	// If somehow called with no trace, we cannot resolve impact data
+	if (!trace)
+	{
+		return;
+	}
 
-    // Impact magnitude based on current velocity and vehicle mass
-    float magnitude = VectorLength(pm->ps->velocity) * p_self_veh->m_pVehicleInfo->mass / 50.0f;
+	// Impact magnitude based on current velocity and vehicle mass
+	float magnitude = VectorLength(pm->ps->velocity) * p_self_veh->m_pVehicleInfo->mass / 50.0f;
 
-    qboolean force_surf_destruction = qfalse;
+	qboolean force_surf_destruction = qfalse;
 
 #ifdef _GAME
-    // Entity we hit (may be world, mover, player, NPC, missile, etc.)
-    gentity_t* hit_ent = &g_entities[trace->entityNum];
+	// Entity we hit (may be world, mover, player, NPC, missile, etc.)
+	gentity_t* hit_ent = &g_entities[trace->entityNum];
 
-    // ------------------------------------------------------------
-    // EARLY OUT: IGNORE SELF‑MISSILES / INVALID HIT
-    // ------------------------------------------------------------
-    if (!hit_ent ||
-        (p_self_veh && p_self_veh->m_pPilot &&
-            hit_ent &&
-            hit_ent->s.eType == ET_MISSILE &&
-            hit_ent->inuse &&
-            hit_ent->r.ownerNum == p_self_veh->m_pPilot->s.number))
-    {
-        // No valid impact, or we hit our own missile
-        return;
-    }
+	// ------------------------------------------------------------
+	// EARLY OUT: IGNORE SELF‑MISSILES / INVALID HIT
+	// ------------------------------------------------------------
+	if (!hit_ent ||
+		(p_self_veh && p_self_veh->m_pPilot &&
+			hit_ent &&
+			hit_ent->s.eType == ET_MISSILE &&
+			hit_ent->inuse &&
+			hit_ent->r.ownerNum == p_self_veh->m_pPilot->s.number))
+	{
+		// No valid impact, or we hit our own missile
+		return;
+	}
 
-    // ------------------------------------------------------------
-    // DEATH SPIRAL: VEHICLE ALREADY LOSING SURFACES
-    // ------------------------------------------------------------
-    if (p_self_veh->m_iRemovedSurfaces)
-    {
-        // Spiralling to our deaths, explode on any solid impact
-        if (hit_ent->s.NPC_class == CLASS_VEHICLE)
-        {
-            // Hit another vehicle, explode; credit whoever put us in this state
-            G_DamageFromKiller((gentity_t*)pEnt,
-                (gentity_t*)p_self_veh->m_pParentEntity,
-                hit_ent,
-                pm->ps->origin,
-                999999,
-                DAMAGE_NO_ARMOR,
-                MOD_COLLISION);
-            return;
-        }
+	// ------------------------------------------------------------
+	// DEATH SPIRAL: VEHICLE ALREADY LOSING SURFACES
+	// ------------------------------------------------------------
+	if (p_self_veh->m_iRemovedSurfaces)
+	{
+		// Spiralling to our deaths, explode on any solid impact
+		if (hit_ent->s.NPC_class == CLASS_VEHICLE)
+		{
+			// Hit another vehicle, explode; credit whoever put us in this state
+			G_DamageFromKiller((gentity_t*)pEnt,
+				(gentity_t*)p_self_veh->m_pParentEntity,
+				hit_ent,
+				pm->ps->origin,
+				999999,
+				DAMAGE_NO_ARMOR,
+				MOD_COLLISION);
+			return;
+		}
 
-        if (!VectorCompare(trace->plane.normal, vec3_origin) &&
-            (trace->entityNum == ENTITYNUM_WORLD || hit_ent->r.bmodel))
-        {
-            // Valid hit plane and solid brush
-            vec3_t moveDir;
-            VectorCopy(pm->ps->velocity, moveDir);
-            VectorNormalize(moveDir);
+		if (!VectorCompare(trace->plane.normal, vec3_origin) &&
+			(trace->entityNum == ENTITYNUM_WORLD || hit_ent->r.bmodel))
+		{
+			// Valid hit plane and solid brush
+			vec3_t moveDir;
+			VectorCopy(pm->ps->velocity, moveDir);
+			VectorNormalize(moveDir);
 
-            const float impactDot = DotProduct(moveDir, trace->plane.normal);
+			const float impactDot = DotProduct(moveDir, trace->plane.normal);
 
-            if (impactDot <= -0.7f)
-            {
-                // Hit rather head‑on and hard: just die now
-                G_DamageFromKiller((gentity_t*)pEnt,
-                    (gentity_t*)p_self_veh->m_pParentEntity,
-                    hit_ent,
-                    pm->ps->origin,
-                    999999,
-                    DAMAGE_NO_ARMOR,
-                    MOD_FALLING);
-                return;
-            }
-        }
-    }
+			if (impactDot <= -0.7f)
+			{
+				// Hit rather head‑on and hard: just die now
+				G_DamageFromKiller((gentity_t*)pEnt,
+					(gentity_t*)p_self_veh->m_pParentEntity,
+					hit_ent,
+					pm->ps->origin,
+					999999,
+					DAMAGE_NO_ARMOR,
+					MOD_FALLING);
+				return;
+			}
+		}
+	}
 
-    // ------------------------------------------------------------
-    // SPECIAL CASE: func_rotating WITH IMPACT FLAG
-    // ------------------------------------------------------------
-    if (trace->entityNum < ENTITYNUM_WORLD &&
-        hit_ent->s.eType == ET_MOVER &&
-        hit_ent->s.apos.trType != TR_STATIONARY && // rotating
-        (hit_ent->spawnflags & 16) &&              // IMPACT
-        Q_stricmp("func_rotating", hit_ent->classname) == 0)
-    {
-        // Hit a func_rotating that destroys anything it touches
-        force_surf_destruction = qtrue;
-    }
-    else if (fabs(pm->ps->velocity[0]) + fabs(pm->ps->velocity[1]) < 100.0f &&
-        pm->ps->velocity[2] > -100.0f)
+	// ------------------------------------------------------------
+	// SPECIAL CASE: func_rotating WITH IMPACT FLAG
+	// ------------------------------------------------------------
+	if (trace->entityNum < ENTITYNUM_WORLD &&
+		hit_ent->s.eType == ET_MOVER &&
+		hit_ent->s.apos.trType != TR_STATIONARY && // rotating
+		(hit_ent->spawnflags & 16) &&              // IMPACT
+		Q_stricmp("func_rotating", hit_ent->classname) == 0)
+	{
+		// Hit a func_rotating that destroys anything it touches
+		force_surf_destruction = qtrue;
+	}
+	else if (fabs(pm->ps->velocity[0]) + fabs(pm->ps->velocity[1]) < 100.0f &&
+		pm->ps->velocity[2] > -100.0f)
 #elif defined(_CGAME)
-    if (fabs(pm->ps->velocity[0]) + fabs(pm->ps->velocity[1]) < 100.0f &&
-        pm->ps->velocity[2] > -100.0f)
+	if (fabs(pm->ps->velocity[0]) + fabs(pm->ps->velocity[1]) < 100.0f &&
+		pm->ps->velocity[2] > -100.0f)
 #endif
-    {
-        // --------------------------------------------------------
-        // SOFT LANDING CASE
-        // --------------------------------------------------------
+	{
+		// --------------------------------------------------------
+		// SOFT LANDING CASE
+		// --------------------------------------------------------
 #ifdef _GAME
-        if (hit_ent &&
-            (hit_ent->s.eType == ET_PLAYER || hit_ent->s.eType == ET_NPC) &&
-            p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
-        {
-            // Fighters always smack players/NPCs even on soft landings
-        }
-        else
+		if (hit_ent &&
+			(hit_ent->s.eType == ET_PLAYER || hit_ent->s.eType == ET_NPC) &&
+			p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
+		{
+			// Fighters always smack players/NPCs even on soft landings
+		}
+		else
 #endif
-        {
-            // Normal soft landing, no impact handling
-            return;
-        }
-    }
+		{
+			// Normal soft landing, no impact handling
+			return;
+		}
+	}
 
-    // ------------------------------------------------------------
-    // HIGH‑IMPACT OR FORCED SURFACE DESTRUCTION
-    // ------------------------------------------------------------
-    if (p_self_veh &&
-        (p_self_veh->m_pVehicleInfo->type == VH_SPEEDER ||
-            p_self_veh->m_pVehicleInfo->type == VH_FIGHTER) &&
-        (magnitude >= 100.0f || force_surf_destruction == qtrue))
-    {
-        if (pEnt->m_pVehicle->m_iHitDebounce < pm->cmd.serverTime ||
-            force_surf_destruction == qtrue)
-        {
+	// ------------------------------------------------------------
+	// HIGH‑IMPACT OR FORCED SURFACE DESTRUCTION
+	// ------------------------------------------------------------
+	if (p_self_veh &&
+		(p_self_veh->m_pVehicleInfo->type == VH_SPEEDER ||
+			p_self_veh->m_pVehicleInfo->type == VH_FIGHTER) &&
+		(magnitude >= 100.0f || force_surf_destruction == qtrue))
+	{
+		if (pEnt->m_pVehicle->m_iHitDebounce < pm->cmd.serverTime ||
+			force_surf_destruction == qtrue)
+		{
 #ifdef _CGAME
-            bgEntity_t* hit_ent;
+			bgEntity_t* hit_ent;
 #endif
-            vec3_t vehUp;
+			vec3_t vehUp;
 
 #ifdef _GAME
-            qboolean noDamage = qfalse;
+			qboolean noDamage = qfalse;
 #endif
 
-            // ----------------------------------------------------
-            // BOUNCE / TURN LOGIC ON IMPACT
-            // ----------------------------------------------------
-            if (trace && !p_self_veh->m_iRemovedSurfaces && force_surf_destruction == qfalse)
-            {
-                qboolean turnFromImpact = qfalse;
-                qboolean turnHitEnt = qfalse;
-                float l = pm->ps->speed * 0.5f;
-                vec3_t bounceDir;
+			// ----------------------------------------------------
+			// BOUNCE / TURN LOGIC ON IMPACT
+			// ----------------------------------------------------
+			if (trace && !p_self_veh->m_iRemovedSurfaces && force_surf_destruction == qfalse)
+			{
+				qboolean turnFromImpact = qfalse;
+				qboolean turnHitEnt = qfalse;
+				float l = pm->ps->speed * 0.5f;
+				vec3_t bounceDir;
 
 #ifdef _CGAME
-                bgEntity_t* hit_ent = PM_BGEntForNum(trace->entityNum);
+				bgEntity_t* hit_ent = PM_BGEntForNum(trace->entityNum);
 #endif
 
-                // Bounce off brush surfaces
-                if ((trace->entityNum == ENTITYNUM_WORLD ||
-                    hit_ent->s.solid == SOLID_BMODEL) &&
-                    !VectorCompare(trace->plane.normal, vec3_origin))
-                {
-                    if (p_self_veh->m_pVehicleInfo->type == VH_SPEEDER)
-                    {
-                        pm->ps->speed *= pml.frametime;
-                        VectorCopy(trace->plane.normal, bounceDir);
-                    }
-                    else if (trace->plane.normal[2] >= MIN_LANDING_SLOPE &&
-                        p_self_veh->m_LandTrace.fraction < 1.0f &&
-                        pm->ps->speed <= MIN_LANDING_SPEED)
-                    {
-                        // Flat enough to land, ground present, low speed: just land
-                        return;
-                    }
-                    else
-                    {
-                        if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
-                        {
-                            turnFromImpact = qtrue;
-                        }
-                        VectorCopy(trace->plane.normal, bounceDir);
-                    }
-                }
-                // Fighter‑vs‑fighter impact
-                else if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
-                {
+				// Bounce off brush surfaces
+				if ((trace->entityNum == ENTITYNUM_WORLD ||
+					hit_ent->s.solid == SOLID_BMODEL) &&
+					!VectorCompare(trace->plane.normal, vec3_origin))
+				{
+					if (p_self_veh->m_pVehicleInfo->type == VH_SPEEDER)
+					{
+						pm->ps->speed *= pml.frametime;
+						VectorCopy(trace->plane.normal, bounceDir);
+					}
+					else if (trace->plane.normal[2] >= MIN_LANDING_SLOPE &&
+						p_self_veh->m_LandTrace.fraction < 1.0f &&
+						pm->ps->speed <= MIN_LANDING_SPEED)
+					{
+						// Flat enough to land, ground present, low speed: just land
+						return;
+					}
+					else
+					{
+						if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
+						{
+							turnFromImpact = qtrue;
+						}
+						VectorCopy(trace->plane.normal, bounceDir);
+					}
+				}
+				// Fighter‑vs‑fighter impact
+				else if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
+				{
 #ifdef _CGAME
-                    bgEntity_t* hit_ent = PM_BGEntForNum(trace->entityNum);
+					bgEntity_t* hit_ent = PM_BGEntForNum(trace->entityNum);
 #endif
-                    if (hit_ent->s.NPC_class == CLASS_VEHICLE &&
-                        hit_ent->m_pVehicle &&
-                        hit_ent->m_pVehicle->m_pVehicleInfo &&
-                        hit_ent->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER)
-                    {
-                        turnFromImpact = qtrue;
-                        turnHitEnt = qtrue;
+					if (hit_ent->s.NPC_class == CLASS_VEHICLE &&
+						hit_ent->m_pVehicle &&
+						hit_ent->m_pVehicle->m_pVehicleInfo &&
+						hit_ent->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER)
+					{
+						turnFromImpact = qtrue;
+						turnHitEnt = qtrue;
 #ifdef _GAME
-                        VectorSubtract(pm->ps->origin, hit_ent->r.currentOrigin, bounceDir);
+						VectorSubtract(pm->ps->origin, hit_ent->r.currentOrigin, bounceDir);
 #else
-                        VectorSubtract(pm->ps->origin, hit_ent->s.origin, bounceDir);
+						VectorSubtract(pm->ps->origin, hit_ent->s.origin, bounceDir);
 #endif
-                        VectorNormalize(bounceDir);
-                    }
-                }
+						VectorNormalize(bounceDir);
+					}
+				}
 
-                if (turnFromImpact == qtrue)
-                {
-                    // --------------------------------------------
-                    // BOUNCE AND TURN AWAY FROM IMPACT
-                    // --------------------------------------------
-                    vec3_t push_dir = { 0.0f, 0.0f, 0.0f };
-                    vec3_t turnAwayAngles;
-                    vec3_t turnDelta;
-                    vec3_t moveDir;
+				if (turnFromImpact == qtrue)
+				{
+					// --------------------------------------------
+					// BOUNCE AND TURN AWAY FROM IMPACT
+					// --------------------------------------------
+					vec3_t push_dir = { 0.0f, 0.0f, 0.0f };
+					vec3_t turnAwayAngles;
+					vec3_t turnDelta;
+					vec3_t moveDir;
 
-                    // Bounce impulse
-                    if (turnHitEnt == qfalse)
-                    {
-                        // Hit wall
-                        VectorScale(bounceDir,
-                            pm->ps->speed * 0.25f / p_self_veh->m_pVehicleInfo->mass,
-                            push_dir);
-                    }
-                    else
-                    {
-                        // Hit another fighter
+					// Bounce impulse
+					if (turnHitEnt == qfalse)
+					{
+						// Hit wall
+						VectorScale(bounceDir,
+							pm->ps->speed * 0.25f / p_self_veh->m_pVehicleInfo->mass,
+							push_dir);
+					}
+					else
+					{
+						// Hit another fighter
 #ifdef _GAME
-                        if (hit_ent->client)
-                        {
-                            VectorScale(bounceDir,
-                                (pm->ps->speed + hit_ent->client->ps.speed) * 0.5f,
-                                push_dir);
-                        }
-                        else
-                        {
-                            VectorScale(bounceDir,
-                                (pm->ps->speed + hit_ent->s.speed) * 0.5f,
-                                push_dir);
-                        }
+						if (hit_ent->client)
+						{
+							VectorScale(bounceDir,
+								(pm->ps->speed + hit_ent->client->ps.speed) * 0.5f,
+								push_dir);
+						}
+						else
+						{
+							VectorScale(bounceDir,
+								(pm->ps->speed + hit_ent->s.speed) * 0.5f,
+								push_dir);
+						}
 #else
-                        VectorScale(bounceDir,
-                            (pm->ps->speed + hit_ent->s.speed) * 0.5f,
-                            bounceDir);
+						VectorScale(bounceDir,
+							(pm->ps->speed + hit_ent->s.speed) * 0.5f,
+							bounceDir);
 #endif
-                        VectorScale(push_dir, l / p_self_veh->m_pVehicleInfo->mass, push_dir);
-                        VectorScale(push_dir, 0.1f, push_dir);
-                    }
+						VectorScale(push_dir, l / p_self_veh->m_pVehicleInfo->mass, push_dir);
+						VectorScale(push_dir, 0.1f, push_dir);
+					}
 
-                    VectorNormalize2(pm->ps->velocity, moveDir);
+					VectorNormalize2(pm->ps->velocity, moveDir);
 
-                    float bounce_dot = DotProduct(moveDir, bounceDir) * -1.0f;
-                    if (bounce_dot < 0.1f)
-                    {
-                        bounce_dot = 0.1f;
-                    }
+					float bounce_dot = DotProduct(moveDir, bounceDir) * -1.0f;
+					if (bounce_dot < 0.1f)
+					{
+						bounce_dot = 0.1f;
+					}
 
-                    VectorScale(push_dir, bounce_dot, push_dir);
-                    VectorAdd(pm->ps->velocity, push_dir, pm->ps->velocity);
+					VectorScale(push_dir, bounce_dot, push_dir);
+					VectorAdd(pm->ps->velocity, push_dir, pm->ps->velocity);
 
-                    // Turn away from impact
-                    float turn_divider = p_self_veh->m_pVehicleInfo->mass / 400.0f;
-                    if (turnHitEnt == qtrue)
-                    {
-                        turn_divider *= 4.0f;
-                    }
-                    if (turn_divider < 0.5f)
-                    {
-                        turn_divider = 0.5f;
-                    }
+					// Turn away from impact
+					float turn_divider = p_self_veh->m_pVehicleInfo->mass / 400.0f;
+					if (turnHitEnt == qtrue)
+					{
+						turn_divider *= 4.0f;
+					}
+					if (turn_divider < 0.5f)
+					{
+						turn_divider = 0.5f;
+					}
 
-                    float turn_strength = magnitude / 2000.0f;
-                    if (turn_strength < 0.1f)
-                    {
-                        turn_strength = 0.1f;
-                    }
-                    else if (turn_strength > 2.0f)
-                    {
-                        turn_strength = 2.0f;
-                    }
+					float turn_strength = magnitude / 2000.0f;
+					if (turn_strength < 0.1f)
+					{
+						turn_strength = 0.1f;
+					}
+					else if (turn_strength > 2.0f)
+					{
+						turn_strength = 2.0f;
+					}
 
-                    vectoangles(bounceDir, turnAwayAngles);
-                    AnglesSubtract(turnAwayAngles, p_self_veh->m_vOrientation, turnDelta);
+					vectoangles(bounceDir, turnAwayAngles);
+					AnglesSubtract(turnAwayAngles, p_self_veh->m_vOrientation, turnDelta);
 
-                    // Pitch
-                    if (bounceDir[2] != 0.0f)
-                    {
-                        float pitch_turn_strength = turn_strength * turnDelta[PITCH];
-                        if (pitch_turn_strength > MAX_IMPACT_TURN_ANGLE)
-                        {
-                            pitch_turn_strength = MAX_IMPACT_TURN_ANGLE;
-                        }
-                        else if (pitch_turn_strength < -MAX_IMPACT_TURN_ANGLE)
-                        {
-                            pitch_turn_strength = -MAX_IMPACT_TURN_ANGLE;
-                        }
+					// Pitch
+					if (bounceDir[2] != 0.0f)
+					{
+						float pitch_turn_strength = turn_strength * turnDelta[PITCH];
+						if (pitch_turn_strength > MAX_IMPACT_TURN_ANGLE)
+						{
+							pitch_turn_strength = MAX_IMPACT_TURN_ANGLE;
+						}
+						else if (pitch_turn_strength < -MAX_IMPACT_TURN_ANGLE)
+						{
+							pitch_turn_strength = -MAX_IMPACT_TURN_ANGLE;
+						}
 
-                        p_self_veh->m_vFullAngleVelocity[PITCH] = AngleNormalize180(
-                            p_self_veh->m_vOrientation[PITCH] +
-                            (pitch_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
-                    }
+						p_self_veh->m_vFullAngleVelocity[PITCH] = AngleNormalize180(
+							p_self_veh->m_vOrientation[PITCH] +
+							(pitch_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
+					}
 
-                    // Yaw (stored in ROLL slot for this system)
-                    if (bounceDir[0] != 0.0f || bounceDir[1] != 0.0f)
-                    {
-                        float yaw_turn_strength = turn_strength * turnDelta[YAW];
-                        if (yaw_turn_strength > MAX_IMPACT_TURN_ANGLE)
-                        {
-                            yaw_turn_strength = MAX_IMPACT_TURN_ANGLE;
-                        }
-                        else if (yaw_turn_strength < -MAX_IMPACT_TURN_ANGLE)
-                        {
-                            yaw_turn_strength = -MAX_IMPACT_TURN_ANGLE;
-                        }
+					// Yaw (stored in ROLL slot for this system)
+					if (bounceDir[0] != 0.0f || bounceDir[1] != 0.0f)
+					{
+						float yaw_turn_strength = turn_strength * turnDelta[YAW];
+						if (yaw_turn_strength > MAX_IMPACT_TURN_ANGLE)
+						{
+							yaw_turn_strength = MAX_IMPACT_TURN_ANGLE;
+						}
+						else if (yaw_turn_strength < -MAX_IMPACT_TURN_ANGLE)
+						{
+							yaw_turn_strength = -MAX_IMPACT_TURN_ANGLE;
+						}
 
-                        p_self_veh->m_vFullAngleVelocity[ROLL] = AngleNormalize180(
-                            p_self_veh->m_vOrientation[ROLL] -
-                            (yaw_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
-                    }
+						p_self_veh->m_vFullAngleVelocity[ROLL] = AngleNormalize180(
+							p_self_veh->m_vOrientation[ROLL] -
+							(yaw_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
+					}
 
 #ifdef _GAME
-                    // ----------------------------------------
-                    // SERVER: TURN/PUSH THE OTHER VEHICLE TOO
-                    // ----------------------------------------
-                    if (turnHitEnt == qtrue &&
-                        hit_ent->client &&
-                        hit_ent->m_pVehicle &&
-                        hit_ent->m_pVehicle->m_pVehicleInfo &&
-                        !FighterIsLanded(hit_ent->m_pVehicle, &hit_ent->client->ps) &&
-                        !(hit_ent->spawnflags & 2))
-                    {
-                        l = hit_ent->client->ps.speed;
+					// ----------------------------------------
+					// SERVER: TURN/PUSH THE OTHER VEHICLE TOO
+					// ----------------------------------------
+					if (turnHitEnt == qtrue &&
+						hit_ent->client &&
+						hit_ent->m_pVehicle &&
+						hit_ent->m_pVehicle->m_pVehicleInfo &&
+						!FighterIsLanded(hit_ent->m_pVehicle, &hit_ent->client->ps) &&
+						!(hit_ent->spawnflags & 2))
+					{
+						l = hit_ent->client->ps.speed;
 
-                        // Flip bounceDir to push the other ship away
-                        VectorScale(bounceDir, -1.0f, bounceDir);
+						// Flip bounceDir to push the other ship away
+						VectorScale(bounceDir, -1.0f, bounceDir);
 
-                        // Bounce other ship
-                        VectorScale(bounceDir,
-                            (pm->ps->speed + l) * 0.5f,
-                            push_dir);
-                        VectorScale(push_dir,
-                            l * 0.5f / hit_ent->m_pVehicle->m_pVehicleInfo->mass,
-                            push_dir);
+						// Bounce other ship
+						VectorScale(bounceDir,
+							(pm->ps->speed + l) * 0.5f,
+							push_dir);
+						VectorScale(push_dir,
+							l * 0.5f / hit_ent->m_pVehicle->m_pVehicleInfo->mass,
+							push_dir);
 
-                        VectorNormalize2(hit_ent->client->ps.velocity, moveDir);
-                        bounce_dot = DotProduct(moveDir, bounceDir) * -1.0f;
-                        if (bounce_dot < 0.1f)
-                        {
-                            bounce_dot = 0.1f;
-                        }
-                        VectorScale(push_dir, bounce_dot, push_dir);
-                        VectorAdd(hit_ent->client->ps.velocity, push_dir, hit_ent->client->ps.velocity);
+						VectorNormalize2(hit_ent->client->ps.velocity, moveDir);
+						bounce_dot = DotProduct(moveDir, bounceDir) * -1.0f;
+						if (bounce_dot < 0.1f)
+						{
+							bounce_dot = 0.1f;
+						}
+						VectorScale(push_dir, bounce_dot, push_dir);
+						VectorAdd(hit_ent->client->ps.velocity, push_dir, hit_ent->client->ps.velocity);
 
-                        // Turn other ship
-                        turn_divider = hit_ent->m_pVehicle->m_pVehicleInfo->mass / 400.0f;
-                        if (turnHitEnt == qtrue)
-                        {
-                            turn_divider *= 4.0f;
-                        }
-                        if (turn_divider < 0.5f)
-                        {
-                            turn_divider = 0.5f;
-                        }
+						// Turn other ship
+						turn_divider = hit_ent->m_pVehicle->m_pVehicleInfo->mass / 400.0f;
+						if (turnHitEnt == qtrue)
+						{
+							turn_divider *= 4.0f;
+						}
+						if (turn_divider < 0.5f)
+						{
+							turn_divider = 0.5f;
+						}
 
-                        vectoangles(bounceDir, turnAwayAngles);
-                        AnglesSubtract(turnAwayAngles, hit_ent->m_pVehicle->m_vOrientation, turnDelta);
+						vectoangles(bounceDir, turnAwayAngles);
+						AnglesSubtract(turnAwayAngles, hit_ent->m_pVehicle->m_vOrientation, turnDelta);
 
-                        // Pitch
-                        if (bounceDir[2] != 0.0f)
-                        {
-                            float pitch_turn_strength = turn_strength * turnDelta[PITCH];
-                            if (pitch_turn_strength > MAX_IMPACT_TURN_ANGLE)
-                            {
-                                pitch_turn_strength = MAX_IMPACT_TURN_ANGLE;
-                            }
-                            else if (pitch_turn_strength < -MAX_IMPACT_TURN_ANGLE)
-                            {
-                                pitch_turn_strength = -MAX_IMPACT_TURN_ANGLE;
-                            }
+						// Pitch
+						if (bounceDir[2] != 0.0f)
+						{
+							float pitch_turn_strength = turn_strength * turnDelta[PITCH];
+							if (pitch_turn_strength > MAX_IMPACT_TURN_ANGLE)
+							{
+								pitch_turn_strength = MAX_IMPACT_TURN_ANGLE;
+							}
+							else if (pitch_turn_strength < -MAX_IMPACT_TURN_ANGLE)
+							{
+								pitch_turn_strength = -MAX_IMPACT_TURN_ANGLE;
+							}
 
-                            hit_ent->m_pVehicle->m_vFullAngleVelocity[PITCH] = AngleNormalize180(
-                                hit_ent->m_pVehicle->m_vOrientation[PITCH] +
-                                (pitch_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
-                        }
+							hit_ent->m_pVehicle->m_vFullAngleVelocity[PITCH] = AngleNormalize180(
+								hit_ent->m_pVehicle->m_vOrientation[PITCH] +
+								(pitch_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
+						}
 
-                        // Yaw (stored in ROLL)
-                        if (bounceDir[0] != 0.0f || bounceDir[1] != 0.0f)
-                        {
-                            float yaw_turn_strength = turn_strength * turnDelta[YAW];
-                            if (yaw_turn_strength > MAX_IMPACT_TURN_ANGLE)
-                            {
-                                yaw_turn_strength = MAX_IMPACT_TURN_ANGLE;
-                            }
-                            else if (yaw_turn_strength < -MAX_IMPACT_TURN_ANGLE)
-                            {
-                                yaw_turn_strength = -MAX_IMPACT_TURN_ANGLE;
-                            }
+						// Yaw (stored in ROLL)
+						if (bounceDir[0] != 0.0f || bounceDir[1] != 0.0f)
+						{
+							float yaw_turn_strength = turn_strength * turnDelta[YAW];
+							if (yaw_turn_strength > MAX_IMPACT_TURN_ANGLE)
+							{
+								yaw_turn_strength = MAX_IMPACT_TURN_ANGLE;
+							}
+							else if (yaw_turn_strength < -MAX_IMPACT_TURN_ANGLE)
+							{
+								yaw_turn_strength = -MAX_IMPACT_TURN_ANGLE;
+							}
 
-                            hit_ent->m_pVehicle->m_vFullAngleVelocity[ROLL] = AngleNormalize180(
-                                hit_ent->m_pVehicle->m_vOrientation[ROLL] -
-                                (yaw_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
-                        }
-                    }
+							hit_ent->m_pVehicle->m_vFullAngleVelocity[ROLL] = AngleNormalize180(
+								hit_ent->m_pVehicle->m_vOrientation[ROLL] -
+								(yaw_turn_strength / turn_divider) * p_self_veh->m_fTimeModifier);
+						}
+					}
 #endif
-                }
-            }
+				}
+			}
 
 #ifdef _GAME
-            // ----------------------------------------------------
-            // SERVER‑SIDE DAMAGE / FX / CRASH STATE
-            // ----------------------------------------------------
-            if (!hit_ent)
-            {
-                return;
-            }
+			// ----------------------------------------------------
+			// SERVER‑SIDE DAMAGE / FX / CRASH STATE
+			// ----------------------------------------------------
+			if (!hit_ent)
+			{
+				return;
+			}
 
-            AngleVectors(p_self_veh->m_vOrientation, NULL, NULL, vehUp);
+			AngleVectors(p_self_veh->m_vOrientation, NULL, NULL, vehUp);
 
-            if (p_self_veh->m_pVehicleInfo->iImpactFX)
-            {
-                G_AddEvent((gentity_t*)pEnt, EV_PLAY_EFFECT_ID, p_self_veh->m_pVehicleInfo->iImpactFX);
-            }
+			if (p_self_veh->m_pVehicleInfo->iImpactFX)
+			{
+				G_AddEvent((gentity_t*)pEnt, EV_PLAY_EFFECT_ID, p_self_veh->m_pVehicleInfo->iImpactFX);
+			}
 
-            pEnt->m_pVehicle->m_iHitDebounce = pm->cmd.serverTime + 200;
-            magnitude /= p_self_veh->m_pVehicleInfo->toughness * 50.0f;
+			pEnt->m_pVehicle->m_iHitDebounce = pm->cmd.serverTime + 200;
+			magnitude /= p_self_veh->m_pVehicleInfo->toughness * 50.0f;
 
-            if (hit_ent &&
-                (hit_ent->s.eType != ET_TERRAIN ||
-                    !(hit_ent->spawnflags & 1) ||
-                    p_self_veh->m_pVehicleInfo->type == VH_FIGHTER))
-            {
-                // Terrain that doesn't want to damage vehicles is ignored,
-                // except for fighters which always take impact damage.
-                gentity_t* killer = NULL;
+			if (hit_ent &&
+				(hit_ent->s.eType != ET_TERRAIN ||
+					!(hit_ent->spawnflags & 1) ||
+					p_self_veh->m_pVehicleInfo->type == VH_FIGHTER))
+			{
+				// Terrain that doesn't want to damage vehicles is ignored,
+				// except for fighters which always take impact damage.
+				gentity_t* killer = NULL;
 
-                if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
-                {
-                    float mult = p_self_veh->m_vOrientation[PITCH] * 0.1f;
-                    if (mult < 1.0f)
-                    {
-                        mult = 1.0f;
-                    }
+				if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
+				{
+					float mult = p_self_veh->m_vOrientation[PITCH] * 0.1f;
+					if (mult < 1.0f)
+					{
+						mult = 1.0f;
+					}
 
-                    if (hit_ent->inuse && hit_ent->takedamage)
-                    {
-                        // If the other guy takes damage, reduce our damage,
-                        // unless it's a vehicle, then increase it.
-                        if (hit_ent->s.eType == ET_NPC &&
-                            hit_ent->s.NPC_class == CLASS_VEHICLE &&
-                            hit_ent->m_pVehicle)
-                        {
-                            mult = 1.5f;
-                        }
-                        else
-                        {
-                            mult = 0.5f;
-                        }
-                    }
+					if (hit_ent->inuse && hit_ent->takedamage)
+					{
+						// If the other guy takes damage, reduce our damage,
+						// unless it's a vehicle, then increase it.
+						if (hit_ent->s.eType == ET_NPC &&
+							hit_ent->s.NPC_class == CLASS_VEHICLE &&
+							hit_ent->m_pVehicle)
+						{
+							mult = 1.5f;
+						}
+						else
+						{
+							mult = 0.5f;
+						}
+					}
 
-                    magnitude *= mult;
-                }
+					magnitude *= mult;
+				}
 
-                p_self_veh->m_iLastImpactDmg = magnitude;
+				p_self_veh->m_iLastImpactDmg = magnitude;
 
-                if (hit_ent->s.eType == ET_MISSILE)
-                {
-                    // Never do or take impact damage from a missile
-                    noDamage = qtrue;
+				if (hit_ent->s.eType == ET_MISSILE)
+				{
+					// Never do or take impact damage from a missile
+					noDamage = qtrue;
 
-                    if ((hit_ent->s.eFlags & EF_JETPACK_ACTIVE) &&
-                        hit_ent->r.ownerNum < MAX_CLIENTS)
-                    {
-                        // Credit missile owner if we die from impact
-                        killer = &g_entities[hit_ent->r.ownerNum];
-                    }
-                }
+					if ((hit_ent->s.eFlags & EF_JETPACK_ACTIVE) &&
+						hit_ent->r.ownerNum < MAX_CLIENTS)
+					{
+						// Credit missile owner if we die from impact
+						killer = &g_entities[hit_ent->r.ownerNum];
+					}
+				}
 
-                if (noDamage == qfalse)
-                {
-                    G_Damage((gentity_t*)pEnt,
-                        hit_ent,
-                        (killer != NULL) ? killer : hit_ent,
-                        NULL,
-                        pm->ps->origin,
-                        magnitude * 5.0f,
-                        DAMAGE_NO_ARMOR,
-                        (hit_ent->s.NPC_class == CLASS_VEHICLE) ? MOD_COLLISION : MOD_FALLING);
-                }
+				if (noDamage == qfalse)
+				{
+					G_Damage((gentity_t*)pEnt,
+						hit_ent,
+						(killer != NULL) ? killer : hit_ent,
+						NULL,
+						pm->ps->origin,
+						magnitude * 5.0f,
+						DAMAGE_NO_ARMOR,
+						(hit_ent->s.NPC_class == CLASS_VEHICLE) ? MOD_COLLISION : MOD_FALLING);
+				}
 
-                if (p_self_veh->m_pVehicleInfo->surfDestruction)
-                {
-                    G_FlyVehicleSurfaceDestruction((gentity_t*)pEnt, trace, magnitude, force_surf_destruction);
-                }
+				if (p_self_veh->m_pVehicleInfo->surfDestruction)
+				{
+					G_FlyVehicleSurfaceDestruction((gentity_t*)pEnt, trace, magnitude, force_surf_destruction);
+				}
 
-                p_self_veh->m_ulFlags |= VEH_CRASHING;
-            }
+				p_self_veh->m_ulFlags |= VEH_CRASHING;
+			}
 
-            // ----------------------------------------------------
-            // DAMAGE TO HIT ENTITY (PLAYER / NPC / VEHICLE)
-            // ----------------------------------------------------
-            if (hit_ent &&
-                hit_ent->inuse &&
-                hit_ent->takedamage)
-            {
-                float pmult = 1.0f;
-                gentity_t* attackEnt;
+			// ----------------------------------------------------
+			// DAMAGE TO HIT ENTITY (PLAYER / NPC / VEHICLE)
+			// ----------------------------------------------------
+			if (hit_ent &&
+				hit_ent->inuse &&
+				hit_ent->takedamage)
+			{
+				float pmult = 1.0f;
+				gentity_t* attackEnt;
 
-                if ((hit_ent->s.eType == ET_PLAYER && hit_ent->s.number < MAX_CLIENTS) ||
-                    (hit_ent->s.eType == ET_NPC && hit_ent->s.NPC_class != CLASS_VEHICLE))
-                {
-                    // Probably a humanoid or similar
-                    if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
-                    {
-                        pmult = 2000.0f;
-                    }
-                    else
-                    {
-                        pmult = 40.0f;
-                    }
+				if ((hit_ent->s.eType == ET_PLAYER && hit_ent->s.number < MAX_CLIENTS) ||
+					(hit_ent->s.eType == ET_NPC && hit_ent->s.NPC_class != CLASS_VEHICLE))
+				{
+					// Probably a humanoid or similar
+					if (p_self_veh->m_pVehicleInfo->type == VH_FIGHTER)
+					{
+						pmult = 2000.0f;
+					}
+					else
+					{
+						pmult = 40.0f;
+					}
 
-                    if (hit_ent->client &&
-                        BG_KnockDownable(&hit_ent->client->ps) &&
-                        G_CanBeEnemy((gentity_t*)pEnt, hit_ent))
-                    {
-                        // Smash and knock down
-                        if (hit_ent->client->ps.forceHandExtend != HANDEXTEND_KNOCKDOWN)
-                        {
-                            hit_ent->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-                            hit_ent->client->ps.forceHandExtendTime = pm->cmd.serverTime + 1100;
-                            hit_ent->client->ps.forceDodgeAnim = 0;
-                        }
+					if (hit_ent->client &&
+						BG_KnockDownable(&hit_ent->client->ps) &&
+						G_CanBeEnemy((gentity_t*)pEnt, hit_ent))
+					{
+						// Smash and knock down
+						if (hit_ent->client->ps.forceHandExtend != HANDEXTEND_KNOCKDOWN)
+						{
+							hit_ent->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
+							hit_ent->client->ps.forceHandExtendTime = pm->cmd.serverTime + 1100;
+							hit_ent->client->ps.forceDodgeAnim = 0;
+						}
 
-                        hit_ent->client->ps.otherKiller = pEnt->s.number;
-                        hit_ent->client->ps.otherKillerTime = pm->cmd.serverTime + 5000;
-                        hit_ent->client->ps.otherKillerDebounceTime = pm->cmd.serverTime + 100;
-                        hit_ent->client->otherKillerMOD = MOD_COLLISION;
-                        hit_ent->client->otherKillerVehWeapon = 0;
-                        hit_ent->client->otherKillerWeaponType = WP_NONE;
+						hit_ent->client->ps.otherKiller = pEnt->s.number;
+						hit_ent->client->ps.otherKillerTime = pm->cmd.serverTime + 5000;
+						hit_ent->client->ps.otherKillerDebounceTime = pm->cmd.serverTime + 100;
+						hit_ent->client->otherKillerMOD = MOD_COLLISION;
+						hit_ent->client->otherKillerVehWeapon = 0;
+						hit_ent->client->otherKillerWeaponType = WP_NONE;
 
-                        // Add our velocity to theirs to push them along impact direction
-                        VectorAdd(hit_ent->client->ps.velocity,
-                            pm->ps->velocity,
-                            hit_ent->client->ps.velocity);
+						// Add our velocity to theirs to push them along impact direction
+						VectorAdd(hit_ent->client->ps.velocity,
+							pm->ps->velocity,
+							hit_ent->client->ps.velocity);
 
-                        // Upward thrust
-                        hit_ent->client->ps.velocity[2] += 200.0f;
-                    }
-                }
+						// Upward thrust
+						hit_ent->client->ps.velocity[2] += 200.0f;
+					}
+				}
 
-                if (p_self_veh->m_pPilot)
-                {
-                    attackEnt = (gentity_t*)p_self_veh->m_pPilot;
-                }
-                else
-                {
-                    attackEnt = (gentity_t*)pEnt;
-                }
+				if (p_self_veh->m_pPilot)
+				{
+					attackEnt = (gentity_t*)p_self_veh->m_pPilot;
+				}
+				else
+				{
+					attackEnt = (gentity_t*)pEnt;
+				}
 
-                int finalD = (int)(magnitude * pmult);
-                if (finalD < 1)
-                {
-                    finalD = 1;
-                }
+				int finalD = (int)(magnitude * pmult);
+				if (finalD < 1)
+				{
+					finalD = 1;
+				}
 
-                if (noDamage == qfalse)
-                {
-                    G_Damage(hit_ent,
-                        attackEnt,
-                        attackEnt,
-                        NULL,
-                        pm->ps->origin,
-                        finalD,
-                        0,
-                        (hit_ent->s.NPC_class == CLASS_VEHICLE) ? MOD_COLLISION : MOD_FALLING);
-                }
-            }
+				if (noDamage == qfalse)
+				{
+					G_Damage(hit_ent,
+						attackEnt,
+						attackEnt,
+						NULL,
+						pm->ps->origin,
+						finalD,
+						0,
+						(hit_ent->s.NPC_class == CLASS_VEHICLE) ? MOD_COLLISION : MOD_FALLING);
+				}
+			}
 #else
-            // ----------------------------------------------------
-            // CLIENT‑SIDE FX ONLY (PREDICTION)
-            // ----------------------------------------------------
-            hit_ent = PM_BGEntForNum(trace->entityNum);
+			// ----------------------------------------------------
+			// CLIENT‑SIDE FX ONLY (PREDICTION)
+			// ----------------------------------------------------
+			hit_ent = PM_BGEntForNum(trace->entityNum);
 
-            if (!hit_ent || hit_ent->s.owner != pEnt->s.number)
-            {
-                // Don't hit your own missiles
-                AngleVectors(p_self_veh->m_vOrientation, NULL, NULL, vehUp);
-                pEnt->m_pVehicle->m_iHitDebounce = pm->cmd.serverTime + 200;
+			if (!hit_ent || hit_ent->s.owner != pEnt->s.number)
+			{
+				// Don't hit your own missiles
+				AngleVectors(p_self_veh->m_vOrientation, NULL, NULL, vehUp);
+				pEnt->m_pVehicle->m_iHitDebounce = pm->cmd.serverTime + 200;
 
-                trap->FX_PlayEffectID(p_self_veh->m_pVehicleInfo->iImpactFX,
-                    pm->ps->origin,
-                    vehUp,
-                    -1,
-                    -1,
-                    qfalse);
+				trap->FX_PlayEffectID(p_self_veh->m_pVehicleInfo->iImpactFX,
+					pm->ps->origin,
+					vehUp,
+					-1,
+					-1,
+					qfalse);
 
-                p_self_veh->m_ulFlags |= VEH_CRASHING;
-            }
+				p_self_veh->m_ulFlags |= VEH_CRASHING;
+			}
 #endif
-        }
-    }
+		}
+	}
 }
 
 qboolean PM_GroundSlideOkay(const float z_normal)
@@ -748,7 +748,7 @@ qboolean PM_SlideMove(const qboolean gravity)
 {
 	int bumpcount;
 	int numplanes;
-    vec3_t normal, planes[MAX_CLIP_PLANES] = { 0 };
+	vec3_t normal, planes[MAX_CLIP_PLANES] = { 0 };
 	vec3_t primal_velocity;
 	int i;
 	trace_t trace;

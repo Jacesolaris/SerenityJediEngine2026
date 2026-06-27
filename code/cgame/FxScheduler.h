@@ -701,7 +701,7 @@ private:
 	static void AddPrimitiveToEffect(SEffectTemplate* fx, CPrimitiveTemplate* prim);
 	int ParseEffect(const char* file, const CGPGroup& base);
 
-	void CreateEffect(CPrimitiveTemplate* fx, const vec3_t origin, vec3_t axis[3], int lateTime, int client_id = -1,int modelNum = -1, int boltNum = -1);
+	void CreateEffect(CPrimitiveTemplate* fx, const vec3_t origin, vec3_t axis[3], int lateTime, int client_id = -1, int modelNum = -1, int boltNum = -1);
 	void CreateEffect(CPrimitiveTemplate* fx, int client_id) const;
 
 public:

@@ -109,7 +109,6 @@ localEntity_t* CG_AllocLocalEntity(void)
 	return le;
 }
 
-
 /*
 ====================================================================================
 
@@ -677,7 +676,7 @@ static void CG_AddScorePlum(localEntity_t* le)
 {
 	vec3_t origin, delta, dir, vec;
 	const vec3_t up = { 0, 0, 1 };
-	int digits[10] = {0}, numdigits;
+	int digits[10] = { 0 }, numdigits;
 
 	refEntity_t* re = &le->refEntity;
 

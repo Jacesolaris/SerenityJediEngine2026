@@ -43,7 +43,6 @@ void LoadDynamicMusic(void)
 	LoadDynamicMusicGroup(mapname.string, buffer);
 }
 
-
 //init the DMS data for the given song/song type
 extern int BG_SiegeGetPairedValue(const char* buf, char* key, char* outbuf);
 extern int BG_SiegeGetValueGroup(const char* buf, char* group, char* outbuf);
