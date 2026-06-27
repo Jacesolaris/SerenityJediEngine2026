@@ -1919,25 +1919,47 @@ static void CG_RegisterClients(void)
 	CG_BuildSpectatorString();
 }
 
+/*
+========================
+CG_ConfigString
+
+Return a pointer into the gameState stringData for a validated config string index.
+Performs explicit, compile-time bounds checks on the stringOffsets array to avoid
+out-of-bounds reads and to satisfy static analyzers (MSVC C6385).
+========================
+*/
 const char* CG_ConfigString(const int index)
 {
-	// Validate index BEFORE touching the array
+	/* Validate index BEFORE touching any arrays */
 	if ((unsigned)index >= MAX_CONFIGSTRINGS)
 	{
 		trap->Error(ERR_DROP, "CG_ConfigString: bad index: %i", index);
 	}
 
-	// Now MSVC can prove the index is safe
-	const int offset = cgs.gameState.stringOffsets[index];
+	/* Determine the number of entries in the stringOffsets array at compile time */
+	const size_t offsetsCount = sizeof(cgs.gameState.stringOffsets) / sizeof(cgs.gameState.stringOffsets[0]);
 
-	// Validate offset (do NOT drop client)
-	if ((unsigned)offset >= (unsigned)cgs.gameState.dataCount)
+	/* Use size_t for safe indexing */
+	const size_t idx = (size_t)index;
+
+	/* Extra safety: ensure the index fits the actual offsets array */
+	if (idx >= offsetsCount)
+	{
+		trap->Error(ERR_DROP, "CG_ConfigString: index %zu out of range for stringOffsets (count %zu)", idx, offsetsCount);
+	}
+
+	/* Now safe to read the offset */
+	const int offset = cgs.gameState.stringOffsets[idx];
+
+	/* Validate offset (do NOT drop client) */
+	if (offset < 0 || (unsigned)offset >= (unsigned)cgs.gameState.dataCount)
 	{
 		return "";
 	}
 
 	return cgs.gameState.stringData + offset;
 }
+
 
 //==================================================================
 

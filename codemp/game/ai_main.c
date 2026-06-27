@@ -9220,21 +9220,21 @@ static void JediDirectionalDashAttack(bot_state_t* bs, const vec3_t enemyPos)
 
 static void saber_combat_handling(bot_state_t* bs)
 {
-	qboolean lowSkill = (bs->settings.skill <= 4 ? qtrue : qfalse);
-	// -------------------------------------------------
-	// EARLY OUT: No enemy
-	// -------------------------------------------------
-	if (!bs || !bs->currentEnemy)
+	/* Defensive: ensure bot state and enemy exist before any dereference */
+	if (bs == NULL || bs->currentEnemy == NULL)
 	{
 		return;
 	}
+
+	/* Skill-level flag (explicit qboolean ternary) */
+	const qboolean lowSkill = (bs->settings.skill <= 4) ? qtrue : qfalse;
 
 	// -------------------------------------------------
 	// GET ENEMY POSITION
 	// -------------------------------------------------
 	vec3_t enemyPos = { 0.0f, 0.0f, 0.0f };
 
-	if (bs->currentEnemy->client)
+	if (bs->currentEnemy->client != NULL)
 	{
 		VectorCopy(bs->currentEnemy->client->ps.origin, enemyPos);
 	}
@@ -9254,22 +9254,23 @@ static void saber_combat_handling(bot_state_t* bs)
 
 	// -------------------------------------------------
 	// EARLY-FRAME KATA REACTION (IMMEDIATE RETREAT)
+	// Only run if enemy is a client and has a valid playerState
 	// -------------------------------------------------
-	if (bs->currentEnemy &&
-		bs->currentEnemy->client &&
+	if (bs->currentEnemy != NULL &&
+		bs->currentEnemy->client != NULL &&
 		bs->currentEnemy->s.number < MAX_CLIENTS)
 	{
-		playerState_t* ps = &bs->currentEnemy->client->ps;
+		playerState_t* enemy_ps = &bs->currentEnemy->client->ps;
 
-		const qboolean enemyInKata = BotEnemyInKata(ps);
+		const qboolean enemyInKata = BotEnemyInKata(enemy_ps) ? qtrue : qfalse;
 
 		if (enemyInKata == qtrue &&
-			PM_SaberInMassiveBounce(ps->torsoAnim) == qfalse &&
-			PM_SaberInBounce(ps->torsoAnim) == qfalse &&
-			PM_SaberInBashedAnim(ps->torsoAnim) == qfalse &&
-			PM_InKnockDown(ps) == qfalse)
+			PM_SaberInMassiveBounce(enemy_ps->torsoAnim) == qfalse &&
+			PM_SaberInBounce(enemy_ps->torsoAnim) == qfalse &&
+			PM_SaberInBashedAnim(enemy_ps->torsoAnim) == qfalse &&
+			PM_InKnockDown(enemy_ps) == qfalse)
 		{
-			if (bs->DashOutTime <= level.time)  // cooldown expired → reset
+			if (bs->DashOutTime <= level.time)
 			{
 				bs->Dash_BOT_Count = 0;
 			}
@@ -9280,7 +9281,6 @@ static void saber_combat_handling(bot_state_t* bs)
 
 				bs->Dash_BOT_Count++;
 
-				// If we just used the 2nd dash → start cooldown
 				if (bs->Dash_BOT_Count >= 2)
 				{
 					bs->DashOutTime = level.time + Q_irand(5000, 10000);
@@ -9298,7 +9298,7 @@ static void saber_combat_handling(bot_state_t* bs)
 	// -------------------------------------------------
 	// SAME GROUND CHECK (UNIFIED HELPER)
 	// -------------------------------------------------
-	const qboolean sameGround = Bot_SameGroundLevel(bs, enemyPos);
+	const qboolean sameGround = Bot_SameGroundLevel(bs, enemyPos) ? qtrue : qfalse;
 
 	// -------------------------------------------------
 	// NORMAL DUEL LOGIC WHEN ON SAME GROUND
@@ -9330,16 +9330,10 @@ static void saber_combat_handling(bot_state_t* bs)
 		if (lowSkill == qtrue)
 		{
 			trap->EA_Attack(bs->client);
-#ifdef _DEBUG
-			//Com_Printf("basic_attack");
-#endif
 		}
 		else
 		{
 			bot_behave_attack(bs);
-#ifdef _DEBUG
-			//Com_Printf("standard_attack");
-#endif
 		}
 		bs->saberDefending = 0;
 	}
@@ -9359,28 +9353,23 @@ static void saber_combat_handling(bot_state_t* bs)
 		if (VectorNormalize(back) > 0.001f)
 		{
 			VectorMA(bs->origin, 64.0f, back, bs->goalPosition);
-#ifdef _DEBUG
-			//Com_Printf("Standard_close\n");
-#endif
 		}
 
 		bs->beStill = level.time + 100;
 	}
 	else if (bs->frame_Enemy_Len > idealMax)
 	{
-		playerState_t* ps = &bs->currentEnemy->client->ps;
-		// Dash cooldown using bot-local timer
+		/* Only attempt dash attack if enemy is a client with a valid playerState */
+		playerState_t* enemy_ps_for_dash = (bs->currentEnemy && bs->currentEnemy->client) ? &bs->currentEnemy->client->ps : NULL;
+
 		if (lowSkill == qfalse &&
 			bs->DashInTime <= level.time &&
 			bs->frame_Enemy_Len < MaxDashDist &&
 			bs->cur_ps.groundEntityNum != ENTITYNUM_NONE &&
-			PM_InKnockDown(ps) == qfalse)
+			(enemy_ps_for_dash == NULL ? qfalse : (PM_InKnockDown(enemy_ps_for_dash) ? qtrue : qfalse)) == qfalse)
 		{
 			JediDirectionalDashAttack(bs, enemyPos);
 			bs->DashInTime = level.time + Q_irand(3000, 6000);
-#ifdef _DEBUG
-			//Com_Printf("Standard_dash_to_attack\n");
-#endif
 		}
 		else
 		{
@@ -9390,9 +9379,6 @@ static void saber_combat_handling(bot_state_t* bs)
 			if (VectorNormalize(fwd_to_enemy) > 0.001f)
 			{
 				VectorMA(bs->origin, 64.0f, fwd_to_enemy, bs->goalPosition);
-#ifdef _DEBUG
-				//Com_Printf("Standard_far\n");
-#endif
 			}
 		}
 	}
@@ -9427,10 +9413,9 @@ static void saber_combat_handling(bot_state_t* bs)
 	// ATTACK TRIGGER
 	// -------------------------------------------------
 	const qboolean enemyInFOV =
-		(in_field_of_vision(bs->viewangles, 30, ang) ||
+		((in_field_of_vision(bs->viewangles, 30, ang) ||
 			(bs->virtualWeapon == WP_SABER &&
-				in_field_of_vision(bs->viewangles, 100, ang)))
-		? qtrue : qfalse;
+				in_field_of_vision(bs->viewangles, 100, ang))) ? qtrue : qfalse);
 
 	if (bs->frame_Enemy_Vis &&
 		bs->cur_ps.weapon == bs->virtualWeapon &&

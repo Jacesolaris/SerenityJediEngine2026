@@ -719,33 +719,40 @@ void Fade(int* flags, float* f, const float clamp, int* nextTime, const int offs
 
 static void Window_Paint(windowDef_t* w, const float fadeAmount, const float fadeClamp, const float fadeCycle)
 {
-	vec4_t color;
+	vec4_t color = { 0.0f, 0.0f, 0.0f, 1.0f };   // always fully initialized
 	rectDef_t fillRect;
 
 	if (w == NULL)
+	{
 		return;
+	}
 
 	if (debugMode)
 	{
-		color[0] = color[1] = color[2] = color[3] = 1;
+		color[0] = 1.0f;
+		color[1] = 1.0f;
+		color[2] = 1.0f;
+		color[3] = 1.0f;
 		DC->drawRect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, 1, color);
 	}
 
 	if (w->style == 0 && w->border == 0)
+	{
 		return;
+	}
 
 	fillRect = w->rect;
+
 	if (w->border != 0)
 	{
 		fillRect.x += w->borderSize;
 		fillRect.y += w->borderSize;
-		fillRect.w -= w->borderSize + 1;
-		fillRect.h -= w->borderSize + 1;
+		fillRect.w -= (w->borderSize + 1);
+		fillRect.h -= (w->borderSize + 1);
 	}
 
 	if (w->style == WINDOW_STYLE_FILLED)
 	{
-		// box, but possible a shader that needs filled
 		if (w->background)
 		{
 			Fade(&w->flags, &w->backColor[3], fadeClamp, &w->nextTime, fadeCycle, qtrue, fadeAmount);
@@ -765,27 +772,38 @@ static void Window_Paint(windowDef_t* w, const float fadeAmount, const float fad
 	else if (w->style == WINDOW_STYLE_SHADER)
 	{
 #ifndef _CGAME
-		if (w->flags & WINDOW_PLAYERCOLOR) {
+		if (w->flags & WINDOW_PLAYERCOLOR)
+		{
 			color[0] = ui_char_color_red.integer / 255.0f;
 			color[1] = ui_char_color_green.integer / 255.0f;
 			color[2] = ui_char_color_blue.integer / 255.0f;
-			color[3] = 1;
+			color[3] = 1.0f;
 			DC->setColor(color);
 		}
-#endif //
+#endif
 
 		if (w->flags & WINDOW_FORECOLORSET)
+		{
 			DC->setColor(w->foreColor);
+		}
+
 		DC->drawHandlePic(fillRect.x, fillRect.y, fillRect.w, fillRect.h, w->background);
 		DC->setColor(NULL);
 	}
 	else if (w->style == WINDOW_STYLE_TEAMCOLOR)
 	{
-		if (DC->getTeamColor)
+		// Always initialize color before use
+		color[0] = 0.0f;
+		color[1] = 0.0f;
+		color[2] = 0.0f;
+		color[3] = 1.0f;
+
+		if (DC->getTeamColor != NULL)
 		{
 			DC->getTeamColor(&color);
-			DC->fillRect(fillRect.x, fillRect.y, fillRect.w, fillRect.h, color);
 		}
+
+		DC->fillRect(fillRect.x, fillRect.y, fillRect.w, fillRect.h, color);
 	}
 	else if (w->style == WINDOW_STYLE_CINEMATIC)
 	{
@@ -793,8 +811,11 @@ static void Window_Paint(windowDef_t* w, const float fadeAmount, const float fad
 		{
 			w->cinematic = DC->playCinematic(w->cinematicName, fillRect.x, fillRect.y, fillRect.w, fillRect.h);
 			if (w->cinematic == -1)
+			{
 				w->cinematic = -2;
+			}
 		}
+
 		if (w->cinematic >= 0)
 		{
 			DC->runCinematicFrame(w->cinematic);
@@ -802,53 +823,59 @@ static void Window_Paint(windowDef_t* w, const float fadeAmount, const float fad
 		}
 	}
 
+	// -------------------------
+	// Border drawing
+	// -------------------------
+
 	if (w->border == WINDOW_BORDER_FULL)
 	{
-		// full
-		// HACK HACK HACK
 		if (w->style == WINDOW_STYLE_TEAMCOLOR)
 		{
-			if (color[0] > 0)
+			// Recompute border color safely
+			if (color[0] > 0.0f)
 			{
-				// red
-				color[0] = 1;
-				color[1] = color[2] = .5;
+				color[0] = 1.0f;
+				color[1] = 0.5f;
+				color[2] = 0.5f;
 			}
 			else
 			{
-				color[2] = 1;
-				color[0] = color[1] = .5;
+				color[2] = 1.0f;
+				color[0] = 0.5f;
+				color[1] = 0.5f;
 			}
-			color[3] = 1;
+			color[3] = 1.0f;
+
 			DC->drawRect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, w->borderSize, color);
 		}
 		else
+		{
 			DC->drawRect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, w->borderSize, w->borderColor);
+		}
 	}
 	else if (w->border == WINDOW_BORDER_HORZ)
 	{
-		// top/bottom
 		DC->setColor(w->borderColor);
 		DC->drawTopBottom(w->rect.x, w->rect.y, w->rect.w, w->rect.h, w->borderSize);
 		DC->setColor(NULL);
 	}
 	else if (w->border == WINDOW_BORDER_VERT)
 	{
-		// left right
 		DC->setColor(w->borderColor);
 		DC->drawSides(w->rect.x, w->rect.y, w->rect.w, w->rect.h, w->borderSize);
 		DC->setColor(NULL);
 	}
 	else if (w->border == WINDOW_BORDER_KCGRADIENT)
 	{
-		// this is just two gradient bars along each horz edge
 		rectDef_t r = w->rect;
 		r.h = w->borderSize;
 		GradientBar_Paint(&r, w->borderColor);
+
 		r.y = w->rect.y + w->rect.h - 1;
 		GradientBar_Paint(&r, w->borderColor);
 	}
 }
+
 
 static void Item_SetScreenCoords(itemDef_t* item, float x, float y)
 {
@@ -8218,37 +8245,50 @@ static qboolean ItemParse_rect(itemDef_t* item, const int handle)
 }
 
 /*
-===============
+===========================
 ItemParse_flag
-	flag <flag string>
-===============
+
+Safely parse a flag token and set the corresponding bit in item->window.flags.
+Avoids out-of-bounds reads by using the compile-time size of itemFlags.
+Returns qtrue on success, qfalse on parse failure.
+===========================
 */
 static qboolean ItemParse_flag(itemDef_t* item, const int handle)
 {
-	int i;
+	size_t i;
 	pc_token_t token;
 
-	if (!trap->PC_ReadToken(handle, &token))
+	/* Read a token from the parser; explicit check for failure */
+	if (trap->PC_ReadToken(handle, &token) == 0)
 	{
 		return qfalse;
 	}
 
-	for (i = 0; itemFlags[i].string; i++)
+	/* Determine number of entries in itemFlags safely at compile time */
+	const size_t itemFlagsCount = sizeof(itemFlags) / sizeof(itemFlags[0]);
+
+	/* Search for a matching flag string within bounds */
+	for (i = 0; i < itemFlagsCount; ++i)
 	{
+		/* If the table uses a NULL sentinel, stop early */
+		if (itemFlags[i].string == NULL)
+		{
+			break;
+		}
+
 		if (Q_stricmp(token.string, itemFlags[i].string) == 0)
 		{
 			item->window.flags |= itemFlags[i].value;
-			break;
+			return qtrue;
 		}
 	}
 
-	if (itemFlags[i].string == NULL)
-	{
-		Com_Printf(S_COLOR_YELLOW "Unknown item style value '%s'\n", token.string);
-	}
+	/* No match found: print a warning and return success (original behaviour returned qtrue) */
+	Com_Printf(S_COLOR_YELLOW "Unknown item style value '%s'\n", token.string);
 
 	return qtrue;
 }
+
 
 /*
 ===============

@@ -614,24 +614,24 @@ saberType_t TranslateSaberType(const char* name)
 	return SABER_SINGLE;
 }
 
-qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, const int blade_num)
+qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, const int bladeNum)
 {
 	if (saber
 		&& saber->bladeStyle2Start > 0
-		&& blade_num >= saber->bladeStyle2Start)
+		&& bladeNum >= saber->bladeStyle2Start)
 		return qtrue;
 
 	return qfalse;
 }
 
-qboolean WP_SaberBladeDoTransitionDamage(const saberInfo_t* saber, const int blade_num)
+qboolean WP_SaberBladeDoTransitionDamage(const saberInfo_t* saber, const int bladeNum)
 {
 	//use first blade style for this blade
-	if (!WP_SaberBladeUseSecondBladeStyle(saber, blade_num) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE)
+	if (!WP_SaberBladeUseSecondBladeStyle(saber, bladeNum) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE)
 		return qtrue;
 
 	//use second blade style for this blade
-	if (WP_SaberBladeUseSecondBladeStyle(saber, blade_num) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE2)
+	if (WP_SaberBladeUseSecondBladeStyle(saber, bladeNum) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE2)
 		return qtrue;
 
 	return qfalse;
@@ -3157,13 +3157,13 @@ void WP_SetSaber(const int entNum, saberInfo_t* sabers, const int saberNum, cons
 	}
 }
 
-static void WP_SaberSetColor(saberInfo_t* sabers, const int saberNum, const int blade_num, const char* colorName)
+static void WP_SaberSetColor(saberInfo_t* sabers, const int saberNum, const int bladeNum, const char* colorName)
 {
 	if (!sabers)
 	{
 		return;
 	}
-	sabers[saberNum].blade[blade_num].color = TranslateSaberColor(colorName);
+	sabers[saberNum].blade[bladeNum].color = TranslateSaberColor(colorName);
 }
 
 static char bgSaberParseTBuffer[MAX_SABER_DATA_SIZE];
@@ -3385,15 +3385,15 @@ void BG_SI_SetLength(saberInfo_t* saber, const float length)
 }
 
 //not in sp, added it for my own convenience
-void BG_SI_SetDesiredLength(saberInfo_t* saber, const float len, const int blade_num)
+void BG_SI_SetDesiredLength(saberInfo_t* saber, const float len, const int bladeNum)
 {
 	int startBlade = 0, maxBlades = saber->numBlades;
 
-	if (blade_num >= 0 && blade_num < saber->numBlades)
+	if (bladeNum >= 0 && bladeNum < saber->numBlades)
 	{
 		//doing this on a specific blade
-		startBlade = blade_num;
-		maxBlades = blade_num + 1;
+		startBlade = bladeNum;
+		maxBlades = bladeNum + 1;
 	}
 	for (int i = startBlade; i < maxBlades; i++)
 	{

@@ -2319,25 +2319,31 @@ static void CG_RegisterGraphics()
 		}
 	}
 
-	for (int i = 1; i < MAX_TERRAINS; i++)
+	int maxTerrains = (int)MAX_TERRAINS;
+
+	if (maxTerrains > 1)
 	{
-		const char* terrainInfo = CG_ConfigString(CS_TERRAINS + i);
-
-		// If MAX_TERRAINS == 1, this loop never runs — avoid MSVC warning C6294
-		if (terrainInfo == NULL || terrainInfo[0] == '\0')
+		for (int i = 1; i < maxTerrains; ++i)
 		{
-			break;
+			const char* terrainInfo = CG_ConfigString(CS_TERRAINS + i);
+
+			if (terrainInfo == NULL || terrainInfo[0] == '\0')
+			{
+				break;
+			}
+
+			CG_LoadingString("Creating terrain");
+
+			const int terrain_id = cgi_CM_RegisterTerrain(terrainInfo);
+
+			cgi_RMG_Init(terrain_id, terrainInfo);
+
+			// Send terrainInfo to renderer
+			cgi_RE_InitRendererTerrain(terrainInfo);
 		}
-
-		CG_LoadingString("Creating terrain");
-
-		const int terrain_id = cgi_CM_RegisterTerrain(terrainInfo);
-
-		cgi_RMG_Init(terrain_id, terrainInfo);
-
-		// Send terrainInfo to renderer
-		cgi_RE_InitRendererTerrain(terrainInfo);
 	}
+
+
 
 	for (i = 1; i < MAX_ICONS; i++)
 	{
@@ -2365,8 +2371,28 @@ const char* CG_ConfigString(const int index)
 	{
 		CG_Error("CG_ConfigString: bad index: %i", index);
 	}
-	return cgs.gameState.stringData + cgs.gameState.stringOffsets[index];
+
+	/* Use the canonical compile-time count so the analyzer can prove safety */
+	const size_t offsetsCount = (size_t)MAX_CONFIGSTRINGS;
+	const size_t idx = (size_t)index;
+
+	if (idx >= offsetsCount)
+	{
+		CG_Error("CG_ConfigString: index %zu out of range for stringOffsets (count %zu)", idx, offsetsCount);
+	}
+
+	const int offset = cgs.gameState.stringOffsets[idx];
+
+	if (offset < 0 || (unsigned)offset >= (unsigned)cgs.gameState.dataCount)
+	{
+		return "";
+	}
+
+	return cgs.gameState.stringData + offset;
 }
+
+
+
 
 //==================================================================
 

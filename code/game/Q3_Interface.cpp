@@ -65,7 +65,7 @@ extern void G_PlayDoorLoopSound(gentity_t* ent);
 extern void G_PlayDoorSound(gentity_t* ent, int type);
 extern void NPC_SetLookTarget(const gentity_t* self, int entNum, int clear_time);
 extern void NPC_ClearLookTarget(const gentity_t* self);
-extern void WP_SaberSetColor(const gentity_t* ent, int saberNum, int blade_num, const char* colorName);
+extern void WP_SaberSetColor(const gentity_t* ent, int saberNum, int bladeNum, const char* colorName);
 extern void WP_SetSaber(gentity_t* ent, int saberNum, const char* saber_name);
 extern qboolean PM_HasAnimation(const gentity_t* ent, int animation);
 extern void G_ChangePlayerModel(gentity_t* ent, const char* newModel);

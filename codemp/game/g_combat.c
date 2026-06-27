@@ -4532,7 +4532,7 @@ static void G_GetDismemberBolt(gentity_t* self, vec3_t bolt_point, const int lim
 		te->s.otherentityNum = self->s.number;
 		te->s.otherentityNum2 = ENTITYNUM_NONE;
 		te->s.weapon = 0; //saberNum
-		te->s.legsAnim = 0; //blade_num
+		te->s.legsAnim = 0; //bladeNum
 
 		VectorCopy(bolt_point, te->s.origin);
 		VectorCopy(boltAngles, te->s.angles);

@@ -134,73 +134,117 @@ void Create_Autosave(vec3_t origin, int size, const qboolean teleportPlayers)
 
 void Load_Autosaves(void)
 {
-	// load in our autosave from the .autosp
-	fileHandle_t f;
+	/* Load autosave entries from maps/<mapname>.autosp
+	   - Ensure the read buffer is always NUL-terminated to avoid C6054.
+	   - Check sscanf return values to avoid C6031.
+	   - Avoid writing past buf by validating file length against buffer size.
+	   - Convert parsed teleport flag into explicit qtrue/qfalse (no implicit bool->qboolean).
+	*/
+
+	fileHandle_t f = 0;
 	char buf[MAX_AUTOSAVE_FILESIZE];
 	char loadPath[MAX_QPATH];
-	int sizeData;
+	int sizeData = 0;
 	vmCvar_t mapname;
 	qboolean teleportPlayers = qfalse;
 
 	Com_Printf("^5Loading Autosave File Data...");
 
 	trap->Cvar_Register(&mapname, "mapname", "", CVAR_SERVERINFO | CVAR_ROM);
-	Com_sprintf(loadPath, MAX_QPATH, "maps/%s.autosp", mapname.string);
+	Com_sprintf(loadPath, sizeof(loadPath), "maps/%s.autosp", mapname.string);
 
+	/* Open the autosave file. The API used in this codebase returns a length
+	   (or 0) and fills the file handle. Keep the original semantics. */
 	const int len = trap->FS_Open(loadPath, &f, FS_READ);
 	if (!f)
 	{
 		Com_Printf("^5No autosave file found.\n");
 		return;
 	}
-	if (!len)
+	if (len <= 0)
 	{
-		// empty file
+		/* empty file or error */
 		Com_Printf("^5Empty autosave file!\n");
 		trap->FS_Close(f);
 		return;
 	}
 
-	trap->FS_Read(buf, len, f);
-	trap->FS_Close(f);
-
-	char* s = buf;
-
-	while (*s != '\0' && (s - buf) < len)
+	/* Protect against reading more than our buffer can hold */
+	if (len >= (int)sizeof(buf))
 	{
-		vec3_t positionData = { 0 };
-
-		if (*s == '\n')
+		Com_Printf("^1ERROR: Autosave file too large, truncating: %s\n", loadPath);
+		/* Read only up to buffer-1 so we can NUL-terminate safely */
+		const int toRead = (int)sizeof(buf) - 1;
+		const int r = trap->FS_Read(buf, toRead, f);
+		trap->FS_Close(f);
+		if (r <= 0)
 		{
-			// hop over newlines
+			Com_Printf("^1ERROR: Failed to read autosave file (truncated read)\n");
+			return;
+		}
+		buf[toRead] = '\0';
+	}
+	else
+	{
+		/* Normal case: read len bytes and NUL-terminate at buf[len] */
+		const int r = trap->FS_Read(buf, len, f);
+		trap->FS_Close(f);
+		if (r != len)
+		{
+			Com_Printf("^1ERROR: Failed to read autosave file (expected %d got %d)\n", len, r);
+			return;
+		}
+		buf[len] = '\0';
+	}
+
+	/* Parse the buffer line by line. Use pointer arithmetic bounded by len to avoid overruns. */
+	char* s = buf;
+	const char* bufEnd = buf + strlen(buf); /* safe because we NUL-terminated above */
+
+	while (s < bufEnd && *s != '\0')
+	{
+		vec3_t positionData = { 0.0f, 0.0f, 0.0f };
+
+		/* Skip leading newlines and whitespace */
+		while (s < bufEnd && (*s == '\n' || *s == '\r'))
+		{
 			s++;
-			continue;
+		}
+		if (s >= bufEnd || *s == '\0')
+		{
+			break;
 		}
 
-		// FIX: check sscanf return value (removes warning C6031)
-		int parsed = sscanf(
-			s,
-			"%f %f %f %i %i",
+		/* Parse one line: expect "float float float int int" */
+		int tmpTeleport = 0;
+		int parsed = sscanf(s, "%f %f %f %d %d",
 			&positionData[0],
 			&positionData[1],
 			&positionData[2],
 			&sizeData,
-			&teleportPlayers
-		);
+			&tmpTeleport);
 
 		if (parsed == 5)
 		{
-			// Only create autosave if the line parsed correctly
+			/* Convert parsed teleport int into explicit qboolean (no implicit conversion) */
+			teleportPlayers = (tmpTeleport != 0) ? qtrue : qfalse;
+
+			/* Only create autosave if the line parsed correctly */
 			Create_Autosave(positionData, sizeData, teleportPlayers);
 		}
 		else
 		{
-			// Debug print instead of assert
+			/* Log and skip malformed lines */
 			Com_Printf("^1WARNING: Invalid autosave line skipped: \"%s\"\n", s);
 		}
 
-		// advance to the end of the line
-		while (*s != '\n' && *s != '\0' && (s - buf) < len)
+		/* Advance s to the start of the next line safely (bounded by bufEnd) */
+		while (s < bufEnd && *s != '\n')
+		{
+			s++;
+		}
+		/* Skip the newline character if present */
+		if (s < bufEnd && *s == '\n')
 		{
 			s++;
 		}
@@ -208,6 +252,7 @@ void Load_Autosaves(void)
 
 	Com_Printf("^5Done.\n");
 }
+
 
 void Save_Autosaves(void)
 {

@@ -1992,7 +1992,7 @@ void CG_AddViewWeapon(playerState_t* ps)
 
 		if (cent->gent && cent->gent->client && cent->currentState.weapon == WP_SABER)
 		{
-			for (int blade_num = 0; blade_num < cent->gent->client->ps.saber[saberNum].numBlades; blade_num++)
+			for (int bladeNum = 0; bladeNum < cent->gent->client->ps.saber[saberNum].numBlades; bladeNum++)
 			{
 				vec3_t axis_[3];
 				vec3_t org_;
@@ -2010,16 +2010,16 @@ void CG_AddViewWeapon(playerState_t* ps)
 							lengthMax;
 					}
 				}
-				if (saberNum == 0 && blade_num == 0)
+				if (saberNum == 0 && bladeNum == 0)
 				{
 					VectorCopy(axis_[0], cent->gent->client->renderInfo.muzzleDir);
 				}
 				else
 				{
 					//need these points stored here when in 1st person saber
-					VectorCopy(org_, cent->gent->client->ps.saber[saberNum].blade[blade_num].muzzlePoint);
+					VectorCopy(org_, cent->gent->client->ps.saber[saberNum].blade[bladeNum].muzzlePoint);
 				}
-				VectorCopy(axis_[0], cent->gent->client->ps.saber[saberNum].blade[blade_num].muzzleDir);
+				VectorCopy(axis_[0], cent->gent->client->ps.saber[saberNum].blade[bladeNum].muzzleDir);
 			}
 		}
 		//---------
@@ -2536,7 +2536,7 @@ void CG_AddViewWeaponDuals(playerState_t* ps)
 
 		if (cent->gent && cent->gent->client && cent->currentState.weapon == WP_SABER)
 		{
-			for (int blade_num = 0; blade_num < cent->gent->client->ps.saber[saberNum].numBlades; blade_num++)
+			for (int bladeNum = 0; bladeNum < cent->gent->client->ps.saber[saberNum].numBlades; bladeNum++)
 			{
 				vec3_t axis_[3];
 				vec3_t org_;
@@ -2554,16 +2554,16 @@ void CG_AddViewWeaponDuals(playerState_t* ps)
 							lengthMax;
 					}
 				}
-				if (saberNum == 0 && blade_num == 0)
+				if (saberNum == 0 && bladeNum == 0)
 				{
 					VectorCopy(axis_[0], cent->gent->client->renderInfo.muzzleDir);
 				}
 				else
 				{
 					//need these points stored here when in 1st person saber
-					VectorCopy(org_, cent->gent->client->ps.saber[saberNum].blade[blade_num].muzzlePoint);
+					VectorCopy(org_, cent->gent->client->ps.saber[saberNum].blade[bladeNum].muzzlePoint);
 				}
-				VectorCopy(axis_[0], cent->gent->client->ps.saber[saberNum].blade[blade_num].muzzleDir);
+				VectorCopy(axis_[0], cent->gent->client->ps.saber[saberNum].blade[bladeNum].muzzleDir);
 			}
 		}
 		//---------

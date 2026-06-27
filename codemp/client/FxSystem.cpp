@@ -41,10 +41,12 @@ SFxHelper::SFxHelper() :
 	mTime(0),
 	mOldTime(0),
 	mFrameTime(0),
-	mTimeFrozen(false), mRealTime(0),
+	mTimeFrozen(false),
+	mRealTime(0),
 	refdef(nullptr)
 {
 }
+
 
 void SFxHelper::ReInit(refdef_t* pRefdef)
 {

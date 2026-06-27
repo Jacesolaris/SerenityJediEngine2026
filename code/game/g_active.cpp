@@ -1892,14 +1892,14 @@ void G_MatchPlayerWeapon(gentity_t* ent)
 				for (int saberNum = 0; saberNum < num_sabers; saberNum++)
 				{
 					ent->client->ps.saber[saberNum].type = g_entities[0].client->ps.saber[saberNum].type;
-					for (int blade_num = 0; blade_num < ent->client->ps.saber[saberNum].numBlades; blade_num++)
+					for (int bladeNum = 0; bladeNum < ent->client->ps.saber[saberNum].numBlades; bladeNum++)
 					{
 						ent->client->ps.saber[saberNum].blade[0].active = g_entities[0].client->ps.saber[saberNum].
 							blade
-							[blade_num].active;
+							[bladeNum].active;
 						ent->client->ps.saber[saberNum].blade[0].length = g_entities[0].client->ps.saber[saberNum].
 							blade
-							[blade_num].length;
+							[bladeNum].length;
 					}
 				}
 				ent->client->ps.saberAnimLevel = g_entities[0].client->ps.saberAnimLevel;

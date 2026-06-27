@@ -508,9 +508,9 @@ static qboolean Pickup_Saber(gentity_t* self, qboolean hadSaber, gentity_t* pick
 			{
 				//NPC_targetname = saberColor
 				saber_colors_t saber_color = TranslateSaberColor(pickUpSaber->NPC_targetname);
-				for (auto& blade_num : self->client->ps.saber[saberNum].blade)
+				for (auto& bladeNum : self->client->ps.saber[saberNum].blade)
 				{
-					blade_num.color = saber_color;
+					bladeNum.color = saber_color;
 				}
 			}
 			if (self->client->ps.torsoAnim == BOTH_BUTTON_HOLD

@@ -392,7 +392,7 @@ void CG_ProcessSnapshots(void)
 	snapshot_t* snap = NULL;
 	int n = 0;
 
-	// See what the latest snapshot the client system has is
+	/* Query the client system for the latest snapshot number/time */
 	trap->GetCurrentSnapshotNumber(&n, &cg.latestSnapshotTime);
 
 	if (n != cg.latestSnapshotNum)
@@ -406,36 +406,52 @@ void CG_ProcessSnapshots(void)
 		cg.latestSnapshotNum = n;
 	}
 
-	// If we have yet to receive a snapshot, check for it.
-	// Once we have gotten the first snapshot, cg.snap will
-	// always have valid data for the rest of the game
+	/*
+	 * If we have yet to receive a snapshot, keep trying to read one.
+	 * Once we have the first snapshot, cg.snap will be valid for the rest of the game.
+	 */
 	while (cg.snap == NULL)
 	{
 		snap = CG_ReadNextSnapshot();
 		if (snap == NULL)
 		{
-			// We can't continue until we get a snapshot
+			/* We can't continue until we get a snapshot */
 			return;
 		}
 
-		// Set our weapon selection to what the playerstate is currently using
+		/* Set our weapon selection and other initial state from the first active snapshot */
 		if ((snap->snapFlags & SNAPFLAG_NOT_ACTIVE) == 0)
 		{
 			CG_SetInitialSnapshot(snap);
 		}
 	}
 
-	// Loop until we either have a valid nextSnap with a serverTime
-	// greater than cg.time to interpolate towards, or we run
-	// out of available snapshots
+	/* At this point we expect cg.snap to be non-NULL; still check defensively. */
+	if (cg.snap == NULL)
+	{
+		Com_Printf(S_COLOR_RED "CG_ProcessSnapshots: cg.snap == NULL after initial read — aborting.\n");
+		return;
+	}
+
+	/*
+	 * Main loop: advance snapshots until we have a nextSnap with serverTime > cg.time,
+	 * or until we run out of snapshots.
+	 */
 	for (;;)
 	{
-		// If we don't have a nextframe, try and read a new one in
+		/* Ensure cg.snap is valid before dereferencing it in any comparisons */
+		if (cg.snap == NULL)
+		{
+			Com_Printf(S_COLOR_RED "CG_ProcessSnapshots: cg.snap became NULL unexpectedly — aborting loop.\n");
+			break;
+		}
+
+		/* If we don't have a next snapshot, try to read one */
 		if (cg.nextSnap == NULL)
 		{
 			snap = CG_ReadNextSnapshot();
 
-			// If we still don't have a nextframe, we will just have to extrapolate
+			/* If no next snapshot available, we'll extrapolate from the current one */
 			if (snap == NULL)
 			{
 				break;
@@ -443,9 +459,8 @@ void CG_ProcessSnapshots(void)
 
 			CG_SetNextSnap(snap);
 
-			// If time went backwards, we have a level restart
-			if (cg.nextSnap != NULL &&
-				cg.nextSnap->serverTime < cg.snap->serverTime)
+			/* If time went backwards, treat as a level restart and abort */
+			if (cg.nextSnap != NULL && cg.nextSnap->serverTime < cg.snap->serverTime)
 			{
 				Com_Printf(S_COLOR_RED "CG_ProcessSnapshots: Server time went backwards — aborting.\n");
 				cg.nextSnap = NULL;
@@ -453,39 +468,45 @@ void CG_ProcessSnapshots(void)
 			}
 		}
 
-		// SAFETY: cg.nextSnap may still be NULL if CG_SetNextSnap failed
+		/* Defensive: cg.nextSnap may still be NULL if CG_SetNextSnap failed */
 		if (cg.nextSnap == NULL)
 		{
-			// No next snapshot available — extrapolate
+			/* No next snapshot available — extrapolate */
 			break;
 		}
 
-		// If our time is < nextFrame's, we have a nice interpolating state
-		if (cg.time >= cg.snap->serverTime &&
-			cg.time < cg.nextSnap->serverTime)
+		/* Ensure both snapshots are valid before comparing serverTime */
+		if (cg.snap == NULL || cg.nextSnap == NULL)
+		{
+			/* If either is NULL, break out and avoid dereference */
+			break;
+		}
+
+		/* If our current time lies between snap and nextSnap, we can interpolate */
+		if (cg.time >= cg.snap->serverTime && cg.time < cg.nextSnap->serverTime)
 		{
 			break;
 		}
 
-		// We have passed the transition from nextFrame to frame
+		/* We've passed the transition point: advance the snapshots */
 		CG_TransitionSnapshot();
 	}
 
-	// Validate state upon exiting
+	/* Final validation before returning */
 	if (cg.snap == NULL)
 	{
 		Com_Printf(S_COLOR_RED "CG_ProcessSnapshots: cg.snap == NULL — aborting.\n");
 		return;
 	}
 
+	/* If time is earlier than the snapshot (can happen after vid_restart), clamp it */
 	if (cg.time < cg.snap->serverTime)
 	{
-		// This can happen right after a vid_restart
 		cg.time = cg.snap->serverTime;
 	}
 
-	if (cg.nextSnap != NULL &&
-		cg.nextSnap->serverTime <= cg.time)
+	/* If nextSnap is stale (serverTime <= current time), clear it */
+	if (cg.nextSnap != NULL && cg.nextSnap->serverTime <= cg.time)
 	{
 		Com_Printf(S_COLOR_RED "CG_ProcessSnapshots: cg.nextSnap->serverTime <= cg.time — clearing nextSnap.\n");
 		cg.nextSnap = NULL;

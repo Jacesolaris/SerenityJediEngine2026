@@ -85,7 +85,7 @@ static qboolean CG_CheckAndStoreObit(const char* san)
 	return qfalse;
 }
 
-extern qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, int blade_num);
+extern qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, int bladeNum);
 extern qboolean CG_VehicleWeaponImpact(centity_t* cent);
 extern qboolean CG_InFighter(void);
 extern qboolean CG_InATST(void);
@@ -3135,9 +3135,9 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 				if (client && client->infoValid)
 				{
 					int saberNum = es->weapon;
-					int blade_num = es->legsAnim;
+					int bladeNum = es->legsAnim;
 
-					if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], blade_num) == qtrue)
+					if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], bladeNum) == qtrue)
 					{
 						if (client->saber[saberNum].hitPersonEffect2)
 						{
@@ -3361,9 +3361,9 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 					if (client && client->infoValid)
 					{
 						int saberNum = es->weapon;
-						int blade_num = es->legsAnim;
+						int bladeNum = es->legsAnim;
 
-						if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], blade_num))
+						if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], bladeNum))
 						{
 							//use second blade style values
 							if (client->saber[saberNum].blockEffect2)

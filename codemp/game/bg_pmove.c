@@ -19872,6 +19872,15 @@ void Pmove(pmove_t* pmove)
 		pm->ps->pm_flags &= ~PMF_WALKING_HELD;
 	}
 
+	if (pm->cmd.buttons & BUTTON_KICK)
+	{
+		pm->ps->pm_flags |= PMF_KICK_HELD;
+	}
+	else
+	{
+		pm->ps->pm_flags &= ~PMF_KICK_HELD;
+	}
+
 	if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK && pm->cmd.buttons & BUTTON_ATTACK)
 	{
 		pm->ps->pm_flags |= PMF_ACCURATE_MISSILE_BLOCK_HELD;

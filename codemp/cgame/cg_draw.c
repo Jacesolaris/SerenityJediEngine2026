@@ -8910,7 +8910,7 @@ static void CG_DrawCrosshairNames(void)
 	// Update crosshair target
 	CG_ScanForCrosshairEntity();
 
-	// Validate base target index
+	// Validate base target index (entity index space)
 	if (cg.crosshairclientNum < 0 || cg.crosshairclientNum >= ENTITYNUM_WORLD)
 	{
 		return;
@@ -8933,7 +8933,7 @@ static void CG_DrawCrosshairNames(void)
 		}
 	}
 
-	// Re‑validate after possible remap to pilot
+	// Re‑validate after possible remap to pilot (still entity index space)
 	if (cg.crosshairclientNum < 0 || cg.crosshairclientNum >= ENTITYNUM_WORLD)
 	{
 		return;
@@ -8956,19 +8956,24 @@ static void CG_DrawCrosshairNames(void)
 	const char* name = NULL;
 	const centity_t* cent = NULL;
 
+	// Local index and safe guards
+	const int idx = cg.crosshairclientNum;
+	const qboolean isClient = (idx >= 0 && idx < MAX_CLIENTS) ? qtrue : qfalse;
+	const qboolean isEntity = (idx >= 0 && idx < ENTITYNUM_WORLD) ? qtrue : qfalse;
+
 	// Resolve a display name:
 	//  - Clients: use clientinfo cleanname
 	//  - Non‑client entities: try npcClient, else generic "(NPC)" label
-	if (cg.crosshairclientNum >= 0 && cg.crosshairclientNum < MAX_CLIENTS)
+	if (isClient == qtrue)
 	{
-		if (cgs.clientinfo[cg.crosshairclientNum].infoValid != 0)
+		if (cgs.clientinfo[idx].infoValid != 0)
 		{
-			name = cgs.clientinfo[cg.crosshairclientNum].cleanname;
+			name = cgs.clientinfo[idx].cleanname;
 		}
 	}
-	else if (cg.crosshairclientNum >= 0 && cg.crosshairclientNum < ENTITYNUM_WORLD)
+	else if (isEntity == qtrue)
 	{
-		cent = &cg_entities[cg.crosshairclientNum];
+		cent = &cg_entities[idx];
 
 		if (cent->npcClient != NULL && cent->npcClient->infoValid != 0)
 		{
@@ -8995,14 +9000,13 @@ static void CG_DrawCrosshairNames(void)
 	// Sanitize name for drawing
 	CG_SanitizeString(name, sanitized);
 
-	// Width used for centering the label; original code used "Civilian" as a
-	// baseline, but using the actual string length is a small visual fix.
+	// Width used for centering the label
 	const float w = CG_DrawStrlen(sanitized) * TINYCHAR_WIDTH;
 
 	// Vehicle pilot label
 	if (is_veh == qtrue)
 	{
-		vec4_t tcolor = { 0 };
+		vec4_t tcolor = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 		// Use the fade colour as the text colour for the pilot label
 		tcolor[0] = color[0];
@@ -9016,9 +9020,9 @@ static void CG_DrawCrosshairNames(void)
 		CG_DrawProportionalString(320, 170, str, UI_CENTER, tcolor);
 	}
 	// NPC class‑based labels
-	else if (cg_entities[cg.crosshairclientNum].currentState.eType == ET_NPC)
+	else if (isEntity == qtrue && cg_entities[idx].currentState.eType == ET_NPC)
 	{
-		const centity_t* ncent = &cg_entities[cg.crosshairclientNum];
+		const centity_t* ncent = &cg_entities[idx];
 
 		switch (ncent->currentState.NPC_class)
 		{
@@ -9145,10 +9149,10 @@ static void CG_DrawCrosshairNames(void)
 	else
 	{
 		// Items: show useable hint icon
-		if (cg_entities[cg.crosshairclientNum].currentState.eType == ET_ITEM)
+		if (isEntity == qtrue && cg_entities[idx].currentState.eType == ET_ITEM)
 		{
 			vec3_t diff;
-			VectorSubtract(cg_entities[cg.crosshairclientNum].lerpOrigin, cg.refdef.vieworg, diff);
+			VectorSubtract(cg_entities[idx].lerpOrigin, cg.refdef.vieworg, diff);
 
 			float distSq = VectorLengthSquared(diff);
 
@@ -9161,36 +9165,43 @@ static void CG_DrawCrosshairNames(void)
 		else
 		{
 			// Team‑coloured player names (behaviour preserved)
-			if (cgs.gametype == GT_FFA)
+			if (isClient == qtrue)
 			{
-				CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
-			}
-			else
-			{
-				if (cgs.clientinfo[cg.crosshairclientNum].team == TEAM_RED)
-				{
-					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
-				}
-				else if (cgs.clientinfo[cg.crosshairclientNum].team == TEAM_BLUE)
-				{
-					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_GREEN]);
-				}
-				else if (cgs.clientinfo[cg.crosshairclientNum].team == TEAM_SPECTATOR)
-				{
-					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_CYAN]);
-				}
-				else if (cgs.clientinfo[cg.crosshairclientNum].npcteam == NPCTEAM_PLAYER)
-				{
-					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_GREEN]);
-				}
-				else if (cgs.clientinfo[cg.crosshairclientNum].npcteam == NPCTEAM_ENEMY)
+				if (cgs.gametype == GT_FFA)
 				{
 					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
 				}
 				else
 				{
-					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
+					if (cgs.clientinfo[idx].team == TEAM_RED)
+					{
+						CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
+					}
+					else if (cgs.clientinfo[idx].team == TEAM_BLUE)
+					{
+						CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_GREEN]);
+					}
+					else if (cgs.clientinfo[idx].team == TEAM_SPECTATOR)
+					{
+						CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_CYAN]);
+					}
+					else if (cgs.clientinfo[idx].npcteam == NPCTEAM_PLAYER)
+					{
+						CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_GREEN]);
+					}
+					else if (cgs.clientinfo[idx].npcteam == NPCTEAM_ENEMY)
+					{
+						CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
+					}
+					else
+					{
+						CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
+					}
 				}
+			}
+			else
+			{
+				// Not a client and not an NPC with a label — nothing to draw here
 			}
 		}
 	}

@@ -2766,7 +2766,7 @@ CG_Missile
 ===============
 */
 extern void CG_AddSaberBlade(centity_t* cent, centity_t* scent, int renderfx,
-	int saberNum, int blade_num, vec3_t origin, vec3_t angles, qboolean from_saber,
+	int saberNum, int bladeNum, vec3_t origin, vec3_t angles, qboolean from_saber,
 	qboolean dont_draw);
 extern void CG_DoSaberLight(const saberInfo_t* saber, int cnum, int bnum);
 

@@ -2054,7 +2054,7 @@ void BG_SI_Deactivate(saberInfo_t* saber);
 void BG_SI_BladeActivate(saberInfo_t* saber, int iBlade, qboolean bActive);
 qboolean BG_SI_Active(const saberInfo_t* saber);
 void BG_SI_SetLength(saberInfo_t* saber, float length);
-void BG_SI_SetDesiredLength(saberInfo_t* saber, float len, int blade_num);
+void BG_SI_SetDesiredLength(saberInfo_t* saber, float len, int bladeNum);
 void BG_SI_SetLengthGradual(saberInfo_t* saber, int time);
 float BG_SI_Length(const saberInfo_t* saber);
 float BG_SI_LengthMax(const saberInfo_t* saber);

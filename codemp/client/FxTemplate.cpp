@@ -34,6 +34,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //	none
 //------------------------------------------------------
 CPrimitiveTemplate::CPrimitiveTemplate()
+	: mRefCount(0)   // <-- initialize here
 {
 	// We never start out as a copy or with a name
 	mCopy = false;
@@ -91,6 +92,7 @@ CPrimitiveTemplate::CPrimitiveTemplate()
 	mVariance.SetRange(1.0f, 1.0f);
 	mDensity.SetRange(10.0f, 10.0f); // default this high so it doesn't do bad things
 }
+
 
 //-----------------------------------------------------------
 CPrimitiveTemplate& CPrimitiveTemplate::operator=(const CPrimitiveTemplate& that)

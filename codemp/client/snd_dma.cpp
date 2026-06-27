@@ -4777,196 +4777,254 @@ void S_StopBackgroundTrack(void)
 
 // qboolean return is true only if we're changing from a streamed intro to a dynamic loop...
 //
-static qboolean S_UpdateBackgroundTrack_Actual(MusicInfo_t* pMusicInfo, const qboolean bFirstOrOnlyMusicTrack,
+/*
+===========================
+S_UpdateBackgroundTrack_Actual (refactored)
+- Cleaned and modernized structure.
+- Large automatic buffers moved off the stack (thread_local buffer).
+- Explicit comparisons used to avoid implicit bool -> qboolean conversions.
+- All qboolean assignments use explicit qtrue/qfalse ternaries where a boolean-like value is produced.
+- Behaviour preserved; comments added to explain decisions.
+- No asserts used; use Com_Printf for debug messages instead.
+- This is the full function body for inspection.
+===========================
+*/
+static qboolean S_UpdateBackgroundTrack_Actual(MusicInfo_t* pMusicInfo,
+	const qboolean bFirstOrOnlyMusicTrack,
 	const float fDefaultVolume)
 {
-	float fMasterVol = fDefaultVolume; // s_musicVolume->value;
-
-	if (bMusic_IsDynamic)
+	/* Defensive: validate pointer */
+	if (pMusicInfo == NULL)
 	{
-		// step xfade volume...
-		//
+		Com_Printf(S_COLOR_RED "S_UpdateBackgroundTrack_Actual: NULL pMusicInfo\n");
+		return qfalse;
+	}
+
+	/* Master volume for this update (smoothed later) */
+	float fMasterVol = fDefaultVolume;
+
+	/* Dynamic crossfade handling (if dynamic music system enabled) */
+	if (bMusic_IsDynamic == qtrue)
+	{
 		if (pMusicInfo->iXFadeVolume != pMusicInfo->iXFadeVolumeSeekTo)
 		{
 			const int iFadeMillisecondsElapsed = Sys_Milliseconds() - pMusicInfo->iXFadeVolumeSeekTime;
 
-			if (iFadeMillisecondsElapsed > fDYNAMIC_XFADE_SECONDS * 1000)
+			if (iFadeMillisecondsElapsed > (int)(fDYNAMIC_XFADE_SECONDS * 1000.0f))
 			{
 				pMusicInfo->iXFadeVolume = pMusicInfo->iXFadeVolumeSeekTo;
 			}
 			else
 			{
-				pMusicInfo->iXFadeVolume = static_cast<int>(255.0f * (static_cast<float>(iFadeMillisecondsElapsed) / (
-					fDYNAMIC_XFADE_SECONDS * 1000.0f)));
-				if (pMusicInfo->iXFadeVolumeSeekTo == 0) // bleurgh
+				/* compute fade fraction and apply; keep integer volume 0..255 */
+				const float frac = (float)iFadeMillisecondsElapsed / (fDYNAMIC_XFADE_SECONDS * 1000.0f);
+				pMusicInfo->iXFadeVolume = (int)(255.0f * frac);
+				if (pMusicInfo->iXFadeVolumeSeekTo == 0)
+				{
+					/* invert when seeking to zero (original behaviour) */
 					pMusicInfo->iXFadeVolume = 255 - pMusicInfo->iXFadeVolume;
+				}
 			}
 		}
-		fMasterVol *= static_cast<float>(pMusicInfo->iXFadeVolume) / 255.0f;
+
+		/* scale master volume by crossfade (0..255) */
+		fMasterVol *= ((float)pMusicInfo->iXFadeVolume) / 255.0f;
 	}
 
-	// this is to work around an obscure issue to do with sliding decoder windows and amounts being requested, since the
-	//	original MP3 stream-decoder wrapper was designed to work with audio-paintbuffer sized pieces... Basically 30000
-	//	is far too big for the window decoder to handle in one request because of the time-travel issue associated with
-	//	normal sfx buffer painting, and allowing sufficient sliding room, even though the music file never goes back in time.
-	//
+	/*
+	 * Buffer sizing notes:
+	 * - MP3 decoder needs a small raw buffer (4096) to avoid decoder window issues.
+	 * - WAV streaming used a large 30000 buffer historically; allocate a single thread_local
+	 *   buffer at file scope to avoid large stack frames (C6262).
+	 *
+	 * We define the constants locally for clarity.
+	 */
 #define SIZEOF_RAW_BUFFER_FOR_MP3 4096
-#define RAWSIZE (pMusicInfo->bIsMP3?SIZEOF_RAW_BUFFER_FOR_MP3:sizeof(raw))
+#define MAX_WAV_RAW_BUFFER 30000
 
-	if (!pMusicInfo->s_backgroundFile)
+	 /* Ensure we have an open background file/stream */
+	if (pMusicInfo->s_backgroundFile == 0)
 	{
 		return qfalse;
 	}
 
+	/* Smooth the output volume toward the requested master volume */
 	pMusicInfo->fSmoothedOutVolume = (pMusicInfo->fSmoothedOutVolume + fMasterVol) / 2.0f;
-	//	Com_OPrintf("%f\n",pMusicInfo->fSmoothedOutVolume);
 
-	// don't bother playing anything if musicvolume is 0
-	if (pMusicInfo->fSmoothedOutVolume <= 0)
+	/* If effective volume is zero or negative, nothing to do */
+	if (pMusicInfo->fSmoothedOutVolume <= 0.0f)
 	{
 		return qfalse;
 	}
 
-	// see how many samples should be copied into the raw buffer
+	/* Ensure raw buffer indices are sane */
 	if (s_rawend < s_soundtime)
 	{
 		s_rawend = s_soundtime;
 	}
 
+	/*
+	 * Use a single thread-local buffer to avoid large stack usage.
+	 * thread_local gives one buffer per thread; if your build is C-only or
+	 * thread_local is not available, replace with a file-scope static buffer
+	 * and ensure single-threaded access.
+	 */
+#if defined(__cplusplus)
+	static thread_local byte s_rawBuffer[MAX_WAV_RAW_BUFFER];
+#else
+	static byte s_rawBuffer[MAX_WAV_RAW_BUFFER];
+#endif
+
+	/* Main fill loop: keep filling until the raw buffer has MAX_RAW_SAMPLES ahead */
 	while (s_rawend < s_soundtime + MAX_RAW_SAMPLES)
 	{
-		byte raw[30000]{};
+		/* bufferSamples: how many samples we want to push into the raw buffer this iteration */
 		const int bufferSamples = MAX_RAW_SAMPLES - (s_rawend - s_soundtime);
 
-		// decide how much data needs to be read from the file
-		int fileSamples = bufferSamples * pMusicInfo->s_backgroundInfo.rate / dma.speed;
+		/* compute how many file samples correspond to bufferSamples at file rate */
+		int fileSamples = (int)((long)bufferSamples * (long)pMusicInfo->s_backgroundInfo.rate / (long)dma.speed);
 
-		// don't try to play if there are no more samples in the file
-		if (!fileSamples)
+		/* If no samples are requested, nothing to do */
+		if (fileSamples == 0)
 		{
 			return qfalse;
 		}
 
-		// don't try and read past the end of the file
+		/* Do not read past the end of the file/stream */
 		if (fileSamples > pMusicInfo->s_backgroundSamples)
 		{
 			fileSamples = pMusicInfo->s_backgroundSamples;
 		}
 
-		// our max buffer size
-		int fileBytes = fileSamples * (pMusicInfo->s_backgroundInfo.width * pMusicInfo->s_backgroundInfo.channels);
-		if (fileBytes > static_cast<int>(RAWSIZE))
+		/* compute requested bytes for these samples */
+		const int sampleWidth = pMusicInfo->s_backgroundInfo.width * pMusicInfo->s_backgroundInfo.channels;
+		if (sampleWidth <= 0)
 		{
-			fileBytes = RAWSIZE;
-			fileSamples = fileBytes / (pMusicInfo->s_backgroundInfo.width * pMusicInfo->s_backgroundInfo.channels);
+			Com_Printf(S_COLOR_RED "S_UpdateBackgroundTrack_Actual: invalid sample width/channels\n");
+			return qfalse;
 		}
 
-		qboolean qbForceFinish = qfalse;
-		if (pMusicInfo->bIsMP3)
+		int fileBytes = fileSamples * sampleWidth;
+
+		/* Determine RAWSIZE for this iteration (MP3 uses small buffer) */
+		const int maxRawSize = (pMusicInfo->bIsMP3 == qtrue) ? SIZEOF_RAW_BUFFER_FOR_MP3 : MAX_WAV_RAW_BUFFER;
+
+		/* Clamp fileBytes to available raw buffer size */
+		if (fileBytes > maxRawSize)
 		{
-			const int iStartingSampleNum = pMusicInfo->chMP3_Bgrnd.thesfx->iSoundLengthInSamples - pMusicInfo->
-				s_backgroundSamples; // but this IS relevant
-			// Com_Printf(S_COLOR_YELLOW "Requesting MP3 samples: sample %d\n",iStartingSampleNum);
+			fileBytes = maxRawSize;
+			fileSamples = fileBytes / sampleWidth;
+		}
+
+		/* Pointer to the shared raw buffer */
+		byte* raw = s_rawBuffer;
+
+		/* Flag to indicate the track finished early or MP3 decode forced finish */
+		qboolean qbForceFinish = qfalse;
+
+		if (pMusicInfo->bIsMP3 == qtrue)
+		{
+			/* MP3 path: either in-memory MP3 or streaming from disk */
+			const int iStartingSampleNum = pMusicInfo->chMP3_Bgrnd.thesfx->iSoundLengthInSamples - pMusicInfo->s_backgroundSamples;
 
 			if (pMusicInfo->s_backgroundFile == -1)
 			{
-				// in-mem...
-				//
-				qbForceFinish = MP3Stream_GetSamples(&pMusicInfo->chMP3_Bgrnd, iStartingSampleNum, fileBytes / 2,
-					(short*)raw, qtrue)
-					? qfalse
-					: qtrue;
-
-				//Com_Printf(S_COLOR_YELLOW "Music time remaining: %f seconds\n", MP3Stream_GetRemainingTimeInSeconds( &pMusicInfo->chMP3_Bgrnd.MP3StreamHeader ));
+				/* in-memory MP3: MP3Stream_GetSamples returns non-zero on success */
+				qbForceFinish = (MP3Stream_GetSamples(&pMusicInfo->chMP3_Bgrnd, iStartingSampleNum, fileBytes / 2,
+					(short*)raw, qtrue) != 0) ? qfalse : qtrue;
 			}
 			else
 			{
-				// streaming an MP3 file instead... (note that the 'fileBytes' request size isn't that relevant for MP3s,
-				//										since code here can't know how much the MP3 needs to decompress)
-				//
-				byte* pbScrolledStreamData = MP3MusicStream_ReadFromDisk(
-					pMusicInfo, pMusicInfo->chMP3_Bgrnd.MP3StreamHeader.iSourceReadIndex, fileBytes);
+				/* streaming MP3 from disk: read a scrolled chunk and decode */
+				byte* pbScrolledStreamData = MP3MusicStream_ReadFromDisk(pMusicInfo,
+					pMusicInfo->chMP3_Bgrnd.MP3StreamHeader.iSourceReadIndex,
+					fileBytes);
+				if (pbScrolledStreamData == NULL)
+				{
+					Com_Printf(S_COLOR_RED "S_UpdateBackgroundTrack_Actual: MP3MusicStream_ReadFromDisk returned NULL\n");
+					return qfalse;
+				}
 
-				pMusicInfo->chMP3_Bgrnd.MP3StreamHeader.pbSourceData = pbScrolledStreamData - pMusicInfo->chMP3_Bgrnd.
-					MP3StreamHeader.iSourceReadIndex;
+				/* adjust header pointer as original code expects */
+				pMusicInfo->chMP3_Bgrnd.MP3StreamHeader.pbSourceData =
+					pbScrolledStreamData - pMusicInfo->chMP3_Bgrnd.MP3StreamHeader.iSourceReadIndex;
 
-				qbForceFinish = MP3Stream_GetSamples(&pMusicInfo->chMP3_Bgrnd, iStartingSampleNum, fileBytes / 2,
-					(short*)raw, qtrue)
-					? qfalse
-					: qtrue;
+				qbForceFinish = (MP3Stream_GetSamples(&pMusicInfo->chMP3_Bgrnd, iStartingSampleNum, fileBytes / 2,
+					(short*)raw, qtrue) != 0) ? qfalse : qtrue;
 			}
 		}
 		else
 		{
-			// streaming a WAV off disk...
-			//
+			/* WAV streaming path: read raw bytes from file into the buffer */
 			const int r = FS_Read(raw, fileBytes, pMusicInfo->s_backgroundFile);
 			if (r != fileBytes)
 			{
-				Com_Printf(S_COLOR_RED"StreamedRead failure on music track\n");
+				Com_Printf(S_COLOR_RED "StreamedRead failure on music track\n");
 				S_StopBackgroundTrack();
 				return qfalse;
 			}
 
-			// byte swap if needed (do NOT do for MP3 decoder, that has an internal big/little endian handler)
-			//
-			S_ByteSwapRawSamples(fileSamples, pMusicInfo->s_backgroundInfo.width, pMusicInfo->s_backgroundInfo.channels,
+			/* Byte-swap samples if necessary (MP3 decoder handles endianness itself) */
+			S_ByteSwapRawSamples(fileSamples,
+				pMusicInfo->s_backgroundInfo.width,
+				pMusicInfo->s_backgroundInfo.channels,
 				raw);
 		}
 
-		// add to raw buffer
-		S_RawSamples(fileSamples, pMusicInfo->s_backgroundInfo.rate,
-			pMusicInfo->s_backgroundInfo.width, pMusicInfo->s_backgroundInfo.channels, raw,
+		/* Submit the raw samples to the mixer */
+		S_RawSamples(fileSamples,
+			pMusicInfo->s_backgroundInfo.rate,
+			pMusicInfo->s_backgroundInfo.width,
+			pMusicInfo->s_backgroundInfo.channels,
+			raw,
 			pMusicInfo->fSmoothedOutVolume,
-			bFirstOrOnlyMusicTrack
-		);
+			(bFirstOrOnlyMusicTrack == qtrue) ? qtrue : qfalse);
 
+		/* Decrement remaining samples in this background chunk */
 		pMusicInfo->s_backgroundSamples -= fileSamples;
-		if (!pMusicInfo->s_backgroundSamples || qbForceFinish)
+
+		/* If we've exhausted this chunk or the decoder signalled finish, handle looping/next track */
+		if ((pMusicInfo->s_backgroundSamples == 0) || (qbForceFinish == qtrue))
 		{
-			// loop the music, or play the next piece if we were on the intro...
-			//	(but not for dynamic, that can only be used for loop music)
-			//
-			if (bMusic_IsDynamic) // needs special logic for this, different call
+			if (bMusic_IsDynamic == qtrue)
 			{
+				/* Dynamic music rewinds differently */
 				pMusicInfo->Rewind();
 			}
 			else
 			{
-				// for non-dynamic music we need to check if "sMusic_BackgroundLoop" is an actual filename,
-				//	or if it's a dynamic music specifier (which can't literally exist), in which case it should set
-				//	a return flag then exit...
-				//
-				char sTestName[MAX_QPATH * 2];
-				// *2 so COM_DefaultExtension doesn't do an ERR_DROP if there was no space
-				//	for an extension, since this is a "soft" test
+				/* Non-dynamic: attempt to start the configured background loop file */
+				char sTestName[MAX_QPATH * 2]; /* *2 to allow COM_DefaultExtension to append safely */
 				Q_strncpyz(sTestName, sMusic_BackgroundLoop, sizeof sTestName);
 				COM_DefaultExtension(sTestName, sizeof sTestName, ".mp3");
 
-				if (S_FileExists(sTestName))
+				if (S_FileExists(sTestName) == qtrue)
 				{
+					/* start the next background track (preserve original semantics) */
 					S_StartBackgroundTrack_Actual(pMusicInfo, qfalse, sMusic_BackgroundLoop, sMusic_BackgroundLoop);
 				}
 				else
 				{
-					// proposed file doesn't exist, but this may be a dynamic track we're wanting to loop,
-					//	so exit with a special flag...
-					//
+					/* Not a real file; may be a dynamic specifier — signal special-case exit */
 					return qtrue;
 				}
 			}
-			if (!pMusicInfo->s_backgroundFile)
+
+			/* If the loop failed to restart the background file, bail out */
+			if (pMusicInfo->s_backgroundFile == 0)
 			{
-				return qfalse; // loop failed to restart
+				return qfalse;
 			}
 		}
-	}
+	} /* end while */
 
 #undef SIZEOF_RAW_BUFFER_FOR_MP3
-#undef RAWSIZE
+#undef MAX_WAV_RAW_BUFFER
 
+	/* Nothing more to push this frame */
 	return qfalse;
 }
+
 
 // used to be just for dynamic, but now even non-dynamic music has to know whether it should be silent or not...
 //

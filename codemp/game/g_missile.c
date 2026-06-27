@@ -945,7 +945,7 @@ static void G_Missile_Bounce_Effect(gentity_t* ent, vec3_t org, vec3_t dir, cons
 		VectorCopy(dir, te->s.angles);
 		te->s.eventParm = 0;
 		te->s.weapon = 0; //saberNum
-		te->s.legsAnim = 0; //blade_num
+		te->s.legsAnim = 0; //bladeNum
 	}
 	break;
 	}

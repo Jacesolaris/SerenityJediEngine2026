@@ -413,24 +413,24 @@ void WP_SaberFreeStrings(saberInfo_t& saber)
 	}
 }
 
-qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, const int blade_num)
+qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, const int bladeNum)
 {
 	if (saber
 		&& saber->bladeStyle2Start > 0
-		&& blade_num >= saber->bladeStyle2Start)
+		&& bladeNum >= saber->bladeStyle2Start)
 		return qtrue;
 
 	return qfalse;
 }
 
-qboolean WP_SaberBladeDoTransitionDamage(const saberInfo_t* saber, const int blade_num)
+qboolean WP_SaberBladeDoTransitionDamage(const saberInfo_t* saber, const int bladeNum)
 {
 	//use first blade style for this blade
-	if (!WP_SaberBladeUseSecondBladeStyle(saber, blade_num) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE)
+	if (!WP_SaberBladeUseSecondBladeStyle(saber, bladeNum) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE)
 		return qtrue;
 
 	//use second blade style for this blade
-	if (WP_SaberBladeUseSecondBladeStyle(saber, blade_num) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE2)
+	if (WP_SaberBladeUseSecondBladeStyle(saber, bladeNum) && saber->saberFlags2 & SFL2_TRANSITION_DAMAGE2)
 		return qtrue;
 
 	return qfalse;
@@ -2931,13 +2931,13 @@ void WP_SetSaber(gentity_t* ent, const int saberNum, const char* saber_name)
 	}
 }
 
-void WP_SaberSetColor(const gentity_t* ent, const int saberNum, const int blade_num, const char* colorName)
+void WP_SaberSetColor(const gentity_t* ent, const int saberNum, const int bladeNum, const char* colorName)
 {
 	if (!ent || !ent->client)
 	{
 		return;
 	}
-	ent->client->ps.saber[saberNum].blade[blade_num].color = TranslateSaberColor(colorName);
+	ent->client->ps.saber[saberNum].blade[bladeNum].color = TranslateSaberColor(colorName);
 }
 
 extern void wp_set_saber_ent_model_skin(const gentity_t* ent, gentity_t* saberent);

@@ -2143,7 +2143,7 @@ static void G_RemoveWeaponsWithLimbs(gentity_t* ent, gentity_t* limb, const int 
 	{
 		if (ent->weaponModel[weapon_model_num] >= 0)
 		{
-			char hand_name[MAX_QPATH];
+			char handName[MAX_QPATH];
 			//have a weapon in this hand
 			if (weapon_model_num == 0 && ent->client->ps.saberInFlight)
 			{
@@ -2155,11 +2155,11 @@ static void G_RemoveWeaponsWithLimbs(gentity_t* ent, gentity_t* limb, const int 
 			{
 			case 0: //right hand
 				check_anim = BOTH_DISMEMBER_RARM;
-				G_GetRootSurfNameWithVariant(ent, "r_hand", hand_name, sizeof hand_name);
+				G_GetRootSurfNameWithVariant(ent, "r_hand", handName, sizeof handName);
 				break;
 			case 1: //left hand
 				check_anim = BOTH_DISMEMBER_LARM;
-				G_GetRootSurfNameWithVariant(ent, "l_hand", hand_name, sizeof hand_name);
+				G_GetRootSurfNameWithVariant(ent, "l_hand", handName, sizeof handName);
 				break;
 			default: //not handled/valid
 				continue;
@@ -2168,7 +2168,7 @@ static void G_RemoveWeaponsWithLimbs(gentity_t* ent, gentity_t* limb, const int 
 			if (limb_anim == check_anim || limb_anim == BOTH_DISMEMBER_TORSO1) //either/both hands
 			{
 				//FIXME: is this first check needed with this lower one?
-				if (!gi.G2API_GetSurfaceRenderStatus(&limb->ghoul2[0], hand_name))
+				if (!gi.G2API_GetSurfaceRenderStatus(&limb->ghoul2[0], handName))
 				{
 					//only copy the weapon over if the hand is actually on this limb...
 					//copy it to limb
@@ -2517,24 +2517,103 @@ static qboolean G_Dismemberable(const gentity_t* self, const int hit_loc)
 
 constexpr auto MAX_VARIANTS = 8;
 
-qboolean G_GetRootSurfNameWithVariant(gentity_t* ent, const char* rootSurfName, char* return_surf_name,
-	const int return_size)
+// Add any custom names you want here.
+// You can extend this list without touching the logic.
+static const char* g_handSuffixes[] =
 {
+	"_tcw",
+	"_test",
+	"_ccc",
+	"_model",
+	"_custom",
+	"_alt",
+	"_skin",
+	"_rod",
+	"_swo",
+	"_ep2",
+	"_robotic",
+	"_glove",
+	nullptr
+};
+
+/*
+===============================
+G_GetRootSurfNameWithVariant
+
+Attempts to resolve a surface name by checking:
+1. The base name (rootSurfName)
+2. Custom suffixes (rootSurfName + suffix)
+3. Legacy variants (rootSurfName + 'a'..'h')
+
+Returns qtrue if a matching surface is found and writes it into returnSurfName.
+===============================
+*/
+qboolean G_GetRootSurfNameWithVariant(gentity_t* ent, const char* rootSurfName, char* returnSurfName, const int returnSize)
+{
+	if (!ent || !rootSurfName || !returnSurfName)
+	{
+		Com_Printf(S_COLOR_RED "G_GetRootSurfNameWithVariant: invalid parameters\n" S_COLOR_WHITE);
+		return qfalse;
+	}
+
+	// ---------------------------------------------------------
+	// 1. Base name
+	// ---------------------------------------------------------
 	if (!gi.G2API_GetSurfaceRenderStatus(&ent->ghoul2[ent->playerModel], rootSurfName))
 	{
-		//see if the basic name without variants is on
-		Q_strncpyz(return_surf_name, rootSurfName, return_size);
+		Q_strncpyz(returnSurfName, rootSurfName, returnSize);
 		return qtrue;
 	}
+
+	// ---------------------------------------------------------
+	// 2. Generic custom-hand support:
+	//    If rootSurfName is "l_hand" or "r_hand",
+	//    try rootSurfName + "_" which matches ANY custom hand name.
+	// ---------------------------------------------------------
+	if (!Q_stricmp(rootSurfName, "l_hand") || !Q_stricmp(rootSurfName, "r_hand"))
+	{
+		char prefixName[MAX_QPATH] = { 0 };
+		Com_sprintf(prefixName, sizeof(prefixName), "%s_", rootSurfName);
+
+		if (!gi.G2API_GetSurfaceRenderStatus(&ent->ghoul2[ent->playerModel], prefixName))
+		{
+			Q_strncpyz(returnSurfName, prefixName, returnSize);
+			return qtrue;
+		}
+	}
+
+	// ---------------------------------------------------------
+	// 3. Custom suffixes (supports ANY hand name you add)
+	// ---------------------------------------------------------
+	for (int i = 0; g_handSuffixes[i] != nullptr; i++)
+	{
+		char testName[MAX_QPATH] = { 0 };
+		Com_sprintf(testName, sizeof(testName), "%s%s", rootSurfName, g_handSuffixes[i]);
+
+		if (!gi.G2API_GetSurfaceRenderStatus(&ent->ghoul2[ent->playerModel], testName))
+		{
+			Q_strncpyz(returnSurfName, testName, returnSize);
+			return qtrue;
+		}
+	}
+
+	// ---------------------------------------------------------
+	// 4. Legacy variants (rootSurfName + 'a'..'h')
+	// ---------------------------------------------------------
 	for (int i = 0; i < MAX_VARIANTS; i++)
 	{
-		Com_sprintf(return_surf_name, return_size, "%s%c", rootSurfName, 'a' + i);
-		if (!gi.G2API_GetSurfaceRenderStatus(&ent->ghoul2[ent->playerModel], return_surf_name))
+		Com_sprintf(returnSurfName, returnSize, "%s%c", rootSurfName, 'a' + i);
+
+		if (!gi.G2API_GetSurfaceRenderStatus(&ent->ghoul2[ent->playerModel], returnSurfName))
 		{
 			return qtrue;
 		}
 	}
-	Q_strncpyz(return_surf_name, rootSurfName, return_size);
+
+	// ---------------------------------------------------------
+	// Nothing found
+	// ---------------------------------------------------------
+	Q_strncpyz(returnSurfName, rootSurfName, returnSize);
 	return qfalse;
 }
 

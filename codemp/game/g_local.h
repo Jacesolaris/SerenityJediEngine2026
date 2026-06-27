@@ -756,7 +756,7 @@ typedef struct
 	int entityNum;
 	int Debounce;
 	int saberNum;
-	int blade_num;
+	int bladeNum;
 } sabimpact_t;
 
 typedef gentity_t* follower_t;
@@ -1005,7 +1005,7 @@ struct gclient_s
 
 	//the saberNum of the last enemy blade that you hit.
 	int lastSaberCollided;
-	//the blade_num of the last enemy blade that you hit.
+	//the bladeNum of the last enemy blade that you hit.
 	int lastBladeCollided;
 
 	sabimpact_t sabimpact[MAX_SABERS][MAX_BLADES];

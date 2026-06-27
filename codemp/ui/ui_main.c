@@ -1948,7 +1948,7 @@ static void UI_DrawForceSide(rectDef_t* rect, float scale, vec4_t color, int tex
 	char s[256];
 	menuDef_t* menu;
 
-	char info[MAX_INFO_VALUE];
+	char info[MAX_INFO_VALUE] = { 0 };
 
 	info[0] = '\0';
 	trap->GetConfigString(CS_SERVERINFO, info, sizeof info);
@@ -2109,7 +2109,7 @@ static void UI_DrawJediNonJedi(rectDef_t* rect, float scale, vec4_t color, int t
 	char s[256];
 	//menuDef_t *menu;
 
-	char info[MAX_INFO_VALUE];
+	char info[MAX_INFO_VALUE] = { 0 };
 
 	int i = val;
 	if (i < min || i > max)
@@ -2153,7 +2153,7 @@ static void UI_DrawTeamMember(rectDef_t* rect, float scale, vec4_t color, qboole
 	int value = trap->Cvar_VariableValue(va(blue ? "ui_blueteam%i" : "ui_redteam%i", num));
 	const char* text;
 	const int maxcl = trap->Cvar_VariableValue("sv_maxClients");
-	vec4_t finalColor;
+	vec4_t finalColor = { 0 };
 	int numval = num;
 
 	numval *= 2;
@@ -3170,12 +3170,13 @@ static void UI_DrawServerRefreshDate(rectDef_t* rect, float scale, vec4_t color,
 {
 	if (uiInfo.serverStatus.refreshActive)
 	{
-		vec4_t lowLight, newColor;
+		vec4_t lowLight = { 0 }, newColor = { 0 };
 		lowLight[0] = 0.8 * color[0];
 		lowLight[1] = 0.8 * color[1];
 		lowLight[2] = 0.8 * color[2];
 		lowLight[3] = 0.8 * color[3];
-		LerpColor(color, lowLight, newColor, 0.5 + 0.5 * sin((float)(uiInfo.uiDC.realTime / PULSE_DIVISOR)));
+		LerpColor(color,lowLight,newColor,0.5f + 0.5f * sinf((float)uiInfo.uiDC.realTime / (float)PULSE_DIVISOR));
+
 
 		trap->SE_GetStringTextString("MP_INGAME_GETTINGINFOFORSERVERS", holdSPString, sizeof holdSPString);
 		Text_Paint(rect->x, rect->y, scale, newColor,
@@ -3344,7 +3345,7 @@ static void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float
 	int ownerDrawFlags, int align, float special, float scale, vec4_t color, qhandle_t shader,
 	int textStyle, int i_menu_font)
 {
-	rectDef_t rect;
+	rectDef_t rect = { 0 };
 	int findex;
 	int drawRank;
 	int iUse;
@@ -4993,16 +4994,38 @@ static void InitLoadDemoContext(loadDemoContext_t* ctx)
 	ctx->dirListHead = ctx->directoryList;
 }
 
+/*
+================
+UI_LoadDemos
+
+Loads demo list into uiInfo.
+Uses UI_Alloc instead of stack allocation to avoid C6262.
+================
+*/
 static void UI_LoadDemos(void)
 {
-	loadDemoContext_t loadDemoContext;
-	InitLoadDemoContext(&loadDemoContext);
+	loadDemoContext_t* pLoadDemoContext;
+
+	// Allocate context on heap instead of large stack object
+	pLoadDemoContext = (loadDemoContext_t*)UI_Alloc(sizeof(loadDemoContext_t));
+	if (pLoadDemoContext == NULL)
+	{
+		Com_Printf(S_COLOR_RED "UI_LoadDemos: failed to allocate loadDemoContext\n" S_COLOR_WHITE);
+		return;
+	}
+
+	InitLoadDemoContext(pLoadDemoContext);
 
 	uiInfo.demoCount = 0;
 	uiInfo.loadedDemos = 0;
-	memset(uiInfo.demoList, 0, sizeof uiInfo.demoList);
-	UI_LoadDemosInDirectory(&loadDemoContext, DEMO_DIRECTORY);
+	memset(uiInfo.demoList, 0, sizeof(uiInfo.demoList));
+
+	UI_LoadDemosInDirectory(pLoadDemoContext, DEMO_DIRECTORY);
+
+	// UI_Alloc memory is not freed — UI memory is arena‑based and freed on UI restart
 }
+
+
 
 static qboolean UI_SetNextMap(int actual, int index)
 {
@@ -5831,15 +5854,14 @@ static void UI_UpdateSaberType(void)
 
 static void UI_UpdateSaberHilt(qboolean second_saber)
 {
-	char model[MAX_QPATH];
-	char modelPath[MAX_QPATH];
+	char  model[MAX_QPATH];
+	char  modelPath[MAX_QPATH];
 	char* itemName;
 	char* saberCvarName;
-	int animRunLength;
+	int   animRunLength = 0;
 
 	const menuDef_t* menu = Menu_GetFocused();
-
-	if (!menu)
+	if (menu == NULL)
 	{
 		return;
 	}
@@ -5857,25 +5879,34 @@ static void UI_UpdateSaberHilt(qboolean second_saber)
 
 	itemDef_t* item = Menu_FindItemByName(menu, itemName);
 
-	if (!item)
+	if (item == NULL)
 	{
 #ifndef FINAL_BUILD
-		Com_Printf(S_COLOR_RED
+		Com_Printf(
+			S_COLOR_RED
 			"UI_UpdateSaberHilt: Could not find item (%s) in menu (%s)\n",
-			itemName, menu->window.name);
+			itemName,
+			menu->window.name
+		);
 #endif
+		return;  // *** FIX: Prevent NULL dereference ***
 	}
 
-	trap->Cvar_VariableStringBuffer(saberCvarName, model, sizeof model);
+	// Read saber name from cvar
+	trap->Cvar_VariableStringBuffer(saberCvarName, model, sizeof(model));
 
+	// Update UI text
 	item->text = model;
 
+	// Resolve saber model path
 	if (UI_SaberModelForSaber(model, modelPath) == qtrue)
 	{
 		char skinPath[MAX_QPATH];
 
+		// Load model
 		ItemParse_asset_model_go(item, modelPath, &animRunLength);
 
+		// Load skin (if any)
 		if (UI_SaberSkinForSaber(model, skinPath) == qtrue)
 		{
 			ItemParse_model_g2skin_go(item, skinPath);
@@ -5886,6 +5917,7 @@ static void UI_UpdateSaberHilt(qboolean second_saber)
 		}
 	}
 }
+
 
 static void UI_UpdateSaberColor(qboolean second_saber)
 {
@@ -10284,7 +10316,7 @@ void UI_LoadForceConfig_List(void)
 {
 	int numfiles;
 	char filelist[2048];
-	int filelen;
+	int filelen = 0;
 	qboolean lightSearch = qfalse;
 
 	uiInfo.forceConfigCount = 0;
@@ -10371,50 +10403,75 @@ static qboolean bIsImageFile(const char* dirptr, const char* skinname)
 }
 
 /*
-=================
-PlayerModel_BuildList
-=================
+===========================
+UI_BuildQ3Model_List
+
+Builds the list of Q3-style player heads.
+Moves large buffers off the stack to avoid MSVC C6262.
+===========================
 */
 static void UI_BuildQ3Model_List(void)
 {
-	char dirlist[16384];
+	// Allocate large buffers on heap instead of stack
+	char* dirlist = (char*)UI_Alloc(16384);
+	char* filelist = (char*)UI_Alloc(16384);
+
+	if (!dirlist || !filelist)
+	{
+		Com_Printf(S_COLOR_RED "UI_BuildQ3Model_List: failed to allocate buffers\n" S_COLOR_WHITE);
+		return;
+	}
+
 	char skinname[64];
 	int dirlen = 0;
 	int filelen = 0;
 
 	uiInfo.q3HeadCount = 0;
+	uiInfo.loadedDemos = 0;
 
-	// iterate directory of all player models
+	// ---------------------------------------------------------
+	// Iterate directory of all player models
+	// ---------------------------------------------------------
 	const int numdirs = trap->FS_GetFileList("models/players", "/", dirlist, 16384);
 	char* dirptr = dirlist;
+
 	for (int i = 0; i < numdirs && uiInfo.q3HeadCount < MAX_Q3PLAYERMODELS; i++, dirptr += dirlen + 1)
 	{
-		char filelist[16384];
 		dirlen = strlen(dirptr);
 
-		if (dirlen && dirptr[dirlen - 1] == '/') dirptr[dirlen - 1] = '\0';
+		if (dirlen && dirptr[dirlen - 1] == '/')
+		{
+			dirptr[dirlen - 1] = '\0';
+		}
 
-		if (strcmp(dirptr, ".") == 0 || strcmp(dirptr, "..") == 0)
+		if (!strcmp(dirptr, ".") || !strcmp(dirptr, ".."))
+		{
 			continue;
+		}
 
+		// Fill filelist buffer
 		const int numfiles = trap->FS_GetFileList(va("models/players/%s", dirptr), "skin", filelist, 16384);
 		char* fileptr = filelist;
+
 		for (int j = 0; j < numfiles && uiInfo.q3HeadCount < MAX_Q3PLAYERMODELS; j++, fileptr += filelen + 1)
 		{
 			filelen = strlen(fileptr);
 
-			COM_StripExtension(fileptr, skinname, sizeof skinname);
+			COM_StripExtension(fileptr, skinname, sizeof(skinname));
 
 			const int skin_len = strlen(skinname);
 			int k = 0;
+
+			// Skip to underscore
 			while (k < skin_len && skinname[k] && skinname[k] != '_')
 			{
 				k++;
 			}
+
+			// Trim prefix before underscore
 			if (skinname[k] == '_')
 			{
 				int p = 0;
-
 				while (skinname[k])
 				{
 					skinname[p] = skinname[k];
@@ -10425,39 +10482,42 @@ static void UI_BuildQ3Model_List(void)
 			}
 
 			const char* check = &skinname[1];
-			if (bIsImageFile(dirptr, check))
+
+			if (bIsImageFile(dirptr, check) == qtrue)
 			{
-				//if it exists
 				qboolean icon_exists = qfalse;
 
 				if (skinname[0] == '_')
 				{
-					//change character to append properly
 					skinname[0] = '/';
 				}
 
-				int s = 0;
-
-				while (s < uiInfo.q3HeadCount)
+				// Check for duplicates
+				for (int s = 0; s < uiInfo.q3HeadCount; s++)
 				{
-					//check for dupes
 					if (!Q_stricmp(va("%s%s", dirptr, skinname), uiInfo.q3HeadNames[s]))
 					{
 						icon_exists = qtrue;
 						break;
 					}
-					s++;
 				}
 
-				if (icon_exists)
+				if (icon_exists == qtrue)
 				{
 					continue;
 				}
 
-				Com_sprintf(uiInfo.q3HeadNames[uiInfo.q3HeadCount], sizeof uiInfo.q3HeadNames[uiInfo.q3HeadCount],
-					va("%s%s", dirptr, skinname));
-				uiInfo.q3HeadIcons[uiInfo.q3HeadCount++] = 0; //trap->R_RegisterShaderNoMip(fpath);
-				//rww - we are now registering them as they are drawn like the TA feeder, so as to decrease UI load time.
+				// Store head name
+				Com_sprintf(
+					uiInfo.q3HeadNames[uiInfo.q3HeadCount],
+					sizeof(uiInfo.q3HeadNames[uiInfo.q3HeadCount]),
+					"%s%s",
+					dirptr,
+					skinname
+				);
+
+				uiInfo.q3HeadIcons[uiInfo.q3HeadCount] = 0;
+				uiInfo.q3HeadCount++;
 			}
 
 			if (uiInfo.q3HeadCount >= MAX_Q3PLAYERMODELS)
@@ -10467,6 +10527,7 @@ static void UI_BuildQ3Model_List(void)
 		}
 	}
 }
+
 
 static void UI_SiegeInit(void)
 {
@@ -10493,57 +10554,110 @@ static void UI_SiegeInit(void)
 =================
 UI_ParseColorData
 =================
+*//*
+===============================
+UI_ParseColorData
+
+Parses color entries from a buffer into a species->Color array.
+Expands dynamically as needed. Returns qtrue on success, qfalse on error.
+===============================
 */
-//static qboolean UI_ParseColorData(char* buf, playerSpeciesInfo_t &species)
 static qboolean UI_ParseColorData(char* buf, playerSpeciesInfo_t* species, char* file)
 {
-	const char* p;
+	const char* p = buf;
 
-	p = buf;
 	COM_BeginParseSession(file);
+
+	// Initialize color storage
 	species->ColorCount = 0;
 	species->ColorMax = 16;
-	species->Color = (playerColor_t*)malloc(species->ColorMax * sizeof(playerColor_t));
 
-	while (p)
+	species->Color = (playerColor_t*)malloc(species->ColorMax * sizeof(playerColor_t));
+	if (species->Color == NULL)
 	{
-		const char* token = COM_ParseExt(&p, qtrue); //looking for the shader
-		if (token[0] == 0)
+		Com_Printf(S_COLOR_RED "UI_ParseColorData: malloc failed for initial Color array\n" S_COLOR_WHITE);
+		return qfalse;
+	}
+
+	while (p != NULL)
+	{
+		// -----------------------------------------
+		// Read shader name
+		// -----------------------------------------
+		const char* token = COM_ParseExt(&p, qtrue);
+
+		if (token[0] == '\0')
 		{
-			return species->ColorCount;
+			// End of file — success
+			return qtrue;
 		}
+
+		// Expand array if needed
 		if (species->ColorCount >= species->ColorMax)
 		{
 			species->ColorMax *= 2;
-			species->Color = (playerColor_t*)realloc(species->Color, species->ColorMax * sizeof(playerColor_t));
+
+			playerColor_t* newPtr = (playerColor_t*)realloc(
+				species->Color,
+				species->ColorMax * sizeof(playerColor_t)
+			);
+
+			if (newPtr == NULL)
+			{
+				Com_Printf(S_COLOR_RED "UI_ParseColorData: realloc failed expanding Color array\n" S_COLOR_WHITE);
+				free(species->Color);
+				species->Color = NULL;
+				return qfalse;
+			}
+
+			species->Color = newPtr;
 		}
 
+		// Clear the new entry
 		memset(&species->Color[species->ColorCount], 0, sizeof(playerColor_t));
 
+		// Store shader name
 		Q_strncpyz(species->Color[species->ColorCount].shader, token, MAX_QPATH);
 
-		token = COM_ParseExt(&p, qtrue); //looking for action block {
+		// -----------------------------------------
+		// Expect opening brace {
+		// -----------------------------------------
+		token = COM_ParseExt(&p, qtrue);
+
 		if (token[0] != '{')
 		{
+			Com_Printf(S_COLOR_RED "UI_ParseColorData: Expected '{' after shader '%s' in %s\n" S_COLOR_WHITE,
+				species->Color[species->ColorCount].shader, file);
 			return qfalse;
 		}
 
-		token = COM_ParseExt(&p, qtrue); //looking for action commands
+		// -----------------------------------------
+		// Parse action block until }
+		// -----------------------------------------
+		token = COM_ParseExt(&p, qtrue);
+
 		while (token[0] != '}')
 		{
-			if (token[0] == 0)
+			if (token[0] == '\0')
 			{
-				//EOF
+				Com_Printf(S_COLOR_RED "UI_ParseColorData: Unexpected EOF inside action block in %s\n" S_COLOR_WHITE, file);
 				return qfalse;
 			}
+
 			Q_strcat(species->Color[species->ColorCount].actionText, ACTION_BUFFER_SIZE, token);
 			Q_strcat(species->Color[species->ColorCount].actionText, ACTION_BUFFER_SIZE, " ");
-			token = COM_ParseExt(&p, qtrue); //looking for action commands or final }
+
+			token = COM_ParseExt(&p, qtrue);
 		}
-		species->ColorCount++; //next color please
+
+		// Completed one color entry
+		species->ColorCount++;
 	}
-	return qtrue; //never get here
+
+	// Should never reach here
+	return qtrue;
 }
+
 
 static void UI_FreeSpecies(playerSpeciesInfo_t* species)
 {
@@ -10576,39 +10690,57 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 	static const size_t DIR_LIST_SIZE = 16384;
 
 	size_t dirListSize = DIR_LIST_SIZE;
-	char stackDirList[8192] = { 0 };
-	int dirlen = { 0 };
+	char  stackDirList[8192] = { 0 };
+	int   dirlen = 0;
 
-	char* dirlist = malloc(DIR_LIST_SIZE);
-	if (!dirlist)
+	char* dirlist = (char*)malloc(DIR_LIST_SIZE);
+	if (dirlist == NULL)
 	{
-		Com_Printf(S_COLOR_YELLOW "WARNING: Failed to allocate %u bytes of memory for player model "
-			"directory list. Using stack allocated buffer of %u bytes instead.",
-			DIR_LIST_SIZE, sizeof stackDirList);
+		Com_Printf(
+			S_COLOR_YELLOW
+			"WARNING: Failed to allocate %u bytes of memory for player model directory list. "
+			"Using stack allocated buffer of %u bytes instead.\n",
+			(unsigned int)DIR_LIST_SIZE,
+			(unsigned int)sizeof(stackDirList)
+		);
 
 		dirlist = stackDirList;
-		dirListSize = sizeof stackDirList;
+		dirListSize = sizeof(stackDirList);
 	}
 
 	uiInfo.playerSpeciesCount = 0;
 	uiInfo.playerSpeciesIndex = 0;
 	uiInfo.playerSpeciesMax = 8;
+
 	uiInfo.playerSpecies = (playerSpeciesInfo_t*)malloc(uiInfo.playerSpeciesMax * sizeof(playerSpeciesInfo_t));
+	if (uiInfo.playerSpecies == NULL)
+	{
+		Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: failed to allocate initial playerSpecies array\n" S_COLOR_WHITE);
+		if (dirlist != stackDirList)
+		{
+			free(dirlist);
+		}
+		return;
+	}
 
 	// iterate directory of all player models
-	const int numdirs = trap->FS_GetFileList("models/players", "/", dirlist, dirListSize);
+	const int numdirs = trap->FS_GetFileList("models/players", "/", dirlist, (int)dirListSize);
 	char* dirptr = dirlist;
+
 	for (int i = 0; i < numdirs; i++, dirptr += dirlen + 1)
 	{
-		int f = 0;
+		int  f = 0;
 		char fpath[MAX_QPATH];
 
-		dirlen = strlen(dirptr);
+		dirlen = (int)strlen(dirptr);
 
-		if (dirlen)
+		if (dirlen > 0)
 		{
 			if (dirptr[dirlen - 1] == '/')
+			{
 				dirptr[dirlen - 1] = '\0';
+				dirlen--;
+			}
 		}
 		else
 		{
@@ -10616,43 +10748,72 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 		}
 
 		if (strcmp(dirptr, ".") == 0 || strcmp(dirptr, "..") == 0)
+		{
 			continue;
+		}
 
-		Com_sprintf(fpath, sizeof fpath, "models/players/%s/PlayerChoice.txt", dirptr);
+		Com_sprintf(fpath, sizeof(fpath), "models/players/%s/PlayerChoice.txt", dirptr);
 
-		int filelen = trap->FS_Open(fpath, &f, FS_READ);
+		const int filelenChoice = trap->FS_Open(fpath, &f, FS_READ);
 
-		if (f)
+		if (f != 0)
 		{
 			char filelist[2048];
-			int iSkinParts = 0;
+			int  iSkinParts = 0;
 
-			char* buffer = malloc(filelen + 1.0f);
-			if (!buffer)
+			// safe size_t arithmetic to avoid overflow
+			size_t allocSize = (size_t)filelenChoice + 1u;
+			if (allocSize <= 1u)
 			{
 				trap->FS_Close(f);
-				Com_Error(ERR_FATAL, "Could not allocate buffer to read %s", fpath);
+				Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: invalid file length for %s\n" S_COLOR_WHITE, fpath);
+				continue;
 			}
 
-			trap->FS_Read(buffer, filelen, f);
+			char* buffer = (char*)malloc(allocSize);
+			if (buffer == NULL)
+			{
+				trap->FS_Close(f);
+				Com_Error(ERR_FATAL, "Could not allocate %zu bytes to read %s", allocSize, fpath);
+				return;
+			}
+
+			trap->FS_Read(buffer, filelenChoice, f);
 			trap->FS_Close(f);
 
-			buffer[filelen] = 0;
+			buffer[filelenChoice] = '\0';
 
-			//record this species
+			// record this species
 			if (uiInfo.playerSpeciesCount >= uiInfo.playerSpeciesMax)
 			{
 				uiInfo.playerSpeciesMax *= 2;
-				uiInfo.playerSpecies = (playerSpeciesInfo_t*)realloc(
-					uiInfo.playerSpecies, uiInfo.playerSpeciesMax * sizeof(playerSpeciesInfo_t));
+
+				playerSpeciesInfo_t* newSpecies = (playerSpeciesInfo_t*)realloc(
+					uiInfo.playerSpecies,
+					uiInfo.playerSpeciesMax * sizeof(playerSpeciesInfo_t)
+				);
+
+				if (newSpecies == NULL)
+				{
+					Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding playerSpecies array\n" S_COLOR_WHITE);
+					free(buffer);
+					if (dirlist != stackDirList)
+					{
+						free(dirlist);
+					}
+					return;
+				}
+
+				uiInfo.playerSpecies = newSpecies;
 			}
+
 			playerSpeciesInfo_t* species = &uiInfo.playerSpecies[uiInfo.playerSpeciesCount];
 			memset(species, 0, sizeof(playerSpeciesInfo_t));
 			Q_strncpyz(species->Name, dirptr, MAX_QPATH);
 
-			if (!UI_ParseColorData(buffer, species, fpath))
+			if (UI_ParseColorData(buffer, species, fpath) == qfalse)
 			{
-				Com_Printf(S_COLOR_RED"UI_BuildPlayerModel_List: Errors parsing '%s'\n", fpath);
+				Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: Errors parsing '%s'\n" S_COLOR_WHITE, fpath);
 			}
 
 			species->SkinHeadMax = 8;
@@ -10665,75 +10826,141 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 
 			free(buffer);
 
-			const int numfiles = trap->FS_GetFileList(va("models/players/%s", dirptr), ".skin", filelist,
-				sizeof filelist);
+			const int numfiles = trap->FS_GetFileList(
+				va("models/players/%s", dirptr),
+				".skin",
+				filelist,
+				(int)sizeof(filelist)
+			);
+
 			char* fileptr = filelist;
+			int   filelen = 0;
+
 			for (int j = 0; j < numfiles; j++, fileptr += filelen + 1)
 			{
 				char skinname[64];
-				if (trap->Cvar_VariableValue("fs_copyfiles") > 0)
+
+				if (trap->Cvar_VariableValue("fs_copyfiles") > 0.0f)
 				{
 					trap->FS_Open(va("models/players/%s/%s", dirptr, fileptr), &f, FS_READ);
-					if (f)
+					if (f != 0)
+					{
 						trap->FS_Close(f);
+					}
 				}
 
-				filelen = strlen(fileptr);
-				COM_StripExtension(fileptr, skinname, sizeof skinname);
+				filelen = (int)strlen(fileptr);
+				COM_StripExtension(fileptr, skinname, sizeof(skinname));
 
-				if (bIsImageFile(dirptr, skinname))
+				if (bIsImageFile(dirptr, skinname) == qtrue)
 				{
-					//if it exists
 					if (Q_stricmpn(skinname, "head_", 5) == 0)
 					{
 						if (species->SkinHeadCount >= species->SkinHeadMax)
 						{
 							species->SkinHeadMax *= 2;
-							species->SkinHead = (skinName_t*)realloc(
-								species->SkinHead, species->SkinHeadMax * sizeof(skinName_t));
+
+							skinName_t* newHead = (skinName_t*)realloc(
+								species->SkinHead,
+								species->SkinHeadMax * sizeof(skinName_t)
+							);
+
+							if (newHead == NULL)
+							{
+								Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding SkinHead\n" S_COLOR_WHITE);
+								UI_FreeSpecies(species);
+								continue;
+							}
+
+							species->SkinHead = newHead;
 						}
-						Q_strncpyz(species->SkinHead[species->SkinHeadCount++].name, skinname, SKIN_LENGTH);
-						iSkinParts |= 1 << 0;
+
+						Q_strncpyz(
+							species->SkinHead[species->SkinHeadCount].name,
+							skinname,
+							SKIN_LENGTH
+						);
+						species->SkinHeadCount++;
+						iSkinParts |= (1 << 0);
 					}
 					else if (Q_stricmpn(skinname, "torso_", 6) == 0)
 					{
 						if (species->SkinTorsoCount >= species->SkinTorsoMax)
 						{
 							species->SkinTorsoMax *= 2;
-							species->SkinTorso = (skinName_t*)realloc(
-								species->SkinTorso, species->SkinTorsoMax * sizeof(skinName_t));
-						}
-						Q_strncpyz(species->SkinTorso[species->SkinTorsoCount++].name, skinname, SKIN_LENGTH);
 
-						iSkinParts |= 1 << 1;
+							skinName_t* newTorso = (skinName_t*)realloc(
+								species->SkinTorso,
+								species->SkinTorsoMax * sizeof(skinName_t)
+							);
+
+							if (newTorso == NULL)
+							{
+								Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding SkinTorso\n" S_COLOR_WHITE);
+								UI_FreeSpecies(species);
+								continue;
+							}
+
+							species->SkinTorso = newTorso;
+						}
+
+						Q_strncpyz(
+							species->SkinTorso[species->SkinTorsoCount].name,
+							skinname,
+							SKIN_LENGTH
+						);
+						species->SkinTorsoCount++;
+						iSkinParts |= (1 << 1);
 					}
 					else if (Q_stricmpn(skinname, "lower_", 6) == 0)
 					{
 						if (species->SkinLegCount >= species->SkinLegMax)
 						{
 							species->SkinLegMax *= 2;
-							species->SkinLeg = (skinName_t*)realloc(
-								species->SkinLeg, species->SkinLegMax * sizeof(skinName_t));
+
+							skinName_t* newLeg = (skinName_t*)realloc(
+								species->SkinLeg,
+								species->SkinLegMax * sizeof(skinName_t)
+							);
+
+							if (newLeg == NULL)
+							{
+								Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding SkinLeg\n" S_COLOR_WHITE);
+								UI_FreeSpecies(species);
+								continue;
+							}
+
+							species->SkinLeg = newLeg;
 						}
-						Q_strncpyz(species->SkinLeg[species->SkinLegCount++].name, skinname, SKIN_LENGTH);
-						iSkinParts |= 1 << 2;
+
+						Q_strncpyz(
+							species->SkinLeg[species->SkinLegCount].name,
+							skinname,
+							SKIN_LENGTH
+						);
+						species->SkinLegCount++;
+						iSkinParts |= (1 << 2);
 					}
 				}
 			}
+
 			if (iSkinParts < 7)
 			{
-				//didn't get a skin for each, then skip this model.
+				// didn't get a skin for each, then skip this model.
 				UI_FreeSpecies(species);
 				continue;
 			}
+
 			uiInfo.playerSpeciesCount++;
 
-			if (com_rend2.integer == 0) //rend2 is off
+			if (com_rend2.integer == 0)
 			{
-				if (!inGameLoad && ui_PrecacheModels.integer)
+				if ((inGameLoad == qfalse) && (ui_PrecacheModels.integer != 0))
 				{
-					void* ghoul2 = 0;
-					Com_sprintf(fpath, sizeof fpath, "models/players/%s/model.glm", dirptr);
+					void* ghoul2 = NULL;
+
+					Com_sprintf(fpath, sizeof(fpath), "models/players/%s/model.glm", dirptr);
+
 					const int g2Model = trap->G2API_InitGhoul2Model(&ghoul2, fpath, 0, 0, 0, 0, 0);
 					if (g2Model >= 0)
 					{
@@ -10749,6 +10976,8 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 		free(dirlist);
 	}
 }
+
+
 
 static qhandle_t UI_RegisterShaderNoMip(const char* name)
 {
@@ -10975,7 +11204,9 @@ static void UI_Refresh(int realtime)
 		{
 			total = 1;
 		}
-		uiInfo.uiDC.FPS = 1000 * UI_FPS_FRAMES / total;
+		const float fTotal = (float)total;
+		uiInfo.uiDC.FPS = (1000.0f * (float)UI_FPS_FRAMES) / fTotal;
+
 	}
 
 	UI_UpdateCvars();
@@ -11172,7 +11403,21 @@ static void UI_PrintTime(char* buf, int bufsize, int time)
 void Text_PaintCenter(float x, float y, float scale, vec4_t color, const char* text, float adjust, int i_menu_font)
 {
 	const int len = Text_Width(text, scale, i_menu_font);
-	Text_Paint(x - len / 2, y, scale, color, text, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE, i_menu_font);
+	
+	const float halfLen = (float)len * 0.5f;
+
+	Text_Paint(
+		x - halfLen,
+		y,
+		scale,
+		color,
+		text,
+		0,
+		0,
+		ITEM_TEXTSTYLE_SHADOWEDMORE,
+		i_menu_font
+	);
+
 }
 
 static void UI_DisplayDownloadInfo(const char* downloadName, float centerPoint, float yStart, float scale,
@@ -11298,7 +11543,7 @@ static void UI_DrawConnectScreen(qboolean overlay)
 {
 	const char* s;
 	uiClientState_t cstate;
-	char info[MAX_INFO_VALUE];
+	char info[MAX_INFO_VALUE] = { 0 };
 	float centerPoint, yStart, scale;
 
 	char sStringEdTemp[256];

@@ -3333,24 +3333,40 @@ public:
 	float impactTime;
 #endif
 
+	// Copy assignment: copy all relevant members
 	CRenderableSurface& operator =(const CRenderableSurface& src)
 	{
+		if (this == &src)
+		{
+			return *this;
+		}
+
 		ident = src.ident;
 		boneCache = src.boneCache;
 		surfaceData = src.surfaceData;
 #ifdef _G2_GORE
 		alternateTex = src.alternateTex;
 		goreChain = src.goreChain;
+		scale = src.scale;
+		fade = src.fade;
+		impactTime = src.impactTime;
 #endif
 		vboMesh = src.vboMesh;
+		genShadows = src.genShadows;
+		dlightBits = src.dlightBits;
+		pshadowBits = src.pshadowBits;
 
 		return *this;
 	}
 
+	// Default constructor: explicitly initialize every member
 	CRenderableSurface()
 		: ident(SF_MDX)
 		, boneCache(nullptr)
 		, vboMesh(nullptr)
+		, genShadows(qfalse)
+		, dlightBits(0)
+		, pshadowBits(0)
 		, surfaceData(nullptr)
 #ifdef _G2_GORE
 		, alternateTex(nullptr)
@@ -3370,11 +3386,17 @@ public:
 #ifdef _G2_GORE
 		alternateTex = nullptr;
 		goreChain = nullptr;
+		scale = 1.0f;
+		fade = 0.0f;
+		impactTime = 0.0f;
 #endif
 		vboMesh = nullptr;
 		genShadows = qfalse;
+		dlightBits = 0;
+		pshadowBits = 0;
 	}
 };
+
 
 void R_AddGhoulSurfaces(trRefEntity_t* ent, int entityNum);
 void RB_SurfaceGhoul(CRenderableSurface* surf);
