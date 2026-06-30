@@ -664,47 +664,47 @@ int G_LoadRoff(const char* fileName)
 		return roff_id;
 	}
 
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR, fileName);
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_JK2, fileName);
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_CR, fileName);
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_YAV, fileName);
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_DF, fileName);
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_KT, fileName);
 	}
-	else if (com_outcast->integer == 6) //playing survival
+	else if (com_outcast && com_outcast->integer == 6) //playing survival
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_SV, fileName);
 	}
-	else if (com_outcast->integer == 7) //playing nina
+	else if (com_outcast && com_outcast->integer == 7) //playing nina
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_NINA, fileName);
 	}
-	else if (com_outcast->integer == 8) //playing veng
+	else if (com_outcast && com_outcast->integer == 8) //playing veng
 	{
 		// The actual path
 		sprintf(file, "%s/%s.rof", Q3_SCRIPT_DIR_VENG, fileName);

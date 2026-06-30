@@ -554,20 +554,24 @@ static void Sniper_FaceEnemy()
 	if (NPC->enemy)
 	{
 		vec3_t muzzle, target, angles, forward, right, up;
-		//Get the positions
+
+		// Get muzzle position
 		AngleVectors(NPC->client->ps.viewangles, forward, right, up);
 		calcmuzzlePoint(NPC, forward, muzzle, 0);
-		//CalcEntitySpot( NPC, SPOT_WEAPON, muzzle );
+
+		// Get enemy origin
 		CalcEntitySpot(NPC->enemy, SPOT_ORIGIN, target);
 
-		if (enemyDist > 65536 && NPCInfo->stats.aim < 5) //is 256 squared, was 16384 (128*128)
+		// Long‑range sniping logic
+		if (enemyDist > 65536.0f && NPCInfo->stats.aim < 5)
 		{
-			if (NPC->count < 5 - NPCInfo->stats.aim)
+			if (NPC->count < (5 - NPCInfo->stats.aim))
 			{
-				//miss a few times first
-				if (shoot && TIMER_Done(NPC, "attackDelay") && level.time >= NPCInfo->shotTime)
+				// Miss intentionally a few times
+				if (shoot == qtrue &&
+					TIMER_Done(NPC, "attackDelay") &&
+					level.time >= NPCInfo->shotTime)
 				{
-					//ready to fire again
 					qboolean aim_error = qfalse;
 					qboolean hit = qtrue;
 					int try_miss_count = 0;
@@ -576,36 +580,61 @@ static void Sniper_FaceEnemy()
 					GetAnglesForDirection(muzzle, target, angles);
 					AngleVectors(angles, forward, right, up);
 
-					while (hit && try_miss_count < 10)
+					while (hit == qtrue && try_miss_count < 10)
 					{
 						try_miss_count++;
+
 						if (!Q_irand(0, 1))
 						{
 							aim_error = qtrue;
+
 							if (!Q_irand(0, 1))
 							{
-								VectorMA(target, NPC->enemy->maxs[2] * Q_flrand(1.5, 4), right, target);
+								VectorMA(target,
+									NPC->enemy->maxs[2] * Q_flrand(1.5f, 4.0f),
+									right,
+									target);
 							}
 							else
 							{
-								VectorMA(target, NPC->enemy->mins[2] * Q_flrand(1.5, 4), right, target);
+								VectorMA(target,
+									NPC->enemy->mins[2] * Q_flrand(1.5f, 4.0f),
+									right,
+									target);
 							}
 						}
-						if (!aim_error || !Q_irand(0, 1))
+
+						if (aim_error == qfalse || !Q_irand(0, 1))
 						{
 							if (!Q_irand(0, 1))
 							{
-								VectorMA(target, NPC->enemy->maxs[2] * Q_flrand(1.5, 4), up, target);
+								VectorMA(target,
+									NPC->enemy->maxs[2] * Q_flrand(1.5f, 4.0f),
+									up,
+									target);
 							}
 							else
 							{
-								VectorMA(target, NPC->enemy->mins[2] * Q_flrand(1.5, 4), up, target);
+								VectorMA(target,
+									NPC->enemy->mins[2] * Q_flrand(1.5f, 4.0f),
+									up,
+									target);
 							}
 						}
-						gi.trace(&trace, muzzle, vec3_origin, vec3_origin, target, NPC->s.number, MASK_SHOT,
-							static_cast<EG2_Collision>(0), 0);
+
+						gi.trace(&trace,
+							muzzle,
+							vec3_origin,
+							vec3_origin,
+							target,
+							NPC->s.number,
+							MASK_SHOT,
+							static_cast<EG2_Collision>(0),
+							0);
+
 						hit = Sniper_EvaluateShot(trace.entityNum);
 					}
+
 					NPC->count++;
 				}
 				else
@@ -619,34 +648,39 @@ static void Sniper_FaceEnemy()
 			}
 			else
 			{
-				//based on distance, aim value, difficulty and enemy movement, miss
-				//FIXME: incorporate distance as a factor?
-				int miss_factor = 8 - (NPCInfo->stats.aim + g_spskill->integer) * 3;
-				if (miss_factor > ENEMY_POS_LAG_STEPS)
+				// Use lagged enemy position based on aim/difficulty
+				int miss_factor =
+					8 - ((NPCInfo->stats.aim + g_spskill->integer) * 3);
+
+				// Correct clamping (FIX for MSVC C6385)
+				if (miss_factor >= ENEMY_POS_LAG_STEPS)
 				{
-					miss_factor = ENEMY_POS_LAG_STEPS;
+					miss_factor = ENEMY_POS_LAG_STEPS - 1;
 				}
 				else if (miss_factor < 0)
 				{
-					//???
 					miss_factor = 0;
 				}
+
 				VectorCopy(NPCInfo->enemyLaggedPos[miss_factor], target);
 			}
+
 			GetAnglesForDirection(muzzle, target, angles);
 		}
 		else
 		{
-			target[2] += Q_flrand(0, NPC->enemy->maxs[2]);
-			//CalcEntitySpot( NPC->enemy, SPOT_HEAD_LEAN, target );
+			// Short‑range: aim with slight vertical randomness
+			target[2] += Q_flrand(0.0f, NPC->enemy->maxs[2]);
 			GetAnglesForDirection(muzzle, target, angles);
 		}
 
 		NPCInfo->desiredYaw = AngleNormalize360(angles[YAW]);
 		NPCInfo->desiredPitch = AngleNormalize360(angles[PITCH]);
 	}
+
 	NPC_UpdateAngles(qtrue, qtrue);
 }
+
 
 static void Sniper_UpdateEnemyPos()
 {

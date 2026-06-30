@@ -108,7 +108,7 @@ using CreditCards_t = std::list<CreditCard_t>;
 
 struct CreditData_t
 {
-	int iStartTime;
+	int iStartTime = 0;
 
 	CreditCards_t CreditCards;
 	CreditLines_t CreditLines;

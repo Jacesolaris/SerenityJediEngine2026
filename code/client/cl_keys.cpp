@@ -1387,39 +1387,39 @@ static void CL_KeyDownEvent(const int key, const unsigned time)
 		{
 			if (cls.state == CA_ACTIVE)
 			{
-				if (cl_com_outcast->integer == 0)//academy version
+				if (cl_com_outcast && cl_com_outcast->integer == 0)//academy version
 				{
 					UI_SetActiveMenu("ingame", nullptr);
 				}
-				else if (cl_com_outcast->integer == 1)//outcast version
+				else if (cl_com_outcast && cl_com_outcast->integer == 1)//outcast version
 				{
 					UI_SetActiveMenu("ingame_jko", nullptr);
 				}
-				else if (cl_com_outcast->integer == 2)//mod version
+				else if (cl_com_outcast && cl_com_outcast->integer == 2)//mod version
 				{
 					UI_SetActiveMenu("ingame_cr", nullptr);
 				}
-				else if (cl_com_outcast->integer == 3)//yavIV version
+				else if (cl_com_outcast && cl_com_outcast->integer == 3)//yavIV version
 				{
 					UI_SetActiveMenu("ingame_yav", nullptr);
 				}
-				else if (cl_com_outcast->integer == 4)//darkforces version
+				else if (cl_com_outcast && cl_com_outcast->integer == 4)//darkforces version
 				{
 					UI_SetActiveMenu("ingame_df", nullptr);
 				}
-				else if (cl_com_outcast->integer == 5)//kotor version
+				else if (cl_com_outcast && cl_com_outcast->integer == 5)//kotor version
 				{
 					UI_SetActiveMenu("ingame_kt", nullptr);
 				}
-				else if (cl_com_outcast->integer == 6)//survival version
+				else if (cl_com_outcast && cl_com_outcast->integer == 6)//survival version
 				{
 					UI_SetActiveMenu("ingame_suv", nullptr);
 				}
-				else if (cl_com_outcast->integer == 7)//nina version
+				else if (cl_com_outcast && cl_com_outcast->integer == 7)//nina version
 				{
 					UI_SetActiveMenu("ingame_nina", nullptr);
 				}
-				else if (cl_com_outcast->integer == 8)//veng version
+				else if (cl_com_outcast && cl_com_outcast->integer == 8)//veng version
 				{
 					UI_SetActiveMenu("ingame_veng", nullptr);
 				}

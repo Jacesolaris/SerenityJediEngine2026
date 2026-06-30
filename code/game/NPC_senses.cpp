@@ -761,52 +761,52 @@ AddSoundEvent
 */
 qboolean RemoveOldestAlert();
 
-void AddSoundEvent(gentity_t* owner, vec3_t position, const float radius, const alertEventLevel_e alertLevel, const qboolean needLOS, const qboolean onGround)
+void AddSoundEvent(gentity_t* owner, vec3_t position, const float radius,
+	const alertEventLevel_e alertLevel,
+	const qboolean needLOS, const qboolean onGround)
 {
 	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
 	{
 		if (!RemoveOldestAlert())
 		{
-			//how could that fail?
 			return;
 		}
 	}
 
-	if (owner == nullptr && alertLevel < AEL_DANGER) //allows un-owned danger alerts
+	// SAFETY CLAMP: guarantee index is valid for MSVC analyzer
+	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
+	{
+		level.numAlertEvents = MAX_ALERT_EVENTS - 1;
+	}
+
+	if (owner == NULL && alertLevel < AEL_DANGER)
+	{
 		return;
+	}
 
 	if (owner && owner->client && owner->client->NPC_class == CLASS_SAND_CREATURE)
 	{
 		return;
 	}
 
-	//FIXME: if owner is not a player or player ally, and there are no player allies present,
-	//			perhaps we don't need to store the alert... unless we want the player to
-	//			react to enemy alert events in some way?
-
 #ifdef _DEBUG
 	assert(!Q_isnan(position[0]) && !Q_isnan(position[1]) && !Q_isnan(position[2]));
 #endif
+
 	VectorCopy(position, level.alertEvents[level.numAlertEvents].position);
 
 	level.alertEvents[level.numAlertEvents].radius = radius;
 	level.alertEvents[level.numAlertEvents].level = alertLevel;
 	level.alertEvents[level.numAlertEvents].type = AET_SOUND;
 	level.alertEvents[level.numAlertEvents].owner = owner;
-	if (needLOS)
-	{
-		//a very low-level sound, when check this sound event, check for LOS
-		level.alertEvents[level.numAlertEvents].addLight = 1; //will force an LOS trace on this sound
-	}
-	else
-	{
-		level.alertEvents[level.numAlertEvents].addLight = 0; //will force an LOS trace on this sound
-	}
+	level.alertEvents[level.numAlertEvents].addLight = needLOS ? 1 : 0;
 	level.alertEvents[level.numAlertEvents].onGround = onGround;
 	level.alertEvents[level.numAlertEvents].ID = ++level.curAlertID;
 	level.alertEvents[level.numAlertEvents].timestamp = level.time;
+
 	level.numAlertEvents++;
 }
+
 
 /*
 -------------------------
@@ -814,29 +814,33 @@ AddSightEvent
 -------------------------
 */
 
-void AddSightEvent(gentity_t* owner, vec3_t position, const float radius, const alertEventLevel_e alertLevel,
-	const float addLight)
+void AddSightEvent(gentity_t* owner, vec3_t position, const float radius,
+	const alertEventLevel_e alertLevel, const float addLight)
 {
-	//FIXME: Handle this in another manner?
+	// If full, try to remove oldest
 	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
 	{
 		if (!RemoveOldestAlert())
 		{
-			//how could that fail?
 			return;
 		}
 	}
 
-	if (owner == nullptr && alertLevel < AEL_DANGER) //allows un-owned danger alerts
-		return;
+	// SAFETY CLAMP: guarantee index is valid for MSVC analyzer
+	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
+	{
+		level.numAlertEvents = MAX_ALERT_EVENTS - 1;
+	}
 
-	//FIXME: if owner is not a player or player ally, and there are no player allies present,
-	//			perhaps we don't need to store the alert... unless we want the player to
-	//			react to enemy alert events in some way?
+	if (owner == NULL && alertLevel < AEL_DANGER)
+	{
+		return;
+	}
 
 #ifdef _DEBUG
 	assert(!Q_isnan(position[0]) && !Q_isnan(position[1]) && !Q_isnan(position[2]));
 #endif
+
 	VectorCopy(position, level.alertEvents[level.numAlertEvents].position);
 
 	level.alertEvents[level.numAlertEvents].radius = radius;
@@ -844,12 +848,12 @@ void AddSightEvent(gentity_t* owner, vec3_t position, const float radius, const 
 	level.alertEvents[level.numAlertEvents].type = AET_SIGHT;
 	level.alertEvents[level.numAlertEvents].owner = owner;
 	level.alertEvents[level.numAlertEvents].addLight = addLight;
-	//will get added to actual light at that point when it's checked
 	level.alertEvents[level.numAlertEvents].ID = level.curAlertID++;
 	level.alertEvents[level.numAlertEvents].timestamp = level.time;
 
 	level.numAlertEvents++;
 }
+
 
 /*
 -------------------------
@@ -950,18 +954,18 @@ qboolean G_ClearLOS(gentity_t* self, const vec3_t start, const vec3_t end)
 	trace_t tr;
 	int traceCount = 0;
 
-	gi.trace(&tr, start, nullptr, nullptr, end, ENTITYNUM_NONE,
-		CONTENTS_OPAQUE, static_cast<EG2_Collision>(0), 0);
+	gi.trace(&tr, start, NULL, NULL, end, ENTITYNUM_NONE,
+		CONTENTS_OPAQUE, (EG2_Collision)0, 0);
 
 	while (tr.fraction < 1.0f && traceCount < 3)
 	{
 		if (tr.entityNum < ENTITYNUM_WORLD)
 		{
-			if (&g_entities[tr.entityNum] != nullptr &&
-				(g_entities[tr.entityNum].svFlags & SVF_GLASS_BRUSH))
+			// FIX: remove meaningless &g_entities[...] != NULL check
+			if (g_entities[tr.entityNum].svFlags & SVF_GLASS_BRUSH)
 			{
-				gi.trace(&tr, tr.endpos, nullptr, nullptr, end, tr.entityNum,
-					MASK_OPAQUE, static_cast<EG2_Collision>(0), 0);
+				gi.trace(&tr, tr.endpos, NULL, NULL, end, tr.entityNum,
+					MASK_OPAQUE, (EG2_Collision)0, 0);
 
 				traceCount++;
 				continue;
@@ -973,6 +977,7 @@ qboolean G_ClearLOS(gentity_t* self, const vec3_t start, const vec3_t end)
 
 	return (tr.fraction == 1.0f) ? qtrue : qfalse;
 }
+
 
 // ======================================================
 // Entity → Position

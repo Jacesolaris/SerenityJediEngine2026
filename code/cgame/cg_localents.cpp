@@ -60,9 +60,17 @@ CG_FreeLocalEntity
 */
 static void CG_FreeLocalEntity(localEntity_t* le)
 {
-	if (!le->prev)
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (le == NULL)
 	{
-		CG_Error("CG_FreeLocalEntity: not active");
+		Com_Printf(S_COLOR_YELLOW "CG_FreeLocalEntity: le is NULL\n");
+		return;
+	}
+
+	if (le->prev == NULL || le->next == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "CG_FreeLocalEntity: invalid localEntity links\n");
+		return;
 	}
 
 	// remove from the doubly linked active list
@@ -74,6 +82,7 @@ static void CG_FreeLocalEntity(localEntity_t* le)
 	cg_freeLocalEntities = le;
 }
 
+
 /*
 ===================
 CG_AllocLocalEntity
@@ -83,26 +92,52 @@ Will allways succeed, even if it requires freeing an old active entity
 */
 localEntity_t* CG_AllocLocalEntity()
 {
-	if (!cg_freeLocalEntities)
+	// SAFETY: ensure free list is valid before use
+	if (cg_freeLocalEntities == NULL)
 	{
 		// no free entities, so free the one at the end of the chain
-		// remove the oldest active entity
+		if (cg_activeLocalEntities.prev == NULL)
+		{
+			Com_Printf(S_COLOR_YELLOW "CG_AllocLocalEntity: no free LEs and active list has no prev\n");
+			return NULL;
+		}
+
 		CG_FreeLocalEntity(cg_activeLocalEntities.prev);
+
+		// after freeing, we still expect cg_freeLocalEntities to be non-NULL
+		if (cg_freeLocalEntities == NULL)
+		{
+			Com_Printf(S_COLOR_YELLOW "CG_AllocLocalEntity: cg_freeLocalEntities still NULL after CG_FreeLocalEntity\n");
+			return NULL;
+		}
 	}
 
 	localEntity_t* le = cg_freeLocalEntities;
 	cg_freeLocalEntities = cg_freeLocalEntities->next;
 
-	memset(le, 0, sizeof * le);
+	if (le == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "CG_AllocLocalEntity: le is NULL after taking from free list\n");
+		return NULL;
+	}
+
+	memset(le, 0, sizeof(*le));
 
 	// link into the active list
 	le->next = cg_activeLocalEntities.next;
 	le->prev = &cg_activeLocalEntities;
-	cg_activeLocalEntities.next->prev = le;
+
+	if (cg_activeLocalEntities.next != NULL)
+	{
+		cg_activeLocalEntities.next->prev = le;
+	}
+
 	cg_activeLocalEntities.next = le;
 	le->ownerGentNum = -1;
+
 	return le;
 }
+
 
 /*
 ====================================================================================

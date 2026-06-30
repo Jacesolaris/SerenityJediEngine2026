@@ -2134,7 +2134,7 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 		// fill in defaults
 		stats->sex = SEX_MALE;
 
-		if (is_outcast_map() || (com_outcast->integer == 1 || com_outcast->integer == 4)) //playing outcast
+		if (is_outcast_map() || (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4)) //playing outcast
 		{
 			stats->aggression = 3;
 			stats->earshot = 1024;
@@ -2155,7 +2155,7 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 		stats->reactions = 5;
 		stats->vfov = 120;
 
-		if (npc->client->NPC_class == CLASS_KYLE || (is_outcast_map() || (com_outcast->integer == 1 || com_outcast->integer == 4)))
+		if (npc->client->NPC_class == CLASS_KYLE || (is_outcast_map() || (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4)))
 		{
 			stats->vigilance = 0.2f;
 		}

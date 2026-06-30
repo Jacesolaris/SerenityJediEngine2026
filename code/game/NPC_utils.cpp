@@ -1405,38 +1405,43 @@ NPC_CheckLookTarget
 */
 qboolean NPC_CheckLookTarget(const gentity_t* self)
 {
-	if (self->client)
+	// SAFETY FIX: self or self->client may be NULL
+	if (self == NULL || self->client == NULL)
 	{
-		if (self->client->renderInfo.lookTarget >= 0 && self->client->renderInfo.lookTarget < ENTITYNUM_WORLD)
+		Com_Printf(S_COLOR_YELLOW "NPC_CheckLookTarget: NULL self or client\n");
+		return qfalse;
+	}
+
+	const int lt = self->client->renderInfo.lookTarget;
+
+	if (lt >= 0 && lt < ENTITYNUM_WORLD)
+	{
+		// FIX: remove meaningless &g_entities[...] == NULL check
+		if (!g_entities[lt].inuse)
 		{
-			//within valid range
-			if (&g_entities[self->client->renderInfo.lookTarget] == nullptr || !g_entities[self->client->renderInfo.
-				lookTarget].inuse)
-			{
-				//lookTarget not inuse or not valid anymore
-				NPC_ClearLookTarget(self);
-			}
-			else if (self->client->renderInfo.lookTargetClearTime && self->client->renderInfo.lookTargetClearTime <
-				level.time)
-			{
-				//Time to clear lookTarget
-				NPC_ClearLookTarget(self);
-			}
-			else if (g_entities[self->client->renderInfo.lookTarget].client && self->enemy && &g_entities[self->client->
-				renderInfo.lookTarget] != self->enemy)
-			{
-				//should always look at current enemy if engaged in battle... FIXME: this could override certain scripted lookTargets...???
-				NPC_ClearLookTarget(self);
-			}
-			else
-			{
-				return qtrue;
-			}
+			NPC_ClearLookTarget(self);
+		}
+		else if (self->client->renderInfo.lookTargetClearTime &&
+			self->client->renderInfo.lookTargetClearTime < level.time)
+		{
+			NPC_ClearLookTarget(self);
+		}
+		else if (g_entities[lt].client &&
+			self->enemy &&
+			(&g_entities[lt] != self->enemy))   // this comparison IS meaningful
+		{
+			// Should always look at current enemy if engaged in battle
+			NPC_ClearLookTarget(self);
+		}
+		else
+		{
+			return qtrue;
 		}
 	}
 
 	return qfalse;
 }
+
 
 /*
 -------------------------

@@ -30,8 +30,8 @@ constexpr auto MAX_GTIMERS = 16384;
 using gtimer_t = struct gtimer_s
 {
 	hstring id; // Use handle strings, so that things work after loading
-	int time;
-	gtimer_s* next; // In either free list or current list
+	int time = 0;
+	gtimer_s* next = nullptr; // In either free list or current list
 };
 
 gtimer_t g_timerPool[MAX_GTIMERS];

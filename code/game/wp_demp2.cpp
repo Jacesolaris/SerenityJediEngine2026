@@ -91,100 +91,119 @@ static void WP_DEMP2_MainFire(gentity_t* ent)
 //--------------------------------------------------
 void DEMP2_AltRadiusDamage(gentity_t* ent)
 {
-	float frac = (level.time - ent->fx_time) / 1300.0f; // synchronize with demp2 effect
-	gentity_t* entity_list[MAX_GENTITIES];
-	int i;
-	vec3_t mins{}, maxs{};
-	vec3_t v{}, dir;
+    // SAFETY: ent may be NULL in edge cases
+    if (ent == NULL)
+    {
+        Com_Printf(S_COLOR_YELLOW "DEMP2_AltRadiusDamage: NULL ent\n");
+        return;
+    }
 
-	frac *= frac * frac;
-	// yes, this is completely ridiculous...but it causes the shell to grow slowly then "explode" at the end
+    float frac = (level.time - ent->fx_time) / 1300.0f;
 
-	const float radius = frac * 200.0f;
-	// 200 is max radius...the model is aprox. 100 units tall...the fx draw code mults. this by 2.
+    // Allocate entity list on heap instead of stack (fixes C6262)
+    gentity_t** entity_list = (gentity_t**)G_Alloc(sizeof(gentity_t*) * MAX_GENTITIES);
+    if (entity_list == NULL)
+    {
+        Com_Printf(S_COLOR_YELLOW "DEMP2_AltRadiusDamage: Failed to allocate entity_list\n");
+        return;
+    }
 
-	for (i = 0; i < 3; i++)
-	{
-		mins[i] = ent->currentOrigin[i] - radius;
-		maxs[i] = ent->currentOrigin[i] + radius;
-	}
+    vec3_t mins = {0}, maxs = {0};
+    vec3_t v, dir;
 
-	const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+    frac *= frac * frac;
 
-	for (int e = 0; e < num_listed_entities; e++)
-	{
-		gentity_t* gent = entity_list[e];
+    const float radius = frac * 200.0f;
 
-		if (!gent->takedamage || !gent->contents)
-		{
-			continue;
-		}
+    for (int i = 0; i < 3; i++)
+    {
+        mins[i] = ent->currentOrigin[i] - radius;
+        maxs[i] = ent->currentOrigin[i] + radius;
+    }
 
-		// find the distance from the edge of the bounding box
-		for (i = 0; i < 3; i++)
-		{
-			if (ent->currentOrigin[i] < gent->absmin[i])
-			{
-				v[i] = gent->absmin[i] - ent->currentOrigin[i];
-			}
-			else if (ent->currentOrigin[i] > gent->absmax[i])
-			{
-				v[i] = ent->currentOrigin[i] - gent->absmax[i];
-			}
-			else
-			{
-				v[i] = 0;
-			}
-		}
+    const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
-		// shape is an ellipsoid, so cut vertical distance in half`
-		v[2] *= 0.5f;
+    for (int e = 0; e < num_listed_entities; e++)
+    {
+        gentity_t* gent = entity_list[e];
 
-		const float dist = VectorLength(v);
+        if (gent == NULL || gent->takedamage == qfalse || gent->contents == 0)
+        {
+            continue;
+        }
 
-		if (dist >= radius)
-		{
-			// shockwave hasn't hit them yet
-			continue;
-		}
+        // Distance from bounding box edge
+        for (int i = 0; i < 3; i++)
+        {
+            if (ent->currentOrigin[i] < gent->absmin[i])
+            {
+                v[i] = gent->absmin[i] - ent->currentOrigin[i];
+            }
+            else if (ent->currentOrigin[i] > gent->absmax[i])
+            {
+                v[i] = ent->currentOrigin[i] - gent->absmax[i];
+            }
+            else
+            {
+                v[i] = 0.0f;
+            }
+        }
 
-		if (dist < ent->radius)
-		{
-			// shockwave has already hit this thing...
-			continue;
-		}
+        // Ellipsoid vertical compression
+        v[2] *= 0.5f;
 
-		VectorCopy(gent->currentOrigin, v);
-		VectorSubtract(v, ent->currentOrigin, dir);
+        const float dist = VectorLength(v);
 
-		// push the center of mass higher than the origin so players get knocked into the air more
-		dir[2] += 12;
+        if (dist >= radius)
+        {
+            continue;
+        }
 
-		G_Damage(gent, ent, ent->owner, dir, ent->currentOrigin, weaponData[WP_DEMP2].altDamage, DAMAGE_DEATH_KNOCKBACK,
-			ent->splashMethodOfDeath);
-		if (gent->takedamage && gent->client)
-		{
-			gent->s.powerups |= 1 << PW_SHOCKED;
-			gent->client->ps.powerups[PW_SHOCKED] = level.time + 2000;
-			Saboteur_Decloak(gent, Q_irand(3000, 10000));
-			if (gent->client->ps.powerups[PW_CLOAKED])
-			{
-				//disable cloak temporarily
-				player_Decloak(gent);
-				gent->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
-			}
-		}
-	}
+        if (dist < ent->radius)
+        {
+            continue;
+        }
 
-	// store the last fraction so that next time around we can test against those things that fall between that last point and where the current shockwave edge is
-	ent->radius = radius;
+        VectorCopy(gent->currentOrigin, v);
+        VectorSubtract(v, ent->currentOrigin, dir);
 
-	if (frac < 1.0f)
-	{
-		// shock is still happening so continue letting it expand
-		ent->nextthink = level.time + 50;
-	}
+        dir[2] += 12.0f;
+
+        G_Damage(
+            gent,
+            ent,
+            ent->owner,
+            dir,
+            ent->currentOrigin,
+            weaponData[WP_DEMP2].altDamage,
+            DAMAGE_DEATH_KNOCKBACK,
+            ent->splashMethodOfDeath
+        );
+
+        if (gent->takedamage == qtrue && gent->client != NULL)
+        {
+            gent->s.powerups |= (1 << PW_SHOCKED);
+            gent->client->ps.powerups[PW_SHOCKED] = level.time + 2000;
+
+            Saboteur_Decloak(gent, Q_irand(3000, 10000));
+
+            if (gent->client->ps.powerups[PW_CLOAKED])
+            {
+                player_Decloak(gent);
+                gent->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
+            }
+        }
+    }
+
+    // Update shockwave radius
+    ent->radius = radius;
+
+    if (frac < 1.0f)
+    {
+        ent->nextthink = level.time + 50;
+    }
 }
+
 
 //---------------------------------------------------------
 void DEMP2_AltDetonate(gentity_t* ent)

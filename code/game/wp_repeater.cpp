@@ -147,59 +147,73 @@ static void WP_RepeaterAltFire(gentity_t* ent)
 void WP_FireRepeater(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
-	vec3_t angs;
+	// SAFETY: ent or ent->client may be NULL in edge cases
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireRepeater: NULL ent or ent->client\n");
+		return;
+	}
 
+	vec3_t angs;
 	vectoangles(forward_vec, angs);
 
-	if (alt_fire)
+	if (alt_fire == qtrue)
 	{
 		WP_RepeaterAltFire(ent);
+		return;
 	}
-	else
+
+	vec3_t dir;
+
+	// AIM / SPREAD LOGIC
+	if (ent->client->NPC_class == CLASS_VEHICLE)
 	{
-		vec3_t dir;
-		if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
+		// Vehicles: no inherent aim screw up
+	}
+	else if (NPC_IsNotHavingEnoughForceSight(ent) == qtrue)
+	{
+		const qboolean is_player_or_controlled =
+			((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))
+			? qtrue : qfalse;
+
+		if (is_player_or_controlled == qtrue)
 		{
-			//no inherent aim screw up
-		}
-		else if (NPC_IsNotHavingEnoughForceSight(ent))
-		{//force sight 2+ gives perfect aim
-			if (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent))
+			if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim))
-				{// firing position
-					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
-					angs[YAW] += Q_flrand(-0.0f, 0.0f);
+				angs[PITCH] += Q_flrand(-0.0f, 0.0f);
+				angs[YAW] += Q_flrand(-0.0f, 0.0f);
+			}
+			else
+			{
+				if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
+					ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+				{
+					angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
+					angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
+				}
+				else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
+					ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+				{
+					angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
+					angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-					{ // running or very fatigued
-						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
-						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
-					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-					{//walking or fatigued a bit
-						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
-						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
-					}
-					else
-					{// just standing
-						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-					}
+					angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+					angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 				}
 			}
-			else
-			{// add some slop to the fire direction for NPC,s
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-			}
 		}
-
-		AngleVectors(angs, dir, nullptr, nullptr);
-
-		// FIXME: if temp_org does not have clear trace to inside the bbox, don't shoot!
-		WP_RepeaterMainFire(ent, dir);
+		else
+		{
+			// NPC spread
+			angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+			angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+		}
 	}
+
+	AngleVectors(angs, dir, NULL, NULL);
+
+	// Fire main repeater shot
+	WP_RepeaterMainFire(ent, dir);
 }

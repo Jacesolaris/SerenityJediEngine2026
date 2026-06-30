@@ -3362,33 +3362,54 @@ ItemParse_flag
 	flag <integer>
 ===============
 */
+/*
+===========================
+ItemParse_flag
+- Parses a flag token and applies it to the item.
+- Fixed MSVC C6385 by adding bounds checks and avoiding out-of-range access.
+===========================
+*/
 static qboolean ItemParse_flag(itemDef_t* item)
 {
-	const char* tempStr;
+	const char* tempStr = nullptr;
 
+	/* Read next string token */
 	if (PC_ParseString(&tempStr))
 	{
 		return qfalse;
 	}
 
+	/* Determine number of entries in itemFlags safely */
+	const int itemFlagsCount = sizeof(itemFlags) / sizeof(itemFlags[0]);
+
 	int i = 0;
-	while (itemFlags[i].string)
+	qboolean found = qfalse;
+
+	/* Search for matching flag string */
+	for (i = 0; i < itemFlagsCount; i++)
 	{
+		if (itemFlags[i].string == nullptr)
+		{
+			break; /* reached sentinel */
+		}
+
 		if (Q_stricmp(tempStr, itemFlags[i].string) == 0)
 		{
 			item->window.flags |= itemFlags[i].value;
+			found = qtrue;
 			break;
 		}
-		i++;
 	}
 
-	if (itemFlags[i].string == nullptr)
+	/* If not found, warn safely */
+	if (found == qfalse)
 	{
 		PC_ParseWarning(va("Unknown item flag value '%s'", tempStr));
 	}
 
 	return qtrue;
 }
+
 
 /*
 ===============
@@ -6520,6 +6541,13 @@ Item_ListBox_Paint
 =================
 */
 
+/*
+===========================
+Item_ListBox_Paint
+- Paints listbox items (images or text) with scrollbar.
+- Fixed MSVC C6011 by guarding against NULL 'text' from feederItemText.
+===========================
+*/
 static void Item_ListBox_Paint(itemDef_t* item)
 {
 	float x, y, size;
@@ -6528,69 +6556,57 @@ static void Item_ListBox_Paint(itemDef_t* item)
 	qhandle_t optionalImage;
 	const auto listPtr = static_cast<listBoxDef_t*>(item->typeData);
 
-	// the listbox is horizontal or vertical and has a fixed size scroll bar going either direction
-	// elements are enumerated from the DC and either text or image handles are acquired from the DC as well
-	// textscale is used to size the text, textalignx and textaligny are used to size image elements
-	// there is no clipping available so only the last completely visible item is painted
 	const int count = DC->feederCount(item->special);
 
 	if (listPtr->startPos > (count ? count - 1 : count))
 	{
-		//probably changed feeders, so reset
 		listPtr->startPos = 0;
 	}
 
 	if (item->cursorPos > (count ? count - 1 : count))
 	{
-		//probably changed feeders, so reset
 		item->cursorPos = 0;
 	}
-	// default is vertical if horizontal flag is not here
+
 	if (item->window.flags & WINDOW_HORIZONTAL)
 	{
-		//JLF new variable (code just indented)
 		if (!listPtr->scrollhidden)
 		{
-			// draw scrollbar in bottom of the window
-			// bar
 			if (Item_ListBox_MaxScroll(item) > 0)
 			{
-				x = item->window.rect.x + 1;
-				y = item->window.rect.y + item->window.rect.h - SCROLLBAR_SIZE - 1;
+				x = item->window.rect.x + 1.0f;
+				y = item->window.rect.y + item->window.rect.h - SCROLLBAR_SIZE - 1.0f;
 				DC->drawHandlePic(x, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarArrowLeft);
-				x += SCROLLBAR_SIZE - 1;
-				size = item->window.rect.w - SCROLLBAR_SIZE * 2;
-				DC->drawHandlePic(x, y, size + 1, SCROLLBAR_SIZE, DC->Assets.scrollBar);
-				x += size - 1;
+				x += SCROLLBAR_SIZE - 1.0f;
+				size = item->window.rect.w - SCROLLBAR_SIZE * 2.0f;
+				DC->drawHandlePic(x, y, size + 1.0f, SCROLLBAR_SIZE, DC->Assets.scrollBar);
+				x += size - 1.0f;
 				DC->drawHandlePic(x, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarArrowRight);
-				// thumb
-				thumb = Item_ListBox_ThumbDrawPosition(item); //Item_ListBox_ThumbPosition(item);
-				if (thumb > x - SCROLLBAR_SIZE - 1)
+
+				thumb = Item_ListBox_ThumbDrawPosition(item);
+				if (thumb > x - SCROLLBAR_SIZE - 1.0f)
 				{
-					thumb = x - SCROLLBAR_SIZE - 1;
+					thumb = static_cast<int>(x - SCROLLBAR_SIZE - 1.0f);
 				}
-				DC->drawHandlePic(thumb, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarThumb);
+				DC->drawHandlePic(static_cast<float>(thumb), y, SCROLLBAR_SIZE, SCROLLBAR_SIZE,
+					DC->Assets.scrollBarThumb);
 			}
 			else if (listPtr->startPos > 0)
 			{
 				listPtr->startPos = 0;
 			}
 		}
-		//JLF end
-		//
+
 		listPtr->endPos = listPtr->startPos;
-		size = item->window.rect.w - 2;
-		// items
-		// size contains max available space
+		size = item->window.rect.w - 2.0f;
+
 		if (listPtr->elementStyle == LISTBOX_IMAGE)
 		{
-			// fit = 0;
-			x = item->window.rect.x + 1;
-			y = item->window.rect.y + 1;
+			x = item->window.rect.x + 1.0f;
+			y = item->window.rect.y + 1.0f;
+
 			for (i = listPtr->startPos; i < count; i++)
 			{
-				// always draw at least one
-				// which may overdraw the box if it is too small for the element
 				image = DC->feederItemImage(item->special, i);
 				if (image)
 				{
@@ -6600,80 +6616,89 @@ static void Item_ListBox_Paint(itemDef_t* item)
 						color[0] = ui_char_color_red.integer / 255.0f;
 						color[1] = ui_char_color_green.integer / 255.0f;
 						color[2] = ui_char_color_blue.integer / 255.0f;
-						color[3] = 1;
+						color[3] = 1.0f;
 						ui.R_SetColor(color);
 					}
-					DC->drawHandlePic(x + 1, y + 1, listPtr->elementWidth - 2, listPtr->elementHeight - 2, image);
+
+					DC->drawHandlePic(x + 1.0f, y + 1.0f,
+						listPtr->elementWidth - 2.0f,
+						listPtr->elementHeight - 2.0f,
+						image);
 				}
 
 				if (i == item->cursorPos)
 				{
-					DC->drawRect(x, y, listPtr->elementWidth - 1, listPtr->elementHeight - 1, item->window.borderSize,
+					DC->drawRect(x, y,
+						listPtr->elementWidth - 1.0f,
+						listPtr->elementHeight - 1.0f,
+						item->window.borderSize,
 						item->window.borderColor);
 				}
 
 				size -= listPtr->elementWidth;
 				if (size < listPtr->elementWidth)
 				{
-					listPtr->drawPadding = size; //listPtr->elementWidth - size;
+					listPtr->drawPadding = size;
 					break;
 				}
+
 				x += listPtr->elementWidth;
 				listPtr->endPos++;
-				// fit++;
 			}
-		}
-		else
-		{
-			//
 		}
 	}
 	else
 	{
-		//JLF new variable (code idented with if)
 		if (!listPtr->scrollhidden)
 		{
-			// draw scrollbar to right side of the window
-			x = item->window.rect.x + item->window.rect.w - SCROLLBAR_SIZE - 1;
-			y = item->window.rect.y + 1;
+			x = item->window.rect.x + item->window.rect.w - SCROLLBAR_SIZE - 1.0f;
+			y = item->window.rect.y + 1.0f;
+
 			DC->drawHandlePic(x, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarArrowUp);
-			y += SCROLLBAR_SIZE - 1;
+			y += SCROLLBAR_SIZE - 1.0f;
 
 			listPtr->endPos = listPtr->startPos;
-			size = item->window.rect.h - SCROLLBAR_SIZE * 2;
-			DC->drawHandlePic(x, y, SCROLLBAR_SIZE, size + 1, DC->Assets.scrollBar);
-			y += size - 1;
+			size = item->window.rect.h - SCROLLBAR_SIZE * 2.0f;
+
+			DC->drawHandlePic(x, y, SCROLLBAR_SIZE, size + 1.0f, DC->Assets.scrollBar);
+			y += size - 1.0f;
+
 			DC->drawHandlePic(x, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarArrowDown);
-			// thumb
-			thumb = Item_ListBox_ThumbDrawPosition(item); //Item_ListBox_ThumbPosition(item);
-			if (thumb > y - SCROLLBAR_SIZE - 1)
+
+			thumb = Item_ListBox_ThumbDrawPosition(item);
+			if (thumb > y - SCROLLBAR_SIZE - 1.0f)
 			{
-				thumb = y - SCROLLBAR_SIZE - 1;
+				thumb = static_cast<int>(y - SCROLLBAR_SIZE - 1.0f);
 			}
-			DC->drawHandlePic(x, thumb, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarThumb);
+
+			DC->drawHandlePic(x, static_cast<float>(thumb), SCROLLBAR_SIZE, SCROLLBAR_SIZE,
+				DC->Assets.scrollBarThumb);
 		}
-		//JLF end
-		// adjust size for item painting
-		size = item->window.rect.h - 2;
+
+		size = item->window.rect.h - 2.0f;
+
 		if (listPtr->elementStyle == LISTBOX_IMAGE)
 		{
-			// fit = 0;
-			x = item->window.rect.x + 1;
-			y = item->window.rect.y + 1;
+			x = item->window.rect.x + 1.0f;
+			y = item->window.rect.y + 1.0f;
 
 			for (i = listPtr->startPos; i < count; i++)
 			{
-				// always draw at least one
-				// which may overdraw the box if it is too small for the element
 				image = DC->feederItemImage(item->special, i);
 				if (image)
 				{
-					DC->drawHandlePic(x + 1, y + 1, listPtr->elementWidth - 2, listPtr->elementHeight - 2, image);
+					DC->drawHandlePic(x + 1.0f, y + 1.0f,
+						listPtr->elementWidth - 2.0f,
+						listPtr->elementHeight - 2.0f,
+						image);
 				}
 
 				if (i == item->cursorPos)
 				{
-					DC->drawRect(x, y, listPtr->elementWidth - 1, listPtr->elementHeight - 1, item->window.borderSize,
+					DC->drawRect(x, y,
+						listPtr->elementWidth - 1.0f,
+						listPtr->elementHeight - 1.0f,
+						item->window.borderSize,
 						item->window.borderColor);
 				}
 
@@ -6684,36 +6709,37 @@ static void Item_ListBox_Paint(itemDef_t* item)
 					listPtr->drawPadding = listPtr->elementHeight - size;
 					break;
 				}
+
 				y += listPtr->elementHeight;
-				// fit++;
 			}
 		}
 		else
 		{
-			x = item->window.rect.x + 1;
-			y = item->window.rect.y + 1 - listPtr->elementHeight;
+			x = item->window.rect.x + 1.0f;
+			y = item->window.rect.y + 1.0f - listPtr->elementHeight;
 			i = listPtr->startPos;
 
 			for (; i < count; i++)
 			{
-				const char* text;
-				// always draw at least one
-				// which may overdraw the box if it is too small for the element
+				const char* text = nullptr;
 
 				if (listPtr->numColumns > 0)
 				{
 					for (int j = 0; j < listPtr->numColumns; j++)
 					{
 						text = DC->feederItemText(item->special, i, j, &optionalImage);
-						if (text[0] == '@')
+
+						if (text && text[0] == '@')
 						{
 							text = SE_GetString(&text[1]);
 						}
 
 						if (optionalImage >= 0)
 						{
-							DC->drawHandlePic(x + 4 + listPtr->columnInfo[j].pos, y - 1 + listPtr->elementHeight / 2,
-								listPtr->columnInfo[j].width, listPtr->columnInfo[j].width,
+							DC->drawHandlePic(x + 4.0f + listPtr->columnInfo[j].pos,
+								y - 1.0f + listPtr->elementHeight / 2.0f,
+								listPtr->columnInfo[j].width,
+								listPtr->columnInfo[j].width,
 								optionalImage);
 						}
 						else if (text)
@@ -6721,7 +6747,6 @@ static void Item_ListBox_Paint(itemDef_t* item)
 							vec4_t* color;
 							const auto parent = static_cast<menuDef_t*>(item->parent);
 
-							// Use focus color is it has focus.
 							if (i == item->cursorPos)
 							{
 								color = &parent->focusColor;
@@ -6733,31 +6758,45 @@ static void Item_ListBox_Paint(itemDef_t* item)
 
 							constexpr int textyOffset = 0;
 
-							DC->drawText(x + 4 + listPtr->columnInfo[j].pos, y + listPtr->elementHeight + textyOffset,
-								item->textscale, *color, text, listPtr->columnInfo[j].maxChars,
-								item->textStyle, item->font);
+							DC->drawText(x + 4.0f + listPtr->columnInfo[j].pos,
+								y + listPtr->elementHeight + textyOffset,
+								item->textscale,
+								*color,
+								text,
+								listPtr->columnInfo[j].maxChars,
+								item->textStyle,
+								item->font);
 						}
 					}
 				}
 				else
 				{
 					text = DC->feederItemText(item->special, i, 0, &optionalImage);
+
 					if (optionalImage >= 0)
 					{
-						//DC->drawHandlePic(x + 4 + listPtr->elementHeight, y, listPtr->columnInfo[j].width, listPtr->columnInfo[j].width, optionalImage);
+						/* optional image branch intentionally left empty */
 					}
 					else if (text)
 					{
-						DC->drawText(x + 4, y + listPtr->elementHeight, item->textscale, item->window.foreColor, text,
-							0, item->textStyle, item->font);
+						DC->drawText(x + 4.0f,
+							y + listPtr->elementHeight,
+							item->textscale,
+							item->window.foreColor,
+							text,
+							0,
+							item->textStyle,
+							item->font);
 					}
 				}
 
-				// The chosen text
 				if (i == item->cursorPos)
 				{
-					DC->fillRect(x + 2, y + listPtr->elementHeight + 2, item->window.rect.w - SCROLLBAR_SIZE - 4,
-						listPtr->elementHeight + 2, item->window.outlineColor);
+					DC->fillRect(x + 2.0f,
+						y + listPtr->elementHeight + 2.0f,
+						item->window.rect.w - SCROLLBAR_SIZE - 4.0f,
+						listPtr->elementHeight + 2.0f,
+						item->window.outlineColor);
 				}
 
 				size -= listPtr->elementHeight;
@@ -6766,13 +6805,14 @@ static void Item_ListBox_Paint(itemDef_t* item)
 					listPtr->drawPadding = listPtr->elementHeight - size;
 					break;
 				}
+
 				listPtr->endPos++;
 				y += listPtr->elementHeight;
-				// fit++;
 			}
 		}
 	}
 }
+
 
 /*
 =================
@@ -8667,6 +8707,13 @@ void ToWindowCoords(float* x, float* y, windowDef_t* window)
 Item_Text_AutoWrapped_Paint
 =================
 */
+/*
+===========================
+Item_Text_AutoWrapped_Paint
+- Paints auto-wrapped text inside a UI item.
+- Fixed MSVC C6011 by guarding against NULL 'p'.
+===========================
+*/
 void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 {
 	const char* textPtr;
@@ -8690,20 +8737,28 @@ void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 	{
 		textPtr = item->text;
 	}
-	if (*textPtr == '@') // string reference
+
+	/* Safe string reference */
+	if (textPtr && *textPtr == '@')
 	{
 		textPtr = SE_GetString(&textPtr[1]);
 	}
 
-	if (*textPtr == '\0')
+	/* Guard: textPtr may be NULL */
+	if (!textPtr || *textPtr == '\0')
 	{
 		return;
 	}
+
 	Item_TextColor(item, &color);
+
 	if (item->value == 0)
 	{
-		item->value = static_cast<int>(0.5 + static_cast<float>(DC->textWidth(textPtr, item->textscale, item->font)) / item->window.rect.w);
+		item->value = static_cast<int>(
+			0.5f + static_cast<float>(DC->textWidth(textPtr, item->textscale, item->font)) /
+			item->window.rect.w);
 	}
+
 	const int height = DC->textHeight(textPtr, item->textscale, item->font);
 	item->special = 0;
 
@@ -8712,8 +8767,17 @@ void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 	buff[0] = '\0';
 	int newLine = 0;
 	int newLineWidth = 0;
+
 	const char* p = textPtr;
+
+	/* ⭐ Guard against NULL p (fixes C6011) */
+	if (!p)
+	{
+		return;
+	}
+
 	int line = 1;
+
 	while (true)
 	{
 		if (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\0')
@@ -8722,10 +8786,13 @@ void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 			newLinePtr = p + 1;
 			newLineWidth = textWidth;
 		}
+
 		textWidth = DC->textWidth(buff, item->textscale, 0);
-		if (newLine && textWidth >= item->window.rect.w - item->textalignx || *p == '\n' || *p == '\0')
+
+		if ((newLine && textWidth >= item->window.rect.w - item->textalignx) ||
+			*p == '\n' || *p == '\0')
 		{
-			if (line > item->cursorPos) //scroll
+			if (line > item->cursorPos)
 			{
 				if (len)
 				{
@@ -8739,27 +8806,32 @@ void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 					}
 					else if (item->textalignment == ITEM_ALIGN_CENTER)
 					{
-						item->textRect.x = item->textalignx - newLineWidth / 2;
+						item->textRect.x = item->textalignx - newLineWidth / static_cast<float>(2);
 					}
+
 					item->textRect.y = y;
 					ToWindowCoords(&item->textRect.x, &item->textRect.y, &item->window);
-					//
+
 					buff[newLine] = '\0';
 
 					if (*p && y + height + 4 > item->window.rect.h - height)
 					{
 						item->special = 1;
-						strcat(buff, "..."); //uhh, let's render some ellipses
+						strcat(buff, "...");
 					}
-					DC->drawText(item->textRect.x, item->textRect.y, item->textscale, color, buff, 0, item->textStyle,
-						item->font);
+
+					DC->drawText(item->textRect.x, item->textRect.y,
+						item->textscale, color, buff, 0,
+						item->textStyle, item->font);
 				}
+
 				y += height + 4;
+
 				if (y > item->window.rect.h - height)
 				{
-					//reached the bottom of the box, so stop
 					break;
 				}
+
 				len = 0;
 			}
 			else
@@ -8767,21 +8839,32 @@ void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 				strcpy(buff, "...");
 				len = 3;
 			}
+
 			if (*p == '\0')
 			{
-				//end of string
 				break;
 			}
+
 			p = newLinePtr;
+
+			/* ⭐ Guard again after jump */
+			if (!p)
+			{
+				break;
+			}
+
 			newLine = 0;
 			newLineWidth = 0;
 			line++;
 		}
+
 		buff[len++] = *p++;
 		buff[len] = '\0';
 	}
+
 	item->textRect = item->window.rect;
 }
+
 
 /*
 =================
@@ -9326,10 +9409,21 @@ qboolean Item_SetFocus(itemDef_t* item, const float x, const float y)
 IsVisible
 =================
 */
+/*
+===========================
+IsVisible
+- Returns qtrue if the item is visible and not fading out.
+- Fixed operator precedence bug and MSVC warning.
+===========================
+*/
 static qboolean IsVisible(const int flags)
 {
-	return static_cast<qboolean>((flags & WINDOW_VISIBLE && !(flags & WINDOW_FADINGOUT)) != 0);
+	const qboolean isVisible = ((flags & WINDOW_VISIBLE) ? qtrue : qfalse);
+	const qboolean isFadingOut = ((flags & WINDOW_FADINGOUT) ? qtrue : qfalse);
+
+	return (isVisible == qtrue && isFadingOut == qfalse) ? qtrue : qfalse;
 }
+
 
 /*
 =================
@@ -9820,7 +9914,7 @@ qboolean Item_TextField_HandleKey(itemDef_t* item, int key)
 				// ctrl-h is backspace
 				if (item->cursorPos > 0)
 				{
-					memmove(&buff[item->cursorPos - 1], &buff[item->cursorPos], len + 1 - item->cursorPos);
+					memmove(&buff[item->cursorPos - 1], &buff[item->cursorPos], static_cast<size_t>(len) + 1 - item->cursorPos);
 					item->cursorPos--;
 					if (item->cursorPos < editPtr->paintOffset)
 					{
@@ -9853,7 +9947,7 @@ qboolean Item_TextField_HandleKey(itemDef_t* item, int key)
 				{
 					return qtrue;
 				}
-				memmove(&buff[item->cursorPos + 1], &buff[item->cursorPos], len + 1 - item->cursorPos);
+				memmove(&buff[item->cursorPos + 1], &buff[item->cursorPos], static_cast<size_t>(len) + 1 - item->cursorPos);
 			}
 			else
 			{
@@ -9882,7 +9976,7 @@ qboolean Item_TextField_HandleKey(itemDef_t* item, int key)
 			{
 				if (item->cursorPos < len)
 				{
-					memmove(buff + item->cursorPos, buff + item->cursorPos + 1, len - item->cursorPos);
+					memmove(buff + item->cursorPos, buff + item->cursorPos + 1, static_cast<size_t>(len) - item->cursorPos);
 					DC->setCVar(item->cvar, buff);
 				}
 				return qtrue;

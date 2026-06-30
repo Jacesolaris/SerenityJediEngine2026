@@ -923,7 +923,7 @@ namespace ojk
 			'/',
 			'_');
 
-		if (com_outcast->integer == 0)
+		if (com_outcast && com_outcast->integer == 0)
 		{
 			if (!g_newgameplusJKA->integer)
 			{
@@ -931,7 +931,7 @@ namespace ojk
 			}
 			return "Account/Saved-Missions-JediAcademyplus/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 1)
+		else if (com_outcast && com_outcast->integer == 1)
 		{
 			if (!g_newgameplusJKO->integer)
 			{
@@ -939,31 +939,31 @@ namespace ojk
 			}
 			return "Account/Saved-Missions-JediOutcastplus/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 2)//playing creative
+		else if (com_outcast && com_outcast->integer == 2)//playing creative
 		{
 			return "Account/Saved-Missions-JediCreative/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 3) //playing yav
+		else if (com_outcast && com_outcast->integer == 3) //playing yav
 		{
 			return "Account/Saved-Missions-Yavin4/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 4) //playing darkforces
+		else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 		{
 			return "Account/Saved-Missions-DarkForces/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 5) //playing kotor
+		else if (com_outcast && com_outcast->integer == 5) //playing kotor
 		{
 			return "Account/Saved-Missions-Kotor/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 6) // playing survival
+		else if (com_outcast && com_outcast->integer == 6) // playing survival
 		{
 			return "Account/Saved-Missions-Survival/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 7) // playing nina
+		else if (com_outcast && com_outcast->integer == 7) // playing nina
 		{
 			return "Account/Saved-Missions-Nina/" + normalized_file_name + ".sav";
 		}
-		else if (com_outcast->integer == 8) // playing veng
+		else if (com_outcast && com_outcast->integer == 8) // playing veng
 		{
 			return "Account/Saved-Missions-Veng/" + normalized_file_name + ".sav";
 		}

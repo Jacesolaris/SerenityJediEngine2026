@@ -6496,7 +6496,7 @@ static void Jedi_EvasionSaber(vec3_t enemy_movedir, const float enemy_dist, vec3
 					vec3_t saber_move_dir;
 					const gentity_t* saber = &g_entities[NPC->enemy->client->ps.saberEntityNum];
 					VectorSubtract(NPC->currentOrigin, saber->currentOrigin, saber_dir2_me);
-					const float saber_dist = VectorNormalize(saber_dir2_me);
+					const float sabers_dist = VectorNormalize(saber_dir2_me);
 					VectorCopy(saber->s.pos.trDelta, saber_move_dir);
 					VectorNormalize(saber_move_dir);
 					if (!Q_irand(0, 3))
@@ -6506,12 +6506,12 @@ static void Jedi_EvasionSaber(vec3_t enemy_movedir, const float enemy_dist, vec3
 					if (DotProduct(saber_move_dir, saber_dir2_me) > 0.5)
 					{
 						//it's heading towards me
-						if (saber_dist < 100)
+						if (sabers_dist < 100)
 						{
 							//it's close
 							which_defense = Q_irand(3, 6);
 						}
-						else if (saber_dist < 200)
+						else if (sabers_dist < 200)
 						{
 							//got some time, yet, try pushing
 							which_defense = Q_irand(0, 8);
@@ -9589,13 +9589,13 @@ static void Jedi_Patrol(void)
 					const gentity_t* saber = &g_entities[enemy->client->ps.saberEntityNum];
 
 					VectorSubtract(NPC->currentOrigin, saber->currentOrigin, saber_dir2_me);
-					const float saber_dist = VectorNormalize(saber_dir2_me);
+					const float sabers_dist = VectorNormalize(saber_dir2_me);
 
 					VectorCopy(saber->s.pos.trDelta, saber_move_dir);
 					VectorNormalize(saber_move_dir);
 
 					if (DotProduct(saber_move_dir, saber_dir2_me) > 0.5f &&
-						saber_dist < 200.0f)
+						sabers_dist < 200.0f)
 					{
 						G_SetEnemy(NPC, enemy);
 						NPCInfo->stats.aggression = 3;
@@ -9952,28 +9952,30 @@ static qboolean Jedi_CheckKataAttack()
 						//not going to try to jump
 						// --- Special attack frequency modifier ---
 						float freqMod = 1.0f;
-						if (g_npcSpecialAttackFreq && g_npcSpecialAttackFreq->value > 0.0f) {
+						if (g_npcSpecialAttackFreq && g_npcSpecialAttackFreq->value > 0.0f)
+						{
 							freqMod = g_npcSpecialAttackFreq->value;
 						}
 						// Clamp to [0.01, 10.0] for sanity
 						if (freqMod < 0.01f) freqMod = 0.01f;
 						if (freqMod > 10.0f) freqMod = 10.0f;
 
-						// The original logic: Q_irand(0, g_spskill->integer + 1) && !Q_irand(0, 9)
-						// We'll use freqMod to scale the chance:
-						// If freqMod < 1, specials are rarer; if > 1, more frequent
 						bool doSpecial = false;
-						if (Q_irand(0, g_spskill->integer + 1) && !Q_irand(0, 9)) {
+						if (Q_irand(0, g_spskill->integer + 1) && !Q_irand(0, 9))
+						{
 							// Default chance
-							if (freqMod >= 1.0f || Q_flrand(0.0f, 1.0f) < freqMod) {
+							if (freqMod >= 1.0f || Q_flrand(0.0f, 1.0f) < freqMod)
+							{
 								doSpecial = true;
 							}
 						}
-						else if (freqMod < 1.0f && Q_flrand(0.0f, 1.0f) < freqMod) {
+						else if (freqMod < 1.0f && Q_flrand(0.0f, 1.0f) < freqMod)
+						{
 							// If freqMod is low, allow a rare special even if the above failed
 							doSpecial = true;
 						}
-						if (doSpecial) {
+						if (doSpecial)
+						{
 							ucmd.upmove = 0;
 							VectorClear(NPC->client->ps.moveDir);
 							if (g_saberNewControlScheme->integer)

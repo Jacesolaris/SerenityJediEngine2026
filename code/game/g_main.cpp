@@ -737,39 +737,39 @@ static void G_InitCvars()
 
 	g_speederControlScheme = gi.cvar("g_speederControlScheme", "2", CVAR_ARCHIVE); //2 is default, 1 is alternate
 
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_hm", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		g_char_model = gi.cvar("g_char_model", "kyle", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_hm", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_hm", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		g_char_model = gi.cvar("g_char_model", "df2_kyle", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_hm", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 6) //playing survival
+	else if (com_outcast && com_outcast->integer == 6) //playing survival
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_hm", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 7) //playing nina
+	else if (com_outcast && com_outcast->integer == 7) //playing nina
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_nina", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 8) //playing veng
+	else if (com_outcast && com_outcast->integer == 8) //playing veng
 	{
 		g_char_model = gi.cvar("g_char_model", "jedi_hf", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
@@ -937,39 +937,39 @@ static void init_game(const char* mapname, const char* spawntarget, const int ch
 
 	//Load sabers.cfg data
 
-	if (com_outcast->integer == 0) //academy
+	if (com_outcast && com_outcast->integer == 0) //academy
 	{
 		WP_SaberLoadParms();
 	}
-	else if (com_outcast->integer == 1)//playing outcast
+	else if (com_outcast && com_outcast->integer == 1)//playing outcast
 	{
 		WP_SaberLoadParms(); //outcast version
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		WP_SaberLoadParms();
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		WP_SaberLoadParms_yav();
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		WP_SaberLoadParms();
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		WP_SaberLoadParms();
 	}
-	else if (com_outcast->integer == 6) //survival version
+	else if (com_outcast && com_outcast->integer == 6) //survival version
 	{
 		WP_SaberLoadParms();
 	}
-	else if (com_outcast->integer == 7) //nina version
+	else if (com_outcast && com_outcast->integer == 7) //nina version
 	{
 		WP_SaberLoadParms();
 	}
-	else if (com_outcast->integer == 8) //veng version
+	else if (com_outcast && com_outcast->integer == 8) //veng version
 	{
 		WP_SaberLoadParms();
 	}
@@ -1439,6 +1439,18 @@ static void G_CheckEndLevelTimers(gentity_t* ent)
 //rww - RAGDOLL_BEGIN
 class CGameRagDollUpdateParams final : public CRagDollUpdateParams
 {
+public:
+	CGameRagDollUpdateParams()
+	{
+		// Initialize effector accumulation vector
+		effectorTotal[0] = 0.0f;
+		effectorTotal[1] = 0.0f;
+		effectorTotal[2] = 0.0f;
+
+		// No effector data yet
+		hasEffectorData = qfalse;
+	}
+
 	void EffectorCollision(const SRagDollEffectorCollision& data) override
 	{
 		vec3_t effectorPosDif;
@@ -1476,8 +1488,8 @@ class CGameRagDollUpdateParams final : public CRagDollUpdateParams
 	}
 
 	void Collision() override
-		// we had a collision, please stop animating and (sometime soon) call SetRagDoll RP_DEATH_COLLISION
 	{
+		// collision occurred; ragdoll system will handle RP_DEATH_COLLISION soon
 	}
 
 #ifdef _DEBUG

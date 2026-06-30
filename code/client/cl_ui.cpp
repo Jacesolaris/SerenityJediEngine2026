@@ -329,39 +329,39 @@ void CL_GenericMenu_f()
 
 	if (cls.uiStarted)
 	{
-		if (cl_com_outcast->integer == 0)//academy version
+		if (cl_com_outcast && cl_com_outcast->integer == 0)//academy version
 		{
 			UI_SetActiveMenu("ingame", arg);
 		}
-		else if (cl_com_outcast->integer == 1)//outcast version
+		else if (cl_com_outcast && cl_com_outcast->integer == 1)//outcast version
 		{
 			UI_SetActiveMenu("ingame_jko", arg);
 		}
-		else if (cl_com_outcast->integer == 2)//mod version
+		else if (cl_com_outcast && cl_com_outcast->integer == 2)//mod version
 		{
 			UI_SetActiveMenu("ingame_cr", arg);
 		}
-		else if (cl_com_outcast->integer == 3)//yavIV version
+		else if (cl_com_outcast && cl_com_outcast->integer == 3)//yavIV version
 		{
 			UI_SetActiveMenu("ingame_yav", arg);
 		}
-		else if (cl_com_outcast->integer == 4)//darkforces version
+		else if (cl_com_outcast && cl_com_outcast->integer == 4)//darkforces version
 		{
 			UI_SetActiveMenu("ingame_df", arg);
 		}
-		else if (cl_com_outcast->integer == 5)//kotor version
+		else if (cl_com_outcast && cl_com_outcast->integer == 5)//kotor version
 		{
 			UI_SetActiveMenu("ingame_kt", arg);
 		}
-		else if (cl_com_outcast->integer == 6)//survival version
+		else if (cl_com_outcast && cl_com_outcast->integer == 6)//survival version
 		{
 			UI_SetActiveMenu("ingame_suv", arg);
 		}
-		else if (cl_com_outcast->integer == 7)//nina version
+		else if (cl_com_outcast && cl_com_outcast->integer == 7)//nina version
 		{
 			UI_SetActiveMenu("ingame_nina", arg);
 		}
-		else if (cl_com_outcast->integer == 8)//veng version
+		else if (cl_com_outcast && cl_com_outcast->integer == 8)//veng version
 		{
 			UI_SetActiveMenu("ingame_veng", arg);
 		}

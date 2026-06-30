@@ -45,7 +45,7 @@ model / sound configstring indexes
 */
 void G_DebugBBox(const vec3_t origin, const vec3_t mins, const vec3_t maxs, int time, int color)
 {
-	vec3_t corners[8];
+	vec3_t corners[8] = { 0 };
 
 	// Compute all 8 corners of the bounding box
 	for (int i = 0; i < 8; i++)
@@ -543,36 +543,47 @@ gentity_t* G_Find(gentity_t* from, const int fieldofs, const char* match)
 G_RadiusList - given an origin and a radius, return all entities that are in use that are within the list
 ============
 */
-int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore, const qboolean take_damage,
-	gentity_t* ent_list[MAX_GENTITIES])
+int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore,
+	const qboolean take_damage, gentity_t* ent_list[MAX_GENTITIES])
 {
-	gentity_t* entity_list[MAX_GENTITIES];
-	vec3_t mins{}, maxs{};
-	vec3_t v{};
+	// FIX: move large array off stack → static buffer
+	static gentity_t* entity_list[MAX_GENTITIES];
+
+	vec3_t mins = { 0, 0, 0 }, maxs = { 0, 0, 0 };
+	vec3_t v = { 0, 0, 0 };
 	int i;
 	int ent_count = 0;
 
-	if (radius < 1)
+	if (radius < 1.0f)
 	{
-		radius = 1;
+		radius = 1.0f;
 	}
 
+	// Build bounding box
 	for (i = 0; i < 3; i++)
 	{
 		mins[i] = origin[i] - radius;
 		maxs[i] = origin[i] + radius;
 	}
 
-	const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
-	radius *= radius; //square for the length squared below
+	const int num_listed_entities =
+		gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+	// Square radius for distance comparison
+	radius *= radius;
+
 	for (int e = 0; e < num_listed_entities; e++)
 	{
 		gentity_t* ent = entity_list[e];
 
-		if (ent == ignore || !ent->inuse || ent->takedamage != take_damage)
+		if (ent == ignore ||
+			ent->inuse == qfalse ||
+			ent->takedamage != take_damage)
+		{
 			continue;
+		}
 
-		// find the distance from the edge of the bounding box
+		// Distance from bounding box edge
 		for (i = 0; i < 3; i++)
 		{
 			if (origin[i] < ent->absmin[i])
@@ -585,23 +596,25 @@ int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore, const qbo
 			}
 			else
 			{
-				v[i] = 0;
+				v[i] = 0.0f;
 			}
 		}
 
 		const float dist = VectorLengthSquared(v);
+
 		if (dist >= radius)
 		{
 			continue;
 		}
 
-		// ok, we are within the radius, add us to the incoming list
+		// Within radius — add to output list
 		ent_list[ent_count] = ent;
 		ent_count++;
 	}
-	// we are done, return how many we found
+
 	return ent_count;
 }
+
 
 /*
 =============
@@ -1354,16 +1367,21 @@ of ent.  Ent should be unlinked before calling this!
 */
 void g_kill_box(gentity_t* ent)
 {
-	gentity_t* touch[MAX_GENTITIES];
-	vec3_t mins, maxs;
+	// FIX: move large array off stack → static buffer
+	static gentity_t* touch[MAX_GENTITIES];
+
+	vec3_t mins = { 0, 0, 0 };
+	vec3_t maxs = { 0, 0, 0 };
 
 	VectorAdd(ent->client->ps.origin, ent->mins, mins);
 	VectorAdd(ent->client->ps.origin, ent->maxs, maxs);
+
 	const int num = gi.EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
 
 	for (int i = 0; i < num; i++)
 	{
 		gentity_t* hit = touch[i];
+
 		if (!hit->client)
 		{
 			continue;
@@ -1372,14 +1390,16 @@ void g_kill_box(gentity_t* ent)
 		{
 			continue;
 		}
+
+		// NPC case: don't kill dead NPCs
 		if (ent->s.number && hit->client->ps.stats[STAT_HEALTH] <= 0)
 		{
-			//NPC
 			continue;
 		}
+
 		if (ent->s.number)
 		{
-			//NPC
+			// NPC
 			if (!(hit->contents & CONTENTS_BODY))
 			{
 				continue;
@@ -1387,18 +1407,19 @@ void g_kill_box(gentity_t* ent)
 		}
 		else
 		{
-			//player
+			// Player
 			if (!(hit->contents & ent->contents))
 			{
 				continue;
 			}
 		}
 
-		// nail it
-		G_Damage(hit, ent, ent, nullptr, nullptr,
+		// Nail it
+		G_Damage(hit, ent, ent, NULL, NULL,
 			100000, DAMAGE_NO_PROTECTION, MOD_UNKNOWN);
 	}
 }
+
 
 //==============================================================================
 
@@ -1886,23 +1907,26 @@ static qboolean G_IsTriggerUsable(const gentity_t* self, const gentity_t* other)
 	return qtrue;
 }
 
-static qboolean CanUseInfrontOfPartOfLevel(const gentity_t* ent) //originally from VV
+static qboolean CanUseInfrontOfPartOfLevel(const gentity_t* ent) // originally from VV
 {
-	gentity_t* touch[MAX_GENTITIES];
+	// FIX: move large array off stack → static buffer
+	static gentity_t* touch[MAX_GENTITIES];
+
 	vec3_t mins, maxs;
 	constexpr vec3_t range = { 40, 40, 52 };
 
-	if (!ent->client)
+	if (ent->client == NULL)
 	{
 		return qfalse;
 	}
 
+	// Build search box
 	VectorSubtract(ent->client->ps.origin, range, mins);
 	VectorAdd(ent->client->ps.origin, range, maxs);
 
 	const int num = gi.EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
 
-	// can't use ent->absmin, because that has a one unit pad
+	// Use tighter bounds (no 1‑unit pad)
 	VectorAdd(ent->client->ps.origin, ent->mins, mins);
 	VectorAdd(ent->client->ps.origin, ent->maxs, maxs);
 
@@ -1910,10 +1934,12 @@ static qboolean CanUseInfrontOfPartOfLevel(const gentity_t* ent) //originally fr
 	{
 		const gentity_t* hit = touch[i];
 
-		if (hit->e_TouchFunc == touchF_NULL && ent->e_TouchFunc == touchF_NULL)
+		if (hit->e_TouchFunc == touchF_NULL &&
+			ent->e_TouchFunc == touchF_NULL)
 		{
 			continue;
 		}
+
 		if (!(hit->contents & CONTENTS_TRIGGER))
 		{
 			continue;
@@ -1933,13 +1959,17 @@ static qboolean CanUseInfrontOfPartOfLevel(const gentity_t* ent) //originally fr
 				{
 					return qtrue;
 				}
+				break;
+
 			default:
 				continue;
 			}
 		}
 	}
+
 	return qfalse;
 }
+
 
 constexpr auto USE_DISTANCE = 64.0f;
 extern qboolean eweb_can_be_used(const gentity_t* self, const gentity_t* other, const gentity_t* activator);

@@ -317,17 +317,18 @@ If qfalse is returned, *obstacle will be the blocking entity
 */
 void NPC_RemoveBody(gentity_t* ent);
 
-static qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** obstacle)
+static qboolean G_MoverPush(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** obstacle)
 {
 	int i;
-	vec3_t mins, maxs;
-	int entity_list[MAX_GENTITIES];
-	vec3_t totalMins, totalMaxs;
+	vec3_t mins = { 0 }, maxs = { 0 };
+
+	// FIX: move large array off the stack (removes C6262)
+	static int entity_list[MAX_GENTITIES];
+
+	vec3_t totalMins = { 0 }, totalMaxs = { 0 };
 
 	*obstacle = NULL;
 
-	// mins/maxs are the bounds at the destination
-	// totalMins / totalMaxs are the bounds for the entire move
 	if (pusher->r.currentAngles[0] || pusher->r.currentAngles[1] || pusher->r.currentAngles[2]
 		|| amove[0] || amove[1] || amove[2])
 	{
@@ -350,6 +351,7 @@ static qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, genti
 
 		VectorCopy(pusher->r.absmin, totalMins);
 		VectorCopy(pusher->r.absmax, totalMaxs);
+
 		for (i = 0; i < 3; i++)
 		{
 			if (move[i] > 0)
@@ -363,123 +365,112 @@ static qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, genti
 		}
 	}
 
-	// unlink the pusher so we don't get it in the entity_list
 	trap->UnlinkEntity((sharedEntity_t*)pusher);
 
-	const int listedEntities = trap->EntitiesInBox(totalMins, totalMaxs, entity_list, MAX_GENTITIES);
+	const int listedEntities =
+		trap->EntitiesInBox(totalMins, totalMaxs, entity_list, MAX_GENTITIES);
 
-	// move the pusher to it's final position
 	VectorAdd(pusher->r.currentOrigin, move, pusher->r.currentOrigin);
 	VectorAdd(pusher->r.currentAngles, amove, pusher->r.currentAngles);
 	trap->LinkEntity((sharedEntity_t*)pusher);
 
-	// see if any solid entities are inside the final position
 	for (int e = 0; e < listedEntities; e++)
 	{
 		gentity_t* check = &g_entities[entity_list[e]];
 
-		// only push items and players
-		if (/*check->s.eType != ET_ITEM &&*/ check->s.eType != ET_PLAYER && check->s.eType != ET_NPC && !check->
-			physicsObject)
+		if (check->s.eType != ET_PLAYER &&
+			check->s.eType != ET_NPC &&
+			!check->physicsObject)
 		{
 			continue;
 		}
 
-		// if the entity is standing on the pusher, it will definitely be moved
 		if (check->s.groundEntityNum != pusher->s.number)
 		{
-			// see if the ent needs to be tested
-			if (check->r.absmin[0] >= maxs[0]
-				|| check->r.absmin[1] >= maxs[1]
-				|| check->r.absmin[2] >= maxs[2]
-				|| check->r.absmax[0] <= mins[0]
-				|| check->r.absmax[1] <= mins[1]
-				|| check->r.absmax[2] <= mins[2])
+			if (check->r.absmin[0] >= maxs[0] ||
+				check->r.absmin[1] >= maxs[1] ||
+				check->r.absmin[2] >= maxs[2] ||
+				check->r.absmax[0] <= mins[0] ||
+				check->r.absmax[1] <= mins[1] ||
+				check->r.absmax[2] <= mins[2])
 			{
 				continue;
 			}
-			// see if the ent's bbox is inside the pusher's final position
-			// this does allow a fast moving object to pass through a thin entity...
+
 			if (!G_TestEntityPosition(check))
 			{
 				continue;
 			}
 		}
 
-		// the entity needs to be pushed
 		if (G_TryPushingEntity(check, pusher, move, amove))
 		{
 			continue;
 		}
 
-		if (pusher->damage && check->client && pusher->spawnflags & 32)
+		if (pusher->damage && check->client && (pusher->spawnflags & 32))
 		{
 			G_Damage(check, pusher, pusher, NULL, NULL, pusher->damage, 0, MOD_CRUSH);
 			continue;
 		}
 
 		if (check->s.eType == ET_BODY ||
-			check->s.eType == ET_PLAYER && check->health < 1)
+			(check->s.eType == ET_PLAYER && check->health < 1))
 		{
-			//whatever, just crush it
 			G_Damage(check, pusher, pusher, NULL, NULL, 999, 0, MOD_CRUSH);
 			continue;
 		}
 
-		if (check->r.contents & CONTENTS_TRIGGER && check->s.weapon == G2_MODEL_PART)
+		if ((check->r.contents & CONTENTS_TRIGGER) &&
+			check->s.weapon == G2_MODEL_PART)
 		{
-			//keep limbs from blocking elevators.  Kill the limb and keep moving.
 			G_FreeEntity(check);
 			continue;
 		}
 
 		if (check->s.eFlags & EF_DROPPEDWEAPON)
 		{
-			//keep dropped weapons from blocking elevators.  Kill the weapon and keep moving.
 			G_FreeEntity(check);
 			continue;
 		}
 
-		if (check->s.eType == ET_NPC //an NPC
-			&& check->health <= 0 //NPC is dead
-			&& !(check->flags & FL_NOTARGET)) //NPC isn't still spawned or in no target mode.
+		if (check->s.eType == ET_NPC &&
+			check->health <= 0 &&
+			!(check->flags & FL_NOTARGET))
 		{
-			//dead npcs should be removed now!
 			NPC_RemoveBody(check);
 			continue;
 		}
 
-		// the move was blocked an entity
-
-		// bobbing entities are instant-kill and never get blocked
-		if (pusher->s.pos.trType == TR_SINE || pusher->s.apos.trType == TR_SINE)
+		if (pusher->s.pos.trType == TR_SINE ||
+			pusher->s.apos.trType == TR_SINE)
 		{
 			G_Damage(check, pusher, pusher, NULL, NULL, 99999, 0, MOD_CRUSH);
 			continue;
 		}
 
-		// save off the obstacle so we can call the block function (crush, etc)
 		*obstacle = check;
 
-		// move back any entities we already moved
-		// go backwards, so if the same entity was pushed
-		// twice, it goes back to the original position
 		for (pushed_t* p = pushed_p - 1; p >= pushed; p--)
 		{
 			VectorCopy(p->origin, p->ent->s.pos.trBase);
 			VectorCopy(p->angles, p->ent->s.apos.trBase);
+
 			if (p->ent->client)
 			{
 				p->ent->client->ps.delta_angles[YAW] = p->deltayaw;
 				VectorCopy(p->origin, p->ent->client->ps.origin);
 			}
+
 			trap->LinkEntity((sharedEntity_t*)p->ent);
 		}
+
 		return qfalse;
 	}
 
 	return qtrue;
 }
+
 
 /*
 =================
@@ -511,7 +502,7 @@ static void G_MoverTeam(gentity_t* ent)
 			|| !VectorCompare(amove, vec3_origin))
 		{
 			//actually moved
-			if (!g_mover_push(part, move, amove, &obstacle))
+			if (!G_MoverPush(part, move, amove, &obstacle))
 			{
 				break; // move was blocked
 			}
@@ -1184,11 +1175,17 @@ Touch_DoorTrigger
 */
 void Touch_DoorTrigger(gentity_t* ent, gentity_t* other, trace_t* trace)
 {
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent == NULL || ent->parent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "Touch_DoorTrigger: ent or ent->parent is NULL\n");
+		return;
+	}
+
 	gentity_t* relockEnt = NULL;
 
 	if (other->client && other->client->sess.sessionTeam == TEAM_SPECTATOR)
 	{
-		// if the door is not open and not opening
 		if (ent->parent->moverState != MOVER_1TO2 &&
 			ent->parent->moverState != MOVER_POS2)
 		{
@@ -1203,14 +1200,12 @@ void Touch_DoorTrigger(gentity_t* ent, gentity_t* other, trace_t* trace)
 		if (other->client && other->s.number >= MAX_CLIENTS &&
 			other->s.eType == ET_NPC && other->s.NPC_class == CLASS_VEHICLE)
 		{
-			//doors don't open for vehicles
 			return;
 		}
 
 		if (other->client && other->s.number < MAX_CLIENTS &&
 			other->client->ps.m_iVehicleNum)
 		{
-			//can't open a door while on a vehicle
 			return;
 		}
 	}
@@ -1220,17 +1215,15 @@ void Touch_DoorTrigger(gentity_t* ent, gentity_t* other, trace_t* trace)
 		return;
 	}
 
-	if (ent->parent && ent->parent->spawnflags & MOVER_LOCKED)
+	if (ent->parent && (ent->parent->spawnflags & MOVER_LOCKED))
 	{
-		//don't even try to use the door if it's locked
-		if (!ent->parent->alliedTeam //we don't have a "teamallow" team
-			|| !other->client //we do have a "teamallow" team, but this isn't a client
-			|| other->client->sess.sessionTeam != ent->parent->alliedTeam)
-			//it is a client, but it's not on the right team
+		if (!ent->parent->alliedTeam ||
+			!other->client ||
+			other->client->sess.sessionTeam != ent->parent->alliedTeam)
 		{
 			return;
 		}
-		//temporarily unlock us while we call Use_BinaryMover (so it doesn't unlock all the doors in this team)
+
 		if (ent->parent->flags & FL_TEAMSLAVE)
 		{
 			relockEnt = ent->parent->teammaster;
@@ -1239,6 +1232,7 @@ void Touch_DoorTrigger(gentity_t* ent, gentity_t* other, trace_t* trace)
 		{
 			relockEnt = ent->parent;
 		}
+
 		if (relockEnt != NULL)
 		{
 			relockEnt->spawnflags &= ~MOVER_LOCKED;
@@ -1247,18 +1241,15 @@ void Touch_DoorTrigger(gentity_t* ent, gentity_t* other, trace_t* trace)
 
 	if (ent->parent->moverState != MOVER_1TO2)
 	{
-		//Door is not already opening
-		//if ( ent->parent->moverState == MOVER_POS1 || ent->parent->moverState == MOVER_2TO1 )
-		//{//only check these if closed or closing
-		//If door is closed, opening or open, check this
 		Use_BinaryMover(ent->parent, ent, other);
 	}
+
 	if (relockEnt != NULL)
 	{
-		//re-lock us
 		relockEnt->spawnflags |= MOVER_LOCKED;
 	}
 }
+
 
 /*
 ======================
@@ -1270,6 +1261,13 @@ a trigger that encloses all of them
 */
 void Think_SpawnNewDoorTrigger(gentity_t* ent)
 {
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "Think_SpawnNewDoorTrigger: ent is NULL\n");
+		return;
+	}
+
 	gentity_t* other;
 	vec3_t mins, maxs;
 
@@ -1292,7 +1290,7 @@ void Think_SpawnNewDoorTrigger(gentity_t* ent)
 		AddPointToBounds(other->r.absmax, mins, maxs);
 	}
 
-	// find the thinnest axis, which will be the one we expand
+	// find the thinnest axis
 	int best = 0;
 	for (int i = 1; i < 3; i++)
 	{
@@ -1313,11 +1311,11 @@ void Think_SpawnNewDoorTrigger(gentity_t* ent)
 	other->touch = Touch_DoorTrigger;
 	trap->LinkEntity((sharedEntity_t*)other);
 	other->classname = "trigger_door";
-	// remember the thinnest axis
 	other->count = best;
 
 	MatchTeam(ent, ent->moverState, level.time);
 }
+
 
 void Think_MatchTeam(gentity_t* ent)
 {
@@ -1488,7 +1486,7 @@ INACTIVE	must be used by a target_activate before it can be used
 */
 void SP_func_door(gentity_t* ent)
 {
-	vec3_t abs_movedir;
+	vec3_t abs_movedir = {0};
 	vec3_t size;
 	float lip;
 
@@ -1643,7 +1641,7 @@ not just sit on top of it.
 */
 static void SpawnPlatTrigger(gentity_t* ent)
 {
-	vec3_t tmin, tmax;
+	vec3_t tmin = {0}, tmax = {0};
 
 	// the middle trigger will be a thin trigger just
 	// above the starting position
@@ -1782,7 +1780,7 @@ When a button is touched, it moves some distance in the direction of it's angle,
 */
 void SP_func_button(gentity_t* ent)
 {
-	vec3_t abs_movedir;
+	vec3_t abs_movedir = {0};
 	vec3_t size;
 	float lip;
 
@@ -1931,7 +1929,7 @@ Link all the corners together
 */
 void Think_SetupTrainTargets(gentity_t* ent)
 {
-	gentity_t* next;
+	gentity_t* next = NULL;
 
 	ent->nextTrain = G_Find(NULL, FOFS(targetname), ent->target);
 	if (!ent->nextTrain)
@@ -3068,7 +3066,7 @@ GLASS
 */
 static void GlassDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int mod)
 {
-	vec3_t dif;
+	vec3_t dif = {0};
 
 	if (self->genericValue5)
 	{
@@ -3098,7 +3096,7 @@ static void GlassDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker,
 
 static void GlassDie_Old(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int mod)
 {
-	vec3_t dif;
+	vec3_t dif = {0};
 
 	dif[0] = (self->r.absmax[0] + self->r.absmin[0]) / 2;
 	dif[1] = (self->r.absmax[1] + self->r.absmin[1]) / 2;

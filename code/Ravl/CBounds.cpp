@@ -337,15 +337,31 @@ bool CBBox::HitTest(CBTrace& Tr) const
 ////////////////////////////////////////////////////////////////////////////////////////
 void CBBox::FromStr(const char* s)
 {
-	assert(s && s[0]);
+	// SAFETY: prevent NULL dereference
+	if (s == NULL || s[0] == '\0')
+	{
+		mMin.FromStr("(0 0 0)");
+		mMax.FromStr("(0 0 0)");
+		return;
+	}
 
 	char MinS[256];
 	char MaxS[266];
-	sscanf(s, "(%s|%s)", MinS, MaxS);
+
+	// FIX: capture sscanf return value (removes C6031)
+	const int result = sscanf(s, "(%255s|%265s)", MinS, MaxS);
+
+	if (result != 2)
+	{
+		mMin.FromStr("(0 0 0)");
+		mMax.FromStr("(0 0 0)");
+		return;
+	}
 
 	mMin.FromStr(MinS);
 	mMax.FromStr(MaxS);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //

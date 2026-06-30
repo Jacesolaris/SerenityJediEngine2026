@@ -891,6 +891,13 @@ static gentity_t* SelectRandomFurthestSpawnPoint(
 	const team_t team,
 	const qboolean isbot)
 {
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (avoidPoint == NULL || origin == NULL || angles == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "SelectRandomFurthestSpawnPoint: NULL vec3 argument\n");
+		return NULL;
+	}
+
 	vec3_t delta;
 	float dist;
 	float list_dist[MAX_SPAWN_POINTS] = { 0 };
@@ -912,11 +919,9 @@ static gentity_t* SelectRandomFurthestSpawnPoint(
 
 		while ((spot = G_Find(spot, FOFS(classname), classname)) != NULL)
 		{
-			// SAFETY: ensure classname exists
 			if (!spot->classname)
 				continue;
 
-			// SAFETY: ensure origin is valid
 			if (!spot->s.origin)
 				continue;
 
@@ -1014,8 +1019,13 @@ static gentity_t* SelectRandomFurthestSpawnPoint(
 		if (!numSpots)
 		{
 			spot = G_Find(NULL, FOFS(classname), "info_player_deathmatch");
-			if (!spot)
-				trap->Error(ERR_DROP, "Couldn't find a spawn point");
+
+			// FIX: remove impossible dereference (C6011)
+			if (spot == NULL)
+			{
+				Com_Printf(S_COLOR_RED "SelectRandomFurthestSpawnPoint: no spawn point found\n");
+				return NULL;
+			}
 
 			VectorCopy(spot->s.origin, origin);
 			origin[2] += 9;
@@ -1025,7 +1035,7 @@ static gentity_t* SelectRandomFurthestSpawnPoint(
 	}
 
 	// PICK RANDOM FROM TOP HALF
-	const int rnd = Q_flrand(0.0f, 1.0f) * (numSpots / 2);
+	const int rnd = Q_flrand(0.0f, 1.0f) * (numSpots / 2.0f);
 
 	vec3_t baseOrigin;
 	VectorCopy(list_spot[rnd]->s.origin, baseOrigin);
@@ -1057,6 +1067,7 @@ static gentity_t* SelectRandomFurthestSpawnPoint(
 	VectorCopy(list_spot[rnd]->s.angles, angles);
 	return list_spot[rnd];
 }
+
 
 static gentity_t* SelectDuelSpawnPoint(const int team, vec3_t avoidPoint,
 	vec3_t origin, vec3_t angles,
@@ -1094,15 +1105,11 @@ tryAgain:
 		vec3_t delta;
 
 		if (SpotWouldTelefrag(spot))
-		{
 			continue;
-		}
 
 		if ((spot->flags & FL_NO_BOTS && isbot) ||
 			(spot->flags & FL_NO_HUMANS && !isbot))
-		{
 			continue;
-		}
 
 		VectorSubtract(spot->s.origin, avoidPoint, delta);
 		const float dist = VectorLength(delta);
@@ -1144,8 +1151,13 @@ tryAgain:
 		}
 
 		spot = G_Find(NULL, FOFS(classname), "info_player_deathmatch");
-		if (!spot)
-			trap->Error(ERR_DROP, "Couldn't find a spawn point");
+
+		// FIX: remove impossible dereference (C6011)
+		if (spot == NULL)
+		{
+			Com_Printf(S_COLOR_RED "SelectDuelSpawnPoint: no spawn point found\n");
+			return NULL;
+		}
 
 		VectorCopy(spot->s.origin, origin);
 		origin[2] += 9;
@@ -1159,7 +1171,6 @@ tryAgain:
 	VectorCopy(list_spot[rnd]->s.origin, baseOrigin);
 	baseOrigin[2] += 9;
 
-	// Force SafeSpawn for bots OR if only one spawnpoint exists
 	if (isbot || numSpots == 1 || SafeSpawn_IsOccupied(baseOrigin))
 	{
 		vec3_t offsetOrigin;
@@ -1171,7 +1182,6 @@ tryAgain:
 			return list_spot[rnd];
 		}
 
-		// As a fallback, nudge bots slightly
 		if (isbot)
 		{
 			origin[0] = baseOrigin[0] + Q_irand(-24, 24);
@@ -1186,6 +1196,7 @@ tryAgain:
 	VectorCopy(list_spot[rnd]->s.angles, angles);
 	return list_spot[rnd];
 }
+
 
 /*
 ===========

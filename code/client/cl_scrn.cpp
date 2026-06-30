@@ -179,55 +179,76 @@ to a fixed color.
 Coordinates are at 640 by 480 virtual resolution
 ==================
 */
-static void SCR_DrawBigStringExt(const int x, const int y, const char* string, const float* set_color,
-	const qboolean force_color, const qboolean no_color_escape)
+static void SCR_DrawBigStringExt(const int x, const int y, const char* string,
+	const float* set_color,
+	const qboolean force_color,
+	const qboolean no_color_escape)
 {
-	vec4_t color{};
+	// SAFETY: Prevent NULL dereference (fixes MSVC C6011)
+	if (string == NULL)
+	{
+		Com_Printf(S_COLOR_RED "SCR_DrawBigStringExt: NULL string passed\n");
+		return;
+	}
 
-	// draw the drop shadow
-	color[0] = color[1] = color[2] = 0;
+	vec4_t color = { 0, 0, 0, 0 };
+
+	// ---------------------------------------------------------
+	// Draw drop shadow
+	// ---------------------------------------------------------
 	color[3] = set_color[3];
 	re.SetColor(color);
+
 	const char* s = string;
 	int xx = x;
-	while (*s)
+
+	while (*s != '\0')
 	{
-		if (!no_color_escape && Q_IsColorString(s))
+		if (no_color_escape == qfalse && Q_IsColorString(s) == qtrue)
 		{
 			s += 2;
 			continue;
 		}
+
 		SCR_DrawBigChar(xx + 2, y + 2, *s);
 		xx += BIGCHAR_WIDTH;
 		s++;
 	}
 
-	// draw the colored text
+	// ---------------------------------------------------------
+	// Draw colored text
+	// ---------------------------------------------------------
 	s = string;
 	xx = x;
+
 	re.SetColor(set_color);
-	while (*s)
+
+	while (*s != '\0')
 	{
-		if (Q_IsColorString(s))
+		if (Q_IsColorString(s) == qtrue)
 		{
-			if (!force_color)
+			if (force_color == qfalse)
 			{
-				memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof color);
+				memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof(color));
 				color[3] = set_color[3];
 				re.SetColor(color);
 			}
-			if (!no_color_escape)
+
+			if (no_color_escape == qfalse)
 			{
 				s += 2;
 				continue;
 			}
 		}
+
 		SCR_DrawBigChar(xx, y, *s);
 		xx += BIGCHAR_WIDTH;
 		s++;
 	}
-	re.SetColor(nullptr);
+
+	re.SetColor(NULL);
 }
+
 
 void SCR_DrawBigString(const int x, const int y, const char* s, const float alpha, const qboolean noColorEscape)
 {
@@ -251,38 +272,51 @@ Draws a multi-colored string with a drop shadow, optionally forcing
 to a fixed color.
 ==================
 */
-void SCR_DrawSmallStringExt(const int x, const int y, const char* string, const float* setColor,
+void SCR_DrawSmallStringExt(const int x, const int y, const char* string,
+	const float* setColor,
 	const qboolean forceColor,
 	const qboolean noColorEscape)
 {
-	vec4_t color;
+	// SAFETY: Prevent NULL dereference (fixes MSVC C6011)
+	if (string == NULL)
+	{
+		Com_Printf(S_COLOR_RED "SCR_DrawSmallStringExt: NULL string passed\n");
+		return;
+	}
 
-	// draw the colored text
+	vec4_t color = { 0, 0, 0, 0 };
+
 	const char* s = string;
 	int xx = x;
+
 	re.SetColor(setColor);
-	while (*s)
+
+	while (*s != '\0')
 	{
-		if (Q_IsColorString(s))
+		if (Q_IsColorString(s) == qtrue)
 		{
-			if (!forceColor)
+			if (forceColor == qfalse)
 			{
-				memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof color);
+				memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof(color));
 				color[3] = setColor[3];
 				re.SetColor(color);
 			}
-			if (!noColorEscape)
+
+			if (noColorEscape == qfalse)
 			{
 				s += 2;
 				continue;
 			}
 		}
+
 		SCR_DrawSmallChar(xx, y, *s);
 		xx += SMALLCHAR_WIDTH;
 		s++;
 	}
-	re.SetColor(nullptr);
+
+	re.SetColor(NULL);
 }
+
 
 /*
 ** SCR_Strlen -- skips color escape codes

@@ -37,15 +37,23 @@ extern qboolean G_ControlledByPlayer(const gentity_t* self);
 static void WP_FlechetteMainFire(gentity_t* ent)
 //---------------------------------------------------------
 {
-	vec3_t angs, start;
-	float damage = weaponData[WP_FLECHETTE].damage, vel = FLECHETTE_VEL;
+	// SAFETY: ent or ent->client may be NULL in edge cases
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FlechetteMainFire: NULL ent or ent->client\n");
+		return;
+	}
 
+	vec3_t angs, start;
+	float damage = weaponData[WP_FLECHETTE].damage;
+	float vel = FLECHETTE_VEL;
+
+	// Starting point of the shot
 	VectorCopy(muzzle, start);
 	WP_TraceSetStart(ent, start);
-	//make sure our start point isn't on the other side of a wall
 
-	// If we aren't the player, we will cut the velocity and damage of the shots
-	if (ent->s.number)
+	// NPC damage/velocity reduction
+	if (ent->s.number != 0)
 	{
 		damage *= 0.75f;
 		vel *= 0.5f;
@@ -54,70 +62,78 @@ static void WP_FlechetteMainFire(gentity_t* ent)
 	for (int i = 0; i < FLECHETTE_SHOTS; i++)
 	{
 		vec3_t fwd;
+
 		vectoangles(forward_vec, angs);
 
-		if (i == 0 && ent->s.number == 0)
+		if (!(i == 0 && ent->s.number == 0))
 		{
-			// do nothing on the first shot for the player, this one will hit the crosshairs
-		}
-		else
-		{
-			if (NPC_IsNotHavingEnoughForceSight(ent))
+			if (NPC_IsNotHavingEnoughForceSight(ent) == qtrue)
 			{
-				//force sight 2+ gives perfect aim
-				if (ent->NPC && ent->NPC->currentAim < 5)
+				// Force Sight 2+ gives perfect aim
+				if (ent->NPC != NULL && ent->NPC->currentAim < 5)
 				{
-					if (ent->client && ent->NPC &&
-						(ent->client->NPC_class == CLASS_STORMTROOPER ||
-							ent->client->NPC_class == CLASS_CLONETROOPER ||
-							ent->client->NPC_class == CLASS_STORMCOMMANDO ||
-							ent->client->NPC_class == CLASS_SWAMPTROOPER ||
-							ent->client->NPC_class == CLASS_DROIDEKA ||
-							ent->client->NPC_class == CLASS_SBD ||
-							ent->client->NPC_class == CLASS_IMPWORKER ||
-							ent->client->NPC_class == CLASS_REBEL ||
-							ent->client->NPC_class == CLASS_WOOKIE ||
-							ent->client->NPC_class == CLASS_BATTLEDROID))
+					const qboolean is_valid_npc_class =
+						((ent->client->NPC_class == CLASS_STORMTROOPER) ||
+							(ent->client->NPC_class == CLASS_CLONETROOPER) ||
+							(ent->client->NPC_class == CLASS_STORMCOMMANDO) ||
+							(ent->client->NPC_class == CLASS_SWAMPTROOPER) ||
+							(ent->client->NPC_class == CLASS_DROIDEKA) ||
+							(ent->client->NPC_class == CLASS_SBD) ||
+							(ent->client->NPC_class == CLASS_IMPWORKER) ||
+							(ent->client->NPC_class == CLASS_REBEL) ||
+							(ent->client->NPC_class == CLASS_WOOKIE) ||
+							(ent->client->NPC_class == CLASS_BATTLEDROID))
+						? qtrue : qfalse;
+
+					if (is_valid_npc_class == qtrue)
 					{
-						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * (BLASTER_NPC_SPREAD + (1 - ent->NPC->currentAim) * 0.25f); //was 0.5f
-						angs[YAW] += Q_flrand(-1.0f, 1.0f) * (BLASTER_NPC_SPREAD + (1 - ent->NPC->currentAim) * 0.25f);
-						//was 0.5
+						const float spread = BLASTER_NPC_SPREAD +
+							(1.0f - ent->NPC->currentAim) * 0.25f;
+
+						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * spread;
+						angs[YAW] += Q_flrand(-1.0f, 1.0f) * spread;
 					}
 				}
-				else if (!WalkCheck(ent) && (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)))
-					//if running aim is shit
+				else if ((WalkCheck(ent) == qfalse) &&
+					((ent->s.number < MAX_CLIENTS) ||
+						(G_ControlledByPlayer(ent) == qtrue)))
 				{
+					// Running aim is bad
 					angs[PITCH] += Q_flrand(-2.0f, 2.0f) * (RUNNING_SPREAD + 1.5f);
 					angs[YAW] += Q_flrand(-2.0f, 2.0f) * (RUNNING_SPREAD + 1.5f);
 				}
 				else if (ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
 				{
-					// add some slop to the fire direction
 					angs[PITCH] += Q_flrand(-5.0f, 5.0f) * BLASTER_MAIN_SPREAD;
 					angs[YAW] += Q_flrand(-3.0f, 3.0f) * BLASTER_MAIN_SPREAD;
 				}
 				else if (ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
 				{
-					// add some slop to the fire direction
 					angs[PITCH] += Q_flrand(-2.0f, 2.0f) * BLASTER_MAIN_SPREAD;
 					angs[YAW] += Q_flrand(-2.0f, 2.0f) * BLASTER_MAIN_SPREAD;
 				}
-				else if (PM_CrouchAnim(ent->client->ps.legsAnim))
+				else if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
 				{
-					//
+					// crouching — no spread added
 				}
 				else
 				{
-					//
+					// standing — no spread added
 				}
 			}
 		}
 
-		AngleVectors(angs, fwd, nullptr, nullptr);
+		AngleVectors(angs, fwd, NULL, NULL);
 
 		WP_MissileTargetHint(ent, start, fwd);
 
 		gentity_t* missile = CreateMissile(start, fwd, vel, 10000, ent);
+
+		if (missile == NULL)
+		{
+			Com_Printf(S_COLOR_YELLOW "WP_FlechetteMainFire: CreateMissile returned NULL\n");
+			return;
+		}
 
 		missile->classname = "flech_proj";
 		missile->s.weapon = WP_FLECHETTE;
@@ -132,13 +148,14 @@ static void WP_FlechetteMainFire(gentity_t* ent)
 		missile->methodOfDeath = MOD_FLECHETTE;
 		missile->clipmask = MASK_SHOT;
 
-		// we don't want it to bounce forever
 		missile->bounceCount = Q_irand(1, 2);
 
 		missile->s.eFlags |= EF_BOUNCE_SHRAPNEL;
+
 		ent->client->sess.missionStats.shotsFired++;
 	}
 }
+
 
 //---------------------------------------------------------
 void prox_mine_think(gentity_t* ent)

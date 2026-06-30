@@ -60,24 +60,27 @@ static void S_TransferStereo16(unsigned long* pbuf, const int endtime)
 
 	while (ls_paintedtime < endtime)
 	{
-		// handle recirculating buffer issues
-		const int lpos = ls_paintedtime & (dma.samples >> 1) - 1;
+		/* FIX: correct operator precedence to avoid MSVC C6297 */
+		const int mask = ((dma.samples >> 1) - 1);
+		const int lpos = (ls_paintedtime & mask);
 
 		snd_out = (short*)pbuf + (lpos << 1);
 
 		snd_linear_count = (dma.samples >> 1) - lpos;
 		if (ls_paintedtime + snd_linear_count > endtime)
+		{
 			snd_linear_count = endtime - ls_paintedtime;
+		}
 
 		snd_linear_count <<= 1;
 
-		// write a linear blast of samples
 		S_WriteLinearBlastStereo16();
 
 		snd_p += snd_linear_count;
-		ls_paintedtime += snd_linear_count >> 1;
+		ls_paintedtime += (snd_linear_count >> 1);
 	}
 }
+
 
 /*
 ===================
@@ -261,7 +264,7 @@ void S_PaintChannels(const int endtime)
 			{
 				//Com_DPrintf ("background sound underrun\n");
 			}
-			memset(paintbuffer, 0, (end - s_paintedtime) * sizeof(portable_samplepair_t));
+			memset(paintbuffer, 0, (static_cast<unsigned long long>(end) - s_paintedtime) * sizeof(portable_samplepair_t));
 		}
 		else
 		{

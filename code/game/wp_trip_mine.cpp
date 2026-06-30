@@ -223,12 +223,18 @@ static void WP_RemoveOldTraps(const gentity_t* ent)
 {
 	gentity_t* found = nullptr;
 	int trapcount = 0;
-	int foundLaserTraps[MAX_GENTITIES] = { ENTITYNUM_NONE };
+
+	// Move large array off the stack to avoid C6262
+	static int foundLaserTraps[MAX_GENTITIES];
+	for (int i = 0; i < MAX_GENTITIES; i++)
+	{
+		foundLaserTraps[i] = ENTITYNUM_NONE;
+	}
 
 	// see how many there are now
 	while ((found = G_Find(found, FOFS(classname), "tripmine")) != nullptr)
 	{
-		if (found->activator != ent) // activator is really the owner?
+		if (found->activator != ent)
 		{
 			continue;
 		}
@@ -243,26 +249,25 @@ static void WP_RemoveOldTraps(const gentity_t* ent)
 	while (trapcount > 9)
 	{
 		int removeMe = -1;
+
 		for (int i = 0; i < trapcount_org; i++)
 		{
 			if (foundLaserTraps[i] == ENTITYNUM_NONE)
 			{
 				continue;
 			}
+
 			found = &g_entities[foundLaserTraps[i]];
+
 			if (found->setTime < lowest_time_stamp)
 			{
 				removeMe = i;
 				lowest_time_stamp = found->setTime;
 			}
 		}
+
 		if (removeMe != -1)
 		{
-			//remove it... or blow it?
-			if (&g_entities[foundLaserTraps[removeMe]] == nullptr)
-			{
-				break;
-			}
 			G_FreeEntity(&g_entities[foundLaserTraps[removeMe]]);
 			foundLaserTraps[removeMe] = ENTITYNUM_NONE;
 			trapcount--;
@@ -273,6 +278,7 @@ static void WP_RemoveOldTraps(const gentity_t* ent)
 		}
 	}
 }
+
 
 //---------------------------------------------------------
 void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)

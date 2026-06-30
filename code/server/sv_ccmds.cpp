@@ -195,7 +195,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, jka_map) == 0)
 		{
-			if (com_outcast->integer != 0)
+			if (com_outcast && com_outcast->integer != 0)
 			{
 				Cvar_Set("com_outcast", "0");
 			}
@@ -209,7 +209,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, jko_map) == 0)
 		{
-			if (com_outcast->integer != 1)
+			if (com_outcast && com_outcast->integer != 1)
 			{
 				Cvar_Set("com_outcast", "1");
 			}
@@ -235,7 +235,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, Yavin_map) == 0)
 		{
-			if (com_outcast->integer != 3)
+			if (com_outcast && com_outcast->integer != 3)
 			{
 				Cvar_Set("com_outcast", "3");
 			}
@@ -249,7 +249,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, DF_map) == 0)
 		{
-			if (com_outcast->integer != 4)
+			if (com_outcast && com_outcast->integer != 4)
 			{
 				Cvar_Set("com_outcast", "4");
 			}
@@ -274,7 +274,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, Kotor_map) == 0)
 		{
-			if (com_outcast->integer != 5)
+			if (com_outcast && com_outcast->integer != 5)
 			{
 				Cvar_Set("com_outcast", "5");
 			}
@@ -288,7 +288,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, Surv_map) == 0)
 		{
-			if (com_outcast->integer != 6)
+			if (com_outcast && com_outcast->integer != 6)
 			{
 				Cvar_Set("com_outcast", "6");
 			}
@@ -352,7 +352,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, Nina_map) == 0)
 		{
-			if (com_outcast->integer != 7)
+			if (com_outcast && com_outcast->integer != 7)
 			{
 				Cvar_Set("com_outcast", "7");
 			}
@@ -371,7 +371,7 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 	{
 		if (strcmp(map, veng_map) == 0)
 		{
-			if (com_outcast->integer != 8)
+			if (com_outcast && com_outcast->integer != 8)
 			{
 				Cvar_Set("com_outcast", "8");
 			}
@@ -823,7 +823,7 @@ static void SV_CompleteSaveName(char* args, const int arg_num)
 {
 	if (arg_num == 2)
 	{
-		if (com_outcast->integer == 0)
+		if (com_outcast && com_outcast->integer == 0)
 		{
 			if (!g_newgameplusJKA->integer)
 			{
@@ -834,7 +834,7 @@ static void SV_CompleteSaveName(char* args, const int arg_num)
 				Field_CompleteFilename("Account/Saved-Missions-JediAcademyplus/", "sav", qtrue, qtrue);
 			}
 		}
-		else if (com_outcast->integer == 1)
+		else if (com_outcast && com_outcast->integer == 1)
 		{
 			if (!g_newgameplusJKO->integer)
 			{
@@ -845,31 +845,31 @@ static void SV_CompleteSaveName(char* args, const int arg_num)
 				Field_CompleteFilename("Account/Saved-Missions-JediOutcastplus/", "sav", qtrue, qtrue);
 			}
 		}
-		else if (com_outcast->integer == 2)//playing creative
+		else if (com_outcast && com_outcast->integer == 2)//playing creative
 		{
 			Field_CompleteFilename("Account/Saved-Missions-JediCreative/", "sav", qtrue, qtrue);
 		}
-		else if (com_outcast->integer == 3) //playing yav
+		else if (com_outcast && com_outcast->integer == 3) //playing yav
 		{
 			Field_CompleteFilename("Account/Saved-Missions-Yavin4/", "sav", qtrue, qtrue);
 		}
-		else if (com_outcast->integer == 4) //playing darkforces
+		else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 		{
 			Field_CompleteFilename("Account/Saved-Missions-DarkForces/", "sav", qtrue, qtrue);
 		}
-		else if (com_outcast->integer == 5)//playing kotor
+		else if (com_outcast && com_outcast->integer == 5)//playing kotor
 		{
 			Field_CompleteFilename("Account/Saved-Missions-Kotor/", "sav", qtrue, qtrue);
 		}
-		else if (com_outcast->integer == 6) // playing survival
+		else if (com_outcast && com_outcast->integer == 6) // playing survival
 		{
 			Field_CompleteFilename("Account/Saved-Missions-Survival/", "sav", qtrue, qtrue);
 		}
-		else if (com_outcast->integer == 7) // playing nina
+		else if (com_outcast && com_outcast->integer == 7) // playing nina
 		{
 			Field_CompleteFilename("Account/Saved-Missions-Nina/", "sav", qtrue, qtrue);
 		}
-		else if (com_outcast->integer == 8) // playing veng
+		else if (com_outcast && com_outcast->integer == 8) // playing veng
 		{
 			Field_CompleteFilename("Account/Saved-Missions-Veng/", "sav", qtrue, qtrue);
 		}

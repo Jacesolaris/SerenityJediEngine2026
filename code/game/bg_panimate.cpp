@@ -4503,14 +4503,14 @@ saberMoveName_t PM_CheckPullAttack()
 		qboolean do_move = g_saberNewControlScheme->integer ? qtrue : qfalse;
 		//in new control scheme, can always do this, even if there's no-one to do it to
 
-		saberMoveName_t pull_attack_move;
+		saberMoveName_t pullAttackMove;
 		if (pm->ps->saberAnimLevel == SS_FAST)
 		{
-			pull_attack_move = LS_PULL_ATTACK_STAB;
+			pullAttackMove = LS_PULL_ATTACK_STAB;
 		}
 		else
 		{
-			pull_attack_move = LS_PULL_ATTACK_SWING;
+			pullAttackMove = LS_PULL_ATTACK_SWING;
 		}
 
 		if (g_crosshairEntNum < ENTITYNUM_WORLD && pm->gent && pm->gent->client)
@@ -4530,7 +4530,7 @@ saberMoveName_t PM_CheckPullAttack()
 				{
 					//in old control scheme, make sure they're close or far enough away for the move we'll be doing
 					const float targ_dist = Distance(targ_ent->currentOrigin, pm->ps->origin);
-					if (pull_attack_move == LS_PULL_ATTACK_STAB)
+					if (pullAttackMove == LS_PULL_ATTACK_STAB)
 					{
 						//must be closer than 512
 						if (targ_dist > 384.0f)
@@ -4564,7 +4564,7 @@ saberMoveName_t PM_CheckPullAttack()
 				//hold the anim until I'm with done pull anim
 				targ_ent->client->ps.legsAnimTimer = targ_ent->client->ps.torsoAnimTimer = PM_AnimLength(
 					pm->gent->client->clientInfo.animFileIndex,
-					static_cast<animNumber_t>(saberMoveData[pull_attack_move].animToUse));
+					static_cast<animNumber_t>(saberMoveData[pullAttackMove].animToUse));
 				//set pullAttackTime
 				pm->gent->client->ps.pullAttackTime = targ_ent->client->ps.pullAttackTime = level.time + targ_ent->
 					client
@@ -4587,7 +4587,7 @@ saberMoveName_t PM_CheckPullAttack()
 			{
 				G_DrainPowerForSpecialMove(pm->gent, FP_PULL, FATIGUE_JUMPATTACK);
 			}
-			return pull_attack_move;
+			return pullAttackMove;
 		}
 	}
 	return LS_NONE;

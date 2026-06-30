@@ -2733,39 +2733,39 @@ void NPC_InitGame()
 {
 	debugNPCName = gi.cvar("d_npc", "", 0);
 
-	if (com_outcast->integer == 0) //jka version
+	if (com_outcast && com_outcast->integer == 0) //jka version
 	{
 		NPC_LoadParms();
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		NPC_LoadParms1();
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		NPC_LoadParms2();
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		NPC_LoadParms3();
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		NPC_LoadParms4();
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		NPC_LoadParms5();
 	}
-	else if (com_outcast->integer == 6) //surv version
+	else if (com_outcast && com_outcast->integer == 6) //surv version
 	{
 		NPC_LoadParms6();
 	}
-	else if (com_outcast->integer == 7) //nina version
+	else if (com_outcast && com_outcast->integer == 7) //nina version
 	{
 		NPC_LoadParms7();
 	}
-	else if (com_outcast->integer == 8) //veng version
+	else if (com_outcast && com_outcast->integer == 8) //veng version
 	{
 		NPC_LoadParms8();
 	}

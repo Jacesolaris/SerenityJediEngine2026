@@ -100,7 +100,7 @@ extern void NPC_Wampa_Pain(gentity_t* self, gentity_t* attacker, int damage);
 extern void NPC_Rancor_Pain(gentity_t* self, gentity_t* attacker, int damage);
 extern void NPC_SandCreature_Pain(gentity_t* self, gentity_t* attacker, int damage);
 
-int wp_set_saber_model(gclient_t* client, class_t npcClass)
+int WP_SetSaberModel(gclient_t* client, class_t npcClass)
 {
 	//if (client)
 	//{
@@ -2836,7 +2836,7 @@ void SP_NPC_Kyle(gentity_t* self)
 		self->NPC_type = "Kyle";
 	}
 
-	wp_set_saber_model(NULL, CLASS_KYLE);
+	WP_SetSaberModel(NULL, CLASS_KYLE);
 
 	SP_NPC_spawner(self);
 }
@@ -2880,7 +2880,7 @@ void SP_NPC_Luke(gentity_t* self)
 {
 	self->NPC_type = "Luke";
 
-	wp_set_saber_model(NULL, CLASS_LUKE);
+	WP_SetSaberModel(NULL, CLASS_LUKE);
 
 	SP_NPC_spawner(self);
 }
@@ -2917,7 +2917,7 @@ void SP_NPC_Tavion(gentity_t* self)
 {
 	self->NPC_type = "Tavion";
 
-	wp_set_saber_model(NULL, CLASS_TAVION);
+	WP_SetSaberModel(NULL, CLASS_TAVION);
 
 	SP_NPC_spawner(self);
 }
@@ -3322,7 +3322,7 @@ void SP_NPC_Desann(gentity_t* self)
 {
 	self->NPC_type = "Desann";
 
-	wp_set_saber_model(NULL, CLASS_DESANN);
+	WP_SetSaberModel(NULL, CLASS_DESANN);
 
 	SP_NPC_spawner(self);
 }
@@ -4235,7 +4235,7 @@ void SP_NPC_Reborn(gentity_t* self)
 		}
 	}
 
-	wp_set_saber_model(NULL, CLASS_REBORN);
+	WP_SetSaberModel(NULL, CLASS_REBORN);
 	SP_NPC_spawner(self);
 }
 
@@ -4261,7 +4261,7 @@ void SP_NPC_ShadowTrooper(gentity_t* self)
 	}
 
 	npc_shadow_trooper_precache();
-	wp_set_saber_model(NULL, CLASS_SHADOWTROOPER);
+	WP_SetSaberModel(NULL, CLASS_SHADOWTROOPER);
 
 	SP_NPC_spawner(self);
 }

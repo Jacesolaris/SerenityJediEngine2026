@@ -1583,9 +1583,21 @@ extern void Add_Batteries(gentity_t* ent, int* count);
 
 void NPC_Use(gentity_t* self, gentity_t* other, gentity_t* activator)
 {
+	// SAFETY FIX: self or activator may be NULL in edge cases (bad spawns, scripts)
+	if (self == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "NPC_Use: NULL self\n");
+		return;
+	}
+
+	if (self->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "NPC_Use: NULL self->client\n");
+		return;
+	}
+
 	if (self->client->ps.pm_type == PM_DEAD)
 	{
-		//or just remove ->pain in player_die?
 		return;
 	}
 
@@ -1594,25 +1606,21 @@ void NPC_Use(gentity_t* self, gentity_t* other, gentity_t* activator)
 
 	if (self->client && self->NPC)
 	{
-		// If this is a vehicle, let the other guy board it. Added 12/14/02 by AReis.
+		// Vehicle boarding logic
 		if (self->client->NPC_class == CLASS_VEHICLE)
 		{
 			Vehicle_t* p_veh = self->m_pVehicle;
 
 			if (p_veh && p_veh->m_pVehicleInfo && other && other->client)
 			{
-				//safety
-				//if I used myself, eject everyone on me
 				if (other == self)
 				{
 					p_veh->m_pVehicleInfo->EjectAll(p_veh);
 				}
-				// If other is already riding this vehicle (self), eject him.
 				else if (other->owner == self)
 				{
 					p_veh->m_pVehicleInfo->Eject(p_veh, other, qfalse);
 				}
-				// Otherwise board this vehicle.
 				else
 				{
 					p_veh->m_pVehicleInfo->Board(p_veh, other);
@@ -1623,7 +1631,8 @@ void NPC_Use(gentity_t* self, gentity_t* other, gentity_t* activator)
 		{
 			Jedi_Ambush(NPC);
 		}
-		//Run any use instructions
+
+		// Gonk battery logic
 		if (activator && activator->s.number == 0 && self->client->NPC_class == CLASS_GONK)
 		{
 			Add_Batteries(activator, &self->client->ps.batteryCharge);
@@ -1636,34 +1645,32 @@ void NPC_Use(gentity_t* self, gentity_t* other, gentity_t* activator)
 		else if (!self->enemy &&
 			!gi.VoiceVolume[self->s.number] &&
 			!(self->NPC->scriptFlags & SCF_NO_RESPONSE) &&
-			activator->s.number == 0)
+			activator && activator->s.number == 0)   // FIXED: activator NULL check
 		{
-			//I don't have an enemy and I'm not talking and I was used by the player
 			NPC_UseResponse(self, other, qfalse);
 		}
 
 		if (self->NPC->behaviorState == BS_FOLLOW_LEADER)
 		{
-			// Store the backup info we need.
 			self->NPC_backupinfo.behaviorState = self->NPC->behaviorState;
 			self->NPC_backupinfo.tempBehavior = self->NPC->tempBehavior;
 			self->NPC_backupinfo.enemy = self->enemy;
 			self->NPC_backupinfo.leader = self->client->leader;
 
-			// Set our override behavior.
 			self->NPC->tempBehavior = BS_HUNT_AND_KILL;
 			self->NPC->behaviorState = BS_HUNT_AND_KILL;
 			self->enemy = self->NPC_backupinfo.enemy;
 			self->client->leader = &g_entities[0];
+
 			NPC_UseResponse(self, other, qtrue);
 		}
 		else
 		{
-			// Restore normal npc behavior
 			self->NPC->behaviorState = BS_FOLLOW_LEADER;
 			self->NPC->tempBehavior = BS_FOLLOW_LEADER;
 			self->enemy = self->NPC_backupinfo.enemy;
 			self->client->leader = self->NPC_backupinfo.leader;
+
 			NPC_Respond(self, NPC->s.number);
 			NPC_UseResponse(self, other, qtrue);
 		}

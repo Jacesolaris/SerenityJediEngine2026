@@ -315,7 +315,7 @@ namespace ragl
 				//==============================================
 				int					iRange = static_cast<int>(range) + 1;
 				typename TCells::riterator	rcell;
-				typename TCells::riterator	rcellend;
+				typename TCells::riterator	rcellend{};
 				CVec3				cellCenter(0, 0, 0);
 				CVec3				nodeCenter(0, 0, 0);
 
@@ -344,7 +344,7 @@ namespace ragl
 							//--------------------------------
 							for (int i = 0; i < cell.mNodes.size() && !sortnodes->full(); i++)
 							{
-								SSortNode sortnode;
+								SSortNode sortnode{};
 								int	nodeHandle = cell.mNodes[i];
 
 								TNODE& node = mGraph.get_node(nodeHandle);
@@ -412,7 +412,7 @@ namespace ragl
 				//==============================================
 				int					iRange = static_cast<int>(range) + 1;
 				typename TCells::riterator	rcell;
-				typename TCells::riterator	rcellend;
+				typename TCells::riterator	rcellend{};
 				CVec3				cellCenter(0, 0, 0);
 				CVec3				nodeCenter(0, 0, 0);
 
@@ -441,7 +441,7 @@ namespace ragl
 							//--------------------------------
 							for (int e = 0; e < cell.mEdges.size() && !sortedges->full(); e++)
 							{
-								SSortNode sortnode;
+								SSortNode sortnode{};
 								int	edgeHandle = cell.mEdges[e];
 
 								TEDGE& edge = mGraph.get_edge(edgeHandle);
@@ -762,7 +762,7 @@ namespace ragl
 			// ----------------------------------------
 			// Add A → B
 			// ----------------------------------------
-			SNodeNeighbor nbrAB;
+			SNodeNeighbor nbrAB{};
 			nbrAB.mNode = node_b;
 			nbrAB.mEdge = edgeIndex;
 			mLinks[node_a].push_back(nbrAB);
@@ -772,7 +772,7 @@ namespace ragl
 			// ----------------------------------------
 			if (reflexive)
 			{
-				SNodeNeighbor nbrBA;
+				SNodeNeighbor nbrBA{};
 				nbrBA.mNode = node_a;
 				nbrBA.mEdge = edgeIndex;
 				mLinks[node_b].push_back(nbrBA);
@@ -798,7 +798,7 @@ namespace ragl
 				return;
 			}
 
-			SNodeNeighbor	nNbr;
+			SNodeNeighbor	nNbr{};
 
 			nNbr.mNode = nodeB;
 			nNbr.mEdge = 0;
@@ -1516,64 +1516,65 @@ namespace ragl
 		////////////////////////////////////////////////////////////////////////////////////
 		// A* Search
 		////////////////////////////////////////////////////////////////////////////////////
-		void		astar(search& sdata, const user& suser)
+		void astar(search& sdata, const user& suser)
 		{
-			// Make Sure The Nodes We Are Searching For Exist
-			//------------------------------------------------
-			assert(MAXEDGES > 1);
+			// Ensure nodes exist
+			if (MAXEDGES <= 1)
+			{
+				Com_Printf(S_COLOR_RED "astar: MAXEDGES <= 1, aborting\n");
+				return;
+			}
+
 			sdata.setup(&mNodes);
 
-			// Allocate Our Data Structures
-			//------------------------------
-			handle_heap<search_node>		open(mNodes);
+			// FIX: move large handle_heap off the stack → allocate dynamically
+			handle_heap<search_node>* open = new handle_heap<search_node>(mNodes);
 
-			// Run Through The Open List
-			//---------------------------
-			open.push(sdata.get_next());
-			while (!open.empty() && !sdata.success())
+			// Initialize open list
+			open->push(sdata.get_next());
+
+			// Main A* loop
+			while (!open->empty() && !sdata.success())
 			{
-				sdata.visit(open.top());
-				open.pop();
+				sdata.visit(open->top());
+				open->pop();
 
-				// Search Through The Non Closed Nodes Edges
-				//-------------------------------------------
+				// Search neighbors
 				TNodeNeighbors& curNeighbors = get_node_neighbors(sdata.mPrevIndex);
+
 				for (int curNeighbor = 0; curNeighbor < curNeighbors.size(); curNeighbor++)
 				{
 					int curEdge = curNeighbors[curNeighbor].mEdge;
+
 					if (curEdge == -1 || suser.is_valid(mEdges[curEdge], sdata.mEnd))
 					{
 						sdata.mNextIndex = curNeighbors[curNeighbor].mNode;
+
 						search_node& snode = sdata.get_next(suser, mEdges[curEdge]);
 						float curCost = snode.cost_estimate();
 
-						// Is It Already In The Open List?
-						//---------------------------------
-						if (open.used(snode.mNode))
+						// Already in open list?
+						if (open->used(snode.mNode))
 						{
-							if (curCost < open[snode.mNode].cost_estimate())
+							if (curCost < (*open)[snode.mNode].cost_estimate())
 							{
-								open[snode.mNode] = snode;		// Use This As The Node (With New Parent & Cost)
-								open.reheapify(snode.mNode);			// Resort the node in the heap
+								(*open)[snode.mNode] = snode;
+								open->reheapify(snode.mNode);
 							}
 						}
-
-						// Is It Already In The Closed List?
-						//-----------------------------------
+						// Already in closed list?
 						else if (sdata.next_index_closed())
 						{
 							if (curCost < sdata.visited_cost(snode.mNode))
 							{
-								sdata.reopen_next_index();				// Pull it off the closed list
-								open.push(snode);						// Add it to open
+								sdata.reopen_next_index();
+								open->push(snode);
 							}
 						}
-
-						// It Must Be A Whole New Node
-						//------------------------------
+						// New node
 						else
 						{
-							open.push(snode);
+							open->push(snode);
 						}
 					}
 				}
@@ -1581,12 +1582,13 @@ namespace ragl
 
 #if !defined(FINAL_BUILD)
 			mSearchCount++;
-			mSearchMemorySize += (sizeof(sdata) + sizeof(suser) + sizeof(open));
+			mSearchMemorySize += (sizeof(sdata) + sizeof(suser) + sizeof(*open));
 
 			if (sdata.success())
 			{
 				mSearchSuccess++;
 				mSearchSuccessVisited += sdata.num_visited();
+
 				for (sdata.path_begin(); !sdata.path_end(); sdata.path_inc())
 				{
 					mSearchSuccessPathLen++;
@@ -1598,7 +1600,11 @@ namespace ragl
 				mSearchFailVisited += sdata.num_visited();
 			}
 #endif
+
+			// FIX: free dynamic heap structure
+			delete open;
 		}
+
 
 		////////////////////////////////////////////////////////////////////////////////////
 		// Breadth First Search (Use Queue Open List)

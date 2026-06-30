@@ -455,20 +455,24 @@ static void turret_turnoff(gentity_t* self)
 
 //-----------------------------------------------------
 static qboolean turret_find_enemies(gentity_t* self)
-//-----------------------------------------------------
 {
 	// HACK for t2_wedge!!!
 	if (self->spawnflags & SPF_TURRETG2_TURBO)
+	{
 		return qfalse;
+	}
 
 	qboolean found = qfalse;
 	float best_dist = self->radius * self->radius;
 	vec3_t org, org2;
-	gentity_t* entity_list[MAX_GENTITIES], * bestTarget = nullptr;
 
-	if (self->aimDebounceTime > level.time) // time since we've been shut off
+	// FIX: move large array off stack → static buffer
+	static gentity_t* entity_list[MAX_GENTITIES];
+
+	gentity_t* bestTarget = NULL;
+
+	if (self->aimDebounceTime > level.time)
 	{
-		// We were active and alert, i.e. had an enemy in the last 3 secs
 		if (self->painDebounceTime < level.time)
 		{
 			G_Sound(self, G_SoundIndex("sound/chars/turret/ping.wav"));
@@ -477,13 +481,14 @@ static qboolean turret_find_enemies(gentity_t* self)
 	}
 
 	VectorCopy(self->currentOrigin, org2);
+
 	if (self->spawnflags & 2)
 	{
-		org2[2] += 20;
+		org2[2] += 20.0f;
 	}
 	else
 	{
-		org2[2] -= 20;
+		org2[2] -= 20.0f;
 	}
 
 	const int count = G_RadiusList(org2, self->radius, self, qtrue, entity_list);
@@ -492,18 +497,19 @@ static qboolean turret_find_enemies(gentity_t* self)
 	{
 		gentity_t* target = entity_list[i];
 
-		if (!target->client)
+		if (target->client == NULL)
 		{
-			// only attack clients
 			continue;
 		}
-		if (target == self || !target->takedamage || target->health <= 0 || target->flags & FL_NOTARGET)
+		if (target == self ||
+			target->takedamage == qfalse ||
+			target->health <= 0 ||
+			(target->flags & FL_NOTARGET))
 		{
 			continue;
 		}
 		if (target->client->playerTeam == self->noDamageTeam)
 		{
-			// A bot we don't want to shoot
 			continue;
 		}
 		if (!gi.inPVS(org2, target->currentOrigin))
@@ -515,31 +521,30 @@ static qboolean turret_find_enemies(gentity_t* self)
 
 		if (self->spawnflags & 2)
 		{
-			org[2] -= 15;
+			org[2] -= 15.0f;
 		}
 		else
 		{
-			org[2] += 5;
+			org[2] += 5.0f;
 		}
 
 		trace_t tr;
-		gi.trace(&tr, org2, nullptr, nullptr, org, self->s.number, MASK_SHOT, static_cast<EG2_Collision>(0), 0);
+		gi.trace(&tr, org2, NULL, NULL, org, self->s.number,
+			MASK_SHOT, (EG2_Collision)0, 0);
 
-		if (!tr.allsolid && !tr.startsolid && (tr.fraction == 1.0 || tr.entityNum == target->s.number))
+		if (!tr.allsolid &&
+			!tr.startsolid &&
+			(tr.fraction == 1.0f || tr.entityNum == target->s.number))
 		{
 			vec3_t enemy_dir;
-			// Only acquire if have a clear shot, Is it in range and closer than our best?
 			VectorSubtract(target->currentOrigin, self->currentOrigin, enemy_dir);
 			const float enemy_dist = VectorLengthSquared(enemy_dir);
 
-			if (enemy_dist < best_dist) // all things equal, keep current
+			if (enemy_dist < best_dist)
 			{
 				if (self->attackDebounceTime < level.time)
 				{
-					// We haven't fired or acquired an enemy in the last 2 seconds-start-up sound
 					G_Sound(self, G_SoundIndex("sound/chars/turret/startup.wav"));
-
-					// Wind up turrets for a bit
 					self->attackDebounceTime = level.time + 1400;
 				}
 
@@ -550,15 +555,16 @@ static qboolean turret_find_enemies(gentity_t* self)
 		}
 	}
 
-	if (found)
+	if (found == qtrue)
 	{
-		if (!self->enemy)
+		if (self->enemy == NULL)
 		{
-			//just aquired one
 			AddSoundEvent(bestTarget, self->currentOrigin, 256, AEL_DISCOVERED);
 			AddSightEvent(bestTarget, self->currentOrigin, 512, AEL_DISCOVERED, 20);
 		}
+
 		G_SetEnemy(self, bestTarget);
+
 		if (VALIDSTRING(self->target2))
 		{
 			G_UseTargets2(self, self, self->target2);
@@ -567,6 +573,7 @@ static qboolean turret_find_enemies(gentity_t* self)
 
 	return found;
 }
+
 
 //-----------------------------------------------------
 void turret_base_think(gentity_t* self)
@@ -813,7 +820,7 @@ void SP_misc_turret(gentity_t* base)
 	base->s.eFlags |= EF_SHADER_ANIM;
 }
 
-void turretG2_set_models(gentity_t* self, qboolean dying)
+static void turretG2_set_models(gentity_t* self, qboolean dying)
 {
 	if (dying)
 	{
@@ -1481,16 +1488,16 @@ static void pas_fire(gentity_t* ent)
 
 //-----------------------------------------------------
 static qboolean pas_find_enemies(gentity_t* self)
-//-----------------------------------------------------
 {
 	qboolean found = qfalse;
 	float best_dist = self->radius * self->radius;
 	vec3_t org, org2;
-	gentity_t* entity_list[MAX_GENTITIES];
 
-	if (self->aimDebounceTime > level.time) // time since we've been shut off
+	// FIX: move large array off stack → static buffer
+	static gentity_t* entity_list[MAX_GENTITIES];
+
+	if (self->aimDebounceTime > level.time)
 	{
-		// We were active and alert, i.e. had an enemy in the last 3 secs
 		if (self->painDebounceTime < level.time)
 		{
 			G_Sound(self, G_SoundIndex("sound/chars/turret/ping.wav"));
@@ -1500,11 +1507,17 @@ static qboolean pas_find_enemies(gentity_t* self)
 
 	mdxaBone_t boltMatrix;
 
-	// Getting the "eye" here
-	gi.G2API_GetBoltMatrix(self->ghoul2, self->playerModel,
+	// Get the "eye" position
+	gi.G2API_GetBoltMatrix(
+		self->ghoul2,
+		self->playerModel,
 		self->torsoBolt,
-		&boltMatrix, self->currentAngles, self->s.origin, cg.time ? cg.time : level.time,
-		nullptr, self->s.modelScale);
+		&boltMatrix,
+		self->currentAngles,
+		self->s.origin,
+		cg.time ? cg.time : level.time,
+		NULL,
+		self->s.modelScale);
 
 	gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, org2);
 
@@ -1514,17 +1527,19 @@ static qboolean pas_find_enemies(gentity_t* self)
 	{
 		gentity_t* target = entity_list[i];
 
-		if (!target->client)
+		if (target->client == NULL)
 		{
 			continue;
 		}
-		if (target == self || !target->takedamage || target->health <= 0 || target->flags & FL_NOTARGET)
+		if (target == self ||
+			target->takedamage == qfalse ||
+			target->health <= 0 ||
+			(target->flags & FL_NOTARGET))
 		{
 			continue;
 		}
 		if (target->client->playerTeam == self->noDamageTeam)
 		{
-			// A bot we don't want to shoot
 			continue;
 		}
 		if (!gi.inPVS(org2, target->currentOrigin))
@@ -1535,7 +1550,7 @@ static qboolean pas_find_enemies(gentity_t* self)
 		if (target->client)
 		{
 			VectorCopy(target->client->renderInfo.eyePoint, org);
-			org[2] -= 15;
+			org[2] -= 15.0f;
 		}
 		else
 		{
@@ -1543,29 +1558,37 @@ static qboolean pas_find_enemies(gentity_t* self)
 		}
 
 		trace_t tr;
-		gi.trace(&tr, org2, nullptr, nullptr, org, self->s.number, MASK_SHOT, static_cast<EG2_Collision>(0), 0);
+		gi.trace(
+			&tr,
+			org2,
+			NULL,
+			NULL,
+			org,
+			self->s.number,
+			MASK_SHOT,
+			(EG2_Collision)0,
+			0);
 
-		if (!tr.allsolid && !tr.startsolid && (tr.fraction == 1.0 || tr.entityNum == target->s.number))
+		if (!tr.allsolid &&
+			!tr.startsolid &&
+			(tr.fraction == 1.0f || tr.entityNum == target->s.number))
 		{
 			vec3_t enemy_dir;
-			// Only acquire if have a clear shot, Is it in range and closer than our best?
 			VectorSubtract(target->currentOrigin, self->currentOrigin, enemy_dir);
 			const float enemy_dist = VectorLengthSquared(enemy_dir);
 
-			if (target->s.number) // don't do this for the player
+			if (target->s.number)
 			{
 				G_StartFlee(target, self, self->currentOrigin, AEL_DANGER, 3000, 5000);
 			}
 
-			if (enemy_dist < best_dist) // all things equal, keep current
+			if (enemy_dist < best_dist)
 			{
 				if (self->attackDebounceTime + 2000 < level.time)
 				{
-					// We haven't fired or acquired an enemy in the last 2 seconds-start-up sound
 					G_Sound(self, G_SoundIndex("sound/chars/turret/startup.wav"));
-
-					// Wind up turrets for a bit
-					self->attackDebounceTime = level.time + 900 + Q_flrand(0.0f, 1.0f) * 200;
+					self->attackDebounceTime =
+						level.time + 900 + Q_flrand(0.0f, 1.0f) * 200.0f;
 				}
 
 				G_SetEnemy(self, target);
@@ -1575,13 +1598,14 @@ static qboolean pas_find_enemies(gentity_t* self)
 		}
 	}
 
-	if (found && VALIDSTRING(self->target2))
+	if (found == qtrue && VALIDSTRING(self->target2))
 	{
 		G_UseTargets2(self, self, self->target2);
 	}
 
 	return found;
 }
+
 
 //---------------------------------
 static void pas_adjust_enemy(gentity_t* ent)
@@ -2353,7 +2377,7 @@ static void panel_turret_shoot(gentity_t* self, vec3_t org, vec3_t dir)
 {
 	gentity_t* missile = CreateMissile(org, dir, self->speed, 10000, self);
 
-	if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		missile->classname = "turret_proj";
 		missile->s.weapon = WP_BOWCASTER;
@@ -2379,7 +2403,7 @@ static void panel_turret_shoot(gentity_t* self, vec3_t org, vec3_t dir)
 
 	VectorMA(org, 32, dir, org);
 
-	if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		org[2] -= 5;
 		G_PlayEffect("ships/imp_blastermuzzleflash", org, dir);
@@ -2572,7 +2596,7 @@ void SP_misc_panel_turret(gentity_t* self)
 
 	G_SoundIndex("sound/movers/objects/ladygun_fire");
 
-	if (com_outcast->integer == 1 || com_outcast->integer == 4)//playing outcast
+	if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4)//playing outcast
 	{
 		G_EffectIndex("ships/imp_blastermuzzleflash");
 	}

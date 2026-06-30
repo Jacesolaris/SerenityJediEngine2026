@@ -647,7 +647,6 @@ static cvarTable_t cvarTable[] = {
 
 	{&cg_weaponBob, "cg_weaponBob", "1", CVAR_ARCHIVE},
 	{&cg_fallingBob, "cg_fallingBob", "1", CVAR_ARCHIVE},
-
 	{&cg_awardsounds, "cg_awardsounds", "0", CVAR_ARCHIVE},
 
 	{&cg_gunMomentumDamp, "cg_gunMomentumDamp", "0.001", CVAR_ARCHIVE},
@@ -2343,8 +2342,6 @@ static void CG_RegisterGraphics()
 		}
 	}
 
-
-
 	for (i = 1; i < MAX_ICONS; i++)
 	{
 		const char* iconName = const_cast<char*>(CG_ConfigString(CS_ICONS + i));
@@ -2390,9 +2387,6 @@ const char* CG_ConfigString(const int index)
 
 	return cgs.gameState.stringData + offset;
 }
-
-
-
 
 //==================================================================
 

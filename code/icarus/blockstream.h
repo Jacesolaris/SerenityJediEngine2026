@@ -194,11 +194,14 @@ public:
 	{
 		m_stream = nullptr;
 		m_streamPos = 0;
+		m_fileHandle = nullptr;        // FIX: initialize to silence C26495
+		m_fileSize = 0;              // optional but good practice
+		m_fileName[0] = '\0';          // optional but safe
 	}
 
 	~CBlockStream()
 	{
-	};
+	}
 
 	int Init();
 
@@ -206,39 +209,35 @@ public:
 	int Free();
 
 	// Stream I/O functions
-
 	int BlockAvailable() const;
 
-	int WriteBlock(CBlock*, const CIcarus* icarus) const; //Write the block out
-	int ReadBlock(CBlock*, const CIcarus* icarus); //Read the block in
+	int WriteBlock(CBlock*, const CIcarus* icarus) const;
+	int ReadBlock(CBlock*, const CIcarus* icarus);
 
-	int Open(char*, long); //Open a stream for reading / writing
+	int Open(char*, long);
 
-	// Overloaded new operator.
 	void* operator new(const size_t size)
 	{
-		// Allocate the memory.
 		return IGameInterface::GetGame()->Malloc(size);
 	}
 
-	// Overloaded delete operator.
 	void operator delete(void* pRawData)
 	{
-		// Free the Memory.
 		IGameInterface::GetGame()->Free(pRawData);
 	}
 
 protected:
-	long m_fileSize; //Size of the file
-	FILE* m_fileHandle; //Global file handle of current I/O source
-	char m_fileName[CIcarus::MAX_FILENAME_LENGTH]; //Name of the current file
+	long  m_fileSize;                                   // Size of the file
+	FILE* m_fileHandle;                                 // FIXED: now initialized
+	char  m_fileName[CIcarus::MAX_FILENAME_LENGTH];     // Name of the current file
 
-	char* m_stream; //Stream of data to be parsed
-	long m_streamPos;
+	char* m_stream;                                     // Stream of data to be parsed
+	long  m_streamPos;
 
 	static char* s_IBI_EXT;
 	static char* s_IBI_HEADER_ID;
 	static const float s_IBI_VERSION;
 };
+
 
 #endif	//__INTERPRETED_BLOCK_STREAM__

@@ -378,31 +378,38 @@ void G_DrivableATSTDie(gentity_t* self)
 
 void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 {
-	if (pEnt->NPC_type && pEnt->client && pEnt->client->NPC_class == CLASS_ATST)
+	// SAFETY FIX: pEnt or pEnt->client may be NULL in edge cases
+	if (pEnt == NULL || pEnt->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "G_DriveATST: NULL pEnt or pEnt->client\n");
+		return;
+	}
+
+	if (pEnt->NPC_type && pEnt->client->NPC_class == CLASS_ATST)
 	{
 		//already an atst, switch back
-		//open hatch
 		G_RemovePlayerModel(pEnt);
 		pEnt->NPC_type = "player";
 		pEnt->client->NPC_class = CLASS_PLAYER;
 		pEnt->flags &= ~FL_SHIELDED;
 		pEnt->client->ps.eFlags &= ~EF_IN_ATST;
-		//size
+
 		VectorCopy(playerMins, pEnt->mins);
 		VectorCopy(playerMaxs, pEnt->maxs);
 		pEnt->client->crouchheight = CROUCH_MAXS_2;
 		pEnt->client->standheight = DEFAULT_MAXS_2;
+
 		G_ChangePlayerModel(pEnt, pEnt->NPC_type);
+
 		pEnt->client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_ATST_MAIN | 1 << WP_ATST_SIDE);
 		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] = 0;
 		pEnt->client->ps.ammo[weaponData[WP_ATST_SIDE].ammoIndex] = 0;
-		if (pEnt->client->ps.stats[STAT_WEAPONS] & 1 << WP_BLASTER)
+
+		if (pEnt->client->ps.stats[STAT_WEAPONS] & (1 << WP_BLASTER))
 		{
 			CG_ChangeWeapon(WP_BLASTER);
-			//camera
 			if (cg_gunAutoFirst.integer)
 			{
-				//go back to first person
 				gi.cvar_set("cg_thirdperson", "0");
 			}
 		}
@@ -410,12 +417,19 @@ void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 		{
 			CG_ChangeWeapon(WP_NONE);
 		}
-		cg.overrides.active &= ~(CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_3RD_PERSON_VOF | CG_OVERRIDE_3RD_PERSON_POF |
+
+		cg.overrides.active &= ~(CG_OVERRIDE_3RD_PERSON_RNG |
+			CG_OVERRIDE_3RD_PERSON_VOF |
+			CG_OVERRIDE_3RD_PERSON_POF |
 			CG_OVERRIDE_3RD_PERSON_APH);
-		cg.overrides.thirdPersonRange = cg.overrides.thirdPersonVertOffset = cg.overrides.thirdPersonPitchOffset = 0;
+
+		cg.overrides.thirdPersonRange =
+			cg.overrides.thirdPersonVertOffset =
+			cg.overrides.thirdPersonPitchOffset = 0;
+
 		cg.overrides.thirdPersonAlpha = cg_thirdPersonAlpha.value;
+
 		pEnt->client->ps.viewheight = pEnt->maxs[2] + STANDARD_VIEWHEIGHT_OFFSET;
-		//pEnt->mass = 10;
 	}
 	else
 	{
@@ -424,14 +438,15 @@ void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 		pEnt->client->NPC_class = CLASS_ATST;
 		pEnt->client->ps.eFlags |= EF_IN_ATST;
 		pEnt->flags |= FL_SHIELDED;
-		//size
+
 		VectorSet(pEnt->mins, ATST_MINS0, ATST_MINS1, ATST_MINS2);
 		VectorSet(pEnt->maxs, ATST_MAXS0, ATST_MAXS1, ATST_MAXS2);
+
 		pEnt->client->crouchheight = ATST_MAXS2;
 		pEnt->client->standheight = ATST_MAXS2;
+
 		if (!atst)
 		{
-			//no pEnt to copy from
 			G_ChangePlayerModel(pEnt, "atst");
 			NPC_SetAnim(pEnt, SETANIM_BOTH, BOTH_STAND1, SETANIM_FLAG_OVERRIDE, 200);
 		}
@@ -439,55 +454,59 @@ void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 		{
 			G_RemovePlayerModel(pEnt);
 			G_RemoveWeaponModels(pEnt);
+
 			gi.G2API_CopyGhoul2Instance(atst->ghoul2, pEnt->ghoul2, -1);
 			pEnt->playerModel = 0;
-			G_SetG2PlayerModelInfo(pEnt, "atst", nullptr, nullptr);
-			//turn off hatch underside
-			gi.G2API_SetSurfaceOnOff(&pEnt->ghoul2[pEnt->playerModel], "head_hatchcover",
-				0x00000002/*G2SURFACEFLAG_OFF*/);
+
+			G_SetG2PlayerModelInfo(pEnt, "atst", NULL, NULL);
+
+			gi.G2API_SetSurfaceOnOff(&pEnt->ghoul2[pEnt->playerModel],
+				"head_hatchcover",
+				0x00000002);
+
 			G_Sound(pEnt, G_SoundIndex("sound/chars/atst/atst_hatch_close"));
 		}
+
 		pEnt->s.radius = 320;
-		//weapon
-		const gitem_t* item = FindItemForWeapon(WP_ATST_MAIN); //precache the weapon
+
+		const gitem_t* item = FindItemForWeapon(WP_ATST_MAIN);
 		CG_RegisterItemSounds(item - bg_itemlist);
 		CG_RegisterItemVisuals(item - bg_itemlist);
-		item = FindItemForWeapon(WP_ATST_SIDE); //precache the weapon
+
+		item = FindItemForWeapon(WP_ATST_SIDE);
 		CG_RegisterItemSounds(item - bg_itemlist);
 		CG_RegisterItemVisuals(item - bg_itemlist);
-		pEnt->client->ps.stats[STAT_WEAPONS] |= 1 << WP_ATST_MAIN | 1 << WP_ATST_SIDE;
-		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] = ammoData[weaponData[WP_ATST_MAIN].ammoIndex].max;
-		pEnt->client->ps.ammo[weaponData[WP_ATST_SIDE].ammoIndex] = ammoData[weaponData[WP_ATST_SIDE].ammoIndex].max;
+
+		pEnt->client->ps.stats[STAT_WEAPONS] |= (1 << WP_ATST_MAIN | 1 << WP_ATST_SIDE);
+
+		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] =
+			ammoData[weaponData[WP_ATST_MAIN].ammoIndex].max;
+
+		pEnt->client->ps.ammo[weaponData[WP_ATST_SIDE].ammoIndex] =
+			ammoData[weaponData[WP_ATST_SIDE].ammoIndex].max;
+
 		CG_ChangeWeapon(WP_ATST_MAIN);
-		//HACKHACKHACKTEMP
+
 		item = FindItemForWeapon(WP_EMPLACED_GUN);
 		CG_RegisterItemSounds(item - bg_itemlist);
 		CG_RegisterItemVisuals(item - bg_itemlist);
+
 		item = FindItemForWeapon(WP_ROCKET_LAUNCHER);
 		CG_RegisterItemSounds(item - bg_itemlist);
 		CG_RegisterItemVisuals(item - bg_itemlist);
+
 		item = FindItemForWeapon(WP_BOWCASTER);
 		CG_RegisterItemSounds(item - bg_itemlist);
 		CG_RegisterItemVisuals(item - bg_itemlist);
-		//HACKHACKHACKTEMP
-		//FIXME: these get lost in load/save!  Must use variables that are set every frame or saved/loaded
-		//camera
+
 		gi.cvar_set("cg_thirdperson", "1");
 		cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG;
 		cg.overrides.thirdPersonRange = 240;
-		//cg.overrides.thirdPersonVertOffset = 100;
-		//cg.overrides.thirdPersonPitchOffset = -30;
-		//FIXME: this gets stomped in pmove?
+
 		pEnt->client->ps.viewheight = 120;
-		//FIXME: setting these broke things very badly...?
-		//pEnt->client->standheight = 200;
-		//pEnt->client->crouchheight = 200;
-		//pEnt->mass = 300;
-		//movement
-		//pEnt->client->ps.speed = 0;//FIXME: override speed?
-		//FIXME: slow turn turning/can't turn if not moving?
 	}
 }
+
 
 //#endif //_JK2MP
 

@@ -301,41 +301,61 @@ void PC_FreeToken(token_t* token)
 // Returns:					-
 // Changes Globals:		-
 //============================================================================
-int PC_ReadSourceToken(source_t* source, token_t* token)
+static int PC_ReadSourceToken(source_t* source, token_t* token)
 {
 	int type, skip;
 
-	//if there's no token already available
+	// if there's no token already available
 	while (!source->tokens)
 	{
-		//if there's a token to read from the script
-		if (PS_ReadToken(source->scriptstack, token)) return qtrue;
-		//if at the end of the script
+		// if there's a token to read from the script
+		if (PS_ReadToken(source->scriptstack, token))
+		{
+			return qtrue;
+		}
+
+		// if at the end of the script
 		if (EndOfScript(source->scriptstack))
 		{
-			//remove all indents of the script
+			// remove all indents of the script
 			while (source->indentstack &&
 				source->indentstack->script == source->scriptstack)
 			{
 				SourceWarning(source, "missing #endif");
 				PC_PopIndent(source, &type, &skip);
-			} //end if
-		} //end if
-		//if this was the initial script
-		if (!source->scriptstack->next) return qfalse;
-		//remove the script and return to the last one
+			}
+		}
+
+		// if this was the initial script
+		if (!source->scriptstack->next)
+		{
+			return qfalse;
+		}
+
+		// remove the script and return to the last one
 		script_t* script = source->scriptstack;
 		source->scriptstack = source->scriptstack->next;
 		FreeScript(script);
-	} //end while
-	//copy the already available token
+	}
+
+	// SAFETY: satisfy MSVC analyzer (C6387) — real flow never hits this
+	if (source->tokens == NULL)
+	{
+		SourceWarning(source, "PC_ReadSourceToken: source->tokens is NULL after refill\n");
+		return qfalse;
+	}
+
+	// copy the already available token
 	Com_Memcpy(token, source->tokens, sizeof(token_t));
-	//free the read token
+
+	// free the read token
 	token_t* t = source->tokens;
 	source->tokens = source->tokens->next;
 	PC_FreeToken(t);
+
 	return qtrue;
-} //end of the function PC_ReadSourceToken
+}
+//end of the function PC_ReadSourceToken
 //============================================================================
 //
 // Parameter:				-
@@ -767,21 +787,29 @@ int PC_ExpandBuiltinDefine(source_t* source, token_t* deftoken, define_t* define
 // Returns:					-
 // Changes Globals:		-
 //============================================================================
-int PC_ExpandDefine(source_t* source, token_t* deftoken, define_t* define,
+static int PC_ExpandDefine(source_t* source, token_t* deftoken, define_t* define,
 	token_t** firsttoken, token_t** lasttoken)
 {
-	token_t* parms[MAX_DEFINEPARMS], * pt, * t;
+	// FIX: initialize parms[] to silence C6001
+	token_t* parms[MAX_DEFINEPARMS] = { nullptr };
+
+	token_t* pt, * t;
 	token_t* nextpt, token;
 
-	//if it is a builtin define
+	// if it is a builtin define
 	if (define->builtin)
 	{
 		return PC_ExpandBuiltinDefine(source, deftoken, define, firsttoken, lasttoken);
-	} //end if
-	//if the define has parameters
+	}
+
+	// if the define has parameters
 	if (define->numparms)
 	{
-		if (!PC_ReadDefineParms(source, define, parms, MAX_DEFINEPARMS)) return qfalse;
+		if (!PC_ReadDefineParms(source, define, parms, MAX_DEFINEPARMS))
+		{
+			return qfalse;
+		}
+
 #ifdef DEBUG_EVAL
 		for (i = 0; i < define->numparms; i++)
 		{
@@ -789,115 +817,136 @@ int PC_ExpandDefine(source_t* source, token_t* deftoken, define_t* define,
 			for (pt = parms[i]; pt; pt = pt->next)
 			{
 				Log_Write("%s", pt->string);
-			} //end for
-		} //end for
-#endif //DEBUG_EVAL
-	} //end if
-	//empty list at first
+			}
+		}
+#endif
+	}
+
+	// empty list at first
 	token_t* first = nullptr;
 	token_t* last = nullptr;
-	//create a list with tokens of the expanded define
+
+	// create a list with tokens of the expanded define
 	for (token_t* dt = define->tokens; dt; dt = dt->next)
 	{
 		int parmnum = -1;
-		//if the token is a name, it could be a define parameter
+
+		// if the token is a name, it could be a define parameter
 		if (dt->type == TT_NAME)
 		{
 			parmnum = PC_FindDefineParm(define, dt->string);
-		} //end if
-		//if it is a define parameter
+		}
+
+		// if it is a define parameter
 		if (parmnum >= 0)
 		{
 			for (pt = parms[parmnum]; pt; pt = pt->next)
 			{
 				t = PC_CopyToken(pt);
-				//add the token to the list
 				t->next = nullptr;
-				if (last) last->next = t;
-				else first = t;
+
+				if (last)
+					last->next = t;
+				else
+					first = t;
+
 				last = t;
-			} //end for
-		} //end if
+			}
+		}
 		else
 		{
-			//if stringizing operator
+			// stringizing operator (#)
 			if (dt->string[0] == '#' && dt->string[1] == '\0')
 			{
-				//the stringizing operator must be followed by a define parameter
-				if (dt->next) parmnum = PC_FindDefineParm(define, dt->next->string);
-				else parmnum = -1;
-				//
+				if (dt->next)
+					parmnum = PC_FindDefineParm(define, dt->next->string);
+				else
+					parmnum = -1;
+
 				if (parmnum >= 0)
 				{
-					//step over the stringizing operator
 					dt = dt->next;
-					//stringize the define parameter tokens
+
 					if (!PC_StringizeTokens(parms[parmnum], &token))
 					{
 						SourceError(source, "can't stringize tokens");
 						return qfalse;
-					} //end if
+					}
+
 					t = PC_CopyToken(&token);
-				} //end if
+				}
 				else
 				{
 					SourceWarning(source, "stringizing operator without define parameter");
 					continue;
-				} //end if
-			} //end if
+				}
+			}
 			else
 			{
 				t = PC_CopyToken(dt);
-			} //end else
-			//add the token to the list
+			}
+
 			t->next = nullptr;
-			if (last) last->next = t;
-			else first = t;
+
+			if (last)
+				last->next = t;
+			else
+				first = t;
+
 			last = t;
-		} //end else
-	} //end for
-	//check for the merging operator
+		}
+	}
+
+	// check for merging operator (##)
 	for (t = first; t; )
 	{
 		if (t->next)
 		{
-			//if the merging operator
 			if (t->next->string[0] == '#' && t->next->string[1] == '#')
 			{
 				token_t* t1 = t;
 				token_t* t2 = t->next->next;
+
 				if (t2)
 				{
 					if (!PC_MergeTokens(t1, t2))
 					{
 						SourceError(source, "can't merge %s with %s", t1->string, t2->string);
 						return qfalse;
-					} //end if
+					}
+
 					PC_FreeToken(t1->next);
 					t1->next = t2->next;
-					if (t2 == last) last = t1;
+
+					if (t2 == last)
+						last = t1;
+
 					PC_FreeToken(t2);
 					continue;
-				} //end if
-			} //end if
-		} //end if
+				}
+			}
+		}
+
 		t = t->next;
-	} //end for
-	//store the first and last token of the list
+	}
+
+	// store the first and last token of the list
 	*firsttoken = first;
 	*lasttoken = last;
-	//free all the parameter tokens
+
+	// free all the parameter tokens
 	for (int i = 0; i < define->numparms; i++)
 	{
 		for (pt = parms[i]; pt; pt = nextpt)
 		{
 			nextpt = pt->next;
 			PC_FreeToken(pt);
-		} //end for
-	} //end for
-	//
+		}
+	}
+
 	return qtrue;
-} //end of the function PC_ExpandDefine
+}
+//end of the function PC_ExpandDefine
 //============================================================================
 //
 // Parameter:				-

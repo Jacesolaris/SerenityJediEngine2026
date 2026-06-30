@@ -668,46 +668,52 @@ constexpr auto PUSH_CONVEYOR = 32;
 
 void trigger_push_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 {
-	if (self->svFlags & SVF_INACTIVE)
+	// SAFETY FIX: other may be NULL in edge cases (bad maps, script errors)
+	if (other == NULL)
 	{
-		//set by target_deactivate
+		Com_Printf(S_COLOR_YELLOW "trigger_push_touch: NULL 'other' passed in\n");
 		return;
 	}
 
-	if (level.time < self->painDebounceTime + self->wait) // normal 'wait' check
+	if (self->svFlags & SVF_INACTIVE)
 	{
-		if (self->spawnflags & 2048) // MULTIPLE - allow multiple entities to touch this trigger in one frame
+		return;
+	}
+
+	// Normal wait check
+	if (level.time < self->painDebounceTime + self->wait)
+	{
+		if (self->spawnflags & 2048) // MULTIPLE
 		{
 			if (self->painDebounceTime && level.time > self->painDebounceTime)
-				// if we haven't reached the next frame continue to let ents touch the trigger
 			{
 				return;
 			}
 		}
-		else // only allowing one ent per frame to touch trigger
+		else
 		{
 			return;
 		}
 	}
 
-	// if the player has already activated this trigger this frame
-	if (other && !other->s.number && self->aimDebounceTime == level.time)
+	// Player already activated this trigger this frame
+	if (!other->s.number && self->aimDebounceTime == level.time)
 	{
 		return;
 	}
 
+	// Conveyor: only push if on ground
 	if (self->spawnflags & PUSH_CONVEYOR)
 	{
-		// only push player if he's on the ground
 		if (other->s.groundEntityNum == ENTITYNUM_NONE)
 		{
 			return;
 		}
 	}
 
+	// PLAYERONLY
 	if (self->spawnflags & 1)
 	{
-		//PLAYERONLY
 		if (other->s.number != 0)
 		{
 			return;
@@ -715,22 +721,24 @@ void trigger_push_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 	}
 	else
 	{
+		// NPCONLY
 		if (self->spawnflags & 8)
 		{
-			//NPCONLY
-			if (other->NPC == nullptr)
+			if (other->NPC == NULL)
 			{
 				return;
 			}
 		}
 	}
 
-	if (!(other && other->client))
+	// Non-client entities (items, missiles, movers)
+	if (other->client == NULL)
 	{
-		if (other->s.pos.trType != TR_STATIONARY && other->s.pos.trType != TR_LINEAR_STOP && other->s.pos.trType !=
-			TR_NONLINEAR_STOP && VectorLengthSquared(other->s.pos.trDelta))
+		if (other->s.pos.trType != TR_STATIONARY &&
+			other->s.pos.trType != TR_LINEAR_STOP &&
+			other->s.pos.trType != TR_NONLINEAR_STOP &&
+			VectorLengthSquared(other->s.pos.trDelta))
 		{
-			//already moving
 			VectorCopy(other->currentOrigin, other->s.pos.trBase);
 			VectorCopy(self->s.origin2, other->s.pos.trDelta);
 			other->s.pos.trTime = level.time;
@@ -738,37 +746,41 @@ void trigger_push_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 		return;
 	}
 
+	// Only push normal movement clients
 	if (other->client->ps.pm_type != PM_NORMAL)
 	{
 		return;
 	}
 
+	// Apply push
 	if (self->spawnflags & 16)
 	{
-		//relative, dir to it * speed
 		vec3_t dir;
 		VectorSubtract(self->s.origin2, other->currentOrigin, dir);
+
 		if (self->speed)
 		{
 			VectorNormalize(dir);
 			VectorScale(dir, self->speed, dir);
 		}
+
 		VectorCopy(dir, other->client->ps.velocity);
 	}
 	else if (self->spawnflags & 4)
 	{
-		//linear dir * speed
 		VectorScale(self->s.origin2, self->speed, other->client->ps.velocity);
 	}
 	else
 	{
 		VectorCopy(self->s.origin2, other->client->ps.velocity);
 	}
-	//so we don't take damage unless we land lower than we start here...
+
+	// Prevent fall damage unless landing lower
 	other->client->ps.forceJumpZStart = 0;
-	other->client->ps.pm_flags |= PMF_TRIGGER_PUSHED; //pushed by a trigger
+	other->client->ps.pm_flags |= PMF_TRIGGER_PUSHED;
 	other->client->ps.jumpZStart = other->client->ps.origin[2];
 
+	// Disable trigger permanently
 	if (self->wait == -1)
 	{
 		self->e_TouchFunc = touchF_NULL;
@@ -777,12 +789,14 @@ void trigger_push_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 	{
 		self->painDebounceTime = level.time;
 	}
-	if (other && !other->s.number)
+
+	// Mark player activation this frame
+	if (!other->s.number)
 	{
-		// mark that the player has activated this trigger this frame
 		self->aimDebounceTime = level.time;
 	}
 }
+
 
 constexpr auto PUSH_CONSTANT = 2;
 
@@ -1195,9 +1209,15 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 	int dflags;
 	int actual_dmg = self->damage;
 
+	// SAFETY: other may be NULL in edge cases (bad maps, script errors)
+	if (other == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "hurt_touch: NULL 'other' passed in\n");
+		return;
+	}
+
 	if (self->svFlags & SVF_INACTIVE)
 	{
-		//set by target_deactivate
 		return;
 	}
 
@@ -1206,31 +1226,30 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 		return;
 	}
 
-	if (level.time < self->painDebounceTime + self->wait) // normal 'wait' check
+	if (level.time < self->painDebounceTime + self->wait)
 	{
-		if (self->spawnflags & 2048) // MULTIPLE - allow multiple entities to touch this trigger in one frame
+		if (self->spawnflags & 2048)
 		{
 			if (self->painDebounceTime && level.time > self->painDebounceTime)
-				// if we haven't reached the next frame continue to let ents touch the trigger
 			{
 				return;
 			}
 		}
-		else // only allowing one ent per frame to touch trigger
+		else
 		{
 			return;
 		}
 	}
 
-	// if the player has already activated this trigger this frame
-	if (other && !other->s.number && self->aimDebounceTime == level.time)
+	// player already activated this trigger this frame
+	if (!other->s.number && self->aimDebounceTime == level.time)
 	{
 		return;
 	}
 
 	if (self->spawnflags & 2)
 	{
-		//player only
+		// player only
 		if (other->s.number)
 		{
 			return;
@@ -1239,19 +1258,15 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 
 	if (self->NPC_targetname && self->NPC_targetname[0])
 	{
-		//I am for you, Kirk
 		if (other->script_targetname && other->script_targetname[0])
 		{
-			//must have a name
 			if (Q_stricmp(self->NPC_targetname, other->script_targetname) != 0)
 			{
-				//not the right guy to fire me off
 				return;
 			}
 		}
 		else
 		{
-			//no name?  No trigger.
 			return;
 		}
 	}
@@ -1273,61 +1288,60 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 
 	if (self->delay)
 	{
-		//Increase dmg over time
 		if (self->attackDebounceTime < self->delay)
 		{
-			//FIXME: this is for the entire trigger, not per person, so if someone else jumped in after you were in it for 5 seconds, they'd get damaged faster
 			actual_dmg = floor(static_cast<float>(self->damage * self->attackDebounceTime / self->delay));
 		}
-		self->attackDebounceTime += FRAMETIME;
 
+		self->attackDebounceTime += FRAMETIME;
 		self->e_ThinkFunc = thinkF_trigger_hurt_reset;
 		self->nextthink = level.time + FRAMETIME * 2;
 	}
 
 	if (actual_dmg)
 	{
-		if (self->spawnflags & 64 && other->client) //electrical damage
+		if ((self->spawnflags & 64) && other->client)
 		{
-			// zap effect
 			other->s.powerups |= 1 << PW_SHOCKED;
 			other->client->ps.powerups[PW_SHOCKED] = level.time + 1000;
 		}
 
-		//make sure his jetpack is off
 		Jetpack_Off(other);
 
 		if (self->spawnflags & 32)
 		{
-			//falling dea
-			if (other->client->NPC_class == (CLASS_BOBAFETT | CLASS_MANDO | CLASS_ROCKETTROOPER))
+			if (other->client &&
+				(other->client->NPC_class == (CLASS_BOBAFETT | CLASS_MANDO | CLASS_ROCKETTROOPER)))
 			{
-				//boba never falls to his death!
 				JET_FlyStart(other);
 			}
 			else
 			{
-				G_Damage(other, self, self, nullptr, nullptr, actual_dmg, dflags | DAMAGE_NO_ARMOR, MOD_FALLING);
-				// G_Damage will free this ent, which makes it s.number 0, so we must check inuse...
+				G_Damage(other, self, self, nullptr, nullptr, actual_dmg,
+					dflags | DAMAGE_NO_ARMOR, MOD_FALLING);
+
 				if (!other->s.number && other->health <= 0)
 				{
 					if (self->count)
 					{
 						extern void CGCam_Fade(vec4_t source, vec4_t dest, float duration);
-						float src[4] = { 0, 0, 0, 0 }, dst[4] = { 0, 0, 0, 1 };
+						float src[4] = { 0, 0, 0, 0 };
+						float dst[4] = { 0, 0, 0, 1 };
 						CGCam_Fade(src, dst, self->count);
 					}
+
 					if (self->spawnflags & 16)
 					{
-						//lock cam
 						cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_CDP;
 						cg.overrides.thirdPersonCameraDamp = 0;
 					}
+
 					if (other->client)
 					{
 						other->client->ps.pm_flags |= PMF_SLOW_MO_FALL;
 					}
-					G_SoundOnEnt(other, CHAN_VOICE, "*falling1.wav"); //CHAN_VOICE_ATTEN?
+
+					G_SoundOnEnt(other, CHAN_VOICE, "*falling1.wav");
 				}
 			}
 		}
@@ -1335,15 +1349,17 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 		{
 			G_Damage(other, self, self, nullptr, nullptr, actual_dmg, dflags, MOD_TRIGGER_HURT);
 		}
-		if (other && !other->s.number)
+
+		if (!other->s.number)
 		{
 			self->aimDebounceTime = level.time;
 		}
-		if (self->spawnflags & 64 && other->client && other->health <= 0) //electrical damage
+
+		if ((self->spawnflags & 64) && other->client && other->health <= 0)
 		{
-			//just killed them, make the effect last longer since dead clients don't touch triggers
 			other->client->ps.powerups[PW_SHOCKED] = level.time + 10000;
 		}
+
 		self->painDebounceTime = level.time;
 	}
 
@@ -1352,6 +1368,7 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 		self->e_TouchFunc = touchF_NULL;
 	}
 }
+
 
 void SP_trigger_hurt(gentity_t* self)
 {
@@ -1520,36 +1537,47 @@ void shipboundary_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 
 void shipboundary_think(gentity_t* ent)
 {
-	gentity_t* entity_list[MAX_GENTITIES];
+	// FIX: move large array off stack → static buffer
+	static gentity_t* entity_list[MAX_GENTITIES];
+
 	int i = 0;
 
 	ent->nextthink = level.time + 100;
 
 	if (ent->bounceCount < level.time)
 	{
-		//don't need to be doing this check, no one has touched recently
+		// no recent touches, skip expensive check
 		return;
 	}
 
-	const int num_listed_entities = gi.EntitiesInBox(ent->absmin, ent->absmax, entity_list, MAX_GENTITIES);
+	const int num_listed_entities =
+		gi.EntitiesInBox(ent->absmin, ent->absmax, entity_list, MAX_GENTITIES);
+
 	while (i < num_listed_entities)
 	{
 		gentity_t* listed_ent = entity_list[i];
-		if (listed_ent->inuse && listed_ent->client && listed_ent->s.m_iVehicleNum)
+
+		if (listed_ent->inuse &&
+			listed_ent->client &&
+			listed_ent->s.m_iVehicleNum)
 		{
 			if (listed_ent->NPC &&
 				listed_ent->client->NPC_class == CLASS_VEHICLE)
 			{
 				const Vehicle_t* p_veh = listed_ent->m_pVehicle;
-				if (p_veh && p_veh->m_pVehicleInfo->type == VH_FIGHTER)
+
+				if (p_veh &&
+					p_veh->m_pVehicleInfo->type == VH_FIGHTER)
 				{
 					shipboundary_touch(ent, listed_ent, nullptr);
 				}
 			}
 		}
+
 		i++;
 	}
 }
+
 
 /*QUAKED trigger_shipboundary (.5 .5 .5) ?
 causes vehicle to turn toward target and travel in that direction for a set time when hit.

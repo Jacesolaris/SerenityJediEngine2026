@@ -180,10 +180,10 @@ void AAS_DrawPermanentCross(vec3_t origin, const float size, const int color)
 //===========================================================================
 void AAS_DrawPlaneCross(vec3_t point, vec3_t normal, const float dist, const int type, const int color)
 {
-	int j, line, lines[2];
+	int j, line;
+	int lines[2] = { -1, -1 };   // FIX: initialize to safe values
 	vec3_t start1, end1, start2, end2;
 
-	//make a cross in the hit plane at the hit point
 	VectorCopy(point, start1);
 	VectorCopy(point, end1);
 	VectorCopy(point, start2);
@@ -192,24 +192,19 @@ void AAS_DrawPlaneCross(vec3_t point, vec3_t normal, const float dist, const int
 	const int n0 = type % 3;
 	const int n1 = (type + 1) % 3;
 	const int n2 = (type + 2) % 3;
-	start1[n1] -= 6;
-	start1[n2] -= 6;
-	end1[n1] += 6;
-	end1[n2] += 6;
-	start2[n1] += 6;
-	start2[n2] -= 6;
-	end2[n1] -= 6;
-	end2[n2] += 6;
 
-	start1[n0] = (dist - (start1[n1] * normal[n1] +
-		start1[n2] * normal[n2])) / normal[n0];
-	end1[n0] = (dist - (end1[n1] * normal[n1] +
-		end1[n2] * normal[n2])) / normal[n0];
-	start2[n0] = (dist - (start2[n1] * normal[n1] +
-		start2[n2] * normal[n2])) / normal[n0];
-	end2[n0] = (dist - (end2[n1] * normal[n1] +
-		end2[n2] * normal[n2])) / normal[n0];
+	start1[n1] -= 6; start1[n2] -= 6;
+	end1[n1] += 6; end1[n2] += 6;
 
+	start2[n1] += 6; start2[n2] -= 6;
+	end2[n1] -= 6; end2[n2] += 6;
+
+	start1[n0] = (dist - (start1[n1] * normal[n1] + start1[n2] * normal[n2])) / normal[n0];
+	end1[n0] = (dist - (end1[n1] * normal[n1] + end1[n2] * normal[n2])) / normal[n0];
+	start2[n0] = (dist - (start2[n1] * normal[n1] + start2[n2] * normal[n2])) / normal[n0];
+	end2[n0] = (dist - (end2[n1] * normal[n1] + end2[n2] * normal[n2])) / normal[n0];
+
+	// Allocate two debug lines
 	for (j = 0, line = 0; j < 2 && line < MAX_DEBUGLINES; line++)
 	{
 		if (!debuglines[line])
@@ -218,16 +213,25 @@ void AAS_DrawPlaneCross(vec3_t point, vec3_t normal, const float dist, const int
 			lines[j++] = debuglines[line];
 			debuglinevisible[line] = qtrue;
 			numdebuglines++;
-		} //end if
+		}
 		else if (!debuglinevisible[line])
 		{
 			lines[j++] = debuglines[line];
 			debuglinevisible[line] = qtrue;
-		} //end else
-	} //end for
+		}
+	}
+
+	// FIX: ensure both lines are valid
+	if (lines[0] == -1 || lines[1] == -1)
+	{
+		Com_Printf(S_COLOR_YELLOW "AAS_DrawPlaneCross: insufficient debug lines\n");
+		return;
+	}
+
 	botimport.DebugLineShow(lines[0], start1, end1, color);
 	botimport.DebugLineShow(lines[1], start2, end2, color);
-} //end of the function AAS_DrawPlaneCross
+}
+//end of the function AAS_DrawPlaneCross
 //===========================================================================
 //
 // Parameter:				-
@@ -236,30 +240,35 @@ void AAS_DrawPlaneCross(vec3_t point, vec3_t normal, const float dist, const int
 //===========================================================================
 void AAS_ShowBoundingBox(vec3_t origin, vec3_t mins, vec3_t maxs)
 {
-	vec3_t bboxcorners[8];
-	int lines[3];
+	vec3_t bboxcorners[8] = { 0 };
+	int lines[3] = { -1, -1, -1 };
 	int i, j, line;
 
-	//upper corners
+	// upper corners
 	bboxcorners[0][0] = origin[0] + maxs[0];
 	bboxcorners[0][1] = origin[1] + maxs[1];
 	bboxcorners[0][2] = origin[2] + maxs[2];
-	//
+
 	bboxcorners[1][0] = origin[0] + mins[0];
 	bboxcorners[1][1] = origin[1] + maxs[1];
 	bboxcorners[1][2] = origin[2] + maxs[2];
-	//
+
 	bboxcorners[2][0] = origin[0] + mins[0];
 	bboxcorners[2][1] = origin[1] + mins[1];
 	bboxcorners[2][2] = origin[2] + maxs[2];
-	//
+
 	bboxcorners[3][0] = origin[0] + maxs[0];
 	bboxcorners[3][1] = origin[1] + mins[1];
 	bboxcorners[3][2] = origin[2] + maxs[2];
-	//lower corners
-	Com_Memcpy(bboxcorners[4], bboxcorners[0], sizeof(vec3_t) * 4);
-	for (i = 0; i < 4; i++) bboxcorners[4 + i][2] = origin[2] + mins[2];
-	//draw bounding box
+
+	// lower corners — FIX: safe copy
+	for (i = 0; i < 4; i++)
+	{
+		VectorCopy(bboxcorners[i], bboxcorners[4 + i]);
+		bboxcorners[4 + i][2] = origin[2] + mins[2];
+	}
+
+	// draw bounding box
 	for (i = 0; i < 4; i++)
 	{
 		for (j = 0, line = 0; j < 3 && line < MAX_DEBUGLINES; line++)
@@ -270,24 +279,25 @@ void AAS_ShowBoundingBox(vec3_t origin, vec3_t mins, vec3_t maxs)
 				lines[j++] = debuglines[line];
 				debuglinevisible[line] = qtrue;
 				numdebuglines++;
-			} //end if
+			}
 			else if (!debuglinevisible[line])
 			{
 				lines[j++] = debuglines[line];
 				debuglinevisible[line] = qtrue;
-			} //end else
-		} //end for
-		//top plane
+			}
+		}
+
 		botimport.DebugLineShow(lines[0], bboxcorners[i],
-			bboxcorners[i + 1 & 3], LINECOLOR_RED);
-		//bottom plane
+			bboxcorners[(i + 1) & 3], LINECOLOR_RED);
+
 		botimport.DebugLineShow(lines[1], bboxcorners[4 + i],
-			bboxcorners[4 + (i + 1 & 3)], LINECOLOR_RED);
-		//vertical lines
+			bboxcorners[4 + ((i + 1) & 3)], LINECOLOR_RED);
+
 		botimport.DebugLineShow(lines[2], bboxcorners[i],
 			bboxcorners[4 + i], LINECOLOR_RED);
-	} //end for
-} //end of the function AAS_ShowBoundingBox
+	}
+}
+//end of the function AAS_ShowBoundingBox
 //===========================================================================
 //
 // Parameter:				-

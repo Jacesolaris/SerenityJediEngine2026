@@ -354,6 +354,12 @@ void WP_ThermalThink(gentity_t* ent)
 gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
+	if (ent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireThermalDetonator: NULL ent\n");
+		return NULL;
+	}
+
 	vec3_t dir, start;
 	float damageScale = 1.0f;
 
@@ -361,33 +367,36 @@ gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 	VectorCopy(muzzle, start);
 
 	gentity_t* bolt = G_Spawn();
+	if (bolt == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireThermalDetonator: G_Spawn returned NULL\n");
+		return NULL;
+	}
 
 	bolt->classname = "thermal_detonator";
 
 	if (ent->s.number != 0)
 	{
-		// If not the player, cut the damage a bit so we don't get pounded on so much
 		damageScale = TD_NPC_DAMAGE_CUT;
 	}
 
-	if (!alt_fire && ent->s.number == 0)
+	if (alt_fire == qfalse && ent->s.number == 0)
 	{
-		// Main fires for the players do a little bit of extra thinking
 		bolt->e_ThinkFunc = thinkF_WP_ThermalThink;
 		bolt->nextthink = level.time + TD_THINK_TIME;
-		bolt->delay = level.time + TD_TIME; // How long 'til she blows
+		bolt->delay = level.time + TD_TIME;
 	}
 	else
 	{
 		bolt->e_ThinkFunc = thinkF_thermalDetonatorExplode;
-		bolt->nextthink = level.time + TD_TIME; // How long 'til she blows
+		bolt->nextthink = level.time + TD_TIME;
 	}
 
 	bolt->mass = 10;
 
-	// How 'bout we give this thing a size...
 	VectorSet(bolt->mins, -4.0f, -4.0f, -4.0f);
 	VectorSet(bolt->maxs, 4.0f, 4.0f, 4.0f);
+
 	bolt->clipmask = MASK_SHOT;
 	bolt->clipmask &= ~CONTENTS_CORPSE;
 	bolt->contents = CONTENTS_SHOTCLIP;
@@ -395,17 +404,16 @@ gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 	bolt->health = 15;
 	bolt->e_DieFunc = dieF_thermal_die;
 
-	WP_TraceSetStart(ent, start); //make sure our start point isn't on the other side of a wall
+	WP_TraceSetStart(ent, start);
 
-	float chargeAmount = 1.0f; // default of full charge
+	float chargeAmount = 1.0f;
 
-	if (ent->client)
+	if (ent->client != NULL)
 	{
 		chargeAmount = level.time - ent->client->ps.weaponChargeTime;
 	}
 
-	// get charge amount
-	chargeAmount = chargeAmount / static_cast<float>(TD_VELOCITY);
+	chargeAmount = chargeAmount / (float)TD_VELOCITY;
 
 	if (chargeAmount > 1.0f)
 	{
@@ -417,9 +425,10 @@ gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 	}
 
 	float thrown_speed = TD_VELOCITY;
-	const auto this_is_a_shooter = static_cast<qboolean>(!Q_stricmp("misc_weapon_shooter", ent->classname));
+	const qboolean this_is_a_shooter =
+		(Q_stricmp("misc_weapon_shooter", ent->classname) == 0) ? qtrue : qfalse;
 
-	if (this_is_a_shooter)
+	if (this_is_a_shooter == qtrue)
 	{
 		if (ent->delay != 0)
 		{
@@ -427,47 +436,59 @@ gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 		}
 	}
 
-	// normal ones bounce, alt ones explode on impact
 	bolt->s.pos.trType = TR_GRAVITY;
 	bolt->owner = ent;
+
 	VectorScale(dir, thrown_speed * chargeAmount, bolt->s.pos.trDelta);
 
 	if (ent->health > 0)
 	{
-		bolt->s.pos.trDelta[2] += 120;
+		bolt->s.pos.trDelta[2] += 120.0f;
 
-		if ((ent->NPC || ent->s.number && this_is_a_shooter)
-			&& ent->enemy)
+		const qboolean has_npc = (ent->NPC != NULL) ? qtrue : qfalse;
+
+		if (((has_npc == qtrue) || ((ent->s.number != 0) && (this_is_a_shooter == qtrue))) &&
+			ent->enemy != NULL)
 		{
-			//NPC or misc_weapon_shooter
-			//FIXME: we're assuming he's actually facing this direction...
 			vec3_t target;
-
 			VectorCopy(ent->enemy->currentOrigin, target);
+
 			if (target[2] <= start[2])
 			{
 				vec3_t vec;
 				VectorSubtract(target, start, vec);
 				VectorNormalize(vec);
-				VectorMA(target, Q_flrand(0, -32), vec, target); //throw a little short
+				VectorMA(target, Q_flrand(0.0f, -32.0f), vec, target);
 			}
 
-			target[0] += Q_flrand(-5, 5) + Q_flrand(-1.0f, 1.0f) * (6 - ent->NPC->currentAim) * 2;
-			target[1] += Q_flrand(-5, 5) + Q_flrand(-1.0f, 1.0f) * (6 - ent->NPC->currentAim) * 2;
-			target[2] += Q_flrand(-5, 5) + Q_flrand(-1.0f, 1.0f) * (6 - ent->NPC->currentAim) * 2;
+			float aim = 6.0f;
+			if (has_npc == qtrue)
+			{
+				aim = ent->NPC->currentAim;
+			}
 
-			WP_LobFire(ent, start, target, bolt->mins, bolt->maxs, bolt->clipmask, bolt->s.pos.trDelta, qtrue,
+			target[0] += Q_flrand(-5.0f, 5.0f) + Q_flrand(-1.0f, 1.0f) * (6.0f - aim) * 2.0f;
+			target[1] += Q_flrand(-5.0f, 5.0f) + Q_flrand(-1.0f, 1.0f) * (6.0f - aim) * 2.0f;
+			target[2] += Q_flrand(-5.0f, 5.0f) + Q_flrand(-1.0f, 1.0f) * (6.0f - aim) * 2.0f;
+
+			WP_LobFire(ent, start, target,
+				bolt->mins, bolt->maxs, bolt->clipmask,
+				bolt->s.pos.trDelta, qtrue,
 				ent->s.number, ent->enemy->s.number);
 		}
-		else if (this_is_a_shooter && ent->target && !VectorCompare(ent->pos1, vec3_origin))
+		else if (this_is_a_shooter == qtrue &&
+			ent->target != NULL &&
+			!VectorCompare(ent->pos1, vec3_origin))
 		{
-			//misc_weapon_shooter firing at a position
-			WP_LobFire(ent, start, ent->pos1, bolt->mins, bolt->maxs, bolt->clipmask, bolt->s.pos.trDelta, qtrue,
-				ent->s.number, ent->enemy->s.number);
+			WP_LobFire(ent, start, ent->pos1,
+				bolt->mins, bolt->maxs, bolt->clipmask,
+				bolt->s.pos.trDelta, qtrue,
+				ent->s.number,
+				(ent->enemy != NULL) ? ent->enemy->s.number : ENTITYNUM_NONE);
 		}
 	}
 
-	if (alt_fire)
+	if (alt_fire == qtrue)
 	{
 		bolt->alt_fire = qtrue;
 	}
@@ -487,27 +508,27 @@ gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 	bolt->svFlags = SVF_USE_CURRENT_ORIGIN;
 	bolt->s.weapon = WP_THERMAL;
 
-	if (alt_fire)
+	if (alt_fire == qtrue)
 	{
 		bolt->methodOfDeath = MOD_THERMAL_ALT;
-		bolt->splashMethodOfDeath = MOD_THERMAL_ALT; //? SPLASH;
+		bolt->splashMethodOfDeath = MOD_THERMAL_ALT;
 	}
 	else
 	{
 		bolt->methodOfDeath = MOD_THERMAL;
-		bolt->splashMethodOfDeath = MOD_THERMAL; //? SPLASH;
+		bolt->splashMethodOfDeath = MOD_THERMAL;
 	}
 
-	bolt->s.pos.trTime = level.time; // move a bit on the very first frame
+	bolt->s.pos.trTime = level.time;
 	VectorCopy(start, bolt->s.pos.trBase);
 
-	SnapVector(bolt->s.pos.trDelta); // save net bandwidth
+	SnapVector(bolt->s.pos.trDelta);
 	VectorCopy(start, bolt->currentOrigin);
-
 	VectorCopy(start, bolt->pos2);
 
 	return bolt;
 }
+
 
 //---------------------------------------------------------
 gentity_t* WP_DropThermal(gentity_t* ent)

@@ -784,29 +784,63 @@ Text_PaintWithCursor
 ================
 */
 // iMaxPixelWidth is 0 here for no-limit
-static void Text_PaintWithCursor(const float x, const float y, const float scale, vec4_t color, const char* text,
-	const int cursorPos, const char cursor,
-	const int iMaxPixelWidth, const int style, const int iFontIndex)
+/*
+===========================
+Text_PaintWithCursor
+- Draws text and a blinking cursor.
+- Fixed MSVC C6386 by clamping iCopyCount to sizeof(sTemp) - 1.
+===========================
+*/
+static void Text_PaintWithCursor(const float x,
+	const float y,
+	const float scale,
+	vec4_t color,
+	const char* text,
+	const int cursorPos,
+	const char cursor,
+	const int iMaxPixelWidth,
+	const int style,
+	const int iFontIndex)
 {
+	/* Draw the base text first */
 	Text_Paint(x, y, scale, color, text, iMaxPixelWidth, style, iFontIndex);
 
-	// now print the cursor as well...
-	//
+	/* Temporary buffer for measuring pixel width */
 	char sTemp[1024];
-	int iCopyCount = iMaxPixelWidth > 0 ? Q_min((int)strlen(text), iMaxPixelWidth) : static_cast<int>(strlen(text));
-	iCopyCount = Q_min(iCopyCount, cursorPos);
-	iCopyCount = Q_min(iCopyCount, (int)sizeof(sTemp));
 
-	// copy text into temp buffer for pixel measure...
-	//
-	strncpy(sTemp, text, iCopyCount);
+	/* Compute safe copy length */
+	int iCopyCount = (iMaxPixelWidth > 0)
+		? Q_min(static_cast<int>(strlen(text)), iMaxPixelWidth)
+		: static_cast<int>(strlen(text));
+
+	iCopyCount = Q_min(iCopyCount, cursorPos);
+
+	/* Clamp to avoid buffer overrun (fixes C6386) */
+	iCopyCount = Q_min(iCopyCount, static_cast<int>(sizeof(sTemp) - 1));
+
+	/* Copy safely */
+	if (iCopyCount > 0)
+	{
+		memcpy(sTemp, text, iCopyCount);
+	}
+
+	/* Always null‑terminate */
 	sTemp[iCopyCount] = '\0';
 
+	/* Measure pixel width of the substring */
 	const int iNextXpos = ui.R_Font_StrLenPixels(sTemp, iFontIndex, scale);
 
-	Text_Paint(x + iNextXpos, y, scale, color, va("%c", cursor), iMaxPixelWidth, style | ITEM_TEXTSTYLE_BLINK,
+	/* Draw the cursor at the correct pixel offset */
+	Text_Paint(x + iNextXpos,
+		y,
+		scale,
+		color,
+		va("%c", cursor),
+		iMaxPixelWidth,
+		style | ITEM_TEXTSTYLE_BLINK,
 		iFontIndex);
 }
+
 
 static const char* UI_FeederItemText(const float feederID, const int index, const int column, qhandle_t* handle)
 {
@@ -6386,8 +6420,19 @@ static void UI_LoadMissionSelectMenu(const char* cvarName)
 }
 
 // Update the player weapons with the chosen weapon
-static void UI_AddWeaponSelection(const int weapon_index, const int ammoIndex, const int ammoAmount,
-	const char* iconItemName, const char* litIconItemName, const char* hexBackground,
+/*
+===========================
+UI_AddWeaponSelection
+- Adds a weapon to one of the two selectable slots.
+- Fixed MSVC C6011 by validating iconItem and litIconItem before dereferencing.
+===========================
+*/
+static void UI_AddWeaponSelection(const int weapon_index,
+	const int ammoIndex,
+	const int ammoAmount,
+	const char* iconItemName,
+	const char* litIconItemName,
+	const char* hexBackground,
 	const char* soundfile)
 {
 	const menuDef_t* menu = Menu_GetFocused(); // Get current menu
@@ -6400,9 +6445,19 @@ static void UI_AddWeaponSelection(const int weapon_index, const int ammoIndex, c
 	const itemDef_s* iconItem = Menu_FindItemByName(menu, iconItemName);
 	const itemDef_s* litIconItem = Menu_FindItemByName(menu, litIconItemName);
 
-	const char* chosenItemName, * chosenButtonName;
+	/* Safety: prevent NULL dereference */
+	if (!iconItem || !litIconItem)
+	{
+		Com_Printf("^1UI_AddWeaponSelection: Missing iconItem '%s' or litIconItem '%s'\n",
+			iconItemName ? iconItemName : "(null)",
+			litIconItemName ? litIconItemName : "(null)");
+		return;
+	}
 
-	// has this weapon already been chosen?
+	const char* chosenItemName;
+	const char* chosenButtonName;
+
+	/* Prevent duplicate selection */
 	if (weapon_index == uiInfo.selectedWeapon1)
 	{
 		UI_RemoveWeaponSelection(1);
@@ -6414,17 +6469,18 @@ static void UI_AddWeaponSelection(const int weapon_index, const int ammoIndex, c
 		return;
 	}
 
-	// See if either slot is empty
+	/* Choose slot 1 or slot 2 */
 	if (uiInfo.selectedWeapon1 == NOWEAPON)
 	{
 		chosenItemName = "chosenweapon1_icon";
 		chosenButtonName = "chosenweapon1_button";
+
 		uiInfo.selectedWeapon1 = weapon_index;
 		uiInfo.selectedWeapon1AmmoIndex = ammoIndex;
 
-		memcpy(uiInfo.selectedWeapon1ItemName, hexBackground, sizeof uiInfo.selectedWeapon1ItemName);
+		memcpy(uiInfo.selectedWeapon1ItemName, hexBackground,
+			sizeof uiInfo.selectedWeapon1ItemName);
 
-		//Save the lit and unlit icons for the selected weapon slot
 		uiInfo.litWeapon1Icon = litIconItem->window.background;
 		uiInfo.unlitWeapon1Icon = iconItem->window.background;
 
@@ -6435,31 +6491,34 @@ static void UI_AddWeaponSelection(const int weapon_index, const int ammoIndex, c
 	{
 		chosenItemName = "chosenweapon2_icon";
 		chosenButtonName = "chosenweapon2_button";
+
 		uiInfo.selectedWeapon2 = weapon_index;
 		uiInfo.selectedWeapon2AmmoIndex = ammoIndex;
 
-		memcpy(uiInfo.selectedWeapon2ItemName, hexBackground, sizeof uiInfo.selectedWeapon2ItemName);
+		memcpy(uiInfo.selectedWeapon2ItemName, hexBackground,
+			sizeof uiInfo.selectedWeapon2ItemName);
 
-		//Save the lit and unlit icons for the selected weapon slot
 		uiInfo.litWeapon2Icon = litIconItem->window.background;
 		uiInfo.unlitWeapon2Icon = iconItem->window.background;
 
 		uiInfo.weapon2ItemButton = uiInfo.runScriptItem;
 		uiInfo.weapon2ItemButton->descText = "@MENUS_CLICKREMOVE";
 	}
-	else // Both slots are used, can't add it.
+	else
 	{
+		/* Both slots full */
 		return;
 	}
 
+	/* Update chosen weapon icon */
 	itemDef_s* item = Menu_FindItemByName(menu, chosenItemName);
-	if (item && iconItem)
+	if (item)
 	{
 		item->window.background = iconItem->window.background;
 		item->window.flags |= WINDOW_VISIBLE;
 	}
 
-	// Turn on chosenweapon button so player can unchoose the weapon
+	/* Enable chosen weapon button */
 	item = Menu_FindItemByName(menu, chosenButtonName);
 	if (item)
 	{
@@ -6467,48 +6526,44 @@ static void UI_AddWeaponSelection(const int weapon_index, const int ammoIndex, c
 		item->window.flags |= WINDOW_VISIBLE;
 	}
 
-	// Switch hex background to be 'on'
+	/* Switch hex background to ON */
 	item = Menu_FindItemByName(menu, hexBackground);
 	if (item)
 	{
-		item->window.foreColor[0] = 0;
-		item->window.foreColor[1] = 1;
-		item->window.foreColor[2] = 0;
-		item->window.foreColor[3] = 1;
+		item->window.foreColor[0] = 0.0f;
+		item->window.foreColor[1] = 1.0f;
+		item->window.foreColor[2] = 0.0f;
+		item->window.foreColor[3] = 1.0f;
 	}
 
-	// Get player state
-	const client_t* cl = &svs.clients[0]; // 0 because only ever us as a player
+	/* Add weapon + ammo to player state */
+	const client_t* cl = &svs.clients[0];
 
-	// NOTE : this UIScript can now be run from outside the game, so don't
-	// return out here, just skip this part
-	if (cl)
+	if (cl && cl->gentity && cl->gentity->client)
 	{
-		// Add weapon
-		if (cl->gentity && cl->gentity->client)
+		playerState_t* p_state = cl->gentity->client;
+
+		if (weapon_index > 0 && weapon_index < WP_NUM_WEAPONS)
 		{
-			playerState_t* p_state = cl->gentity->client;
+			p_state->stats[STAT_WEAPONS] |= (1 << weapon_index);
+		}
 
-			if (weapon_index > 0 && weapon_index < WP_NUM_WEAPONS)
-			{
-				p_state->stats[STAT_WEAPONS] |= 1 << weapon_index;
-			}
-
-			// Give them ammo too
-			if (ammoIndex > 0 && ammoIndex < AMMO_MAX)
-			{
-				p_state->ammo[ammoIndex] = ammoAmount;
-			}
+		if (ammoIndex > 0 && ammoIndex < AMMO_MAX)
+		{
+			p_state->ammo[ammoIndex] = ammoAmount;
 		}
 	}
 
+	/* Play selection sound */
 	if (soundfile)
 	{
 		DC->startLocalSound(DC->registerSound(soundfile, qfalse), CHAN_LOCAL);
 	}
 
-	UI_WeaponsSelectionsComplete(); // Test to see if the mission begin button should turn on or off
+	/* Check if mission begin button should activate */
+	UI_WeaponsSelectionsComplete();
 }
+
 
 // Update the player weapons with the chosen weapon
 static void UI_RemoveWeaponSelection(const int weapon_selection_index)
@@ -6686,8 +6741,19 @@ static void UI_HighLightWeaponSelection(const int selectionslot)
 }
 
 // Update the player throwable weapons (okay it's a bad description) with the chosen weapon
-static void UI_AddThrowWeaponSelection(const int weapon_index, const int ammoIndex, const int ammoAmount,
-	const char* iconItemName, const char* litIconItemName, const char* hexBackground,
+/*
+===========================
+UI_AddThrowWeaponSelection
+- Adds a throwable weapon to the selection slot.
+- Fixed MSVC C6011 by validating iconItem and litIconItem before dereferencing.
+===========================
+*/
+static void UI_AddThrowWeaponSelection(const int weapon_index,
+	const int ammoIndex,
+	const int ammoAmount,
+	const char* iconItemName,
+	const char* litIconItemName,
+	const char* hexBackground,
 	const char* soundfile)
 {
 	const menuDef_t* menu = Menu_GetFocused(); // Get current menu
@@ -6700,20 +6766,28 @@ static void UI_AddThrowWeaponSelection(const int weapon_index, const int ammoInd
 	const itemDef_s* iconItem = Menu_FindItemByName(menu, iconItemName);
 	const itemDef_s* litIconItem = Menu_FindItemByName(menu, litIconItemName);
 
-	// Has a throw weapon already been chosen?
+	/* Safety: prevent NULL dereference */
+	if (!iconItem || !litIconItem)
+	{
+		Com_Printf("^1UI_AddThrowWeaponSelection: Missing iconItem '%s' or litIconItem '%s'\n",
+			iconItemName ? iconItemName : "(null)",
+			litIconItemName ? litIconItemName : "(null)");
+		return;
+	}
+
+	/* Already selected? */
 	if (uiInfo.selectedThrowWeapon != NOWEAPON)
 	{
-		// Clicked on the selected throwable weapon
 		if (uiInfo.selectedThrowWeapon == weapon_index)
 		{
-			// Deselect it
 			UI_RemoveThrowWeaponSelection();
 		}
 		return;
 	}
 
-	const auto chosenItemName = "chosenthrowweapon_icon";
-	const auto chosenButtonName = "chosenthrowweapon_button";
+	const char* chosenItemName = "chosenthrowweapon_icon";
+	const char* chosenButtonName = "chosenthrowweapon_button";
+
 	uiInfo.selectedThrowWeapon = weapon_index;
 	uiInfo.selectedThrowWeaponAmmoIndex = ammoIndex;
 	uiInfo.weaponThrowButton = uiInfo.runScriptItem;
@@ -6723,20 +6797,23 @@ static void UI_AddThrowWeaponSelection(const int weapon_index, const int ammoInd
 		uiInfo.weaponThrowButton->descText = "@MENUS_CLICKREMOVE";
 	}
 
-	memcpy(uiInfo.selectedThrowWeaponItemName, hexBackground, sizeof uiInfo.selectedWeapon1ItemName);
+	memcpy(uiInfo.selectedThrowWeaponItemName,
+		hexBackground,
+		sizeof uiInfo.selectedThrowWeaponItemName);
 
-	//Save the lit and unlit icons for the selected weapon slot
+	/* Save lit/unlit icons */
 	uiInfo.litThrowableIcon = litIconItem->window.background;
 	uiInfo.unlitThrowableIcon = iconItem->window.background;
 
+	/* Update chosen icon */
 	itemDef_s* item = Menu_FindItemByName(menu, chosenItemName);
-	if (item && iconItem)
+	if (item)
 	{
 		item->window.background = iconItem->window.background;
 		item->window.flags |= WINDOW_VISIBLE;
 	}
 
-	// Turn on throwchosenweapon button so player can unchoose the weapon
+	/* Enable chosen button */
 	item = Menu_FindItemByName(menu, chosenButtonName);
 	if (item)
 	{
@@ -6744,7 +6821,7 @@ static void UI_AddThrowWeaponSelection(const int weapon_index, const int ammoInd
 		item->window.flags |= WINDOW_VISIBLE;
 	}
 
-	// Switch hex background to be 'on'
+	/* Switch hex background ON */
 	item = Menu_FindItemByName(menu, hexBackground);
 	if (item)
 	{
@@ -6754,39 +6831,33 @@ static void UI_AddThrowWeaponSelection(const int weapon_index, const int ammoInd
 		item->window.foreColor[3] = 1.0f;
 	}
 
-	// Get player state
+	/* Add weapon + ammo to player state */
+	const client_t* cl = &svs.clients[0];
 
-	const client_t* cl = &svs.clients[0]; // 0 because only ever us as a player
-
-	// NOTE : this UIScript can now be run from outside the game, so don't
-	// return out here, just skip this part
-	if (cl) // No client, get out
+	if (cl && cl->gentity && cl->gentity->client)
 	{
-		// Add weapon
-		if (cl->gentity && cl->gentity->client)
+		playerState_t* p_state = cl->gentity->client;
+
+		if (weapon_index > 0 && weapon_index < WP_NUM_WEAPONS)
 		{
-			playerState_t* p_state = cl->gentity->client;
+			p_state->stats[STAT_WEAPONS] |= (1 << weapon_index);
+		}
 
-			if (weapon_index > 0 && weapon_index < WP_NUM_WEAPONS)
-			{
-				p_state->stats[STAT_WEAPONS] |= 1 << weapon_index;
-			}
-
-			// Give them ammo too
-			if (ammoIndex > 0 && ammoIndex < AMMO_MAX)
-			{
-				p_state->ammo[ammoIndex] = ammoAmount;
-			}
+		if (ammoIndex > 0 && ammoIndex < AMMO_MAX)
+		{
+			p_state->ammo[ammoIndex] = ammoAmount;
 		}
 	}
 
+	/* Play sound */
 	if (soundfile)
 	{
 		DC->startLocalSound(DC->registerSound(soundfile, qfalse), CHAN_LOCAL);
 	}
 
-	UI_WeaponsSelectionsComplete(); // Test to see if the mission begin button should turn on or off
+	UI_WeaponsSelectionsComplete();
 }
+
 
 // Update the player weapons with the chosen throw weapon
 static void UI_RemoveThrowWeaponSelection()
@@ -7225,124 +7296,195 @@ ReadSaveDirectory
 =================
 */
 //JLFSAVEGAME MPNOTUSED
-void ReadSaveDirectory()
+/*
+===========================
+ReadSaveDirectory
+- Reads savegame directory and populates s_savedata.
+- Fixed MSVC C28183 by safely handling NULL from localtime() and asctime().
+===========================
+*/
+void ReadSaveDirectory(void)
 {
 	char* holdChar;
 	int len;
 	int fileCnt;
-	// Clear out save data
+
+	/* Clear save data */
 	memset(s_savedata, 0, sizeof s_savedata);
 	s_savegame.saveFileCnt = 0;
-	Cvar_Set("ui_gameDesc", ""); // Blank out comment
+
+	Cvar_Set("ui_gameDesc", "");
 	Cvar_Set("ui_SelectionOK", "0");
+
 #ifdef JK2_MODE
-	memset(screenShotBuf, 0, (SG_SCR_WIDTH * SG_SCR_HEIGHT * 4)); //blank out sshot
+	memset(screenShotBuf, 0, (SG_SCR_WIDTH * SG_SCR_HEIGHT * 4));
 #endif
 
-	// Get everything in saves directory
+	/* Select correct save directory */
 	if (ui_com_outcast.integer == 0)
 	{
 		if (!ui_g_newgameplusJKA.integer)
 		{
-			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademy", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-			//academy version
+			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademy",
+				".sav",
+				s_savegame.listBuf,
+				LISTBUFSIZE);
 		}
 		else
 		{
-			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademyplus", ".sav", s_savegame.listBuf,
-				LISTBUFSIZE); //academy version
+			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademyplus",
+				".sav",
+				s_savegame.listBuf,
+				LISTBUFSIZE);
 		}
 	}
 	else if (ui_com_outcast.integer == 1)
 	{
 		if (!ui_g_newgameplusJKO.integer)
 		{
-			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediOutcast", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-			//outcast version
+			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediOutcast",
+				".sav",
+				s_savegame.listBuf,
+				LISTBUFSIZE);
 		}
 		else
 		{
-			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediOutcastplus", ".sav", s_savegame.listBuf,
-				LISTBUFSIZE); //outcast version
+			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediOutcastplus",
+				".sav",
+				s_savegame.listBuf,
+				LISTBUFSIZE);
 		}
 	}
 	else if (ui_com_outcast.integer == 2)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediCreative", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediCreative",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
 	else if (ui_com_outcast.integer == 3)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Yavin4", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Yavin4",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
 	else if (ui_com_outcast.integer == 4)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-DarkForces", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-DarkForces",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
 	else if (ui_com_outcast.integer == 5)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Kotor", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Kotor",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
 	else if (ui_com_outcast.integer == 6)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Survival", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Survival",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
-	else if (ui_com_outcast.integer == 7) // playing nina
+	else if (ui_com_outcast.integer == 7)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Nina", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Nina",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
-	else if (ui_com_outcast.integer == 8) // playing veng
+	else if (ui_com_outcast.integer == 8)
 	{
-		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Veng", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-		//mod version
+		fileCnt = ui.FS_GetFileList("Account/Saved-Missions-Veng",
+			".sav",
+			s_savegame.listBuf,
+			LISTBUFSIZE);
 	}
 	else
 	{
 		if (!ui_g_newgameplusJKA.integer)
 		{
-			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademy", ".sav", s_savegame.listBuf, LISTBUFSIZE);
-			//academy version
+			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademy",
+				".sav",
+				s_savegame.listBuf,
+				LISTBUFSIZE);
 		}
 		else
 		{
-			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademyplus", ".sav", s_savegame.listBuf,
-				LISTBUFSIZE); //academy version
+			fileCnt = ui.FS_GetFileList("Account/Saved-Missions-JediAcademyplus",
+				".sav",
+				s_savegame.listBuf,
+				LISTBUFSIZE);
 		}
 	}
 
 	Cvar_Set("ui_ResumeOK", "0");
+
 	holdChar = s_savegame.listBuf;
+
 	for (int i = 0; i < fileCnt; i++)
 	{
-		// strip extension
 		len = strlen(holdChar);
-		holdChar[len - 4] = '\0';
+
+		/* Strip extension safely */
+		if (len >= 4)
+		{
+			holdChar[len - 4] = '\0';
+		}
 
 		if (Q_stricmp("current", holdChar) != 0)
 		{
 			time_t result;
+
 			if (Q_stricmp("auto", holdChar) == 0)
 			{
 				Cvar_Set("ui_ResumeOK", "1");
 			}
 			else
 			{
-				// Is this a valid file??? & Get comment of file
-				result = ui.SG_GetSaveGameComment(holdChar, s_savedata[s_savegame.saveFileCnt].currentSaveFileComments,
+				/* Validate savegame and extract metadata */
+				result = ui.SG_GetSaveGameComment(
+					holdChar,
+					s_savedata[s_savegame.saveFileCnt].currentSaveFileComments,
 					s_savedata[s_savegame.saveFileCnt].currentSaveFileMap);
-				if (result != 0) // ignore Bad save game
+
+				if (result != 0)
 				{
 					s_savedata[s_savegame.saveFileCnt].currentSaveFileName = holdChar;
 					s_savedata[s_savegame.saveFileCnt].currentSaveFileDateTime = result;
 
+					/* Safe localtime() */
 					const tm* localTime = localtime(&result);
-					strcpy(s_savedata[s_savegame.saveFileCnt].currentSaveFileDateTimeString, asctime(localTime));
+
+					if (localTime)
+					{
+						/* Safe asctime() */
+						const char* asc = asctime(localTime);
+
+						if (asc)
+						{
+							strcpy(s_savedata[s_savegame.saveFileCnt].currentSaveFileDateTimeString, asc);
+						}
+						else
+						{
+							/* Fallback if asctime() fails */
+							strcpy(s_savedata[s_savegame.saveFileCnt].currentSaveFileDateTimeString,
+								"Unknown Date\n");
+						}
+					}
+					else
+					{
+						/* Fallback if localtime() fails */
+						strcpy(s_savedata[s_savegame.saveFileCnt].currentSaveFileDateTimeString,
+							"Unknown Date\n");
+					}
+
 					s_savegame.saveFileCnt++;
+
 					if (s_savegame.saveFileCnt == MAX_SAVELOADFILES)
 					{
 						break;
@@ -7351,8 +7493,11 @@ void ReadSaveDirectory()
 			}
 		}
 
-		holdChar += len + 1; //move to next item
+		holdChar += len + 1;
 	}
 
-	qsort(s_savedata, s_savegame.saveFileCnt, sizeof(savedata_t), UI_SortSaveGames);
+	qsort(s_savedata,
+		s_savegame.saveFileCnt,
+		sizeof(savedata_t),
+		UI_SortSaveGames);
 }

@@ -168,22 +168,42 @@ fuzzyseperator_t* ReadFuzzySeperators_r(source_t* source)
 	int founddefault = qfalse;
 	fuzzyseperator_t* firstfs = nullptr;
 	fuzzyseperator_t* lastfs = nullptr;
+
 	if (!PC_ExpectTokenString(source, "(")) return nullptr;
 	if (!PC_ExpectTokenType(source, TT_NUMBER, TT_INTEGER, &token)) return nullptr;
+
 	const int index = token.intvalue;
+
 	if (!PC_ExpectTokenString(source, ")")) return nullptr;
 	if (!PC_ExpectTokenString(source, "{")) return nullptr;
 	if (!PC_ExpectAnyToken(source, &token)) return nullptr;
+
 	do
 	{
-		const int def = strcmp(token.string, "default") == 0;
+		const int def = (strcmp(token.string, "default") == 0);
+
 		if (def || strcmp(token.string, "case") == 0)
 		{
+			// FIX: allocation guard to silence C28182
 			fs = static_cast<fuzzyseperator_t*>(GetClearedMemory(sizeof(fuzzyseperator_t)));
+			if (fs == nullptr)
+			{
+				Com_Printf(S_COLOR_RED "ReadFuzzySeperators_r: allocation failed\n");
+				FreeFuzzySeperators_r(firstfs);
+				return nullptr;
+			}
+
 			fs->index = index;
-			if (lastfs) lastfs->next = fs;
-			else firstfs = fs;
+			fs->next = nullptr;
+			fs->child = nullptr;
+
+			if (lastfs != nullptr)
+				lastfs->next = fs;
+			else
+				firstfs = fs;
+
 			lastfs = fs;
+
 			if (def)
 			{
 				if (founddefault)
@@ -191,42 +211,49 @@ fuzzyseperator_t* ReadFuzzySeperators_r(source_t* source)
 					SourceError(source, "switch already has a default");
 					FreeFuzzySeperators_r(firstfs);
 					return nullptr;
-				} //end if
+				}
+
 				fs->value = MAX_INVENTORYVALUE;
 				founddefault = qtrue;
-			} //end if
+			}
 			else
 			{
 				if (!PC_ExpectTokenType(source, TT_NUMBER, TT_INTEGER, &token))
 				{
 					FreeFuzzySeperators_r(firstfs);
 					return nullptr;
-				} //end if
+				}
 				fs->value = token.intvalue;
-			} //end else
-			if (!PC_ExpectTokenString(source, ":") || !PC_ExpectAnyToken(source, &token))
+			}
+
+			if (!PC_ExpectTokenString(source, ":") ||
+				!PC_ExpectAnyToken(source, &token))
 			{
 				FreeFuzzySeperators_r(firstfs);
 				return nullptr;
-			} //end if
+			}
+
 			int newindent = qfalse;
+
 			if (strcmp(token.string, "{") == 0)
 			{
 				newindent = qtrue;
+
 				if (!PC_ExpectAnyToken(source, &token))
 				{
 					FreeFuzzySeperators_r(firstfs);
 					return nullptr;
-				} //end if
-			} //end if
+				}
+			}
+
 			if (strcmp(token.string, "return") == 0)
 			{
 				if (!ReadFuzzyWeight(source, fs))
 				{
 					FreeFuzzySeperators_r(firstfs);
 					return nullptr;
-				} //end if
-			} //end if
+				}
+			}
 			else if (strcmp(token.string, "switch") == 0)
 			{
 				fs->child = ReadFuzzySeperators_r(source);
@@ -234,51 +261,68 @@ fuzzyseperator_t* ReadFuzzySeperators_r(source_t* source)
 				{
 					FreeFuzzySeperators_r(firstfs);
 					return nullptr;
-				} //end if
-			} //end else if
+				}
+			}
 			else
 			{
 				SourceError(source, "invalid name %s", token.string);
+				FreeFuzzySeperators_r(firstfs);
 				return nullptr;
-			} //end else
+			}
+
 			if (newindent)
 			{
 				if (!PC_ExpectTokenString(source, "}"))
 				{
 					FreeFuzzySeperators_r(firstfs);
 					return nullptr;
-				} //end if
-			} //end if
-		} //end if
+				}
+			}
+		}
 		else
 		{
 			FreeFuzzySeperators_r(firstfs);
 			SourceError(source, "invalid name %s", token.string);
 			return nullptr;
-		} //end else
+		}
+
 		if (!PC_ExpectAnyToken(source, &token))
 		{
 			FreeFuzzySeperators_r(firstfs);
 			return nullptr;
-		} //end if
+		}
+
 	} while (strcmp(token.string, "}") != 0);
-	//
+
 	if (!founddefault)
 	{
 		SourceWarning(source, "switch without default");
+
 		fs = static_cast<fuzzyseperator_t*>(GetClearedMemory(sizeof(fuzzyseperator_t)));
+		if (fs == nullptr)
+		{
+			Com_Printf(S_COLOR_RED "ReadFuzzySeperators_r: allocation failed\n");
+			FreeFuzzySeperators_r(firstfs);
+			return nullptr;
+		}
+
 		fs->index = index;
 		fs->value = MAX_INVENTORYVALUE;
 		fs->weight = 0;
 		fs->next = nullptr;
 		fs->child = nullptr;
-		if (lastfs) lastfs->next = fs;
-		else firstfs = fs;
+
+		if (lastfs != nullptr)
+			lastfs->next = fs;
+		else
+			firstfs = fs;
+
 		lastfs = fs;
-	} //end if
-	//
+	}
+
 	return firstfs;
-} //end of the function ReadFuzzySeperators_r
+}
+//end of the function ReadFuzzySeperators_r
 //===========================================================================
 //
 // Parameter:				-

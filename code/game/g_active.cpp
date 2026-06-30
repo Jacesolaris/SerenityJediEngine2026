@@ -2405,38 +2405,53 @@ static void WP_SP_SaberDeactivateWithSound(gentity_t* ent)
 	ent->client->ps.SaberDeactivate();
 }
 
+extern qboolean PM_KnockDownAnim(int anim);
 // ============================================================
 // Helper: Knockdown + drain + fatigue + punch sound
 // ============================================================
-static void WP_SP_KnockdownAndDrain(
-	gentity_t* hit_ent,
-	const gentity_t* pusher,
-	int animMin,
-	int animMax,
-	qboolean addFatigueBonus,
-	qboolean useAbsorbDrain)
+static void WP_KnockdownAndDrain(gentity_t* hit_ent, const gentity_t* pusher, int knockAnimMin, int knockAnimMax, qboolean addFatigueBonus, qboolean useAbsorbDrain)
 {
-	if (!hit_ent || !hit_ent->client)
-		return;
+	const qboolean isNPC = (qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
 
-	NPC_SetAnim(
-		hit_ent,
-		SETANIM_BOTH,
-		(animMin == animMax) ? animMin : Q_irand(animMin, animMax),
-		SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD
-	);
+	if (!hit_ent || !hit_ent->client)
+	{
+		return;
+	}
+
+	NPC_SetAnim(hit_ent,SETANIM_BOTH,(knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax),SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 
 	if (useAbsorbDrain)
+	{
 		WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
+	}
 	else
+	{
 		WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
+	}
 
 	if (addFatigueBonus && pusher)
+	{
 		AddFatigueMeleeBonus(pusher, hit_ent);
+	}
 
 	G_Sound(hit_ent, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 
 	WP_SP_SaberDeactivateWithSound(hit_ent);
+
+	if (isNPC)
+	{
+		hit_ent->client->ps.legsAnimTimer += NPC_KNOCKDOWN_HOLD_EXTRA_TIME;
+		hit_ent->client->ps.torsoAnimTimer += NPC_KNOCKDOWN_HOLD_EXTRA_TIME;
+	}
+	else
+	{
+		//player holds extra long so you have more time to decide to do the quick getup
+		if (PM_KnockDownAnim(hit_ent->client->ps.legsAnim))
+		{
+			hit_ent->client->ps.legsAnimTimer += PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME;
+			hit_ent->client->ps.torsoAnimTimer += PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME;
+		}
+	}
 }
 
 // ============================================================
@@ -2445,23 +2460,20 @@ static void WP_SP_KnockdownAndDrain(
 qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t push_dir)
 {
 	if (!hit_ent || !hit_ent->client || !pusher || !pusher->client)
+	{
 		return qfalse;
+	}
 
 	// Cached blocking flags
-	const qboolean isHoldingBlockAndAttack =
-		(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0);
+	const qboolean isHoldingBlockAndAttack =(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0);
 
-	const qboolean isHoldingBlock =
-		(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0);
+	const qboolean isHoldingBlock =	(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0);
 
-	const qboolean NPCBlocking =
-		(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0);
+	const qboolean NPCBlocking =(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0);
 
-	const qboolean isPlayer =
-		(qboolean)(hit_ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(hit_ent));
+	const qboolean isPlayer =(qboolean)(hit_ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(hit_ent));
 
-	const qboolean isNPC =
-		(qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
+	const qboolean isNPC =(qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
 
 	// ============================================================
 	// 1. PLAYER ABSORB (manual block)
@@ -2526,7 +2538,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		pusher->client->ps.torsoAnim == MELEE_STANCE_BL ||
 		pusher->client->ps.torsoAnim == MELEE_STANCE_B)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2,
 			qtrue, qfalse);
 
@@ -2539,7 +2551,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	if (pusher->client->ps.torsoAnim == BOTH_WOOKIE_SLAP ||
 		pusher->client->ps.torsoAnim == BOTH_TUSKENLUNGE1)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNLEFT,
 			qtrue, qfalse);
 
@@ -2555,7 +2567,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK2 ||
 		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2,
 			qtrue, qfalse);
 
@@ -2587,7 +2599,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	// -------------------------
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN5,
 			qtrue, qfalse);
 
@@ -2599,7 +2611,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	// -------------------------
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B2)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_KNOCKDOWN5, BOTH_KNOCKDOWN5,
 			qtrue, qfalse);
 
@@ -2619,7 +2631,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	// -------------------------
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B3)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_KNOCKDOWN4, BOTH_KNOCKDOWN4,
 			qtrue, qfalse);
 
@@ -2640,7 +2652,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_R ||
 		pusher->client->ps.legsAnim == BOTH_A7_KICK_L)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_KNOCKDOWN2, BOTH_KNOCKDOWN2,
 			qtrue, qfalse);
 
@@ -2653,7 +2665,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_R ||
 		pusher->client->ps.torsoAnim == BOTH_SMACK_R)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNRIGHT,
 			qtrue, qfalse);
 
@@ -2674,7 +2686,7 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_L ||
 		pusher->client->ps.torsoAnim == BOTH_SMACK_L)
 	{
-		WP_SP_KnockdownAndDrain(hit_ent, pusher,
+		WP_KnockdownAndDrain(hit_ent, pusher,
 			BOTH_SLAPDOWNLEFT, BOTH_SLAPDOWNLEFT,
 			qtrue, qfalse);
 
@@ -2709,14 +2721,14 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	// -------------------------
 	// Default fallback
 	// -------------------------
-	WP_SP_KnockdownAndDrain(hit_ent, pusher,
+	WP_KnockdownAndDrain(hit_ent, pusher,
 		BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2,
 		qfalse, qtrue);
 
 	return qtrue;
 }
 
-extern void g_kick_throw(gentity_t* targ, const vec3_t new_dir, float push);
+extern void G_Kick_Throw(gentity_t* targ, const vec3_t new_dir, float push);
 
 static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_dist, vec3_t kick_end, const int kick_damage,
 	const float kick_push,
@@ -2798,7 +2810,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 								hit_ent->client->otherKillerWeaponType = WP_NONE;
 								hit_ent->client->ps.saberMove = LS_READY;
 							}
-							g_kick_throw(hit_ent, kick_dir, 70);
+							G_Kick_Throw(hit_ent, kick_dir, 70);
 							return hit_ent;
 						}
 						G_Damage(hit_ent, ent, ent, kick_dir, trace.endpos, kick_damage * 0.2f, DAMAGE_NO_KNOCKBACK,
@@ -2839,7 +2851,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 								//knock them down
 								if (!(hit_ent->flags & FL_NO_KNOCKBACK))
 								{
-									g_kick_throw(hit_ent, kick_dir, 80);
+									G_Kick_Throw(hit_ent, kick_dir, 80);
 								}
 								G_Knockdown(hit_ent, ent, kick_dir, 80, qtrue);
 							}
@@ -2863,7 +2875,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 						{
 							if (!(hit_ent->flags & FL_NO_KNOCKBACK))
 							{
-								g_kick_throw(hit_ent, kick_dir, 80);
+								G_Kick_Throw(hit_ent, kick_dir, 80);
 							}
 							//see if we should play a better looking death on them
 							G_ThrownDeathAnimForDeathAnim(hit_ent, trace.endpos);
@@ -2882,7 +2894,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 								//he's in the air?  Send him flying back
 								if (!(hit_ent->flags & FL_NO_KNOCKBACK))
 								{
-									g_kick_throw(hit_ent, kick_dir, 80);
+									G_Kick_Throw(hit_ent, kick_dir, 80);
 								}
 							}
 							else
@@ -2898,7 +2910,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 						{
 							if (!(hit_ent->flags & FL_NO_KNOCKBACK))
 							{
-								g_kick_throw(hit_ent, kick_dir, 80);
+								G_Kick_Throw(hit_ent, kick_dir, 80);
 							}
 							//see if we should play a better looking death on them
 							G_ThrownDeathAnimForDeathAnim(hit_ent, trace.endpos);
@@ -2909,7 +2921,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 						//we kicked a dead guy
 						if (!(hit_ent->flags & FL_NO_KNOCKBACK))
 						{
-							g_kick_throw(hit_ent, kick_dir, kick_push * 2);
+							G_Kick_Throw(hit_ent, kick_dir, kick_push * 2);
 						}
 						G_ThrownDeathAnimForDeathAnim(hit_ent, trace.endpos);
 					}
@@ -2917,7 +2929,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 					{
 						if (!(hit_ent->flags & FL_NO_KNOCKBACK))
 						{
-							g_kick_throw(hit_ent, kick_dir, 80);
+							G_Kick_Throw(hit_ent, kick_dir, 80);
 						}
 						if ((hit_ent->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
 							hit_ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)

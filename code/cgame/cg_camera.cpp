@@ -156,37 +156,37 @@ CGCam_Disable
 
 void CGCam_Disable()
 {
-	in_camera = false;
+	// SAFETY FIX: player entity or client may be NULL in edge cases
+	if (g_entities == NULL || g_entities[0].client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "CGCam_Disable: NULL g_entities[0] or client\n");
+		return;
+	}
+
+	in_camera = qfalse;
 
 	client_camera.bar_alpha = 1.0f;
 	client_camera.bar_time = cg.time;
-
 	client_camera.bar_alpha_source = 1.0f;
 	client_camera.bar_alpha_dest = 0.0f;
 
-	client_camera.bar_height_source = static_cast<float>(480) / 10;
+	client_camera.bar_height_source = 480.0f / 10.0f;
 	client_camera.bar_height_dest = 0.0f;
 
 	client_camera.info_state |= CAMERA_BAR_FADING;
 
-	if (g_entities[0].client)
-	{
-		g_entities[0].contents = CONTENTS_BODY; //MASK_PLAYERSOLID;
-	}
+	g_entities[0].contents = CONTENTS_BODY;
 
 	gi.SendServerCommand(0, "cts");
 
-	//if ( cg_skippingcin.integer )
-	{
-		//We're skipping the cinematic and it's over now
-		gi.cvar_set("timescale", "1");
-		gi.cvar_set("skippingCinematic", "0");
-	}
+	gi.cvar_set("timescale", "1");
+	gi.cvar_set("skippingCinematic", "0");
 
-	//we just came out of camera, so update cg.refdef.vieworg out of the camera's origin so the snapshot will know our new ori
+	// Update view origin and angles after leaving camera
 	VectorCopy(g_entities[0].currentOrigin, cg.refdef.vieworg);
 	VectorCopy(g_entities[0].client->ps.viewangles, cg.refdefViewAngles);
 }
+
 
 /*
 -------------------------

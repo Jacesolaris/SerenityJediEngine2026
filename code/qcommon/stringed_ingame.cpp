@@ -609,24 +609,21 @@ const char* CStringEdPackage::ParseLine(const char* psLine)
 		}
 		else if (CheckLineForKeyword(sSE_KEYWORD_FLAGS, psLine))
 		{
-			// FLAGS 	FLAG_CAPTION FLAG_TYPEMATIC
-			//
 			const char* psReference = GetCurrentReference_ParseOnly();
 			if (psReference[0])
 			{
 				static constexpr char sSeperators[] = " \t";
-				char sFlags[1024] = { 0 }; // 1024 chars should be enough to store 8 flag names
-				strncpy(sFlags, psLine, sizeof sFlags - 1);
+				char sFlags[1024] = { 0 };
+
+				// FIX: strncpy does NOT guarantee termination → enforce it
+				strncpy(sFlags, psLine, sizeof(sFlags) - 1);
+				sFlags[sizeof(sFlags) - 1] = '\0';
+
 				char* psToken = strtok(sFlags, sSeperators);
 				while (psToken != nullptr)
 				{
-					// psToken = flag name (in caps)
-					//
-					Q_strupr(psToken); // jic
+					Q_strupr(psToken);
 					AddFlagReference(psReference, psToken);
-
-					// read next flag for this string...
-					//
 					psToken = strtok(nullptr, sSeperators);
 				}
 			}
@@ -635,6 +632,7 @@ const char* CStringEdPackage::ParseLine(const char* psLine)
 				psErrorMessage = "Error parsing file: Unexpected \"" sSE_KEYWORD_FLAGS "\"\n";
 			}
 		}
+
 		else if (CheckLineForKeyword(sSE_KEYWORD_ENDMARKER, psLine))
 		{
 			// ENDMARKER
@@ -821,20 +819,36 @@ void CStringEdPackage::SetString(const char* psLocalReference, const char* psNew
 //
 // return is either NULL for good else error message to display...
 //
+/*
+===========================
+SE_Load_Actual
+- Loads and parses a .str file.
+- Fixed MSVC C6262 by moving large sLineBuffer off the stack.
+===========================
+*/
 static const char* SE_Load_Actual(const char* psFileName, SE_BOOL bLoadDebug, SE_BOOL bSpeculativeLoad)
 {
 	const char* psErrorMessage = nullptr;
 
+	/* Large buffer moved off stack to avoid C6262 */
+	static char* sLineBuffer = nullptr;
+
+	if (!sLineBuffer)
+	{
+		sLineBuffer = static_cast<char*>(Z_Malloc(16384, TAG_TEMP_WORKSPACE, qfalse));
+		if (!sLineBuffer)
+		{
+			return "SE_Load_Actual: Failed to allocate sLineBuffer";
+		}
+	}
+
 	unsigned char* psLoadedData = SE_LoadFileData(psFileName);
 	if (psLoadedData)
 	{
-		// now parse the data...
-		//
-		const char* psParsePos = (char*)psLoadedData;
+		const char* psParsePos = reinterpret_cast<char*>(psLoadedData);
 
 		TheStringPackage.SetupNewFileParse(psFileName, bLoadDebug);
 
-		char sLineBuffer[16384]; // should be enough for one line of text (some of them can be BIG though)
 		while (!psErrorMessage && TheStringPackage.ReadLine(psParsePos, sLineBuffer))
 		{
 			if (strlen(sLineBuffer))
@@ -852,11 +866,7 @@ static const char* SE_Load_Actual(const char* psFileName, SE_BOOL bLoadDebug, SE
 	}
 	else
 	{
-		if (bSpeculativeLoad)
-		{
-			// then it's ok to not find the file, so do nothing...
-		}
-		else
+		if (!bSpeculativeLoad)
 		{
 			psErrorMessage = va("Unable to load \"%s\"!", psFileName);
 		}
@@ -906,11 +916,11 @@ static const char* SE_Load(const char* psFileName, SE_BOOL bLoadDebug = SE_TRUE,
 
 	if (!strchr(psFileName, '/'))
 	{
-		if (com_outcast->integer == 3) // yavin override
+		if (com_outcast && com_outcast->integer == 3) // yavin override
 		{
 			Q_strncpyz(sTemp, sSE_STRINGS_DIR_YAVIN, sizeof(sTemp));
 		}
-		else if (com_outcast->integer == 7) // Nina override
+		else if (com_outcast && com_outcast->integer == 7) // Nina override
 		{
 			Q_strncpyz(sTemp, sSE_STRINGS_DIR_NINA, sizeof(sTemp));
 		}
@@ -954,7 +964,10 @@ static const char* SE_Load(const char* psFileName, SE_BOOL bLoadDebug = SE_TRUE,
 		{
 			Com_Error(ERR_DROP, "SE_Load(): Couldn't load \"%s\"!\n\nError: \"%s\"\n", finalName, psErrorMessage);
 		}
-		Com_DPrintf(S_COLOR_YELLOW "SE_Load(): Couldn't load \"%s\"!\n", finalName);
+		else
+		{
+			Com_DPrintf(S_COLOR_YELLOW "SE_Load(): Couldn't load \"%s\"!\n", finalName);
+		}
 	}
 
 	return psErrorMessage;
@@ -1070,7 +1083,7 @@ int SE_GetNumLanguages()
 	{
 		std::string strResults;
 
-		if (com_outcast->integer == 3) // yavin override
+		if (com_outcast && com_outcast->integer == 3) // yavin override
 		{
 			SE_BuildFileList(
 #ifdef _STRINGED
@@ -1081,7 +1094,7 @@ int SE_GetNumLanguages()
 				, strResults
 			);
 		}
-		else if (com_outcast->integer == 7) // Nina override
+		else if (com_outcast && com_outcast->integer == 7) // Nina override
 		{
 			SE_BuildFileList(
 #ifdef _STRINGED
@@ -1150,11 +1163,11 @@ const char* SE_GetLanguageDir(const int iLangIndex)
 {
 	if (iLangIndex < static_cast<int>(gvLanguagesAvailable.size()))
 	{
-		if (com_outcast->integer == 3) // yavin override
+		if (com_outcast && com_outcast->integer == 3) // yavin override
 		{
 			return va("%s/%s", sSE_STRINGS_DIR_YAVIN, gvLanguagesAvailable[iLangIndex].c_str());
 		}
-		else if (com_outcast->integer == 7) // Nina override
+		else if (com_outcast && com_outcast->integer == 7) // Nina override
 		{
 			return va("%s/%s", sSE_STRINGS_DIR_NINA, gvLanguagesAvailable[iLangIndex].c_str());
 		}
@@ -1230,7 +1243,7 @@ const char* SE_LoadLanguage(const char* psLanguage, SE_BOOL bLoadDebug)
 
 		std::string strResults;
 
-		if (com_outcast->integer == 3) // yavin override
+		if (com_outcast && com_outcast->integer == 3) // yavin override
 		{
 			SE_BuildFileList(
 #ifdef _STRINGED
@@ -1241,7 +1254,7 @@ const char* SE_LoadLanguage(const char* psLanguage, SE_BOOL bLoadDebug)
 				, strResults
 			);
 		}
-		else if (com_outcast->integer == 7) // Nina override
+		else if (com_outcast && com_outcast->integer == 7) // Nina override
 		{
 			SE_BuildFileList(
 #ifdef _STRINGED

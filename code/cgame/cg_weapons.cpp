@@ -3586,28 +3586,46 @@ void CG_PlayerLockedWeaponSpeech(const int jumping)
 			{
 				//not waiting on a scripted sound to finish
 				if (!jumping)
-				{
+				{ // not jumping
 					if (Q_flrand(0.0f, 1.0f) > 0.5)
 					{
-						if (!Q_stricmp(player->model, "kyle") || !Q_stricmp(player->model, "kyleJK2") && cg_com_outcast.
-							integer == 1)
-						{
+						if (!Q_stricmp(player->model, "kyle") ||
+							!Q_stricmp(player->model, "Kyle2") ||
+							!Q_stricmp(player->model, "Kyle_JKA") ||
+							!Q_stricmp(player->model, "kyleJK2") ||
+							!Q_stricmp(player->model, "Kyledf") ||
+							!Q_stricmp(player->model, "Kyle_MOD") ||
+							!Q_stricmp(player->model, "df2_kyle") &&
+							cg_com_outcast.integer == 1)
+						{ // Kyle
 							G_SoundOnEnt(player, CHAN_VOICE, va("sound/chars/kyle/09kyk015.wav"));
 						}
 					}
 					else
 					{
-						if (!Q_stricmp(player->model, "kyle") || !Q_stricmp(player->model, "kyleJK2") && cg_com_outcast.
-							integer == 1)
+						if (!Q_stricmp(player->model, "kyle") ||
+							!Q_stricmp(player->model, "Kyle2") ||
+							!Q_stricmp(player->model, "Kyle_JKA") ||
+							!Q_stricmp(player->model, "kyleJK2") ||
+							!Q_stricmp(player->model, "Kyledf") ||
+							!Q_stricmp(player->model, "Kyle_MOD") ||
+							!Q_stricmp(player->model, "df2_kyle") &&
+							cg_com_outcast.integer == 1)
 						{
 							G_SoundOnEnt(player, CHAN_VOICE, va("sound/chars/kyle/09kyk016.wav"));
 						}
 					}
 				}
 				else
-				{
-					if (!Q_stricmp(player->model, "kyle") || !Q_stricmp(player->model, "kyleJK2") && cg_com_outcast.
-						integer == 1)
+				{ // jumping
+					if (!Q_stricmp(player->model, "kyle") ||
+						!Q_stricmp(player->model, "Kyle2") ||
+						!Q_stricmp(player->model, "Kyle_JKA") ||
+						!Q_stricmp(player->model, "kyleJK2") ||
+						!Q_stricmp(player->model, "Kyledf") ||
+						!Q_stricmp(player->model, "Kyle_MOD") ||
+						!Q_stricmp(player->model, "df2_kyle") &&
+						cg_com_outcast.integer == 1)
 					{
 						G_SoundOnEnt(player, CHAN_VOICE, va("sound/chars/kyle/16kyk007.wav"));
 					}
@@ -4218,7 +4236,6 @@ void CG_Weapon_f()
 				//can't toggle it if not holding it and not controlling it or dead
 				if (cg.predictedPlayerState.stats[STAT_HEALTH] > 0
 					&& (!cg_entities[0].gent->client->ps.saberInFlight ||
-						&g_entities[cg_entities[0].gent->client->ps.saberEntityNum] != nullptr &&
 						g_entities[cg_entities[0].gent->client->ps.saberEntityNum].s.pos.trType == TR_LINEAR))
 				{
 					//it's either in-hand or it's under telekinetic control

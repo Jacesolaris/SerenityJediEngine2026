@@ -885,31 +885,50 @@ Com_EventLoop
 Returns last event time
 =================
 */
-int Com_EventLoop()
+/*
+===========================
+Com_EventLoop
+- Processes queued system events.
+- Fixed MSVC C6262 by moving large bufData buffer off the stack.
+===========================
+*/
+int Com_EventLoop(void)
 {
 	netadr_t evFrom;
-	byte bufData[MAX_MSGLEN];
-	msg_t buf;
 
-	MSG_Init(&buf, bufData, sizeof bufData);
+	/* Large message buffer moved off stack to avoid C6262 */
+	static byte* bufData = nullptr;
+
+	if (bufData == nullptr)
+	{
+		bufData = static_cast<byte*>(Z_Malloc(MAX_MSGLEN, TAG_TEMP_WORKSPACE, qfalse));
+		if (bufData == nullptr)
+		{
+			Com_Printf("^1Com_EventLoop: Failed to allocate bufData\n");
+			return 0;
+		}
+	}
+
+	msg_t buf;
+	MSG_Init(&buf, bufData, MAX_MSGLEN);
 
 	while (true)
 	{
 		sysEvent_t ev = Com_GetEvent();
 
-		// if no more events are available
+		/* No more events available */
 		if (ev.evType == SE_NONE)
 		{
-			// manually send packet events for the loopback channel
+			/* Loopback client packets */
 			while (NET_GetLoopPacket(NS_CLIENT, &evFrom, &buf))
 			{
 				CL_PacketEvent(evFrom, &buf);
 			}
 
+			/* Loopback server packets */
 			while (NET_GetLoopPacket(NS_SERVER, &evFrom, &buf))
 			{
-				// if the server just shut down, flush the events
-				if (com_sv_running->integer)
+				if (com_sv_running->integer != 0)
 				{
 					Com_RunAndTimeServerPacket(&evFrom, &buf);
 				}
@@ -922,28 +941,37 @@ int Com_EventLoop()
 		{
 		default:
 			Com_Error(ERR_FATAL, "Com_EventLoop: bad event type %i", ev.evType);
+			break;
+
 		case SE_NONE:
 			break;
+
 		case SE_KEY:
-			CL_KeyEvent(ev.evValue, static_cast<qboolean>(ev.evValue2), ev.evTime);
+			CL_KeyEvent(ev.evValue,
+				(ev.evValue2 ? qtrue : qfalse),
+				ev.evTime);
 			break;
+
 		case SE_CHAR:
 			CL_CharEvent(ev.evValue);
 			break;
+
 		case SE_MOUSE:
 			CL_MouseEvent(ev.evValue, ev.evValue2, ev.evTime);
 			break;
+
 		case SE_JOYSTICK_AXIS:
 			CL_JoystickEvent(ev.evValue, ev.evValue2, ev.evTime);
 			break;
+
 		case SE_CONSOLE:
 			Cbuf_AddText(static_cast<char*>(ev.evPtr));
 			Cbuf_AddText("\n");
 			break;
 		}
 
-		// free any block data
-		if (ev.evPtr)
+		/* Free any block data */
+		if (ev.evPtr != nullptr)
 		{
 			Z_Free(ev.evPtr);
 		}
@@ -1220,35 +1248,35 @@ void Com_Init(char* commandLine)
 #else
 		SE_Init(); // Initialize StringEd
 
-		if (com_outcast->integer == 1) //playing outcast
+		if (com_outcast && com_outcast->integer == 1) //playing outcast
 		{
 			Com_Printf("Running Jedi Outcast Mode\n");
 		}
-		else if (com_outcast->integer == 2) //playing creative
+		else if (com_outcast && com_outcast->integer == 2) //playing creative
 		{
 			Com_Printf("Running Creative Mode\n");
 		}
-		else if (com_outcast->integer == 3) //playing yav
+		else if (com_outcast && com_outcast->integer == 3) //playing yav
 		{
 			Com_Printf("Running Escape Yav4 Mode\n");
 		}
-		else if (com_outcast->integer == 4) //playing darkforces
+		else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 		{
 			Com_Printf("Running DarkForces Mode\n");
 		}
-		else if (com_outcast->integer == 5) //playing kotor
+		else if (com_outcast && com_outcast->integer == 5) //playing kotor
 		{
 			Com_Printf("Running Kotor Mode\n");
 		}
-		else if (com_outcast->integer == 6) //playing survival
+		else if (com_outcast && com_outcast->integer == 6) //playing survival
 		{
 			Com_Printf("Running Survival Mode\n");
 		}
-		else if (com_outcast->integer == 7) //playing nina
+		else if (com_outcast && com_outcast->integer == 7) //playing nina
 		{
 			Com_Printf("Running nina Mode\n");
 		}
-		else if (com_outcast->integer == 8) //playing veng
+		else if (com_outcast && com_outcast->integer == 8) //playing veng
 		{
 			Com_Printf("Running Vengance Mode\n");
 		}
@@ -1701,6 +1729,7 @@ void Com_Frame()
 Com_Shutdown
 =================
 */
+extern void Netchan_Shutdown();
 void Com_Shutdown()
 {
 	CM_ClearMap();
@@ -1736,7 +1765,6 @@ void Com_Shutdown()
 	SE_ShutDown(); //close the string packages
 #endif
 
-	extern void Netchan_Shutdown();
 	Netchan_Shutdown();
 }
 

@@ -1499,23 +1499,25 @@ class CRenderableSurface
 {
 public:
 #ifdef _G2_GORE
-	int				ident;
+	int         ident;
 #else
-	const int		ident;			// ident of this surface - required so the materials renderer knows what sort of surface this refers to
+	const int   ident;      // ident of this surface - required so the materials renderer knows what sort of surface this refers to
 #endif
-	CBoneCache* boneCache;		// pointer to transformed bone list for this surf
-	mdxmSurface_t* surfaceData;	// pointer to surface data loaded into file - only used by client renderer DO NOT USE IN GAME SIDE - if there is a vid restart this will be out of wack on the game
+
+	CBoneCache* boneCache;      // pointer to transformed bone list for this surf
+	mdxmSurface_t* surfaceData;    // pointer to surface data loaded into file - only used by client renderer
+
 #ifdef _G2_GORE
-	float* alternateTex;		// alternate texture coordinates.
+	float* alternateTex;       // alternate texture coordinates
 	void* goreChain;
 
-	float			scale;
-	float			fade;
-	float			impactTime; // this is a number between 0 and 1 that dictates the progression of the bullet impact
+	float       scale;              // initialized to 1.0f
+	float       fade;               // initialized to 0.0f
+	float       impactTime;         // initialized to 0.0f (progression of bullet impact)
 #endif
 
 #ifdef _G2_GORE
-	CRenderableSurface& operator= (const CRenderableSurface& src)
+	CRenderableSurface& operator=(const CRenderableSurface& src)
 	{
 		ident = src.ident;
 		boneCache = src.boneCache;
@@ -1523,19 +1525,23 @@ public:
 		alternateTex = src.alternateTex;
 		goreChain = src.goreChain;
 
+		// preserve behaviour: do NOT copy scale/fade/impactTime
 		return *this;
 	}
 #endif
 
-	CRenderableSurface() :
-		ident(SF_MDX),
-		boneCache(nullptr),
+	CRenderableSurface()
+		: ident(SF_MDX)
+		, boneCache(nullptr)
 #ifdef _G2_GORE
-		surfaceData(nullptr),
-		alternateTex(nullptr),
-		goreChain(nullptr)
+		, surfaceData(nullptr)
+		, alternateTex(nullptr)
+		, goreChain(nullptr)
+		, scale(1.0f)        // FIX: initialize
+		, fade(0.0f)         // FIX: initialize
+		, impactTime(0.0f)   // FIX: initialize
 #else
-		surfaceData(0)
+		, surfaceData(0)
 #endif
 	{
 	}
@@ -1544,13 +1550,20 @@ public:
 	{
 		boneCache = nullptr;
 		surfaceData = nullptr;
+
 #ifdef _G2_GORE
 		ident = SF_MDX;
 		alternateTex = nullptr;
 		goreChain = nullptr;
+
+		// FIX: initialize gore floats here too
+		scale = 1.0f;
+		fade = 0.0f;
+		impactTime = 0.0f;
 #endif
 	}
 };
+
 
 void R_AddGhoulSurfaces(trRefEntity_t* ent);
 void RB_SurfaceGhoul(CRenderableSurface* surf);

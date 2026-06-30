@@ -2594,7 +2594,6 @@ void CG_LoadMenus(const char* menuFile)
 
 	if (len <= 0 || f == 0)
 	{
-		// If menuFile is numeric, it's a HUD index → silent fallback
 		if (Q_isanumber(menuFile))
 		{
 			trap->Print(S_COLOR_GREEN "hud menu file skipped, using default\n");
@@ -2604,7 +2603,6 @@ void CG_LoadMenus(const char* menuFile)
 			trap->Print(S_COLOR_YELLOW "hud menu file not found: %s, using default\n", menuFile);
 		}
 
-		// Load default HUD
 		len = trap->FS_Open("ui/sje-hud.txt", &f, FS_READ);
 		if (len <= 0 || f == 0)
 		{
@@ -2625,10 +2623,13 @@ void CG_LoadMenus(const char* menuFile)
 	}
 
 	// ------------------------------------------------------------
-	// 3. Read file into buffer
+	// 3. Read file into buffer (safe, clamped)
 	// ------------------------------------------------------------
-	trap->FS_Read(buf, len, f);
-	buf[len] = '\0';  // Proper null terminator
+	const int readSize = (len < MAX_MENUDEFFILE - 1) ? len : (MAX_MENUDEFFILE - 1);
+
+	trap->FS_Read(buf, readSize, f);
+	buf[readSize] = '\0';  // Proper null terminator
+
 	trap->FS_Close(f);
 
 	p = buf;
@@ -2642,19 +2643,16 @@ void CG_LoadMenus(const char* menuFile)
 	{
 		const char* token = COM_ParseExt(&p, qtrue);
 
-		// End of file or malformed token
 		if (!token || token[0] == '\0')
 		{
 			break;
 		}
 
-		// Closing brace ends parsing
 		if (token[0] == '}' || Q_stricmp(token, "}") == 0)
 		{
 			break;
 		}
 
-		// loadmenu <filename>
 		if (Q_stricmp(token, "loadmenu") == 0)
 		{
 			if (CG_Load_Menu(&p) == qtrue)
@@ -2662,13 +2660,11 @@ void CG_LoadMenus(const char* menuFile)
 				continue;
 			}
 
-			// If CG_Load_Menu fails, stop parsing
 			break;
 		}
 	}
-
-	// Done
 }
+
 
 /*
 =================

@@ -13649,7 +13649,7 @@ static void CG_AddLightningBeam(vec3_t start, vec3_t end)
 		c1, c2,
 		v1, v2;
 
-	addbezierArgStruct_t b;
+	addbezierArgStruct_t b={0};
 
 	VectorCopy(start, b.start);
 	VectorCopy(end, b.end);

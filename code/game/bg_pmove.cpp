@@ -125,7 +125,7 @@ qboolean PM_InKnockDownOnGround(playerState_t* ps);
 qboolean PM_InGetUp(const playerState_t* ps);
 qboolean PM_InRoll(const playerState_t* ps);
 qboolean PM_SpinningSaberAnim(int anim);
-qboolean PM_GettingUpFromKnockDown(float standheight, float crouchheight);
+qboolean PM_GettingUpFromKnockDown(const float standheight, const float crouchheight);
 qboolean PM_SpinningAnim(int anim);
 qboolean PM_FlippingAnim(int anim);
 qboolean PM_PainAnim(int anim);

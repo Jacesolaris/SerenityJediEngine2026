@@ -50,7 +50,7 @@ char* svc_strings[256] = {
 	"svc_mapchange",
 };
 
-void SHOWNET(msg_t* msg, char* s)
+static void SHOWNET(msg_t* msg, char* s)
 {
 	if (cl_shownet->integer >= 2)
 	{
@@ -74,7 +74,7 @@ Parses deltas from the given base and adds the resulting entity
 to the current frame
 ==================
 */
-void CL_DeltaEntity(msg_t* msg, clSnapshot_t* frame, const int newnum, entityState_t* old,
+static void CL_DeltaEntity(msg_t* msg, clSnapshot_t* frame, const int newnum, entityState_t* old,
 	const qboolean unchanged)
 {
 	// save the parsed entity state into the big circular buffer so
@@ -546,7 +546,7 @@ void CL_SystemInfoChanged(void)
 CL_ParseGamestate
 ==================
 */
-void CL_ParseGamestate(msg_t* msg)
+static void CL_ParseGamestate(msg_t* msg)
 {
 	entityState_t nullstate;
 

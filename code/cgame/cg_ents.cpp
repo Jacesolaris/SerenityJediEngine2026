@@ -1067,6 +1067,13 @@ CG_Item
 */
 static void CG_Item(centity_t* cent)
 {
+	// SAFETY FIX: cent or cent->gent may be NULL
+	if (cent == NULL || cent->gent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "CG_Item: NULL cent or cent->gent\n");
+		return;
+	}
+
 	refEntity_t ent;
 
 	const entityState_t* es = &cent->currentState;
@@ -1074,21 +1081,15 @@ static void CG_Item(centity_t* cent)
 	{
 		CG_Error("Bad item index %i on entity", es->modelindex);
 	}
-	/*
-	Ghoul2 Insert Start
-	*/
 
 	// if set to invisible, skip
-	if (!es->modelindex && !cent->gent->ghoul2.IsValid() || es->eFlags & EF_NODRAW)
+	if ((!es->modelindex && !cent->gent->ghoul2.IsValid()) || (es->eFlags & EF_NODRAW))
 	{
 		return;
 	}
-	/*
-	Ghoul2 Insert End
-	*/
-	if (cent->gent && !cent->gent->inuse)
+
+	if (!cent->gent->inuse)
 	{
-		// Yeah, I know....items were being freed on touch, but it could still get here and draw incorrectly...
 		return;
 	}
 
@@ -1096,49 +1097,44 @@ static void CG_Item(centity_t* cent)
 
 	if (cg_simpleItems.integer)
 	{
-		memset(&ent, 0, sizeof ent);
+		memset(&ent, 0, sizeof(ent));
 		ent.reType = RT_SPRITE;
 		VectorCopy(cent->lerpOrigin, ent.origin);
 		ent.origin[2] += 16;
 		ent.radius = 14;
 		ent.customShader = cg_items[es->modelindex].icon;
-		ent.shaderRGBA[0] = 255;
-		ent.shaderRGBA[1] = 255;
-		ent.shaderRGBA[2] = 255;
-		ent.shaderRGBA[3] = 255;
+		ent.shaderRGBA[0] = ent.shaderRGBA[1] = ent.shaderRGBA[2] = ent.shaderRGBA[3] = 255;
 		ent.renderfx |= RF_FORCE_ENT_ALPHA;
 		cgi_R_AddRefEntityToScene(&ent);
 		return;
 	}
 
-	memset(&ent, 0, sizeof ent);
+	memset(&ent, 0, sizeof(ent));
 
-	// items bob up and down continuously
 	if (item->giType == IT_HOLOCRON)
 	{
 		const float scale = 0.005f + cent->currentState.number * 0.00001f;
-		cent->lerpOrigin[2] += 4 + cos((cg.time + 1000) * scale) * 3 + 8; // just raised them up a bit
+		cent->lerpOrigin[2] += 4 + cos((cg.time + 1000) * scale) * 3 + 8;
 	}
+
 	if (item->giType == IT_HOLOCRON)
 	{
 		VectorCopy(cg.autoAngles, cent->lerpAngles);
 		AxisCopy(cg.autoAxis, ent.axis);
 	}
-	vec3_t spin_angles;
 
-	//AxisClear( ent.axis );
+	vec3_t spin_angles;
 	VectorCopy(cent->gent->s.angles, spin_angles);
 
-	if (cent->gent->ghoul2.IsValid()
-		&& cent->gent->ghoul2.size())
+	if (cent->gent->ghoul2.IsValid() && cent->gent->ghoul2.size())
 	{
-		//since modelindex is used by items as an index into items(not models), we need to ignore the hModel here to force it to use the ghoul2 model if we have one
 		ent.hModel = cgs.model_draw[0];
 	}
 	else
 	{
 		ent.hModel = cg_items[es->modelindex].models;
 	}
+
 	CG_SetGhoul2Info(&ent, cent);
 
 	VectorCopy(cent->lerpOrigin, ent.origin);
@@ -1146,16 +1142,12 @@ static void CG_Item(centity_t* cent)
 
 	ent.nonNormalizedAxes = qfalse;
 
-	// lovely...this is for weapons that should be oriented vertically.  For weapons lockers and such.
 	if (cent->gent->spawnflags & 16)
 	{
-		//VectorClear( spinAngles );
-		if (item->giType == IT_WEAPON
-			&& item->giTag == WP_SABER)
+		if (item->giType == IT_WEAPON && item->giTag == WP_SABER)
 		{
 			if (cent->gent->random)
 			{
-				//pitch specified
 				spin_angles[PITCH] += cent->gent->random;
 			}
 			else
@@ -1174,34 +1166,18 @@ static void CG_Item(centity_t* cent)
 		AnglesToAxis(spin_angles, ent.axis);
 	}
 
-	// items without glow textures need to keep a minimum light value
-	// so they are always visible
-	/*	if (( item->giType == IT_WEAPON ) || ( item->giType == IT_ARMOR ))
-		{
-			ent.renderfx |= RF_MINLIGHT;
-		}
-	*/
-	// increase the size of the weapons when they are presented as items
-	//	if ( item->giType == IT_WEAPON ) {
-	//		VectorScale( ent.axis[0], 1.5f, ent.axis[0] );
-	//		VectorScale( ent.axis[1], 1.5f, ent.axis[1] );
-	//		VectorScale( ent.axis[2], 1.5f, ent.axis[2] );
-	//		ent.nonNormalizedAxes = qtrue;
-	//	}
-
-	// add to refresh list
 	cgi_R_AddRefEntityToScene(&ent);
 
-	if (cg.snap->ps.forcePowersActive & 1 << FP_SEE
-		&& cg.snap->ps.clientNum != cent->currentState.number
-		&& CG_PlayerCanSeeCent(cent))
+	if ((cg.snap->ps.forcePowersActive & (1 << FP_SEE)) &&
+		cg.snap->ps.clientNum != cent->currentState.number &&
+		CG_PlayerCanSeeCent(cent))
 	{
 		CG_AddForceSightShell(&ent, cent);
 	}
 
-	if (item->giType == IT_WEAPON
-		&& item->giTag == WP_SABER
-		&& (!cent->gent || !(cent->gent->spawnflags & 64)))
+	if (item->giType == IT_WEAPON &&
+		item->giTag == WP_SABER &&
+		!(cent->gent->spawnflags & 64))
 	{
 		ent.customShader = cgi_R_RegisterShader("gfx/effects/solidWhite_cull");
 		ent.renderfx = RF_RGB_TINT;
@@ -1210,19 +1186,21 @@ static void CG_Item(centity_t* cent)
 		ent.shaderRGBA[2] = 0;
 		cgi_R_AddRefEntityToScene(&ent);
 
-		for (int i = -4; i < 10; i += 1)
+		for (int i = -4; i < 10; i++)
 		{
 			vec3_t org;
 			VectorMA(ent.origin, -i, ent.axis[2], org);
 
-			FX_AddSprite(org, nullptr, nullptr, 10.0f, wv * 0.5f, wv * 0.5f, 0.0f, 0.0f, 1.0f, cgs.media.yellowDroppedSaberShader,
+			FX_AddSprite(org, NULL, NULL, 10.0f, wv * 0.5f, wv * 0.5f,
+				0.0f, 0.0f, 1.0f,
+				cgs.media.yellowDroppedSaberShader,
 				0x08000000);
 		}
 
-		// THIS light looks crappy...maybe it should just be removed...
 		cgi_R_AddLightToScene(ent.origin, wv * 100, 1.0f, 1.0f, 0.0f);
 	}
 }
+
 
 //============================================================================
 
@@ -1979,16 +1957,12 @@ extern char* vtos(const vec3_t v);
 void CG_CalcEntityLerpPositions(centity_t* cent)
 {
 	if (cent->gent && cent->gent->client && cent->gent->client->NPC_class == CLASS_VEHICLE && cent->nextState)
-		//cent->currentState.vehicleIndex != VEHICLE_NONE )
 	{
-		const float f = cg.frameInterpolation;
+		const float	f = cg.frameInterpolation;
 
-		cent->currentState.vehicleAngles[0] = LerpAngle(cent->currentState.vehicleAngles[0],
-			cent->nextState->vehicleAngles[0], f);
-		cent->currentState.vehicleAngles[1] = LerpAngle(cent->currentState.vehicleAngles[1],
-			cent->nextState->vehicleAngles[1], f);
-		cent->currentState.vehicleAngles[2] = LerpAngle(cent->currentState.vehicleAngles[2],
-			cent->nextState->vehicleAngles[2], f);
+		cent->currentState.vehicleAngles[0] = LerpAngle(cent->currentState.vehicleAngles[0], cent->nextState->vehicleAngles[0], f);
+		cent->currentState.vehicleAngles[1] = LerpAngle(cent->currentState.vehicleAngles[1], cent->nextState->vehicleAngles[1], f);
+		cent->currentState.vehicleAngles[2] = LerpAngle(cent->currentState.vehicleAngles[2], cent->nextState->vehicleAngles[2], f);
 	}
 
 	if (cent->currentState.number == cg.snap->ps.clientNum)
@@ -1996,31 +1970,18 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 		// if the player, take position from prediction
 		VectorCopy(cg.predictedPlayerState.origin, cent->lerpOrigin);
 		VectorCopy(cg.predictedPlayerState.viewangles, cent->lerpAngles);
-		/*
-		Ghoul2 Insert Start
-		*/
-		//		LerpBoneAngleOverrides(cent);
-		/*
-		Ghoul2 Insert End
-		*/
 		return;
 	}
 
-	//FIXME: prediction on clients in timescale results in jerky positional translation
 	if (cent->interpolate)
 	{
-		// if the entity has a valid next state, interpolate a value between the frames
-		// unless it is a mover with a known start and stop
-		vec3_t current, next;
+		vec3_t		current, next;
+		const float	f = cg.frameInterpolation;
 
-		// it would be an internal error to find an entity that interpolates without
-		// a snapshot ahead of the current one
 		if (cg.nextSnap == nullptr)
 		{
-			CG_Error("CG_AddCEntity: cg.nextSnap == NULL");
+			CG_Error("CG_AddCEntity: cg.nextSnap == nullptr");
 		}
-
-		const float f = cg.frameInterpolation;
 
 		if (cent->currentState.apos.trType == TR_INTERPOLATE && cent->nextState)
 		{
@@ -2031,18 +1992,16 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 			cent->lerpAngles[1] = LerpAngle(current[1], next[1], f);
 			cent->lerpAngles[2] = LerpAngle(current[2], next[2], f);
 		}
+
 		if (cent->currentState.pos.trType == TR_INTERPOLATE && cent->nextState)
 		{
-			// this will linearize a sine or parabolic curve, but it is important
-			// to not extrapolate player positions if more recent data is available
 			EvaluateTrajectory(&cent->currentState.pos, cg.snap->serverTime, current);
 			EvaluateTrajectory(&cent->nextState->pos, cg.nextSnap->serverTime, next);
 
 			cent->lerpOrigin[0] = current[0] + f * (next[0] - current[0]);
 			cent->lerpOrigin[1] = current[1] + f * (next[1] - current[1]);
 			cent->lerpOrigin[2] = current[2] + f * (next[2] - current[2]);
-
-			return; //FIXME: should this be outside this if?
+			return;
 		}
 	}
 	else
@@ -2058,33 +2017,29 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 		}
 	}
 
-	// FIXME: if it's blocked, it wigs out, draws it in a predicted spot, but never
-	// makes it there - we need to predict it in the right place if this is happens...
-
 	// just use the current frame and evaluate as best we can
-	const trajectory_t* pos_data = &cent->currentState.pos;
+	trajectory_t* posData = &cent->currentState.pos;
 	{
-		const gentity_t* ent = &g_entities[cent->currentState.number];
+		gentity_t* ent = &g_entities[cent->currentState.number];
 
 		if (ent && ent->inuse)
 		{
 			if (ent->s.eFlags & EF_BLOCKED_MOVER || ent->s.pos.trType == TR_STATIONARY)
-			{
-				//this mover has stopped moving and is going to wig out if we predict it
+			{//this mover has stopped moving and is going to wig out if we predict it
 				//based on last frame's info- cut across the network and use the currentOrigin
 				VectorCopy(ent->currentOrigin, cent->lerpOrigin);
-				pos_data = nullptr;
+				posData = NULL;
 			}
 			else
 			{
-				pos_data = &ent->s.pos;
+				posData = &ent->s.pos;
 			}
 		}
 	}
 
-	if (pos_data)
+	if (posData)
 	{
-		EvaluateTrajectory(pos_data, cg.time, cent->lerpOrigin);
+		EvaluateTrajectory(posData, cg.time, cent->lerpOrigin);
 	}
 
 	// FIXME: this will stomp an apos trType of TR_INTERPOLATE!!
@@ -2092,20 +2047,6 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 
 	// adjust for riding a mover
 	CG_AdjustPositionForMover(cent->lerpOrigin, cent->currentState.groundEntityNum, cg.time, cent->lerpOrigin);
-	/*
-	Ghoul2 Insert Start
-	*/
-	// now the nasty stuff - this will interpolate all ghoul2 models bone angle overrides per model attached to this cent
-	/*
-	if (cent->gent->ghoul2.size())
-	{
-		LerpBoneAngleOverrides(cent);
-	}
-	*/
-	/*
-	Ghoul2 Insert End
-	*/
-	// FIXME: perform general error decay?
 }
 #else
 void CG_CalcEntityLerpPositions(centity_t* cent)

@@ -293,26 +293,28 @@ otherwise riders would continue to slide.
 If qfalse is returned, *obstacle will be the blocking entity
 ============
 */
-qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** obstacle)
+// Attempt to move a mover and push intersecting entities; returns qfalse if blocked and sets *obstacle
+static qboolean G_MoverPush(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** obstacle)
 {
 	int i;
 	vec3_t mins{}, maxs{};
 	vec3_t pusher_mins, pusher_maxs, totalMins{}, totalMaxs{};
-	gentity_t* entity_list[MAX_GENTITIES];
+	// Use static buffer to avoid large stack usage
+	static gentity_t* entity_list[MAX_GENTITIES];
 
 	*obstacle = nullptr;
 
-	if (!pusher->bmodel)
+	if (pusher->bmodel == qfalse)
 	{
-		//misc_model_breakable
+		// misc_model_breakable: compute world-space bounds
 		VectorAdd(pusher->currentOrigin, pusher->mins, pusher_mins);
 		VectorAdd(pusher->currentOrigin, pusher->maxs, pusher_maxs);
 	}
 
 	// mins/maxs are the bounds at the destination
 	// totalMins / totalMaxs are the bounds for the entire move
-	if (pusher->currentAngles[0] || pusher->currentAngles[1] || pusher->currentAngles[2]
-		|| amove[0] || amove[1] || amove[2])
+	if (pusher->currentAngles[0] != 0.0f || pusher->currentAngles[1] != 0.0f || pusher->currentAngles[2] != 0.0f ||
+		amove[0] != 0.0f || amove[1] != 0.0f || amove[2] != 0.0f)
 	{
 		const float radius = RadiusFromBounds(pusher->mins, pusher->maxs);
 		for (i = 0; i < 3; i++)
@@ -333,9 +335,10 @@ qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** 
 
 		VectorCopy(pusher->absmin, totalMins);
 		VectorCopy(pusher->absmax, totalMaxs);
+
 		for (i = 0; i < 3; i++)
 		{
-			if (move[i] > 0)
+			if (move[i] > 0.0f)
 			{
 				totalMaxs[i] += move[i];
 			}
@@ -351,40 +354,40 @@ qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** 
 
 	const int listed_entities = gi.EntitiesInBox(totalMins, totalMaxs, entity_list, MAX_GENTITIES);
 
-	// move the pusher to it's final position
+	// move the pusher to its final position
 	VectorAdd(pusher->currentOrigin, move, pusher->currentOrigin);
 	VectorAdd(pusher->currentAngles, amove, pusher->currentAngles);
 	gi.linkentity(pusher);
 
-	const auto not_moving = static_cast<qboolean>(VectorCompare(vec3_origin, move) &&
-		VectorCompare(vec3_origin, amove));
+	const qboolean not_moving =
+		(VectorCompare(vec3_origin, move) && VectorCompare(vec3_origin, amove)) ? qtrue : qfalse;
 
 	// see if any solid entities are inside the final position
 	for (int e = 0; e < listed_entities; e++)
 	{
 		gentity_t* check = entity_list[e];
 
-		if (check->s.eFlags & EF_MISSILE_STICK && (not_moving || check->s.groundEntityNum < 0 || check->s.
-			groundEntityNum >= ENTITYNUM_NONE))
+		if ((check->s.eFlags & EF_MISSILE_STICK) &&
+			(not_moving == qtrue || check->s.groundEntityNum < 0 || check->s.groundEntityNum >= ENTITYNUM_NONE))
 		{
-			// special case hack for sticky things, destroy it if we aren't attached to the thing that is moving, but the moving thing is pushing us
+			// special case hack for sticky things: destroy if not attached to mover but being pushed by it
 			G_Damage(check, pusher, pusher, nullptr, nullptr, 99999, 0, MOD_CRUSH);
 			continue;
 		}
 
-		// only push items and players
+		// only push items and players (and sticky missiles)
 		if (check->s.eType != ET_ITEM)
 		{
-			//FIXME: however it allows items to be pushed through stuff, do same for corpses?
+			// allow items to be pushed through stuff; similar for corpses?
 			if (check->s.eType != ET_PLAYER)
 			{
-				if (!(check->s.eFlags & EF_MISSILE_STICK))
+				if ((check->s.eFlags & EF_MISSILE_STICK) == 0)
 				{
 					// cannot be pushed by this mover
 					continue;
 				}
 			}
-			else if (!pusher->bmodel)
+			else if (pusher->bmodel == qfalse)
 			{
 				vec3_t check_mins;
 				vec3_t check_maxs;
@@ -392,19 +395,19 @@ qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** 
 				VectorAdd(check->currentOrigin, check->mins, check_mins);
 				VectorAdd(check->currentOrigin, check->maxs, check_maxs);
 
-				if (G_BoundsOverlap(check_mins, check_maxs, pusher_mins, pusher_maxs))
+				if (G_BoundsOverlap(check_mins, check_maxs, pusher_mins, pusher_maxs) == qtrue)
 				{
-					//They're inside me already, no push - FIXME: we're testing a moves spot, aren't we, so we could have just moved inside them?
+					// already inside; no push
 					continue;
 				}
 			}
 		}
 
-		if (check->maxs[0] - check->mins[0] <= 0 &&
-			check->maxs[1] - check->mins[1] <= 0 &&
-			check->maxs[2] - check->mins[2] <= 0)
+		if ((check->maxs[0] - check->mins[0] <= 0.0f) &&
+			(check->maxs[1] - check->mins[1] <= 0.0f) &&
+			(check->maxs[2] - check->mins[2] <= 0.0f))
 		{
-			//no size, don't push
+			// no size, don't push
 			continue;
 		}
 
@@ -412,60 +415,57 @@ qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** 
 		if (check->s.groundEntityNum != pusher->s.number)
 		{
 			// see if the ent needs to be tested
-			if (check->absmin[0] >= maxs[0]
-				|| check->absmin[1] >= maxs[1]
-				|| check->absmin[2] >= maxs[2]
-				|| check->absmax[0] <= mins[0]
-				|| check->absmax[1] <= mins[1]
-				|| check->absmax[2] <= mins[2])
+			if (check->absmin[0] >= maxs[0] ||
+				check->absmin[1] >= maxs[1] ||
+				check->absmin[2] >= maxs[2] ||
+				check->absmax[0] <= mins[0] ||
+				check->absmax[1] <= mins[1] ||
+				check->absmax[2] <= mins[2])
 			{
 				continue;
 			}
+
 			// see if the ent's bbox is inside the pusher's final position
-			// this does allow a fast moving object to pass through a thin entity...
 			if (G_TestEntityPosition(check) != pusher)
 			{
 				continue;
 			}
 		}
 
-		if (pusher->spawnflags & 2 && !Q_stricmp("func_breakable", pusher->classname)
-			|| pusher->spawnflags & 16 && !Q_stricmp("func_static", pusher->classname))
+		// impact damage for breakable/static movers
+		if (((pusher->spawnflags & 2) && (Q_stricmp("func_breakable", pusher->classname) == 0)) ||
+			((pusher->spawnflags & 16) && (Q_stricmp("func_static", pusher->classname) == 0)))
 		{
-			//ugh, avoid stricmp with a unique flag
-			//Damage on impact
 			if (pusher->damage)
 			{
-				//Do damage
 				G_Damage(check, pusher, pusher->activator, move, check->currentOrigin, pusher->damage, 0, MOD_CRUSH);
+
 				if (pusher->health >= 0 && pusher->takedamage && !(pusher->spawnflags & 1))
 				{
-					//do some damage to me, too
-					G_Damage(pusher, check, pusher->activator, move, pusher->s.pos.trBase, floor(pusher->damage / 4.0f),
-						0, MOD_CRUSH);
+					G_Damage(pusher, check, pusher->activator, move, pusher->s.pos.trBase,
+						floor(pusher->damage / 4.0f), 0, MOD_CRUSH);
 				}
 			}
 		}
-		// really need a flag like MOVER_TOUCH that calls the ent's touch function here, instead of this stricmp crap
-		else if (pusher->spawnflags & 2 && !Q_stricmp("func_rotating", pusher->classname))
+		// rotating movers call touch instead of blocking
+		else if ((pusher->spawnflags & 2) && (Q_stricmp("func_rotating", pusher->classname) == 0))
 		{
 			GEntity_TouchFunc(pusher, check, nullptr);
-			continue; // don't want it blocking so skip past it
+			continue;
 		}
 
 		vec3_t old_org;
-
 		VectorCopy(check->s.pos.trBase, old_org);
 
 		// the entity needs to be pushed
-		if (G_TryPushingEntity(check, pusher, move, amove))
+		if (G_TryPushingEntity(check, pusher, move, amove) == qtrue)
 		{
 			// the mover wasn't blocked
 			if (check->s.eFlags & EF_MISSILE_STICK)
 			{
-				if (!VectorCompare(old_org, check->s.pos.trBase))
+				if (VectorCompare(old_org, check->s.pos.trBase) == qfalse)
 				{
-					// and the rider was actually pushed, so interpolate position change to smooth out the ride
+					// rider was actually pushed; interpolate to smooth ride
 					check->s.pos.trType = TR_INTERPOLATE;
 					continue;
 				}
@@ -479,7 +479,7 @@ qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** 
 		// the move was blocked even after pushing this rider
 		if (check->s.eFlags & EF_MISSILE_STICK)
 		{
-			// so nuke 'em so they don't block us anymore
+			// nuke sticky so it doesn't block us anymore
 			G_Damage(check, pusher, pusher, nullptr, nullptr, 99999, 0, MOD_CRUSH);
 			continue;
 		}
@@ -488,24 +488,26 @@ qboolean g_mover_push(gentity_t* pusher, vec3_t move, vec3_t amove, gentity_t** 
 		*obstacle = check;
 
 		// move back any entities we already moved
-		// go backwards, so if the same entity was pushed
-		// twice, it goes back to the original position
 		for (pushed_t* p = pushed_p - 1; p >= pushed; p--)
 		{
 			VectorCopy(p->origin, p->ent->s.pos.trBase);
 			VectorCopy(p->angles, p->ent->s.apos.trBase);
+
 			if (p->ent->client)
 			{
 				p->ent->client->ps.delta_angles[YAW] = p->deltayaw;
 				VectorCopy(p->origin, p->ent->client->ps.origin);
 			}
+
 			gi.linkentity(p->ent);
 		}
+
 		return qfalse;
 	}
 
 	return qtrue;
 }
+
 
 /*
 =================
@@ -534,7 +536,7 @@ static void G_MoverTeam(gentity_t* ent)
 		EvaluateTrajectory(&part->s.apos, level.time, angles);
 		VectorSubtract(origin, part->currentOrigin, move);
 		VectorSubtract(angles, part->currentAngles, amove);
-		if (!g_mover_push(part, move, amove, &obstacle))
+		if (!G_MoverPush(part, move, amove, &obstacle))
 		{
 			break; // move was blocked
 		}
@@ -1256,54 +1258,74 @@ All of the parts of a door have been spawned, so create
 a trigger that encloses all of them
 ======================
 */
+// Spawns a door trigger sized to the combined bounds of all team-linked movers
 void Think_SpawnNewDoorTrigger(gentity_t* ent)
 {
-	gentity_t* other;
+	// SAFETY FIX: ent may be NULL in edge cases (modded maps, script errors)
+	if (ent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "Think_SpawnNewDoorTrigger: ent was NULL, aborting\n");
+		return;
+	}
+
+	gentity_t* other = NULL;
 	vec3_t mins, maxs;
 
-	// set all of the slaves as shootable
-	if (ent->takedamage)
+	// Mark all slaves as shootable
+	if (ent->takedamage == qtrue)
 	{
-		for (other = ent; other; other = other->teamchain)
+		for (other = ent; other != NULL; other = other->teamchain)
 		{
 			other->takedamage = qtrue;
 		}
 	}
 
-	// find the bounds of everything on the team
+	// Start with the master mover's bounds
 	VectorCopy(ent->absmin, mins);
 	VectorCopy(ent->absmax, maxs);
 
-	for (other = ent->teamchain; other; other = other->teamchain)
+	// Expand bounds to include all team-linked movers
+	for (other = ent->teamchain; other != NULL; other = other->teamchain)
 	{
 		AddPointToBounds(other->absmin, mins, maxs);
 		AddPointToBounds(other->absmax, mins, maxs);
 	}
 
-	// find the thinnest axis, which will be the one we expand
+	// Find thinnest axis and expand it to create a usable trigger volume
 	int best = 0;
 	for (int i = 1; i < 3; i++)
 	{
-		if (maxs[i] - mins[i] < maxs[best] - mins[best])
+		if ((maxs[i] - mins[i]) < (maxs[best] - mins[best]))
 		{
 			best = i;
 		}
 	}
-	maxs[best] += 120;
-	mins[best] -= 120;
 
-	// create a trigger with this size
+	maxs[best] += 120.0f;
+	mins[best] -= 120.0f;
+
+	// Create the trigger entity
 	other = G_Spawn();
+	if (other == NULL)
+	{
+		Com_Printf(S_COLOR_RED "Think_SpawnNewDoorTrigger: G_Spawn failed\n");
+		return;
+	}
+
 	VectorCopy(mins, other->mins);
 	VectorCopy(maxs, other->maxs);
+
 	other->owner = ent;
 	other->contents = CONTENTS_TRIGGER;
 	other->e_TouchFunc = touchF_Touch_DoorTrigger;
-	gi.linkentity(other);
 	other->classname = "trigger_door";
 
+	gi.linkentity(other);
+
+	// Sync mover team state
 	MatchTeam(ent, ent->moverState, level.time);
 }
+
 
 void Think_MatchTeam(gentity_t* ent)
 {

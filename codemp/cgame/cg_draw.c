@@ -798,7 +798,7 @@ static void CG_DrawJK2blockPoints(const int x, const int y, const menuDef_t* men
 		if (cg.blockHUDNextFlashTime < cg.time)
 		{
 			cg.blockHUDNextFlashTime = cg.time + 400;
-			trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
+			//trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
 
 			if (cg.blockHUDActive)
 			{
@@ -1822,7 +1822,7 @@ static void CG_DrawCussaberfatigue(const menuDef_t* menu_hud)
 		if (cg.mishapHUDNextFlashTime < cg.time)
 		{
 			cg.mishapHUDNextFlashTime = cg.time + 400;
-			trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
+			//trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
 
 			if (cg.mishapHUDActive)
 			{
@@ -1922,7 +1922,7 @@ static void CG_DrawoldblockPoints(void)
 		if (cg.blockHUDNextFlashTime < cg.time)
 		{
 			cg.blockHUDNextFlashTime = cg.time + 400;
-			trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
+			//trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
 
 			if (cg.blockHUDActive)
 			{
@@ -2070,7 +2070,7 @@ static void CG_DrawCusblockPoints(const int x, const int y, const menuDef_t* men
 		if (cg.blockHUDNextFlashTime < cg.time)
 		{
 			cg.blockHUDNextFlashTime = cg.time + 400;
-			trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
+			//trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.overload);
 
 			if (cg.blockHUDActive)
 			{
@@ -2441,7 +2441,7 @@ static void CG_Draw_JKA_ForcePower(const centity_t* cent, const menuDef_t* menu_
 		if (cg.forceHUDNextFlashTime < cg.time)
 		{
 			cg.forceHUDNextFlashTime = cg.time + 400;
-			trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.noforceSound);
+			//trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.noforceSound);
 
 			if (cg.forceHUDActive)
 			{
@@ -3230,7 +3230,7 @@ static void CG_DrawSimpleForcePower()
 		if (cg.forceHUDNextFlashTime < cg.time)
 		{
 			cg.forceHUDNextFlashTime = cg.time + 400;
-			trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.noforceSound);
+			//trap->S_StartSound(NULL, 0, CHAN_LOCAL, cgs.media.noforceSound);
 			if (cg.forceHUDActive)
 			{
 				cg.forceHUDActive = qfalse;
@@ -8961,9 +8961,13 @@ static void CG_DrawCrosshairNames(void)
 	const qboolean isClient = (idx >= 0 && idx < MAX_CLIENTS) ? qtrue : qfalse;
 	const qboolean isEntity = (idx >= 0 && idx < ENTITYNUM_WORLD) ? qtrue : qfalse;
 
-	// Resolve a display name:
-	//  - Clients: use clientinfo cleanname
-	//  - Non‑client entities: try npcClient, else generic "(NPC)" label
+	// Hard safety: ensure idx is valid for clientinfo[]
+	if (idx < 0 || idx >= MAX_CLIENTS)
+	{
+		trap->R_SetColor(NULL);
+		return;
+	}
+
 	if (isClient == qtrue)
 	{
 		if (cgs.clientinfo[idx].infoValid != 0)
@@ -9428,7 +9432,7 @@ static void CG_DrawTeamVote(void)
 		if (cgs.teamVoteString[cs_offset][i] == ' ')
 		{
 			int vote_index = 0;
-			char vote_index_str[256];
+			char vote_index_str[256] = {0};
 
 			i++;
 
@@ -9511,10 +9515,11 @@ static qboolean CG_DrawFollow(void)
 		s = CG_GetStringEdString("MP_INGAME", "FOLLOWING");
 	}
 
-	CG_Text_Paint(320 - CG_Text_Width(s, 0.5f, FONT_SMALL) / 2, 30, 0.5f, colorWhite, s, 0, 0, 0, FONT_SMALL);
+	CG_Text_Paint(320.0f - ((float)CG_Text_Width(s, 0.5f, FONT_SMALL) * 0.5f),30.0f,0.5f,colorWhite,s,0,0,0,FONT_SMALL);
+
 
 	s = cgs.clientinfo[cg.snap->ps.clientNum].name;
-	CG_Text_Paint(320 - CG_Text_Width(s, 1.0f, FONT_SMALL) / 2, 60, 1.0f, colorWhite, s, 0, 0, 0, FONT_SMALL);
+	CG_Text_Paint(320.0f - ((float)CG_Text_Width(s, 1.0f, FONT_SMALL) / 2), 60.0f, 1.0f, colorWhite, s, 0, 0, 0, FONT_SMALL);
 
 	return qtrue;
 }
@@ -9657,7 +9662,8 @@ static void CG_DrawWarmup(void)
 				s = va("%s vs %s", ci1->name, ci2->name);
 			}
 			w = CG_Text_Width(s, 0.6f, FONT_MEDIUM);
-			CG_Text_Paint(320 - w / 2, 60, 0.6f, colorWhite, s, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE, FONT_MEDIUM);
+			CG_Text_Paint(320.0f - ((float)w * 0.5f),60.0f,	0.6f,colorWhite,s,0,0,ITEM_TEXTSTYLE_SHADOWEDMORE,FONT_MEDIUM);
+
 		}
 	}
 	else
@@ -9673,7 +9679,18 @@ static void CG_DrawWarmup(void)
 		else if (cgs.gametype == GT_SINGLE_PLAYER) s = "missions";
 		else s = "";
 		w = CG_Text_Width(s, 1.5f, FONT_MEDIUM);
-		CG_Text_Paint(320 - w / 2, 90, 1.5f, colorWhite, s, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE, FONT_MEDIUM);
+		CG_Text_Paint(
+			320.0f - ((float)w * 0.5f),
+			90.0f,
+			1.5f,
+			colorWhite,
+			s,
+			0,
+			0,
+			ITEM_TEXTSTYLE_SHADOWEDMORE,
+			FONT_MEDIUM
+		);
+
 	}
 
 	sec = (sec - cg.time) / 1000;
@@ -9724,7 +9741,7 @@ static void CG_DrawWarmup(void)
 	}
 
 	w = CG_Text_Width(s, scale, FONT_MEDIUM);
-	CG_Text_Paint(320 - w / 2, 125, scale, colorWhite, s, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE, FONT_MEDIUM);
+	CG_Text_Paint(320.0f - ((float)w * 0.5f), 125.0f, scale, colorWhite, s, 0, 0, ITEM_TEXTSTYLE_SHADOWEDMORE, FONT_MEDIUM);
 }
 
 //==================================================================================
@@ -9816,9 +9833,9 @@ static void CG_DrawFlagStatus()
 
 static void CG_DrawSprintFuel()
 {
-	vec4_t aColor;
-	vec4_t b_color;
-	vec4_t cColor;
+	vec4_t aColor = {0.0f, 0.3f, 0.6f, 0.8f};
+	vec4_t b_color = {0.0f, 0.0f, 0.0f, 0.3f};
+	vec4_t cColor = {0.5f, 0.5f, 0.5f, 0.1f};
 	const float x = SPFUELBAR_X;
 	const float y = SPFUELBAR_Y;
 	float percent = (float)cg.snap->ps.sprintFuel / 100.0f * SPFUELBAR_H;
@@ -9881,9 +9898,9 @@ static void CG_DrawSprintFuel()
 
 static void CG_DrawJetpackFuel(void)
 {
-	vec4_t aColor;
-	vec4_t b_color;
-	vec4_t cColor;
+	vec4_t aColor = {0.5f, 0.0f, 0.0f, 0.8f};
+	vec4_t b_color = {0.0f, 0.0f, 0.0f, 0.3f};
+	vec4_t cColor = {0.5f, 0.5f, 0.5f, 0.1f};
 	float x = JPFUELBAR_X;
 	const float y = JPFUELBAR_Y;
 	float percent = (float)cg.snap->ps.jetpackFuel / 100.0f * JPFUELBAR_H;
@@ -9950,9 +9967,9 @@ static void CG_DrawJetpackFuel(void)
 
 static void CG_DrawCloakFuel(void)
 {
-	vec4_t aColor;
-	vec4_t b_color;
-	vec4_t cColor;
+	vec4_t aColor = {0.0f, 0.0f, 0.6f, 0.8f};
+	vec4_t b_color = {0.0f, 0.0f, 0.0f, 0.3f};
+	vec4_t cColor = {0.1f, 0.1f, 0.3f, 0.1f};
 	float x = CLFUELBAR_X;
 	const float y = CLFUELBAR_Y;
 	float percent = (float)cg.snap->ps.cloakFuel / 100.0f * CLFUELBAR_H;
@@ -10024,8 +10041,8 @@ static void CG_DrawCloakFuel(void)
 
 static void CG_DrawEWebHealth(void)
 {
-	vec4_t aColor;
-	vec4_t cColor;
+	vec4_t aColor = {0.5f, 0.0f, 0.0f, 0.8f};
+	vec4_t cColor = {0.5f, 0.5f, 0.5f, 0.1f};
 	float x = EWEBHEALTH_X;
 	const float y = EWEBHEALTH_Y;
 	const centity_t* eweb = &cg_entities[cg.predictedPlayerState.emplacedIndex];
@@ -10247,7 +10264,7 @@ static void CG_DrawSiegeHUDItem(void)
 {
 	void* g2;
 	qhandle_t handle;
-	vec3_t origin, angles;
+	vec3_t origin = {0.0f, 0.0f, 0.0f}, angles = {0.0f, 0.0f, 0.0f};
 	vec3_t mins, maxs;
 	const centity_t* cent = &cg_entities[cgSiegeEntityRender];
 
@@ -10345,7 +10362,7 @@ void CG_ChatBox_AddString(char* chat_str)
 		//we have to break it into segments...
 		int i = 0;
 		int last_line_pt = 0;
-		char s[2];
+		char s[2] = {0};
 
 		chat_len = 0;
 		while (chat->string[i])
@@ -10469,7 +10486,7 @@ void CGCam_DoFade(void);
 
 static void CG_Draw2DScreenTints(void)
 {
-	vec4_t hcolor;
+	vec4_t hcolor = {0.0f, 0.0f, 0.0f, 0.0f};
 
 	//cutscene camera fade code
 	CGCam_DoFade();
@@ -11109,7 +11126,7 @@ static void CG_Draw2D(void)
 
 	if (cg.snap->ps.fallingToDeath)
 	{
-		vec4_t hcolor;
+		vec4_t hcolor = {0.0f, 0.0f, 0.0f, 0.0f};
 
 		float fall_time = (float)(cg.time - cg.snap->ps.fallingToDeath);
 

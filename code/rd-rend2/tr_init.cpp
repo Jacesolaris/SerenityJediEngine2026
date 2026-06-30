@@ -369,7 +369,7 @@ static void R_Splash()
 		ri.Cvar_Set("cg_shadows", "1");
 	}
 
-	if (com_outcast->integer != 0)
+	if (com_outcast && com_outcast->integer != 0)
 	{
 		ri.Cvar_Set("com_outcast", "0");
 	}

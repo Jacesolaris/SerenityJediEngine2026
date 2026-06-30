@@ -4161,8 +4161,13 @@ png_do_encode_alpha(const png_row_infop row_info, png_bytep row, const png_struc
 /* Expands a palette row to an RGB or RGBA row depending
  * upon whether you supply trans and num_trans.
  */
-static void
-png_do_expand_palette(const png_row_infop row_info, const png_bytep row,
+ /*
+  * png_do_expand_palette
+  * - Expands palette-indexed rows to RGB or RGBA.
+  * - Fixed MSVC C6297 (arithmetic overflow) by using safe size_t arithmetic
+  *   instead of shifting row_width.
+  */
+static void png_do_expand_palette(const png_row_infop row_info, const png_bytep row,
 	const png_const_colorp palette, const png_const_bytep trans_alpha, const int num_trans)
 {
 	const png_uint_32 row_width = row_info->width;
@@ -4174,33 +4179,41 @@ png_do_expand_palette(const png_row_infop row_info, const png_bytep row,
 		png_uint_32 i;
 		png_bytep dp;
 		png_bytep sp;
+
+		/* First, expand sub-8-bit palette indices to 8-bit */
 		if (row_info->bit_depth < 8)
 		{
 			int value;
 			int shift;
+
 			switch (row_info->bit_depth)
 			{
 			case 1:
 			{
-				sp = row + (png_size_t)((row_width - 1) >> 3);
-				dp = row + (png_size_t)row_width - 1;
-				shift = 7 - (int)((row_width + 7) & 0x07);
+				sp = row + (png_size_t)((row_width - 1U) >> 3);
+				dp = row + (png_size_t)row_width - 1U;
+				shift = 7 - (int)((row_width + 7U) & 0x07U);
+
 				for (i = 0; i < row_width; i++)
 				{
-					if ((*sp >> shift) & 0x01)
+					if (((*sp >> shift) & 0x01U) != 0U)
+					{
 						*dp = 1;
-
+					}
 					else
+					{
 						*dp = 0;
+					}
 
 					if (shift == 7)
 					{
 						shift = 0;
 						sp--;
 					}
-
 					else
+					{
 						shift++;
+					}
 
 					dp--;
 				}
@@ -4209,21 +4222,24 @@ png_do_expand_palette(const png_row_infop row_info, const png_bytep row,
 
 			case 2:
 			{
-				sp = row + (png_size_t)((row_width - 1) >> 2);
-				dp = row + (png_size_t)row_width - 1;
-				shift = (int)((3 - ((row_width + 3) & 0x03)) << 1);
+				sp = row + (png_size_t)((row_width - 1U) >> 2);
+				dp = row + (png_size_t)row_width - 1U;
+				shift = (int)((3U - ((row_width + 3U) & 0x03U)) << 1);
+
 				for (i = 0; i < row_width; i++)
 				{
-					value = (*sp >> shift) & 0x03;
+					value = (int)((*sp >> shift) & 0x03U);
 					*dp = (png_byte)value;
+
 					if (shift == 6)
 					{
 						shift = 0;
 						sp--;
 					}
-
 					else
+					{
 						shift += 2;
+					}
 
 					dp--;
 				}
@@ -4232,21 +4248,24 @@ png_do_expand_palette(const png_row_infop row_info, const png_bytep row,
 
 			case 4:
 			{
-				sp = row + (png_size_t)((row_width - 1) >> 1);
-				dp = row + (png_size_t)row_width - 1;
-				shift = (int)((row_width & 0x01) << 2);
+				sp = row + (png_size_t)((row_width - 1U) >> 1);
+				dp = row + (png_size_t)row_width - 1U;
+				shift = (int)((row_width & 0x01U) << 2);
+
 				for (i = 0; i < row_width; i++)
 				{
-					value = (*sp >> shift) & 0x0f;
+					value = (int)((*sp >> shift) & 0x0fU);
 					*dp = (png_byte)value;
+
 					if (shift == 4)
 					{
 						shift = 0;
 						sp--;
 					}
-
 					else
+					{
 						shift += 4;
+					}
 
 					dp--;
 				}
@@ -4256,71 +4275,92 @@ png_do_expand_palette(const png_row_infop row_info, const png_bytep row,
 			default:
 				break;
 			}
+
 			row_info->bit_depth = 8;
 			row_info->pixel_depth = 8;
 			row_info->rowbytes = row_width;
 		}
 
+		/* Now expand 8-bit palette indices to RGB/RGBA */
 		if (row_info->bit_depth == 8)
 		{
+			if (num_trans > 0)
 			{
-				if (num_trans > 0)
+				/* RGBA expansion */
+				const png_size_t width4 = (png_size_t)row_width * 4U;
+
+				sp = row + (png_size_t)row_width - 1U;
+				dp = row + width4 - 1U;
+
+				for (i = 0; i < row_width; i++)
 				{
-					sp = row + (png_size_t)row_width - 1;
-					dp = row + (png_size_t)(row_width << 2) - 1;
+					const png_byte index = *sp;
 
-					for (i = 0; i < row_width; i++)
+					if ((int)index >= num_trans)
 					{
-						if ((int)(*sp) >= num_trans)
-							*dp-- = 0xff;
-
-						else
-							*dp-- = trans_alpha[*sp];
-
-						*dp-- = palette[*sp].blue;
-						*dp-- = palette[*sp].green;
-						*dp-- = palette[*sp].red;
-						sp--;
+						*dp-- = 0xff;
 					}
-					row_info->bit_depth = 8;
-					row_info->pixel_depth = 32;
-					row_info->rowbytes = row_width * 4;
-					row_info->color_type = 6;
-					row_info->channels = 4;
-				}
-
-				else
-				{
-					sp = row + (png_size_t)row_width - 1;
-					dp = row + (png_size_t)(row_width * 3) - 1;
-
-					for (i = 0; i < row_width; i++)
+					else
 					{
-						*dp-- = palette[*sp].blue;
-						*dp-- = palette[*sp].green;
-						*dp-- = palette[*sp].red;
-						sp--;
+						*dp-- = trans_alpha[index];
 					}
 
-					row_info->bit_depth = 8;
-					row_info->pixel_depth = 24;
-					row_info->rowbytes = row_width * 3;
-					row_info->color_type = 2;
-					row_info->channels = 3;
+					*dp-- = palette[index].blue;
+					*dp-- = palette[index].green;
+					*dp-- = palette[index].red;
+
+					sp--;
 				}
+
+				row_info->bit_depth = 8;
+				row_info->pixel_depth = 32;
+				row_info->rowbytes = row_width * 4U;
+				row_info->color_type = PNG_COLOR_TYPE_RGB_ALPHA;
+				row_info->channels = 4;
+			}
+			else
+			{
+				/* RGB expansion */
+				const png_size_t width3 = (png_size_t)row_width * 3U;
+
+				sp = row + (png_size_t)row_width - 1U;
+				dp = row + width3 - 1U;
+
+				for (i = 0; i < row_width; i++)
+				{
+					const png_byte index = *sp;
+
+					*dp-- = palette[index].blue;
+					*dp-- = palette[index].green;
+					*dp-- = palette[index].red;
+
+					sp--;
+				}
+
+				row_info->bit_depth = 8;
+				row_info->pixel_depth = 24;
+				row_info->rowbytes = row_width * 3U;
+				row_info->color_type = PNG_COLOR_TYPE_RGB;
+				row_info->channels = 3;
 			}
 		}
 	}
 }
 
+
 /* If the bit depth < 8, it is expanded to 8.  Also, if the already
  * expanded transparency value is supplied, an alpha channel is built.
  */
-static void
-png_do_expand(png_row_infop row_info, png_bytep row,
+ /*
+  * png_do_expand
+  * - Expands grayscale and RGB rows to include alpha based on a transparent color.
+  * - Fixed MSVC C6297 (arithmetic overflow) by using safe size_t arithmetic
+  *   instead of shifting row_width for buffer pointer calculations.
+  */
+static void png_do_expand(png_row_infop row_info, png_bytep row,
 	png_const_color_16p trans_color)
 {
-	png_uint_32 row_width = row_info->width;
+	const png_uint_32 row_width = row_info->width;
 
 	png_debug(1, "in png_do_expand");
 
@@ -4328,25 +4368,28 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 		png_uint_32 i;
 		png_bytep dp;
 		png_bytep sp;
+
 		if (row_info->color_type == PNG_COLOR_TYPE_GRAY)
 		{
-			unsigned int gray = trans_color != NULL ? trans_color->gray : 0;
+			unsigned int gray = (trans_color != NULL) ? trans_color->gray : 0U;
 
 			if (row_info->bit_depth < 8)
 			{
 				int value;
 				int shift;
+
 				switch (row_info->bit_depth)
 				{
 				case 1:
 				{
-					gray = (gray & 0x01) * 0xff;
-					sp = row + (png_size_t)((row_width - 1) >> 3);
-					dp = row + (png_size_t)row_width - 1;
-					shift = 7 - (int)((row_width + 7) & 0x07);
+					gray = (gray & 0x01U) * 0xffU;
+					sp = row + (png_size_t)((row_width - 1U) >> 3);
+					dp = row + (png_size_t)row_width - 1U;
+					shift = 7 - (int)((row_width + 7U) & 0x07U);
+
 					for (i = 0; i < row_width; i++)
 					{
-						if ((*sp >> shift) & 0x01)
+						if (((*sp >> shift) & 0x01U) != 0U)
 							*dp = 0xff;
 
 						else
@@ -4357,9 +4400,10 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 							shift = 0;
 							sp--;
 						}
-
 						else
+						{
 							shift++;
+						}
 
 						dp--;
 					}
@@ -4368,23 +4412,25 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 
 				case 2:
 				{
-					gray = (gray & 0x03) * 0x55;
-					sp = row + (png_size_t)((row_width - 1) >> 2);
-					dp = row + (png_size_t)row_width - 1;
-					shift = (int)((3 - ((row_width + 3) & 0x03)) << 1);
+					gray = (gray & 0x03U) * 0x55U;
+					sp = row + (png_size_t)((row_width - 1U) >> 2);
+					dp = row + (png_size_t)row_width - 1U;
+					shift = (int)((3U - ((row_width + 3U) & 0x03U)) << 1);
+
 					for (i = 0; i < row_width; i++)
 					{
-						value = (*sp >> shift) & 0x03;
-						*dp = (png_byte)(value | (value << 2) | (value << 4) |
-							(value << 6));
+						value = (int)((*sp >> shift) & 0x03U);
+						*dp = (png_byte)(value | (value << 2) | (value << 4) | (value << 6));
+
 						if (shift == 6)
 						{
 							shift = 0;
 							sp--;
 						}
-
 						else
+						{
 							shift += 2;
+						}
 
 						dp--;
 					}
@@ -4393,22 +4439,25 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 
 				case 4:
 				{
-					gray = (gray & 0x0f) * 0x11;
-					sp = row + (png_size_t)((row_width - 1) >> 1);
-					dp = row + (png_size_t)row_width - 1;
-					shift = (int)((1 - ((row_width + 1) & 0x01)) << 2);
+					gray = (gray & 0x0fU) * 0x11U;
+					sp = row + (png_size_t)((row_width - 1U) >> 1);
+					dp = row + (png_size_t)row_width - 1U;
+					shift = (int)((1U - ((row_width + 1U) & 0x01U)) << 2);
+
 					for (i = 0; i < row_width; i++)
 					{
-						value = (*sp >> shift) & 0x0f;
+						value = (int)((*sp >> shift) & 0x0fU);
 						*dp = (png_byte)(value | (value << 4));
+
 						if (shift == 4)
 						{
 							shift = 0;
 							sp--;
 						}
-
 						else
+						{
 							shift = 4;
+						}
 
 						dp--;
 					}
@@ -4428,13 +4477,16 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 			{
 				if (row_info->bit_depth == 8)
 				{
-					gray = gray & 0xff;
-					sp = row + (png_size_t)row_width - 1;
-					dp = row + (png_size_t)(row_width << 1) - 1;
+					gray = gray & 0xffU;
+					sp = row + (png_size_t)row_width - 1U;
+
+					/* use safe size_t multiplication instead of (row_width << 1) */
+					const png_size_t width2 = (png_size_t)row_width * 2U;
+					dp = row + width2 - 1U;
 
 					for (i = 0; i < row_width; i++)
 					{
-						if (*sp == gray)
+						if (*sp == (png_byte)gray)
 							*dp-- = 0;
 
 						else
@@ -4443,21 +4495,24 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 						*dp-- = *sp--;
 					}
 				}
-
 				else if (row_info->bit_depth == 16)
 				{
-					unsigned int gray_high = (gray >> 8) & 0xff;
-					unsigned int gray_low = gray & 0xff;
-					sp = row + row_info->rowbytes - 1;
-					dp = row + (row_info->rowbytes << 1) - 1;
+					const unsigned int gray_high = (gray >> 8) & 0xffU;
+					const unsigned int gray_low = gray & 0xffU;
+
+					sp = row + row_info->rowbytes - 1U;
+
+					/* safe size_t multiplication instead of (row_info->rowbytes << 1) */
+					const png_size_t rb2 = (png_size_t)row_info->rowbytes * 2U;
+					dp = row + rb2 - 1U;
+
 					for (i = 0; i < row_width; i++)
 					{
-						if (*(sp - 1) == gray_high && *(sp) == gray_low)
+						if (*(sp - 1) == (png_byte)gray_high && *(sp) == (png_byte)gray_low)
 						{
 							*dp-- = 0;
 							*dp-- = 0;
 						}
-
 						else
 						{
 							*dp-- = 0xff;
@@ -4472,20 +4527,23 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 				row_info->color_type = PNG_COLOR_TYPE_GRAY_ALPHA;
 				row_info->channels = 2;
 				row_info->pixel_depth = (png_byte)(row_info->bit_depth << 1);
-				row_info->rowbytes = PNG_ROWBYTES(row_info->pixel_depth,
-					row_width);
+				row_info->rowbytes = PNG_ROWBYTES(row_info->pixel_depth, row_width);
 			}
 		}
-		else if (row_info->color_type == PNG_COLOR_TYPE_RGB &&
-			trans_color != NULL)
+		else if (row_info->color_type == PNG_COLOR_TYPE_RGB && trans_color != NULL)
 		{
 			if (row_info->bit_depth == 8)
 			{
-				png_byte red = (png_byte)(trans_color->red & 0xff);
-				png_byte green = (png_byte)(trans_color->green & 0xff);
-				png_byte blue = (png_byte)(trans_color->blue & 0xff);
-				sp = row + (png_size_t)row_info->rowbytes - 1;
-				dp = row + (png_size_t)(row_width << 2) - 1;
+				const png_byte red = (png_byte)(trans_color->red & 0xffU);
+				const png_byte green = (png_byte)(trans_color->green & 0xffU);
+				const png_byte blue = (png_byte)(trans_color->blue & 0xffU);
+
+				sp = row + (png_size_t)row_info->rowbytes - 1U;
+
+				/* safe size_t multiplication instead of (row_width << 2) */
+				const png_size_t width4 = (png_size_t)row_width * 4U;
+				dp = row + width4 - 1U;
+
 				for (i = 0; i < row_width; i++)
 				{
 					if (*(sp - 2) == red && *(sp - 1) == green && *(sp) == blue)
@@ -4501,14 +4559,19 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 			}
 			else if (row_info->bit_depth == 16)
 			{
-				png_byte red_high = (png_byte)((trans_color->red >> 8) & 0xff);
-				png_byte green_high = (png_byte)((trans_color->green >> 8) & 0xff);
-				png_byte blue_high = (png_byte)((trans_color->blue >> 8) & 0xff);
-				png_byte red_low = (png_byte)(trans_color->red & 0xff);
-				png_byte green_low = (png_byte)(trans_color->green & 0xff);
-				png_byte blue_low = (png_byte)(trans_color->blue & 0xff);
-				sp = row + row_info->rowbytes - 1;
-				dp = row + (png_size_t)(row_width << 3) - 1;
+				const png_byte red_high = (png_byte)((trans_color->red >> 8) & 0xffU);
+				const png_byte green_high = (png_byte)((trans_color->green >> 8) & 0xffU);
+				const png_byte blue_high = (png_byte)((trans_color->blue >> 8) & 0xffU);
+				const png_byte red_low = (png_byte)(trans_color->red & 0xffU);
+				const png_byte green_low = (png_byte)(trans_color->green & 0xffU);
+				const png_byte blue_low = (png_byte)(trans_color->blue & 0xffU);
+
+				sp = row + row_info->rowbytes - 1U;
+
+				/* safe size_t multiplication instead of (row_width << 3) */
+				const png_size_t width8 = (png_size_t)row_width * 8U;
+				dp = row + width8 - 1U;
+
 				for (i = 0; i < row_width; i++)
 				{
 					if (*(sp - 5) == red_high &&
@@ -4521,7 +4584,6 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 						*dp-- = 0;
 						*dp-- = 0;
 					}
-
 					else
 					{
 						*dp-- = 0xff;
@@ -4536,6 +4598,7 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 					*dp-- = *sp--;
 				}
 			}
+
 			row_info->color_type = PNG_COLOR_TYPE_RGB_ALPHA;
 			row_info->channels = 4;
 			row_info->pixel_depth = (png_byte)(row_info->bit_depth << 2);
@@ -4543,6 +4606,7 @@ png_do_expand(png_row_infop row_info, png_bytep row,
 		}
 	}
 }
+
 #endif
 
 #ifdef PNG_READ_EXPAND_16_SUPPORTED

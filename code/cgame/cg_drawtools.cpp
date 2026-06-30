@@ -204,20 +204,33 @@ Coordinates are at 640 by 480 virtual resolution
 ==================
 */
 void CG_DrawStringExt(const int x, const int y, const char* string, const float* setColor,
-	const qboolean forceColor, const qboolean shadow, const int charWidth, const int charHeight)
+	const qboolean forceColor, const qboolean shadow,
+	const int charWidth, const int charHeight)
 {
-	vec4_t color{};
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (string == NULL || setColor == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "CG_DrawStringExt: NULL string or setColor\n");
+		return;
+	}
+
+	vec4_t color = { 0,0,0,0 };
 	const char* s;
 	int xx;
 
 	// draw the drop shadow
-	if (shadow)
+	if (shadow == qtrue)
 	{
-		color[0] = color[1] = color[2] = 0;
+		color[0] = 0.0f;
+		color[1] = 0.0f;
+		color[2] = 0.0f;
 		color[3] = setColor[3];
+
 		cgi_R_SetColor(color);
+
 		s = string;
 		xx = x;
+
 		while (*s)
 		{
 			if (Q_IsColorString(s))
@@ -225,6 +238,7 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 				s += 2;
 				continue;
 			}
+
 			CG_DrawChar(xx + 2, y + 2, charWidth, charHeight, *s);
 			xx += charWidth;
 			s++;
@@ -234,26 +248,32 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 	// draw the colored text
 	s = string;
 	xx = x;
+
 	cgi_R_SetColor(setColor);
+
 	while (*s)
 	{
 		if (Q_IsColorString(s))
 		{
-			if (!forceColor)
+			if (forceColor == qfalse)
 			{
-				memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof color);
+				memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof(color));
 				color[3] = setColor[3];
 				cgi_R_SetColor(color);
 			}
+
 			s += 2;
 			continue;
 		}
+
 		CG_DrawChar(xx, y, charWidth, charHeight, *s);
 		xx += charWidth;
 		s++;
 	}
-	cgi_R_SetColor(nullptr);
+
+	cgi_R_SetColor(NULL);
 }
+
 
 void CG_DrawSmallStringColor(const int x, const int y, const char* s, vec4_t color)
 {

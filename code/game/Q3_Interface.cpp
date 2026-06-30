@@ -7187,19 +7187,36 @@ GetVectorVariable
 
 int CQuake3GameInterface::GetVectorVariable(const char* name, vec3_t value)
 {
-	//Check the strings
+	// Look up the vector by name
 	const auto vvi = m_varVectors.find(name);
 
 	if (vvi != m_varVectors.end())
 	{
 		const char* str = (*vvi).second.c_str();
 
-		sscanf(str, "%f %f %f", &value[0], &value[1], &value[2]);
-		return true;
+		float x = 0.0f;
+		float y = 0.0f;
+		float z = 0.0f;
+
+		// Capture sscanf return value to satisfy MSVC C6031
+		const int parsed = sscanf(str, "%f %f %f", &x, &y, &z);
+
+		if (parsed == 3)
+		{
+			value[0] = x;
+			value[1] = y;
+			value[2] = z;
+			return qtrue;
+		}
+		else
+		{
+			return qfalse;
+		}
 	}
 
-	return false;
+	return qfalse;
 }
+
 
 /*
 -------------------------
@@ -7689,7 +7706,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 
 	char sFilename[MAX_FILENAME_LENGTH];
 
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR, strlen(Q3_SCRIPT_DIR)))
@@ -7701,7 +7718,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_JK2, strlen(Q3_SCRIPT_DIR_JK2)))
@@ -7713,7 +7730,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_JK2, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_CR, strlen(Q3_SCRIPT_DIR_CR)))
@@ -7725,7 +7742,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_CR, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_YAV, strlen(Q3_SCRIPT_DIR_YAV)))
@@ -7737,7 +7754,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_YAV, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_DF, strlen(Q3_SCRIPT_DIR_DF)))
@@ -7749,7 +7766,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_DF, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_KT, strlen(Q3_SCRIPT_DIR_KT)))
@@ -7761,7 +7778,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_KT, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 6) //playing survival
+	else if (com_outcast && com_outcast->integer == 6) //playing survival
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_SV, strlen(Q3_SCRIPT_DIR_SV)))
@@ -7773,7 +7790,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_SV, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 7) //playing nina
+	else if (com_outcast && com_outcast->integer == 7) //playing nina
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_NINA, strlen(Q3_SCRIPT_DIR_NINA)))
@@ -7785,7 +7802,7 @@ int CQuake3GameInterface::MakeValidScriptName(char** strScriptName)
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_NINA, *strScriptName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 8) //playing veng
+	else if (com_outcast && com_outcast->integer == 8) //playing veng
 	{
 		// The actual path
 		if (!Q_stricmpn(*strScriptName, Q3_SCRIPT_DIR_VENG, strlen(Q3_SCRIPT_DIR_VENG)))
@@ -7827,7 +7844,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 	// MAX_FILENAME_LENGTH should really be MAX_QPATH (and 64 bytes instead of 1024), but this fits the rest of the code
 	char sFilename[MAX_FILENAME_LENGTH];
 
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR, strlen(Q3_SCRIPT_DIR)))
@@ -7839,7 +7856,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_JK2, strlen(Q3_SCRIPT_DIR_JK2)))
@@ -7851,7 +7868,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_JK2, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_CR, strlen(Q3_SCRIPT_DIR_CR)))
@@ -7863,7 +7880,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_CR, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_YAV, strlen(Q3_SCRIPT_DIR_YAV)))
@@ -7875,7 +7892,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_YAV, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_DF, strlen(Q3_SCRIPT_DIR_DF)))
@@ -7887,7 +7904,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_DF, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_KT, strlen(Q3_SCRIPT_DIR_KT)))
@@ -7899,7 +7916,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_KT, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 6) //playing survival
+	else if (com_outcast && com_outcast->integer == 6) //playing survival
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_SV, strlen(Q3_SCRIPT_DIR_SV)))
@@ -7911,7 +7928,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_SV, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 7) //playing nina
+	else if (com_outcast && com_outcast->integer == 7) //playing nina
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_NINA, strlen(Q3_SCRIPT_DIR_NINA)))
@@ -7923,7 +7940,7 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			Q_strncpyz(sFilename, va("%s/%s", Q3_SCRIPT_DIR_NINA, strFileName), sizeof sFilename);
 		}
 	}
-	else if (com_outcast->integer == 8) //playing veng
+	else if (com_outcast && com_outcast->integer == 8) //playing veng
 	{
 		// The actual path
 		if (!Q_stricmpn(strFileName, Q3_SCRIPT_DIR_VENG, strlen(Q3_SCRIPT_DIR_VENG)))
@@ -8127,52 +8144,69 @@ void CQuake3GameInterface::CenterPrint(const char* format, ...)
 // Print a debug message.
 void CQuake3GameInterface::DebugPrint(const e_DebugPrintLevel level, const char* format, ...)
 {
-	//Don't print messages they don't want to see
+	// Respect debug level filter
 	if (g_ICARUSDebug->integer < level)
+	{
 		return;
+	}
 
 	va_list argptr;
 	char text[1024];
 
 	va_start(argptr, format);
-	Q_vsnprintf(text, sizeof text, format, argptr);
+	Q_vsnprintf(text, sizeof(text), format, argptr);
 	va_end(argptr);
 
-	//Add the color formatting
 	switch (level)
 	{
 	case WL_ERROR:
-		Com_Printf(S_COLOR_RED"ERROR: %s", text);
+		Com_Printf(S_COLOR_RED "ERROR: %s", text);
 		break;
 
 	case WL_WARNING:
-		Com_Printf(S_COLOR_YELLOW"WARNING: %s", text);
+		Com_Printf(S_COLOR_YELLOW "WARNING: %s", text);
 		break;
 
 	case WL_DEBUG:
 	{
-		int entNum;
+		int entNum = 0;
 
-		sscanf(text, "%d", &entNum);
+		// FIX: capture sscanf return value to satisfy MSVC warning C6031
+		const int parsed = sscanf(text, "%d", &entNum);
+
+		if (parsed != 1)
+		{
+			Com_Printf(S_COLOR_RED "ERROR: DebugPrint could not parse entity number from '%s'\n", text);
+			return;
+		}
 
 		if (m_entFilter >= 0 && m_entFilter != entNum)
+		{
 			return;
+		}
 
-		auto buffer = text;
-		buffer += 5;
+		// Skip the "#### " prefix (entity number + space)
+		const char* buffer = text + 5;
 
 		if (entNum < 0 || entNum >= MAX_GENTITIES)
+		{
 			entNum = 0;
+		}
 
-		Com_Printf(S_COLOR_BLUE"DEBUG: %s(%d): %s\n", g_entities[entNum].script_targetname, entNum, buffer);
+		Com_Printf(S_COLOR_BLUE "DEBUG: %s(%d): %s\n",
+			g_entities[entNum].script_targetname,
+			entNum,
+			buffer);
 		break;
 	}
+
 	default:
 	case WL_VERBOSE:
-		Com_Printf(S_COLOR_GREEN"INFO: %s", text);
+		Com_Printf(S_COLOR_GREEN "INFO: %s", text);
 		break;
 	}
 }
+
 
 //Gets the current time
 unsigned int CQuake3GameInterface::GetTime()
@@ -8477,9 +8511,6 @@ int CQuake3GameInterface::GetTag(const int entID, const char* name, const int lo
 
 	return false;
 }
-
-//	 void	CQuake3GameInterface::Lerp2Start( int taskID, int entID, float duration ) {}
-//	 void	CQuake3GameInterface::Lerp2End( int taskID, int entID, float duration ) {}
 
 void CQuake3GameInterface::Set(const int task_id, const int entID, const char* type_name, const char* data)
 {
@@ -10798,15 +10829,13 @@ int CQuake3GameInterface::GetFloat(const int entID, const char* name, float* val
 int CQuake3GameInterface::GetVector(const int entID, const char* name, vec3_t value)
 {
 	const gentity_t* ent = &g_entities[entID];
-	if (!ent)
+	if (ent == NULL)
 	{
-		return false;
+		return qfalse;
 	}
 
-	const int toGet = GetIDForString(setTable, name); //FIXME: May want to make a "getTable" as well
-	//FIXME: I'm getting really sick of these huge switch statements!
+	const int toGet = GetIDForString(setTable, name);
 
-	//NOTENOTE: return true if the value was correctly obtained
 	switch (toGet)
 	{
 	case SET_PARM1:
@@ -10825,8 +10854,32 @@ int CQuake3GameInterface::GetVector(const int entID, const char* name, vec3_t va
 	case SET_PARM14:
 	case SET_PARM15:
 	case SET_PARM16:
-		sscanf(ent->parms->parm[toGet - SET_PARM1], "%f %f %f", &value[0], &value[1], &value[2]);
-		break;
+	{
+		// Parse into temporary floats to avoid partial writes
+		float x = 0.0f;
+		float y = 0.0f;
+		float z = 0.0f;
+
+		const char* str = ent->parms->parm[toGet - SET_PARM1];
+
+		// FIX: capture sscanf return value to satisfy MSVC C6031
+		const int parsed = sscanf(str, "%f %f %f", &x, &y, &z);
+
+		if (parsed == 3)
+		{
+			value[0] = x;
+			value[1] = y;
+			value[2] = z;
+			return qtrue;
+		}
+		else
+		{
+			DebugPrint(WL_WARNING,
+				"GetVector: Failed to parse parm vector '%s' (parsed %d components)\n",
+				name, parsed);
+			return qfalse;
+		}
+	}
 
 	case SET_ORIGIN:
 		VectorCopy(ent->currentOrigin, value);
@@ -10836,20 +10889,21 @@ int CQuake3GameInterface::GetVector(const int entID, const char* name, vec3_t va
 		VectorCopy(ent->currentAngles, value);
 		break;
 
-	case SET_TELEPORT_DEST: //## %v="0.0 0.0 0.0" # Set origin here as soon as the area is clear
+	case SET_TELEPORT_DEST:
 		DebugPrint(WL_WARNING, "GetVector: SET_TELEPORT_DEST not implemented\n");
-		return false;
+		return qfalse;
 
 	default:
-
 		if (VariableDeclared(name) != VTYPE_VECTOR)
-			return false;
-
+		{
+			return qfalse;
+		}
 		return GetVectorVariable(name, value);
 	}
 
-	return true;
+	return qtrue;
 }
+
 
 int CQuake3GameInterface::GetString(const int entID, const char* name, char** value)
 {

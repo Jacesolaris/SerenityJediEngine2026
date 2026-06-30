@@ -55,7 +55,7 @@ extern cvar_t* s_lip_threshold_2;
 extern cvar_t* s_lip_threshold_3;
 extern cvar_t* s_lip_threshold_4;
 
-short GetLittleShort()
+static short GetLittleShort()
 {
 	short val = *data_p;
 	val = static_cast<short>(val + (*(data_p + 1) << 8));
@@ -63,7 +63,7 @@ short GetLittleShort()
 	return val;
 }
 
-int GetLittleLong()
+static int GetLittleLong()
 {
 	int val = *data_p;
 	val = val + (*(data_p + 1) << 8);
@@ -73,7 +73,7 @@ int GetLittleLong()
 	return val;
 }
 
-void FindNextChunk(const char* name)
+static void FindNextChunk(const char* name)
 {
 	while (true)
 	{
@@ -100,13 +100,13 @@ void FindNextChunk(const char* name)
 	}
 }
 
-void FindChunk(const char* name)
+static void FindChunk(const char* name)
 {
 	last_chunk = iff_data;
 	FindNextChunk(name);
 }
 
-void DumpChunks()
+static void DumpChunks()
 {
 	char str[5]{};
 
@@ -199,7 +199,7 @@ ResampleSfx
 resample / decimate to the current source rate
 ================
 */
-void ResampleSfx(sfx_t* sfx, const int iInRate, const int iInWidth, byte* p_data)
+static void ResampleSfx(sfx_t* sfx, const int iInRate, const int iInWidth, byte* p_data)
 {
 	int		i_sample;
 
@@ -242,7 +242,7 @@ void ResampleSfx(sfx_t* sfx, const int iInRate, const int iInWidth, byte* p_data
 
 //=============================================================================
 
-void S_LoadSound_Finalize(const wavinfo_t* info, sfx_t* sfx, byte* data)
+static void S_LoadSound_Finalize(const wavinfo_t* info, sfx_t* sfx, byte* data)
 {
 	sfx->eSoundCompressionMethod = ct_16;
 	sfx->iSoundLengthInSamples = info->samples;
@@ -251,7 +251,7 @@ void S_LoadSound_Finalize(const wavinfo_t* info, sfx_t* sfx, byte* data)
 
 // maybe I'm re-inventing the wheel, here, but I can't see any functions that already do this, so...
 //
-char* Filename_WithoutPath(const char* psFilename)
+static char* Filename_WithoutPath(const char* psFilename)
 {
 	static char sString[MAX_QPATH]; // !!
 	const char* p = strrchr(psFilename, '\\');
@@ -266,7 +266,7 @@ char* Filename_WithoutPath(const char* psFilename)
 
 // returns (eg) "\dir\name" for "\dir\name.bmp"
 //
-char* Filename_WithoutExt(const char* psFilename)
+static char* Filename_WithoutExt(const char* psFilename)
 {
 	static char sString[MAX_QPATH]; // !
 
@@ -290,9 +290,8 @@ qboolean qbForceRescan;
 qboolean qbForceStereo;
 std::string strErrors;
 
-void R_CheckMP3s(const char* psDir)
+static void R_CheckMP3s(const char* psDir)
 {
-	//	Com_Printf(va("Scanning Dir: %s\n",psDir));
 	Com_Printf("."); // stops useful info scrolling off screen
 
 	int numSysFiles, i, numdirs;
@@ -318,8 +317,6 @@ void R_CheckMP3s(const char* psDir)
 
 		iFilesFound++;
 
-		// read it in...
-		//
 		byte* pbData = nullptr;
 		const int iSize = FS_ReadFile(sFilename, reinterpret_cast<void**>(&pbData));
 
@@ -327,51 +324,52 @@ void R_CheckMP3s(const char* psDir)
 		{
 			id3v1_1* pTAG;
 
-			// do NOT check 'qbForceRescan' here as an opt, because we need to actually fill in 'pTAG' if there is one...
-			//
-			const qboolean qbTagNeedsUpdating = /* qbForceRescan || */ !MP3_ReadSpecialTagInfo(pbData, iSize, &pTAG)
-				? qtrue
-				: qfalse;
+			const qboolean qbTagNeedsUpdating =
+				!MP3_ReadSpecialTagInfo(pbData, iSize, &pTAG) ? qtrue : qfalse;
 
 			if (pTAG == nullptr || qbTagNeedsUpdating || qbForceRescan)
 			{
 				Com_Printf(" ( Updating )\n");
 
-				// I need to scan this file to get the volume...
-				//
-				// For EF1 I used a temp sfx_t struct, but I can't do that now with this new alloc scheme,
-				//	I have to ask for it legally, so I'll keep re-using one, and restoring it's name after use.
-				//	(slightly dodgy, but works ok if no-one else changes stuff)
-				//
-				//sfx_t SFX = {0};
 				extern sfx_t* S_FindName(const char* name);
-				//
-				static sfx_t* pSFX = nullptr;
-				constexpr char sReservedSFXEntrynameForMP3[] = "reserved_for_mp3"; // ( strlen() < MAX_QPATH )
 
-				if (pSFX == nullptr) // once only
+				static sfx_t* pSFX = nullptr;
+				constexpr char sReservedSFXEntrynameForMP3[] = "reserved_for_mp3";
+
+				if (pSFX == nullptr)
 				{
-					pSFX = S_FindName(sReservedSFXEntrynameForMP3); // always returns, else ERR_FATAL
+					pSFX = S_FindName(sReservedSFXEntrynameForMP3);
+
+					/* ⭐ SAFETY FIX: S_FindName can return NULL */
+					if (!pSFX)
+					{
+						Com_Printf("^1R_CheckMP3s: S_FindName failed for '%s'\n",
+							sReservedSFXEntrynameForMP3);
+						FS_FreeFile(pbData);
+						continue;
+					}
 				}
 
 				if (MP3_IsValid(sFilename, pbData, iSize, qbForceStereo))
 				{
 					wavinfo_t info{};
 
-					const int iRawp_CmdataSize = MP3_GetUnpackedSize(sFilename, pbData, iSize, qtrue, qbForceStereo);
+					const int iRawp_CmdataSize =
+						MP3_GetUnpackedSize(sFilename, pbData, iSize, qtrue, qbForceStereo);
 
 					if (iRawp_CmdataSize)
-						// should always be true, unless file is fucked, in which case, stop this conversion process
 					{
-						float fMaxVol = 128; // any old default
-						int iActualUnpackedSize = iRawp_CmdataSize; // default, override later if not doing music
+						float fMaxVol = 128.0f;
+						int iActualUnpackedSize = iRawp_CmdataSize;
 
-						if (!qbForceStereo) // no point for stereo files, which are for music and therefore no lip-sync
+						if (!qbForceStereo)
 						{
-							const auto pbUnpackBuffer = static_cast<byte*>(Z_Malloc(
-								iRawp_CmdataSize + 10, TAG_TEMP_WORKSPACE, qfalse)); // won't return if fails
+							const auto pbUnpackBuffer = static_cast<byte*>(
+								Z_Malloc(iRawp_CmdataSize + 10, TAG_TEMP_WORKSPACE, qfalse));
 
-							iActualUnpackedSize = MP3_UnpackRawPCM(sFilename, pbData, iSize, pbUnpackBuffer);
+							iActualUnpackedSize =
+								MP3_UnpackRawPCM(sFilename, pbData, iSize, pbUnpackBuffer);
+
 							if (iActualUnpackedSize != iRawp_CmdataSize)
 							{
 								Com_Error(ERR_DROP,
@@ -379,56 +377,45 @@ void R_CheckMP3s(const char* psDir)
 									sFilename, iActualUnpackedSize, iRawp_CmdataSize);
 							}
 
-							// fake up a WAV structure so I can use the other post-load sound code such as volume calc for lip-synching
-							//
 							MP3_FakeUpWAVInfo(sFilename, pbData, iSize, iActualUnpackedSize,
-								// these params are all references...
-								info.format, info.rate, info.width, info.channels, info.samples,
-								info.dataofs
-							);
+								info.format, info.rate, info.width, info.channels,
+								info.samples, info.dataofs);
 
-							S_LoadSound_Finalize(&info, pSFX, pbUnpackBuffer); // all this just for lipsynch. Oh well.
+							/* ⭐ SAFETY FIX: pSFX must be valid here */
+							if (!pSFX)
+							{
+								Com_Printf("^1R_CheckMP3s: pSFX unexpectedly NULL during finalize\n");
+								Z_Free(pbUnpackBuffer);
+								FS_FreeFile(pbData);
+								continue;
+							}
+
+							S_LoadSound_Finalize(&info, pSFX, pbUnpackBuffer);
 
 							fMaxVol = pSFX->fVolRange;
 
-							// free sfx->data...
-							//
-							{
 #ifndef INT_MIN
-#define INT_MIN     (-2147483647 - 1) /* minimum (signed) int value */
+#define INT_MIN (-2147483647 - 1)
 #endif
-								//
-								pSFX->iLastTimeUsed = INT_MIN;
-								// force this to be oldest sound file, therefore disposable...
-								pSFX->bInMemory = true;
-								SND_FreeOldestSound(); // ... and do the disposal
 
-								// now set our temp SFX struct back to default name so nothing else accidentally uses it...
-								//
-								strcpy(pSFX->sSoundName, sReservedSFXEntrynameForMP3);
-								pSFX->bDefaultSound = false;
-							}
+							pSFX->iLastTimeUsed = INT_MIN;
+							pSFX->bInMemory = true;
+							SND_FreeOldestSound();
 
-							//							OutputDebugString(va("File: \"%s\"   MaxVol %f\n",sFilename,pSFX->fVolRange));
+							strcpy(pSFX->sSoundName, sReservedSFXEntrynameForMP3);
+							pSFX->bDefaultSound = false;
 
-							// other stuff...
-							//
 							Z_Free(pbUnpackBuffer);
 						}
 
-						// well, time to update the file now...
-						//
 						const fileHandle_t f = FS_FOpenFileWrite(sFilename);
 						if (f)
 						{
-							// write the file back out, but omitting the tag if there was one...
-							//
-							const int iWritten = FS_Write(pbData, iSize - (pTAG ? sizeof * pTAG : 0), f);
+							const int iWritten =
+								FS_Write(pbData, iSize - (pTAG ? sizeof * pTAG : 0), f);
 
 							if (iWritten)
 							{
-								// make up a new tag if we didn't find one in the original file...
-								//
 								id3v1_1 TAG{};
 								if (!pTAG)
 								{
@@ -437,42 +424,53 @@ void R_CheckMP3s(const char* psDir)
 									strncpy(pTAG->id, "TAG", 3);
 								}
 
-								strncpy(pTAG->title, Filename_WithoutPath(Filename_WithoutExt(sFilename)),
+								strncpy(pTAG->title,
+									Filename_WithoutPath(Filename_WithoutExt(sFilename)),
 									sizeof pTAG->title);
 								strncpy(pTAG->artist, "Raven Software", sizeof pTAG->artist);
 								strncpy(pTAG->year, "2002", sizeof pTAG->year);
-								strncpy(pTAG->comment, va("%s %g", sKEY_MAXVOL, fMaxVol), sizeof pTAG->comment);
-								strncpy(pTAG->album, va("%s %d", sKEY_UNCOMP, iActualUnpackedSize), sizeof pTAG->album);
+								strncpy(pTAG->comment,
+									va("%s %g", sKEY_MAXVOL, fMaxVol),
+									sizeof pTAG->comment);
+								strncpy(pTAG->album,
+									va("%s %d", sKEY_UNCOMP, iActualUnpackedSize),
+									sizeof pTAG->album);
 
-								if (FS_Write(pTAG, sizeof * pTAG, f)) // NZ = success
+								if (FS_Write(pTAG, sizeof * pTAG, f))
 								{
 									iFilesUpdated++;
 								}
 								else
 								{
-									Com_Printf("*********** Failed write to file \"%s\"!\n", sFilename);
+									Com_Printf("*********** Failed write to file \"%s\"!\n",
+										sFilename);
 									iErrors++;
 									strErrors += va("Failed to write: \"%s\"\n", sFilename);
 								}
 							}
 							else
 							{
-								Com_Printf("*********** Failed write to file \"%s\"!\n", sFilename);
+								Com_Printf("*********** Failed write to file \"%s\"!\n",
+									sFilename);
 								iErrors++;
 								strErrors += va("Failed to write: \"%s\"\n", sFilename);
 							}
+
 							FS_FCloseFile(f);
 						}
 						else
 						{
-							Com_Printf("*********** Failed to re-open for write \"%s\"!\n", sFilename);
+							Com_Printf("*********** Failed to re-open for write \"%s\"!\n",
+								sFilename);
 							iErrors++;
 							strErrors += va("Failed to re-open for write: \"%s\"\n", sFilename);
 						}
 					}
 					else
 					{
-						Com_Error(ERR_DROP, "******* This MP3 should be deleted: \"%s\"\n", sFilename);
+						Com_Error(ERR_DROP,
+							"******* This MP3 should be deleted: \"%s\"\n",
+							sFilename);
 					}
 				}
 				else
@@ -490,6 +488,7 @@ void R_CheckMP3s(const char* psDir)
 			FS_FreeFile(pbData);
 		}
 	}
+
 	FS_FreeFileList(sysFiles);
 	FS_FreeFileList(dirFiles);
 }

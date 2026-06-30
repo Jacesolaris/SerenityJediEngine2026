@@ -552,47 +552,88 @@ void NPC_Wampa_Pain(gentity_t* self, gentity_t* inflictor, gentity_t* other, con
 
 void Wampa_DropVictim(gentity_t* self)
 {
+	// If Wampa is alive, play the drop animation
 	if (self->health > 0)
 	{
-		NPC_SetAnim(self, SETANIM_BOTH, BOTH_STAND2TO1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		NPC_SetAnim(self, SETANIM_BOTH, BOTH_STAND2TO1,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 	}
+
+	// Clear attacking state
 	TIMER_Set(self, "attacking", -level.time);
-	if (self->activator)
+
+	// If no activator, nothing to drop
+	if (self->activator == NULL)
 	{
-		if (self->activator->client)
-		{
-			self->activator->client->ps.eFlags &= ~EF_HELD_BY_WAMPA;
-		}
-		self->activator->activator = nullptr;
-		NPC_SetAnim(self->activator, SETANIM_BOTH, BOTH_RELEASED, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-		self->activator->client->ps.legsAnimTimer += 500;
-		self->activator->client->ps.weaponTime = self->activator->client->ps.torsoAnimTimer = self->activator->client->
-			ps.legsAnimTimer;
-		if (self->activator->health > 0)
-		{
-			if (self->activator->NPC)
-			{
-				//start thinking again
-				self->activator->NPC->nextBStateThink = level.time;
-			}
-			if (self->activator->client && self->activator->s.number < MAX_CLIENTS)
-			{
-				vec3_t vicAngles = { 30, AngleNormalize180(self->client->ps.viewangles[YAW] + 180), 0 };
-				SetClientViewAngle(self->activator, vicAngles);
-			}
-		}
-		else
-		{
-			if (self->enemy == self->activator)
-			{
-				self->enemy = nullptr;
-			}
-			self->activator->clipmask &= ~CONTENTS_BODY;
-		}
-		self->activator = nullptr;
+		self->count = 0;
+		return;
 	}
-	self->count = 0; //drop him
+
+	gentity_t* victim = self->activator;
+
+	// Clear EF_HELD_BY_WAMPA safely
+	if (victim->client != NULL)
+	{
+		victim->client->ps.eFlags &= ~EF_HELD_BY_WAMPA;
+	}
+
+	// Clear reverse activator link
+	victim->activator = NULL;
+
+	// Play victim release animation (safe only if client exists)
+	if (victim->client != NULL)
+	{
+		NPC_SetAnim(victim, SETANIM_BOTH, BOTH_RELEASED,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+
+		// Extend victim animation timers
+		victim->client->ps.legsAnimTimer += 500;
+		victim->client->ps.weaponTime =
+			victim->client->ps.torsoAnimTimer =
+			victim->client->ps.legsAnimTimer;
+	}
+
+	// Victim alive?
+	if (victim->health > 0)
+	{
+		// Resume NPC thinking if applicable
+		if (victim->NPC != NULL)
+		{
+			victim->NPC->nextBStateThink = level.time;
+		}
+
+		// If victim is a player, adjust view angle
+		if (victim->client != NULL && victim->s.number < MAX_CLIENTS)
+		{
+			vec3_t vicAngles =
+			{
+				30.0f,
+				AngleNormalize180(self->client->ps.viewangles[YAW] + 180.0f),
+				0.0f
+			};
+
+			SetClientViewAngle(victim, vicAngles);
+		}
+	}
+	else
+	{
+		// Victim dead
+		if (self->enemy == victim)
+		{
+			self->enemy = NULL;
+		}
+
+		// Remove body clipmask safely
+		victim->clipmask &= ~CONTENTS_BODY;
+	}
+
+	// Clear activator reference
+	self->activator = NULL;
+
+	// Reset count (no longer holding victim)
+	self->count = 0;
 }
+
 
 qboolean Wampa_CheckDropVictim(gentity_t* self, const qboolean exclude_me)
 {

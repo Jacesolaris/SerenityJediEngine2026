@@ -498,19 +498,31 @@ static void calcmuzzlePoint2(const gentity_t* const ent, vec3_t muzzlePoint, con
 
 //---------------------------------------------------------
 void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoint, const float lead_in)
-//---------------------------------------------------------
 {
+	// SAFETY FIX: ent or ent->client may be NULL in edge cases (bad spawns, script errors)
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "calcmuzzlePoint: NULL ent or ent->client\n");
+		if (ent)
+		{
+			VectorCopy(ent->currentOrigin, muzzlePoint);
+		}
+		else
+		{
+			muzzlePoint[0] = muzzlePoint[1] = muzzlePoint[2] = 0.0f;
+		}
+		return;
+	}
+
 	vec3_t org;
 	mdxaBone_t boltMatrix;
 
 	if (!lead_in)
 	{
-		//Not players or melee
 		if (ent->client)
 		{
 			if (ent->client->renderInfo.mPCalcTime >= level.time - FRAMETIME * 2)
 			{
-				//Our muzz point was calced no more than 2 frames ago
 				VectorCopy(ent->client->renderInfo.muzzlePoint, muzzlePoint);
 				return;
 			}
@@ -525,7 +537,7 @@ void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoin
 	case WP_BLASTER_PISTOL:
 	case WP_SBD_PISTOL:
 		ViewHeightFix(ent);
-		muzzlePoint[2] += ent->client->ps.viewheight; //By eyes
+		muzzlePoint[2] += ent->client->ps.viewheight;
 		muzzlePoint[2] -= 16;
 		VectorMA(muzzlePoint, 28, forward_vec, muzzlePoint);
 		VectorMA(muzzlePoint, 6, vright_vec, muzzlePoint);
@@ -533,15 +545,12 @@ void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoin
 
 	case WP_DROIDEKA:
 		ViewHeightFix(ent);
-		muzzlePoint[2] += ent->client->ps.viewheight; //By eyes
+		muzzlePoint[2] += ent->client->ps.viewheight;
 		muzzlePoint[2] -= 1;
 		if (ent->s.number == 0)
 			VectorMA(muzzlePoint, 12, forward_vec, muzzlePoint);
-		// player, don't set this any lower otherwise the projectile will impact immediately when your back is to a wall
 		else
 			VectorMA(muzzlePoint, 2, forward_vec, muzzlePoint);
-		// NPC, don't set too far forward_vec otherwise the projectile can go through doors
-
 		VectorMA(muzzlePoint, 1, vright_vec, muzzlePoint);
 		break;
 
@@ -549,44 +558,39 @@ void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoin
 	case WP_CONCUSSION:
 	case WP_THERMAL:
 		ViewHeightFix(ent);
-		muzzlePoint[2] += ent->client->ps.viewheight; //By eyes
+		muzzlePoint[2] += ent->client->ps.viewheight;
 		muzzlePoint[2] -= 2;
 		break;
 
 	case WP_BLASTER:
 		ViewHeightFix(ent);
-		muzzlePoint[2] += ent->client->ps.viewheight; //By eyes
+		muzzlePoint[2] += ent->client->ps.viewheight;
 		muzzlePoint[2] -= 1;
 		if (ent->s.number == 0)
 			VectorMA(muzzlePoint, 12, forward_vec, muzzlePoint);
-		// player, don't set this any lower otherwise the projectile will impact immediately when your back is to a wall
 		else
 			VectorMA(muzzlePoint, 2, forward_vec, muzzlePoint);
-		// NPC, don't set too far forward_vec otherwise the projectile can go through doors
-
 		VectorMA(muzzlePoint, 1, vright_vec, muzzlePoint);
 		break;
+
 	case WP_WRIST_BLASTER:
 		ViewHeightFix(ent);
-		muzzlePoint[2] += ent->client->ps.viewheight; //By eyes
+		muzzlePoint[2] += ent->client->ps.viewheight;
 		muzzlePoint[2] -= 1;
 		if (ent->s.number == 0)
 			VectorMA(muzzlePoint, 12, forward_vec, muzzlePoint);
-		// player, don't set this any lower otherwise the projectile will impact immediately when your back is to a wall
 		else
 			VectorMA(muzzlePoint, 2, forward_vec, muzzlePoint);
-		// NPC, don't set too far forward_vec otherwise the projectile can go through doors
-
 		VectorMA(muzzlePoint, 1, vright_vec, muzzlePoint);
 		break;
 
 	case WP_SABER:
-		if (ent->NPC != nullptr &&
+		if (ent->NPC != NULL &&
 			(ent->client->ps.torsoAnim == TORSO_WEAPONREADY2 ||
-				ent->client->ps.torsoAnim == BOTH_ATTACK2)) //Sniper pose
+				ent->client->ps.torsoAnim == BOTH_ATTACK2))
 		{
 			ViewHeightFix(ent);
-			muzzle[2] += ent->client->ps.viewheight; //By eyes
+			muzzlePoint[2] += ent->client->ps.viewheight;
 		}
 		else
 		{
@@ -597,37 +601,40 @@ void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoin
 		break;
 
 	case WP_BOT_LASER:
-		muzzlePoint[2] -= 16; //
+		muzzlePoint[2] -= 16;
 		break;
-	case WP_ATST_MAIN:
 
+	case WP_ATST_MAIN:
 		if (ent->count > 0)
 		{
 			ent->count = 0;
 			gi.G2API_GetBoltMatrix(ent->ghoul2, ent->playerModel,
 				ent->handLBolt,
-				&boltMatrix, ent->s.angles, ent->s.origin, cg.time ? cg.time : level.time,
-				nullptr, ent->s.modelScale);
+				&boltMatrix, ent->s.angles, ent->s.origin,
+				cg.time ? cg.time : level.time,
+				NULL, ent->s.modelScale);
 		}
 		else
 		{
 			ent->count = 1;
 			gi.G2API_GetBoltMatrix(ent->ghoul2, ent->playerModel,
 				ent->handRBolt,
-				&boltMatrix, ent->s.angles, ent->s.origin, cg.time ? cg.time : level.time,
-				nullptr, ent->s.modelScale);
+				&boltMatrix, ent->s.angles, ent->s.origin,
+				cg.time ? cg.time : level.time,
+				NULL, ent->s.modelScale);
 		}
 
 		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, org);
-
 		VectorCopy(org, muzzlePoint);
-
 		break;
-	default:;
+
+	default:
+		break;
 	}
 
 	AddLeanOfs(ent, muzzlePoint);
 }
+
 
 // Muzzle point table...
 vec3_t WP_muzzlePoint[WP_NUM_WEAPONS] =
@@ -1429,6 +1436,13 @@ extern void FireOverheatFail(gentity_t* ent);
 void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
+	// SAFETY FIX: ent or ent->client may be NULL in edge cases (bad spawns, scripts, vehicles)
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "FireWeapon: NULL ent or ent->client\n");
+		return;
+	}
+
 	float alert = 256;
 	const Vehicle_t* p_veh = nullptr;
 

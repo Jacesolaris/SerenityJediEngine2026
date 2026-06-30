@@ -141,7 +141,7 @@ void G2Tur_SetBoneAngles(gentity_t* ent, const char* bone, vec3_t angles)
 		level.time);
 }
 
-void turretG2_set_models(gentity_t* self, const qboolean dying)
+static void turretG2_set_models(gentity_t* self, const qboolean dying)
 {
 	if (dying)
 	{

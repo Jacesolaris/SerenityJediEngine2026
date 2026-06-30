@@ -52,7 +52,7 @@ extern qboolean SpotWouldTelefrag2(const gentity_t* mover, vec3_t dest);
 extern void Jedi_Cloak(gentity_t* self);
 extern void Saboteur_Cloak(gentity_t* self);
 extern cvar_t* com_outcast;
-extern int wp_set_saber_model(gclient_t* client, class_t npc_class);
+extern int WP_SetSaberModel(gclient_t* client, class_t npc_class);
 extern qboolean is_outcast_map();
 extern qboolean PM_SaberInAttack(int move);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
@@ -316,7 +316,7 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 		ent->flags |= FL_SABERDAMAGE_RESIST; //Partially resistant to sabers
 	}
 	else if (ent->client->NPC_class == CLASS_LUKE &&
-		com_outcast->integer == 1 &&
+		com_outcast && com_outcast->integer == 1 &&
 		(ent->s.number >= MAX_CLIENTS && G_ControlledByPlayer(ent) == qfalse) &&
 		(Q_stricmp(level.mapname, "cairn_bay") == 0))
 	{
@@ -2354,17 +2354,17 @@ void SP_NPC_Kyle(gentity_t* self)
 	}
 	else
 	{
-		if (is_outcast_map() || (com_outcast->integer == 1 || com_outcast->integer == 4)) //playing outcast
+		if (is_outcast_map() || (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4)) //playing outcast
 		{
-			if (com_outcast->integer == 4) //playing dark forces
+			if (com_outcast && com_outcast->integer == 4) //playing dark forces
 			{
-				self->NPC_type = "df2_kyle"; //jko normal kyle
+				self->NPC_type = "df2_kyle"; //dark forces
 			}
 			else
 			{
 				self->NPC_type = "Kyle"; //jko normal kyle
 			}
-			wp_set_saber_model(nullptr, CLASS_KYLE);
+			WP_SetSaberModel(nullptr, CLASS_KYLE);
 		}
 		else
 		{
@@ -2626,7 +2626,7 @@ SHY - Spawner is shy
 */
 void SP_NPC_Desann(gentity_t* self)
 {
-	if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		self->NPC_type = "Desann";
 	}
@@ -2746,7 +2746,7 @@ SHY - Spawner is shy
 */
 void SP_NPC_Chewbacca(gentity_t* self)
 {
-	if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		self->NPC_type = "Chewie2";
 	}
@@ -3209,7 +3209,7 @@ void SP_NPC_Human_Merc(gentity_t* self)
 		}
 		else if (self->spawnflags & 1)
 		{
-			if (com_outcast->integer != 2)
+			if (com_outcast && com_outcast->integer != 2)
 			{
 				if (Q_irand(0, 1))
 				{
@@ -3248,7 +3248,7 @@ void SP_NPC_Human_Merc(gentity_t* self)
 		}
 		else if (self->spawnflags & 2)
 		{
-			if (com_outcast->integer != 2)
+			if (com_outcast && com_outcast->integer != 2)
 			{
 				if (Q_irand(0, 1))
 				{
@@ -3287,7 +3287,7 @@ void SP_NPC_Human_Merc(gentity_t* self)
 		}
 		else if (self->spawnflags & 4)
 		{
-			if (com_outcast->integer != 2)
+			if (com_outcast && com_outcast->integer != 2)
 			{
 				if (Q_irand(0, 1))
 				{
@@ -3363,7 +3363,7 @@ SHY - Spawner is shy
 */
 void SP_NPC_Stormtrooper(gentity_t* self)
 {
-	if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		if (self->spawnflags & 8)
 		{
@@ -3756,7 +3756,7 @@ void SP_NPC_Rodian(gentity_t* self)
 {
 	if (!self->NPC_type)
 	{
-		if (com_outcast->integer == 0) //playing academy
+		if (com_outcast && com_outcast->integer == 0) //playing academy
 		{
 			if (self->spawnflags & 1)
 			{
@@ -3767,7 +3767,7 @@ void SP_NPC_Rodian(gentity_t* self)
 				self->NPC_type = "rodian";
 			}
 		}
-		else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+		else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 		{
 			if (self->spawnflags & 1)
 			{
@@ -3805,7 +3805,7 @@ void SP_NPC_Weequay(gentity_t* self)
 {
 	if (!self->NPC_type)
 	{
-		if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+		if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 		{
 			switch (Q_irand(0, 4))
 			{
@@ -3862,7 +3862,7 @@ void SP_NPC_Trandoshan(gentity_t* self)
 {
 	if (!self->NPC_type)
 	{
-		if (com_outcast->integer == 1) //playing outcast
+		if (com_outcast && com_outcast->integer == 1) //playing outcast
 		{
 			self->NPC_type = "RebornTrandoshan";
 		}
@@ -4311,7 +4311,7 @@ void SP_NPC_Cultist_Saber(gentity_t* self)
 				}
 				else
 				{
-					if (com_outcast->integer == 0) //playing academy
+					if (com_outcast && com_outcast->integer == 0) //playing academy
 					{
 						if (!g_newgameplusJKA->integer)
 						{
@@ -4332,7 +4332,7 @@ void SP_NPC_Cultist_Saber(gentity_t* self)
 							}
 						}
 					}
-					else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+					else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 					{
 						if (!g_newgameplusJKO->integer)
 						{
@@ -4368,7 +4368,7 @@ void SP_NPC_Cultist_Saber(gentity_t* self)
 			}
 			else
 			{
-				if (com_outcast->integer == 0) //playing academy
+				if (com_outcast && com_outcast->integer == 0) //playing academy
 				{
 					if (!g_newgameplusJKA->integer)
 					{
@@ -4389,7 +4389,7 @@ void SP_NPC_Cultist_Saber(gentity_t* self)
 						}
 					}
 				}
-				else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+				else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 				{
 					if (!g_newgameplusJKO->integer)
 					{
@@ -4473,7 +4473,7 @@ void SP_NPC_Cultist_Saber_Powers(gentity_t* self)
 			}
 			else
 			{
-				if (com_outcast->integer == 0) //playing academy
+				if (com_outcast && com_outcast->integer == 0) //playing academy
 				{
 					if (!g_newgameplusJKA->integer)
 					{
@@ -4494,7 +4494,7 @@ void SP_NPC_Cultist_Saber_Powers(gentity_t* self)
 						}
 					}
 				}
-				else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+				else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 				{
 					if (!g_newgameplusJKO->integer)
 					{
@@ -4661,7 +4661,7 @@ void SP_NPC_ShadowTrooper(gentity_t* self)
 {
 	if (!self->NPC_type)
 	{
-		if (com_outcast->integer == 7) //nina version
+		if (com_outcast && com_outcast->integer == 7) //nina version
 		{
 			self->NPC_type = "ShadowTrooper3";
 		}
@@ -4758,7 +4758,7 @@ SHY - Spawner is shy
 */
 void SP_NPC_Monster_Howler(gentity_t* self)
 {
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		if (!g_newgameplusJKA->integer)
 		{
@@ -4779,7 +4779,7 @@ void SP_NPC_Monster_Howler(gentity_t* self)
 			}
 		}
 	}
-	else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		if (!g_newgameplusJKO->integer)
 		{
@@ -4873,7 +4873,7 @@ SHY - Spawner is shy
 */
 void SP_NPC_MineMonster(gentity_t* self)
 {
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		if (!g_newgameplusJKA->integer)
 		{
@@ -4894,7 +4894,7 @@ void SP_NPC_MineMonster(gentity_t* self)
 			}
 		}
 	}
-	else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		if (!g_newgameplusJKO->integer)
 		{

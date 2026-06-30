@@ -73,12 +73,20 @@ void NPC_Seeker_Pain(gentity_t* self, gentity_t* inflictor, gentity_t* other, co
 }
 
 //------------------------------------
+// Maintain vertical position and horizontal damping for seeker-type NPCs
 static void Seeker_MaintainHeight()
 {
 	float dif;
 
 	// Update our angles regardless
 	NPC_UpdateAngles(qtrue, qtrue);
+
+	// If we have no client data, we cannot safely adjust ps.velocity
+	if (NPC->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "Seeker_MaintainHeight: NPC->client is NULL, skipping height/velocity maintenance\n");
+		return;
+	}
 
 	// If we have an enemy, we should try to hover at or a little below enemy eye level
 	if (NPC->enemy)
@@ -88,11 +96,16 @@ static void Seeker_MaintainHeight()
 			TIMER_Set(NPC, "heightChange", Q_irand(1000, 3000));
 
 			// Find the height difference
-			dif = NPC->enemy->currentOrigin[2] + Q_flrand(NPC->enemy->maxs[2] / 2, NPC->enemy->maxs[2] + 8) - NPC->
-				currentOrigin[2];
+			dif = NPC->enemy->currentOrigin[2] +
+				Q_flrand(NPC->enemy->maxs[2] / 2.0f, NPC->enemy->maxs[2] + 8.0f) -
+				NPC->currentOrigin[2];
 
 			float dif_factor = 1.0f;
-			if (NPC->client && (NPC->client->NPC_class == CLASS_BOBAFETT || NPC->client->NPC_class == CLASS_MANDO))
+
+			// Boost vertical response when flamethrower is ready for Boba/Mando
+			if (NPC->client &&
+				(NPC->client->NPC_class == CLASS_BOBAFETT ||
+					NPC->client->NPC_class == CLASS_MANDO))
 			{
 				if (TIMER_Done(NPC, "flameTime"))
 				{
@@ -100,17 +113,22 @@ static void Seeker_MaintainHeight()
 				}
 			}
 
-			// cap to prevent dramatic height shifts
-			if (fabs(dif) > 2 * dif_factor)
+			// Cap to prevent dramatic height shifts
+			if (fabs(dif) > (2.0f * dif_factor))
 			{
-				if (fabs(dif) > 24 * dif_factor)
+				if (fabs(dif) > (24.0f * dif_factor))
 				{
-					dif = dif < 0 ? -24 * dif_factor : 24 * dif_factor;
+					dif = (dif < 0.0f) ? (-24.0f * dif_factor) : (24.0f * dif_factor);
 				}
 
-				NPC->client->ps.velocity[2] = (NPC->client->ps.velocity[2] + dif) / 2;
+				NPC->client->ps.velocity[2] =
+					(NPC->client->ps.velocity[2] + dif) * 0.5f;
 			}
-			if (NPC->client && NPC->client->NPC_class == CLASS_BOBAFETT || NPC->client->NPC_class == CLASS_MANDO)
+
+			// Extra vertical jitter for Boba/Mando jet movement
+			if (NPC->client &&
+				(NPC->client->NPC_class == CLASS_BOBAFETT ||
+					NPC->client->NPC_class == CLASS_MANDO))
 			{
 				NPC->client->ps.velocity[2] *= Q_flrand(0.85f, 3.0f);
 			}
@@ -118,9 +136,10 @@ static void Seeker_MaintainHeight()
 	}
 	else
 	{
-		const gentity_t* goal;
+		const gentity_t* goal = NULL;
 
-		if (NPCInfo->goalEntity) // Is there a goal?
+		// Choose current goal or last goal
+		if (NPCInfo->goalEntity)
 		{
 			goal = NPCInfo->goalEntity;
 		}
@@ -128,50 +147,53 @@ static void Seeker_MaintainHeight()
 		{
 			goal = NPCInfo->lastGoalEntity;
 		}
+
 		if (goal)
 		{
 			dif = goal->currentOrigin[2] - NPC->currentOrigin[2];
 
-			if (fabs(dif) > 24)
+			if (fabs(dif) > 24.0f)
 			{
-				ucmd.upmove = ucmd.upmove < 0 ? -4 : 4;
+				ucmd.upmove = (ucmd.upmove < 0) ? -4 : 4;
 			}
 			else
 			{
-				if (NPC->client->ps.velocity[2])
+				if (NPC->client->ps.velocity[2] != 0.0f)
 				{
 					NPC->client->ps.velocity[2] *= VELOCITY_DECAY;
 
-					if (fabs(NPC->client->ps.velocity[2]) < 2)
+					if (fabs(NPC->client->ps.velocity[2]) < 2.0f)
 					{
-						NPC->client->ps.velocity[2] = 0;
+						NPC->client->ps.velocity[2] = 0.0f;
 					}
 				}
 			}
 		}
 	}
 
-	// Apply friction
-	if (NPC->client->ps.velocity[0])
+	// Apply horizontal friction on X
+	if (NPC->client->ps.velocity[0] != 0.0f)
 	{
 		NPC->client->ps.velocity[0] *= VELOCITY_DECAY;
 
-		if (fabs(NPC->client->ps.velocity[0]) < 1)
+		if (fabs(NPC->client->ps.velocity[0]) < 1.0f)
 		{
-			NPC->client->ps.velocity[0] = 0;
+			NPC->client->ps.velocity[0] = 0.0f;
 		}
 	}
 
-	if (NPC->client->ps.velocity[1])
+	// Apply horizontal friction on Y
+	if (NPC->client->ps.velocity[1] != 0.0f)
 	{
 		NPC->client->ps.velocity[1] *= VELOCITY_DECAY;
 
-		if (fabs(NPC->client->ps.velocity[1]) < 1)
+		if (fabs(NPC->client->ps.velocity[1]) < 1.0f)
 		{
-			NPC->client->ps.velocity[1] = 0;
+			NPC->client->ps.velocity[1] = 0.0f;
 		}
 	}
 }
+
 
 //------------------------------------
 void Seeker_Strafe()
@@ -386,40 +408,63 @@ static void Seeker_Attack()
 }
 
 //------------------------------------
+// Find the closest valid enemy for seeker-type NPCs
+// Find the closest valid enemy for seeker-type NPCs
 static void Seeker_FindEnemy()
 {
-	float best_dis = SEEKER_SEEK_RADIUS * SEEKER_SEEK_RADIUS + 1;
+	float best_dis = (SEEKER_SEEK_RADIUS * SEEKER_SEEK_RADIUS) + 1.0f;
 	vec3_t mins, maxs;
-	gentity_t* entity_list[MAX_GENTITIES], * best = nullptr;
 
+	// FIX: move large array off stack → static buffer
+	static gentity_t* entity_list[MAX_GENTITIES];
+
+	gentity_t* best = NULL;
+
+	// Build search box
 	VectorSet(maxs, SEEKER_SEEK_RADIUS, SEEKER_SEEK_RADIUS, SEEKER_SEEK_RADIUS);
-	VectorScale(maxs, -1, mins);
+	VectorScale(maxs, -1.0f, mins);
 
+	// Query entities in box
 	const int num_found = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+	// If NPC->client is NULL, we cannot compare team or velocity safely
+	if (NPC->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "Seeker_FindEnemy: NPC->client is NULL, skipping enemy search\n");
+		return;
+	}
 
 	for (int i = 0; i < num_found; i++)
 	{
 		gentity_t* ent = entity_list[i];
 
-		if (ent->s.number == NPC->s.number || !ent->client || !ent->NPC || ent->health <= 0 || !ent->inuse)
+		// Skip invalid or self entities
+		if (ent->s.number == NPC->s.number ||
+			ent->client == NULL ||
+			ent->NPC == NULL ||
+			ent->health <= 0 ||
+			ent->inuse == qfalse)
 		{
 			continue;
 		}
 
-		if (ent->client->playerTeam == NPC->client->playerTeam || ent->client->playerTeam == TEAM_NEUTRAL)
-			// don't attack same team or bots
+		// Skip same team or neutral
+		if (ent->client->playerTeam == NPC->client->playerTeam ||
+			ent->client->playerTeam == TEAM_NEUTRAL)
 		{
 			continue;
 		}
 
-		// try to find the closest visible one
+		// Must have line of sight
 		if (!NPC_ClearLOS(ent))
 		{
 			continue;
 		}
 
+		// Compute horizontal distance
 		const float dis = DistanceHorizontalSquared(NPC->currentOrigin, ent->currentOrigin);
 
+		// Track closest
 		if (dis <= best_dis)
 		{
 			best_dis = dis;
@@ -427,14 +472,17 @@ static void Seeker_FindEnemy()
 		}
 	}
 
-	if (best)
+	// Assign enemy if found
+	if (best != NULL)
 	{
-		// used to offset seekers around a circle so they don't occupy the same spot.  This is not a fool-proof method.
-		NPC->random = Q_flrand(0.0f, 1.0f) * 6.3f; // roughly 2pi
+		// Offset seekers around a circle so they don't occupy the same spot
+		NPC->random = Q_flrand(0.0f, 1.0f) * 6.3f; // roughly 2π
 
 		NPC->enemy = best;
 	}
 }
+
+
 
 //------------------------------------
 static void Seeker_FollowPlayer()

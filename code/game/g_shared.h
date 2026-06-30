@@ -208,7 +208,8 @@ using moverState_t = enum
 	MOVER_POS1,
 	MOVER_POS2,
 	MOVER_1TO2,
-	MOVER_2TO1
+	MOVER_2TO1,
+	moverState_t_MAX
 };
 
 // Rendering information structure
@@ -1192,7 +1193,7 @@ using centity_t = struct centity_s;
 // !!!!!!!!!!! LOADSAVE-affecting struct !!!!!!!!!!!!!
 struct gentity_s
 {
-	entityState_t s; // communicated by server to clients
+	entityState_t s = {}; // communicated by server to clients
 	gclient_t* client; // NULL if not a player (unless it's NPC ( if (this->NPC != NULL)  )  <sigh>... -slc)
 	qboolean inuse;
 	qboolean linked; // qfalse if not in any good cluster
@@ -1249,14 +1250,14 @@ struct gentity_s
 
 	int freetime; // sv.time when the object was freed
 
-	int eventTime; // events will be cleared EVENT_VALID_MSEC after set
+	int eventTime = 0; // events will be cleared EVENT_VALID_MSEC after set
 	qboolean freeAfterEvent;
 	qboolean unlinkAfterEvent;
 	int sentryDeadThink;
 	int forceFieldThink;
 
 	//Physics and movement fields
-	float physicsBounce; // 1.0 = continuous bounce, 0.0 = no bounce
+	float physicsBounce = 0.0f; // 1.0 = continuous bounce, 0.0 = no bounce
 	int clipmask; // brushes with this content value will be collided against
 	// when moving.  items and corpses do not collide against
 	// players, for instance
@@ -1278,13 +1279,13 @@ struct gentity_s
 	short prev_waterlevel;
 
 	//Targeting/linking fields
-	float angle; // set in editor, -1 = up, -2 = down
-	char* target;
-	char* target2; //For multiple targets, not used for firing/triggering/using, though, only for path branches
-	char* target3; //For multiple targets, not used for firing/triggering/using, though, only for path branches
-	char* target4; //For multiple targets, not used for firing/triggering/using, though, only for path branches
-	char* targetJump;
-	char* targetname;
+	float angle = 0.0f; // set in editor, -1 = up, -2 = down
+	char* target = NULL;
+	char* target2 = NULL; //For multiple targets, not used for firing/triggering/using, though, only for path branches
+	char* target3 = NULL; //For multiple targets, not used for firing/triggering/using, though, only for path branches
+	char* target4 = NULL; //For multiple targets, not used for firing/triggering/using, though, only for path branches
+	char* targetJump = NULL;
+	char* targetname = NULL;
 	char* team;
 	gentity_t* touchedByPlayer;
 
@@ -1312,12 +1313,12 @@ struct gentity_s
 	dieFunc_t e_DieFunc; //Called by G_Damage when health reaches <= 0
 
 	//Health and damage fields
-	int health;
-	int max_health;
-	qboolean takedamage;
+	int health = 0;
+	int max_health = 0;
+	qboolean takedamage = qfalse;
 	material_t material;
-	int damage;
-	int dflags;
+	int damage = 0;
+	int dflags = 0;
 	//explosives, breakable brushes
 	int splashDamage; // quad will increase this without increasing radius
 	int splashRadius;
@@ -1340,14 +1341,14 @@ struct gentity_s
 	int delay;
 	qboolean alt_fire;
 	int count;
-	int bounceCount;
-	int fly_sound_debounce_time; // wind tunnel
-	int painDebounceTime;
-	int disconnectDebounceTime;
-	int attackDebounceTime;
-	int pushDebounceTime;
-	int aimDebounceTime;
-	int useDebounceTime;
+	int bounceCount = 0;
+	int fly_sound_debounce_time = 0; // wind tunnel
+	int painDebounceTime = 0;
+	int disconnectDebounceTime = 0;
+	int attackDebounceTime = 0;
+	int pushDebounceTime = 0;
+	int aimDebounceTime = 0;
+	int useDebounceTime = 0;
 	gentity_t* targetEnt;
 
 	//Unions for miscellaneous fields used under very specific circumstances
@@ -1367,7 +1368,7 @@ struct gentity_s
 	int lastInAirTime;
 	int noWaypointTime;
 	//Debouncer - so don't keep checking every waypoint in existance every frame that you can't find one
-	int combatPoint;
+	int combatPoint = 0;
 	vec3_t followPos;
 	int followPosRecalcTime;
 	int followPosWaypoint;
@@ -1375,11 +1376,11 @@ struct gentity_s
 	//Animation
 	qboolean loopAnim;
 	int startFrame;
-	int endFrame;
+	int endFrame = 0;
 
 	//Script/ICARUS-related fields
 	int m_iIcarusID;
-	int taskID[NUM_TIDS];
+	int taskID[NUM_TIDS] = { 0 };
 	parms_t* parms;
 	char* behaviorSet[NUM_BSETS];
 	char* script_targetname;
@@ -1396,58 +1397,58 @@ struct gentity_s
 	team_t noDamageTeam;
 
 	// Ghoul2 Animation info
-	short headModel;
-	short headRootBone;
-	short headMotionBone;
-	short headCraniumBone;
-	short headCervicalBone;
-	short headThoracicBone;
-	short headUpperLumbarBone;
-	short headLowerLumbarBone;
-	short headHipsBone;
-	short headFaceBone;
+	short headModel = 0;
+	short headRootBone = 0;
+	short headMotionBone = 0;
+	short headCraniumBone = 0;
+	short headCervicalBone = 0;
+	short headThoracicBone = 0;
+	short headUpperLumbarBone = 0;
+	short headLowerLumbarBone = 0;
+	short headHipsBone = 0;
+	short headFaceBone = 0;
 	short holsterModel[MAX_HOLSTER_WEAPONS];
-	short playerModel;
+	short playerModel = 0;
 	short weaponModel[MAX_INHAND_WEAPONS];
-	short handRBolt;
-	short handLBolt;
-	short headBolt;
-	short cervicalBolt;
-	short chestBolt;
-	short gutBolt;
-	short torsoBolt;
-	short crotchBolt;
-	short motionBolt;
-	short kneeLBolt;
-	short kneeRBolt;
-	short elbowLBolt;
-	short elbowRBolt;
-	short footLBolt;
-	short footRBolt;
-	short faceBone;
-	short craniumBone;
-	short cervicalBone;
-	short thoracicBone;
-	short upperLumbarBone;
-	short lowerLumbarBone;
-	short hipsBone;
-	short motionBone;
-	short rootBone;
-	short footLBone;
-	short footRBone;
-	short humerusRBone;
+	short handRBolt = 0;
+	short handLBolt = 0;
+	short headBolt = 0;
+	short cervicalBolt = 0;
+	short chestBolt = 0;
+	short gutBolt = 0;
+	short torsoBolt = 0;
+	short crotchBolt = 0;
+	short motionBolt = 0;
+	short kneeLBolt = 0;
+	short kneeRBolt = 0;
+	short elbowLBolt = 0;
+	short elbowRBolt = 0;
+	short footLBolt = 0;
+	short footRBolt = 0;
+	short faceBone = 0;
+	short craniumBone = 0;
+	short cervicalBone = 0;
+	short thoracicBone = 0;
+	short upperLumbarBone = 0;
+	short lowerLumbarBone = 0;
+	short hipsBone = 0;
+	short motionBone = 0;
+	short rootBone = 0;
+	short footLBone = 0;
+	short footRBone = 0;
+	short humerusRBone = 0;
 
-	short genericBone1; // For bones special to an entity
-	short genericBone2;
-	short genericBone3;
+	short genericBone1 = 0; // For bones special to an entity
+	short genericBone2 = 0;
+	short genericBone3 = 0;
 
-	short genericBolt1; // For bolts special to an entity
-	short genericBolt2;
-	short genericBolt3;
-	short genericBolt4;
-	short genericBolt5;
+	short genericBolt1 = 0; // For bolts special to an entity
+	short genericBolt2 = 0;
+	short genericBolt3 = 0;
+	short genericBolt4 = 0;
+	short genericBolt5 = 0;
 
-	qhandle_t cinematicModel;
+	qhandle_t cinematicModel = 0;
 
 	//==========================================================================================
 
@@ -1475,14 +1476,14 @@ struct gentity_s
 	char* NPC_target;
 
 	//Variables used by movers (most likely exclusively by them)
-	moverState_t moverState;
+	moverState_t moverState = moverState_t_MAX;
 	int soundPos1;
 	int sound1to2;
 	int sound2to1;
 	int soundPos2;
 	int soundLoop;
 	gentity_t* nextTrain;
-	gentity_t* prevTrain;
+	gentity_t* prevTrain = NULL;
 	vec3_t pos1, pos2;
 	vec3_t pos3;
 	int sounds;
@@ -1515,7 +1516,7 @@ struct gentity_s
 	gitem_t* item; // for bonus items -
 	char* message; //Used by triggers to print a message when activated
 
-	float lightLevel;
+	float lightLevel = 0.0f;
 
 	//FIXME: can these be removed/condensed/absorbed?
 	//Rendering info
@@ -1529,7 +1530,7 @@ struct gentity_s
 	// Used for callouts
 	int nearAllies; // Number of allies nearby on this frame
 	int calloutTime; // Prevent us from using callouts too often
-	int markTime; // Keep us marked in red
+	int markTime = 0; // Keep us marked in red
 	int check_speach_time;
 
 	char* radarIcon;
@@ -1537,25 +1538,25 @@ struct gentity_s
 	int userInt1;
 	int userInt2;
 	int userInt3;
-	float userFloat1;
-	float userFloat2;
-	float userFloat3;
+	float userFloat1 = 0.0f;
+	float userFloat2 = 0.0f;
+	float userFloat3 = 0.0f;
 	vec3_t userVec1;
 	vec3_t userVec2;
 
-	int reloadTime; //Every 0.2 seconds reload a bullet
-	int reloadCooldown;
-	int weaponfiredelaytime;
-	int TimeOfWeaponDrop;
+	int reloadTime = 0; //Every 0.2 seconds reload a bullet
+	int reloadCooldown = 0;
+	int weaponfiredelaytime = 0;
+	int TimeOfWeaponDrop = 0;
 
-	int next_kick_time;
+	int next_kick_time = 0;
 
-	int npc_roll_time;
-	qboolean npc_roll_start;
-	int npc_roll_direction;
+	int npc_roll_time = 0;
+	qboolean npc_roll_start = qfalse;
+	int npc_roll_direction = 0;
 
 	int saberPowerTime;
-	qboolean saberPower;
+	qboolean saberPower = qfalse;
 	int lastKataTime; // timestamp (level.time) when kata is next allowed; 0 = allowed now
 	int Dash_Count;
 	int Dash_NPC_Count;

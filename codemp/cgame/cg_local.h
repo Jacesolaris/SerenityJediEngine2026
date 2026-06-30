@@ -2254,7 +2254,7 @@ void CG_CheckChangedPredictableEvents(const playerState_t* ps);
 //
 void CG_InitSiegeMode(void);
 void CG_SiegeRoundOver(centity_t* ent, int won);
-void CG_SiegeObjectiveCompleted(centity_t* ent, int won, int objectivenum);
+void CG_SiegeObjectiveCompleted(centity_t* ent, const int won, const int objectivenum);
 void CG_TrueViewInit(void);
 void CG_AdjustEyePos(const char* modelName);
 

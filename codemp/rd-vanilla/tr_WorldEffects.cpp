@@ -1428,7 +1428,16 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Clear - Removes All Particle Clouds And Wind Zones
 	//----------------------------------------------------
-	if ((Q_stricmp(token, "clear") == 0) || r_weather->integer == 0)
+	if (Q_stricmp(token, "clear") == 0)
+	{
+		for (int p = 0; p < mParticleClouds.size(); p++)
+		{
+			mParticleClouds[p].Reset();
+		}
+		mParticleClouds.clear();
+		mWindZones.clear();
+	}
+	else if (r_weather->integer == 0)
 	{
 		for (int p = 0; p < mParticleClouds.size(); p++)
 		{
@@ -1459,7 +1468,16 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Basic Wind
 	//------------
-	else if ((Q_stricmp(token, "wind") == 0) || r_weather->integer == 8)
+	else if (Q_stricmp(token, "wind") == 0)
+	{
+		if (mWindZones.full())
+		{
+			return;
+		}
+		CWindZone& nWind = mWindZones.push_back();
+		nWind.Initialize();
+	}
+	else if (r_weather->integer == 8)
 	{
 		if (mWindZones.full())
 		{
@@ -1535,7 +1553,25 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create A Rain Storm
 	//---------------------
-	else if ((Q_stricmp(token, "rain") == 0) || r_weather->integer == 2)
+	else if (Q_stricmp(token, "rain") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(1000, "gfx/world/rain.jpg", 3);
+		nCloud.mHeight = 80.0f;
+		nCloud.mWidth = 1.2f;
+		nCloud.mGravity = 2000.0f;
+		nCloud.mFilterMode = 1;
+		nCloud.mBlendMode = 1;
+		nCloud.mFade = 100.0f;
+		nCloud.mColor = 0.5f;
+		nCloud.mOrientWithVelocity = true;
+		nCloud.mWaterParticles = true;
+	}
+	else if (r_weather->integer == 2)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1556,7 +1592,32 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create A Rain Storm
 	//---------------------
-	else if ((Q_stricmp(token, "acidrain") == 0) || r_weather->integer == 7)
+	else if (Q_stricmp(token, "acidrain") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(1000, "gfx/world/rain.jpg", 3);
+		nCloud.mHeight = 80.0f;
+		nCloud.mWidth = 2.0f;
+		nCloud.mGravity = 2000.0f;
+		nCloud.mFilterMode = 1;
+		nCloud.mBlendMode = 1;
+		nCloud.mFade = 100.0f;
+
+		nCloud.mColor[0] = 0.34f;
+		nCloud.mColor[1] = 0.70f;
+		nCloud.mColor[2] = 0.34f;
+		nCloud.mColor[3] = 0.70f;
+
+		nCloud.mOrientWithVelocity = true;
+		nCloud.mWaterParticles = true;
+
+		mOutside.mOutsidePain = 0.1f;
+	}
+	else if (r_weather->integer == 7)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1605,7 +1666,7 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create A Snow Storm
 	//---------------------
-	else if ((Q_stricmp(token, "snow") == 0) || r_weather->integer == 1)
+	else if (Q_stricmp(token, "snow") == 0)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1618,7 +1679,33 @@ void RE_WorldEffectCommand(const char* command)
 		nCloud.mColor = 0.75f;
 		nCloud.mWaterParticles = true;
 	}
-	else if ((Q_stricmp(token, "Lava") == 0) || r_weather->integer == 3)
+	else if (r_weather->integer == 1)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(1000, "gfx/effects/snowflake1.bmp");
+		nCloud.mBlendMode = 1;
+		nCloud.mRotationChangeNext = 0;
+		nCloud.mColor = 0.75f;
+		nCloud.mWaterParticles = true;
+	}
+	else if (Q_stricmp(token, "Lava") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(1000, "gfx/effects/snowflake2.bmp");
+		nCloud.mBlendMode = 1;
+		nCloud.mRotationChangeNext = 0;
+		nCloud.mColor = 0.75f;
+		nCloud.mWaterParticles = true;
+	}
+	else if (r_weather->integer == 3)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1634,7 +1721,32 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create A Some stuff
 	//---------------------
-	else if ((Q_stricmp(token, "spacedust") == 0) || r_weather->integer == 9)
+	else if (Q_stricmp(token, "spacedust") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(1000, "gfx/effects/snowpuff1.tga");
+		nCloud.mHeight = 2.5f;
+		nCloud.mWidth = 2.5f;
+		nCloud.mGravity = 0.0f;
+		nCloud.mBlendMode = 1;
+		nCloud.mRotationChangeNext = 0;
+		nCloud.mColor = 0.75f;
+		nCloud.mWaterParticles = true;
+		nCloud.mMass.mMax = 30.0f;
+		nCloud.mMass.mMin = 10.0f;
+		nCloud.mSpawnRange.mMins[0] = -1500.0f;
+		nCloud.mSpawnRange.mMins[1] = -1500.0f;
+		nCloud.mSpawnRange.mMins[2] = -1500.0f;
+		nCloud.mSpawnRange.mMaxs[0] = 1500.0f;
+		nCloud.mSpawnRange.mMaxs[1] = 1500.0f;
+		nCloud.mSpawnRange.mMaxs[2] = 1500.0f;
+	}
+	else if (r_weather->integer == 9)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1662,7 +1774,7 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create A Sand Storm
 	//---------------------
-	else if ((Q_stricmp(token, "Sandstorm") == 0) || r_weather->integer == 4)
+	else if (Q_stricmp(token, "Sandstorm") == 0)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1689,7 +1801,31 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create A Sand Storm
 	//---------------------
-	else if ((Q_stricmp(token, "sand") == 0) || r_weather->integer == 4)
+	else if (Q_stricmp(token, "sand") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(400, "gfx/effects/alpha_smoke2b.tga");
+
+		nCloud.mGravity = 0;
+		nCloud.mWidth = 70;
+		nCloud.mHeight = 70;
+		nCloud.mColor[0] = 0.9f;
+		nCloud.mColor[1] = 0.6f;
+		nCloud.mColor[2] = 0.0f;
+		nCloud.mColor[3] = 0.5f;
+		nCloud.mFade = 5.0f;
+		nCloud.mMass.mMax = 30.0f;
+		nCloud.mMass.mMin = 10.0f;
+		nCloud.mSpawnRange.mMins[2] = -150;
+		nCloud.mSpawnRange.mMaxs[2] = 150;
+
+		nCloud.mRotationChangeNext = 0;
+	}
+	else if (r_weather->integer == 4)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1716,7 +1852,28 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create Blowing Clouds Of Fog
 	//------------------------------
-	else if ((Q_stricmp(token, "fog") == 0) || r_weather->integer == 6)
+	else if (Q_stricmp(token, "fog") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(60, "gfx/effects/alpha_smoke2b.tga");
+		nCloud.mBlendMode = 1;
+		nCloud.mGravity = 0;
+		nCloud.mWidth = 70;
+		nCloud.mHeight = 70;
+		nCloud.mColor = 0.2f;
+		nCloud.mFade = 5.0f;
+		nCloud.mMass.mMax = 30.0f;
+		nCloud.mMass.mMin = 10.0f;
+		nCloud.mSpawnRange.mMins[2] = -150;
+		nCloud.mSpawnRange.mMaxs[2] = 150;
+
+		nCloud.mRotationChangeNext = 0;
+	}
+	else if (r_weather->integer == 6)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1740,7 +1897,31 @@ void RE_WorldEffectCommand(const char* command)
 
 	// Create Heavy Rain Particle Cloud
 	//-----------------------------------
-	else if ((Q_stricmp(token, "heavyrainfog") == 0) || r_weather->integer == 5)
+	else if (Q_stricmp(token, "heavyrainfog") == 0)
+	{
+		if (mParticleClouds.full())
+		{
+			return;
+		}
+		CWeatherParticleCloud& nCloud = mParticleClouds.push_back();
+		nCloud.Initialize(70, "gfx/effects/alpha_smoke2b.tga");
+		nCloud.mBlendMode = 1;
+		nCloud.mGravity = 0;
+		nCloud.mWidth = 100;
+		nCloud.mHeight = 100;
+		nCloud.mColor = 0.3f;
+		nCloud.mFade = 1.0f;
+		nCloud.mMass.mMax = 10.0f;
+		nCloud.mMass.mMin = 5.0f;
+
+		nCloud.mSpawnRange.mMins = -(nCloud.mSpawnPlaneDistance * 1.25f);
+		nCloud.mSpawnRange.mMaxs = nCloud.mSpawnPlaneDistance * 1.25f;
+		nCloud.mSpawnRange.mMins[2] = -150;
+		nCloud.mSpawnRange.mMaxs[2] = 150;
+
+		nCloud.mRotationChangeNext = 0;
+	}
+	else if (r_weather->integer == 5)
 	{
 		if (mParticleClouds.full())
 		{

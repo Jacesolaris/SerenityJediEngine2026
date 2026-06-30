@@ -145,25 +145,25 @@ static void CG_Draw_JKA_ForcePower(const centity_t* cent, const float hud_ratio)
 	}
 
 	// Make the hud flash by setting forceHUDTotalFlashTime above cg.time
-	if (cg.forceHUDTotalFlashTime > cg.time || cg_entities[cg.snap->ps.clientNum].currentState.userInt3 & 1 << FLAG_FATIGUED)
+	const qboolean playerFatigued = ((cg.snap->ps.userInt3 & (1 << FLAG_FATIGUED)) ? qtrue : qfalse);
+	const qboolean playerFlashActive = (cg.forceHUDTotalFlashTime > cg.time) ? qtrue : qfalse;
+
+	// Make the HUD flash ONLY for the player
+	if (playerFlashActive == qtrue || playerFatigued == qtrue)
 	{
 		flash = qtrue;
+
 		if (cg.forceHUDNextFlashTime < cg.time)
 		{
 			cg.forceHUDNextFlashTime = cg.time + 400;
-			cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.noforceSound);
-			if (cg.forceHUDActive)
-			{
-				cg.forceHUDActive = qfalse;
-			}
-			else
-			{
-				cg.forceHUDActive = qtrue;
-			}
+			//cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.noforceSound);
+
+			cg.forceHUDActive = (cg.forceHUDActive == qtrue) ? qfalse : qtrue;
 		}
 	}
-	else // turn HUD back on if it had just finished flashing time.
+	else
 	{
+		// Reset HUD flash state
 		cg.forceHUDNextFlashTime = 0;
 		cg.forceHUDActive = qtrue;
 	}
@@ -727,8 +727,7 @@ static void CG_DrawJK2SaberFatigue(const centity_t* cent, const int x, const int
 				cg.messageLitActive = qfalse;
 			}
 		}
-		else if (cg.mishapHUDTotalFlashTime > cg.time || cent->gent->client->ps.saberFatigueChainCount >
-			MISHAPLEVEL_TEN)
+		else if (cg.mishapHUDTotalFlashTime > cg.time || cent->gent->client->ps.saberFatigueChainCount > MISHAPLEVEL_TEN)
 		{
 			if (!(cg.time / 600 & 1))
 			{
@@ -963,24 +962,22 @@ static void CG_DrawoldblockPoints(const centity_t* cent)
 	float percent = static_cast<float>(cg.snap->ps.blockPoints) / 100.0f * BPFUELBAR_H;
 
 	// Make the hud flash by setting forceHUDTotalFlashTime above cg.time
-	if (cg.blockHUDTotalFlashTime > cg.time || cg.snap->ps.blockPoints < BLOCKPOINTS_WARNING)
+	// Player-only block HUD flashing
+	const qboolean playerFlashActive = (cg.blockHUDTotalFlashTime > cg.time) ? qtrue : qfalse;
+	const qboolean playerLowBlock = (cg.snap->ps.blockPoints < BLOCKPOINTS_WARNING) ? qtrue : qfalse;
+
+	// Only the player should trigger HUD flashing
+	if (playerFlashActive == qtrue || playerLowBlock == qtrue)
 	{
 		if (cg.blockHUDNextFlashTime < cg.time)
 		{
 			cg.blockHUDNextFlashTime = cg.time + 400;
-			cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.overload);
+			//cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.overload);
 
-			if (cg.blockHUDActive)
-			{
-				cg.blockHUDActive = qfalse;
-			}
-			else
-			{
-				cg.blockHUDActive = qtrue;
-			}
+			cg.blockHUDActive = (cg.blockHUDActive == qtrue) ? qfalse : qtrue;
 		}
 	}
-	else // turn HUD back on if it had just finished flashing time.
+	else
 	{
 		cg.blockHUDNextFlashTime = 0;
 		cg.blockHUDActive = qtrue;
@@ -1096,24 +1093,22 @@ static void CG_DrawCusblockPoints(const int x, const int y, const float hud_rati
 	float block_percent = static_cast<float>(hold) / (static_cast<float>(BLOCK_POINTS_MAX) / 2);
 
 	// Make the hud flash by setting forceHUDTotalFlashTime above cg.time
-	if (cg.blockHUDTotalFlashTime > cg.time || cg.snap->ps.blockPoints < BLOCKPOINTS_WARNING)
+	// Player-only block HUD flashing
+	const qboolean playerFlashActive = (cg.blockHUDTotalFlashTime > cg.time) ? qtrue : qfalse;
+	const qboolean playerLowBlock = (cg.snap->ps.blockPoints < BLOCKPOINTS_WARNING) ? qtrue : qfalse;
+
+	// Only the player should trigger HUD flashing
+	if (playerFlashActive == qtrue || playerLowBlock == qtrue)
 	{
 		if (cg.blockHUDNextFlashTime < cg.time)
 		{
 			cg.blockHUDNextFlashTime = cg.time + 400;
-			cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.overload);
+			//cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.overload);
 
-			if (cg.blockHUDActive)
-			{
-				cg.blockHUDActive = qfalse;
-			}
-			else
-			{
-				cg.blockHUDActive = qtrue;
-			}
+			cg.blockHUDActive = (cg.blockHUDActive == qtrue) ? qfalse : qtrue;
 		}
 	}
-	else // turn HUD back on if it had just finished flashing time.
+	else
 	{
 		cg.blockHUDNextFlashTime = 0;
 		cg.blockHUDActive = qtrue;
@@ -2062,24 +2057,22 @@ static void CG_DrawJK2blockPoints(const int x, const int y)
 	float block_percent = static_cast<float>(hold) / (static_cast<float>(BLOCK_POINTS_MAX) / 2);
 
 	// Make the hud flash by setting forceHUDTotalFlashTime above cg.time
-	if (cg.blockHUDTotalFlashTime > cg.time || cg.snap->ps.blockPoints < BLOCKPOINTS_WARNING)
+	// Player-only block HUD flashing
+	const qboolean playerFlashActive = (cg.blockHUDTotalFlashTime > cg.time) ? qtrue : qfalse;
+	const qboolean playerLowBlock = (cg.snap->ps.blockPoints < BLOCKPOINTS_WARNING) ? qtrue : qfalse;
+
+	// Only the player should trigger HUD flashing
+	if (playerFlashActive == qtrue || playerLowBlock == qtrue)
 	{
 		if (cg.blockHUDNextFlashTime < cg.time)
 		{
 			cg.blockHUDNextFlashTime = cg.time + 400;
-			cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.overload);
+			//cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.overload);
 
-			if (cg.blockHUDActive)
-			{
-				cg.blockHUDActive = qfalse;
-			}
-			else
-			{
-				cg.blockHUDActive = qtrue;
-			}
+			cg.blockHUDActive = (cg.blockHUDActive == qtrue) ? qfalse : qtrue;
 		}
 	}
-	else // turn HUD back on if it had just finished flashing time.
+	else
 	{
 		cg.blockHUDNextFlashTime = 0;
 		cg.blockHUDActive = qtrue;
@@ -3126,25 +3119,25 @@ static void CG_DrawSimpleForcePower(const centity_t* cent)
 	}
 
 	// Make the hud flash by setting forceHUDTotalFlashTime above cg.time
-	if (cg.forceHUDTotalFlashTime > cg.time || cg_entities[cg.snap->ps.clientNum].currentState.userInt3 & 1 << FLAG_FATIGUED)
+	const qboolean playerFatigued = ((cg.snap->ps.userInt3 & (1 << FLAG_FATIGUED)) ? qtrue : qfalse);
+	const qboolean playerFlashActive = (cg.forceHUDTotalFlashTime > cg.time) ? qtrue : qfalse;
+
+	// Make the HUD flash ONLY for the player
+	if (playerFlashActive == qtrue || playerFatigued == qtrue)
 	{
 		flash = qtrue;
+
 		if (cg.forceHUDNextFlashTime < cg.time)
 		{
 			cg.forceHUDNextFlashTime = cg.time + 400;
-			cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.noforceSound);
-			if (cg.forceHUDActive)
-			{
-				cg.forceHUDActive = qfalse;
-			}
-			else
-			{
-				cg.forceHUDActive = qtrue;
-			}
+			//cgi_S_StartSound(nullptr, 0, CHAN_AUTO, cgs.media.noforceSound);
+
+			cg.forceHUDActive = (cg.forceHUDActive == qtrue) ? qfalse : qtrue;
 		}
 	}
-	else // turn HUD back on if it had just finished flashing time.
+	else
 	{
+		// Reset HUD flash state
 		cg.forceHUDNextFlashTime = 0;
 		cg.forceHUDActive = qtrue;
 	}
@@ -3154,8 +3147,7 @@ static void CG_DrawSimpleForcePower(const centity_t* cent)
 
 	Com_sprintf(num, sizeof num, "%i", cent->gent->client->ps.forcePower);
 
-	SimpleHud_DrawString(SCREEN_WIDTH - cgs.widthRatioCoef * (16 + 32), SCREEN_HEIGHT - 80 + 40 + 14, num,
-		colorTable[calc_color]);
+	SimpleHud_DrawString(SCREEN_WIDTH - cgs.widthRatioCoef * (16 + 32), SCREEN_HEIGHT - 80 + 40 + 14, num, colorTable[calc_color]);
 }
 
 /*

@@ -322,7 +322,7 @@ qboolean NAV_ClearPathToPoint(gentity_t* self, vec3_t pmins, vec3_t pmaxs, vec3_
 			if (trace.entityNum < ENTITYNUM_WORLD && &g_entities[trace.entityNum] != NULL && g_entities[trace.entityNum]
 				.s.eType != ET_MOVER)
 			{
-				vec3_t p1, p2;
+				vec3_t p1 = {0}, p2 = {0};
 				G_DrawEdge(point, trace.endpos, EDGE_PATH);
 				VectorAdd(g_entities[trace.entityNum].r.mins, g_entities[trace.entityNum].r.currentOrigin, p1);
 				VectorAdd(g_entities[trace.entityNum].r.maxs, g_entities[trace.entityNum].r.currentOrigin, p2);
@@ -359,7 +359,7 @@ qboolean NAV_ClearPathToPoint(gentity_t* self, vec3_t pmins, vec3_t pmaxs, vec3_
 			if (trace.entityNum < ENTITYNUM_WORLD && &g_entities[trace.entityNum] != NULL && g_entities[trace.entityNum]
 				.s.eType != ET_MOVER)
 			{
-				vec3_t p1, p2;
+				vec3_t p1 = {0}, p2 = {0};
 				G_DrawEdge(self->r.currentOrigin, trace.endpos, EDGE_PATH);
 				VectorAdd(g_entities[trace.entityNum].r.mins, g_entities[trace.entityNum].r.currentOrigin, p1);
 				VectorAdd(g_entities[trace.entityNum].r.maxs, g_entities[trace.entityNum].r.currentOrigin, p2);
@@ -928,60 +928,56 @@ NAV_AvoidCollsion
 
 qboolean NAV_AvoidCollision(gentity_t* self, gentity_t* goal, navInfo_t* info)
 {
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (self == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "NAV_AvoidCollision: self is NULL\n");
+		return qtrue; // safest fallback: treat as no collision
+	}
+
 	vec3_t movedir;
 	vec3_t movepos;
 
-	//Clear our block info for this frame
+	// Clear our block info for this frame
 	NAV_ClearBlockedInfo(NPCS.NPC);
 
-	//Cap our distance
+	// Cap our distance
 	if (info->distance > MAX_COLL_AVOID_DIST)
 	{
 		info->distance = MAX_COLL_AVOID_DIST;
 	}
 
-	//Get an end position
+	// Get an end position
 	VectorMA(self->r.currentOrigin, info->distance, info->direction, movepos);
 	VectorCopy(info->direction, movedir);
 
-	if (self && self->NPC && self->NPC->aiFlags & NPCAI_NO_COLL_AVOID)
+	if (self->NPC && (self->NPC->aiFlags & NPCAI_NO_COLL_AVOID))
 	{
-		//pretend there's no-one in the way
 		return qtrue;
 	}
-	//Now test against entities
+
+	// Now test against entities
 	if (NAV_CheckAhead(self, movepos, &info->trace, CONTENTS_BODY) == qfalse)
 	{
-		//Get the blocker
 		info->blocker = &g_entities[info->trace.entityNum];
 		info->flags |= NIF_COLLISION;
 
-		//Ok to hit our goal entity
 		if (goal == info->blocker)
 			return qtrue;
 
-		//See if we're moving along with them
-		//if ( NAV_TrueCollision( self, info.blocker, movedir, info.direction ) == qfalse )
-		//	return qtrue;
-
-		//Test for blocking by standing on goal
 		if (NAV_TestForBlocked(self, goal, info->blocker, info->distance, &info->flags) == qtrue)
 			return qfalse;
 
-		//If the above function said we're blocked, don't do the extra checks
 		if (info->flags & NIF_BLOCKED)
 			return qtrue;
 
-		//See if we can get that entity to move out of our way
 		if (NAV_ResolveEntityCollision(self, info->blocker, movedir, info->pathDirection) == qfalse)
 			return qfalse;
 
 		VectorCopy(movedir, info->direction);
-
 		return qtrue;
 	}
 
-	//Our path is clear, just move there
 	if (NAVDEBUG_showCollision)
 	{
 		G_DrawEdge(self->r.currentOrigin, movepos, EDGE_PATH);
@@ -989,6 +985,7 @@ qboolean NAV_AvoidCollision(gentity_t* self, gentity_t* goal, navInfo_t* info)
 
 	return qtrue;
 }
+
 
 /*
 -------------------------

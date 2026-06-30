@@ -545,6 +545,12 @@ void SP_emplaced_eweb(gentity_t* ent)
 //----------------------------------------------------------
 void emplaced_gun_use(gentity_t* self, const gentity_t* other, gentity_t* activator)
 {
+	// Must have a valid activator
+	if (activator == NULL)
+	{
+		return;
+	}
+
 	if (self->health <= 0)
 	{
 		// can't use a dead gun.
@@ -553,12 +559,14 @@ void emplaced_gun_use(gentity_t* self, const gentity_t* other, gentity_t* activa
 
 	if (self->svFlags & SVF_INACTIVE)
 	{
-		return; // can't use inactive gun
+		// can't use inactive gun
+		return;
 	}
 
-	if (!activator->client)
+	if (activator->client == NULL)
 	{
-		return; // only a client can use it.
+		// only a client can use it.
+		return;
 	}
 
 	if (self->activator)
@@ -569,30 +577,31 @@ void emplaced_gun_use(gentity_t* self, const gentity_t* other, gentity_t* activa
 
 	if (other && other->client && G_IsRidingVehicle(other))
 	{
-		//can't use eweb when on a vehicle
+		// can't use eweb when on a vehicle
 		return;
 	}
 
-	if (activator && activator->client && G_IsRidingVehicle(activator))
+	if (G_IsRidingVehicle(activator))
 	{
-		//can't use eweb when on a vehicle
+		// can't use eweb when on a vehicle
 		return;
 	}
 
-	// We'll just let the designers duke this one out....I mean, as to whether they even want to limit such a thing.
+	// Designers can choose to require facing the gun direction
 	if (self->spawnflags & EMPLACED_FACING)
 	{
 		vec3_t fwd2;
 		vec3_t fwd1;
-		// Let's get some direction vectors for the users
-		AngleVectors(activator->client->ps.viewangles, fwd1, nullptr, nullptr);
 
-		// Get the guns direction vector
-		AngleVectors(self->pos1, fwd2, nullptr, nullptr);
+		// User facing direction
+		AngleVectors(activator->client->ps.viewangles, fwd1, NULL, NULL);
+
+		// Gun facing direction
+		AngleVectors(self->pos1, fwd2, NULL, NULL);
 
 		const float dot = DotProduct(fwd1, fwd2);
 
-		// Must be reasonably facing the way the gun points ( 90 degrees or so ), otherwise we don't allow to use it.
+		// Must be reasonably facing the way the gun points
 		if (dot < 0.0f)
 		{
 			return;
@@ -609,78 +618,71 @@ void emplaced_gun_use(gentity_t* self, const gentity_t* other, gentity_t* activa
 			self->alt_fire = activator->client->ps.SaberActive();
 		}
 
-		// swap the users weapon with the emplaced gun and add the ammo the gun has to the player
+		// swap the user's weapon with the emplaced gun and add the ammo the gun has to the player
 		activator->client->ps.weapon = self->s.weapon;
 		Add_Ammo(activator, WP_EMPLACED_GUN, self->count);
-		activator->client->ps.stats[STAT_WEAPONS] |= 1 << WP_EMPLACED_GUN;
+		activator->client->ps.stats[STAT_WEAPONS] |= (1 << WP_EMPLACED_GUN);
 
-		// Allow us to point from one to the other
-		activator->owner = self; // kind of dumb, but when we are locked to the weapon, we are owned by it.
+		// Link player to gun
+		activator->owner = self;
 		self->activator = activator;
 
 		G_RemoveWeaponModels(activator);
+
 		if (activator->NPC)
 		{
 			ChangeWeapon(activator, WP_EMPLACED_GUN);
 		}
 		else if (activator->s.number == 0)
 		{
-			// we don't want for it to draw the weapon select stuff
 			cg.weaponSelect = WP_EMPLACED_GUN;
-			CG_CenterPrint("@SP_INGAME_EXIT_VIEW", SCREEN_HEIGHT * 0.95);
+			CG_CenterPrint("@SP_INGAME_EXIT_VIEW", SCREEN_HEIGHT * 0.95f);
 		}
-		// Since we move the activator inside of the gun, we reserve a solid spot where they were standing in order to be able to get back out without being in solid
+
+		// Reserve a solid spot where they were standing to get back out safely
 		if (self->nextTrain)
 		{
-			//you never know
 			G_FreeEntity(self->nextTrain);
 		}
+
 		self->nextTrain = G_Spawn();
-		//self->nextTrain->classname = "emp_placeholder";
 		self->nextTrain->contents = CONTENTS_MONSTERCLIP | CONTENTS_PLAYERCLIP;
-		//hmm... playerclip too now that we're doing it for NPCs?
+
 		G_SetOrigin(self->nextTrain, activator->client->ps.origin);
 		VectorCopy(activator->mins, self->nextTrain->mins);
 		VectorCopy(activator->maxs, self->nextTrain->maxs);
 		gi.linkentity(self->nextTrain);
 
-		//need to inflate the activator's mins/maxs since the gunsit anim puts them outside of their bbox
-		VectorSet(activator->mins, -24, -24, -24);
-		VectorSet(activator->maxs, 24, 24, 40);
+		// Inflate activator bbox for gunsit anim
+		VectorSet(activator->mins, -24.0f, -24.0f, -24.0f);
+		VectorSet(activator->maxs, 24.0f, 24.0f, 40.0f);
 
-		// Move the activator into the center of the gun.  For NPC's the only way the can get out of the gun is to die.
+		// Move activator into gun center
 		VectorCopy(self->s.origin, activator->client->ps.origin);
-		activator->client->ps.origin[2] += 30; // move them up so they aren't standing in the floor
+		activator->client->ps.origin[2] += 30.0f;
 		gi.linkentity(activator);
 
-		// the gun will track which weapon we used to have
+		// Gun remembers previous weapon
 		self->s.weapon = old_weapon;
 
-		// Lock the player
+		// Lock player to weapon
 		activator->client->ps.eFlags |= EF_LOCKED_TO_WEAPON;
-		activator->owner = self; // kind of dumb, but when we are locked to the weapon, we are owned by it.
+		activator->owner = self;
 		self->activator = activator;
-		self->delay = level.time; // can't disconnect from the thing for half a second
+		self->delay = level.time;
 
-		// Let the gun be considered an enemy
-		//Ugh, so much AI code seems to assume enemies are clients, maybe this shouldn't be on, but it's too late in the game to change it now without knowing what side-effects this will have
+		// Let gun be considered an enemy
 		self->svFlags |= SVF_NONNPC_ENEMY;
 		self->noDamageTeam = activator->client->playerTeam;
 
-		// FIXME: don't do this, we'll try and actually put the player in this beast
-		// move the player to the center of the gun
-		//		activator->contents = 0;
-		//		VectorCopy( self->currentOrigin, activator->client->ps.origin );
-
 		SetClientViewAngle(activator, self->pos1);
 
-		//FIXME: should really wait a bit after spawn and get this just once?
 		self->waypoint = NAV::GetNearestNode(self);
 #ifdef _DEBUG
 		if (self->waypoint == -1)
 		{
-			gi.Printf(S_COLOR_RED"ERROR: no waypoint for emplaced_gun %s at %s\n", self->targetname,
-				vtos(self->currentOrigin));
+			gi.Printf(S_COLOR_RED"ERROR: no waypoint for emplaced_gun %s at %s\n",
+				self->targetname, vtos(self->currentOrigin));
 		}
 #endif
 
@@ -688,12 +690,11 @@ void emplaced_gun_use(gentity_t* self, const gentity_t* other, gentity_t* activa
 
 		if (!(self->spawnflags & EMPLACED_PLAYERUSE) || activator->s.number == 0)
 		{
-			//player-only usescript or any usescript
-			// Run use script
 			G_ActivateBehavior(self, BSET_USE);
 		}
 	}
 }
+
 
 //----------------------------------------------------------
 void emplaced_gun_pain(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, const vec3_t point, int damage,
@@ -931,35 +932,42 @@ void G_UpdateEmplacedWeaponData(gentity_t* ent)
 
 void ExitEmplacedWeapon(gentity_t* ent)
 {
+	// Must have a valid client and owner to safely exit
+	if (ent == NULL || ent->client == NULL || ent->owner == NULL)
+	{
+		return;
+	}
+
 	// requesting to unlock from the weapon
 	// We'll leave the gun pointed in the direction it was last facing, though we'll cut out the pitch
-	if (ent->client)
+	if (ent->client != NULL)
 	{
 		if (ent->health > 0)
 		{
-			//he's still alive, and we have a placeholder, so put him back
-			if (ent->owner->nextTrain)
+			// he's still alive, and we have a placeholder, so put him back
+			if (ent->owner->nextTrain != NULL)
 			{
-				// reset the players position
+				// reset the player's position
 				VectorCopy(ent->owner->nextTrain->currentOrigin, ent->client->ps.origin);
-				//reset ent's size to normal
+				// reset ent's size to normal
 				VectorCopy(ent->owner->nextTrain->mins, ent->mins);
 				VectorCopy(ent->owner->nextTrain->maxs, ent->maxs);
-				//free the placeholder
+				// free the placeholder
 				G_FreeEntity(ent->owner->nextTrain);
-				//re-link the ent
+				ent->owner->nextTrain = NULL;
+				// re-link the ent
 				gi.linkentity(ent);
 			}
-			else if (ent->owner->e_UseFunc == useF_eweb_use) //yeah, crappy way to check this, but...
+			else if (ent->owner->e_UseFunc == useF_eweb_use) // crappy way to check this, but...
 			{
-				// so give 'em a push away from us
+				// give 'em a push away from us
 				vec3_t back_dir, start, end;
 				trace_t trace;
 				gentity_t* eweb = ent->owner;
 				qboolean safe_exit = qfalse;
 
 				VectorSubtract(ent->currentOrigin, eweb->currentOrigin, back_dir);
-				back_dir[2] = 0;
+				back_dir[2] = 0.0f;
 				const float min_radius = VectorNormalize(back_dir) - 8.0f;
 
 				float max_radius = (ent->maxs[0] + ent->maxs[1]) * 0.5f;
@@ -971,18 +979,20 @@ void ExitEmplacedWeapon(gentity_t* ent)
 					max_radius = min_radius + 8.0f;
 				}
 
-				ent->owner = nullptr; //so his trace hits me
+				ent->owner = NULL; // so his trace hits me
 
 				for (float cur_radius = min_radius; cur_radius <= max_radius; cur_radius += 4.0f)
 				{
 					VectorMA(ent->currentOrigin, cur_radius, back_dir, start);
-					//make sure they're not in the ground
+					// make sure they're not in the ground
 					VectorCopy(start, end);
-					start[2] += 18;
-					end[2] -= 18;
+					start[2] += 18.0f;
+					end[2] -= 18.0f;
+
 					gi.trace(&trace, start, ent->mins, ent->maxs, end, ent->s.number, ent->clipmask,
 						static_cast<EG2_Collision>(0), 0);
-					if (!trace.allsolid && !trace.startsolid)
+
+					if (trace.allsolid == qfalse && trace.startsolid == qfalse)
 					{
 						G_SetOrigin(ent, trace.endpos);
 						gi.linkentity(ent);
@@ -990,30 +1000,32 @@ void ExitEmplacedWeapon(gentity_t* ent)
 						break;
 					}
 				}
-				//Hmm... otherwise, don't allow them to get off?
+
+				// otherwise, don't allow them to get off
 				ent->owner = eweb;
-				if (!safe_exit)
+				if (safe_exit == qfalse)
 				{
-					//don't try again for a second
+					// don't try again for a second
 					ent->owner->delay = level.time + 500;
 					return;
 				}
 			}
 		}
-		else if (ent->health <= 0)
+		else
 		{
 			// dead, so give 'em a push out of the chair
 			vec3_t dir;
-			AngleVectors(ent->owner->s.angles, nullptr, dir, nullptr);
+			AngleVectors(ent->owner->s.angles, NULL, dir, NULL);
 
-			if (rand() & 1)
+			if ((rand() & 1) != 0)
 			{
-				VectorScale(dir, -1, dir);
+				VectorScale(dir, -1.0f, dir);
 			}
 
-			VectorMA(ent->client->ps.velocity, 75, dir, ent->client->ps.velocity);
+			VectorMA(ent->client->ps.velocity, 75.0f, dir, ent->client->ps.velocity);
 		}
-		//don't let them move towards me for a couple frames so they don't step back into me while I'm becoming solid to them
+
+		// don't let them move towards me for a couple frames so they don't step back into me
 		if (ent->s.number < MAX_CLIENTS)
 		{
 			if (ent->client->ps.pm_time < 100)
@@ -1023,11 +1035,11 @@ void ExitEmplacedWeapon(gentity_t* ent)
 			ent->client->ps.pm_flags |= PMF_TIME_NOFRICTION | PMF_TIME_KNOCKBACK;
 		}
 
-		if (!ent->owner->bounceCount)
+		if (ent->owner->bounceCount == 0)
 		{
-			//not an EWeb - the overridden bone angles will remember the angle we left it at
+			// not an EWeb - the overridden bone angles will remember the angle we left it at
 			VectorCopy(ent->client->ps.viewangles, ent->owner->s.angles);
-			ent->owner->s.angles[PITCH] = 0;
+			ent->owner->s.angles[PITCH] = 0.0f;
 			G_SetAngles(ent->owner, ent->owner->s.angles);
 			VectorCopy(ent->owner->s.angles, ent->owner->pos1);
 		}
@@ -1037,19 +1049,21 @@ void ExitEmplacedWeapon(gentity_t* ent)
 	ent->client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_EMPLACED_GUN);
 
 	extern void CG_ChangeWeapon(int num);
+
 	if (ent->health <= 0)
 	{
-		//when die, don't set weapon back on when ejected from emplaced/eweb
-		//empty hands
+		// when die, don't set weapon back on when ejected from emplaced/eweb
 		ent->client->ps.weapon = WP_NONE;
-		if (ent->NPC)
+
+		if (ent->NPC != NULL)
 		{
-			ChangeWeapon(ent, ent->client->ps.weapon); // should be OK actually.
+			ChangeWeapon(ent, ent->client->ps.weapon);
 		}
 		else
 		{
 			CG_ChangeWeapon(ent->client->ps.weapon);
 		}
+
 		if (ent->s.number < MAX_CLIENTS)
 		{
 			gi.cvar_set("cg_thirdperson", "1");
@@ -1057,18 +1071,18 @@ void ExitEmplacedWeapon(gentity_t* ent)
 	}
 	else
 	{
-		// when we lock or unlock from the the gun, we get our old weapon back
+		// when we lock or unlock from the gun, we get our old weapon back
 		ent->client->ps.weapon = ent->owner->s.weapon;
 
-		if (ent->NPC)
+		if (ent->NPC != NULL)
 		{
-			//BTW, if a saber-using NPC ever gets off of an emplaced gun/eweb, this will not work, look at NPC_ChangeWeapon for the proper way
 			ChangeWeapon(ent, ent->client->ps.weapon);
 		}
 		else
 		{
 			G_RemoveWeaponModels(ent);
 			CG_ChangeWeapon(ent->client->ps.weapon);
+
 			if (ent->client->ps.weapon == WP_SABER)
 			{
 				WP_SaberAddG2SaberModels(ent);
@@ -1076,8 +1090,10 @@ void ExitEmplacedWeapon(gentity_t* ent)
 			}
 			else
 			{
-				G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0);
-				//holster sabers
+				G_CreateG2AttachedWeaponModel(ent,
+					weaponData[ent->client->ps.weapon].weaponMdl,
+					ent->handRBolt,
+					0);
 				wp_saber_add_holstered_g2_saber_models(ent);
 			}
 
@@ -1096,7 +1112,7 @@ void ExitEmplacedWeapon(gentity_t* ent)
 
 		if (ent->client->ps.weapon == WP_SABER)
 		{
-			if (ent->owner->alt_fire)
+			if (ent->owner->alt_fire != 0)
 			{
 				ent->client->ps.SaberActivate();
 			}
@@ -1106,9 +1122,9 @@ void ExitEmplacedWeapon(gentity_t* ent)
 			}
 		}
 	}
-	//set the emplaced gun/eweb's weapon back to the emplaced gun
+
+	// set the emplaced gun/eweb's weapon back to the emplaced gun
 	ent->owner->s.weapon = WP_EMPLACED_GUN;
-	//	gi.G2API_DetachG2Model( &ent->ghoul2[ent->playerModel] );
 
 	ent->s.eFlags &= ~EF_LOCKED_TO_WEAPON;
 	ent->client->ps.eFlags &= ~EF_LOCKED_TO_WEAPON;
@@ -1116,14 +1132,15 @@ void ExitEmplacedWeapon(gentity_t* ent)
 	ent->owner->noDamageTeam = TEAM_FREE;
 	ent->owner->svFlags &= ~SVF_NONNPC_ENEMY;
 	ent->owner->delay = level.time;
-	ent->owner->activator = nullptr;
+	ent->owner->activator = NULL;
 
-	if (!ent->NPC)
+	if (ent->NPC == NULL)
 	{
 		// by keeping the owner, a dead npc can be pushed out of the chair without colliding with it
-		ent->owner = nullptr;
+		ent->owner = NULL;
 	}
 }
+
 
 void RunEmplacedWeapon(gentity_t* ent, usercmd_t** ucmd)
 {

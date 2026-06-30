@@ -1230,7 +1230,7 @@ void FinishSpawningItem(gentity_t* ent)
 	// ====================================================
 	// Jedi Outcast branch (com_outcast > 1)
 	// ====================================================
-	if (com_outcast->integer == 1)
+	if (com_outcast && com_outcast->integer == 1)
 	{
 		trace_t tr;
 		vec3_t dest;
@@ -1647,7 +1647,7 @@ void clear_registered_items()
 
 	//these are given in g_client, ClientSpawn(), but MUST be registered HERE, BEFORE cgame starts.
 
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		RegisterItem(FindItemForWeapon(WP_MELEE)); //has no item
 
@@ -1655,7 +1655,7 @@ void clear_registered_items()
 		RegisterItem(FindItemForInventory(INV_CLOAK));
 		RegisterItem(FindItemForInventory(INV_SEEKER));
 	}
-	else if (com_outcast->integer == 1 || com_outcast->integer == 4) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
 	{
 		RegisterItem(FindItemForWeapon(WP_MELEE)); //has no item
 		RegisterItem(FindItemForWeapon(WP_BRYAR_PISTOL));

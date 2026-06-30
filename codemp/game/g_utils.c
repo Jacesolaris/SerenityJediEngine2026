@@ -483,7 +483,7 @@ void G_Throw(gentity_t* targ, const vec3_t new_dir, const float push)
 	}
 }
 
-void g_kick_throw(gentity_t* targ, const vec3_t new_dir, const float push)
+void G_Kick_Throw(gentity_t* targ, const vec3_t new_dir, const float push)
 {
 	//====================================================
 	// 0. Absolute safety: never touch targ before this
@@ -1478,6 +1478,11 @@ gentity_t* G_TempEntity(vec3_t origin, const int event)
 	vec3_t snapped;
 
 	gentity_t* e = G_Spawn();
+	if (!e)
+	{
+		// Handle error: log, return, or take other action
+		return NULL;
+	}
 	e->s.eType = ET_EVENTS + event;
 
 	e->classname = "tempEntity";

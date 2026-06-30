@@ -101,78 +101,131 @@ Called on a reconnect
 */
 void G_ReadSessionData(gclient_t* client)
 {
-	char s[MAX_STRING_CHARS];
-	int i;
-	int lightside_display;
+    // Safety: client must exist
+    if (client == NULL)
+    {
+        Com_Printf(S_COLOR_RED "G_ReadSessionData: NULL client passed in\n");
+        return;
+    }
 
-	const char* var = va("session%i", client - level.clients);
-	gi.Cvar_VariableStringBuffer(var, s, sizeof s);
+    char s[MAX_STRING_CHARS] = { 0 };
+    int i = 0;
+    int lightside_display = 0;
 
-	sscanf(s, "%i", &i);
-	client->sess.sessionTeam = static_cast<team_t>(i);
+    // -----------------------------
+    // Load session team
+    // -----------------------------
+    const char* var = va("session%i", (int)(client - level.clients));
+    gi.Cvar_VariableStringBuffer(var, s, sizeof(s));
 
-	var = va("sessionobj%i", client - level.clients);
-	gi.Cvar_VariableStringBuffer(var, s, sizeof s);
+    if (sscanf(s, "%i", &i) != 1)
+    {
+        Com_Printf(S_COLOR_YELLOW "G_ReadSessionData: malformed team data '%s'\n", s);
+        i = TEAM_FREE;
+    }
 
-	var = s;
+    client->sess.sessionTeam = (team_t)i;
 
-	// Clear the objectives out
-	for (i = 0; i < MAX_OBJECTIVES; i++)
-	{
-		client->sess.mission_objectives[i].display = qfalse;
-		client->sess.mission_objectives[i].status = OBJECTIVE_STAT_PENDING;
-	}
+    // -----------------------------
+    // Load LIGHTSIDE objective
+    // -----------------------------
+    var = va("sessionobj%i", (int)(client - level.clients));
+    gi.Cvar_VariableStringBuffer(var, s, sizeof(s));
 
-	// Now load the LIGHTSIDE objective. That's the only cross level objective.
-	sscanf(var, "%i %i",
-		&lightside_display,
-		&client->sess.mission_objectives[LIGHTSIDE_OBJ].status);
-	client->sess.mission_objectives[LIGHTSIDE_OBJ].display = lightside_display ? qtrue : qfalse;
+    // Clear all objectives
+    for (i = 0; i < MAX_OBJECTIVES; i++)
+    {
+        client->sess.mission_objectives[i].display = qfalse;
+        client->sess.mission_objectives[i].status = OBJECTIVE_STAT_PENDING;
+    }
 
-	var = va("missionstats%i", client - level.clients);
-	gi.Cvar_VariableStringBuffer(var, s, sizeof s);
-	sscanf(s, "%i %i %i %i %i %i %i %i %i %i %i %i",
-		&client->sess.missionStats.secretsFound,
-		&client->sess.missionStats.totalSecrets,
-		&client->sess.missionStats.shotsFired,
-		&client->sess.missionStats.hits,
-		&client->sess.missionStats.enemiesSpawned,
-		&client->sess.missionStats.enemiesKilled,
-		&client->sess.missionStats.saberThrownCnt,
-		&client->sess.missionStats.saberBlocksCnt,
-		&client->sess.missionStats.legAttacksCnt,
-		&client->sess.missionStats.armAttacksCnt,
-		&client->sess.missionStats.torsoAttacksCnt,
-		&client->sess.missionStats.otherAttacksCnt);
+    // Parse LIGHTSIDE objective
+    if (sscanf(s, "%i %i",
+        &lightside_display,
+        &client->sess.mission_objectives[LIGHTSIDE_OBJ].status) != 2)
+    {
+        Com_Printf(S_COLOR_YELLOW "G_ReadSessionData: malformed lightside objective '%s'\n", s);
+        lightside_display = 0;
+        client->sess.mission_objectives[LIGHTSIDE_OBJ].status = OBJECTIVE_STAT_PENDING;
+    }
 
-	var = va("sessionpowers%i", client - level.clients);
-	gi.Cvar_VariableStringBuffer(var, s, sizeof s);
+    client->sess.mission_objectives[LIGHTSIDE_OBJ].display =
+        (lightside_display != 0) ? qtrue : qfalse;
 
-	i = 0;
-	var = strtok(s, " ");
-	while (var != nullptr)
-	{
-		/* While there are tokens in "s" */
-		client->sess.missionStats.forceUsed[i++] = atoi(var);
-		/* Get next token: */
-		var = strtok(nullptr, " ");
-	}
-	assert(i == NUM_FORCE_POWERS);
+    // -----------------------------
+    // Load mission stats
+    // -----------------------------
+    var = va("missionstats%i", (int)(client - level.clients));
+    gi.Cvar_VariableStringBuffer(var, s, sizeof(s));
 
-	var = va("sessionweapons%i", client - level.clients);
-	gi.Cvar_VariableStringBuffer(var, s, sizeof s);
+    const int expected_stats = 12;
+    int parsed_stats = sscanf(
+        s, "%i %i %i %i %i %i %i %i %i %i %i %i",
+        &client->sess.missionStats.secretsFound,
+        &client->sess.missionStats.totalSecrets,
+        &client->sess.missionStats.shotsFired,
+        &client->sess.missionStats.hits,
+        &client->sess.missionStats.enemiesSpawned,
+        &client->sess.missionStats.enemiesKilled,
+        &client->sess.missionStats.saberThrownCnt,
+        &client->sess.missionStats.saberBlocksCnt,
+        &client->sess.missionStats.legAttacksCnt,
+        &client->sess.missionStats.armAttacksCnt,
+        &client->sess.missionStats.torsoAttacksCnt,
+        &client->sess.missionStats.otherAttacksCnt);
 
-	i = 0;
-	var = strtok(s, " ");
-	while (var != nullptr)
-	{
-		/* While there are tokens in "s" */
-		client->sess.missionStats.weaponUsed[i++] = atoi(var);
-		/* Get next token: */
-		var = strtok(nullptr, " ");
-	}
-	assert(i == WP_NUM_WEAPONS);
+    if (parsed_stats != expected_stats)
+    {
+        Com_Printf(S_COLOR_YELLOW
+            "G_ReadSessionData: missionstats malformed (%d/%d fields) '%s'\n",
+            parsed_stats, expected_stats, s);
+    }
+
+    // -----------------------------
+    // Load force power usage
+    // -----------------------------
+    var = va("sessionpowers%i", (int)(client - level.clients));
+    gi.Cvar_VariableStringBuffer(var, s, sizeof(s));
+
+    i = 0;
+    char* tok = strtok(s, " ");
+    while (tok != NULL && i < NUM_FORCE_POWERS)
+    {
+        client->sess.missionStats.forceUsed[i] = atoi(tok);
+        i++;
+        tok = strtok(NULL, " ");
+    }
+
+    if (i != NUM_FORCE_POWERS)
+    {
+        Com_Printf(S_COLOR_YELLOW
+            "G_ReadSessionData: sessionpowers expected %d entries, got %d\n",
+            NUM_FORCE_POWERS, i);
+    }
+
+    // -----------------------------
+    // Load weapon usage
+    // -----------------------------
+    var = va("sessionweapons%i", (int)(client - level.clients));
+    gi.Cvar_VariableStringBuffer(var, s, sizeof(s));
+
+    i = 0;
+    tok = strtok(s, " ");
+    while (tok != NULL && i < WP_NUM_WEAPONS)
+    {
+        client->sess.missionStats.weaponUsed[i] = atoi(tok);
+        i++;
+        tok = strtok(NULL, " ");
+    }
+
+    if (i != WP_NUM_WEAPONS)
+    {
+        Com_Printf(S_COLOR_YELLOW
+            "G_ReadSessionData: sessionweapons expected %d entries, got %d\n",
+            WP_NUM_WEAPONS, i);
+    }
 }
+
 
 /*
 ================

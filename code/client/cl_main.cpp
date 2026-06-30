@@ -1347,8 +1347,8 @@ void CL_Init()
 
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 27/06/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 10------------------------------\n");
+	Com_Printf("---------------------Build date 30/06/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 11------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -1437,39 +1437,39 @@ void CL_Init()
 	cl_consoleUseScanCode = Cvar_Get("cl_consoleUseScanCode", "1", CVAR_ARCHIVE);
 
 	// userinfo
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		Cvar_Get("name", "Kyle", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		Cvar_Get("name", "Kyle", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 6) //playing survival
+	else if (com_outcast && com_outcast->integer == 6) //playing survival
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 7) //playing nina
+	else if (com_outcast && com_outcast->integer == 7) //playing nina
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
-	else if (com_outcast->integer == 8) //playing veng
+	else if (com_outcast && com_outcast->integer == 8) //playing veng
 	{
 		Cvar_Get("name", "Jaden", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 	}
@@ -1480,55 +1480,55 @@ void CL_Init()
 
 	Cvar_Get("snaps", "20", CVAR_USERINFO | CVAR_ARCHIVE_ND);
 
-	if (com_outcast->integer == 0) //playing academy
+	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "jaden_male", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 1) //playing outcast
+	else if (com_outcast && com_outcast->integer == 1) //playing outcast
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "Kyle", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 2) //playing creative
+	else if (com_outcast && com_outcast->integer == 2) //playing creative
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "jaden_male", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 3) //playing yav
+	else if (com_outcast && com_outcast->integer == 3) //playing yav
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "jaden_male", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 4) //playing darkforces
+	else if (com_outcast && com_outcast->integer == 4) //playing darkforces
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "Kyle", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 5) //playing kotor
+	else if (com_outcast && com_outcast->integer == 5) //playing kotor
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "jaden_male", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 6) //playing survival
+	else if (com_outcast && com_outcast->integer == 6) //playing survival
 	{
 		Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "jaden_male", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 7) //playing nina
+	else if (com_outcast && com_outcast->integer == 7) //playing nina
 	{
 		Cvar_Get("sex", "f", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "tavion", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 	}
-	else if (com_outcast->integer == 8) //playing veng
+	else if (com_outcast && com_outcast->integer == 8) //playing veng
 	{
 		Cvar_Get("sex", "f", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 		Cvar_Get("snd", "jaden_fmle", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);

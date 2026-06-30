@@ -8719,7 +8719,7 @@ PM_CheckDuck
 Sets minimum_mins, maximum_maxs, and pm->ps->viewheight
 ==============
 */
-qboolean PM_GettingUpFromKnockDown(float standheight, float crouchheight);
+qboolean PM_GettingUpFromKnockDown(const float standheight, const float crouchheight);
 
 static void PM_CheckDuck(void)
 {

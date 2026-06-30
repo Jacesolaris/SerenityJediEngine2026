@@ -56,75 +56,105 @@ void CG_DrawSiegeMessage(const char* str, int objective_screen);
 void CG_DrawSiegeMessageNonMenu(const char* str);
 void CG_SiegeBriefingDisplay(int team, int dontshow);
 
-void CG_PrecacheSiegeObjectiveAssetsForTeam(const int myTeam)
+/*
+===============================
+CG_PrecacheSiegeObjectiveAssetsForTeam
+- Preloads all sound and shader assets referenced by siege objectives.
+- Fixed MSVC C6262 by moving large buffers off the stack.
+===============================
+*/
+static void CG_PrecacheSiegeObjectiveAssetsForTeam(const int myTeam)
 {
-	char teamstr[64];
+	/* Large buffers moved off stack → static storage (BSS) */
+	static char foundobjective[MAX_SIEGE_INFO_SIZE];
+	static char objstr[256];
+	static char str[MAX_QPATH];
 
-	if (!siege_valid)
+	char teamstr[64] = { 0 };
+
+	/* Validate siege data */
+	if (siege_valid == qfalse)
 	{
 		trap->Error(ERR_DROP, "Siege data does not exist on client!\n");
 		return;
 	}
 
+	/* Select team string */
 	if (myTeam == SIEGETEAM_TEAM1)
 	{
-		Com_sprintf(teamstr, sizeof teamstr, team1);
+		Com_sprintf(teamstr, sizeof(teamstr), team1);
 	}
 	else
 	{
-		Com_sprintf(teamstr, sizeof teamstr, team2);
+		Com_sprintf(teamstr, sizeof(teamstr), team2);
 	}
 
-	if (BG_SiegeGetValueGroup(siege_info, teamstr, cgParseObjectives))
+	/* Parse objective group for this team */
+	const qboolean gotGroup =
+		BG_SiegeGetValueGroup(siege_info, teamstr, cgParseObjectives) ? qtrue : qfalse;
+
+	if (gotGroup == qfalse)
 	{
-		int i = 1;
-		while (i < 32)
+		return;
+	}
+
+	/* Iterate through possible objective entries */
+	for (int i = 1; i < 32; i++)
+	{
+		/* Build "ObjectiveX" key */
+		Com_sprintf(objstr, sizeof(objstr), "Objective%i", i);
+
+		const qboolean gotObjective =
+			BG_SiegeGetValueGroup(cgParseObjectives, objstr, foundobjective) ? qtrue : qfalse;
+
+		if (gotObjective == qfalse)
 		{
-			char foundobjective[MAX_SIEGE_INFO_SIZE];
-			char objstr[256];
-			//eh, just try 32 I guess
-			Com_sprintf(objstr, sizeof objstr, "Objective%i", i);
+			/* No more objectives */
+			break;
+		}
 
-			if (BG_SiegeGetValueGroup(cgParseObjectives, objstr, foundobjective))
-			{
-				char str[MAX_QPATH];
+		/* ---------------------------------------------------------
+		   Precache all referenced assets for this objective
+		   --------------------------------------------------------- */
 
-				if (BG_SiegeGetPairedValue(foundobjective, "sound_team1", str))
-				{
-					trap->S_RegisterSound(str);
-				}
-				if (BG_SiegeGetPairedValue(foundobjective, "sound_team2", str))
-				{
-					trap->S_RegisterSound(str);
-				}
-				if (BG_SiegeGetPairedValue(foundobjective, "objgfx", str))
-				{
-					trap->R_RegisterShaderNoMip(str);
-				}
-				if (BG_SiegeGetPairedValue(foundobjective, "mapicon", str))
-				{
-					trap->R_RegisterShaderNoMip(str);
-				}
-				if (BG_SiegeGetPairedValue(foundobjective, "litmapicon", str))
-				{
-					trap->R_RegisterShaderNoMip(str);
-				}
-				if (BG_SiegeGetPairedValue(foundobjective, "donemapicon", str))
-				{
-					trap->R_RegisterShaderNoMip(str);
-				}
-			}
-			else
-			{
-				//no more
-				break;
-			}
-			i++;
+		   /* Team 1 sound */
+		if (BG_SiegeGetPairedValue(foundobjective, "sound_team1", str))
+		{
+			trap->S_RegisterSound(str);
+		}
+
+		/* Team 2 sound */
+		if (BG_SiegeGetPairedValue(foundobjective, "sound_team2", str))
+		{
+			trap->S_RegisterSound(str);
+		}
+
+		/* Objective graphics */
+		if (BG_SiegeGetPairedValue(foundobjective, "objgfx", str))
+		{
+			trap->R_RegisterShaderNoMip(str);
+		}
+
+		/* Map icons */
+		if (BG_SiegeGetPairedValue(foundobjective, "mapicon", str))
+		{
+			trap->R_RegisterShaderNoMip(str);
+		}
+
+		if (BG_SiegeGetPairedValue(foundobjective, "litmapicon", str))
+		{
+			trap->R_RegisterShaderNoMip(str);
+		}
+
+		if (BG_SiegeGetPairedValue(foundobjective, "donemapicon", str))
+		{
+			trap->R_RegisterShaderNoMip(str);
 		}
 	}
 }
 
-void CG_PrecachePlayersForSiegeTeam(const int team)
+
+static void CG_PrecachePlayersForSiegeTeam(const int team)
 {
 	int i = 0;
 
@@ -165,27 +195,40 @@ void CG_PrecachePlayersForSiegeTeam(const int team)
 	}
 }
 
+/*
+===============================
+CG_InitSiegeMode
+- Loads and parses siege mode configuration for the current map.
+- Fixed MSVC C6262 by moving large buffers off the stack.
+===============================
+*/
 void CG_InitSiegeMode(void)
 {
+	/* Large buffers moved off stack → static storage (BSS) */
+	static char btime[1024];
+	static char teams[2048];
+	static char teamInfo[MAX_SIEGE_INFO_SIZE];
+	static char teamIcon[128];
+	static char buf[1024];
+	static char b[256];
+
 	char levelname[MAX_QPATH];
-	char btime[1024];
-	char teams[2048];
-	char teamInfo[MAX_SIEGE_INFO_SIZE];
 	fileHandle_t f;
-	char teamIcon[128];
 
 	if (cgs.gametype != GT_SIEGE)
 	{
 		goto failure;
 	}
 
-	Com_sprintf(levelname, sizeof levelname, "%s.siege", cgs.rawmapname);
+	/* Build "<mapname>.siege" */
+	Com_sprintf(levelname, sizeof(levelname), "%s.siege", cgs.rawmapname);
 
 	if (!levelname[0])
 	{
 		goto failure;
 	}
 
+	/* Load siege file */
 	const int len = trap->FS_Open(levelname, &f, FS_READ);
 
 	if (!f)
@@ -199,31 +242,32 @@ void CG_InitSiegeMode(void)
 		goto failure;
 	}
 
+	/* Read into global siege_info buffer */
 	trap->FS_Read(siege_info, len, f);
-
 	trap->FS_Close(f);
 
-	siege_valid = 1;
+	siege_valid = qtrue;
 
+	/* ---------------------------------------------------------
+	   Parse "Teams" section
+	   --------------------------------------------------------- */
 	if (BG_SiegeGetValueGroup(siege_info, "Teams", teams))
 	{
-		char buf[1024];
-
-		trap->Cvar_VariableStringBuffer("cg_siegeTeam1", buf, 1024);
+		/* Team 1 override or default */
+		trap->Cvar_VariableStringBuffer("cg_siegeTeam1", buf, sizeof(buf));
 		if (buf[0] && Q_stricmp(buf, "none"))
 		{
-			Q_strncpyz(team1, buf, sizeof team1);
+			Q_strncpyz(team1, buf, sizeof(team1));
 		}
 		else
 		{
 			BG_SiegeGetPairedValue(teams, "team1", team1);
 		}
 
+		/* Team 1 name (stringed reference or literal) */
 		if (team1[0] == '@')
 		{
-			//it's a damn stringed reference.
-			char b[256];
-			trap->SE_GetStringTextString(team1 + 1, b, 256);
+			trap->SE_GetStringTextString(team1 + 1, b, sizeof(b));
 			trap->Cvar_Set("cg_siegeTeam1Name", b);
 		}
 		else
@@ -231,21 +275,21 @@ void CG_InitSiegeMode(void)
 			trap->Cvar_Set("cg_siegeTeam1Name", team1);
 		}
 
-		trap->Cvar_VariableStringBuffer("cg_siegeTeam2", buf, 1024);
+		/* Team 2 override or default */
+		trap->Cvar_VariableStringBuffer("cg_siegeTeam2", buf, sizeof(buf));
 		if (buf[0] && Q_stricmp(buf, "none"))
 		{
-			Q_strncpyz(team2, buf, sizeof team2);
+			Q_strncpyz(team2, buf, sizeof(team2));
 		}
 		else
 		{
 			BG_SiegeGetPairedValue(teams, "team2", team2);
 		}
 
+		/* Team 2 name */
 		if (team2[0] == '@')
 		{
-			//it's a damn stringed reference.
-			char b[256];
-			trap->SE_GetStringTextString(team2 + 1, b, 256);
+			trap->SE_GetStringTextString(team2 + 1, b, sizeof(b));
 			trap->Cvar_Set("cg_siegeTeam2Name", b);
 		}
 		else
@@ -258,6 +302,9 @@ void CG_InitSiegeMode(void)
 		trap->Error(ERR_DROP, "Siege teams not defined");
 	}
 
+	/* ---------------------------------------------------------
+	   Team 1 info
+	   --------------------------------------------------------- */
 	if (BG_SiegeGetValueGroup(siege_info, team1, teamInfo))
 	{
 		if (BG_SiegeGetPairedValue(teamInfo, "TeamIcon", teamIcon))
@@ -280,6 +327,7 @@ void CG_InitSiegeMode(void)
 		trap->Error(ERR_DROP, "No team entry for '%s'\n", team1);
 	}
 
+	/* Map graphic */
 	if (BG_SiegeGetPairedValue(siege_info, "mapgraphic", teamInfo))
 	{
 		trap->Cvar_Set("siege_mapgraphic", teamInfo);
@@ -289,6 +337,7 @@ void CG_InitSiegeMode(void)
 		trap->Cvar_Set("siege_mapgraphic", "gfx/mplevels/siege1_hoth");
 	}
 
+	/* Mission name */
 	if (BG_SiegeGetPairedValue(siege_info, "missionname", teamInfo))
 	{
 		trap->Cvar_Set("siege_missionname", teamInfo);
@@ -298,6 +347,9 @@ void CG_InitSiegeMode(void)
 		trap->Cvar_Set("siege_missionname", " ");
 	}
 
+	/* ---------------------------------------------------------
+	   Team 2 info
+	   --------------------------------------------------------- */
 	if (BG_SiegeGetValueGroup(siege_info, team2, teamInfo))
 	{
 		if (BG_SiegeGetPairedValue(teamInfo, "TeamIcon", teamIcon))
@@ -320,32 +372,30 @@ void CG_InitSiegeMode(void)
 		trap->Error(ERR_DROP, "No team entry for '%s'\n", team2);
 	}
 
-	//Load the player class types
+	/* Load classes */
 	BG_SiegeLoadClasses(NULL);
 
 	if (!bgNumSiegeClasses)
 	{
-		//We didn't find any?!
 		trap->Error(ERR_DROP, "Couldn't find any player classes for Siege");
 	}
 
-	//Now load the teams since we have class data.
+	/* Load teams */
 	BG_SiegeLoadTeams();
 
 	if (!bgNumSiegeTeams)
 	{
-		//React same as with classes.
 		trap->Error(ERR_DROP, "Couldn't find any player teams for Siege");
 	}
 
-	//Get and set the team themes for each team. This will control which classes can be
-	//used on each team.
+	/* Team themes */
 	if (BG_SiegeGetValueGroup(siege_info, team1, teamInfo))
 	{
 		if (BG_SiegeGetPairedValue(teamInfo, "UseTeam", btime))
 		{
 			BG_SiegeSetTeamTheme(SIEGETEAM_TEAM1, btime);
 		}
+
 		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
 		{
 			cgSiegeTeam1PlShader = trap->R_RegisterShaderNoMip(btime);
@@ -355,12 +405,14 @@ void CG_InitSiegeMode(void)
 			cgSiegeTeam1PlShader = 0;
 		}
 	}
+
 	if (BG_SiegeGetValueGroup(siege_info, team2, teamInfo))
 	{
 		if (BG_SiegeGetPairedValue(teamInfo, "UseTeam", btime))
 		{
 			BG_SiegeSetTeamTheme(SIEGETEAM_TEAM2, btime);
 		}
+
 		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
 		{
 			cgSiegeTeam2PlShader = trap->R_RegisterShaderNoMip(btime);
@@ -371,48 +423,39 @@ void CG_InitSiegeMode(void)
 		}
 	}
 
-	//Now go through the classes used by the loaded teams and try to precache
-	//any forced models or forced skins.
-	int i = SIEGETEAM_TEAM1;
-
-	while (i <= SIEGETEAM_TEAM2)
+	/* Precache forced models/skins */
+	for (int i = SIEGETEAM_TEAM1; i <= SIEGETEAM_TEAM2; i++)
 	{
-		int j = 0;
 		const siegeTeam_t* sTeam = BG_SiegeFindThemeForTeam(i);
 
 		if (!sTeam)
 		{
-			i++;
 			continue;
 		}
 
-		//Get custom team shaders while we're at it.
 		if (i == SIEGETEAM_TEAM1)
 		{
 			cgSiegeTeam1PlShader = sTeam->friendlyShader;
 		}
-		else if (i == SIEGETEAM_TEAM2)
+		else
 		{
 			cgSiegeTeam2PlShader = sTeam->friendlyShader;
 		}
 
-		while (j < sTeam->numClasses)
+		for (int j = 0; j < sTeam->numClasses; j++)
 		{
 			siegeClass_t* cl = sTeam->classes[j];
 
 			if (cl->forcedModel[0])
 			{
-				//This class has a forced model, so precache it.
 				trap->R_RegisterModel(va("models/players/%s/model.glm", cl->forcedModel));
 
 				if (cl->forcedSkin[0])
 				{
-					//also has a forced skin, precache it.
 					char* useSkinName;
 
 					if (strchr(cl->forcedSkin, '|'))
 					{
-						//three part skin
 						useSkinName = va("models/players/%s/|%s", cl->forcedModel, cl->forcedSkin);
 					}
 					else
@@ -423,13 +466,10 @@ void CG_InitSiegeMode(void)
 					trap->R_RegisterSkin(useSkinName);
 				}
 			}
-
-			j++;
 		}
-		i++;
 	}
 
-	//precache saber data for classes that use sabers on both teams
+	/* Sabers + players */
 	BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM1);
 	BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM2);
 
@@ -439,13 +479,16 @@ void CG_InitSiegeMode(void)
 	CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM1);
 	CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM2);
 
+	/* Objectives */
 	CG_PrecacheSiegeObjectiveAssetsForTeam(SIEGETEAM_TEAM1);
 	CG_PrecacheSiegeObjectiveAssetsForTeam(SIEGETEAM_TEAM2);
 
 	return;
+
 failure:
-	siege_valid = 0;
+	siege_valid = qfalse;
 }
+
 
 static char QINLINE* CG_SiegeObjectiveBuffer(const int team, const int objective)
 {
@@ -632,8 +675,8 @@ void CG_SiegeRoundOver(centity_t* ent, const int won)
 
 	if (BG_SiegeGetValueGroup(siege_info, teamstr, cgParseObjectives))
 	{
-		char soundstr[1024];
-		char appstring[1024];
+		char soundstr[1024] = {0};
+		char appstring[1024] = {0};
 		int success;
 		if (won == myTeam)
 		{
@@ -673,7 +716,7 @@ void CG_SiegeRoundOver(centity_t* ent, const int won)
 	}
 }
 
-void CG_SiegeGetObjectiveDescription(const int team, const int objective, char* buffer)
+static void CG_SiegeGetObjectiveDescription(const int team, const int objective, char* buffer)
 {
 	char teamstr[1024];
 
@@ -701,7 +744,7 @@ void CG_SiegeGetObjectiveDescription(const int team, const int objective, char* 
 	}
 }
 
-int CG_SiegeGetObjectiveFinal(const int team, const int objective)
+static int CG_SiegeGetObjectiveFinal(const int team, const int objective)
 {
 	char teamstr[1024];
 
@@ -733,7 +776,7 @@ int CG_SiegeGetObjectiveFinal(const int team, const int objective)
 void CG_SiegeBriefingDisplay(const int team, const int dontshow)
 {
 	char teamstr[64];
-	char properValue[1024];
+	char properValue[1024] = {0};
 	int i = 1;
 	int useTeam = team;
 
@@ -889,20 +932,35 @@ void CG_SiegeBriefingDisplay(const int team, const int dontshow)
 	}
 }
 
+/*
+===============================
+CG_SiegeObjectiveCompleted
+- Displays message and plays sound when a siege objective is completed.
+- Fixed MSVC C6262 by moving large buffers off the stack.
+- Replaced assert with debug print.
+===============================
+*/
 void CG_SiegeObjectiveCompleted(centity_t* ent, const int won, const int objectivenum)
 {
-	char teamstr[64];
-	const playerState_t* ps;
+	/* Large buffers moved off stack → static storage (BSS) */
+	static char foundobjective[MAX_SIEGE_INFO_SIZE];
+	static char objstr[256];
+	static char soundstr[1024];
+	static char appstring[1024];
 
-	if (!siege_valid)
+	char teamstr[64];
+	const playerState_t* ps = NULL;
+
+	/* Validate siege data */
+	if (siege_valid == qfalse)
 	{
 		trap->Error(ERR_DROP, "Siege data does not exist on client!\n");
 		return;
 	}
 
-	if (cg.snap)
+	/* Prefer snapshot playerstate */
+	if (cg.snap != NULL)
 	{
-		//this should always be true, if it isn't though use the predicted ps as a fallback
 		ps = &cg.snap->ps;
 	}
 	else
@@ -910,84 +968,106 @@ void CG_SiegeObjectiveCompleted(centity_t* ent, const int won, const int objecti
 		ps = &cg.predictedPlayerState;
 	}
 
-	if (!ps)
+	if (ps == NULL)
 	{
-		assert(0);
+		Com_Printf(S_COLOR_RED "CG_SiegeObjectiveCompleted: playerState is NULL — aborting.\n");
 		return;
 	}
 
 	const int myTeam = ps->persistant[PERS_TEAM];
 
+	/* Spectators do not receive objective notifications */
 	if (myTeam == TEAM_SPECTATOR)
 	{
 		return;
 	}
 
+	/* Determine team string */
 	if (won == SIEGETEAM_TEAM1)
 	{
-		Com_sprintf(teamstr, sizeof teamstr, team1);
+		Com_sprintf(teamstr, sizeof(teamstr), team1);
 	}
 	else
 	{
-		Com_sprintf(teamstr, sizeof teamstr, team2);
+		Com_sprintf(teamstr, sizeof(teamstr), team2);
 	}
 
-	if (BG_SiegeGetValueGroup(siege_info, teamstr, cgParseObjectives))
+	/* Parse objective group for this team */
+	const qboolean gotGroup =
+		BG_SiegeGetValueGroup(siege_info, teamstr, cgParseObjectives) ? qtrue : qfalse;
+
+	if (gotGroup == qfalse)
 	{
-		char foundobjective[MAX_SIEGE_INFO_SIZE];
-		char objstr[256];
-		Com_sprintf(objstr, sizeof objstr, "Objective%i", objectivenum);
+		return;
+	}
 
-		if (BG_SiegeGetValueGroup(cgParseObjectives, objstr, foundobjective))
-		{
-			char soundstr[1024];
-			char appstring[1024];
-			int success;
-			if (myTeam == SIEGETEAM_TEAM1)
-			{
-				success = BG_SiegeGetPairedValue(foundobjective, "message_team1", appstring);
-			}
-			else
-			{
-				success = BG_SiegeGetPairedValue(foundobjective, "message_team2", appstring);
-			}
+	/* Build "ObjectiveX" key */
+	Com_sprintf(objstr, sizeof(objstr), "Objective%i", objectivenum);
 
-			if (success)
-			{
-				CG_DrawSiegeMessageNonMenu(appstring);
-			}
+	const qboolean gotObjective =
+		BG_SiegeGetValueGroup(cgParseObjectives, objstr, foundobjective) ? qtrue : qfalse;
 
-			appstring[0] = 0;
-			soundstr[0] = 0;
+	if (gotObjective == qfalse)
+	{
+		return;
+	}
 
-			if (myTeam == SIEGETEAM_TEAM1)
-			{
-				Com_sprintf(teamstr, sizeof teamstr, "sound_team1");
-			}
-			else
-			{
-				Com_sprintf(teamstr, sizeof teamstr, "sound_team2");
-			}
+	/* ---------------------------------------------------------
+	   Display team‑specific completion message
+	   --------------------------------------------------------- */
+	appstring[0] = '\0';
+	soundstr[0] = '\0';
 
-			if (BG_SiegeGetPairedValue(foundobjective, teamstr, appstring))
-			{
-				Com_sprintf(soundstr, sizeof soundstr, appstring);
-			}
+	qboolean success = qfalse;
 
-			if (soundstr[0])
-			{
-				trap->S_StartLocalSound(trap->S_RegisterSound(soundstr), CHAN_ANNOUNCER);
-			}
-		}
+	if (myTeam == SIEGETEAM_TEAM1)
+	{
+		success = BG_SiegeGetPairedValue(foundobjective, "message_team1", appstring) ? qtrue : qfalse;
+	}
+	else
+	{
+		success = BG_SiegeGetPairedValue(foundobjective, "message_team2", appstring) ? qtrue : qfalse;
+	}
+
+	if (success == qtrue)
+	{
+		CG_DrawSiegeMessageNonMenu(appstring);
+	}
+
+	/* Reset for sound lookup */
+	appstring[0] = '\0';
+	soundstr[0] = '\0';
+
+	/* ---------------------------------------------------------
+	   Resolve and play team‑specific completion sound
+	   --------------------------------------------------------- */
+	if (myTeam == SIEGETEAM_TEAM1)
+	{
+		Com_sprintf(teamstr, sizeof(teamstr), "sound_team1");
+	}
+	else
+	{
+		Com_sprintf(teamstr, sizeof(teamstr), "sound_team2");
+	}
+
+	if (BG_SiegeGetPairedValue(foundobjective, teamstr, appstring))
+	{
+		Com_sprintf(soundstr, sizeof(soundstr), "%s", appstring);
+	}
+
+	if (soundstr[0] != '\0')
+	{
+		trap->S_StartLocalSound(trap->S_RegisterSound(soundstr), CHAN_ANNOUNCER);
 	}
 }
+
 
 siegeExtended_t cg_siegeExtendedData[MAX_CLIENTS];
 
 //parse a single extended siege data entry
-void CG_ParseSiegeExtendedDataEntry(const char* conStr)
+static void CG_ParseSiegeExtendedDataEntry(const char* conStr)
 {
-	char s[MAX_STRING_CHARS];
+	char s[MAX_STRING_CHARS] = {0};
 	char* str = (char*)conStr;
 	int argParses = 0;
 	int clNum = -1, health = 1, maxhealth = 1, ammo = 1;

@@ -349,7 +349,7 @@ static void R_Splash()
 		ri->Cvar_Set("com_rend2", "0");
 	}
 
-	if (com_outcast->integer != 0)
+	if (com_outcast && com_outcast->integer != 0)
 	{
 		ri->Cvar_Set("com_outcast", "0");
 	}

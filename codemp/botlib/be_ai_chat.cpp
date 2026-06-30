@@ -1125,12 +1125,12 @@ static bot_matchpiece_t* BotLoadMatchPieces(source_t* source, char* endtoken)
 
 	bot_matchpiece_t* firstpiece = nullptr;
 	bot_matchpiece_t* lastpiece = nullptr;
-	//
+
 	int lastwasvariable = qfalse;
-	//
+
 	while (PC_ReadToken(source, &token))
 	{
-		if (token.type == TT_NUMBER && token.subtype & TT_INTEGER)
+		if (token.type == TT_NUMBER && (token.subtype & TT_INTEGER))
 		{
 			if (token.intvalue >= MAX_MATCHVARIABLES)
 			{
@@ -1138,39 +1138,62 @@ static bot_matchpiece_t* BotLoadMatchPieces(source_t* source, char* endtoken)
 				FreeSource(source);
 				BotFreeMatchPieces(firstpiece);
 				return nullptr;
-			} //end if
+			}
+
 			if (lastwasvariable)
 			{
 				SourceError(source, "not allowed to have adjacent variables");
 				FreeSource(source);
 				BotFreeMatchPieces(firstpiece);
 				return nullptr;
-			} //end if
+			}
+
 			lastwasvariable = qtrue;
-			//
+
 			matchpiece = static_cast<bot_matchpiece_t*>(GetClearedHunkMemory(sizeof(bot_matchpiece_t)));
+			if (matchpiece == nullptr)
+			{
+				Com_Printf(S_COLOR_RED "BotLoadMatchPieces: matchpiece allocation failed\n");
+				BotFreeMatchPieces(firstpiece);
+				return nullptr;
+			}
+
 			matchpiece->type = MT_VARIABLE;
 			matchpiece->variable = token.intvalue;
 			matchpiece->next = nullptr;
-			if (lastpiece) lastpiece->next = matchpiece;
-			else firstpiece = matchpiece;
+
+			if (lastpiece != nullptr)
+				lastpiece->next = matchpiece;
+			else
+				firstpiece = matchpiece;
+
 			lastpiece = matchpiece;
-		} //end if
+		}
 		else if (token.type == TT_STRING)
 		{
-			//
 			matchpiece = static_cast<bot_matchpiece_t*>(GetClearedHunkMemory(sizeof(bot_matchpiece_t)));
+			if (matchpiece == nullptr)
+			{
+				Com_Printf(S_COLOR_RED "BotLoadMatchPieces: matchpiece allocation failed\n");
+				BotFreeMatchPieces(firstpiece);
+				return nullptr;
+			}
+
 			matchpiece->firststring = nullptr;
 			matchpiece->type = MT_STRING;
 			matchpiece->variable = 0;
 			matchpiece->next = nullptr;
-			if (lastpiece) lastpiece->next = matchpiece;
-			else firstpiece = matchpiece;
+
+			if (lastpiece != nullptr)
+				lastpiece->next = matchpiece;
+			else
+				firstpiece = matchpiece;
+
 			lastpiece = matchpiece;
-			//
+
 			bot_matchstring_t* lastmatchstring = nullptr;
 			int emptystring = qfalse;
-			//
+
 			do
 			{
 				if (matchpiece->firststring)
@@ -1180,39 +1203,64 @@ static bot_matchpiece_t* BotLoadMatchPieces(source_t* source, char* endtoken)
 						FreeSource(source);
 						BotFreeMatchPieces(firstpiece);
 						return nullptr;
-					} //end if
-				} //end if
+					}
+				}
+
 				StripDoubleQuotes(token.string);
-				const auto matchstring = static_cast<bot_matchstring_t*>(GetClearedHunkMemory(
-					sizeof(bot_matchstring_t) + strlen(token.string) + 1));
+
+				const auto matchstring =
+					static_cast<bot_matchstring_t*>(GetClearedHunkMemory(
+						sizeof(bot_matchstring_t) + strlen(token.string) + 1));
+
+				if (matchstring == nullptr)
+				{
+					Com_Printf(S_COLOR_RED "BotLoadMatchPieces: matchstring allocation failed\n");
+					BotFreeMatchPieces(firstpiece);
+					return nullptr;
+				}
+
 				matchstring->string = reinterpret_cast<char*>(matchstring) + sizeof(bot_matchstring_t);
 				strcpy(matchstring->string, token.string);
-				if (!strlen(token.string)) emptystring = qtrue;
+
+				if (!strlen(token.string))
+					emptystring = qtrue;
+
 				matchstring->next = nullptr;
-				if (lastmatchstring) lastmatchstring->next = matchstring;
-				else matchpiece->firststring = matchstring;
+
+				if (lastmatchstring != nullptr)
+					lastmatchstring->next = matchstring;
+				else
+					matchpiece->firststring = matchstring;
+
 				lastmatchstring = matchstring;
+
 			} while (PC_CheckTokenString(source, "|"));
-			//if there was no empty string found
-			if (!emptystring) lastwasvariable = qfalse;
-		} //end if
+
+			if (!emptystring)
+				lastwasvariable = qfalse;
+		}
 		else
 		{
 			SourceError(source, "invalid token %s", token.string);
 			FreeSource(source);
 			BotFreeMatchPieces(firstpiece);
 			return nullptr;
-		} //end else
-		if (PC_CheckTokenString(source, endtoken)) break;
+		}
+
+		if (PC_CheckTokenString(source, endtoken))
+			break;
+
 		if (!PC_ExpectTokenString(source, ","))
 		{
 			FreeSource(source);
 			BotFreeMatchPieces(firstpiece);
 			return nullptr;
-		} //end if
-	} //end while
+		}
+	}
+
 	return firstpiece;
-} //end of the function BotLoadMatchPieces
+}
+//end of the function BotLoadMatchPieces
 //===========================================================================
 //
 // Parameter:				-
@@ -1221,7 +1269,7 @@ static bot_matchpiece_t* BotLoadMatchPieces(source_t* source, char* endtoken)
 //===========================================================================
 static void BotFreeMatchTemplates(bot_matchtemplate_t* mt)
 {
-	bot_matchtemplate_t* nextmt;
+	bot_matchtemplate_t* nextmt = nullptr;
 
 	for (; mt; mt = nextmt)
 	{
@@ -1236,7 +1284,7 @@ static void BotFreeMatchTemplates(bot_matchtemplate_t* mt)
 // Returns:					-
 // Changes Globals:		-
 //===========================================================================
-bot_matchtemplate_t* BotLoadMatchTemplates(char* matchfile)
+static bot_matchtemplate_t* BotLoadMatchTemplates(char* matchfile)
 {
 	token_t token;
 
@@ -1246,10 +1294,10 @@ bot_matchtemplate_t* BotLoadMatchTemplates(char* matchfile)
 	{
 		botimport.Print(PRT_ERROR, "counldn't load %s\n", matchfile);
 		return nullptr;
-	} //end if
-	//
-	bot_matchtemplate_t* matches = nullptr; //list with matches
-	bot_matchtemplate_t* lastmatch = nullptr; //last match in the list
+	}
+
+	bot_matchtemplate_t* matches = nullptr;
+	bot_matchtemplate_t* lastmatch = nullptr;
 
 	while (PC_ReadToken(source, &token))
 	{
@@ -1259,73 +1307,89 @@ bot_matchtemplate_t* BotLoadMatchTemplates(char* matchfile)
 			BotFreeMatchTemplates(matches);
 			FreeSource(source);
 			return nullptr;
-		} //end if
-		//the context
+		}
+
 		const unsigned long int context = token.intvalue;
-		//
+
 		if (!PC_ExpectTokenString(source, "{"))
 		{
 			BotFreeMatchTemplates(matches);
 			FreeSource(source);
 			return nullptr;
-		} //end if
-		//
+		}
+
 		while (PC_ReadToken(source, &token))
 		{
-			if (strcmp(token.string, "}") == 0) break;
-			//
+			if (strcmp(token.string, "}") == 0)
+				break;
+
 			PC_UnreadLastToken(source);
-			//
-			const auto matchtemplate = static_cast<bot_matchtemplate_t*>(GetClearedHunkMemory(sizeof(bot_matchtemplate_t)));
+
+			// FIX: check allocation to silence C28182
+			bot_matchtemplate_t* matchtemplate =
+				static_cast<bot_matchtemplate_t*>(GetClearedHunkMemory(sizeof(bot_matchtemplate_t)));
+
+			if (matchtemplate == nullptr)
+			{
+				Com_Printf(S_COLOR_RED "BotLoadMatchTemplates: matchtemplate allocation failed\n");
+				BotFreeMatchTemplates(matches);
+				FreeSource(source);
+				return nullptr;
+			}
+
 			matchtemplate->context = context;
 			matchtemplate->next = nullptr;
-			//add the match template to the list
-			if (lastmatch) lastmatch->next = matchtemplate;
-			else matches = matchtemplate;
+
+			if (lastmatch != nullptr)
+				lastmatch->next = matchtemplate;
+			else
+				matches = matchtemplate;
+
 			lastmatch = matchtemplate;
-			//load the match template
+
 			matchtemplate->first = BotLoadMatchPieces(source, "=");
 			if (!matchtemplate->first)
 			{
 				BotFreeMatchTemplates(matches);
 				return nullptr;
-			} //end if
-			//read the match type
+			}
+
 			if (!PC_ExpectTokenString(source, "(") ||
 				!PC_ExpectTokenType(source, TT_NUMBER, TT_INTEGER, &token))
 			{
 				BotFreeMatchTemplates(matches);
 				FreeSource(source);
 				return nullptr;
-			} //end if
+			}
+
 			matchtemplate->type = token.intvalue;
-			//read the match subtype
+
 			if (!PC_ExpectTokenString(source, ",") ||
 				!PC_ExpectTokenType(source, TT_NUMBER, TT_INTEGER, &token))
 			{
 				BotFreeMatchTemplates(matches);
 				FreeSource(source);
 				return nullptr;
-			} //end if
+			}
+
 			matchtemplate->subtype = token.intvalue;
-			//read trailing punctuations
+
 			if (!PC_ExpectTokenString(source, ")") ||
 				!PC_ExpectTokenString(source, ";"))
 			{
 				BotFreeMatchTemplates(matches);
 				FreeSource(source);
 				return nullptr;
-			} //end if
-		} //end while
-	} //end while
-	//free the source
+			}
+		}
+	}
+
 	FreeSource(source);
 	botimport.Print(PRT_MESSAGE, "loaded %s\n", matchfile);
-	//
-	//BotDumpMatchTemplates(matches);
-	//
+
 	return matches;
-} //end of the function BotLoadMatchTemplates
+}
+//end of the function BotLoadMatchTemplates
 //===========================================================================
 //
 // Parameter:				-
@@ -2207,18 +2271,18 @@ int BotLoadChatFile(const int chatstate, char* chatfile, char* chatname)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotExpandChatMessage(char* outmessage, char* message, const unsigned long mcontext,
+static int BotExpandChatMessage(char* outmessage, char* message, const unsigned long mcontext,
 	bot_match_t* match, const unsigned long vcontext, const int reply)
 {
 	int i;
 	char* ptr;
-	char temp[MAX_MESSAGE_SIZE];
+	char temp[MAX_MESSAGE_SIZE] = { 0 };
 
 	int expansion = qfalse;
 	char* msgptr = message;
 	char* outputbuf = outmessage;
 	int len = 0;
-	//
+
 	while (*msgptr)
 	{
 		if (*msgptr == ESCAPE_CHAR)
@@ -2226,102 +2290,133 @@ int BotExpandChatMessage(char* outmessage, char* message, const unsigned long mc
 			msgptr++;
 			switch (*msgptr)
 			{
-			case 'v': //variable
+			case 'v': // variable
 			{
 				msgptr++;
 				int num = 0;
+
 				while (*msgptr && *msgptr != ESCAPE_CHAR)
 				{
 					num = num * 10 + *msgptr++ - '0';
-				} //end while
-				//step over the trailing escape char
-				if (*msgptr) msgptr++;
-				if (num > MAX_MATCHVARIABLES)
+				}
+
+				// step over trailing escape char
+				if (*msgptr)
 				{
-					botimport.Print(PRT_ERROR, "BotConstructChat: message %s variable %d out of range\n", message, num);
+					msgptr++;
+				}
+
+				// FIX: correct bounds check (removes C6385)
+				if (num >= MAX_MATCHVARIABLES)
+				{
+					botimport.Print(PRT_ERROR,
+						"BotConstructChat: message %s variable %d out of range\n",
+						message, num);
 					return qfalse;
-				} //end if
+				}
+
 				if (match->variables[num].offset >= 0)
 				{
-					assert(match->variables[num].offset >= 0); // bk001204
-					ptr = &match->string[static_cast<int>(match->variables[num].offset)];
+					assert(match->variables[num].offset >= 0);
+
+					ptr = &match->string[(int)match->variables[num].offset];
+
 					for (i = 0; i < match->variables[num].length; i++)
 					{
 						temp[i] = ptr[i];
-					} //end for
+					}
 					temp[i] = 0;
-					//if it's a reply message
+
 					if (reply)
 					{
-						//replace the reply synonyms in the variables
 						BotReplaceReplySynonyms(temp, vcontext);
-					} //end if
+					}
 					else
 					{
-						//replace synonyms in the variable context
 						BotReplaceSynonyms(temp, vcontext);
-					} //end else
-					//
+					}
+
 					if (len + strlen(temp) >= MAX_MESSAGE_SIZE)
 					{
-						botimport.Print(PRT_ERROR, "BotConstructChat: message %s too long\n", message);
+						botimport.Print(PRT_ERROR,
+							"BotConstructChat: message %s too long\n",
+							message);
 						return qfalse;
-					} //end if
+					}
+
 					strcpy(&outputbuf[len], temp);
 					len += strlen(temp);
-				} //end if
+				}
 				break;
-			} //end case
-			case 'r': //random
+			}
+
+			case 'r': // random
 			{
 				msgptr++;
 				for (i = 0; *msgptr && *msgptr != ESCAPE_CHAR; i++)
 				{
 					temp[i] = *msgptr++;
-				} //end while
+				}
 				temp[i] = '\0';
-				//step over the trailing escape char
-				if (*msgptr) msgptr++;
-				//find the random keyword
+
+				if (*msgptr)
+				{
+					msgptr++;
+				}
+
 				ptr = RandomString(temp);
 				if (!ptr)
 				{
-					botimport.Print(PRT_ERROR, "BotConstructChat: unknown random string %s\n", temp);
+					botimport.Print(PRT_ERROR,
+						"BotConstructChat: unknown random string %s\n",
+						temp);
 					return qfalse;
-				} //end if
+				}
+
 				if (len + strlen(ptr) >= MAX_MESSAGE_SIZE)
 				{
-					botimport.Print(PRT_ERROR, "BotConstructChat: message \"%s\" too long\n", message);
+					botimport.Print(PRT_ERROR,
+						"BotConstructChat: message \"%s\" too long\n",
+						message);
 					return qfalse;
-				} //end if
+				}
+
 				strcpy(&outputbuf[len], ptr);
 				len += strlen(ptr);
 				expansion = qtrue;
 				break;
-			} //end case
+			}
+
 			default:
 			{
-				botimport.Print(PRT_FATAL, "BotConstructChat: message \"%s\" invalid escape char\n", message);
+				botimport.Print(PRT_FATAL,
+					"BotConstructChat: message \"%s\" invalid escape char\n",
+					message);
 				break;
-			} //end default
-			} //end switch
-		} //end if
+			}
+			}
+		}
 		else
 		{
 			outputbuf[len++] = *msgptr++;
+
 			if (len >= MAX_MESSAGE_SIZE)
 			{
-				botimport.Print(PRT_ERROR, "BotConstructChat: message \"%s\" too long\n", message);
+				botimport.Print(PRT_ERROR,
+					"BotConstructChat: message \"%s\" too long\n",
+					message);
 				break;
-			} //end if
-		} //end else
-	} //end while
+			}
+		}
+	}
+
 	outputbuf[len] = '\0';
-	//replace synonyms weighted in the message context
+
 	BotReplaceWeightedSynonyms(outputbuf, mcontext);
-	//return true if a random was expanded
+
 	return expansion;
-} //end of the function BotExpandChatMessage
+}
+//end of the function BotExpandChatMessage
 //===========================================================================
 //
 // Parameter:			-

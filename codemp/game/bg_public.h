@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-27,Month-06,Year-26,BuildNum-10" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-30,Month-06,Year-26,BuildNum-11" // build date
 
 #define	STEPSIZE		18
 
@@ -2077,9 +2077,9 @@ extern int WeaponAltAttackAnim2[WP_NUM_WEAPONS];
 extern int force_power_dark_light[NUM_FORCE_POWERS];
 
 //KNOCKDOWN HOLD
-#define PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME	300
-#define NPC_KNOCKDOWN_HOLD_EXTRA_TIME	    400
-#define BOT_KNOCKDOWN_HOLD_EXTRA_TIME	    100
+#define PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME	1000
+#define NPC_KNOCKDOWN_HOLD_EXTRA_TIME	    1500
+#define BOT_KNOCKDOWN_HOLD_EXTRA_TIME	    1000
 //KNOCKOVERHOLD
 #define PLAYER_KNOCKOVER_HOLD_EXTRA_TIME	300
 #define NPC_KNOCKOVER_HOLD_EXTRA_TIME	    400
