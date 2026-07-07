@@ -313,6 +313,22 @@ static qboolean CG_UnsafeEventType(const int event_type)
 	}
 }
 
+//set the local timing bar
+extern int cg_genericTimerBar;
+extern int cg_genericTimerDur;
+extern vec4_t cg_genericTimerColor;
+
+static void CG_LocalTimingBar(const int start_time, const int duration)
+{
+	cg_genericTimerBar = start_time + duration;
+	cg_genericTimerDur = duration;
+
+	cg_genericTimerColor[0] = 1.0f;
+	cg_genericTimerColor[1] = 1.0f;
+	cg_genericTimerColor[2] = 0.0f;
+	cg_genericTimerColor[3] = 1.0f;
+}
+
 /*
 ==============
 CG_EntityEvent
@@ -1335,6 +1351,20 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 	case EV_DEBUG_LINE:
 		DEBUGNAME("EV_DEBUG_LINE");
 		CG_TestLine(position, es->origin2, es->time, static_cast<unsigned>(es->time2), es->weapon);
+		break;
+
+	case EV_LOCALTIMER:
+		DEBUGNAME("EV_LOCALTIMER");
+		// Prefer the engine's mapped owner pointer if present
+		if (cent->gent && cent->gent->owner && cent->gent->owner->s.number == cg.snap->ps.clientNum)
+		{
+			CG_LocalTimingBar(es->time, es->time2);
+		}
+		// Fallback: the server may have set otherentityNum
+		else if (es->otherentityNum == cg.snap->ps.clientNum)
+		{
+			CG_LocalTimingBar(es->time, es->time2);
+		}
 		break;
 
 	default:

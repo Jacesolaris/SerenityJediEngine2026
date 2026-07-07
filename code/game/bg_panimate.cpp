@@ -7660,36 +7660,44 @@ void PM_TorsoAnimation()
 		return;
 	}
 
-	qboolean weapon_busy = qfalse;
+	qboolean weaponBusy = qfalse;
+	// this is the ammount of time the gun is considered busy and stays in position after the last shot was fired
 
 	if (pm->ps->weapon == WP_NONE)
 	{
-		weapon_busy = qfalse;
+		weaponBusy = qfalse;
 	}
-	else if (pm->ps->weaponstate == WEAPON_FIRING || pm->ps->weaponstate == WEAPON_CHARGING || pm->ps->weaponstate ==
-		WEAPON_CHARGING_ALT)
+	else if (pm->ps->weaponstate == WEAPON_FIRING || pm->ps->weaponstate == WEAPON_CHARGING || pm->ps->weaponstate == WEAPON_CHARGING_ALT)
 	{
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 	}
-	else if (pm->ps->lastShotTime > level.time - 2500 && cg.renderingThirdPerson && PM_IsPistoleer())
+	else if (pm->ps->lastShotTime > level.time - 2500 && cg.renderingThirdPerson && PM_IsPistoleer() && (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN))))
 	{
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 	}
-	else if (pm->ps->lastShotTime > level.time - 3000 && cg.renderingThirdPerson)
+	else if (pm->ps->lastShotTime > level.time - 1000 && cg.renderingThirdPerson && PM_IsPistoleer() && (pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
 	{
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
+	}
+	else if (pm->ps->lastShotTime > level.time - 3000 && cg.renderingThirdPerson && (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN))))
+	{
+		weaponBusy = qtrue;
+	}
+	else if (pm->ps->lastShotTime > level.time - 1000 && cg.renderingThirdPerson && (pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+	{
+		weaponBusy = qtrue;
 	}
 	else if (pm->ps->lastShotTime > level.time - 4000 && !cg.renderingThirdPerson)
 	{
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 	}
 	else if (pm->ps->weaponTime > 0)
 	{
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 	}
 	else if (pm->gent && pm->gent->client->fireDelay > 0)
 	{
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 	}
 	else if (TorsoAgainstWindTest(pm->gent))
 	{
@@ -7698,13 +7706,13 @@ void PM_TorsoAnimation()
 	else if ((pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) && cg.zoomTime > cg.time - 5000)
 	{
 		//if we used binoculars recently, aim weapon
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 		pm->ps->weaponstate = WEAPON_IDLE;
 	}
 	else if (pm->ps->pm_flags & PMF_DUCKED)
 	{
 		//ducking is considered on alert... plus looks stupid to have arms hanging down when crouched
-		weapon_busy = qtrue;
+		weaponBusy = qtrue;
 	}
 
 	if (pm->ps->weapon == WP_NONE ||
@@ -7714,112 +7722,112 @@ void PM_TorsoAnimation()
 		&& !PM_SaberInBounce(pm->ps->saberMove)
 		&& !PM_SaberInReturn(pm->ps->saberMove)
 		&& !PM_SaberInMassiveBounce(pm->ps->torsoAnim))
-	{
+	{ //if the weapon is idle, and not in a saber bounce, return to a stand anim
 		if (pm->ps->weapon == WP_SABER && pm->ps->SaberLength() && (pm->ps->SaberActive() || !g_noIgniteTwirl->integer))
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK1, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN1 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN1 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN1, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_SPRINT && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_SPRINT && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_SPRINT, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_SPRINT_SABER && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_SPRINT_SABER && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_SPRINT_SABER, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN2 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN2 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN2, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN3 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN3 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN3, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN3_MP && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN3_MP && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN3_MP, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN4 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN4 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN4, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN5 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN5 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN5, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN6 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN6 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN6, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN7 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN7 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN7, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN8 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN8 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN8, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN9 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN9 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN9, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN10 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN10 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN10, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN_STAFF && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN_STAFF && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN_STAFF, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_RUN_DUAL && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_RUN_DUAL && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_RUN_DUAL, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_VADERRUN1 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_VADERRUN1 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_VADERRUN1, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_VADERRUN2 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_VADERRUN2 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_VADERRUN2, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK1 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK1 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK1, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_MENUIDLE1 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_MENUIDLE1 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_MENUIDLE1, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK2 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK2 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK2, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK2B && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK2B && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK2B, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK_STAFF && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK_STAFF && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK_STAFF, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK_DUAL && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK_DUAL && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK_DUAL, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK8 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK8 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK8, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK9 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK9 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK9, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_WALK10 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_WALK10 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_WALK10, SETANIM_FLAG_NORMAL);
 		}
@@ -7827,55 +7835,55 @@ void PM_TorsoAnimation()
 		{
 			//PM_SetAnim(pm,SETANIM_TORSO,BOTH_CROUCH1IDLE,SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_JUMP1 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_JUMP1 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_JUMP1, SETANIM_FLAG_NORMAL, 100); // Only blend over 100ms
 		}
-		else if (pm->ps->legsAnim == BOTH_JUMP2 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_JUMP2 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_JUMP2, SETANIM_FLAG_NORMAL, 100); // Only blend over 100ms
 		}
-		else if (pm->ps->legsAnim == BOTH_SWIM_IDLE1 && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_SWIM_IDLE1 && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_SWIM_IDLE1, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_SWIMFORWARD && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_SWIMFORWARD && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_SWIMFORWARD, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_WALK_WEAPON && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_WALK_WEAPON && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_WALK_WEAPON, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_WALK_NORMAL && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_WALK_NORMAL && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_WALK_NORMAL, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_WALKBACK_NORMAL && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_WALKBACK_NORMAL && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_WALKBACK_NORMAL, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_WALKBACK_WEAPON && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_WALKBACK_WEAPON && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_WALKBACK_WEAPON, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_RUNBACK_NORMAL && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_RUNBACK_NORMAL && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_RUNBACK_NORMAL, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_RUNING_WEAPON && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_RUNING_WEAPON && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_RUNING_WEAPON, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == SBD_RUNBACK_WEAPON && !weapon_busy)
+		else if (pm->ps->legsAnim == SBD_RUNBACK_WEAPON && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, SBD_RUNBACK_WEAPON, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_PRONEIDLE && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_PRONEIDLE && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_PRONEIDLE, SETANIM_FLAG_NORMAL);
 		}
-		else if (pm->ps->legsAnim == BOTH_FIREPRONE && !weapon_busy)
+		else if (pm->ps->legsAnim == BOTH_FIREPRONE && !weaponBusy)
 		{
 			PM_SetAnim(pm, SETANIM_TORSO, BOTH_FIREPRONE, SETANIM_FLAG_NORMAL);
 		}
@@ -7885,8 +7893,7 @@ void PM_TorsoAnimation()
 			PM_SetAnim(pm, SETANIM_TORSO, legsAnim, SETANIM_FLAG_NORMAL);
 		}
 		else
-		{
-			//Used to default to both_stand1 which is an arms-down anim
+		{//Used to default to both_stand1 which is an arms-down anim
 			if ((pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) && pm->ps->torsoAnim == BOTH_BUTTON_HOLD)
 			{
 				//using something
@@ -7921,7 +7928,6 @@ void PM_TorsoAnimation()
 			else if (PM_InSpecialJump(pm->ps->legsAnim))
 			{
 				//use legs anim
-				//PM_SetAnim( pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL );
 			}
 			else
 			{
@@ -7937,26 +7943,29 @@ void PM_TorsoAnimation()
 					// ********************************************************
 
 				case WP_BRYAR_PISTOL:
+				case WP_BLASTER_PISTOL:
 				case WP_JAWA:
-					if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy)
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
-					}
-					else if (PM_RunningAnim(pm->ps->legsAnim)
-						|| PM_WalkingAnim(pm->ps->legsAnim)
-						|| PM_JumpingAnim(pm->ps->legsAnim)
-						|| PM_SwimmingAnim(pm->ps->legsAnim))
-					{
-						//running w/1-handed weapon uses full-body anim
-						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+					if (pm->gent && pm->gent->weaponModel[1] > 0)
+					{ //has a secondary weapon, so use the dual anims
+						if (pm->gent && pm->gent->client &&
+							(pm->gent->client->NPC_class == CLASS_REBORN ||
+								pm->gent->client->NPC_class == CLASS_BOBAFETT ||
+								pm->gent->client->NPC_class == CLASS_MANDO))
+						{ //reborn and boba have a special dual pistol anim
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+						}
+						else
+						{ //everyone else uses the normal dual pistol anim
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_GUNSIT1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+						}
 					}
 					else
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
+					{//single pistols
+						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 					}
 					break;
 				case WP_SBD_PISTOL: //SBD WEAPON
-					if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy)
+					if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weaponBusy)
 					{
 						if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_SBD)
 						{
@@ -7980,64 +7989,6 @@ void PM_TorsoAnimation()
 						if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_SBD)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, SBD_WEAPON_OUT_STANDING, SETANIM_FLAG_NORMAL);
-						}
-						else
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
-						}
-					}
-					break;
-				case WP_BLASTER_PISTOL:
-					if (pm->gent && pm->gent->weaponModel[1] > 0)
-					{
-						//dual pistols
-						if (weapon_busy)
-						{
-							if (pm->gent && pm->gent->client && (pm->gent->client->NPC_class == CLASS_REBORN || pm->gent
-								->client->NPC_class == CLASS_BOBAFETT || pm->gent->client->NPC_class == CLASS_MANDO))
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_NORMAL);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_GUNSIT1, SETANIM_FLAG_NORMAL);
-							}
-						}
-						else if (PM_RunningAnim(pm->ps->legsAnim)
-							|| PM_WalkingAnim(pm->ps->legsAnim)
-							|| PM_JumpingAnim(pm->ps->legsAnim)
-							|| PM_SwimmingAnim(pm->ps->legsAnim))
-						{
-							//running w/1-handed weapon uses full-body anim
-							PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-						}
-						else
-						{
-							if (pm->gent && pm->gent->client && (pm->gent->client->NPC_class == CLASS_REBORN || pm->gent
-								->client->NPC_class == CLASS_BOBAFETT || pm->gent->client->NPC_class == CLASS_MANDO))
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_DUELPISTOL_STAND, SETANIM_FLAG_NORMAL);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
-							}
-						}
-					}
-					else
-					{
-						//single pistols
-						if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy)
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
-						}
-						else if (PM_RunningAnim(pm->ps->legsAnim)
-							|| PM_WalkingAnim(pm->ps->legsAnim)
-							|| PM_JumpingAnim(pm->ps->legsAnim)
-							|| PM_SwimmingAnim(pm->ps->legsAnim))
-						{
-							//running w/1-handed weapon uses full-body anim
-							PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
 						}
 						else
 						{
@@ -8050,7 +8001,7 @@ void PM_TorsoAnimation()
 					if (pm->gent && pm->gent->weaponModel[1] > 0)
 					{
 						//dual pistols
-						if (weapon_busy)
+						if (weaponBusy)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_NORMAL);
 						}
@@ -8070,9 +8021,9 @@ void PM_TorsoAnimation()
 					else
 					{
 						//single pistols
-						if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy)
+						if (weaponBusy)
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_NORMAL);
 						}
 						else if (PM_RunningAnim(pm->ps->legsAnim)
 							|| PM_WalkingAnim(pm->ps->legsAnim)
@@ -8140,30 +8091,40 @@ void PM_TorsoAnimation()
 					PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
 					break;
 
+				case WP_STUN_BATON:
 				case WP_BLASTER:
 				case WP_BOWCASTER:
 				case WP_DEMP2:
 				case WP_FLECHETTE:
+				case WP_REPEATER:
 				case WP_CONCUSSION:
 				case WP_ROCKET_LAUNCHER:
-				case WP_DISRUPTOR:
-					if (pm->gent->alt_fire)
+					if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
 					{
 						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
 					}
 					else
 					{
-						if (cg.renderingThirdPerson)
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_NORMAL);
+						if (pm->gent->alt_fire || pm->gent->client->NPC_class == CLASS_BATTLEDROID)
+						{ //alt fire
+							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);// from hip
 						}
 						else
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_NORMAL);
+						{ //normal fire
+							if (cg.renderingThirdPerson)
+							{ //third person
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD); // from shoulder
+							}
+							else
+							{ // first person
+								PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+							}
 						}
 					}
 					break;
+
 				case WP_TUSKEN_RIFLE:
+				case WP_DISRUPTOR:
 					if (pm->ps->weaponstate != WEAPON_FIRING
 						&& pm->ps->weaponstate != WEAPON_CHARGING
 						&& pm->ps->weaponstate != WEAPON_CHARGING_ALT
@@ -8202,13 +8163,11 @@ void PM_TorsoAnimation()
 						{
 							if (cg.renderingThirdPerson)
 							{
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4,
-									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
 							else
 							{
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4,
-									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
 						}
 						else
@@ -8264,44 +8223,13 @@ void PM_TorsoAnimation()
 						}
 						else
 						{
-							if (weapon_busy)
+							if (weaponBusy)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY10, SETANIM_FLAG_NORMAL);
 							}
 							else
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
-							}
-						}
-					}
-					break;
-				case WP_REPEATER:
-					if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
-					{
-						if (pm->gent->alt_fire)
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
-						}
-						else
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
-						}
-					}
-					else
-					{
-						if (pm->gent->alt_fire)
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
-						}
-						else
-						{
-							if (cg.renderingThirdPerson)
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_NORMAL);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
 							}
 						}
 					}
@@ -8318,7 +8246,7 @@ void PM_TorsoAnimation()
 					}
 					else
 					{
-						if (weapon_busy)
+						if (weaponBusy)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1, SETANIM_FLAG_NORMAL);
 						}
@@ -8407,7 +8335,7 @@ void PM_TorsoAnimation()
 		}
 		else
 		{
-			if (!weapon_busy
+			if (!weaponBusy
 				&& (PM_RunningAnim(pm->ps->legsAnim) && (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()))
 				|| PM_JumpingAnim(pm->ps->legsAnim)
 				|| PM_SwimmingAnim(pm->ps->legsAnim))
@@ -8428,81 +8356,252 @@ void PM_TorsoAnimation()
 				case WP_BRYAR_PISTOL:
 				case WP_BLASTER_PISTOL:
 				case WP_JAWA:
-
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
+						return;
+					}
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
 						return;
 					}
 					if (pm->gent && pm->gent->weaponModel[1] > 0)
-					{
-						//dual pistols
-						if (weapon_busy)
+					{//dual pistols
+						if (weaponBusy)
 						{
-							if (pm->gent && pm->gent->client && (pm->gent->client->NPC_class == CLASS_REBORN || pm->gent
-								->client->NPC_class == CLASS_BOBAFETT || pm->gent->client->NPC_class == CLASS_MANDO))
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_NORMAL);
+							if (pm->gent && pm->gent->client &&
+								(pm->gent->client->NPC_class == CLASS_REBORN ||
+									pm->gent->client->NPC_class == CLASS_BOBAFETT ||
+									pm->gent->client->NPC_class == CLASS_MANDO))
+							{ //reborn and boba have a special dual pistol anim
+								PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+
+								if (cg.renderingThirdPerson)
+								{
+									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									{
+										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+										{
+											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+										}
+									}
+									else
+									{
+										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+										{
+											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										}
+									}
+								}
 							}
 							else
-							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_GUNSIT1, SETANIM_FLAG_NORMAL);
+							{ //everyone else uses the normal dual pistol anim
+								PM_SetAnim(pm, SETANIM_TORSO, BOTH_GUNSIT1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+
+								if (cg.renderingThirdPerson)
+								{
+									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									{
+										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+										{
+											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+										}
+									}
+									else
+									{
+										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+										{
+											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										}
+									}
+								}
 							}
-						}
-						else if (PM_RunningAnim(pm->ps->legsAnim)
-							|| PM_WalkingAnim(pm->ps->legsAnim)
-							|| PM_JumpingAnim(pm->ps->legsAnim)
-							|| PM_SwimmingAnim(pm->ps->legsAnim))
-						{
-							//running w/1-handed weapon uses full-body anim
-							PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
 						}
 						else
-						{
-							if (pm->gent && pm->gent->client && (pm->gent->client->NPC_class == CLASS_REBORN || pm->gent
-								->client->NPC_class == CLASS_BOBAFETT || pm->gent->client->NPC_class == CLASS_MANDO))
+						{ //not busy, so just hold the idle anim
+							if (pm->gent && pm->gent->client &&
+								(pm->gent->client->NPC_class == CLASS_REBORN ||
+									pm->gent->client->NPC_class == CLASS_BOBAFETT ||
+									pm->gent->client->NPC_class == CLASS_MANDO))
 							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_DUELPISTOL_STAND, SETANIM_FLAG_NORMAL);
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									PM_SetAnim(pm, SETANIM_TORSO, BOTH_DUELPISTOL_FIRE, SETANIM_FLAG_NORMAL);
+
+									if (cg.renderingThirdPerson)
+									{
+										if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+										{
+											if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+											{
+												pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+												g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+											}
+										}
+										else
+										{
+											if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+											{
+												pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+												g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+											}
+										}
+									}
+								}
+								else if (PM_RunningAnim(pm->ps->legsAnim)
+									|| PM_WalkingAnim(pm->ps->legsAnim)
+									|| PM_JumpingAnim(pm->ps->legsAnim)
+									|| PM_SwimmingAnim(pm->ps->legsAnim))
+								{//running w/1-handed weapon uses full-body anim
+									PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+								}
+								else
+								{
+									if (pm->cmd.buttons & BUTTON_WALKING)
+									{
+										PM_SetAnim(pm, SETANIM_TORSO, BOTH_DUELPISTOL_STAND, SETANIM_FLAG_NORMAL);
+									}
+									else
+									{
+										PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
+									}
+
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
 							}
 							else
 							{
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1, SETANIM_FLAG_NORMAL);
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									PM_SetAnim(pm, SETANIM_TORSO, BOTH_DUELPISTOL_FIRE, SETANIM_FLAG_NORMAL);
+
+									if (cg.renderingThirdPerson)
+									{
+										if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+										{
+											if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+											{
+												pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+												g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+											}
+										}
+										else
+										{
+											if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+											{
+												pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+												g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+											}
+										}
+									}
+								}
+								else if (PM_RunningAnim(pm->ps->legsAnim)
+									|| PM_WalkingAnim(pm->ps->legsAnim)
+									|| PM_JumpingAnim(pm->ps->legsAnim)
+									|| PM_SwimmingAnim(pm->ps->legsAnim))
+								{//running w/1-handed weapon uses full-body anim
+									PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+								}
+								else
+								{
+									if (pm->cmd.buttons & BUTTON_WALKING)
+									{
+										PM_SetAnim(pm, SETANIM_TORSO, BOTH_DUELPISTOL_STAND, SETANIM_FLAG_NORMAL);
+									}
+									else
+									{
+										PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1, SETANIM_FLAG_NORMAL);
+									}
+
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
 							}
 						}
 					}
 					else
-					{
-						//single pistols
-						if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy || pm->cmd.buttons &
-							BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+					{//single pistols
+						if (weaponBusy)
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
-						}
-						else if (PM_RunningAnim(pm->ps->legsAnim)
-							|| PM_WalkingAnim(pm->ps->legsAnim)
-							|| PM_JumpingAnim(pm->ps->legsAnim)
-							|| PM_SwimmingAnim(pm->ps->legsAnim))
-						{
-							if (PM_WalkingAnim(pm->ps->legsAnim) && pm->cmd.buttons & BUTTON_BLOCK)
+							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+
+							if (cg.renderingThirdPerson)
 							{
-								//running w/1-handed weapon uses full-body anim
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
-							}
-							else
-							{
-								//running w/1-handed weapon uses full-body anim
-								PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+									}
+								}
+								else
+								{
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
 							}
 						}
 						else
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE2, SETANIM_FLAG_NORMAL);
+							if (cg.renderingThirdPerson)
+							{
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									//running w/1-handed weapon uses full-body anim
+									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
+
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+									}
+								}
+								else
+								{
+									if (PM_RunningAnim(pm->ps->legsAnim)
+										|| PM_JumpingAnim(pm->ps->legsAnim)
+										|| PM_SwimmingAnim(pm->ps->legsAnim))
+									{//running w/1-handed weapon uses full-body anim
+										PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+									}
+									else if (pm->cmd.buttons & BUTTON_WALKING)
+									{
+										PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE2, SETANIM_FLAG_NORMAL);
+									}
+									else
+									{
+										PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1, SETANIM_FLAG_NORMAL);
+									}
+
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
+							}
+							else
+							{
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE2, SETANIM_FLAG_NORMAL);
+							}
 						}
 					}
 					break;
@@ -8511,7 +8610,7 @@ void PM_TorsoAnimation()
 					if (pm->gent && pm->gent->weaponModel[1] > 0)
 					{
 						//dual pistols
-						if (weapon_busy)
+						if (weaponBusy)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_NORMAL);
 						}
@@ -8525,32 +8624,23 @@ void PM_TorsoAnimation()
 						}
 						else
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1, SETANIM_FLAG_NORMAL);
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_READY_DUAL, SETANIM_FLAG_NORMAL);
 						}
 					}
 					else
 					{
 						//single pistols
-						if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy || pm->cmd.buttons &
-							BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+						if (weaponBusy)
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_NORMAL);
 						}
 						else if (PM_RunningAnim(pm->ps->legsAnim)
 							|| PM_WalkingAnim(pm->ps->legsAnim)
 							|| PM_JumpingAnim(pm->ps->legsAnim)
 							|| PM_SwimmingAnim(pm->ps->legsAnim))
 						{
-							if (PM_WalkingAnim(pm->ps->legsAnim) && pm->cmd.buttons & BUTTON_BLOCK)
-							{
-								//running w/1-handed weapon uses full-body anim
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
-							}
-							else
-							{
-								//running w/1-handed weapon uses full-body anim
-								PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-							}
+							//running w/1-handed weapon uses full-body anim
+							PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
 						}
 						else
 						{
@@ -8560,19 +8650,19 @@ void PM_TorsoAnimation()
 					break;
 
 				case WP_SBD_PISTOL: //SBD WEAPON
-
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
 						return;
 					}
-					if (pm->ps->weaponstate == WEAPON_CHARGING_ALT || weapon_busy)
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
+						return;
+					}
+					if (weaponBusy)
 					{
 						if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_SBD)
 						{
@@ -8581,6 +8671,26 @@ void PM_TorsoAnimation()
 						else
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
+						}
+
+						if (cg.renderingThirdPerson)
+						{
+							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							{
+								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+								{
+									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+								}
+							}
+							else
+							{
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+								}
+							}
 						}
 					}
 					else if (PM_RunningAnim(pm->ps->legsAnim)
@@ -8600,6 +8710,26 @@ void PM_TorsoAnimation()
 						else
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE2, SETANIM_FLAG_NORMAL);
+						}
+
+						if (cg.renderingThirdPerson)
+						{
+							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							{
+								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+								{
+									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+								}
+							}
+							else
+							{
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+								}
+							}
 						}
 					}
 					break;
@@ -8639,16 +8769,16 @@ void PM_TorsoAnimation()
 					break;
 
 				case WP_TUSKEN_STAFF:
-
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
+						return;
+					}
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
 						return;
 					}
 					if (PM_RunningAnim(pm->ps->legsAnim)
@@ -8666,13 +8796,9 @@ void PM_TorsoAnimation()
 					break;
 
 				case WP_NOGHRI_STICK:
-					if (weapon_busy)
+					if (weaponBusy)
 					{
 						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
-					}
-					else if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_SBD)
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, SBD_WEAPON_STANDING, SETANIM_FLAG_NORMAL);
 					}
 					else
 					{
@@ -8691,101 +8817,122 @@ void PM_TorsoAnimation()
 				case WP_DISRUPTOR:
 
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
 						return;
 					}
-					if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
-					{
-						if (pm->gent->alt_fire)
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
+						return;
+					}
+					if (weaponBusy)
+					{ // weapon is busy, so don't change the anim
+						if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
+							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
 						}
 						else
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE1, SETANIM_FLAG_NORMAL);
+							if (pm->gent->alt_fire || pm->gent->client->NPC_class == CLASS_BATTLEDROID)
+							{ //alt fire
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);// from hip
+
+								if (cg.renderingThirdPerson)
+								{
+									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									{
+										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+										{
+											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+										}
+									}
+									else
+									{
+										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+										{
+											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										}
+									}
+								}
+							}
+							else
+							{ //normal fire
+								if (cg.renderingThirdPerson)
+								{ //third person
+									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD); // from shoulder
+
+									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									{
+										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+										{
+											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+										}
+									}
+									else
+									{
+										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+										{
+											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										}
+									}
+								}
+								else
+								{ // first person
+									PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD); // from center of body
+								}
+							}
 						}
 					}
 					else
-					{
-						if (weapon_busy)
+					{ // weapon is not busy, so set the idle anim
+						if (cg.renderingThirdPerson)
 						{
-							if (pm->gent->alt_fire)
+							if ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK))
 							{
-								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY3, SETANIM_FLAG_NORMAL);
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE4, SETANIM_FLAG_NORMAL);
+
+								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+								{
+									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+								}
 							}
 							else
 							{
-								if (cg.renderingThirdPerson)
+								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
+
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_NORMAL);
-								}
-								else
-								{
-									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_NORMAL);
+									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
 								}
 							}
 						}
 						else
 						{
-							if (pm->gent && pm->gent->alt_fire)
-							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK) //want to attack
-								{
-									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE4, SETANIM_FLAG_NORMAL);
-								}
-								else
-								{
-									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
-								}
-							}
-							else
-							{
-								if (cg.renderingThirdPerson)
-								{
-									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
-										//want to attack
-									{
-										PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE4, SETANIM_FLAG_NORMAL);
-									}
-									else
-									{
-										PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
-									}
-								}
-								else
-								{
-									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
-										//want to attack
-									{
-										PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_NORMAL);
-									}
-									else
-									{
-										PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
-									}
-								}
-							}
+							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
 						}
 					}
 					break;
 
 				case WP_TUSKEN_RIFLE:
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
+						return;
+					}
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
 						return;
 					}
 					if (pm->ps->weaponstate != WEAPON_FIRING
@@ -8799,7 +8946,7 @@ void PM_TorsoAnimation()
 						//running sniper weapon uses normal ready
 						if (pm->ps->clientNum)
 						{
-							if (weapon_busy)
+							if (weaponBusy)
 							{
 								if (cg.renderingThirdPerson)
 								{
@@ -8838,7 +8985,7 @@ void PM_TorsoAnimation()
 					{
 						if (pm->ps->clientNum)
 						{
-							if (weapon_busy)
+							if (weaponBusy)
 							{
 								if (cg.renderingThirdPerson)
 								{
@@ -8876,91 +9023,210 @@ void PM_TorsoAnimation()
 					break;
 
 				case WP_BOT_LASER:
-					PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE2,
-						SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+					PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 					break;
 
 				case WP_THERMAL:
-
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
+						return;
+					}
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
 						return;
 					}
 					if (PM_RunningAnim(pm->ps->legsAnim)
 						|| PM_WalkingAnim(pm->ps->legsAnim)
 						|| PM_JumpingAnim(pm->ps->legsAnim)
 						|| PM_SwimmingAnim(pm->ps->legsAnim))
-					{
-						//running w/1-handed weapon uses full-body anim
+					{//running w/1-handed weapon uses full-body anim
 						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+
+						if (PM_WalkingAnim(pm->ps->legsAnim) && cg.renderingThirdPerson)
+						{
+							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							{
+								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+								{
+									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+								}
+							}
+							else
+							{
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+								}
+							}
+						}
 					}
 					else
 					{
-						if (weapon_busy)
+						if (weaponBusy)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE10, SETANIM_FLAG_NORMAL);
+
+							if (cg.renderingThirdPerson)
+							{
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+									}
+								}
+								else
+								{
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
+							}
 						}
 						else
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
+
+							if (cg.renderingThirdPerson)
+							{
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+									}
+								}
+								else
+								{
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
+							}
 						}
 					}
 					break;
+
 				case WP_TRIP_MINE:
 				case WP_DET_PACK:
-
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
+						return;
+					}
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
 						return;
 					}
 					if (PM_RunningAnim(pm->ps->legsAnim)
 						|| PM_WalkingAnim(pm->ps->legsAnim)
 						|| PM_JumpingAnim(pm->ps->legsAnim)
 						|| PM_SwimmingAnim(pm->ps->legsAnim))
-					{
-						//running w/1-handed weapon uses full-body anim
+					{//running w/1-handed weapon uses full-body anim
 						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+
+						if (PM_WalkingAnim(pm->ps->legsAnim) && cg.renderingThirdPerson)
+						{
+							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							{
+								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+								{
+									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+								}
+							}
+							else
+							{
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+								}
+							}
+						}
 					}
 					else
 					{
-						if (weapon_busy)
+						if (weaponBusy)
 						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
+							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
+
+							if (cg.renderingThirdPerson)
+							{
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+									}
+								}
+								else
+								{
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
+							}
 						}
 						else
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
+
+							if (cg.renderingThirdPerson)
+							{
+								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								{
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+									}
+								}
+								else
+								{
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									}
+								}
+							}
 						}
 					}
 					break;
 
 				default:
 					if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					{// holding an enemy aloft with force-grip
 						return;
 					}
-					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] >
-						FORCE_LEVEL_1)
-					{
-						//holding an enemy aloft with force-grip
+					if (pm->ps->forcePowersActive & 1 << FP_LIGHTNING && pm->ps->forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1)
+					{// Zapping an enemy with force-lightning
 						return;
 					}
-					if (weapon_busy)
+					if (pm->ps->forcePowersActive & 1 << FP_GRASP && pm->ps->forcePowerLevel[FP_GRASP] > FORCE_LEVEL_1)
+					{// Holding an enemy aloft with force-grasp
+						return;
+					}
+					if (weaponBusy)
 					{
 						if (pm->gent->alt_fire)
 						{
@@ -8989,6 +9255,12 @@ void PM_TorsoAnimation()
 							if (cg.renderingThirdPerson)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
+
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+								}
 							}
 							else
 							{

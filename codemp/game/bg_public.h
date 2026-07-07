@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-30,Month-06,Year-26,BuildNum-11" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-07,Month-07,Year-26,BuildNum-02" // build date
 
 #define	STEPSIZE		18
 
@@ -2065,14 +2065,22 @@ void BG_ClearRocketLock(playerState_t* ps);
 extern void BG_AttachToSandCreature(void* ghoul2, float ranc_yaw, vec3_t ranc_origin, int time, qhandle_t* modelList, vec3_t model_scale, vec3_t out_origin, vec3_t out_angles, vec3_t out_axis[3]);
 
 extern int WeaponReadyAnim[WP_NUM_WEAPONS];
-extern int WeaponAttackAnim[WP_NUM_WEAPONS];
 extern int WeaponReadyAnim2[WP_NUM_WEAPONS];
+
+extern int WeaponAttackAnim[WP_NUM_WEAPONS];
 extern int WeaponAttackAnim2[WP_NUM_WEAPONS];
+
+extern int WeaponAltAttackAnim[WP_NUM_WEAPONS];
+extern int WeaponAltAttackAnim2[WP_NUM_WEAPONS];
+
+extern int WeaponAimAnim[WP_NUM_WEAPONS];
+extern int WeaponAimAnim2[WP_NUM_WEAPONS];
+
+extern int WeaponAltAimAnim[WP_NUM_WEAPONS];
+extern int WeaponAltAimAnim2[WP_NUM_WEAPONS];
 
 extern int WeaponAimingAnim[WP_NUM_WEAPONS];
 extern int WeaponAimingAnim2[WP_NUM_WEAPONS];
-extern int WeaponAltAttackAnim[WP_NUM_WEAPONS];
-extern int WeaponAltAttackAnim2[WP_NUM_WEAPONS];
 
 extern int force_power_dark_light[NUM_FORCE_POWERS];
 

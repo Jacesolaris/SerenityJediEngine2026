@@ -144,7 +144,7 @@ void G_AttachToVehicle(gentity_t* pEnt, usercmd_t** ucmd)
 }
 
 // Animate the vehicle and it's riders.
-void Animate(Vehicle_t* p_veh)
+static void Animate(Vehicle_t* p_veh)
 {
 	// Validate a pilot rider.
 	if (p_veh->m_pPilot)
@@ -159,7 +159,7 @@ void Animate(Vehicle_t* p_veh)
 }
 
 // Determine whether this entity is able to board this vehicle or not.
-qboolean ValidateBoard(Vehicle_t* p_veh, bgEntity_t* pEnt)
+static qboolean ValidateBoard(Vehicle_t* p_veh, bgEntity_t* pEnt)
 {
 	// Determine where the entity is entering the vehicle from (left, right, or back).
 	vec3_t vVehToEnt;
@@ -261,7 +261,7 @@ qboolean ValidateBoard(Vehicle_t* p_veh, bgEntity_t* pEnt)
 }
 
 #ifdef VEH_CONTROL_SCHEME_4
-void FighterStorePilotViewAngles(Vehicle_t* p_veh, bgEntity_t* parent)
+static void FighterStorePilotViewAngles(Vehicle_t* p_veh, bgEntity_t* parent)
 {
 	playerState_t* rider_ps;
 	bgEntity_t* rider = NULL;
@@ -282,31 +282,42 @@ void FighterStorePilotViewAngles(Vehicle_t* p_veh, bgEntity_t* parent)
 #endif// VEH_CONTROL_SCHEME_4
 
 // Board this Vehicle (get on). The first entity to board an empty vehicle becomes the Pilot.
-qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
+static qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 {
 	vec3_t vPlayerDir;
+
+	// SAFETY: ent must be valid (fixes C6011)
 	gentity_t* ent = (gentity_t*)pEnt;
+	if (!ent || !ent->client)
+	{
+		Com_Printf(S_COLOR_RED "Board: ent or ent->client is NULL\n");
+		return qfalse;
+	}
+
 	gentity_t* parent = (gentity_t*)p_veh->m_pParentEntity;
 
 	// If it's not a valid entity, OR if the vehicle is blowing up (it's dead), OR it's not
 	// empty, OR we're already being boarded, OR the person trying to get on us is already
-	// in a vehicle (that was a fun bug :-), leave!
-	if (!ent || parent->health <= 0 /*|| !( parent->client->ps.eFlags & EF_EMPTY_VEHICLE )*/ || p_veh->m_iBoarding > 0 ||
+	// in a vehicle, leave!
+	if (parent->health <= 0 ||
+		p_veh->m_iBoarding > 0 ||
 		ent->client->ps.m_iVehicleNum)
+	{
 		return qfalse;
+	}
 
-	// Bucking so we can't do anything (NOTE: Should probably be a better name since fighters don't buck...).
+	// Bucking so we can't do anything
 	if (p_veh->m_ulFlags & VEH_BUCKING)
+	{
 		return qfalse;
+	}
 
 	// Validate the entity's ability to board this vehicle.
 	if (!p_veh->m_pVehicleInfo->ValidateBoard(p_veh, pEnt))
+	{
 		return qfalse;
+	}
 
-	// FIXME FIXME!!! Ask Mike monday where ent->client->ps.eFlags might be getting changed!!! It is always 0 (when it should
-	// be 1024) so a person riding a vehicle is able to ride another vehicle!!!!!!!!
-
-	// Tell everybody their status.
 	// ALWAYS let the player be the pilot.
 	if (ent->s.number < MAX_CLIENTS)
 	{
@@ -314,73 +325,53 @@ qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 
 		if (!p_veh->m_pPilot)
 		{
-			//become the pilot, if there isn't one now
+			// become the pilot
 			p_veh->m_pVehicleInfo->SetPilot(p_veh, (bgEntity_t*)ent);
 		}
-		// If we're not yet full...
 		else if (p_veh->m_iNumPassengers < p_veh->m_pVehicleInfo->maxPassengers)
 		{
-			// Find an empty slot and put that passenger here.
+			// Find an empty passenger slot
 			for (int i = 0; i < p_veh->m_pVehicleInfo->maxPassengers; i++)
 			{
 				if (p_veh->m_ppPassengers[i] == NULL)
 				{
 					p_veh->m_ppPassengers[i] = (bgEntity_t*)ent;
 #ifdef _GAME
-					//Server just needs to tell client which passengernum he is
-					if (ent->client)
-					{
-						ent->client->ps.generic1 = i + 1;
-					}
+					ent->client->ps.generic1 = i + 1;
 #endif
 					break;
 				}
 			}
 			p_veh->m_iNumPassengers++;
 		}
-		// We're full, sorry...
 		else
 		{
-			return qfalse;
+			return qfalse; // full
 		}
+
 		ent->s.m_iVehicleNum = parent->s.number;
-		if (ent->client)
-		{
-			ent->client->ps.m_iVehicleNum = ent->s.m_iVehicleNum;
-		}
+		ent->client->ps.m_iVehicleNum = ent->s.m_iVehicleNum;
+
 		if (p_veh->m_pPilot == (bgEntity_t*)ent)
 		{
 			parent->r.ownerNum = ent->s.number;
-			parent->s.owner = parent->r.ownerNum; //for prediction
+			parent->s.owner = parent->r.ownerNum;
 		}
 
 #ifdef _GAME
+		gentity_t* gParent = parent;
+		if (gParent->spawnflags & 2)
 		{
-			gentity_t* gParent = parent;
-			if (gParent->spawnflags & 2)
+			gParent->spawnflags &= ~2;
+			G_Sound(gParent, CHAN_AUTO, G_SoundIndex("sound/vehicles/common/release.wav"));
+
+			if (gParent->fly_sound_debounce_time)
 			{
-				//was being suspended
-				gParent->spawnflags &= ~2;
-				//SUSPENDED - clear this spawnflag, no longer docked, okay to free-fall if not in space
-				G_Sound(gParent, CHAN_AUTO, G_SoundIndex("sound/vehicles/common/release.wav"));
-				if (gParent->fly_sound_debounce_time)
-				{
-					//we should drop like a rock for a few seconds
-					p_veh->m_iDropTime = level.time + gParent->fly_sound_debounce_time;
-				}
+				p_veh->m_iDropTime = level.time + gParent->fly_sound_debounce_time;
 			}
 		}
 #endif
 
-		//FIXME: rider needs to look in vehicle's direction when he gets in
-		// Clear these since they're used to turn the vehicle now.
-		/*SetClientViewAngle( ent, p_veh->m_vOrientation );
-		memset( &parent->client->usercmd, 0, sizeof( usercmd_t ) );
-		memset( &p_veh->m_ucmd, 0, sizeof( usercmd_t ) );
-		VectorClear( parent->client->ps.viewangles );
-		VectorClear( parent->client->ps.delta_angles );*/
-
-		// Set the looping sound only when there is a pilot (when the vehicle is "on").
 		if (p_veh->m_pVehicleInfo->soundLoop)
 		{
 			parent->client->ps.loopSound = parent->s.loopSound = p_veh->m_pVehicleInfo->soundLoop;
@@ -388,14 +379,14 @@ qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 	}
 	else
 	{
-		// If there's no pilot, try to drive this vehicle.
-		if (p_veh->m_pPilot == NULL)
+		// NPC boarding logic
+		if (!p_veh->m_pPilot)
 		{
 			p_veh->m_pVehicleInfo->SetPilot(p_veh, (bgEntity_t*)ent);
-			// TODO: Set pilot should do all this stuff....
+
 			parent->r.ownerNum = ent->s.number;
-			parent->s.owner = parent->r.ownerNum; //for prediction
-			// Set the looping sound only when there is a pilot (when the vehicle is "on").
+			parent->s.owner = parent->r.ownerNum;
+
 			if (p_veh->m_pVehicleInfo->soundLoop)
 			{
 				parent->client->ps.loopSound = parent->s.loopSound = p_veh->m_pVehicleInfo->soundLoop;
@@ -404,28 +395,21 @@ qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 			parent->client->ps.speed = 0;
 			memset(&p_veh->m_ucmd, 0, sizeof(usercmd_t));
 		}
-		// If we're not yet full...
 		else if (p_veh->m_iNumPassengers < p_veh->m_pVehicleInfo->maxPassengers)
 		{
-			// Find an empty slot and put that passenger here.
 			for (int i = 0; i < p_veh->m_pVehicleInfo->maxPassengers; i++)
 			{
 				if (p_veh->m_ppPassengers[i] == NULL)
 				{
 					p_veh->m_ppPassengers[i] = (bgEntity_t*)ent;
 #ifdef _GAME
-					//Server just needs to tell client which passengernum he is
-					if (ent->client)
-					{
-						ent->client->ps.generic1 = i + 1;
-					}
+					ent->client->ps.generic1 = i + 1;
 #endif
 					break;
 				}
 			}
 			p_veh->m_iNumPassengers++;
 		}
-		// We're full, sorry...
 		else
 		{
 			return qfalse;
@@ -435,28 +419,23 @@ qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 	// Make sure the entity knows it's in a vehicle.
 	ent->client->ps.m_iVehicleNum = parent->s.number;
 	ent->r.ownerNum = parent->s.number;
-	ent->s.owner = ent->r.ownerNum; //for prediction
+	ent->s.owner = ent->r.ownerNum;
+
 	if (p_veh->m_pPilot == (bgEntity_t*)ent)
 	{
 		parent->client->ps.m_iVehicleNum = ent->s.number + 1;
-		//always gonna be under MAX_CLIENTS so no worries about 1 byte overflow
 	}
 
-	//memset( &ent->client->usercmd, 0, sizeof( usercmd_t ) );
-
-	//FIXME: no saber or weapons if numHands = 2, should switch to speeder weapon, no attack anim on player
 	if (p_veh->m_pVehicleInfo->numHands == 2)
 	{
-		//switch to vehicle weapon
+		// switch to vehicle weapon (FIXME)
 	}
 
 	if (p_veh->m_pVehicleInfo->hideRider)
 	{
-		//hide the rider
 		p_veh->m_pVehicleInfo->Ghost(p_veh, (bgEntity_t*)ent);
 	}
 
-	// Play the start sounds
 	if (p_veh->m_pVehicleInfo->soundOn)
 	{
 		G_Sound(parent, CHAN_AUTO, p_veh->m_pVehicleInfo->soundOn);
@@ -464,10 +443,10 @@ qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 
 #ifdef VEH_CONTROL_SCHEME_4
 	if (p_veh->m_pVehicleInfo->type == VH_FIGHTER)
-	{//clear their angles
+	{
 		FighterStorePilotViewAngles(p_veh, (bgEntity_t*)parent);
 	}
-#endif //VEH_CONTROL_SCHEME_4
+#endif
 
 	VectorCopy(p_veh->m_vOrientation, vPlayerDir);
 	vPlayerDir[ROLL] = 0;
@@ -1153,9 +1132,24 @@ static qboolean Initialize(Vehicle_t* p_veh)
 void G_VehicleDamageBoxSizing(const Vehicle_t* p_veh); //declared below
 static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 {
+	// SAFETY: validate vehicle and parent entity (fixes C6011)
+	if (!p_veh || !p_veh->m_pParentEntity)
+	{
+		Com_Printf(S_COLOR_RED "Update: NULL vehicle or parent entity\n");
+		return qfalse;
+	}
+
 	gentity_t* parent = (gentity_t*)p_veh->m_pParentEntity;
+
+	if (!parent->client || !parent->playerState)
+	{
+		Com_Printf(S_COLOR_RED "Update: parent->client or parent->playerState is NULL\n");
+		return qfalse;
+	}
+
+	playerState_t* parent_ps = parent->playerState;
+
 	gentity_t* pilotEnt;
-	//static float fMod = 1000.0f / 60.0f;
 	vec3_t vVehAngles;
 	int i;
 	int prevSpeed;
@@ -1164,12 +1158,9 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 	int halfMaxSpeed;
 	qboolean linkHeld = qfalse;
 
-	playerState_t* parent_ps = p_veh->m_pParentEntity->playerState;
-
 #ifdef _GAME
 	curTime = level.time;
 #elif _CGAME
-	//FIXME: pass in ucmd?  Not sure if this is reliable...
 	curTime = pm->cmd.serverTime;
 #endif
 
@@ -1499,7 +1490,7 @@ maintainSelfDuringBoarding:
 	{
 		if (!BG_UnrestrainedPitchRoll(p_veh->m_pPilot->playerState, p_veh))
 		{
-			vec3_t newVAngle;
+			vec3_t newVAngle = { 0 };
 			newVAngle[PITCH] = p_veh->m_pPilot->playerState->viewangles[PITCH];
 			newVAngle[YAW] = p_veh->m_pPilot->playerState->viewangles[YAW];
 			newVAngle[ROLL] = p_veh->m_vOrientation[ROLL];
@@ -1595,39 +1586,51 @@ maintainSelfDuringBoarding:
 // Update the properties of a Rider (that may reflect what happens to the vehicle).
 static qboolean UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, const usercmd_t* pUmcd)
 {
+	// SAFETY: rider must be valid (fixes C6011)
+	gentity_t* rider = (gentity_t*)pRider;
+	if (!rider || !rider->client)
+	{
+		Com_Printf(S_COLOR_RED "UpdateRider: rider or rider->client is NULL\n");
+		return qfalse;
+	}
+
+	// SAFETY: parent must be valid
+	const gentity_t* parent = (gentity_t*)p_veh->m_pParentEntity;
+	if (!parent || !parent->client)
+	{
+		Com_Printf(S_COLOR_RED "UpdateRider: parent or parent->client is NULL\n");
+		return qfalse;
+	}
+
 	if (p_veh->m_iBoarding != 0 && p_veh->m_iDieTime == 0)
 		return qtrue;
 
-	const gentity_t* parent = (gentity_t*)p_veh->m_pParentEntity;
-	gentity_t* rider = (gentity_t*)pRider;
-	//MG FIXME !! Single player needs update!
-	if (rider && rider->client
-		&& parent && parent->client)
-	{
-		//so they know who we're locking onto with our rockets, if anyone
-		rider->client->ps.rocketLockIndex = parent->client->ps.rocketLockIndex;
-		rider->client->ps.rocketLockTime = parent->client->ps.rocketLockTime;
-		rider->client->ps.rocketTargetTime = parent->client->ps.rocketTargetTime;
-	}
-	// Regular exit.
+	// MG FIXME !! Single player needs update!
+	// Rocket lock sync
+	rider->client->ps.rocketLockIndex = parent->client->ps.rocketLockIndex;
+	rider->client->ps.rocketLockTime = parent->client->ps.rocketLockTime;
+	rider->client->ps.rocketTargetTime = parent->client->ps.rocketTargetTime;
+
+	// Regular exit
 	if (pUmcd->buttons & BUTTON_USE && p_veh->m_pVehicleInfo->type != VH_SPEEDER)
 	{
 		if (p_veh->m_pVehicleInfo->type == VH_WALKER)
 		{
-			//just get the fuck out
 			p_veh->m_EjectDir = VEH_EJECT_REAR;
 			if (p_veh->m_pVehicleInfo->Eject(p_veh, pRider, qfalse))
 				return qfalse;
 		}
 		else if (!(p_veh->m_ulFlags & VEH_FLYING))
 		{
-			// If going too fast, roll off.
+			// Roll off if slow enough
 			if (parent->client->ps.speed <= 600 && pUmcd->rightmove != 0)
 			{
 				if (p_veh->m_pVehicleInfo->Eject(p_veh, pRider, qfalse))
 				{
 					animNumber_t Anim;
-					const int iFlags = SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_HOLDLESS, i_blend = 300;
+					const int iFlags = SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_HOLDLESS;
+					const int i_blend = 300;
+
 					if (pUmcd->rightmove > 0)
 					{
 						Anim = BOTH_ROLL_R;
@@ -1638,20 +1641,21 @@ static qboolean UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, const usercmd_
 						Anim = BOTH_ROLL_L;
 						p_veh->m_EjectDir = VEH_EJECT_LEFT;
 					}
+
 					VectorScale(parent->client->ps.velocity, 0.25f, rider->client->ps.velocity);
 					Vehicle_SetAnim(rider, SETANIM_BOTH, Anim, iFlags, i_blend);
 
 					rider->client->ps.weaponTime = rider->client->ps.torsoTimer - 200;
-					//just to make sure it's cleared when roll is done
 					G_AddEvent(rider, EV_ROLL, 0);
 					return qfalse;
 				}
 			}
 			else
 			{
-				// FIXME: Check trace to see if we should start playing the animation.
 				animNumber_t Anim;
-				const int iFlags = SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, i_blend = 500;
+				const int iFlags = SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD;
+				const int i_blend = 500;
+
 				if (pUmcd->rightmove > 0)
 				{
 					Anim = BOTH_VS_DISMOUNT_R;
@@ -1665,24 +1669,16 @@ static qboolean UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, const usercmd_
 
 				if (p_veh->m_iBoarding <= 1)
 				{
-					// NOTE: I know I shouldn't reuse p_veh->m_iBoarding so many times for so many different
-					// purposes, but it's not used anywhere else right here so why waste memory???
 					const int iAnimLen = BG_AnimLength(rider->localAnimIndex, Anim);
 					p_veh->m_iBoarding = level.time + iAnimLen;
-					// Weird huh? Well I wanted to reuse flags and this should never be set in an
-					// entity, so what the heck.
 					rider->flags |= FL_VEH_BOARDING;
-
-					// Make sure they can't fire when leaving.
 					rider->client->ps.weaponTime = iAnimLen;
 				}
 
 				VectorScale(parent->client->ps.velocity, 0.25f, rider->client->ps.velocity);
-
 				Vehicle_SetAnim(rider, SETANIM_BOTH, Anim, iFlags, i_blend);
 			}
 		}
-		// Flying, so just fall off.
 		else
 		{
 			p_veh->m_EjectDir = VEH_EJECT_LEFT;
@@ -1691,26 +1687,22 @@ static qboolean UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, const usercmd_
 		}
 	}
 
-	// Getting off animation complete (if we had one going)?
-	if (p_veh->m_iBoarding < level.time && rider->flags & FL_VEH_BOARDING)
+	// Getting off animation complete?
+	if (p_veh->m_iBoarding < level.time && (rider->flags & FL_VEH_BOARDING))
 	{
 		rider->flags &= ~FL_VEH_BOARDING;
-		// Eject this guy now.
 		if (p_veh->m_pVehicleInfo->Eject(p_veh, pRider, qfalse))
-		{
 			return qfalse;
-		}
 	}
 
-	if (p_veh->m_pVehicleInfo->type != VH_FIGHTER
-		&& p_veh->m_pVehicleInfo->type != VH_WALKER)
+	// Jump off
+	if (p_veh->m_pVehicleInfo->type != VH_FIGHTER &&
+		p_veh->m_pVehicleInfo->type != VH_WALKER)
 	{
-		// Jump off.
 		if (pUmcd->upmove > 0)
 		{
 			if (p_veh->m_pVehicleInfo->Eject(p_veh, pRider, qfalse))
 			{
-				// Allow them to force jump off.
 				VectorScale(parent->client->ps.velocity, 0.5f, rider->client->ps.velocity);
 				rider->client->ps.velocity[2] += JUMP_VELOCITY;
 				rider->client->ps.fd.forceJumpZStart = rider->client->ps.origin[2];
@@ -1719,16 +1711,19 @@ static qboolean UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, const usercmd_
 				{
 					G_AddEvent(rider, EV_JUMP, 0);
 				}
-				Vehicle_SetAnim(rider, SETANIM_BOTH, BOTH_JUMP1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 300);
+
+				Vehicle_SetAnim(rider, SETANIM_BOTH, BOTH_JUMP1,
+					SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 300);
 				return qfalse;
 			}
 		}
 
-		// Roll off.
+		// Roll off
 		if (pUmcd->upmove < 0)
 		{
 			animNumber_t Anim = BOTH_ROLL_B;
 			p_veh->m_EjectDir = VEH_EJECT_REAR;
+
 			if (pUmcd->rightmove > 0)
 			{
 				Anim = BOTH_ROLL_R;
@@ -1758,7 +1753,6 @@ static qboolean UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, const usercmd_
 					Vehicle_SetAnim(rider, SETANIM_BOTH, Anim,
 						SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_HOLDLESS, 300);
 					rider->client->ps.weaponTime = rider->client->ps.torsoTimer - 200;
-					//just to make sure it's cleared when roll is done
 					G_AddEvent(rider, EV_ROLL, 0);
 				}
 				return qfalse;
@@ -2244,7 +2238,7 @@ void G_VehicleSetDamageLocFlags(gentity_t* veh, const int impactDir, int deathPo
 
 qboolean G_FlyVehicleDestroySurface(gentity_t* veh, const int surface)
 {
-	char* surfName[4]; //up to 4 surfs at once
+	char* surfName[4] = { 0 }; //up to 4 surfs at once
 	int numSurfs = 0;
 	int smashedBits = 0;
 

@@ -1960,7 +1960,6 @@ const char* CG_ConfigString(const int index)
 	return cgs.gameState.stringData + offset;
 }
 
-
 //==================================================================
 
 /*
@@ -2664,7 +2663,6 @@ void CG_LoadMenus(const char* menuFile)
 		}
 	}
 }
-
 
 /*
 =================

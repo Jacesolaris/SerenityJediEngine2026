@@ -1596,7 +1596,7 @@ void CG_AddViewWeapon(playerState_t* ps)
 	weaponData_t* w_data;
 	centity_t* cent;
 	float fov_offset, lean_offset;
-	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << DASHING ? qtrue : qfalse;
+	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << CF_DASHING ? qtrue : qfalse;
 
 	if (cg.renderingThirdPerson && !cg_trueguns.integer && !cg.zoomMode && (ps->eFlags & EF2_DUAL_WEAPONS || ps->weapon == WP_DROIDEKA))
 	{
@@ -2211,7 +2211,7 @@ void CG_AddViewWeaponDuals(playerState_t* ps)
 	weaponData_t* wData;
 	centity_t* cent;
 	float fovOffset, leanOffset;
-	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << DASHING ? qtrue : qfalse;
+	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << CF_DASHING ? qtrue : qfalse;
 
 	// no gun if in third person view
 	if (cg.renderingThirdPerson)

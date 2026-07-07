@@ -325,6 +325,7 @@ void CG_CalcVrect()
 //==============================================================================
 //==============================================================================
 constexpr auto CAMERA_DAMP_INTERVAL = 50;
+constexpr auto CAMERA_DAMP_INTERVAL_AIMING = 30;
 
 constexpr auto CAMERA_CROUCH_NUDGE = 6;
 
@@ -428,6 +429,21 @@ static void CG_CalcIdealThirdPersonViewTarget()
 		VectorCopy(cameraFocusLoc, cameraIdealTarget);
 		cameraIdealTarget[2] -= 15.5f;
 	}
+	else if (cg.renderingThirdPerson &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+		cg_AimingCinematicCamera.integer)
+	{
+		vec3_t forward;
+		AngleVectors(cg.refdefViewAngles, forward, NULL, NULL);
+
+		// Shorter forward distance so we don't zoom into the back of the head
+		VectorMA(cameraFocusLoc, 64.0f, forward, cameraIdealTarget);
+
+		// Shoulder camera tuning
+		cg.overrides.thirdPersonAngle = 10.0f;   // yaw inward
+		cg.overrides.thirdPersonPitchOffset = -2.0f;   // slight downward pitch
+		cg.overrides.thirdPersonHorzOffset = -20.0f;  // softer shoulder shift
+	}
 	else
 	{
 		// Add in a vertical offset from the viewpoint, which puts the actual target above the head, regardless of angle.
@@ -442,6 +458,7 @@ static void CG_CalcIdealThirdPersonViewTarget()
 		trace_t trace;
 
 		VectorCopy(cameraFocusLoc, nudgepos);
+
 		nudgepos[2] += CAMERA_CROUCH_NUDGE;
 
 		CG_Trace(&trace, cameraFocusLoc, cameramins, cameramaxs, nudgepos,
@@ -494,7 +511,7 @@ static void CG_CalcIdealThirdPersonViewLocation()
 	{
 		return;
 	}
-	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << DASHING ? qtrue : qfalse;
+	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << CF_DASHING ? qtrue : qfalse;
 
 	// Override: explicit range
 	if (cg.overrides.active & CG_OVERRIDE_3RD_PERSON_RNG)
@@ -656,16 +673,26 @@ static void CG_UpdateThirdPersonTargetDamp()
 		// The equation is (Damp)^(time)
 		const float dampfactor = 1.0 - cg_thirdPersonTargetDamp.value;
 		// We must exponent the amount LEFT rather than the amount bled off
-		const float dtime = static_cast<float>(cg.time - cameraLastFrame) * (1.0 / cg_timescale.value) * (1.0 /
-			static_cast<
-			float>(CAMERA_DAMP_INTERVAL)); // Our dampfactor is geared towards a time interval equal to "1".
-
-		// Note that since there are a finite number of "practical" delta millisecond values possible,
-		// the ratio should be initialized into a chart ultimately.
-		if (cg_smoothCamera.integer)
-			ratio = powf(dampfactor, dtime);
+		if (cg.renderingThirdPerson &&
+			(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+			cg_AimingCinematicCamera.integer)
+		{
+			const float dtime = static_cast<float>(cg.time - cameraLastFrame) * (1.0 / cg_timescale.value) * (1.0 /
+				static_cast<float>(CAMERA_DAMP_INTERVAL_AIMING)); // Our dampfactor is geared towards a time interval equal to "1".
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 		else
-			ratio = Q_powf(dampfactor, dtime);
+		{
+			const float dtime = static_cast<float>(cg.time - cameraLastFrame) * (1.0 / cg_timescale.value) * (1.0 /
+				static_cast<float>(CAMERA_DAMP_INTERVAL)); // Our dampfactor is geared towards a time interval equal to "1".
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 
 		// This value is how much distance is "left" from the ideal.
 		VectorMA(cameraIdealTarget, -ratio, targetdiff, cameraCurTarget);
@@ -771,16 +798,29 @@ static void CG_UpdateThirdPersonCameraDamp()
 		// Now we calculate how much of the difference we cover in the time allotted.
 		// The equation is (Damp)^(time)
 		dampfactor = 1.0 - dampfactor; // We must exponent the amount LEFT rather than the amount bled off
-		const float dtime = static_cast<float>(cg.time - cameraLastFrame) * (1.0 / cg_timescale.value) * (1.0 /
-			static_cast<
-			float>(CAMERA_DAMP_INTERVAL)); // Our dampfactor is geared towards a time interval equal to "1".
 
-		// Note that since there are a finite number of "practical" delta millisecond values possible,
-		// the ratio should be initialized into a chart ultimately.
-		if (cg_smoothCamera.integer)
-			ratio = powf(dampfactor, dtime);
+		if (cg.renderingThirdPerson &&
+			(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+			cg_AimingCinematicCamera.integer)
+		{
+			const float dtime = static_cast<float>(cg.time - cameraLastFrame) * (1.0 / cg_timescale.value) * (1.0 /
+				static_cast<float>(CAMERA_DAMP_INTERVAL_AIMING)); // Our dampfactor is geared towards a time interval equal to "1".
+
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 		else
-			ratio = Q_powf(dampfactor, dtime);
+		{
+			const float dtime = static_cast<float>(cg.time - cameraLastFrame) * (1.0 / cg_timescale.value) * (1.0 /
+				static_cast<float>(CAMERA_DAMP_INTERVAL)); // Our dampfactor is geared towards a time interval equal to "1".
+
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 
 		// This value is how much distance is "left" from the ideal.
 		VectorMA(cameraIdealLoc, -ratio, locdiff, cameraCurLoc);
@@ -831,6 +871,7 @@ static void CG_OffsetThirdPersonView()
 	}
 
 	vec3_t diff;
+	static int aimLockTime = 0;
 
 	camWaterAdjust = 0;
 	cameraStiffFactor = 0.0f;
@@ -909,6 +950,50 @@ static void CG_OffsetThirdPersonView()
 		cameraFocusAngles[YAW] += (cg.overrides.thirdPersonAngle = 40.5f);
 		cameraFocusAngles[PITCH] += (cg.overrides.thirdPersonPitchOffset = -11.25f);
 	}
+	// Aiming cinematic
+	else if (cg.renderingThirdPerson &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+		cg_AimingCinematicCamera.integer)
+	{
+		cg.overrides.thirdPersonAngle = 10.0f;
+		cg.overrides.thirdPersonPitchOffset = -2.0f;
+
+		cameraFocusAngles[YAW] += cg.overrides.thirdPersonAngle;
+		cameraFocusAngles[PITCH] += cg.overrides.thirdPersonPitchOffset;
+
+		// Start aim-lock timer
+		if (aimLockTime == 0)
+		{
+			aimLockTime = cg.time + 250;   // wait for zoom-in to finish
+		}
+
+		// Only apply dynamic shoulder tracking AFTER zoom-in
+		if (cg.time > aimLockTime)
+		{
+			float side = cg.predictedPlayerState.velocity[1];
+
+			// Only track sideways movement if actually strafing
+			if (fabs(side) > 5.0f)
+			{
+				float sideNorm = side / 200.0f;
+
+				if (sideNorm > 1.0f)  sideNorm = 1.0f;
+				if (sideNorm < -1.0f) sideNorm = -1.0f;
+
+				float baseShoulder = -20.0f;
+				cg.overrides.thirdPersonHorzOffset = baseShoulder + (-18.0f * sideNorm);
+
+				// Tight camera damp (keeps camera glued to shoulder)
+				cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_CDP;
+				cg.overrides.thirdPersonCameraDamp = 0.8f;
+			}
+			else
+			{
+				// NOT strafing → disable shoulder lock
+				cg.overrides.active &= ~CG_OVERRIDE_3RD_PERSON_CDP;
+			}
+		}
+	}
 	// Normal third‑person angle
 	else
 	{
@@ -929,6 +1014,9 @@ static void CG_OffsetThirdPersonView()
 		{
 			cameraFocusAngles[PITCH] += cg_thirdPersonPitchOffset.value;
 		}
+		// Not aiming → reset everything
+		aimLockTime = 0;
+		cg.overrides.active &= ~CG_OVERRIDE_3RD_PERSON_CDP;
 	}
 
 	// First‑person saber handling
@@ -1464,7 +1552,7 @@ Fixed fov at intermissions, otherwise account for fov variable and zooms.
 static qboolean CG_CalcFov()
 {
 	float fov_x;
-	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << DASHING ? qtrue : qfalse;
+	const qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << CF_DASHING ? qtrue : qfalse;
 
 	if (cg.predictedPlayerState.pm_type == PM_INTERMISSION)
 	{

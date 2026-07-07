@@ -1068,7 +1068,6 @@ static gentity_t* SelectRandomFurthestSpawnPoint(
 	return list_spot[rnd];
 }
 
-
 static gentity_t* SelectDuelSpawnPoint(const int team, vec3_t avoidPoint,
 	vec3_t origin, vec3_t angles,
 	const qboolean isbot)
@@ -1196,7 +1195,6 @@ tryAgain:
 	VectorCopy(list_spot[rnd]->s.angles, angles);
 	return list_spot[rnd];
 }
-
 
 /*
 ===========
@@ -7359,7 +7357,7 @@ spawn_done:
 			client->ps.ammo[AMMO_BLASTER] = ammoData[AMMO_BLASTER].max;
 			client->ps.ammo[AMMO_METAL_BOLTS] = ammoData[AMMO_METAL_BOLTS].max;
 			client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-			client->ps.eFlags |= EF3_DUAL_WEAPONS;
+			//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 			client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 			client->skillLevel[SK_THERMAL] = FORCE_LEVEL_3;
 			client->skillLevel[SK_BOWCASTER] = FORCE_LEVEL_3;
@@ -7491,7 +7489,7 @@ spawn_done:
 					client->skillLevel[SK_BLASTERRATEOFFIREUPGRADE] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_ROCKET_LAUNCHER;
 					client->skillLevel[SK_ROCKET] = FORCE_LEVEL_3;
@@ -7782,7 +7780,7 @@ spawn_done:
 					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
 					client->ps.ammo[AMMO_THERMAL] = 4;
@@ -7796,7 +7794,7 @@ spawn_done:
 					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_REPEATER;
 					client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
@@ -7811,7 +7809,7 @@ spawn_done:
 					client->skillLevel[SK_ACROBATICS] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					ClassAmmoSetup(ent);
 					client->ps.ammo[AMMO_ROCKETS] = 5;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
@@ -7903,7 +7901,7 @@ spawn_done:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_DET_PACK;
 					client->skillLevel[SK_DETPACK] = FORCE_LEVEL_3;
@@ -7945,7 +7943,7 @@ spawn_done:
 					client->skillLevel[SK_ACROBATICS] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					ClassAmmoSetup(ent);
 					client->ps.ammo[AMMO_TRIPMINE] = 3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
@@ -8003,7 +8001,7 @@ spawn_done:
 					client->skillLevel[SK_CRYOBAN] = FORCE_LEVEL_3;
 					if (client->skillLevel[SK_PISTOL] >= FORCE_LEVEL_3 && ent->client->ps.weapon == WP_BRYAR_PISTOL)
 					{
-						client->ps.eFlags |= EF3_DUAL_WEAPONS;
+						//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 					}
 					break;
 				}
@@ -8044,7 +8042,7 @@ spawn_done:
 				client->skillLevel[SK_CRYOBAN] = FORCE_LEVEL_3;
 				if (client->skillLevel[SK_PISTOL] >= FORCE_LEVEL_3 && ent->client->ps.weapon == WP_BRYAR_PISTOL)
 				{
-					client->ps.eFlags |= EF3_DUAL_WEAPONS;
+					//client->ps.eFlags |= EF3_DUAL_WEAPONS;
 				}
 			}
 		}

@@ -235,7 +235,7 @@ using ammoData_t = struct ammoData_s
 //---------
 #define BLASTER_MAIN_SPREAD			0.5f
 #define BLASTER_ALT_SPREAD			1.0f
-#define BLASTER_NPC_SPREAD			0.25f
+#define BLASTER_NPC_SPREAD			0.75f
 #define BLASTER_VELOCITY			2300
 #define BLASTER_NPC_VEL_CUT			0.5f
 #define BLASTER_NPC_HARD_VEL_CUT	0.7f

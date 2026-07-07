@@ -13649,7 +13649,7 @@ static void CG_AddLightningBeam(vec3_t start, vec3_t end)
 		c1, c2,
 		v1, v2;
 
-	addbezierArgStruct_t b={0};
+	addbezierArgStruct_t b = { 0 };
 
 	VectorCopy(start, b.start);
 	VectorCopy(end, b.end);
@@ -16131,7 +16131,6 @@ static void CG_HolsteredWeaponRender(centity_t* cent, const clientInfo_t* ci, co
 	/* Submit the entity to the renderer */
 	trap->R_AddRefEntityToScene(&ent);
 }
-
 
 //Defines for the ghoul2 model indexes
 #define		G2MODEL_SABER_HOLSTERED			4

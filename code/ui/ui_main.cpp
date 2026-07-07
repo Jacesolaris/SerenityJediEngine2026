@@ -159,7 +159,7 @@ static void UI_RecordForceLevels();
 static void UI_RecordWeapons();
 static void UI_ResetCharacterListBoxes();
 
-void UI_LoadMenus(const char* menuFile, qboolean reset);
+void UI_LoadMenus(const char* menuFile, const qboolean reset);
 static void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y, int ownerDraw,
 	int ownerDrawFlags, int align, float special, float scale, vec4_t color, qhandle_t shader,
 	int textStyle, int iFontIndex);
@@ -840,7 +840,6 @@ static void Text_PaintWithCursor(const float x,
 		style | ITEM_TEXTSTYLE_BLINK,
 		iFontIndex);
 }
-
 
 static const char* UI_FeederItemText(const float feederID, const int index, const int column, qhandle_t* handle)
 {
@@ -3483,6 +3482,34 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	COM_EndParseSession();
 
 	Com_Printf("UI menu load time = %d milli seconds\n", Sys_Milliseconds() - start);
+
+	Com_Printf("-----------------------------------------------------------------\n");
+	Com_Printf("--------------------- Client Initialization ---------------------\n");
+	Com_Printf("-----------------------------------------------------------------\n");
+	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
+	Com_Printf("---------------------Build date 07/07/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 02------------------------------\n");
+	Com_Printf("-----------------------------------------------------------------\n");
+	Com_Printf("------------------------LightSaber-------------------------------\n");
+	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
+	Com_Printf("-----------------------------------------------------------------\n");
+	Com_Printf("This mod improves the hit detection and alters the saber traces.\n");
+	Com_Printf("Additionally,the first part of a swing will now do damage.\n");
+	Com_Printf("This allows the beginning of the swing to be blocked/parried.\n");
+	Com_Printf("Because of this new early-block system, saber spam or heavy\n");
+	Com_Printf("exploits will be less effective.\n");
+	Com_Printf("A player can 'deny' an enemy who wildly swings their saber\n");
+	Com_Printf("and will force them to make cleaner, more precise hits.\n");
+	Com_Printf("To make up for the beginning of the swing's shortcomings\n");
+	Com_Printf("I added a 50 percent increase to end-phase damage.\n");
+	Com_Printf("More damage at the end of the swing should maintain the fast-paced feel.\n");
+	Com_Printf("Well-timed and well-aimed slashes are more effective than on basejka.\n");
+	Com_Printf("This could potentially improve the way we play JKA quite a lot.\n");
+	Com_Printf("Less spam-friendly, and more accurate hit detection could make the game more movie like.\n");
+	Com_Printf("-----------------------------------------------------------------\n");
+
+	Com_Printf("------Type (seta cl_noprint 0) to see text------\n");
+	Com_Printf("------Type (helpdebug) to open debug command list------\n");
 
 	ui.FS_FreeFile(buffer); //let go of the buffer
 }
@@ -6564,7 +6591,6 @@ static void UI_AddWeaponSelection(const int weapon_index,
 	UI_WeaponsSelectionsComplete();
 }
 
-
 // Update the player weapons with the chosen weapon
 static void UI_RemoveWeaponSelection(const int weapon_selection_index)
 {
@@ -6857,7 +6883,6 @@ static void UI_AddThrowWeaponSelection(const int weapon_index,
 
 	UI_WeaponsSelectionsComplete();
 }
-
 
 // Update the player weapons with the chosen throw weapon
 static void UI_RemoveThrowWeaponSelection()

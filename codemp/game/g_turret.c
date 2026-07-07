@@ -251,7 +251,7 @@ void turret_head_think(gentity_t* self)
 static void turret_aim(const gentity_t* self)
 //-----------------------------------------------------
 {
-	vec3_t desiredAngles, setAngle;
+	vec3_t desiredAngles = { 0 }, setAngle;
 	float diff_yaw, diff_pitch;
 	const float pitchCap = 40.0f;
 	gentity_t* top = &g_entities[self->r.ownerNum];
@@ -420,25 +420,34 @@ static void turret_sleep(gentity_t* self)
 
 //-----------------------------------------------------
 static qboolean turret_find_enemies(gentity_t* self)
-//-----------------------------------------------------
 {
 	qboolean found = qfalse;
 	float bestDist = self->radius * self->radius;
 	vec3_t org, org2;
-	gentity_t* entity_list[MAX_GENTITIES], * bestTarget = NULL;
-	trace_t tr;
+
+	// FIX: move large arrays off stack (C6262)
+	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
+	trace_t* tr = (trace_t*)BG_Alloc(sizeof(trace_t));
+
+	if (!entity_list || !tr)
+	{
+		Com_Printf(S_COLOR_RED "turret_find_enemies: BG_Alloc failed\n");
+		return qfalse;
+	}
+
+	gentity_t* bestTarget = NULL;
+
 	const gentity_t* top = &g_entities[self->r.ownerNum];
 	if (!top)
 	{
 		return qfalse;
 	}
 
-	if (self->aimDebounceTime > level.time) // time since we've been shut off
+	// Turret alert ping logic
+	if (self->aimDebounceTime > level.time)
 	{
-		// We were active and alert, i.e. had an enemy in the last 3 secs
 		if (self->timestamp < level.time)
 		{
-			//G_Sound(self, CHAN_BODY, G_SoundIndex( "sound/chars/turret/ping.wav" ));
 			self->timestamp = level.time + 1000;
 		}
 	}
@@ -451,12 +460,11 @@ static qboolean turret_find_enemies(gentity_t* self)
 	{
 		gentity_t* target = entity_list[i];
 
-		if (!target->client)
+		if (!target || !target->client)
 		{
-			// only attack clients
 			continue;
 		}
-		if (target == self || !target->takedamage || target->health <= 0 || target->flags & FL_NOTARGET)
+		if (target == self || !target->takedamage || target->health <= 0 || (target->flags & FL_NOTARGET))
 		{
 			continue;
 		}
@@ -468,22 +476,23 @@ static qboolean turret_find_enemies(gentity_t* self)
 		{
 			continue;
 		}
+
+		// Allied team check
 		if (self->alliedTeam)
 		{
 			if (target->client)
 			{
 				if (target->client->sess.sessionTeam == self->alliedTeam)
 				{
-					// A bot/client/NPC we don't want to shoot
 					continue;
 				}
 			}
 			else if (target->teamnodmg == self->alliedTeam)
 			{
-				// An ent we don't want to shoot
 				continue;
 			}
 		}
+
 		if (!trap->InPVS(org2, target->r.currentOrigin))
 		{
 			continue;
@@ -492,26 +501,23 @@ static qboolean turret_find_enemies(gentity_t* self)
 		VectorCopy(target->r.currentOrigin, org);
 		org[2] += target->r.maxs[2] * 0.5f;
 
-		trap->Trace(&tr, org2, NULL, NULL, org, self->s.number, MASK_SHOT, qfalse, 0, 0);
+		trap->Trace(tr, org2, NULL, NULL, org, self->s.number, MASK_SHOT, qfalse, 0, 0);
 
-		if (!tr.allsolid && !tr.startsolid && (tr.fraction == 1.0 || tr.entityNum == target->s.number))
+		if (!tr->allsolid && !tr->startsolid &&
+			(tr->fraction == 1.0f || tr->entityNum == target->s.number))
 		{
 			vec3_t enemyDir;
-			// Only acquire if have a clear shot, Is it in range and closer than our best?
 			VectorSubtract(target->r.currentOrigin, top->r.currentOrigin, enemyDir);
 			const float enemyDist = VectorLengthSquared(enemyDir);
 
-			if (enemyDist < bestDist // all things equal, keep current
-				|| !Q_stricmp("atst_vehicle", target->NPC_type) && bestTarget &&
-				Q_stricmp("atst_vehicle", bestTarget->NPC_type))
-				//target AT-STs over non-AT-STs... FIXME: must be a better, easier way to tell this, no?
+			// Prefer closer targets OR AT-STs over non‑AT‑STs
+			if (enemyDist < bestDist ||
+				(!Q_stricmp("atst_vehicle", target->NPC_type) &&
+					bestTarget &&
+					Q_stricmp("atst_vehicle", bestTarget->NPC_type)))
 			{
 				if (self->attackDebounceTime < level.time)
 				{
-					// We haven't fired or acquired an enemy in the last 2 seconds-start-up sound
-					//G_Sound( self, CHAN_BODY, G_SoundIndex( "sound/chars/turret/startup.wav" ));
-
-					// Wind up turrets for a bit
 					self->attackDebounceTime = level.time + 1400;
 				}
 
@@ -525,6 +531,7 @@ static qboolean turret_find_enemies(gentity_t* self)
 	if (found)
 	{
 		G_SetEnemy(self, bestTarget);
+
 		if (VALIDSTRING(self->target2))
 		{
 			G_UseTargets2(self, self, self->target2);

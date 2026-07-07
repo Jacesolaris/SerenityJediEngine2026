@@ -18774,7 +18774,7 @@ static void ForceSpeedDash(gentity_t* self)
 	}
 	// Note that the above check , so you can still hold the button during a saber lock
 	// and have the dash start immediately after the lock ends, which is nice.
-	if (!(self->client->ps.communicatingflags & 1 << DASHING))
+	if (!(self->client->ps.communicatingflags & 1 << CF_DASHING))
 	{// not actually dashing, so don't start the anim or sound
 		return;
 	}
@@ -23429,7 +23429,6 @@ static void force_shoot_lightning(gentity_t* self)
 	}
 }
 
-
 void WP_DeactivateSaber(const gentity_t* self, const qboolean clear_length)
 {
 	const qboolean blocking = self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
@@ -24235,7 +24234,6 @@ void ForceShootDrain(gentity_t* self)
 		WP_ForcePowerDrain(self, FP_DRAIN, numDrained);
 	}
 }
-
 
 static void ForceDrainEnt(gentity_t* self, gentity_t* drain_ent)
 {
@@ -25465,7 +25463,6 @@ static void ForceStasisWide(const gentity_t* self, gentity_t* traceEnt)
 		}
 	}
 }
-
 
 void ForceStasis(gentity_t* self)
 {
@@ -29692,6 +29689,7 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		self->client->NPC_class == CLASS_MANDO)
 	{
 		if (self->client->ps.weapon != WP_MELEE &&
+			self->client->ps.weapon != WP_BLASTER_PISTOL &&
 			(ucmd->buttons & BUTTON_WALKING) &&
 			(ucmd->buttons & BUTTON_BLOCK))
 		{
@@ -29831,7 +29829,6 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		}
 	}
 }
-
 
 void WP_BlockPointsUpdate(const gentity_t* self)
 {
@@ -30378,7 +30375,7 @@ qboolean wp_saber_Off_Dash_Evasion(gentity_t* self, vec3_t hitloc)
 	}
 
 	// Mark dashing
-	self->client->ps.communicatingflags |= (1 << DASHING);
+	self->client->ps.communicatingflags |= (1 << CF_DASHING);
 
 	return qtrue;
 }

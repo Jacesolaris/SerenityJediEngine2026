@@ -734,6 +734,7 @@ Ghoul2 Insert Start
 
 { NETF(hackingTime), 32 },
 { NETF(hackingBaseTime), 16 },
+{ NETF(IsAiming), 16 },
 };
 #endif
 
@@ -1244,8 +1245,9 @@ static const netField_t playerStateFields[] =
 	{PSF(hyperSpaceTime), 32},
 	{PSF(hyperSpaceAngles), 32},
 
-	{ PSF(hackingTime), 32 },
-	{ PSF(hackingBaseTime), 16 },
+	{PSF(hackingTime), 32 },
+	{PSF(hackingBaseTime), 16 },
+	{PSF(IsAiming), 16 },
 
 #endif // !JK2_MODE
 };

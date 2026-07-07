@@ -736,92 +736,98 @@ static int Team_TouchOurFlag(gentity_t* ent, const gentity_t* other, const int t
 	gclient_t* cl = other->client;
 	int enemy_flag;
 	vec3_t mins, maxs;
-	int touch[MAX_GENTITIES];
 
-	if (cl->sess.sessionTeam == TEAM_RED)
+	// FIX: move large array off stack (C6262)
+	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!touch)
 	{
-		enemy_flag = PW_BLUEFLAG;
-	}
-	else
-	{
-		enemy_flag = PW_REDFLAG;
+		Com_Printf(S_COLOR_RED "Team_TouchOurFlag: BG_Alloc failed\n");
+		return 0;
 	}
 
+	// Determine which flag is the enemy flag
+	enemy_flag = (cl->sess.sessionTeam == TEAM_RED) ? PW_BLUEFLAG : PW_REDFLAG;
+
+	// If the flag is dropped, return it
 	if (ent->flags & FL_DROPPED_ITEM)
 	{
-		// hey, its not home.  return it by teleporting it back
-		//PrintMsg( NULL, "%s" S_COLOR_WHITE " returned the %s flag!\n",
-		//	cl->pers.netname, TeamName(team));
 		PrintCTFMessage(other->s.number, team, CTFMESSAGE_PLAYER_RETURNED_FLAG);
 
 		AddScore(other, CTF_RECOVERY_BONUS);
 		other->client->pers.teamState.flagrecovery++;
 		other->client->pers.teamState.lastreturnedflag = level.time;
-		//ResetFlag will remove this entity!  We must return zero
+
+		// ResetFlag removes this entity; return immediately
 		Team_ReturnFlagSound(Team_ResetFlag(team), team);
 		return 0;
 	}
 
-	// the flag is at home base.  if the player has the enemy
-	// flag, he's just won!
+	// If player does not have the enemy flag, nothing to do
 	if (!cl->ps.powerups[enemy_flag])
-		return 0; // We don't have the flag
-
-	// fix: captures after timelimit hit could
-	// cause game ending with tied score
-	if (level.intermissionQueued)
+	{
 		return 0;
+	}
 
-	// check for enemy closer to grab the flag
+	// Prevent captures during intermission
+	if (level.intermissionQueued)
+	{
+		return 0;
+	}
+
+	// Check if an enemy is closer to the flag than us
 	VectorSubtract(ent->s.pos.trBase, minFlagRange, mins);
 	VectorAdd(ent->s.pos.trBase, maxFlagRange, maxs);
 
 	const int num = trap->EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
-
 	const float dist = Distance(ent->s.pos.trBase, other->client->ps.origin);
 
-	if (other->client->sess.sessionTeam == TEAM_RED)
-		enemyTeam = TEAM_BLUE;
-	else
-		enemyTeam = TEAM_RED;
+	enemyTeam = (other->client->sess.sessionTeam == TEAM_RED) ? TEAM_BLUE : TEAM_RED;
 
 	for (int j = 0; j < num; j++)
 	{
-		const gentity_t* enemy = g_entities + touch[j];
+		const gentity_t* enemy = &g_entities[touch[j]];
 
 		if (!enemy || !enemy->inuse || !enemy->client)
+		{
 			continue;
+		}
 
 		if (enemy->client->pers.connected != CON_CONNECTED)
+		{
 			continue;
+		}
 
-		//check if its alive
+		// Dead players cannot pick up flags
 		if (enemy->health < 1)
-			continue; // dead people can't pickup
-
-		//ignore specs
-		if (enemy->client->sess.sessionTeam == TEAM_SPECTATOR)
+		{
 			continue;
+		}
 
-		//check if this is enemy
-		if (enemy->client->sess.sessionTeam != TEAM_RED && enemy->client->sess.sessionTeam != TEAM_BLUE ||
+		// Ignore spectators
+		if (enemy->client->sess.sessionTeam == TEAM_SPECTATOR)
+		{
+			continue;
+		}
+
+		// Check if this is an enemy player
+		if ((enemy->client->sess.sessionTeam != TEAM_RED &&
+			enemy->client->sess.sessionTeam != TEAM_BLUE) ||
 			enemy->client->sess.sessionTeam != enemyTeam)
 		{
 			continue;
 		}
 
-		//check if enemy is closer to our flag than us
+		// Check if enemy is closer to the flag
 		const float enemyDist = Distance(ent->s.pos.trBase, enemy->client->ps.origin);
+
 		if (enemyDist < dist)
 		{
-			// possible recursion is hidden in this, but
-			// infinite recursion wont happen, because we cant
-			// have a < b and b < a at the same time
+			// Recursion safe: cannot have a < b and b < a simultaneously
 			return Team_TouchEnemyFlag(ent, enemy, team);
 		}
 	}
 
-	//PrintMsg( NULL, "%s" S_COLOR_WHITE " captured the %s flag!\n", cl->pers.netname, TeamName(OtherTeam(team)));
+	// Player captured the flag
 	PrintCTFMessage(other->s.number, team, CTFMESSAGE_PLAYER_CAPTURED_FLAG);
 
 	cl->ps.powerups[enemy_flag] = 0;
@@ -829,35 +835,37 @@ static int Team_TouchOurFlag(gentity_t* ent, const gentity_t* other, const int t
 	teamgame.last_flag_capture = level.time;
 	teamgame.last_capture_team = team;
 
-	// Increase the team's score
+	// Increase team score
 	AddTeamScore(ent->s.pos.trBase, other->client->sess.sessionTeam, 1);
 
 	other->client->pers.teamState.captures++;
 	other->client->rewardTime = level.time + REWARD_SPRITE_TIME;
 	other->client->ps.persistant[PERS_CAPTURES]++;
 
-	// other gets another 10 frag bonus
+	// Capture bonus
 	AddScore(other, CTF_CAPTURE_BONUS);
 
 	Team_CaptureFlagSound(ent, team);
 
-	// Ok, let's do the player loop, hand out the bonuses
+	// Award team bonuses
 	for (int i = 0; i < sv_maxclients.integer; i++)
 	{
 		const gentity_t* player = &g_entities[i];
-		if (!player->inuse || player == other)
-			continue;
 
-		if (player->client->sess.sessionTeam !=
-			cl->sess.sessionTeam)
+		if (!player->inuse || player == other)
+		{
+			continue;
+		}
+
+		if (player->client->sess.sessionTeam != cl->sess.sessionTeam)
 		{
 			player->client->pers.teamState.lasthurtcarrier = -5;
 		}
-		else if (player->client->sess.sessionTeam ==
-			cl->sess.sessionTeam)
+		else
 		{
 			AddScore(player, CTF_TEAM_BONUS);
-			// award extra points for capture assists
+
+			// Capture assist: returned flag recently
 			if (player->client->pers.teamState.lastreturnedflag +
 				CTF_RETURN_FLAG_ASSIST_TIMEOUT > level.time)
 			{
@@ -867,18 +875,21 @@ static int Team_TouchOurFlag(gentity_t* ent, const gentity_t* other, const int t
 				player->client->ps.persistant[PERS_ASSIST_COUNT]++;
 				player->client->rewardTime = level.time + REWARD_SPRITE_TIME;
 			}
+
+			// Capture assist: fragged carrier recently
 			if (player->client->pers.teamState.lastfraggedcarrier +
 				CTF_FRAG_CARRIER_ASSIST_TIMEOUT > level.time)
 			{
 				AddScore(player, CTF_FRAG_CARRIER_ASSIST_BONUS);
 				other->client->pers.teamState.assists++;
+
 				player->client->ps.persistant[PERS_ASSIST_COUNT]++;
 				player->client->rewardTime = level.time + REWARD_SPRITE_TIME;
 			}
 		}
 	}
-	Team_ResetFlags();
 
+	Team_ResetFlags();
 	CalculateRanks();
 
 	return 0; // Do not respawn this automatically
@@ -889,7 +900,14 @@ int Team_TouchEnemyFlag(gentity_t* ent, const gentity_t* other, const int team)
 	gclient_t* cl = other->client;
 	vec3_t mins, maxs;
 	int ourFlag;
-	int touch[MAX_GENTITIES];
+
+	// FIX: move large array off stack (C6262)
+	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!touch)
+	{
+		Com_Printf(S_COLOR_RED "Team_TouchEnemyFlag: BG_Alloc failed\n");
+		return 0;
+	}
 
 	VectorSubtract(ent->s.pos.trBase, minFlagRange, mins);
 	VectorAdd(ent->s.pos.trBase, maxFlagRange, maxs);
@@ -909,44 +927,52 @@ int Team_TouchEnemyFlag(gentity_t* ent, const gentity_t* other, const int team)
 
 	for (int j = 0; j < num; ++j)
 	{
-		const gentity_t* enemy = g_entities + touch[j];
+		const gentity_t* enemy = &g_entities[touch[j]];
 
 		if (!enemy || !enemy->inuse || !enemy->client)
 		{
 			continue;
 		}
 
-		//ignore specs
+		// ignore spectators
 		if (enemy->client->sess.sessionTeam == TEAM_SPECTATOR)
+		{
 			continue;
+		}
 
-		//check if its alive
+		// must be alive
 		if (enemy->health < 1)
-			continue; // dead people can't pick up items
-
-		//lets check if he has our flag
-		if (!enemy->client->ps.powerups[ourFlag])
+		{
 			continue;
+		}
 
-		//check if enemy is closer to our flag than us
+		// does this enemy have our flag?
+		if (!enemy->client->ps.powerups[ourFlag])
+		{
+			continue;
+		}
+
+		// check if enemy is closer to our flag than us
 		const float enemyDist = Distance(ent->s.pos.trBase, enemy->client->ps.origin);
 		if (enemyDist < dist)
 		{
-			// possible recursion is hidden in this, but
-			// infinite recursion wont happen, because we cant
-			// have a < b and b < a at the same time
+			// recursion safe: cannot have a < b and b < a simultaneously
 			return Team_TouchOurFlag(ent, enemy, team);
 		}
 	}
 
-	//PrintMsg (NULL, "%s" S_COLOR_WHITE " got the %s flag!\n",
-	//	other->client->pers.netname, TeamName(team));
+	//PrintMsg(NULL, "%s" S_COLOR_WHITE " got the %s flag!\n",
+	//    other->client->pers.netname, TeamName(team));
 	PrintCTFMessage(other->s.number, team, CTFMESSAGE_PLAYER_GOT_FLAG);
 
 	if (team == TEAM_RED)
+	{
 		cl->ps.powerups[PW_REDFLAG] = INT_MAX; // flags never expire
+	}
 	else
+	{
 		cl->ps.powerups[PW_BLUEFLAG] = INT_MAX; // flags never expire
+	}
 
 	Team_SetFlagStatus(team, FLAG_TAKEN);
 
@@ -954,7 +980,7 @@ int Team_TouchEnemyFlag(gentity_t* ent, const gentity_t* other, const int team)
 	cl->pers.teamState.flagsince = level.time;
 	Team_TakeFlagSound(ent, team);
 
-	return -1; // Do not respawn this automatically, but do delete it if it was FL_DROPPED
+	return -1; // Do not respawn automatically, but delete if FL_DROPPED
 }
 
 int Pickup_Team(gentity_t* ent, const gentity_t* other)
@@ -1208,11 +1234,18 @@ qboolean BOT_FindCTFWaypointSpawnPoint_blue(gentity_t* bot, vec3_t outOrigin)
 		return qfalse;
 	}
 
-	int spawnList[MAX_WPARRAY_SIZE] = { 0 };
+	// FIX: move large array off stack (C6262)
+	int* spawnList = (int*)BG_Alloc(MAX_WPARRAY_SIZE * sizeof(int));
+	if (!spawnList)
+	{
+		Com_Printf(S_COLOR_RED "BOT_FindCTFWaypointSpawnPoint_blue: BG_Alloc failed\n");
+		return qfalse;
+	}
+
 	int spawnCount = 0;
 
 	// ---------------------------------------------------------
-	// Scan all waypoints for NEUTRAL spawn flags only
+	// Scan all waypoints for BLUE spawn flags only
 	// ---------------------------------------------------------
 	for (int i = 0; i < gWPNum; i++)
 	{
@@ -1269,11 +1302,18 @@ qboolean BOT_FindCTFWaypointSpawnPoint_red(gentity_t* bot, vec3_t outOrigin)
 		return qfalse;
 	}
 
-	int spawnList[MAX_WPARRAY_SIZE] = { 0 };
+	// FIX: move large array off stack (C6262)
+	int* spawnList = (int*)BG_Alloc(MAX_WPARRAY_SIZE * sizeof(int));
+	if (!spawnList)
+	{
+		Com_Printf(S_COLOR_RED "BOT_FindCTFWaypointSpawnPoint_red: BG_Alloc failed\n");
+		return qfalse;
+	}
+
 	int spawnCount = 0;
 
 	// ---------------------------------------------------------
-	// Scan all waypoints for NEUTRAL spawn flags only
+	// Scan all waypoints for RED spawn flags only
 	// ---------------------------------------------------------
 	for (int i = 0; i < gWPNum; i++)
 	{
@@ -1330,7 +1370,14 @@ qboolean BOT_FindFFAWaypointSpawnPoint(gentity_t* bot, vec3_t outOrigin)
 		return qfalse;
 	}
 
-	int spawnList[MAX_WPARRAY_SIZE] = { 0 };
+	// FIX: move large array off stack (C6262)
+	int* spawnList = (int*)BG_Alloc(MAX_WPARRAY_SIZE * sizeof(int));
+	if (!spawnList)
+	{
+		Com_Printf(S_COLOR_RED "BOT_FindFFAWaypointSpawnPoint: BG_Alloc failed\n");
+		return qfalse;
+	}
+
 	int spawnCount = 0;
 
 	// ---------------------------------------------------------
@@ -1412,17 +1459,28 @@ extern qboolean CheckforGoodSpawnPoint(vec3_t location, qboolean playersolidchec
 //checks to see if a certain location would telefrag.
 static qboolean PointWouldTelefrag(vec3_t point)
 {
-	int touch[MAX_GENTITIES];
 	vec3_t mins, maxs;
 
+	// FIX: move large array off stack (C6262)
+	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!touch)
+	{
+		Com_Printf(S_COLOR_RED "PointWouldTelefrag: BG_Alloc failed\n");
+		return qfalse;
+	}
+
+	// Compute bounding box around the point
 	VectorAdd(point, playerMins, mins);
 	VectorAdd(point, playerMaxs, maxs);
+
 	const int num = trap->EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
 
 	for (int i = 0; i < num; i++)
 	{
 		const gentity_t* hit = &g_entities[touch[i]];
-		if (hit->client)
+
+		// If any client entity is inside the box, telefrag would occur
+		if (hit && hit->client)
 		{
 			return qtrue;
 		}
@@ -1506,16 +1564,21 @@ gentity_t* SelectSPSpawnPoint(vec3_t origin, vec3_t angles)
 	vec3_t bestspawnloc;
 	int bestSeq = 99;
 
+	// ---------------------------------------------------------
+	// Scan all SP deathmatch spawnpoints
+	// ---------------------------------------------------------
 	while ((spot = G_Find(spot, FOFS(classname), "info_player_deathmatch")) != NULL)
 	{
 		vec3_t spawnloc;
 		VectorCopy(spot->s.origin, spawnloc);
 
-		if (!SPSpawnpointCheck(spawnloc))
+		// Skip telefrag‑unsafe spawnpoints
+		if (SPSpawnpointCheck(spawnloc) == qfalse)
 		{
 			continue;
 		}
 
+		// Pick the lowest sequence number
 		if (spot->genericValue1 < bestSeq)
 		{
 			bestspot = spot;
@@ -1524,22 +1587,32 @@ gentity_t* SelectSPSpawnPoint(vec3_t origin, vec3_t angles)
 		}
 	}
 
-	if (!bestspot)
+	// ---------------------------------------------------------
+	// Fallback: no safe spawnpoint found
+	// ---------------------------------------------------------
+	if (bestspot == NULL)
 	{
-		//couldn't find a spot that wouldn't telefrag, just grab and gib then.
 		bestspot = G_Find(NULL, FOFS(classname), "info_player_deathmatch");
+
+		if (bestspot == NULL)
+		{
+			// Hard failure — no spawnpoints exist at all
+			Com_Printf(S_COLOR_RED "SelectSPSpawnPoint: no info_player_deathmatch found\n");
+			trap->Error(ERR_DROP, "SelectSPSpawnPoint couldn't find any spawnpoints.\n");
+			return NULL; // unreachable after ERR_DROP, but keeps analyzer happy
+		}
+
+		// Use the first available spawnpoint
 		VectorCopy(bestspot->s.origin, bestspawnloc);
 	}
 
-	if (!bestspot)
-	{
-		//this is bad
-		trap->Error(ERR_DROP, "SelectSPSpawnPoint couldn't find any spawnpoints.\n");
-	}
-
+	// ---------------------------------------------------------
+	// Output final spawn origin & angles
+	// ---------------------------------------------------------
 	VectorCopy(bestspawnloc, origin);
-	origin[2] += 9;
+	origin[2] += 9; // lift slightly above ground
 	VectorCopy(bestspot->s.angles, angles);
+
 	return bestspot;
 }
 
@@ -1596,112 +1669,172 @@ teamOverLay_t oldOverLayData[MAX_CLIENTS];
 
 void TeamplayInfoMessage(const gentity_t* ent)
 {
-	char string[8192] = { 0 };
-	int i;
-	gentity_t* player;
-	int cnt;
-	int h, a;
-	int clients[TEAM_MAXOVERLAY] = { 0 };
+	// Validate client and team info flag
+	if (!ent || !ent->client || ent->client->pers.teamInfo == qfalse)
+	{
+		return;
+	}
+
 	int team;
 
-	if (!ent->client->pers.teamInfo)
-		return;
-
-	// send team info to spectator for team of followed client
+	// Spectators follow the team of the client they are watching
 	if (ent->client->sess.sessionTeam == TEAM_SPECTATOR)
 	{
-		if (ent->client->sess.spectatorState != SPECTATOR_FOLLOW
-			|| ent->client->sess.spectatorClient < 0)
+		if (ent->client->sess.spectatorState != SPECTATOR_FOLLOW ||
+			ent->client->sess.spectatorClient < 0)
 		{
 			return;
 		}
-		team = g_entities[ent->client->sess.spectatorClient].client->sess.sessionTeam;
+
+		const gentity_t* followed = &g_entities[ent->client->sess.spectatorClient];
+		if (!followed || !followed->client)
+		{
+			return;
+		}
+
+		team = followed->client->sess.sessionTeam;
 	}
 	else
 	{
 		team = ent->client->sess.sessionTeam;
 	}
 
+	// Only RED or BLUE teams get overlays
 	if (team != TEAM_RED && team != TEAM_BLUE)
 	{
 		return;
 	}
 
-	// figure out what client should be on the display
-	// we are limited to 8, but we want to use the top eight players
-	// but in client order (so they don't keep changing position on the overlay)
-	for (i = 0, cnt = 0; i < sv_maxclients.integer && cnt < TEAM_MAXOVERLAY; i++)
+	// ---------------------------------------------------------
+	// Build list of up to 8 teammates (sorted by client order)
+	// ---------------------------------------------------------
+	int clients[TEAM_MAXOVERLAY] = { 0 };
+	int cnt = 0;
+
+	for (int i = 0; i < sv_maxclients.integer && cnt < TEAM_MAXOVERLAY; i++)
 	{
-		player = g_entities + level.sortedClients[i];
-		if (player->inuse && player->client->sess.sessionTeam == team)
+		gentity_t* player = &g_entities[level.sortedClients[i]];
+
+		if (player->inuse &&
+			player->client &&
+			player->client->sess.sessionTeam == team)
 		{
 			clients[cnt++] = level.sortedClients[i];
 		}
 	}
 
-	// We have the top eight players, sort them by clientNum
-	qsort(clients, cnt, sizeof clients[0], SortClients);
+	// Sort the selected clients by clientNum
+	qsort(clients, cnt, sizeof(clients[0]), SortClients);
 
-	// send the latest information on all clients
-	string[0] = 0;
-	int stringlength = 0;
-
-	for (i = 0, cnt = 0; i < sv_maxclients.integer && cnt < TEAM_MAXOVERLAY; i++)
+	// ---------------------------------------------------------
+	// Allocate large string buffer safely (fixes C6262)
+	// ---------------------------------------------------------
+	char* string = (char*)BG_Alloc(8192);
+	if (!string)
 	{
-		player = g_entities + i;
-
-		if (player->inuse && player->client->sess.sessionTeam == team)
-		{
-			char entry[1024];
-
-			if (player->client->tempSpectate >= level.time)
-			{
-				h = a = 0;
-				//check to make sure that duplicate data isn't being transmitted to the clients.
-				if (ent->client->pers.SJE_clientplugin //don't use this method if the player doesn't have the client plugin
-					&& oldOverLayData[i].location == player->client->pers.teamState.location
-					&& oldOverLayData[i].health == h
-					&& oldOverLayData[i].armor == a
-					&& oldOverLayData[i].weapon == player->client->ps.weapon
-					&& oldOverLayData[i].powerups == player->s.powerups)
-				{//same data as the last update, don't transmit anything.
-					continue;
-				}
-				else
-				{//data has changed, allow transmission and save the data as the old data for next time
-					oldOverLayData[i].location = player->client->pers.teamState.location;
-					oldOverLayData[i].health = h;
-					oldOverLayData[i].armor = a;
-					oldOverLayData[i].weapon = player->client->ps.weapon;
-					oldOverLayData[i].powerups = player->s.powerups;
-				}
-
-				Com_sprintf(entry, sizeof entry, " %i %i %i %i %i %i", i, 0, h, a, 0, 0);
-			}
-			else
-			{
-				h = player->client->ps.stats[STAT_HEALTH];
-				a = player->client->ps.stats[STAT_ARMOR];
-				if (h < 0) h = 0;
-				if (a < 0) a = 0;
-
-				Com_sprintf(entry, sizeof entry,
-					" %i %i %i %i %i %i",
-					i, player->client->pers.teamState.location, h, a,
-					player->client->ps.weapon, player->s.powerups);
-			}
-			const int j = strlen(entry);
-			if (stringlength + j >= sizeof string)
-				break;
-			strcpy(string + stringlength, entry);
-			stringlength += j;
-			cnt++;
-		}
+		Com_Printf(S_COLOR_RED "TeamplayInfoMessage: BG_Alloc failed\n");
+		return;
 	}
 
+	string[0] = '\0';
+	size_t stringlength = 0;
+
+	// ---------------------------------------------------------
+	// Build overlay entries
+	// ---------------------------------------------------------
+	cnt = 0;
+
+	for (int i = 0; i < sv_maxclients.integer && cnt < TEAM_MAXOVERLAY; i++)
+	{
+		gentity_t* player = &g_entities[i];
+
+		if (!player->inuse || !player->client)
+		{
+			continue;
+		}
+
+		if (player->client->sess.sessionTeam != team)
+		{
+			continue;
+		}
+
+		char entry[1024];
+		int h, a;
+
+		// -----------------------------------------------------
+		// Temp spectate: health/armor = 0
+		// -----------------------------------------------------
+		if (player->client->tempSpectate >= level.time)
+		{
+			h = 0;
+			a = 0;
+
+			// Avoid sending duplicate overlay data
+			if (ent->client->pers.SJE_clientplugin &&
+				oldOverLayData[i].location == player->client->pers.teamState.location &&
+				oldOverLayData[i].health == h &&
+				oldOverLayData[i].armor == a &&
+				oldOverLayData[i].weapon == player->client->ps.weapon &&
+				oldOverLayData[i].powerups == player->s.powerups)
+			{
+				continue;
+			}
+
+			// Save new overlay data
+			oldOverLayData[i].location = player->client->pers.teamState.location;
+			oldOverLayData[i].health = h;
+			oldOverLayData[i].armor = a;
+			oldOverLayData[i].weapon = player->client->ps.weapon;
+			oldOverLayData[i].powerups = player->s.powerups;
+
+			Com_sprintf(entry, sizeof(entry),
+				" %i %i %i %i %i %i",
+				i, 0, h, a, 0, 0);
+		}
+		else
+		{
+			// -------------------------------------------------
+			// Normal player: real health/armor
+			// -------------------------------------------------
+			h = player->client->ps.stats[STAT_HEALTH];
+			a = player->client->ps.stats[STAT_ARMOR];
+
+			if (h < 0) h = 0;
+			if (a < 0) a = 0;
+
+			Com_sprintf(entry, sizeof(entry),
+				" %i %i %i %i %i %i",
+				i,
+				player->client->pers.teamState.location,
+				h,
+				a,
+				player->client->ps.weapon,
+				player->s.powerups);
+		}
+
+		// -----------------------------------------------------
+		// Safe bounds check (fixes overflow warning)
+		// -----------------------------------------------------
+		const size_t j = strlen(entry);
+		const size_t nextIndex = stringlength + j;
+
+		if (nextIndex >= 8192)
+		{
+			break;
+		}
+
+		strcpy(string + stringlength, entry);
+		stringlength = nextIndex;
+		cnt++;
+	}
+
+	// ---------------------------------------------------------
+	// Send overlay only if at least one entry was added
+	// ---------------------------------------------------------
 	if (cnt > 0)
-	{//only transmit data if there are players with updated information
-		trap->SendServerCommand(ent - g_entities, va("tinfo %i %s", cnt, string));
+	{
+		trap->SendServerCommand(ent - g_entities,
+			va("tinfo %i %s", cnt, string));
 	}
 }
 

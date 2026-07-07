@@ -267,6 +267,8 @@ cvar_t* g_debugItems;
 cvar_t* g_fixJOItems;
 cvar_t* g_npc_is_smart_range;
 
+cvar_t* g_AimingCinematicCamera;
+
 qboolean stop_icarus = qfalse;
 
 extern char* G_GetLocationForEnt(const gentity_t* ent);
@@ -862,6 +864,8 @@ static void G_InitCvars()
 	g_debugItems = gi.cvar("g_debugItems", "0", CVAR_CHEAT);
 	g_fixJOItems = gi.cvar("g_fixJOItems", "1", CVAR_ARCHIVE);
 	g_npc_is_smart_range = gi.cvar("g_npc_is_smart_range", "3500", CVAR_ARCHIVE);
+
+	g_AimingCinematicCamera = gi.cvar("g_AimingCinematicCamera", "1", CVAR_ARCHIVE);
 }
 
 /*

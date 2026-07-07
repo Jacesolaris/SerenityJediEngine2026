@@ -1445,6 +1445,7 @@ typedef struct playerState_s {
 	int     holocronExpireTime;      // when the holocron should pop out
 	int     holocronGlobalCooldown;  // when the player can pick up another holocron
 	qboolean IsSprinting;
+	qboolean IsAiming;
 } playerState_t;
 
 typedef struct siegePers_s
@@ -2214,18 +2215,19 @@ typedef enum
 
 typedef enum
 {
-	RESPECTING,
-	GESTURING,
-	SURRENDERING,
-	DASHING,
-	STUNNING,
-	KICKING,
-	CLOAK_CHARGE_RESTRICTION,
+	CF_RESPECTING,
+	CF_GESTURING,
+	CF_SURRENDERING,
+	CF_DASHING,
+	CF_STUNNING,
+	CF_KICKING,
+	CF_CLOAK_CHARGE_RESTRICTION,
 	CF_SABERLOCKING,
 	CF_SABERLOCK_ADVANCE,
-	OVERSIZEDGUNNER,
-	UNDERSIZEDGUNNER,
-	UNDERSIZEDJEDI,
+	CF_OVERSIZEDGUNNER,
+	CF_UNDERSIZEDGUNNER,
+	CF_UNDERSIZEDJEDI,
+	CF_AIMINGGUN,
 } communicatingflags_e;
 
 typedef enum

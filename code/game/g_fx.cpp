@@ -828,6 +828,12 @@ void fx_explosion_trail_think(gentity_t* ent)
 			}
 		}
 
+		if (ent->fullName)
+		{
+			// fxFile2....in other words, impact fx
+			G_PlayEffect(ent->fullName, tr.endpos, tr.plane.normal);
+		}
+
 		if (ent->cameraGroup)
 		{
 			// fxFile2....in other words, impact fx
@@ -892,7 +898,8 @@ void fx_explosion_trail_use(gentity_t* self, gentity_t* other, gentity_t* activa
 		missile->splashDamage = self->splashDamage;
 		missile->splashRadius = self->splashRadius;
 		missile->fxID = self->fxID;
-		missile->cameraGroup = self->cameraGroup; //fxfile2
+		missile->cameraGroup = self->cameraGroup;
+		missile->fullName = self->fullName;
 
 		missile->clipmask = MASK_SHOT;
 
@@ -989,6 +996,11 @@ void SP_fx_explosion_trail(gentity_t* ent)
 
 	// Try to associate an effect file, unfortunately we won't know if this worked or not until the CGAME trys to register it...
 	ent->fxID = G_EffectIndex(ent->fxFile);
+
+	if (ent->fullName)
+	{
+		G_EffectIndex(ent->fullName);
+	}
 
 	if (ent->cameraGroup)
 	{

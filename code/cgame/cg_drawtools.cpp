@@ -32,14 +32,14 @@ CG_DrawSides
 Coords are virtual 640x480
 ================
 */
-void CG_DrawSides(const float x, const float y, const float w, const float h, const float size)
+static void CG_DrawSides(const float x, const float y, const float w, const float h, const float size)
 {
 	//size *= cgs.screenXScale;
 	cgi_R_DrawStretchPic(x, y, size, h, 0, 0, 0, 0, cgs.media.whiteShader);
 	cgi_R_DrawStretchPic(x + w - size, y, size, h, 0, 0, 0, 0, cgs.media.whiteShader);
 }
 
-void CG_DrawTopBottom(const float x, const float y, const float w, const float h, const float size)
+static void CG_DrawTopBottom(const float x, const float y, const float w, const float h, const float size)
 {
 	//size *= cgs.screenYScale;
 	cgi_R_DrawStretchPic(x, y, w, size, 0, 0, 0, 0, cgs.media.whiteShader);
@@ -273,7 +273,6 @@ void CG_DrawStringExt(const int x, const int y, const char* string, const float*
 
 	cgi_R_SetColor(NULL);
 }
-
 
 void CG_DrawSmallStringColor(const int x, const int y, const char* s, vec4_t color)
 {

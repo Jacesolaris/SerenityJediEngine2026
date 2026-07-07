@@ -479,12 +479,13 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 	{
 		Com_Printf("Opening IP socket: localhost:%i\n", port);
 	}
-	Com_Printf("----- Client Initialization -----\n");
 
 	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)----------\n");
-	Com_Printf("---------------------Build date 30/06/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 11------------------------------\n");
+	Com_Printf("--------------------- Client Initialization ---------------------\n");
+	Com_Printf("-----------------------------------------------------------------\n");
+	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
+	Com_Printf("---------------------Build date 07/07/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 02------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -503,6 +504,7 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 	Com_Printf("This could potentially improve the way we play JKA quite a lot.\n");
 	Com_Printf("Less spam-friendly, and more accurate hit detection could make the game more movie like.\n");
 	Com_Printf("-----------------------------------------------------------------\n");
+
 	Com_Printf("------Type (seta cl_noprint 0) to see text------\n");
 	Com_Printf("------Type (helpdebug) to open debug command list------\n");
 	Com_Printf("------Type (Adminlogin <password>) to log in as admin------\n");

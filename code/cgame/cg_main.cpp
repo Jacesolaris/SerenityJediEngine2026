@@ -473,6 +473,8 @@ vmCvar_t cg_newgameplusJKO;
 
 vmCvar_t cg_saberLockCinematicCamera;
 
+vmCvar_t cg_AimingCinematicCamera;
+
 vmCvar_t cg_com_rend2;
 
 vmCvar_t cg_textprintscale;
@@ -679,6 +681,8 @@ static cvarTable_t cvarTable[] = {
 	{&cg_newgameplusJKO, "g_newgameplusJKO", "0", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART},
 
 	{&cg_saberLockCinematicCamera, "g_saberLockCinematicCamera", "1", CVAR_ARCHIVE },
+
+	{ &cg_AimingCinematicCamera, "g_AimingCinematicCamera", "1", CVAR_ARCHIVE },
 
 	{ &cg_com_rend2, "com_rend2", "0", CVAR_ARCHIVE | CVAR_SAVEGAME },
 

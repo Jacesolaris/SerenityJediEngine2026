@@ -42,7 +42,7 @@ void turretG2_base_use(gentity_t* self, gentity_t* other, gentity_t* activator);
 #define name3 "models/map_objects/wedge/laser_cannon_model.glm"
 
 //special routine for tracking angles between client and server -rww
-void G2Tur_SetBoneAngles(gentity_t* ent, const char* bone, vec3_t angles)
+static void G2Tur_SetBoneAngles(gentity_t* ent, const char* bone, vec3_t angles)
 {
 	int* thebone = &ent->s.boneIndex1;
 	int* first_free = NULL;
@@ -228,7 +228,7 @@ static void turretG2_set_models(gentity_t* self, const qboolean dying)
 }
 
 //------------------------------------------------------------------------------------------------------------
-void TurretG2Pain(gentity_t* self, gentity_t* attacker, int damage)
+static void TurretG2Pain(gentity_t* self, gentity_t* attacker, int damage)
 //------------------------------------------------------------------------------------------------------------
 {
 	if (self->paintarget && self->paintarget[0])
@@ -255,7 +255,7 @@ void TurretG2Pain(gentity_t* self, gentity_t* attacker, int damage)
 }
 
 //------------------------------------------------------------------------------------------------------------
-void turretG2_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath)
+static void turretG2_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath)
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3_t forward = { 0, 0, -1 }, pos;
@@ -342,7 +342,7 @@ void turretG2_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, in
 #define START_DIS 15
 
 //start an animation on model_root both server side and client side
-void TurboLaser_SetBoneAnim(gentity_t* eweb, const int startFrame, const int endFrame)
+static void TurboLaser_SetBoneAnim(gentity_t* eweb, const int startFrame, const int endFrame)
 {
 	//set info on the entity so it knows to start the anim on the client next snapshot.
 	eweb->s.eFlags |= EF_G2ANIMATING;
@@ -436,7 +436,7 @@ static void turretG2_fire(gentity_t* ent, vec3_t start, vec3_t dir)
 	}
 }
 
-void turretG2_respawn(gentity_t* self)
+static void turretG2_respawn(gentity_t* self)
 {
 	self->use = turretG2_base_use;
 	self->pain = TurretG2Pain;
@@ -460,7 +460,7 @@ void turretG2_respawn(gentity_t* self)
 }
 
 //-----------------------------------------------------
-void turretG2_head_think(gentity_t* self)
+static void turretG2_head_think(gentity_t* self)
 //-----------------------------------------------------
 {
 	// if it's time to fire and we have an enemy, then gun 'em down!  pushDebounce time controls next fire time
@@ -710,8 +710,19 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 	float bestDist = self->radius * self->radius;
 	vec3_t org, org2;
 	qboolean foundClient = qfalse;
-	gentity_t* entity_list[MAX_GENTITIES], * bestTarget = NULL;
 
+	// FIX: move large array off stack (C6262)
+	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
+	trace_t* tr = (trace_t*)BG_Alloc(sizeof(trace_t));
+	if (!entity_list || !tr)
+	{
+		Com_Printf(S_COLOR_RED "turretG2_find_enemies: BG_Alloc failed\n");
+		return qfalse;
+	}
+
+	gentity_t* bestTarget = NULL;
+
+	// Turret alert ping logic
 	if (self->aimDebounceTime > level.time) // time since we've been shut off
 	{
 		// We were active and alert, i.e. had an enemy in the last 3 secs
@@ -739,33 +750,45 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 
 	for (int i = 0; i < count; i++)
 	{
-		trace_t tr;
 		gentity_t* target = entity_list[i];
 
-		if (!target->client)
-		{
-			// only attack clients
-			if (!(target->flags & FL_BBRUSH) //not a breakable brush
-				|| !target->takedamage //is a bbrush, but invincible
-				|| target->NPC_targetname && self->targetname && Q_stricmp(target->NPC_targetname, self->targetname) !=
-				0) //not in invicible bbrush, but can only be broken by an NPC that is not me
-			{
-				continue;
-			}
-			//else: we will shoot at bbrushes!
-		}
-		if (target == self || !target->takedamage || target->health <= 0 || target->flags & FL_NOTARGET)
+		if (!target)
 		{
 			continue;
 		}
+
+		// only attack clients or valid breakable brushes
+		if (!target->client)
+		{
+			if (!(target->flags & FL_BBRUSH) ||            // not a breakable brush
+				!target->takedamage ||                     // is a bbrush, but invincible
+				(target->NPC_targetname && self->targetname &&
+					Q_stricmp(target->NPC_targetname, self->targetname) != 0)) // can only be broken by other NPC
+			{
+				continue;
+			}
+			// else: we will shoot at bbrushes!
+		}
+
+		if (target == self ||
+			!target->takedamage ||
+			target->health <= 0 ||
+			(target->flags & FL_NOTARGET))
+		{
+			continue;
+		}
+
 		if (target->client && target->client->sess.sessionTeam == TEAM_SPECTATOR)
 		{
 			continue;
 		}
+
 		if (target->client && target->client->tempSpectate >= level.time)
 		{
 			continue;
 		}
+
+		// Allied team filtering
 		if (self->alliedTeam)
 		{
 			if (target->client)
@@ -782,6 +805,7 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 				continue;
 			}
 		}
+
 		if (!trap->InPVS(org2, target->r.currentOrigin))
 		{
 			continue;
@@ -805,16 +829,18 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 			org[2] += 5;
 		}
 
-		trap->Trace(&tr, org2, NULL, NULL, org, self->s.number, MASK_SHOT, qfalse, 0, 0);
+		trap->Trace(tr, org2, NULL, NULL, org, self->s.number, MASK_SHOT, qfalse, 0, 0);
 
-		if (!tr.allsolid && !tr.startsolid && (tr.fraction == 1.0 || tr.entityNum == target->s.number))
+		if (!tr->allsolid && !tr->startsolid &&
+			(tr->fraction == 1.0f || tr->entityNum == target->s.number))
 		{
 			vec3_t enemyDir;
 			// Only acquire if have a clear shot, Is it in range and closer than our best?
 			VectorSubtract(target->r.currentOrigin, self->r.currentOrigin, enemyDir);
 			const float enemyDist = VectorLengthSquared(enemyDir);
 
-			if (enemyDist < bestDist || target->client && !foundClient) // all things equal, keep current
+			if ((enemyDist < bestDist) ||
+				(target->client && (foundClient == qfalse))) // prefer clients over non‑clients
 			{
 				if (self->attackDebounceTime < level.time && !self->enemy)
 				{
@@ -831,9 +857,10 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 				bestTarget = target;
 				bestDist = enemyDist;
 				found = qtrue;
+
 				if (target->client)
 				{
-					//prefer clients over non-clients
+					// prefer clients over non-clients
 					foundClient = qtrue;
 				}
 			}
@@ -844,11 +871,13 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 	{
 		if (!self->enemy)
 		{
-			//just aquired one
+			// just acquired one
 			AddSoundEvent(bestTarget, self->r.currentOrigin, 256, AEL_DISCOVERED, qfalse, qtrue);
 			AddSightEvent(bestTarget, self->r.currentOrigin, 512, AEL_DISCOVERED, 20);
 		}
+
 		G_SetEnemy(self, bestTarget);
+
 		if (VALIDSTRING(self->target2))
 		{
 			G_UseTargets2(self, self, self->target2);
@@ -859,7 +888,7 @@ static qboolean turretG2_find_enemies(gentity_t* self)
 }
 
 //-----------------------------------------------------
-void turretG2_base_think(gentity_t* self)
+static void turretG2_base_think(gentity_t* self)
 //-----------------------------------------------------
 {
 	qboolean turnOff = qtrue;

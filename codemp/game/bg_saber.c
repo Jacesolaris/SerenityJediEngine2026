@@ -5466,7 +5466,7 @@ void PM_WeaponLightsaber(void)
 	if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
 	{
 		//might as well just check for a saber throw right here
-		if (pm->ps->saberInFlight && pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING)
+		if (pm->ps->saberInFlight && pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING)
 		{
 			//kick after doing a saberthrow,whalst saber is still being controlled
 			if (!(pm->cmd.buttons & BUTTON_ATTACK)) //not trying to swing the saber
@@ -5490,7 +5490,7 @@ void PM_WeaponLightsaber(void)
 				}
 			}
 		}
-		else if (!PM_SaberThrowable() && pm->cmd.buttons & BUTTON_ALT_ATTACK && pm->ps->communicatingflags & 1 << KICKING) //not trying to swing the saber
+		else if (!PM_SaberThrowable() && pm->cmd.buttons & BUTTON_ALT_ATTACK && pm->ps->communicatingflags & 1 << CF_KICKING) //not trying to swing the saber
 		{
 			//kick instead of doing a throw
 			if (PM_DoKick())
@@ -5498,7 +5498,7 @@ void PM_WeaponLightsaber(void)
 				return;
 			}
 		}
-		else if (!PM_SaberThrowable() && pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING)
+		else if (!PM_SaberThrowable() && pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING)
 			//not trying to swing the saber
 		{
 			//kick instead of doing a throw
@@ -5944,14 +5944,14 @@ weapChecks:
 	// Check for WEAPON ATTACK
 	// *********************************************************
 	if (pm->ps->saberInFlight && pm->ps->forceHandExtend != HANDEXTEND_SABERPULL
-		&& pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING)
+		&& pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING)
 	{
 		//don't have our saber so we can punch instead.
 		PM_DoSlap();
 		return;
 	}
 
-	if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING)
+	if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING)
 	{
 		//ok, try a kick I guess.
 		if (!PM_KickingAnim(pm->ps->torsoAnim) &&
@@ -7495,7 +7495,7 @@ qboolean PM_DoKick(void)
 		!PM_KickingAnim(pm->ps->legsAnim) &&
 		!BG_InRoll(pm->ps, pm->ps->legsAnim) &&
 		pm->ps->weaponTime <= 0 &&
-		pm->ps->communicatingflags & 1 << KICKING)
+		pm->ps->communicatingflags & 1 << CF_KICKING)
 	{
 		//player kicks
 		kick_move = PM_CheckKick();
@@ -7589,7 +7589,7 @@ qboolean PM_DoSlap(void)
 		&& !PM_KickingAnim(pm->ps->legsAnim)
 		&& !BG_InRoll(pm->ps, pm->ps->legsAnim)
 		&& !PM_InKnockDown(pm->ps)
-		&& pm->ps->communicatingflags & 1 << KICKING) //not already in a kick
+		&& pm->ps->communicatingflags & 1 << CF_KICKING) //not already in a kick
 	{
 		//player kicks
 		kick_move = PM_MeleeMoveForConditions();

@@ -59,13 +59,14 @@ extern qboolean PM_CrouchAnim(int anim);
 const int FROZEN_TIME = 5000;
 
 extern qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self);
-extern int wp_saber_must_bolt_block(gentity_t* self, const gentity_t* atk, qboolean check_b_box_block, vec3_t point,
-	int rSaberNum, int rBladeNum);
+extern int wp_saber_must_bolt_block(gentity_t* self, const gentity_t* atk, qboolean check_b_box_block, vec3_t point, int rSaberNum, int rBladeNum);
 extern int wp_player_must_dodge(const gentity_t* self, const gentity_t* shooter);
 extern qboolean WP_SaberBlockBolt(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern void G_MissileReflectEffect(const gentity_t* ent, vec3_t dir);
 extern void WP_ForcePowerDrain(playerState_t* ps, forcePowers_t force_power, int override_amt);
 extern void Sphereshield_Off(gentity_t* self);
+extern int fire_deley_time();
+extern qboolean IsHoldingReloadableGun(const gentity_t* ent);
 
 #define RUNNING_SPREAD			1.7f
 #define WALKING_SPREAD			1.4f
@@ -87,7 +88,7 @@ extern void Sphereshield_Off(gentity_t* self);
 //---------
 #define BLASTER_MAIN_SPREAD			0.5f
 #define BLASTER_ALT_SPREAD			1.0f
-#define BLASTER_NPC_SPREAD			0.25f
+#define BLASTER_NPC_SPREAD			0.75f
 #define BLASTER_VELOCITY			2300
 #define BLASTER_NPC_VEL_CUT			0.5f
 #define BLASTER_NPC_HARD_VEL_CUT	0.7f
@@ -700,46 +701,60 @@ void WP_FireWristMissile(gentity_t* ent, vec3_t start, vec3_t dir)
 
 //---------------------------------------------------------
 static void WP_FireWrist(gentity_t* ent)
-//---------------------------------------------------------
 {
 	vec3_t dir, angs;
+
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireWrist: ent->client is NULL\n");
+		return;
+	}
 
 	vectoangles(forward, angs);
 
 	if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
 	{
-		//no inherent aim screw up
+		// no inherent aim screw up
 	}
 	else if (NPC_IsNotHavingEnoughForceSight(ent))
-	{//force sight 2+ gives perfect aim
+	{
+		// force sight 2+ gives perfect aim
 		if (!(ent->r.svFlags & SVF_BOT))
 		{
 			if (PM_CrouchAnim(ent->client->ps.legsAnim))
-			{// firing position
+			{
+				// firing position
 				angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 				angs[YAW] += Q_flrand(-0.0f, 0.0f);
 			}
 			else
 			{
-				if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-				{ // running or very fatigued
+				if (PM_RunningAnim(ent->client->ps.legsAnim) ||
+					ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+				{
+					// running or very fatigued
 					angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 				}
-				else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-				{//walking or fatigued a bit
+				else if (PM_WalkingAnim(ent->client->ps.legsAnim) ||
+					ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+				{
+					// walking or fatigued a bit
 					angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 					angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 				}
 				else
-				{// just standing
+				{
+					// just standing
 					angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 					angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 				}
 			}
 		}
 		else
-		{// add some slop to the fire direction for NPC,s
+		{
+			// add some slop to the fire direction for NPCs
 			angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 			angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 		}
@@ -752,86 +767,87 @@ static void WP_FireWrist(gentity_t* ent)
 
 //---------------------------------------------------------
 void WP_FireBlaster(gentity_t* ent, const qboolean alt_fire)
-//---------------------------------------------------------
 {
-	vec3_t dir, angs;
+	if (ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireBlaster: ent->client is NULL\n");
+		return;
+	}
 
+	vec3_t dir;
+	vec3_t angs;
+
+	// Start from perfect forward aim
 	vectoangles(forward, angs);
 
-	if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
+	const qboolean is_player_controlled = (ent->r.svFlags & SVF_BOT) ? qtrue : qfalse;
+	const int mishap = ent->client ? ent->client->ps.BlasterAttackChainCount : 0;
+	// Determine movement state
+	const int running = (ent->client && PM_RunningAnim(ent->client->ps.legsAnim));
+	const int walking = (ent->client && PM_WalkingAnim(ent->client->ps.legsAnim));
+
+	float pitchSpread = 0.0f;
+	float yawSpread = 0.0f;
+
+	if (!(ent->client && ent->client->NPC_class == CLASS_VEHICLE)) // if not a vehicle, apply spread
 	{
-		//no inherent aim screw up
-	}
-	else if (NPC_IsNotHavingEnoughForceSight(ent))
-	{//force sight 2+ gives perfect aim
-		if (alt_fire)
+		if (NPC_IsNotHavingEnoughForceSight(ent)) // if the NPC is not having enough force sight, apply spread
 		{
-			if (!(ent->r.svFlags & SVF_BOT))
+			if (is_player_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim))
-				{// firing position
-					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
-					angs[YAW] += Q_flrand(-0.0f, 0.0f);
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
+				{
+					pitchSpread = 0.0f;
+					yawSpread = 0.0f;
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-					{ // running or very fatigued
+					if (running || mishap >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
+					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
-					{//walking or fatigued a bit
+					else if (walking || mishap >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
+					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 					}
 					else
-					{// just standing
-						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
-						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
+					{
+						if (g_entities[ent->s.number].client->IsAiming == qfalse)
+						{
+							if (alt_fire == qtrue)
+							{
+								angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
+								angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
+							}
+							else
+							{
+								angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+								angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+							}
+						}
 					}
 				}
 			}
 			else
-			{// add some slop to the alt-fire direction for NPC,s
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
-			}
-		}
-		else
-		{
-			if (!(ent->r.svFlags & SVF_BOT))
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim))
-				{// firing position
-					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
-					angs[YAW] += Q_flrand(-0.0f, 0.0f);
+				if (alt_fire == qtrue)
+				{// NPCs have a much harder time hitting with alt fire, so we give them a bit of a boost
+					pitchSpread = BLASTER_ALT_SPREAD;
+					yawSpread = BLASTER_ALT_SPREAD;
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-					{ // running or very fatigued
-						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
-						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
-					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-					{//walking or fatigued a bit
-						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
-						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
-					}
-					else
-					{// just standing
-						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-					}
+					pitchSpread = BLASTER_NPC_SPREAD * 0.5f;
+					yawSpread = BLASTER_NPC_SPREAD * 0.5f;
 				}
 			}
-			else
-			{// add some slop to the fire direction for NPC,s
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-			}
 		}
+
+		// Apply randomised spread
+		angs[PITCH] += Q_flrand(-pitchSpread, pitchSpread);
+		angs[YAW] += Q_flrand(-yawSpread, yawSpread);
 	}
 
 	AngleVectors(angs, dir, NULL, NULL);
@@ -849,35 +865,42 @@ DISRUPTOR
 extern int WP_SaberBlockCost(gentity_t* defender, const gentity_t* attacker, vec3_t hit_loc);
 //---------------------------------------------------------
 static void WP_DisruptorMainFire(gentity_t* ent)
-//---------------------------------------------------------
 {
 	int damage = DISRUPTOR_MAIN_DAMAGE;
 	qboolean render_impact = qtrue;
 	vec3_t start, end;
 	trace_t tr;
 	gentity_t* traceEnt;
-	const float shot_range = 8192;
+	const float shot_range = 8192.0f;
 
 	const vec3_t shot_maxs = { DISRUPTOR_SHOT_SIZE, DISRUPTOR_SHOT_SIZE, DISRUPTOR_SHOT_SIZE };
 	const vec3_t shot_mins = { -DISRUPTOR_SHOT_SIZE, -DISRUPTOR_SHOT_SIZE, -DISRUPTOR_SHOT_SIZE };
+
+	// SAFETY: prevent NULL client dereference
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_DisruptorMainFire: ent or ent->client is NULL\n");
+		return;
+	}
 
 	if (level.gametype == GT_SIEGE)
 	{
 		damage = DISRUPTOR_MAIN_DAMAGE_SIEGE;
 	}
 
-	memset(&tr, 0, sizeof tr); //to shut the compiler up
+	memset(&tr, 0, sizeof(tr));
 
 	VectorCopy(ent->client->ps.origin, start);
-	start[2] += ent->client->ps.viewheight; //By eyes
+	start[2] += ent->client->ps.viewheight; // by eyes
 
 	VectorMA(start, shot_range, forward, end);
 
 	int ignore = ent->s.number;
-	const int traces = 0;
+	int traces = 0;
+
 	while (traces < 10)
 	{
-		//need to loop this in case we hit a Jedi who dodges the shot
+		// need to loop this in case we hit a Jedi who dodges the shot
 		if (d_projectileGhoul2Collision.integer)
 		{
 			trap->Trace(&tr, start, shot_mins, shot_maxs, end, ignore, MASK_SHOT, qfalse,
@@ -893,10 +916,10 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 
 		if (d_projectileGhoul2Collision.integer && traceEnt->inuse && traceEnt->client)
 		{
-			//g2 collision checks -rww
+			// g2 collision checks
 			if (traceEnt->inuse && traceEnt->client && traceEnt->ghoul2)
 			{
-				//since we used G2TRFLAG_GETSURFINDEX, tr.surfaceFlags will actually contain the index of the surface on the ghoul2 model we collided with.
+				// tr.surfaceFlags contains the surface index on the ghoul2 model
 				traceEnt->client->g2LastSurfaceHit = tr.surfaceFlags;
 				traceEnt->client->g2LastSurfaceTime = level.time;
 				traceEnt->client->g2LastSurfaceModel = G2MODEL_PLAYER;
@@ -904,44 +927,50 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 
 			if (traceEnt->ghoul2)
 			{
-				tr.surfaceFlags = 0; //clear the surface flags after, since we actually care about them in here.
+				// clear surface flags after using them
+				tr.surfaceFlags = 0;
 			}
 		}
 
-		if (traceEnt && traceEnt->client && traceEnt->client->ps.duelInProgress &&
+		if (traceEnt && traceEnt->client &&
+			traceEnt->client->ps.duelInProgress &&
 			traceEnt->client->ps.duelIndex != ent->s.number)
 		{
 			ignore = tr.entityNum;
 			VectorCopy(tr.endpos, start);
+			traces++;
 			continue;
 		}
 
-		if (traceEnt)
+		// BLOCK / DODGE logic only valid for client entities
+		if (traceEnt && traceEnt->client)
 		{
-			if (wp_saber_must_bolt_block(traceEnt, ent, qfalse, tr.endpos, -1, -1) && !
-				WP_DoingForcedAnimationForForcePowers(traceEnt))
+			if (wp_saber_must_bolt_block(traceEnt, ent, qfalse, tr.endpos, -1, -1) &&
+				!WP_DoingForcedAnimationForForcePowers(traceEnt))
 			{
-				//players can block or dodge disruptor shots.
+				// players can block or dodge disruptor shots
 				G_MissileReflectEffect(traceEnt, tr.plane.normal);
 				WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE,
 					WP_SaberBlockCost(traceEnt, ent, tr.endpos));
 
-				//force player into a projective block move.
-				if (d_combatinfo.integer || g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT))
+				if (d_combatinfo.integer ||
+					(g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT)))
 				{
-					Com_Printf(S_COLOR_ORANGE"should be blocking now\n");
+					Com_Printf(S_COLOR_ORANGE "should be blocking now\n");
 				}
+
 				WP_SaberBlockBolt(traceEnt, tr.endpos, qtrue);
 
 				ignore = tr.entityNum;
 				VectorCopy(tr.endpos, start);
+				traces++;
 				continue;
 			}
 
-			if (wp_player_must_dodge(traceEnt, ent) && !
-				WP_DoingForcedAnimationForForcePowers(traceEnt))
+			if (wp_player_must_dodge(traceEnt, ent) &&
+				!WP_DoingForcedAnimationForForcePowers(traceEnt))
 			{
-				//players can block or dodge disruptor shots.
+				// players can dodge disruptor shots
 				if (traceEnt->r.svFlags & SVF_BOT)
 				{
 					WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE, FATIGUE_DODGEINGBOT);
@@ -950,26 +979,29 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 				{
 					WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE, FATIGUE_DODGEING);
 				}
-				if (d_combatinfo.integer || g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT))
+
+				if (d_combatinfo.integer ||
+					(g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT)))
 				{
-					Com_Printf(S_COLOR_ORANGE"should be dodging now\n");
+					Com_Printf(S_COLOR_ORANGE "should be dodging now\n");
 				}
 
-				//force player into a projective block move.
 				jedi_disruptor_dodge_evasion(traceEnt, ent, tr.endpos, -1);
 
 				ignore = tr.entityNum;
 				VectorCopy(tr.endpos, start);
+				traces++;
 				continue;
 			}
 		}
 
 		if (traceEnt->flags & FL_SHIELDED)
 		{
-			//stopped cold
+			// stopped cold
 			return;
 		}
-		//a Jedi is not dodging this shot
+
+		// a Jedi is not dodging this shot
 		break;
 	}
 
@@ -978,7 +1010,7 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 		render_impact = qfalse;
 	}
 
-	// always render a shot beam, doing this the old way because I don't much feel like overriding the effect.
+	// always render a shot beam
 	gentity_t* tent = G_TempEntity(tr.endpos, EV_DISRUPTOR_MAIN_SHOT);
 	VectorCopy(muzzle, tent->s.origin2);
 	tent->s.eventParm = ent->s.number;
@@ -994,14 +1026,17 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 				ent->client->accuracy_hits++;
 			}
 
-			if (traceEnt && traceEnt->client && traceEnt->client->NPC_class == CLASS_GALAKMECH)
+			if (traceEnt && traceEnt->client &&
+				traceEnt->client->NPC_class == CLASS_GALAKMECH)
 			{
-				//hehe
-				G_Damage(traceEnt, ent, ent, forward, tr.endpos, 3, DAMAGE_DEATH_KNOCKBACK, MOD_DISRUPTOR);
+				// special case
+				G_Damage(traceEnt, ent, ent, forward, tr.endpos, 3,
+					DAMAGE_DEATH_KNOCKBACK, MOD_DISRUPTOR);
 			}
 			else
 			{
-				G_Damage(traceEnt, ent, ent, forward, tr.endpos, damage, DAMAGE_NORMAL, MOD_DISRUPTOR);
+				G_Damage(traceEnt, ent, ent, forward, tr.endpos, damage,
+					DAMAGE_NORMAL, MOD_DISRUPTOR);
 			}
 
 			tent = G_TempEntity(tr.endpos, EV_DISRUPTOR_HIT);
@@ -1013,7 +1048,7 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 		}
 		else
 		{
-			// Hmmm, maybe don't make any marks on things that could break
+			// miss impact
 			tent = G_TempEntity(tr.endpos, EV_DISRUPTOR_SNIPER_MISS);
 			tent->s.eventParm = DirToByte(tr.plane.normal);
 			tent->s.weapon = 1;
@@ -1085,20 +1120,22 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 
 	int damage = DISRUPTOR_ALT_DAMAGE - 30;
 
-	VectorCopy(muzzle, muzzle2); // making a backup copy
+	// backup muzzle for beam rendering
+	VectorCopy(muzzle, muzzle2);
 
+	// choose start from client eyes or entity origin
 	if (ent->client)
 	{
 		VectorCopy(ent->client->ps.origin, start);
-		start[2] += ent->client->ps.viewheight; //By eyes
+		start[2] += ent->client->ps.viewheight; // by eyes
 	}
 	else
 	{
 		VectorCopy(ent->r.currentOrigin, start);
-		start[2] += 24;
+		start[2] += 24.0f;
 	}
 
-	//moved into DetermineDisruptorCharge so we can use it for Dodge cost calcs
+	// moved into DetermineDisruptorCharge so we can use it for dodge cost calcs
 	const int count = DetermineDisruptorCharge(ent);
 
 	if (count >= DISRUPTOR_MAX_CHARGE)
@@ -1116,7 +1153,7 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 		traces = 2;
 	}
 
-	//ent->s.generic1=count;
+	// ent->s.generic1 = count;
 	ent->genericValue6 = count;
 
 	damage += count;
@@ -1142,12 +1179,19 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 
 		gentity_t* traceEnt = &g_entities[tr.entityNum];
 
+		// safety: traceEnt is always a valid array element, but keep defensive
+		if (traceEnt == NULL)
+		{
+			Com_Printf(S_COLOR_YELLOW "WP_DisruptorAltFire: traceEnt is NULL\n");
+			break;
+		}
+
 		if (d_projectileGhoul2Collision.integer && traceEnt->inuse && traceEnt->client)
 		{
-			//g2 collision checks -rww
+			// g2 collision checks
 			if (traceEnt->inuse && traceEnt->client && traceEnt->ghoul2)
 			{
-				//since we used G2TRFLAG_GETSURFINDEX, tr.surfaceFlags will actually contain the index of the surface on the ghoul2 model we collided with.
+				// tr.surfaceFlags contains the surface index on the ghoul2 model we collided with
 				traceEnt->client->g2LastSurfaceHit = tr.surfaceFlags;
 				traceEnt->client->g2LastSurfaceTime = level.time;
 				traceEnt->client->g2LastSurfaceModel = G2MODEL_PLAYER;
@@ -1155,7 +1199,8 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 
 			if (traceEnt->ghoul2)
 			{
-				tr.surfaceFlags = 0; //clear the surface flags after, since we actually care about them in here.
+				// clear surface flags after using them
+				tr.surfaceFlags = 0;
 			}
 		}
 
@@ -1164,7 +1209,8 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 			render_impact = qfalse;
 		}
 
-		if (traceEnt && traceEnt->client && traceEnt->client->ps.duelInProgress &&
+		if (traceEnt && traceEnt->client &&
+			traceEnt->client->ps.duelInProgress &&
 			traceEnt->client->ps.duelIndex != ent->s.number)
 		{
 			ignore = tr.entityNum;
@@ -1174,19 +1220,23 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 
 		if (traceEnt)
 		{
-			if (wp_saber_must_bolt_block(traceEnt, ent, qfalse, tr.endpos, -1, -1) && !
-				WP_DoingForcedAnimationForForcePowers(traceEnt))
+			if (wp_saber_must_bolt_block(traceEnt, ent, qfalse, tr.endpos, -1, -1) &&
+				!WP_DoingForcedAnimationForForcePowers(traceEnt))
 			{
-				//players can block or dodge disruptor shots.
+				// players can block disruptor shots
 				G_MissileReflectEffect(traceEnt, tr.plane.normal);
-				WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE,
-					WP_SaberBlockCost(traceEnt, ent, tr.endpos));
-
-				//force player into a projective block move.
-				if (d_combatinfo.integer || g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT))
+				if (traceEnt->client)
 				{
-					Com_Printf(S_COLOR_ORANGE"should be blocking now\n");
+					WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE,
+						WP_SaberBlockCost(traceEnt, ent, tr.endpos));
 				}
+
+				if (d_combatinfo.integer ||
+					(g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT)))
+				{
+					Com_Printf(S_COLOR_ORANGE "should be blocking now\n");
+				}
+
 				WP_SaberBlockBolt(traceEnt, tr.endpos, qtrue);
 
 				ignore = tr.entityNum;
@@ -1194,24 +1244,28 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 				continue;
 			}
 
-			if (wp_player_must_dodge(traceEnt, ent) && !
-				WP_DoingForcedAnimationForForcePowers(traceEnt))
+			if (wp_player_must_dodge(traceEnt, ent) &&
+				!WP_DoingForcedAnimationForForcePowers(traceEnt))
 			{
-				//players can block or dodge disruptor shots.
-				if (traceEnt->r.svFlags & SVF_BOT)
+				// players can dodge disruptor shots
+				if (traceEnt->client)
 				{
-					WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE, FATIGUE_DODGEINGBOT);
-				}
-				else
-				{
-					WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE, FATIGUE_DODGEING);
-				}
-				if (d_combatinfo.integer || g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT))
-				{
-					Com_Printf(S_COLOR_ORANGE"should be dodging now\n");
+					if (traceEnt->r.svFlags & SVF_BOT)
+					{
+						WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE, FATIGUE_DODGEINGBOT);
+					}
+					else
+					{
+						WP_ForcePowerDrain(&traceEnt->client->ps, FP_SABER_DEFENSE, FATIGUE_DODGEING);
+					}
 				}
 
-				//force player into a projective block move.
+				if (d_combatinfo.integer ||
+					(g_DebugSaberCombat.integer && !(traceEnt->r.svFlags & SVF_BOT)))
+				{
+					Com_Printf(S_COLOR_ORANGE "should be dodging now\n");
+				}
+
 				jedi_disruptor_dodge_evasion(traceEnt, ent, tr.endpos, -1);
 
 				ignore = tr.entityNum;
@@ -1220,7 +1274,7 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 			}
 		}
 
-		// always render a shot beam, doing this the old way because I don't much feel like overriding the effect.
+		// always render a shot beam
 		gentity_t* tent = G_TempEntity(tr.endpos, EV_DISRUPTOR_SNIPER_SHOT);
 		VectorCopy(muzzle, tent->s.origin2);
 		tent->s.shouldtarget = full_charge;
@@ -1233,12 +1287,13 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 			{
 				tent->s.otherentityNum = traceEnt->s.number;
 
-				// Create a simple impact type mark
+				// simple impact mark
 				tent = G_TempEntity(tr.endpos, EV_MISSILE_MISS);
 				tent->s.eventParm = DirToByte(tr.plane.normal);
 				tent->s.eFlags |= EF_ALT_FIRING;
 
-				if (LogAccuracyHit(traceEnt, ent))
+				// SAFETY: ensure client before LogAccuracyHit (fixes C6011)
+				if (traceEnt->client != NULL && LogAccuracyHit(traceEnt, ent))
 				{
 					if (ent->client)
 					{
@@ -1248,14 +1303,14 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 			}
 			else
 			{
-				if (traceEnt->r.svFlags & SVF_GLASS_BRUSH
-					|| traceEnt->takedamage
-					|| traceEnt->s.eType == ET_MOVER)
+				if (traceEnt->r.svFlags & SVF_GLASS_BRUSH ||
+					traceEnt->takedamage ||
+					traceEnt->s.eType == ET_MOVER)
 				{
 					if (traceEnt->takedamage)
 					{
-						G_Damage(traceEnt, ent, ent, forward, tr.endpos, damage, DAMAGE_NO_KNOCKBACK,
-							MOD_DISRUPTOR_SNIPER);
+						G_Damage(traceEnt, ent, ent, forward, tr.endpos, damage,
+							DAMAGE_NO_KNOCKBACK, MOD_DISRUPTOR_SNIPER);
 
 						tent = G_TempEntity(tr.endpos, EV_DISRUPTOR_HIT);
 						tent->s.eventParm = DirToByte(tr.plane.normal);
@@ -1263,7 +1318,7 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 				}
 				else
 				{
-					// Hmmm, maybe don't make any marks on things that could break
+					// no marks on things that could break
 					tent = G_TempEntity(tr.endpos, EV_DISRUPTOR_SNIPER_MISS);
 					tent->s.eventParm = DirToByte(tr.plane.normal);
 				}
@@ -1272,7 +1327,7 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 
 			if (traceEnt->flags & FL_SHIELDED)
 			{
-				//stops us cold
+				// stops us cold
 				break;
 			}
 
@@ -1290,12 +1345,17 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 					VectorCopy(traceEnt->client->ps.viewangles, pre_ang);
 				}
 
-				G_Damage(traceEnt, ent, ent, forward, tr.endpos, damage, DAMAGE_NO_KNOCKBACK, MOD_DISRUPTOR_SNIPER);
+				G_Damage(traceEnt, ent, ent, forward, tr.endpos, damage,
+					DAMAGE_NO_KNOCKBACK, MOD_DISRUPTOR_SNIPER);
 
-				if (traceEnt->client && pre_health > 0 && traceEnt->health <= 0 && full_charge &&
+				// SAFETY: ensure client before disintegration logic (fixes C6011)
+				if (traceEnt->client != NULL &&
+					pre_health > 0 &&
+					traceEnt->health <= 0 &&
+					full_charge &&
 					G_CanDisruptify(traceEnt))
 				{
-					//was killed by a fully charged sniper shot, so disintegrate
+					// killed by fully charged sniper shot: disintegrate
 					VectorCopy(pre_ang, traceEnt->client->ps.viewangles);
 
 					traceEnt->client->ps.eFlags |= EF_DISINTEGRATION;
@@ -1317,8 +1377,9 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 				}
 			}
 		}
-		else // not rendering impact, must be a skybox or other similar thing?
+		else
 		{
+			// not rendering impact, must be skybox or similar
 			break; // don't try anymore traces
 		}
 
@@ -1396,17 +1457,18 @@ static void WP_BowcasterAltFire(gentity_t* ent)
 static void WP_BowcasterMainFire(gentity_t* ent)
 //---------------------------------------------------------
 {
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_BowcasterMainFire: ent->client is NULL\n");
+		return;
+	}
+
 	int damage, count;
 	vec3_t angs;
 
-	if (!ent->client)
-	{
-		count = 1;
-	}
-	else
-	{
-		count = (level.time - ent->client->ps.weaponChargeTime) / BOWCASTER_CHARGE_UNIT;
-	}
+	// Determine charge count
+	count = (level.time - ent->client->ps.weaponChargeTime) / BOWCASTER_CHARGE_UNIT;
 
 	if (count < 1)
 	{
@@ -1423,7 +1485,7 @@ static void WP_BowcasterMainFire(gentity_t* ent)
 		count--;
 	}
 
-	//scale the damage down based on how many are about to be fired
+	// Scale damage based on number of bolts
 	if (count <= 1)
 	{
 		damage = 50;
@@ -1448,45 +1510,55 @@ static void WP_BowcasterMainFire(gentity_t* ent)
 	for (int i = 0; i < count; i++)
 	{
 		vec3_t dir;
+
 		// create a range of different velocities
-		const float vel = BOWCASTER_VELOCITY * (Q_flrand(-1.0f, 1.0f) * BOWCASTER_VEL_RANGE + 1.0f);
+		const float vel = BOWCASTER_VELOCITY *
+			(Q_flrand(-1.0f, 1.0f) * BOWCASTER_VEL_RANGE + 1.0f);
 
 		vectoangles(forward, angs);
 
 		if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
 		{
-			//no inherent aim screw up
+			// no inherent aim screw up
 		}
 		else if (NPC_IsNotHavingEnoughForceSight(ent))
-		{//force sight 2+ gives perfect aim
+		{
+			// force sight 2+ gives perfect aim
 			if (!(ent->r.svFlags & SVF_BOT))
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim))
-				{// firing position
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
+				{
+					// firing position
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-					{ // running or very fatigued
+					if (PM_RunningAnim(ent->client->ps.legsAnim) ||
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
+					{
+						// running or very fatigued
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-					{//walking or fatigued a bit
+					else if (PM_WalkingAnim(ent->client->ps.legsAnim) ||
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
+					{
+						// walking or fatigued a bit
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 					}
 					else
-					{// just standing
+					{
+						// just standing
 						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 					}
 				}
 			}
 			else
-			{// add some slop to the fire direction for NPC,s
+			{
+				// add some slop to the fire direction for NPCs
 				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 			}
@@ -1600,6 +1672,13 @@ static void WP_FireRepeater(gentity_t* ent, const qboolean alt_fire)
 {
 	vec3_t angs;
 
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireRepeater: ent->client is NULL\n");
+		return;
+	}
+
 	vectoangles(forward, angs);
 
 	if (alt_fire)
@@ -1612,38 +1691,46 @@ static void WP_FireRepeater(gentity_t* ent, const qboolean alt_fire)
 
 		if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
 		{
-			//no inherent aim screw up
+			// no inherent aim screw up
 		}
 		else if (NPC_IsNotHavingEnoughForceSight(ent))
-		{//force sight 2+ gives perfect aim
+		{
+			// force sight 2+ gives perfect aim
 			if (!(ent->r.svFlags & SVF_BOT))
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim))
-				{// firing position
+				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
+				{
+					// firing position
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-					{ // running or very fatigued
+					if (PM_RunningAnim(ent->client->ps.legsAnim) ||
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
+					{
+						// running or very fatigued
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-					{//walking or fatigued a bit
+					else if (PM_WalkingAnim(ent->client->ps.legsAnim) ||
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
+					{
+						// walking or fatigued a bit
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 					}
 					else
-					{// just standing
+					{
+						// just standing
 						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 					}
 				}
 			}
 			else
-			{// add some slop to the fire direction for NPC,s
+			{
+				// add some slop to the fire direction for NPCs
 				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 			}
@@ -1688,12 +1775,23 @@ static gentity_t* ent_list[MAX_GENTITIES];
 void DEMP2_AltRadiusDamage(gentity_t* ent)
 {
 	float frac = (level.time - ent->genericValue5) / 800.0f;
-	int iEntityList[MAX_GENTITIES];
-	gentity_t* entity_list[MAX_GENTITIES];
+
+	// FIX: move large arrays off stack (C6262)
+	int* iEntityList = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
+
+	if (!iEntityList || !entity_list)
+	{
+		Com_Printf(S_COLOR_RED "DEMP2_AltRadiusDamage: BG_Alloc failed\n");
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time;
+		return;
+	}
+
 	gentity_t* my_owner = NULL;
 	int i;
-	vec3_t mins, maxs;
-	vec3_t v, dir;
+	vec3_t mins = { 0 }, maxs = { 0 };
+	vec3_t v = { 0 }, dir = { 0 };
 
 	if (ent->r.ownerNum >= 0 &&
 		ent->r.ownerNum < MAX_GENTITIES)
@@ -1709,16 +1807,13 @@ void DEMP2_AltRadiusDamage(gentity_t* ent)
 	}
 
 	frac *= frac * frac;
-	// yes, this is completely ridiculous...but it causes the shell to grow slowly then "explode" at the end
 
 	float radius = frac * 200.0f;
-	// 200 is max radius...the model is aprox. 100 units tall...the fx draw code mults. this by 2.
 
-	float fact = ent->count * 0.6;
-
-	if (fact < 1)
+	float fact = ent->count * 0.6f;
+	if (fact < 1.0f)
 	{
-		fact = 1;
+		fact = 1.0f;
 	}
 
 	radius *= fact;
@@ -1731,11 +1826,9 @@ void DEMP2_AltRadiusDamage(gentity_t* ent)
 
 	const int num_listed_entities = trap->EntitiesInBox(mins, maxs, iEntityList, MAX_GENTITIES);
 
-	i = 0;
-	while (i < num_listed_entities)
+	for (i = 0; i < num_listed_entities; i++)
 	{
 		entity_list[i] = &g_entities[iEntityList[i]];
-		i++;
 	}
 
 	for (int e = 0; e < num_listed_entities; e++)
@@ -1747,7 +1840,6 @@ void DEMP2_AltRadiusDamage(gentity_t* ent)
 			continue;
 		}
 
-		// find the distance from the edge of the bounding box
 		for (i = 0; i < 3; i++)
 		{
 			if (ent->r.currentOrigin[i] < gent->r.absmin[i])
@@ -1760,65 +1852,62 @@ void DEMP2_AltRadiusDamage(gentity_t* ent)
 			}
 			else
 			{
-				v[i] = 0;
+				v[i] = 0.0f;
 			}
 		}
 
-		// shape is an ellipsoid, so cut vertical distance in half`
 		v[2] *= 0.5f;
 
 		const float dist = VectorLength(v);
 
 		if (dist >= radius)
 		{
-			// shockwave hasn't hit them yet
 			continue;
 		}
 
-		if (dist + 16 * ent->count < ent->genericValue6)
+		if (dist + 16.0f * ent->count < ent->genericValue6)
 		{
-			// shockwave has already hit this thing...
 			continue;
 		}
 
 		VectorCopy(gent->r.currentOrigin, v);
 		VectorSubtract(v, ent->r.currentOrigin, dir);
 
-		// push the center of mass higher than the origin so players get knocked into the air more
-		dir[2] += 12;
+		dir[2] += 12.0f;
 
 		if (gent != my_owner)
 		{
-			G_Damage(gent, my_owner, my_owner, dir, ent->r.currentOrigin, ent->damage, DAMAGE_DEATH_KNOCKBACK,
-				ent->splashMethodOfDeath);
-			if (gent->takedamage
-				&& gent->client)
+			G_Damage(gent, my_owner, my_owner, dir, ent->r.currentOrigin,
+				ent->damage, DAMAGE_DEATH_KNOCKBACK, ent->splashMethodOfDeath);
+
+			if (gent->takedamage && gent->client)
 			{
 				if (gent->client->ps.electrifyTime < level.time)
 				{
-					//electrocution effect
-					if (gent->s.eType == ET_NPC && gent->s.NPC_class == CLASS_VEHICLE &&
-						gent->m_pVehicle && (gent->m_pVehicle->m_pVehicleInfo->type == VH_SPEEDER || gent->m_pVehicle->
-							m_pVehicleInfo->type == VH_WALKER))
+					if (gent->s.eType == ET_NPC &&
+						gent->s.NPC_class == CLASS_VEHICLE &&
+						gent->m_pVehicle &&
+						(gent->m_pVehicle->m_pVehicleInfo->type == VH_SPEEDER ||
+							gent->m_pVehicle->m_pVehicleInfo->type == VH_WALKER))
 					{
-						//do some extra stuff to speeders/walkers
 						gent->client->ps.electrifyTime = level.time + Q_irand(3000, 4000);
 					}
-					else if (gent->s.NPC_class != CLASS_VEHICLE
-						|| gent->m_pVehicle && gent->m_pVehicle->m_pVehicleInfo->type != VH_FIGHTER)
+					else if (gent->s.NPC_class != CLASS_VEHICLE ||
+						(gent->m_pVehicle &&
+							gent->m_pVehicle->m_pVehicleInfo->type != VH_FIGHTER))
 					{
-						//don't do this to fighters
 						gent->client->ps.electrifyTime = level.time + Q_irand(300, 800);
 					}
 				}
+
 				if (gent->client->ps.powerups[PW_CLOAKED])
 				{
-					//disable cloak temporarily
 					Jedi_Decloak(gent);
 					gent->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
 				}
+
 				if (gent->client->ps.powerups[PW_SPHERESHIELDED])
-				{//disable cloak temporarily
+				{
 					Sphereshield_Off(gent);
 					gent->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
 				}
@@ -1826,17 +1915,14 @@ void DEMP2_AltRadiusDamage(gentity_t* ent)
 		}
 	}
 
-	// store the last fraction so that next time around we can test against those things that fall between that last point and where the current shockwave edge is
 	ent->genericValue6 = radius;
 
 	if (frac < 1.0f)
 	{
-		// shock is still happening so continue letting it expand
 		ent->nextthink = level.time + 50;
 	}
 	else
 	{
-		//don't just leave the entity around
 		ent->think = G_FreeEntity;
 		ent->nextthink = level.time;
 	}
@@ -1968,6 +2054,13 @@ static void WP_FlechetteMainFire(gentity_t* ent)
 {
 	vec3_t angs;
 
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FlechetteMainFire: ent->client is NULL\n");
+		return;
+	}
+
 	for (int i = 0; i < FLECHETTE_SHOTS; i++)
 	{
 		vec3_t fwd;
@@ -1976,7 +2069,7 @@ static void WP_FlechetteMainFire(gentity_t* ent)
 		// add some slop to the alt-fire direction
 		if (i != 0)
 		{
-			//do nothing on the first shot, it will hit the crosshairs
+			// do nothing on the first shot, it will hit the crosshairs
 			angs[PITCH] += Q_flrand(-1.0f, 1.0f) * FLECHETTE_SPREAD;
 			angs[YAW] += Q_flrand(-1.0f, 1.0f) * FLECHETTE_SPREAD;
 		}
@@ -1984,38 +2077,46 @@ static void WP_FlechetteMainFire(gentity_t* ent)
 		{
 			if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
 			{
-				//no inherent aim screw up
+				// no inherent aim screw up
 			}
 			else if (NPC_IsNotHavingEnoughForceSight(ent))
-			{//force sight 2+ gives perfect aim
+			{
+				// force sight 2+ gives perfect aim
 				if (!(ent->r.svFlags & SVF_BOT))
 				{
-					if (PM_CrouchAnim(ent->client->ps.legsAnim))
-					{// firing position
+					if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
+					{
+						// firing position
 						angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 						angs[YAW] += Q_flrand(-0.0f, 0.0f);
 					}
 					else
 					{
-						if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-						{ // running or very fatigued
+						if (PM_RunningAnim(ent->client->ps.legsAnim) ||
+							ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
+						{
+							// running or very fatigued
 							angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 							angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						}
-						else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-						{//walking or fatigued a bit
+						else if (PM_WalkingAnim(ent->client->ps.legsAnim) ||
+							ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
+						{
+							// walking or fatigued a bit
 							angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 							angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						}
 						else
-						{// just standing
+						{
+							// just standing
 							angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 							angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 						}
 					}
 				}
 				else
-				{// add some slop to the fire direction for NPC,s
+				{
+					// add some slop to the fire direction for NPCs
 					angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 					angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
 				}
@@ -2596,7 +2697,7 @@ static void WP_GrenadeBlow(gentity_t* self)
 	{
 		vec3_t dir = { 0, 0, 1 };
 		int entitys[1024];
-		vec3_t mins, maxs, v;
+		vec3_t mins = { 0 }, maxs = { 0 }, v = { 0 };
 		int i;
 		for (i = 0; i < 3; i++)
 		{
@@ -2838,7 +2939,7 @@ qboolean WP_LobFire(const gentity_t* self, vec3_t start, vec3_t target, vec3_t m
 	float best_impact_dist = Q3_INFINITE; //fireSpeed,
 	vec3_t shot_vel, fail_case;
 	trace_t trace;
-	trajectory_t tr;
+	trajectory_t tr = { 0 };
 	int hit_count = 0;
 	const int max_hits = 7;
 
@@ -3304,10 +3405,18 @@ void CreateLaserTrap(gentity_t* laser_trap, vec3_t start, gentity_t* owner)
 void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 {
 	gentity_t* found = NULL;
-	vec3_t dir, start;
+	vec3_t dir = { 0 }, start = { 0 };
 	int trapcount = 0;
-	int found_laser_traps[MAX_GENTITIES];
 
+	// FIX: move large array off stack (C6262)
+	int* found_laser_traps = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!found_laser_traps)
+	{
+		Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: BG_Alloc failed\n");
+		return;
+	}
+
+	// initialize first entry
 	found_laser_traps[0] = ENTITYNUM_NONE;
 
 	VectorCopy(forward, dir);
@@ -3315,8 +3424,8 @@ void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 
 	gentity_t* laserTrap = G_Spawn();
 
-	//limit to 10 placed at any one time
-	//see how many there are now
+	// limit to 10 placed at any one time
+	// see how many there are now
 	while ((found = G_Find(found, FOFS(classname), "laserTrap")) != NULL)
 	{
 		if (found->parent != ent)
@@ -3325,33 +3434,40 @@ void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 		}
 		found_laser_traps[trapcount++] = found->s.number;
 	}
-	//now remove first ones we find until there are only 9 left
+
+	// now remove first ones we find until there are only 9 left
 	found = NULL;
 	const int trapcount_org = trapcount;
 	int lowestTimeStamp = level.time;
+
 	while (trapcount > 9)
 	{
 		int removeMe = -1;
+
 		for (int i = 0; i < trapcount_org; i++)
 		{
 			if (found_laser_traps[i] == ENTITYNUM_NONE)
 			{
 				continue;
 			}
+
 			found = &g_entities[found_laser_traps[i]];
+
 			if (laserTrap && found->setTime < lowestTimeStamp)
 			{
 				removeMe = i;
 				lowestTimeStamp = found->setTime;
 			}
 		}
+
 		if (removeMe != -1)
 		{
-			//remove it... or blow it?
+			// remove it... or blow it?
 			if (&g_entities[found_laser_traps[removeMe]] == NULL)
 			{
 				break;
 			}
+
 			G_FreeEntity(&g_entities[found_laser_traps[removeMe]]);
 			found_laser_traps[removeMe] = ENTITYNUM_NONE;
 			trapcount--;
@@ -3362,19 +3478,19 @@ void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 		}
 	}
 
-	//now make the new one
+	// now make the new one
 	CreateLaserTrap(laserTrap, start, ent);
 
-	//set player-created-specific fields
-	laserTrap->setTime = level.time; //remember when we placed it
+	// set player-created-specific fields
+	laserTrap->setTime = level.time; // remember when we placed it
 
 	if (!alt_fire)
 	{
-		//tripwire
+		// tripwire
 		laserTrap->count = 1;
 	}
 
-	//move it
+	// move it
 	laserTrap->s.pos.trType = TR_GRAVITY;
 
 	if (alt_fire)
@@ -3564,7 +3680,7 @@ static void DetPackDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacke
 	self->takedamage = qfalse;
 }
 
-void drop_charge(gentity_t* self, vec3_t start, vec3_t dir)
+static void drop_charge(gentity_t* self, vec3_t start, vec3_t dir)
 {
 	VectorNormalize(dir);
 
@@ -3689,15 +3805,25 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 {
 	gentity_t* found = NULL;
 	int trapcount = 0;
-	int found_det_packs[MAX_GENTITIES] = { ENTITYNUM_NONE };
+
+	// FIX: move large array off stack (C6262)
+	int* found_det_packs = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!found_det_packs)
+	{
+		Com_Printf(S_COLOR_RED "WP_DropDetPack: BG_Alloc failed\n");
+		return;
+	}
+
+	// initialize first entry
+	found_det_packs[0] = ENTITYNUM_NONE;
 
 	if (!ent || !ent->client)
 	{
 		return;
 	}
 
-	//limit to 10 placed at any one time
-	//see how many there are now
+	// limit to 10 placed at any one time
+	// see how many there are now
 	while ((found = G_Find(found, FOFS(classname), "detpack")) != NULL)
 	{
 		if (found->parent != ent)
@@ -3706,38 +3832,46 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 		}
 		found_det_packs[trapcount++] = found->s.number;
 	}
-	//now remove first ones we find until there are only 9 left
+
+	// now remove first ones we find until there are only 9 left
 	found = NULL;
 	const int trapcount_org = trapcount;
 	int lowestTimeStamp = level.time;
+
 	while (trapcount > 9)
 	{
 		int removeMe = -1;
+
 		for (int i = 0; i < trapcount_org; i++)
 		{
 			if (found_det_packs[i] == ENTITYNUM_NONE)
 			{
 				continue;
 			}
+
 			found = &g_entities[found_det_packs[i]];
+
 			if (found->setTime < lowestTimeStamp)
 			{
 				removeMe = i;
 				lowestTimeStamp = found->setTime;
 			}
 		}
+
 		if (removeMe != -1)
 		{
-			//remove it... or blow it?
+			// remove it... or blow it?
 			if (&g_entities[found_det_packs[removeMe]] == NULL)
 			{
 				break;
 			}
+
 			if (!CheatsOn())
 			{
-				//Let them have unlimited if cheats are enabled
+				// Let them have unlimited if cheats are enabled
 				G_FreeEntity(&g_entities[found_det_packs[removeMe]]);
 			}
+
 			found_det_packs[removeMe] = ENTITYNUM_NONE;
 			trapcount--;
 		}
@@ -3759,6 +3893,7 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 
 		VectorNormalize(forward);
 		VectorMA(muzzle, -4, forward, muzzle);
+
 		drop_charge(ent, muzzle, forward);
 
 		ent->client->ps.hasDetPackPlanted = qtrue;
@@ -5519,6 +5654,13 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 {
 	float alert = 256;
 
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "FireWeapon: ent or ent->client is NULL\n");
+		return;
+	}
+
 	if (PM_InKnockDown(&ent->client->ps))
 	{
 		return;
@@ -5553,18 +5695,27 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 		return;
 	}
 
-	if (ent && ent->client && ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_FOURTEEN)
+	if (ent && ent->client && ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_FOURTEEN && IsHoldingReloadableGun(ent))
 	{
 		if (!(ent->r.svFlags & SVF_BOT))
 		{
 			FireOverheatFail(ent);
 			return;
 		}
+		else
+		{
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
+			G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
+			G_Damage(ent, NULL, NULL, NULL, ent->r.currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
+			ent->reloadTime = level.time + fire_deley_time();
+			return;
+		}
 	}
 
 	if (ent && ent->client && ent->client->frozenTime > level.time)
 	{
-		return; //this entity is mind-tricking the current client, so don't render it
+		return; // this entity is mind-tricking the current client, so don't render it
 	}
 
 	if (ent && ent->client && PM_ReloadAnim(ent->client->ps.torsoAnim))
@@ -5580,7 +5731,7 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 	// set aiming directions
 	if (ent && ent->client && ent->s.weapon == WP_EMPLACED_GUN && ent->client->ps.emplacedIndex)
 	{
-		//if using emplaced then base muzzle point off of gun position/angles
+		// if using emplaced then base muzzle point off of gun position/angles
 		gentity_t* emp = &g_entities[ent->client->ps.emplacedIndex];
 
 		if (emp->inuse)
@@ -5612,7 +5763,7 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 	else if (ent->s.number < MAX_CLIENTS &&
 		ent->client->ps.m_iVehicleNum && ent->s.weapon == WP_BLASTER)
 	{
-		//riding a vehicle...with blaster selected
+		// riding a vehicle...with blaster selected
 		vec3_t veh_turn_angles;
 		const gentity_t* vehEnt = &g_entities[ent->client->ps.m_iVehicleNum];
 
@@ -5627,12 +5778,12 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 		}
 		if (ent->client->pers.cmd.rightmove > 0)
 		{
-			//shooting to right
+			// shooting to right
 			veh_turn_angles[YAW] -= 90.0f;
 		}
 		else if (ent->client->pers.cmd.rightmove < 0)
 		{
-			//shooting to left
+			// shooting to left
 			veh_turn_angles[YAW] += 90.0f;
 		}
 
@@ -5774,32 +5925,35 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 	case WP_EMPLACED_GUN:
 		if (ent->client && ent->client->ewebIndex)
 		{
-			//specially handled by the e-web itself
+			// specially handled by the e-web itself
 			break;
 		}
 		WP_FireEmplaced(ent, alt_fire);
 		break;
+
 	default:
-		//			assert(!"unknown weapon fire");
+		// debug only, no assert
+		Com_Printf(S_COLOR_YELLOW "FireWeapon: unknown weapon %d\n", ent->s.weapon);
 		break;
 	}
+
 	// We should probably just use this as a default behavior, in special cases, just set alert to false.
 	if (alert > 0)
 	{
-		if (ent->client->ps.groundEntityNum == ENTITYNUM_WORLD //FIXME: check for sand contents type?
+		if (ent->client->ps.groundEntityNum == ENTITYNUM_WORLD // FIXME: check for sand contents type?
 			&& ent->s.weapon != WP_STUN_BATON
 			&& ent->s.weapon != WP_MELEE
-			//&& ent->s.weapon != WP_TUSKEN_STAFF //RAFIXME - Impliment?
+			// && ent->s.weapon != WP_TUSKEN_STAFF // RAFIXME - Impliment?
 			&& ent->s.weapon != WP_THERMAL
 			&& ent->s.weapon != WP_TRIP_MINE
 			&& ent->s.weapon != WP_DET_PACK)
 		{
-			//the vibration of the shot carries through your feet into the ground
+			// the vibration of the shot carries through your feet into the ground
 			AddSoundEvent(ent, muzzle, alert, AEL_DISCOVERED, qfalse, qtrue);
 		}
 		else
 		{
-			//an in-air alert
+			// an in-air alert
 			AddSoundEvent(ent, muzzle, alert, AEL_DISCOVERED, qfalse, qfalse);
 		}
 		AddSightEvent(ent, muzzle, alert * 2, AEL_DISCOVERED, 20);

@@ -309,14 +309,14 @@ using powerupInfo_t = struct
 	int itemNum;
 };
 
-constexpr auto CG_OVERRIDE_3RD_PERSON_ENT = 0x00000001;
-constexpr auto CG_OVERRIDE_3RD_PERSON_RNG = 0x00000002;
-constexpr auto CG_OVERRIDE_3RD_PERSON_ANG = 0x00000004;
-constexpr auto CG_OVERRIDE_3RD_PERSON_VOF = 0x00000008;
-constexpr auto CG_OVERRIDE_3RD_PERSON_POF = 0x00000010;
-constexpr auto CG_OVERRIDE_3RD_PERSON_CDP = 0x00000020;
-constexpr auto CG_OVERRIDE_3RD_PERSON_APH = 0x00000040;
-constexpr auto CG_OVERRIDE_3RD_PERSON_HOF = 0x00000080;
+constexpr auto CG_OVERRIDE_3RD_PERSON_ENT = 0x00000001; // override the 3rd person entity for this frame
+constexpr auto CG_OVERRIDE_3RD_PERSON_RNG = 0x00000002; // override the 3rd person entity for this frame, but only for a random number of frames
+constexpr auto CG_OVERRIDE_3RD_PERSON_ANG = 0x00000004; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random angle
+constexpr auto CG_OVERRIDE_3RD_PERSON_VOF = 0x00000008; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random vertical offset
+constexpr auto CG_OVERRIDE_3RD_PERSON_POF = 0x00000010; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random pitch offset
+constexpr auto CG_OVERRIDE_3RD_PERSON_CDP = 0x00000020; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random camera damp
+constexpr auto CG_OVERRIDE_3RD_PERSON_APH = 0x00000040; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random alpha
+constexpr auto CG_OVERRIDE_3RD_PERSON_HOF = 0x00000080; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random horizontal offset
 constexpr auto CG_OVERRIDE_FOV = 0x00000100;
 
 using overrides_t = struct
@@ -329,6 +329,7 @@ using overrides_t = struct
 	float thirdPersonVertOffset; //how high to be above them
 	float thirdPersonPitchOffset; //what offset pitch to apply the the camera view
 	float thirdPersonCameraDamp; //how tightly to move the camera pos behind the player
+	float thirdPersonTargetDamp; //how tightly to move the camera pos behind the player
 	float thirdPersonHorzOffset; //NOTE: could put Alpha and HorzOffset and the target & camera damps, but no-one is trying to override those, so... YES WE ARE
 	float thirdPersonAlpha; //how tightly to move the camera pos behind the player
 	float fov; //what fov to use
@@ -727,6 +728,7 @@ extern vmCvar_t cg_missionstatusscreen;
 
 extern vmCvar_t cg_hudRatio;
 extern vmCvar_t cg_saberLockCinematicCamera;
+extern vmCvar_t cg_AimingCinematicCamera;
 
 extern vmCvar_t cg_com_rend2;
 

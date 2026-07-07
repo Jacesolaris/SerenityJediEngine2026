@@ -2606,7 +2606,7 @@ static void ForceSpeedDash(gentity_t* self)
 	}
 	// Note that the above check , so you can still hold the button during a saber lock
 	// and have the dash start immediately after the lock ends, which is nice.
-	if (!(self->client->ps.communicatingflags & 1 << DASHING))
+	if (!(self->client->ps.communicatingflags & 1 << CF_DASHING))
 	{// not actually dashing, so don't start the anim or sound
 		return;
 	}

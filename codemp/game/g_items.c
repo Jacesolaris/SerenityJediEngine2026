@@ -1851,7 +1851,7 @@ void ItemUse_UseCloak(gentity_t* ent)
 					&& !ent->client->ps.saberInFlight
 					&& !PM_SaberInAttack(ent->client->ps.saberMove)
 					&& ent->client->ps.fd.forceGripBeingGripped < level.time
-					&& !(ent->client->ps.communicatingflags & 1 << CLOAK_CHARGE_RESTRICTION))
+					&& !(ent->client->ps.communicatingflags & 1 << CF_CLOAK_CHARGE_RESTRICTION))
 				{
 					Jedi_Cloak(ent);
 				}

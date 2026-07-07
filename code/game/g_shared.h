@@ -921,6 +921,8 @@ public:
 	int lastSaberTargetTime;
 	int reloadTime;
 	int painCooldownTime;
+	qboolean IsAiming;
+	char* fullName; // Character's full name
 
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const
@@ -1029,6 +1031,8 @@ public:
 		saved_game.write<int32_t>(lastSaberTargetTime);
 		saved_game.write<int32_t>(reloadTime);
 		saved_game.write<int32_t>(painCooldownTime);
+		saved_game.write<int32_t>(IsAiming);
+		saved_game.write<int32_t>(fullName);
 	}
 
 	void sg_import(
@@ -1138,6 +1142,8 @@ public:
 		saved_game.read<int32_t>(lastSaberTargetTime);
 		saved_game.read<int32_t>(reloadTime);
 		saved_game.read<int32_t>(painCooldownTime);
+		saved_game.read<int32_t>(IsAiming);
+		saved_game.read<int32_t>(fullName);
 	}
 }; // GClientBase
 
@@ -1385,6 +1391,7 @@ struct gentity_s
 	char* behaviorSet[NUM_BSETS];
 	char* script_targetname;
 	int delayScriptTime;
+	char* fullName;
 
 	// Ambient sound info
 	char* soundSet; //Only used for local sets
@@ -1674,6 +1681,7 @@ struct gentity_s
 		saved_game.write<int32_t>(behaviorSet);
 		saved_game.write<int32_t>(script_targetname);
 		saved_game.write<int32_t>(delayScriptTime);
+		saved_game.write<int32_t>(fullName);
 		saved_game.write<int32_t>(soundSet);
 		saved_game.write<int32_t>(setTime);
 		saved_game.write<int32_t>(cameraGroup);
@@ -1891,6 +1899,7 @@ struct gentity_s
 		saved_game.read<int32_t>(behaviorSet);
 		saved_game.read<int32_t>(script_targetname);
 		saved_game.read<int32_t>(delayScriptTime);
+		saved_game.read<int32_t>(fullName);
 		saved_game.read<int32_t>(soundSet);
 		saved_game.read<int32_t>(setTime);
 		saved_game.read<int32_t>(cameraGroup);

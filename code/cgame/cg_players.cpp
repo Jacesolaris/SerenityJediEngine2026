@@ -5816,7 +5816,7 @@ extern vmCvar_t cg_thirdPersonAlpha;
 
 void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent)
 {
-	qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << DASHING ? qtrue : qfalse;
+	qboolean doing_dash_action = cg.predictedPlayerState.communicatingflags & 1 << CF_DASHING ? qtrue : qfalse;
 	refEntity_t legs;
 
 	if (!cent)

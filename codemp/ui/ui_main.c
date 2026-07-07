@@ -1524,9 +1524,11 @@ static qboolean Load_Menu(int handle)
 	}
 }
 
-void UI_LoadMenus(const char* menuFile, qboolean reset)
+void UI_LoadMenus(const char* menuFile, const qboolean reset)
 {
 	pc_token_t token;
+
+	const int start = trap->Milliseconds();
 
 	trap->PC_LoadGlobalDefines("ui/sjemp/menudef.h");
 
@@ -1570,7 +1572,7 @@ void UI_LoadMenus(const char* menuFile, qboolean reset)
 		}
 	}
 
-	//	Com_Printf("UI menu load time = %d milli seconds\n", trap->Milliseconds() - start);
+	Com_Printf("UI menu load time = %d milli seconds\n", trap->Milliseconds() - start);
 
 	trap->PC_FreeSource(handle);
 
@@ -3175,8 +3177,7 @@ static void UI_DrawServerRefreshDate(rectDef_t* rect, float scale, vec4_t color,
 		lowLight[1] = 0.8 * color[1];
 		lowLight[2] = 0.8 * color[2];
 		lowLight[3] = 0.8 * color[3];
-		LerpColor(color,lowLight,newColor,0.5f + 0.5f * sinf((float)uiInfo.uiDC.realTime / (float)PULSE_DIVISOR));
-
+		LerpColor(color, lowLight, newColor, 0.5f + 0.5f * sinf((float)uiInfo.uiDC.realTime / (float)PULSE_DIVISOR));
 
 		trap->SE_GetStringTextString("MP_INGAME_GETTINGINFOFORSERVERS", holdSPString, sizeof holdSPString);
 		Text_Paint(rect->x, rect->y, scale, newColor,
@@ -5025,8 +5026,6 @@ static void UI_LoadDemos(void)
 	// UI_Alloc memory is not freed — UI memory is arena‑based and freed on UI restart
 }
 
-
-
 static qboolean UI_SetNextMap(int actual, int index)
 {
 	for (int i = actual + 1; i < uiInfo.mapCount; i++)
@@ -5917,7 +5916,6 @@ static void UI_UpdateSaberHilt(qboolean second_saber)
 		}
 	}
 }
-
 
 static void UI_UpdateSaberColor(qboolean second_saber)
 {
@@ -10528,7 +10526,6 @@ static void UI_BuildQ3Model_List(void)
 	}
 }
 
-
 static void UI_SiegeInit(void)
 {
 	//Load the player class types
@@ -10657,7 +10654,6 @@ static qboolean UI_ParseColorData(char* buf, playerSpeciesInfo_t* species, char*
 	// Should never reach here
 	return qtrue;
 }
-
 
 static void UI_FreeSpecies(playerSpeciesInfo_t* species)
 {
@@ -10977,8 +10973,6 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 	}
 }
 
-
-
 static qhandle_t UI_RegisterShaderNoMip(const char* name)
 {
 	if (*name == '*')
@@ -11206,7 +11200,6 @@ static void UI_Refresh(int realtime)
 		}
 		const float fTotal = (float)total;
 		uiInfo.uiDC.FPS = (1000.0f * (float)UI_FPS_FRAMES) / fTotal;
-
 	}
 
 	UI_UpdateCvars();
@@ -11403,7 +11396,7 @@ static void UI_PrintTime(char* buf, int bufsize, int time)
 void Text_PaintCenter(float x, float y, float scale, vec4_t color, const char* text, float adjust, int i_menu_font)
 {
 	const int len = Text_Width(text, scale, i_menu_font);
-	
+
 	const float halfLen = (float)len * 0.5f;
 
 	Text_Paint(
@@ -11417,7 +11410,6 @@ void Text_PaintCenter(float x, float y, float scale, vec4_t color, const char* t
 		ITEM_TEXTSTYLE_SHADOWEDMORE,
 		i_menu_font
 	);
-
 }
 
 static void UI_DisplayDownloadInfo(const char* downloadName, float centerPoint, float yStart, float scale,

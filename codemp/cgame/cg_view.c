@@ -259,6 +259,7 @@ static void CG_StepOffset(void)
 }
 
 #define CAMERA_DAMP_INTERVAL	50
+#define CAMERA_DAMP_INTERVAL_AIMING	30
 
 static vec3_t cameramins = { -CAMERA_SIZE, -CAMERA_SIZE, -CAMERA_SIZE };
 static vec3_t cameramaxs = { CAMERA_SIZE, CAMERA_SIZE, CAMERA_SIZE };
@@ -298,8 +299,10 @@ CG_CalcTargetThirdPersonViewLocation
 */
 static void CG_CalcIdealThirdPersonViewTarget(void)
 {
-	// Initialize IdealTarget
-	if (gCGHasFallVector)
+	// ----------------------------------------------------------------------
+	// Initialize camera focus location
+	// ----------------------------------------------------------------------
+	if (gCGHasFallVector == qtrue)
 	{
 		VectorCopy(gCGFallVector, cameraFocusLoc);
 	}
@@ -308,72 +311,117 @@ static void CG_CalcIdealThirdPersonViewTarget(void)
 		VectorCopy(cg.refdef.vieworg, cameraFocusLoc);
 	}
 
-	// Add in the new viewheight
+	// Add in the new viewheight (eye height)
 	cameraFocusLoc[2] += cg.snap->ps.viewheight;
 
-	// Add in a vertical offset from the viewpoint, which puts the actual target above the head, regardless of angle.
+	// Base ideal target starts at focus location
 	VectorCopy(cameraFocusLoc, cameraIdealTarget);
 
+	// ----------------------------------------------------------------------
+	// Local aiming offsets (MP does NOT have cg.overrides)
+	// ----------------------------------------------------------------------
+	float localAngleOffset = cg_thirdPersonAngle.value;
+	float localPitchOffset = cg_thirdPersonPitchOffset.value;
+	float localHorzOffset = cg_thirdPersonHorzOffset.value;
+	float localVertOffset = cg_thirdPersonVertOffset.value;
+
+	// ----------------------------------------------------------------------
+	// Vehicle camera overrides
+	// ----------------------------------------------------------------------
+	if (cg.snap && cg.snap->ps.m_iVehicleNum)
 	{
-		float vertOffset = cg_thirdPersonVertOffset.value;
+		const centity_t* veh = &cg_entities[cg.snap->ps.m_iVehicleNum];
 
-		if (cg.snap && cg.snap->ps.m_iVehicleNum)
+		if (veh->m_pVehicle &&
+			veh->m_pVehicle->m_pVehicleInfo->cameraOverride)
 		{
-			const centity_t* veh = &cg_entities[cg.snap->ps.m_iVehicleNum];
-
-			if (veh->m_pVehicle &&
-				veh->m_pVehicle->m_pVehicleInfo->cameraOverride)
+			if (veh->m_pVehicle->m_pVehicleInfo->cameraPitchDependantVertOffset)
 			{
-				//override the range with what the vehicle wants it to be
-				if (veh->m_pVehicle->m_pVehicleInfo->cameraPitchDependantVertOffset)
+				if (cg.snap->ps.viewangles[PITCH] > 0.0f)
 				{
-					if (cg.snap->ps.viewangles[PITCH] > 0)
+					localVertOffset = 130.0f + cg.predictedPlayerState.viewangles[PITCH] * -10.0f;
+					if (localVertOffset < -170.0f)
 					{
-						vertOffset = 130 + cg.predictedPlayerState.viewangles[PITCH] * -10;
-						if (vertOffset < -170)
-						{
-							vertOffset = -170;
-						}
+						localVertOffset = -170.0f;
 					}
-					else if (cg.snap->ps.viewangles[PITCH] < 0)
+				}
+				else if (cg.snap->ps.viewangles[PITCH] < 0.0f)
+				{
+					localVertOffset = 130.0f + cg.predictedPlayerState.viewangles[PITCH] * -5.0f;
+					if (localVertOffset > 130.0f)
 					{
-						vertOffset = 130 + cg.predictedPlayerState.viewangles[PITCH] * -5;
-						if (vertOffset > 130)
-						{
-							vertOffset = 130;
-						}
-					}
-					else
-					{
-						vertOffset = 30;
+						localVertOffset = 130.0f;
 					}
 				}
 				else
 				{
-					vertOffset = veh->m_pVehicle->m_pVehicleInfo->cameraVertOffset;
+					localVertOffset = 30.0f;
 				}
 			}
-			else if (veh->m_pVehicle
-				&& veh->m_pVehicle->m_pVehicleInfo
-				&& veh->m_pVehicle->m_pVehicleInfo->type == VH_ANIMAL)
+			else
 			{
-				vertOffset = 0;
+				localVertOffset = veh->m_pVehicle->m_pVehicleInfo->cameraVertOffset;
 			}
 		}
-		else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << OVERSIZEDGUNNER))
+		else if (veh->m_pVehicle &&
+			veh->m_pVehicle->m_pVehicleInfo &&
+			veh->m_pVehicle->m_pVehicleInfo->type == VH_ANIMAL)
 		{
-			vertOffset = 30.0f;
+			localVertOffset = 0.0f;
 		}
-		else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDGUNNER))
-		{
-			vertOffset = 0.0f;
-		}
-		else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
-		{
-			vertOffset = -15.5f;
-		}
-		cameraIdealTarget[2] += vertOffset;
 	}
+	// ----------------------------------------------------------------------
+	// Oversized / undersized gunner flags
+	// ----------------------------------------------------------------------
+	else if (cg.renderingThirdPerson == qtrue &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_OVERSIZEDGUNNER)))
+	{
+		localVertOffset = 30.0f;
+	}
+	else if (cg.renderingThirdPerson == qtrue &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDGUNNER)))
+	{
+		localVertOffset = 0.0f;
+	}
+	// ----------------------------------------------------------------------
+	// Saber lock cinematic camera
+	// ----------------------------------------------------------------------
+	else if (cg.renderingThirdPerson == qtrue &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING)) &&
+		g_saberLockCinematicCamera.integer)
+	{
+		localVertOffset = -15.5f;
+	}
+
+	// ----------------------------------------------------------------------
+	// CF_AIMINGGUN — MP aiming cinematic camera
+	// ----------------------------------------------------------------------
+	else if (cg.renderingThirdPerson == qtrue &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+		g_AimingCinematicCamera.integer)
+	{
+		vec3_t forward;
+		AngleVectors(cg.refdef.viewangles, forward, NULL, NULL);
+
+		// Short forward distance so we don't zoom into the back of the head
+		VectorMA(cameraFocusLoc, 48.0f, forward, cameraIdealTarget);
+
+		// Shoulder camera tuning (local variables — MP has no overrides)
+		/*localAngleOffset = 10.0f;
+		localPitchOffset = -2.0f;
+		localHorzOffset = -20.0f;*/
+
+		// Apply vertical offset AFTER aiming forward shift
+		cameraIdealTarget[2] += localVertOffset;
+
+		return; // aiming branch fully handled
+	}
+
+	// ----------------------------------------------------------------------
+	// Default vertical offset
+	// ----------------------------------------------------------------------
+	VectorCopy(cameraFocusLoc, cameraIdealTarget);
+	cameraIdealTarget[2] += localVertOffset;
 }
 
 /*
@@ -490,15 +538,33 @@ static void CG_UpdateThirdPersonTargetDamp(void)
 		// The equation is (Damp)^(time)
 		const float dampfactor = 1.0 - cg_thirdPersonTargetDamp.value;
 		// We must exponent the amount LEFT rather than the amount bled off
-		const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
-		// Our dampfactor is geared towards a time interval equal to "1".
 
-		// Note that since there are a finite number of "practical" delta millisecond values possible,
-		// the ratio should be initialized into a chart ultimately.
-		if (cg_smoothCamera.integer)
-			ratio = powf(dampfactor, dtime);
+		if (cg.renderingThirdPerson &&
+			(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+			g_AimingCinematicCamera.integer)
+		{
+			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL_AIMING);
+			// Our dampfactor is geared towards a time interval equal to "1".
+
+			// Note that since there are a finite number of "practical" delta millisecond values possible,
+			// the ratio should be initialized into a chart ultimately.
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 		else
-			ratio = Q_powf(dampfactor, dtime);
+		{
+			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
+			// Our dampfactor is geared towards a time interval equal to "1".
+
+			// Note that since there are a finite number of "practical" delta millisecond values possible,
+			// the ratio should be initialized into a chart ultimately.
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 
 		// This value is how much distance is "left" from the ideal.
 		VectorMA(cameraIdealTarget, -ratio, targetdiff, cameraCurTarget);
@@ -568,22 +634,27 @@ static void CG_UpdateThirdPersonCameraDamp(void)
 		}
 	}
 
-	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << OVERSIZEDGUNNER))
+	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_OVERSIZEDGUNNER))
 	{
 		thirdPersonCameraDamp = 1;
 	}
 
-	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDGUNNER))
+	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDGUNNER))
 	{
 		thirdPersonCameraDamp = 1;
 	}
 
-	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDJEDI))
+	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDJEDI))
 	{
 		thirdPersonCameraDamp = 1;
 	}
 
 	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
+	{
+		thirdPersonCameraDamp = 1;
+	}
+
+	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN) && g_AimingCinematicCamera.integer)
 	{
 		thirdPersonCameraDamp = 1;
 	}
@@ -603,15 +674,33 @@ static void CG_UpdateThirdPersonCameraDamp(void)
 		// Now we calculate how much of the difference we cover in the time allotted.
 		// The equation is (Damp)^(time)
 		dampfactor = 1.0 - dampfactor; // We must exponent the amount LEFT rather than the amount bled off
-		const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
-		// Our dampfactor is geared towards a time interval equal to "1".
 
-		// Note that since there are a finite number of "practical" delta millisecond values possible,
-		// the ratio should be initialized into a chart ultimately.
-		if (cg_smoothCamera.integer)
-			ratio = powf(dampfactor, dtime);
+		if (cg.renderingThirdPerson &&
+			(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+			g_AimingCinematicCamera.integer)
+		{
+			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL_AIMING);
+			// Our dampfactor is geared towards a time interval equal to "1".
+
+			// Note that since there are a finite number of "practical" delta millisecond values possible,
+			// the ratio should be initialized into a chart ultimately.
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 		else
-			ratio = Q_powf(dampfactor, dtime);
+		{
+			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
+			// Our dampfactor is geared towards a time interval equal to "1".
+
+			// Note that since there are a finite number of "practical" delta millisecond values possible,
+			// the ratio should be initialized into a chart ultimately.
+			if (cg_smoothCamera.integer)
+				ratio = powf(dampfactor, dtime);
+			else
+				ratio = Q_powf(dampfactor, dtime);
+		}
 
 		// This value is how much distance is "left" from the ideal.
 		VectorMA(cameraIdealLoc, -ratio, locdiff, cameraCurLoc);
@@ -689,6 +778,8 @@ static void CG_OffsetThirdPersonView(void)
 
 	float thirdPersonHorzOffset = cg_thirdPersonHorzOffset.value;
 	float thirdPersonAngle = cg_thirdPersonAngle.value;
+	float thirdPersonPitchOffset = cg_thirdPersonPitchOffset.value;
+	float thirdPersonCameraDamp = cg_thirdPersonCameraDamp.value;
 
 	if (cg.snap && cg.snap->ps.m_iVehicleNum)
 	{
@@ -726,10 +817,24 @@ static void CG_OffsetThirdPersonView(void)
 	{
 		cameraFocusAngles[YAW] = cg.snap->ps.stats[STAT_DEAD_YAW];
 	}
-	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
+	else if (cg.renderingThirdPerson &&
+		cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) &&
+		g_saberLockCinematicCamera.integer)
 	{
 		thirdPersonHorzOffset = -25.5f;
 		thirdPersonAngle = 40.5f;
+	}
+	// Aiming cinematic
+	else if (cg.renderingThirdPerson &&
+		(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
+		g_AimingCinematicCamera.integer)
+	{
+		thirdPersonAngle = 0.0f;
+		thirdPersonPitchOffset = 0.0f;
+		thirdPersonHorzOffset = -10.0f;
+
+		cameraFocusAngles[YAW] += thirdPersonAngle;
+		cameraFocusAngles[PITCH] += thirdPersonPitchOffset;
 	}
 	else
 	{
@@ -846,22 +951,27 @@ static void CG_OffsetThirdPersonView(void)
 
 	// Temp: just move the camera to the side a bit
 
-	if (cg.predictedPlayerState.communicatingflags & (1 << OVERSIZEDGUNNER))
+	if (cg.predictedPlayerState.communicatingflags & (1 << CF_OVERSIZEDGUNNER))
 	{
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
 		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
 	}
-	else if (cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDGUNNER))
+	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDGUNNER))
 	{
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
 		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
 	}
-	else if (cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDJEDI))
+	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDJEDI))
 	{
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
 		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
 	}
 	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
+	{
+		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
+		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
+	}
+	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN) && g_AimingCinematicCamera.integer)
 	{
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
 		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
@@ -1251,19 +1361,19 @@ static int CG_CalcFov(void)
 	{
 		cgFov = cg_truefov.value;
 	}
-	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << OVERSIZEDGUNNER))
+	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_OVERSIZEDGUNNER))
 	{
 		thirdPersonPitchOffset = 50.0f;
 		thirdPersonRange = 100.0f;
 		cgFov = cg_oversizedview.value;
 	}
-	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDGUNNER))
+	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDGUNNER))
 	{
 		thirdPersonPitchOffset = 10.0f;
 		thirdPersonRange = 70.0f;
 		cgFov = cg_saberlockfov.value;
 	}
-	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << UNDERSIZEDJEDI))
+	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDJEDI))
 	{
 		thirdPersonRange = 100.0f;
 		cgFov = cg_oversizedview.value;
@@ -1273,6 +1383,10 @@ static int CG_CalcFov(void)
 		thirdPersonPitchOffset = -11.25f;
 		thirdPersonRange = 82.5f;
 		cgFov = cg_saberlockfov.value;
+	}
+	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN) && g_AimingCinematicCamera.integer)
+	{
+		cgFov = cg_fov.value;
 	}
 	else
 	{

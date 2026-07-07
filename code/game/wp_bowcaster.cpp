@@ -114,7 +114,7 @@ static void WP_BowcasterMainFire(gentity_t* ent)
 
             if (is_player_or_controlled == qtrue)
             {
-                if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+                if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
                 {
                     angs[PITCH] += Q_flrand(-0.0f, 0.0f);
                     angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -122,13 +122,13 @@ static void WP_BowcasterMainFire(gentity_t* ent)
                 else
                 {
                     if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-                        ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+                        ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
                     {
                         angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
                         angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
                     }
                     else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-                        ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+                        ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
                     {
                         angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
                         angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;

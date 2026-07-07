@@ -356,6 +356,7 @@ extern cvar_t* g_attackskill;
 extern cvar_t* g_newgameplusJKA;
 extern cvar_t* g_newgameplusJKO;
 extern cvar_t* g_saberLockCinematicCamera;
+extern cvar_t* g_AimingCinematicCamera;
 
 constexpr auto NIF_NONE = 0x00000000;
 constexpr auto NIF_FAILED = 0x00000001; //failed to find a way to the goal;

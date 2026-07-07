@@ -125,7 +125,7 @@ void multi_trigger_run(gentity_t* ent)
 //determine if the class given is listed in the string using the | formatting
 qboolean G_NameInTriggerClassList(const char* list, const char* str)
 {
-	char cmp[MAX_STRING_CHARS];
+	char cmp[MAX_STRING_CHARS] = { 0 };
 	int i = 0;
 
 	while (list[i])
@@ -164,14 +164,14 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 
 	if (ent->think == multi_trigger_run)
 	{
-		//already triggered, just waiting to run
+		// already triggered, just waiting to run
 		return;
 	}
 
 	if (level.gametype == GT_SIEGE &&
 		!gSiegeRoundBegun)
 	{
-		//nothing can be used til the round starts.
+		// nothing can be used til the round starts
 		return;
 	}
 
@@ -180,25 +180,25 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 		ent->alliedTeam &&
 		activator->client->sess.sessionTeam != ent->alliedTeam)
 	{
-		//this team can't activate this trigger.
+		// this team can't activate this trigger
 		return;
 	}
 
 	if (level.gametype == GT_SIEGE &&
 		ent->idealclass && ent->idealclass[0])
 	{
-		//only certain classes can activate it
+		// only certain classes can activate it
 		if (!activator ||
 			!activator->client ||
 			activator->client->siegeClass < 0)
 		{
-			//no class
+			// no class
 			return;
 		}
 
 		if (!G_NameInTriggerClassList(bgSiegeClasses[activator->client->siegeClass].name, ent->idealclass))
 		{
-			//wasn't in the list
+			// wasn't in the list
 			return;
 		}
 	}
@@ -220,13 +220,13 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 				{
 					if (obj_item->genericValue7 != activator->client->sess.sessionTeam)
 					{
-						//The carrier of the item is not on the team which disallows objective scoring for it
+						// The carrier of the item is not on the team which disallows objective scoring for it
 						if (obj_item->target3 && obj_item->target3[0])
 						{
-							//if it has a target3, fire it off instead of using the trigger
+							// if it has a target3, fire it off instead of using the trigger
 							G_UseTargets2(obj_item, obj_item, obj_item->target3);
 
-							//3-24-03 - want to fire off the target too I guess, if we have one.
+							// fire off the trigger target too if we have one
 							if (ent->targetname && ent->targetname[0])
 							{
 								halt_trigger = qfalse;
@@ -237,7 +237,7 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 							halt_trigger = qfalse;
 						}
 
-						//now that the item has been delivered, it can go away.
+						// now that the item has been delivered, it can go away
 						SiegeItemRemoveOwner(obj_item, activator);
 						obj_item->nextthink = 0;
 						obj_item->neverFree = qfalse;
@@ -249,50 +249,59 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 	}
 	else if (ent->genericValue1)
 	{
-		//Never activate in non-siege gametype I guess.
+		// never activate in non-siege gametype
 		return;
 	}
 
 	if (ent->genericValue2)
 	{
-		//has "teambalance" property
+		// has "teambalance" property
 		int i = 0;
 		int team1_cl_num = 0;
 		int team2_cl_num = 0;
 		const int owning_team = ent->genericValue3;
 		int new_owning_team;
-		int entity_list[MAX_GENTITIES];
+
+		// FIX: move large array off stack (C6262)
+		int* entity_list = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+		if (!entity_list)
+		{
+			Com_Printf(S_COLOR_RED "multi_trigger: BG_Alloc for entity_list failed\n");
+			return;
+		}
 
 		if (level.gametype != GT_SIEGE)
 		{
 			return;
 		}
 
-		if (!activator->client ||
-			activator->client->sess.sessionTeam != SIEGETEAM_TEAM1 && activator->client->sess.sessionTeam !=
-			SIEGETEAM_TEAM2)
+		// SAFETY: activator must be valid (fixes C6011)
+		if (!activator ||
+			!activator->client ||
+			(activator->client->sess.sessionTeam != SIEGETEAM_TEAM1 &&
+				activator->client->sess.sessionTeam != SIEGETEAM_TEAM2))
 		{
-			//activator must be a valid client to begin with
+			// activator must be a valid client to begin with
 			return;
 		}
 
-		//Count up the number of clients standing within the bounds of the trigger and the number of them on each team
+		// Count up the number of clients standing within the bounds of the trigger and the number of them on each team
 		const int num_ents = trap->EntitiesInBox(ent->r.absmin, ent->r.absmax, entity_list, MAX_GENTITIES);
 		while (i < num_ents)
 		{
 			if (entity_list[i] < MAX_CLIENTS)
 			{
-				//only care about clients
+				// only care about clients
 				const gentity_t* cl = &g_entities[entity_list[i]];
 
-				//the client is valid
+				// the client is valid
 				if (cl->inuse && cl->client &&
-					(cl->client->sess.sessionTeam == SIEGETEAM_TEAM1 || cl->client->sess.sessionTeam == SIEGETEAM_TEAM2)
-					&&
+					(cl->client->sess.sessionTeam == SIEGETEAM_TEAM1 ||
+						cl->client->sess.sessionTeam == SIEGETEAM_TEAM2) &&
 					cl->health > 0 &&
 					!(cl->client->ps.eFlags & EF_DEAD))
 				{
-					//See which team he's on
+					// see which team he's on
 					if (cl->client->sess.sessionTeam == SIEGETEAM_TEAM1)
 					{
 						team1_cl_num++;
@@ -308,17 +317,17 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 
 		if (!team1_cl_num && !team2_cl_num)
 		{
-			//no one in the box? How did we get activated? Oh well.
+			// no one in the box? how did we get activated? oh well
 			return;
 		}
 
 		if (team1_cl_num == team2_cl_num)
 		{
-			//if equal numbers the ownership will remain the same as it is now
+			// equal numbers: ownership remains the same
 			return;
 		}
 
-		//decide who owns it now
+		// decide who owns it now
 		if (team1_cl_num > team2_cl_num)
 		{
 			new_owning_team = SIEGETEAM_TEAM1;
@@ -330,18 +339,18 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 
 		if (owning_team == new_owning_team)
 		{
-			//it's the same one it already was, don't care then.
+			// same owner as before, nothing to do
 			return;
 		}
 
-		//Set the new owner and set the variable which will tell us to activate a team-specific target
+		// set the new owner and mark for team-specific target activation
 		ent->genericValue3 = new_owning_team;
 		ent->genericValue4 = new_owning_team;
 	}
 
 	if (halt_trigger)
 	{
-		//This is an objective trigger and the activator is not carrying an objective item that matches the targetname.
+		// objective trigger and activator is not carrying a matching objective item
 		return;
 	}
 
@@ -351,7 +360,7 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 		{
 			if (ent->painDebounceTime && ent->painDebounceTime != level.time)
 			{
-				//this should still allow subsequent ents to fire this trigger in the current frame
+				// still allow subsequent ents to fire this trigger in the current frame
 				return; // can't retrigger until the wait is over
 			}
 		}
@@ -369,7 +378,7 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 
 	if (ent->flags & FL_INACTIVE)
 	{
-		//Not active at this time
+		// not active at this time
 		return;
 	}
 
@@ -377,7 +386,7 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 
 	if (ent->delay && ent->painDebounceTime < level.time + ent->delay)
 	{
-		//delay before firing trigger
+		// delay before firing trigger
 		ent->think = multi_trigger_run;
 		ent->nextthink = level.time + ent->delay;
 		ent->painDebounceTime = level.time;
@@ -849,9 +858,9 @@ trigger_lightningstrike -rww
 static void Do_Strike(gentity_t* ent)
 {
 	trace_t local_trace;
-	vec3_t strike_from;
-	vec3_t strike_point;
-	vec3_t fx_ang;
+	vec3_t strike_from = { 0 };
+	vec3_t strike_point = { 0 };
+	vec3_t fx_ang = { 0 };
 
 	//maybe allow custom fx direction at some point?
 	VectorSet(fx_ang, 90.0f, 0.0f, 0.0f);
@@ -1686,33 +1695,51 @@ void shipboundary_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 
 void shipboundary_think(gentity_t* ent)
 {
-	int iEntityList[MAX_GENTITIES];
-	int i = 0;
-
-	ent->nextthink = level.time + 100;
-
-	if (ent->genericValue7 < level.time)
+	// FIX: move large array off stack (C6262)
+	int* iEntityList = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!iEntityList)
 	{
-		//don't need to be doing this check, no one has touched recently
+		Com_Printf(S_COLOR_RED "shipboundary_think: BG_Alloc failed\n");
 		return;
 	}
 
-	const int num_listed_entities = trap->EntitiesInBox(ent->r.absmin, ent->r.absmax, iEntityList, MAX_GENTITIES);
+	int i = 0;
+
+	// Schedule next think
+	ent->nextthink = level.time + 100;
+
+	// If no recent touches, skip expensive check
+	if (ent->genericValue7 < level.time)
+	{
+		return;
+	}
+
+	// Query all entities inside the ship boundary box
+	const int num_listed_entities =
+		trap->EntitiesInBox(ent->r.absmin, ent->r.absmax, iEntityList, MAX_GENTITIES);
+
 	while (i < num_listed_entities)
 	{
 		gentity_t* listed_ent = &g_entities[iEntityList[i]];
-		if (listed_ent->inuse && listed_ent->client && listed_ent->client->ps.m_iVehicleNum)
+
+		if (listed_ent->inuse &&
+			listed_ent->client &&
+			listed_ent->client->ps.m_iVehicleNum)
 		{
+			// Must be an NPC vehicle entity
 			if (listed_ent->s.eType == ET_NPC &&
 				listed_ent->s.NPC_class == CLASS_VEHICLE)
 			{
 				const Vehicle_t* p_veh = listed_ent->m_pVehicle;
+
+				// Only fighters trigger boundary logic
 				if (p_veh && p_veh->m_pVehicleInfo->type == VH_FIGHTER)
 				{
 					shipboundary_touch(ent, listed_ent, NULL);
 				}
 			}
 		}
+
 		i++;
 	}
 }
@@ -2027,7 +2054,7 @@ static void asteroid_move_to_start2(gentity_t* self, const gentity_t* owner_trig
 	if (owner_trigger)
 	{
 		//move it
-		vec3_t start_spot, end_spot, start_angles;
+		vec3_t start_spot = { 0 }, end_spot = { 0 }, start_angles = { 0 };
 		const float speed = flrand(self->speed * 0.25f, self->speed * 2.0f);
 
 		const int capAxis = Q_irand(0, 2);

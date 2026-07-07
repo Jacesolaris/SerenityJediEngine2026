@@ -1200,17 +1200,24 @@ extern qboolean SPSpawnpointCheck(vec3_t spawnloc);
 
 void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 {
+	// SAFETY: prevent NULL dereference (fixes C6011)
+	if (activator == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "Use_Autosave: activator is NULL\n");
+		return;
+	}
+
 	gentity_t* oldspawn = NULL;
 	vec3_t spawnloc;
 	vec3_t spawnang;
 
-	if (activator && activator->client && activator->NPC)
+	if (activator->client && activator->NPC)
 	{
-		//we don't want NPCs to trigger autosaves by accident.
+		// NPCs should not trigger autosaves
 		return;
 	}
 
-	if (activator && activator->client)
+	if (activator->client)
 	{
 		VectorCopy(activator->client->ps.origin, spawnloc);
 		VectorSet(spawnang, 0, activator->client->ps.viewangles[YAW], 0);
@@ -1223,13 +1230,12 @@ void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 
 	while ((oldspawn = G_Find(oldspawn, FOFS(classname), "info_player_deathmatch")) != NULL)
 	{
-		//increase the other spawn's sequencial number
+		// increase the other spawn's sequential number
 		oldspawn->genericValue1++;
 	}
 
 	if (!CheckforGoodSpawnPoint(spawnloc, qfalse))
 	{
-		//trap->Error(ERR_DROP, "Bad spawnpoint in Use_Autosave().\n");
 		trap->SendServerCommand(-1, "cp \"^1Bad spawnpoint in Use_Autosave()..\n\"");
 	}
 
@@ -1244,7 +1250,8 @@ void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 
 	if (activator->client && activator->client->pers.netname)
 	{
-		trap->SendServerCommand(-1, va("cp \"%s^1 Reached Checkpoint.\n\"", activator->client->pers.netname));
+		trap->SendServerCommand(-1,
+			va("cp \"%s^1 Reached Checkpoint.\n\"", activator->client->pers.netname));
 	}
 	else
 	{
@@ -1253,44 +1260,42 @@ void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 
 	if (ent->spawnflags & FLAG_TELETOSAVE)
 	{
-		//teleport all players to the savepoint to prevent issues with scripting/blocked paths,
+		// teleport all players to the savepoint
 
 		for (int counter = 0; counter < MAX_CLIENTS; counter++)
 		{
 			gentity_t* player = &g_entities[counter];
-			if (!player->inuse || !player->client //player invalid
-				|| player->client->pers.connected != CON_CONNECTED //not connected
-				|| player->client->sess.sessionTeam == TEAM_SPECTATOR //spectator
-				|| player->health <= 0 //dead
-				|| activator && activator->client
-				&& activator->s.number == player->s.number) //this player used the autosave.
+
+			if (!player->inuse ||
+				!player->client ||
+				player->client->pers.connected != CON_CONNECTED ||
+				player->client->sess.sessionTeam == TEAM_SPECTATOR ||
+				player->health <= 0 ||
+				(activator->client && activator->s.number == player->s.number))
 			{
-				//don't teleport this dude
 				continue;
 			}
 
 			if (SPSpawnpointCheck(spawnloc))
 			{
-				//teleport them
-
-				//flip the teleport flag so this dude doesn't client lerp
+				// flip teleport flag to prevent client lerp
 				int flags = player->client->ps.eFlags & EF_TELEPORT_BIT;
 				flags ^= EF_TELEPORT_BIT;
 				player->client->ps.eFlags = flags;
 
-				//set origin
+				// set origin
 				G_SetOrigin(player, spawnloc);
 				VectorCopy(spawnloc, player->client->ps.origin);
 
-				//set angles
+				// set angles
 				SetClientViewAngle(player, spawnang);
 
 				trap->LinkEntity((sharedEntity_t*)player);
 			}
 			else
 			{
-				//hmm, couldn't teleport.
-				Com_Printf("Warning: Client %i couldn't spawn at savegame.\n", player->s.number);
+				Com_Printf("Warning: Client %i couldn't spawn at savegame.\n",
+					player->s.number);
 			}
 		}
 	}

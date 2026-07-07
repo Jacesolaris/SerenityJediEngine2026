@@ -726,6 +726,8 @@ using entity_event_t = enum
 	EV_SHIELD_HIT,
 
 	EV_TESTLINE,
+
+	EV_LOCALTIMER,
 };
 
 class animation_t

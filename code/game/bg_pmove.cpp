@@ -1310,7 +1310,7 @@ static qboolean pm_check_jump()
 		return qfalse;
 	}
 
-	if (pm->ps->communicatingflags & 1 << DASHING || PM_Is_A_Dash_Anim(pm->ps->torsoAnim))
+	if (pm->ps->communicatingflags & 1 << CF_DASHING || PM_Is_A_Dash_Anim(pm->ps->torsoAnim))
 	{
 		return qfalse;
 	}
@@ -11773,6 +11773,12 @@ static void PM_BeginWeaponChange(const int weapon)
 		PM_AddEvent(EV_CHANGE_WEAPON);
 	}
 
+	if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+		g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+	}
+
 	pm->ps->weaponstate = WEAPON_DROPPING;
 	pm->ps->weaponTime += 200;
 
@@ -17572,7 +17578,7 @@ void PM_WeaponLightsaber()
 	}
 	else
 	{
-		if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING
+		if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING
 			&& pm->gent->client->NPC_class != CLASS_DROIDEKA)
 		{
 			//allow them to do the kick now!
@@ -17834,7 +17840,7 @@ void PM_WeaponLightsaber()
 			&& pm->ps->saberBlocked == BLOCKED_NONE //not interacting with any other saber
 			&& !(pm->cmd.buttons & BUTTON_ATTACK) //not trying to swing the saber
 			&& (pm->cmd.forwardmove || pm->cmd.rightmove)
-			&& pm->ps->communicatingflags & 1 << KICKING) //trying to kick in a specific direction
+			&& pm->ps->communicatingflags & 1 << CF_KICKING) //trying to kick in a specific direction
 		{
 			if (PM_CheckAltKickAttack()) //trying to do a kick
 			{
@@ -18132,7 +18138,7 @@ void PM_WeaponLightsaber()
 
 	if ((pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) //player
 		&& PM_CheckAltKickAttack() &&
-		pm->ps->communicatingflags & 1 << KICKING)
+		pm->ps->communicatingflags & 1 << CF_KICKING)
 	{
 		//trying to do a kick
 		if (pm->ps->saberAnimLevel == SS_STAFF)
@@ -19401,7 +19407,7 @@ static void PM_Weapon()
 			return;
 		}
 
-		if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING
+		if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING
 			&& pm->gent->client->NPC_class != CLASS_DROIDEKA)
 		{
 			//allow them to do the kick now!
@@ -19530,12 +19536,12 @@ static void PM_Weapon()
 		{
 			return;
 		}
-		if (!pm->gent->client->fireDelay //not already waiting to fire
-			&& (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) //player
-			&& pm->ps->weapon == WP_THERMAL //holding thermal
-			&& pm->gent //gent
-			&& pm->gent->client //client
-			&& pm->cmd.buttons & (BUTTON_ATTACK | BUTTON_ALT_ATTACK)) //holding fire
+
+		if (pm->gent &&
+			pm->gent->client &&//client !pm->gent->client->fireDelay //not already waiting to fire
+			(pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) &&//player
+			pm->ps->weapon == WP_THERMAL && //holding thermal
+			pm->cmd.buttons & (BUTTON_ATTACK | BUTTON_ALT_ATTACK)) //holding fire
 		{
 			//delay the actual firing of the missile until the anim has played some
 			if (PM_StandingAnim(pm->ps->legsAnim)
@@ -19711,33 +19717,33 @@ static void PM_Weapon()
 			}
 		}
 		else
-		{
+		{ // Attacking / firing
 			switch (pm->ps->weapon)
 			{
 			case WP_BRYAR_PISTOL:
-			case WP_BLASTER_PISTOL: //1-handed
+			case WP_BLASTER_PISTOL:
+			case WP_JAWA:
 				if (pm->gent && pm->gent->weaponModel[1] > 0)
 				{
 					//dual pistols
-					if (pm->gent && pm->gent->client && (pm->gent->client->NPC_class == CLASS_REBORN || pm->gent->
-						client->NPC_class == CLASS_BOBAFETT || pm->gent->client->NPC_class == CLASS_MANDO))
+					if (pm->gent && pm->gent->client &&
+						(pm->gent->client->NPC_class == CLASS_REBORN ||
+							pm->gent->client->NPC_class == CLASS_BOBAFETT ||
+							pm->gent->client->NPC_class == CLASS_MANDO))
 					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_DUAL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 					}
 					else
 					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_GUNSIT1,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+						PM_SetAnim(pm, SETANIM_TORSO, BOTH_GUNSIT1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 					}
 				}
 				else
-				{
-					//single pistol
-					PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK2,
-						SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+				{//single pistol
+					PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 				}
 				break;
+
 			case WP_SBD_PISTOL: //SBD WEAPON
 				PM_SetAnim(pm, SETANIM_TORSO, SBD_WEAPON_OUT_STANDING,
 					SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
@@ -19808,13 +19814,13 @@ static void PM_Weapon()
 									PM_TryGrab();
 								}
 								else if (!(pm->ps->pm_flags & PMF_ALT_ATTACK_HELD) &&
-									pm->ps->communicatingflags & 1 << KICKING
+									pm->ps->communicatingflags & 1 << CF_KICKING
 									&& pm->gent->client->NPC_class != CLASS_DROIDEKA)
 								{
 									PM_CheckKick();
 								}
 							}
-							else if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << KICKING
+							else if (pm->cmd.buttons & BUTTON_KICK && pm->ps->communicatingflags & 1 << CF_KICKING
 								&& pm->gent->client->NPC_class != CLASS_DROIDEKA)
 							{
 								PM_MeleeKickForConditions();
@@ -19946,51 +19952,44 @@ static void PM_Weapon()
 					}
 				}
 				break;
-			case WP_BOWCASTER:
 
-				if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
-				{
-					PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3,
-						SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
-				}
-				else
-				{
-					if (cg.renderingThirdPerson)
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK4,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-					}
-					else
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-					}
-				}
-				break;
-
+			case WP_STUN_BATON:
 			case WP_BLASTER:
+			case WP_BOWCASTER:
 			case WP_DEMP2:
 			case WP_FLECHETTE:
+			case WP_REPEATER:
 			case WP_CONCUSSION:
 			case WP_ROCKET_LAUNCHER:
 			case WP_DISRUPTOR:
 
-				if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
+				if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
 				{
-					PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3,
-						SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
-				}
-				else
-				{
-					if (cg.renderingThirdPerson)
+					if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
 					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK4,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 					}
 					else
 					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+					}
+				}
+				else
+				{
+					if (pm->cmd.buttons & BUTTON_ALT_ATTACK || pm->gent->client->NPC_class == CLASS_BATTLEDROID)
+					{
+						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+					}
+					else
+					{
+						if (cg.renderingThirdPerson)
+						{
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+						}
+						else
+						{
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+						}
 					}
 				}
 				break;
@@ -20036,44 +20035,6 @@ static void PM_Weapon()
 
 			case WP_NONE:
 				// no anim
-				break;
-
-			case WP_REPEATER:
-				if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
-				{
-					//
-					if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
-					}
-					else
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK1,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
-					}
-				}
-				else
-				{
-					if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3,
-							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
-					}
-					else
-					{
-						if (cg.renderingThirdPerson)
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK4,
-								SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-						}
-						else
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP,
-								SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-						}
-					}
-				}
 				break;
 
 			case WP_TRIP_MINE:

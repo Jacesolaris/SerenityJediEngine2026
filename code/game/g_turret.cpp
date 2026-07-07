@@ -1371,6 +1371,7 @@ void laser_arm_start(gentity_t* base)
 	VectorSet(head->mins, -8, -8, -8);
 	VectorSet(head->maxs, 8, 8, 8);
 	head->contents = CONTENTS_BODY;
+	head->fullName = "Surgical Laser";
 	gi.linkentity(head);
 
 	//dmg

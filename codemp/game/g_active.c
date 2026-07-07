@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -1376,7 +1376,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 		}
 
 		/* ---------------------------------------------------------
-		   FORCE SENSE � reduces blaster mishap
+		   FORCE SENSE — reduces blaster mishap
 		--------------------------------------------------------- */
 		if (ent->client->ps.fd.forcePowersActive & (1 << FP_SEE))
 			bg_reduce_blaster_mishap_level_advanced(&ent->client->ps);
@@ -4264,6 +4264,12 @@ void WP_ReloadGun(gentity_t* ent)
 		return;
 	}
 
+	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
+	}
+
 	if (IsHoldingReloadableGun(ent))
 	{
 		if (ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_TWELVE)
@@ -4355,6 +4361,12 @@ void FireOverheatFail(gentity_t* ent)
 		G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 		G_Damage(ent, NULL, NULL, NULL, ent->r.currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
 		ent->reloadTime = level.time + PainTime(ent);
+
+		if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+		{
+			ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+			ent->client->IsAiming = qfalse;
+		}
 	}
 }
 
@@ -4362,12 +4374,24 @@ void CancelReload(gentity_t* ent)
 {
 	ent->reloadTime = 0;
 	ent->reloadCooldown = level.time + 500;
+
+	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
+	}
 }
 
 void cancel_firing(gentity_t* ent)
 {
 	ent->reloadTime = 0;
 	ent->weaponfiredelaytime = level.time + 500;
+
+	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
+	}
 }
 ////////////////////// reload
 
@@ -4667,7 +4691,7 @@ static void ClientThink_real(gentity_t* ent)
 
 	client = ent->client;
 
-	qboolean HoldingStun = ent->client->ps.communicatingflags & 1 << STUNNING ? qtrue : qfalse;
+	qboolean HoldingStun = ent->client->ps.communicatingflags & 1 << CF_STUNNING ? qtrue : qfalse;
 
 	// mark the time, so the connection sprite can be removed
 	ucmd = &ent->client->pers.cmd;
@@ -5923,9 +5947,9 @@ static void ClientThink_real(gentity_t* ent)
 				client->ps.cloakCharcgestartTime = level.time;
 				client->ps.cloakchargelaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << CLOAK_CHARGE_RESTRICTION))
+				if (!(client->ps.communicatingflags & 1 << CF_CLOAK_CHARGE_RESTRICTION))
 				{
-					client->ps.communicatingflags |= 1 << CLOAK_CHARGE_RESTRICTION;
+					client->ps.communicatingflags |= 1 << CF_CLOAK_CHARGE_RESTRICTION;
 				}
 			}
 			else
@@ -5934,13 +5958,13 @@ static void ClientThink_real(gentity_t* ent)
 				{
 					// When kick was pressed, wait 3000 before letting go.
 					client->ps.cloakCharcgestartTime = 0;
-					client->ps.communicatingflags &= ~(1 << CLOAK_CHARGE_RESTRICTION);
+					client->ps.communicatingflags &= ~(1 << CF_CLOAK_CHARGE_RESTRICTION);
 				}
 			}
 		}
 		else
 		{
-			client->ps.communicatingflags &= ~(1 << CLOAK_CHARGE_RESTRICTION);
+			client->ps.communicatingflags &= ~(1 << CF_CLOAK_CHARGE_RESTRICTION);
 		}
 	}
 
@@ -5953,48 +5977,62 @@ static void ClientThink_real(gentity_t* ent)
 			client->ps.dashstartTime = 0;
 			client->ps.dashlaststartTime = 0;
 			client->ps.Dash_Count = 0;
-			client->ps.communicatingflags &= ~(1 << DASHING);
+			client->ps.communicatingflags &= ~(1 << CF_DASHING);
 		}
-		if ((IsPressingDashButton(ent) == qtrue))
+		if (IsPressingDashButton(ent) == qtrue)
 		{
 			if (client->ps.Dash_Count < 2)
 			{
 				if ((client->ps.dashstartTime <= 0) &&
-					(level.time - client->ps.dashlaststartTime >= 100))
+					((level.time - client->ps.dashlaststartTime) >= 100))
 				{
 					client->ps.dashstartTime = level.time;
 					client->ps.dashlaststartTime = level.time;
 					client->ps.Dash_Count++;
 
-					if ((client->ps.communicatingflags & (1 << DASHING)) == 0)
+					// fire event when Dash_Count becomes 2
+					if (client->ps.Dash_Count == 2)
 					{
-						client->ps.communicatingflags |= (1 << DASHING);
+						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_LOCALTIMER);
+						te->s.time = level.time;
+						te->s.time2 = 2500;
+
+						// server-side owner pointer
+						te->owner = ent;
+
+						// networked index for cgame
+						te->s.otherentityNum = ent->s.number;
+					}
+
+					if ((client->ps.communicatingflags & (1 << CF_DASHING)) == 0)
+					{
+						client->ps.communicatingflags |= (1 << CF_DASHING);
 					}
 				}
-				else if (level.time - client->ps.dashlaststartTime >= 10)
+				else if ((level.time - client->ps.dashlaststartTime) >= 10)
 				{
 					client->ps.dashstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << DASHING);
+					client->ps.communicatingflags &= ~(1 << CF_DASHING);
 				}
 			}
 			else
 			{
 				if ((client->ps.dashstartTime <= 0) &&
-					(level.time - client->ps.dashlaststartTime >= 2500))
+					((level.time - client->ps.dashlaststartTime) >= 2500))
 				{
 					client->ps.dashstartTime = level.time;
 					client->ps.dashlaststartTime = level.time;
 
-					if ((client->ps.communicatingflags & (1 << DASHING)) == 0)
+					if ((client->ps.communicatingflags & (1 << CF_DASHING)) == 0)
 					{
-						client->ps.communicatingflags |= (1 << DASHING);
+						client->ps.communicatingflags |= (1 << CF_DASHING);
 					}
 				}
-				else if (level.time - client->ps.dashlaststartTime >= 2500)
+				else if ((level.time - client->ps.dashlaststartTime) >= 2500)
 				{
 					client->ps.dashstartTime = 0;
 					client->ps.Dash_Count = 0;
-					client->ps.communicatingflags &= ~(1 << DASHING);
+					client->ps.communicatingflags &= ~(1 << CF_DASHING);
 				}
 			}
 		}
@@ -6006,9 +6044,9 @@ static void ClientThink_real(gentity_t* ent)
 				client->ps.kickstartTime = level.time;
 				client->ps.kicklaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << KICKING))
+				if (!(client->ps.communicatingflags & 1 << CF_KICKING))
 				{
-					client->ps.communicatingflags |= 1 << KICKING;
+					client->ps.communicatingflags |= 1 << CF_KICKING;
 				}
 			}
 			else
@@ -6017,7 +6055,7 @@ static void ClientThink_real(gentity_t* ent)
 				{
 					// When kick was pressed, wait 3000 before letting go.
 					client->ps.kickstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << KICKING);
+					client->ps.communicatingflags &= ~(1 << CF_KICKING);
 				}
 			}
 		}
@@ -6031,9 +6069,9 @@ static void ClientThink_real(gentity_t* ent)
 				client->ps.grapplestartTime = level.time;
 				client->ps.grapplelaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << STUNNING))
+				if (!(client->ps.communicatingflags & 1 << CF_STUNNING))
 				{
-					client->ps.communicatingflags |= 1 << STUNNING;
+					client->ps.communicatingflags |= 1 << CF_STUNNING;
 				}
 			}
 			else
@@ -6042,15 +6080,15 @@ static void ClientThink_real(gentity_t* ent)
 				{
 					// When grapple was pressed, wait 1500 before letting go of grapple.
 					client->ps.grapplestartTime = 0;
-					client->ps.communicatingflags &= ~(1 << STUNNING);
+					client->ps.communicatingflags &= ~(1 << CF_STUNNING);
 				}
 			}
 		}
 		else if (Is_Oversized_Gunner(ent))
 		{
-			if (!(client->ps.communicatingflags & 1 << OVERSIZEDGUNNER))
+			if (!(client->ps.communicatingflags & 1 << CF_OVERSIZEDGUNNER))
 			{
-				client->ps.communicatingflags |= 1 << OVERSIZEDGUNNER;
+				client->ps.communicatingflags |= 1 << CF_OVERSIZEDGUNNER;
 			}
 
 			if ((client->ps.saberLockTime > level.time) && (ucmd->rightmove > 0 || ucmd->forwardmove > 0))
@@ -6067,9 +6105,9 @@ static void ClientThink_real(gentity_t* ent)
 		}
 		else if (Is_Undersized_Jedi(ent))
 		{
-			if (!(client->ps.communicatingflags & 1 << UNDERSIZEDJEDI))
+			if (!(client->ps.communicatingflags & 1 << CF_UNDERSIZEDJEDI))
 			{
-				client->ps.communicatingflags |= 1 << UNDERSIZEDJEDI;
+				client->ps.communicatingflags |= 1 << CF_UNDERSIZEDJEDI;
 			}
 
 			if ((client->ps.saberLockTime > level.time) && (ucmd->rightmove > 0 || ucmd->forwardmove > 0))
@@ -6086,9 +6124,9 @@ static void ClientThink_real(gentity_t* ent)
 		}
 		else if (Is_Undersized_Gunner(ent))
 		{
-			if (!(client->ps.communicatingflags & 1 << UNDERSIZEDGUNNER))
+			if (!(client->ps.communicatingflags & 1 << CF_UNDERSIZEDGUNNER))
 			{
-				client->ps.communicatingflags |= 1 << UNDERSIZEDGUNNER;
+				client->ps.communicatingflags |= 1 << CF_UNDERSIZEDGUNNER;
 			}
 
 			if ((client->ps.saberLockTime > level.time) && (ucmd->rightmove > 0 || ucmd->forwardmove > 0))
@@ -6126,18 +6164,18 @@ static void ClientThink_real(gentity_t* ent)
 		{
 			client->ps.communicatingflags &= ~(1 << CF_SABERLOCK_ADVANCE);
 			client->ps.communicatingflags &= ~(1 << CF_SABERLOCKING);
-			client->ps.communicatingflags &= ~(1 << SURRENDERING);
-			client->ps.communicatingflags &= ~(1 << RESPECTING);
-			client->ps.communicatingflags &= ~(1 << GESTURING);
-			client->ps.communicatingflags &= ~(1 << DASHING);
-			client->ps.communicatingflags &= ~(1 << KICKING);
-			client->ps.communicatingflags &= ~(1 << UNDERSIZEDJEDI);
-			client->ps.communicatingflags &= ~(1 << OVERSIZEDGUNNER);
-			client->ps.communicatingflags &= ~(1 << UNDERSIZEDGUNNER);
+			client->ps.communicatingflags &= ~(1 << CF_SURRENDERING);
+			client->ps.communicatingflags &= ~(1 << CF_RESPECTING);
+			client->ps.communicatingflags &= ~(1 << CF_GESTURING);
+			client->ps.communicatingflags &= ~(1 << CF_DASHING);
+			client->ps.communicatingflags &= ~(1 << CF_KICKING);
+			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDJEDI);
+			client->ps.communicatingflags &= ~(1 << CF_OVERSIZEDGUNNER);
+			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDGUNNER);
 			if (client->ps.weapon != WP_STUN_BATON ||
 				(client->ps.communicatingflags |= client->ps.grapplestartTime >= 3000))
 			{
-				client->ps.communicatingflags &= ~(1 << STUNNING);
+				client->ps.communicatingflags &= ~(1 << CF_STUNNING);
 			}
 		}
 	}
@@ -6950,7 +6988,7 @@ static void ClientThink_real(gentity_t* ent)
 							&& !ent->client->ps.saberInFlight
 							&& !PM_SaberInAttack(ent->client->ps.saberMove)
 							&& ent->client->ps.fd.forceGripBeingGripped <= level.time
-							&& !(ent->client->ps.communicatingflags & 1 << CLOAK_CHARGE_RESTRICTION))
+							&& !(ent->client->ps.communicatingflags & 1 << CF_CLOAK_CHARGE_RESTRICTION))
 						{
 							Jedi_Cloak(ent);
 						}

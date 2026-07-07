@@ -11360,7 +11360,7 @@ static int bot_use_inventory_item(bot_state_t* bs)
 	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_CLOAK
 		&& !PM_SaberInAttack(bs->cur_ps.saberMove)
 		&& !bs->cur_ps.powerups[PW_CLOAKED]
-		&& !(bs->cur_ps.communicatingflags & 1 << CLOAK_CHARGE_RESTRICTION))
+		&& !(bs->cur_ps.communicatingflags & 1 << CF_CLOAK_CHARGE_RESTRICTION))
 	{
 		if (bs->currentEnemy && bs->frame_Enemy_Vis && bs->frame_Enemy_Len <= 1000)
 		{

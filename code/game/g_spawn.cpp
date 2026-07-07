@@ -372,6 +372,7 @@ field_t fields[] = {
 	{"starttime", FOFS(radius), F_FLOAT}, //for dlight
 	{"turfrange", FOFS(radius), F_FLOAT}, //for sand creatures
 	{"type", FOFS(count), F_FLOAT}, //for fx_crew_beam_in
+	{"fullName", FOFS(fullName), F_LSTRING},
 	{"fxfile", FOFS(fxFile), F_LSTRING},
 	{"fxfile2", FOFS(cameraGroup), F_LSTRING},
 	{"noVisTime", FOFS(endFrame), F_INT}, //for NPC_Vehicle

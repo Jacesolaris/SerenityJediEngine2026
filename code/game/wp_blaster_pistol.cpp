@@ -47,9 +47,7 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 	}
 
 	vec3_t start;
-	int damage = (alt_fire == qfalse)
-		? weaponData[WP_BLASTER_PISTOL].damage
-		: weaponData[WP_BLASTER_PISTOL].altDamage;
+	int damage = (alt_fire == qfalse)? weaponData[WP_BLASTER_PISTOL].damage: weaponData[WP_BLASTER_PISTOL].altDamage;
 
 	// Starting point of the shot
 	VectorCopy(muzzle, start);
@@ -68,15 +66,13 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 		vec3_t angs;
 		vectoangles(forward_vec, angs);
 
-		const qboolean is_player_or_controlled =
-			((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))
-			? qtrue : qfalse;
+		const qboolean is_player_or_controlled =((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))	? qtrue : qfalse;
 
 		if (alt_fire == qtrue)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					// Firing position
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
@@ -85,14 +81,14 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						// Running or very fatigued
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						// Walking or somewhat fatigued
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
@@ -117,7 +113,7 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -125,13 +121,13 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
@@ -258,7 +254,7 @@ void WP_FireBryarPistolDuals(gentity_t* ent, const qboolean alt_fire, const qboo
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -266,13 +262,13 @@ void WP_FireBryarPistolDuals(gentity_t* ent, const qboolean alt_fire, const qboo
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
@@ -294,7 +290,7 @@ void WP_FireBryarPistolDuals(gentity_t* ent, const qboolean alt_fire, const qboo
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -302,13 +298,13 @@ void WP_FireBryarPistolDuals(gentity_t* ent, const qboolean alt_fire, const qboo
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
@@ -473,7 +469,7 @@ void WP_FireBryarsbdPistol(gentity_t* ent, const qboolean alt_fire)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -481,13 +477,13 @@ void WP_FireBryarsbdPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
@@ -518,13 +514,13 @@ void WP_FireBryarsbdPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
@@ -591,7 +587,7 @@ void WP_FireJawaPistol(gentity_t* ent, const qboolean alt_fire)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -599,13 +595,13 @@ void WP_FireJawaPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
@@ -635,13 +631,13 @@ void WP_FireJawaPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
@@ -755,7 +751,7 @@ void WP_FireBryarPistolold(gentity_t* ent, const qboolean alt_fire)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -763,13 +759,13 @@ void WP_FireBryarPistolold(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
@@ -799,13 +795,13 @@ void WP_FireBryarPistolold(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;

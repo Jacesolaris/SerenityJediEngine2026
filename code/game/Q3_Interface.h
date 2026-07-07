@@ -164,6 +164,8 @@ using setType_t = enum //# setType_e
 	//## %s="off"  # Lock legs to a certain yaw angle (or "off" or "auto" uses current)
 	SET_VIEWENTITY,
 	//## %s="NULL" # Make the player look through this ent's eyes - also shunts player movement control to this ent
+	SET_FULLNAME,
+	//## %s="NULL" # This name will appear when ent is scanned by tricorder
 	SET_LOOPSOUND,
 	//## %s="FILENAME" !!"W:\game\base\!!#sound\*.*" # Looping sound to play on entity
 	SET_ICARUS_FREEZE,

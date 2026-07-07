@@ -56,6 +56,8 @@ extern Vehicle_t* G_IsRidingVehicle(const gentity_t* pEnt);
 extern qboolean WalkCheck(const gentity_t* self);
 extern qboolean PM_ReloadAnim(int anim);
 extern qboolean PM_WeponRestAnim(int anim);
+extern int fire_deley_time();
+extern qboolean IsHoldingReloadableGun(const gentity_t* ent);
 
 // some naughty little things that are used cg side
 int g_rocketLockEntNum = ENTITYNUM_NONE;
@@ -1437,7 +1439,7 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
 	// SAFETY FIX: ent or ent->client may be NULL in edge cases (bad spawns, scripts, vehicles)
-	if (ent == NULL || ent->client == NULL)
+	if (ent == nullptr || ent->client == nullptr)
 	{
 		Com_Printf(S_COLOR_YELLOW "FireWeapon: NULL ent or ent->client\n");
 		return;
@@ -1469,11 +1471,20 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 		return;
 	}
 
-	if (ent && ent->client && ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_FOURTEEN)
+	if (ent && ent->client && ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_FOURTEEN && IsHoldingReloadableGun(ent))
 	{
 		if (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent))
 		{
 			FireOverheatFail(ent);
+			return;
+		}
+		else
+		{
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
+			G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
+			G_Damage(ent, nullptr, nullptr, nullptr, ent->currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
+			ent->reloadTime = level.time + fire_deley_time();
 			return;
 		}
 	}

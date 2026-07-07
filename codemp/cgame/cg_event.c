@@ -3883,11 +3883,6 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 	case EV_BLOCKSHAKE:
 		DEBUGNAME("EV_BLOCKSHAKE");
 
-		/*if (es->owner == cg.predictedPlayerState.clientNum)
-		{
-			CGCam_BlockShake(es->angles[0], es->time);
-		}*/
-
 		if (!es->modelIndex || cg.predictedPlayerState.clientNum == es->modelIndex - 1)
 		{
 			CGCam_BlockShake(es->angles[0], es->time);

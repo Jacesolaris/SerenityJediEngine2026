@@ -31,7 +31,7 @@ extern gentity_t* WP_FireVehicleWeapon(gentity_t* ent, vec3_t start, vec3_t dir,
 
 extern void G_VehMuzzleFireFX(const gentity_t* ent, gentity_t* broadcaster, int muzzles_fired);
 //-----------------------------------------------------
-void VEH_TurretCheckFire(Vehicle_t* p_veh,
+static void VEH_TurretCheckFire(Vehicle_t* p_veh,
 	gentity_t* parent,
 	//gentity_t *turretEnemy,
 	const turretStats_t* turretStats,
@@ -87,7 +87,7 @@ void VEH_TurretCheckFire(Vehicle_t* p_veh,
 	}
 }
 
-void VEH_TurretAnglesToEnemy(const Vehicle_t* p_veh, const int cur_muzzle, const float f_speed, const gentity_t* turret_enemy,
+static void VEH_TurretAnglesToEnemy(const Vehicle_t* p_veh, const int cur_muzzle, const float f_speed, const gentity_t* turret_enemy,
 	const qboolean b_ai_lead,
 	vec3_t desired_angles)
 {
@@ -117,7 +117,7 @@ void VEH_TurretAnglesToEnemy(const Vehicle_t* p_veh, const int cur_muzzle, const
 }
 
 //-----------------------------------------------------
-qboolean VEH_TurretAim(Vehicle_t* p_veh,
+static qboolean VEH_TurretAim(Vehicle_t* p_veh,
 	gentity_t* parent,
 	const  gentity_t* turret_enemy,
 	const turretStats_t* turret_stats,
@@ -125,7 +125,7 @@ qboolean VEH_TurretAim(Vehicle_t* p_veh,
 	const int turret_num, const int cur_muzzle, vec3_t desired_angles)
 	//-----------------------------------------------------
 {
-	vec3_t cur_angles, add_angles, new_angles;
+	vec3_t cur_angles, add_angles, new_angles = { 0 };
 	float aim_correct = qfalse;
 
 	WP_CalcVehMuzzle(parent, cur_muzzle);
@@ -227,13 +227,22 @@ static qboolean VEH_TurretFindEnemies(Vehicle_t* p_veh,
 	gentity_t* parent,
 	const turretStats_t* turretStats,
 	const int turretNum, const int curMuzzle)
-	//-----------------------------------------------------
 {
 	qboolean found = qfalse;
 	float bestDist = turretStats->fAIRange * turretStats->fAIRange;
 	vec3_t org2;
 	qboolean foundClient = qfalse;
-	gentity_t* entity_list[MAX_GENTITIES];
+
+	// FIX: move large arrays off stack (C6262)
+	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
+	trace_t* tr = (trace_t*)BG_Alloc(sizeof(trace_t));
+
+	if (!entity_list || !tr)
+	{
+		Com_Printf(S_COLOR_RED "VEH_TurretFindEnemies: BG_Alloc failed\n");
+		return qfalse;
+	}
+
 	const gentity_t* bestTarget = NULL;
 
 	if (!p_veh->m_pPilot)
@@ -249,69 +258,74 @@ static qboolean VEH_TurretFindEnemies(Vehicle_t* p_veh,
 
 	for (int i = 0; i < count; i++)
 	{
-		vec3_t org;
-		trace_t tr;
 		const gentity_t* target = entity_list[i];
+		vec3_t org;
 
-		if (target == parent
-			|| !target->takedamage
-			|| target->health <= 0
-			|| target->flags & FL_NOTARGET)
+		if (!target)
 		{
 			continue;
 		}
+
+		// Basic validity checks
+		if (target == parent ||
+			!target->takedamage ||
+			target->health <= 0 ||
+			(target->flags & FL_NOTARGET))
+		{
+			continue;
+		}
+
+		// Non-client logic
 		if (!target->client)
 		{
-			// only attack clients
-			if (!(target->flags & FL_BBRUSH) //not a breakable brush
-				|| !target->takedamage //is a bbrush, but invincible
-				|| target->NPC_targetname && parent->targetname && Q_stricmp(target->NPC_targetname, parent->targetname)
-				!= 0) //not in invicible bbrush, but can only be broken by an NPC that is not me
+			if (!(target->flags & FL_BBRUSH) ||
+				!target->takedamage ||
+				(target->NPC_targetname && parent->targetname &&
+					Q_stricmp(target->NPC_targetname, parent->targetname) != 0))
 			{
-				if (target->s.weapon == WP_TURRET
-					&& target->classname
-					&& Q_strncmp("misc_turret", target->classname, 11) == 0)
-				{
-					//these guys we want to shoot at
-				}
-				else
+				if (!(target->s.weapon == WP_TURRET &&
+					target->classname &&
+					Q_strncmp("misc_turret", target->classname, 11) == 0))
 				{
 					continue;
 				}
 			}
-			//else: we will shoot at bbrushes!
 		}
-		else if (target->client->sess.sessionTeam == TEAM_SPECTATOR)
+		else
+		{
+			if (target->client->sess.sessionTeam == TEAM_SPECTATOR)
+			{
+				continue;
+			}
+			if (target->client->tempSpectate >= level.time)
+			{
+				continue;
+			}
+		}
+
+		// Don't shoot pilot or passengers
+		if (target == (gentity_t*)p_veh->m_pPilot ||
+			target->r.ownerNum == parent->s.number)
 		{
 			continue;
 		}
-		else if (target->client->tempSpectate >= level.time)
-		{
-			continue;
-		}
-		if (target == (gentity_t*)p_veh->m_pPilot
-			|| target->r.ownerNum == parent->s.number)
-		{
-			//don't get angry at my pilot or passengers?
-			continue;
-		}
-		if (parent->client
-			&& parent->client->sess.sessionTeam)
+
+		// Team filtering
+		if (parent->client && parent->client->sess.sessionTeam)
 		{
 			if (target->client)
 			{
 				if (target->client->sess.sessionTeam == parent->client->sess.sessionTeam)
 				{
-					// A bot/client/NPC we don't want to shoot
 					continue;
 				}
 			}
 			else if (target->teamnodmg == parent->client->sess.sessionTeam)
 			{
-				//some other entity that's allied with us
 				continue;
 			}
 		}
+
 		if (!trap->InPVS(org2, target->r.currentOrigin))
 		{
 			continue;
@@ -319,24 +333,24 @@ static qboolean VEH_TurretFindEnemies(Vehicle_t* p_veh,
 
 		VectorCopy(target->r.currentOrigin, org);
 
-		trap->Trace(&tr, org2, NULL, NULL, org, parent->s.number, MASK_SHOT, qfalse, 0, 0);
+		trap->Trace(tr, org2, NULL, NULL, org, parent->s.number, MASK_SHOT, qfalse, 0, 0);
 
-		if (tr.entityNum == target->s.number
-			|| !tr.allsolid && !tr.startsolid && tr.fraction == 1.0)
+		if (tr->entityNum == target->s.number ||
+			(!tr->allsolid && !tr->startsolid && tr->fraction == 1.0f))
 		{
 			vec3_t enemyDir;
-			// Only acquire if have a clear shot, Is it in range and closer than our best?
 			VectorSubtract(target->r.currentOrigin, org2, enemyDir);
 			const float enemyDist = VectorLengthSquared(enemyDir);
 
-			if (enemyDist < bestDist || target->client && !foundClient) // all things equal, keep current
+			if (enemyDist < bestDist ||
+				(target->client && !foundClient))
 			{
 				bestTarget = target;
 				bestDist = enemyDist;
 				found = qtrue;
+
 				if (target->client)
 				{
-					//prefer clients over non-clients
 					foundClient = qtrue;
 				}
 			}
@@ -351,7 +365,7 @@ static qboolean VEH_TurretFindEnemies(Vehicle_t* p_veh,
 	return found;
 }
 
-void VEH_TurretObeyPassengerControl(Vehicle_t* p_veh, gentity_t* parent, const int turretNum)
+static void VEH_TurretObeyPassengerControl(Vehicle_t* p_veh, gentity_t* parent, const int turretNum)
 {
 	const turretStats_t* turretStats = &p_veh->m_pVehicleInfo->turret[turretNum];
 	const gentity_t* passenger = (gentity_t*)p_veh->m_ppPassengers[turretStats->passengerNum - 1];

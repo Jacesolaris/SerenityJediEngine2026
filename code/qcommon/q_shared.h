@@ -2245,9 +2245,10 @@ public:
 	//actual hack amount - only for the proper percentage display when
 	//drawing progress bar (is there a less bandwidth-eating way to do
 	//this without a lot of hassle?)
-	int			hackingBaseTime;
-	int         saberstuckinwalltimer;
-	int          weaponfiredelaytime;
+	int		 hackingBaseTime;
+	int      saberstuckinwalltimer;
+	int      weaponfiredelaytime;
+	qboolean IsAiming;
 
 #endif // !JK2_MODE
 
@@ -2511,6 +2512,7 @@ public:
 		saved_game.write<int32_t>(hackingBaseTime);
 		saved_game.write<int32_t>(saberstuckinwalltimer);
 		saved_game.write<int32_t>(weaponfiredelaytime);
+		saved_game.write<int32_t>(IsAiming);
 #endif // !JK2_MODE
 	}
 
@@ -2774,6 +2776,7 @@ public:
 		saved_game.read<int32_t>(hackingBaseTime);
 		saved_game.read<int32_t>(saberstuckinwalltimer);
 		saved_game.read<int32_t>(weaponfiredelaytime);
+		saved_game.read<int32_t>(IsAiming);
 #endif // !JK2_MODE
 	}
 }; // PlayerStateBase
@@ -3567,17 +3570,18 @@ using ManualBlockingFlag_e = enum
 
 using communicatingflags_e = enum
 {
-	RESPECTING,
-	GESTURING,
-	SURRENDERING,
-	DASHING,
-	STUNNING,
-	KICKING,
+	CF_RESPECTING,
+	CF_GESTURING,
+	CF_SURRENDERING,
+	CF_DASHING,
+	CF_STUNNING,
+	CF_KICKING,
 	CF_SABERLOCKING,
 	CF_SABERLOCK_ADVANCE,
-	OVERSIZEDGUNNER,
-	UNDERSIZEDGUNNER,
-	UNDERSIZEDJEDI,
+	CF_OVERSIZEDGUNNER,
+	CF_UNDERSIZEDGUNNER,
+	CF_UNDERSIZEDJEDI,
+	CF_AIMINGGUN,
 };
 
 using PlayerEffectFlags_e = enum

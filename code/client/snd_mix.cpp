@@ -55,31 +55,41 @@ static void S_WriteLinearBlastStereo16()
 
 static void S_TransferStereo16(unsigned long* pbuf, const int endtime)
 {
+	/* snd_p points into paintbuffer (global mix buffer) */
 	snd_p = (int*)paintbuffer;
+
 	int ls_paintedtime = s_paintedtime;
 
 	while (ls_paintedtime < endtime)
 	{
-		/* FIX: correct operator precedence to avoid MSVC C6297 */
-		const int mask = ((dma.samples >> 1) - 1);
-		const int lpos = (ls_paintedtime & mask);
+		/* FIX: correct operator precedence and avoid C6297 overflow warning */
+		const int halfSamples = (int)(dma.samples >> 1);   /* safe cast */
+		const int mask = (halfSamples - 1);         /* valid ring-buffer mask */
+		const int lpos = (ls_paintedtime & mask);   /* wrapped position */
 
+		/* Output pointer for stereo 16-bit samples */
 		snd_out = (short*)pbuf + (lpos << 1);
 
-		snd_linear_count = (dma.samples >> 1) - lpos;
-		if (ls_paintedtime + snd_linear_count > endtime)
+		/* Compute linear count safely using wider arithmetic */
+		int remaining = halfSamples - lpos;
+
+		if ((ls_paintedtime + remaining) > endtime)
 		{
-			snd_linear_count = endtime - ls_paintedtime;
+			remaining = (endtime - ls_paintedtime);
 		}
 
-		snd_linear_count <<= 1;
+		/* Convert sample count to 16-bit stereo count */
+		snd_linear_count = (remaining << 1);
 
+		/* Write samples */
 		S_WriteLinearBlastStereo16();
 
+		/* Advance pointers */
 		snd_p += snd_linear_count;
 		ls_paintedtime += (snd_linear_count >> 1);
 	}
 }
+
 
 
 /*

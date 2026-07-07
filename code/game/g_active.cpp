@@ -2418,7 +2418,7 @@ static void WP_KnockdownAndDrain(gentity_t* hit_ent, const gentity_t* pusher, in
 		return;
 	}
 
-	NPC_SetAnim(hit_ent,SETANIM_BOTH,(knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax),SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+	NPC_SetAnim(hit_ent, SETANIM_BOTH, (knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 
 	if (useAbsorbDrain)
 	{
@@ -2465,15 +2465,15 @@ qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t
 	}
 
 	// Cached blocking flags
-	const qboolean isHoldingBlockAndAttack =(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0);
+	const qboolean isHoldingBlockAndAttack = (qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0);
 
-	const qboolean isHoldingBlock =	(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0);
+	const qboolean isHoldingBlock = (qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0);
 
-	const qboolean NPCBlocking =(qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0);
+	const qboolean NPCBlocking = (qboolean)((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0);
 
-	const qboolean isPlayer =(qboolean)(hit_ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(hit_ent));
+	const qboolean isPlayer = (qboolean)(hit_ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(hit_ent));
 
-	const qboolean isNPC =(qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
+	const qboolean isNPC = (qboolean)(hit_ent->s.clientNum >= MAX_CLIENTS && !G_ControlledByPlayer(hit_ent));
 
 	// ============================================================
 	// 1. PLAYER ABSORB (manual block)
@@ -3450,6 +3450,18 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 			cg.overrides.thirdPersonRange = cg.overrides.thirdPersonCameraDamp = cg.overrides.thirdPersonHorzOffset = 0;
 		}
 	}
+
+	/*if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) && g_AimingCinematicCamera->integer)
+	{
+		if (ent->client->ps.communicatingflags & (1 << CF_AIMINGGUN))
+		{
+			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_CDP;
+		}
+		else
+		{
+			cg.overrides.active &= ~(CG_OVERRIDE_3RD_PERSON_CDP);
+		}
+	}*/
 
 	//check force drain
 	if (ent->client->ps.forcePowersActive & 1 << FP_DRAIN)
@@ -7458,6 +7470,12 @@ void WP_ReloadGun(gentity_t* ent)
 		return;
 	}
 
+	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
+	}
+
 	if (IsHoldingReloadableGun(ent))
 	{
 		if (ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_TWELVE)
@@ -7558,6 +7576,12 @@ void FireOverheatFail(gentity_t* ent)
 		G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 		G_Damage(ent, nullptr, nullptr, nullptr, ent->currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
 		ent->reloadTime = level.time + PainTime(ent);
+
+		if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+		{
+			ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+			ent->client->IsAiming = qfalse;
+		}
 	}
 }
 
@@ -7565,12 +7589,24 @@ void CancelReload(gentity_t* ent)
 {
 	ent->reloadTime = 0;
 	ent->reloadCooldown = level.time + 500;
+
+	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
+	}
 }
 
 void cancel_firing(gentity_t* ent)
 {
 	ent->reloadTime = 0;
 	ent->weaponfiredelaytime = level.time + 500;
+
+	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
+	{
+		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
+	}
 }
 
 ////////////////////// reload
@@ -7591,7 +7627,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 	qboolean controlled_by_player = qfalse;
 	Vehicle_t* p_veh = nullptr;
 
-	qboolean holding_stun = ent->client->ps.communicatingflags & 1 << STUNNING ? qtrue : qfalse;
+	qboolean holding_stun = ent->client->ps.communicatingflags & 1 << CF_STUNNING ? qtrue : qfalse;
 
 	if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
 	{
@@ -8431,7 +8467,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 		}
 	}
 
-	// Activate the surrenderingTime flags
+	// Activate the flags
 	if (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent))
 	{
 		if ((client->ps.dashstartTime > level.time) ||
@@ -8440,7 +8476,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			client->ps.dashstartTime = 0;
 			client->ps.dashlaststartTime = 0;
 			client->ps.Dash_Count = 0;
-			client->ps.communicatingflags &= ~(1 << DASHING);
+			client->ps.communicatingflags &= ~(1 << CF_DASHING);
 		}
 		if (IsRespecting(ent))
 		{
@@ -8452,9 +8488,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				client->ps.respectingstartTime = level.time;
 				client->ps.respectinglaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << RESPECTING))
+				if (!(client->ps.communicatingflags & 1 << CF_RESPECTING))
 				{
-					client->ps.communicatingflags |= 1 << RESPECTING;
+					client->ps.communicatingflags |= 1 << CF_RESPECTING;
 				}
 			}
 			else
@@ -8463,7 +8499,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				{
 					// When respect was pressed, wait 3000 before letting go of respect.
 					client->ps.respectingstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << RESPECTING);
+					client->ps.communicatingflags &= ~(1 << CF_RESPECTING);
 				}
 			}
 		}
@@ -8477,9 +8513,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				client->ps.gesturingstartTime = level.time;
 				client->ps.gesturinglaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << GESTURING))
+				if (!(client->ps.communicatingflags & 1 << CF_GESTURING))
 				{
-					client->ps.communicatingflags |= 1 << GESTURING;
+					client->ps.communicatingflags |= 1 << CF_GESTURING;
 				}
 			}
 			else
@@ -8488,7 +8524,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				{
 					// When respect was pressed, wait 3000 before letting go of respect.
 					client->ps.gesturingstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << GESTURING);
+					client->ps.communicatingflags &= ~(1 << CF_GESTURING);
 				}
 			}
 		}
@@ -8502,9 +8538,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				client->ps.surrenderstartTime = level.time;
 				client->ps.surrenderlaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << SURRENDERING))
+				if (!(client->ps.communicatingflags & 1 << CF_SURRENDERING))
 				{
-					client->ps.communicatingflags |= 1 << SURRENDERING;
+					client->ps.communicatingflags |= 1 << CF_SURRENDERING;
 				}
 			}
 			else
@@ -8513,50 +8549,64 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				{
 					// When respect was pressed, wait 3000 before letting go of respect.
 					client->ps.surrenderstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << SURRENDERING);
+					client->ps.communicatingflags &= ~(1 << CF_SURRENDERING);
 				}
 			}
 		}
-		else if ((IsPressingDashButton(ent) == qtrue))
+		else if (IsPressingDashButton(ent) == qtrue)
 		{
 			if (client->ps.Dash_Count < 2)
 			{
 				if ((client->ps.dashstartTime <= 0) &&
-					(level.time - client->ps.dashlaststartTime >= 100))
+					((level.time - client->ps.dashlaststartTime) >= 100))
 				{
 					client->ps.dashstartTime = level.time;
 					client->ps.dashlaststartTime = level.time;
 					client->ps.Dash_Count++;
 
-					if ((client->ps.communicatingflags & (1 << DASHING)) == 0)
+					// fire event when Dash_Count becomes 2
+					if (client->ps.Dash_Count == 2)
 					{
-						client->ps.communicatingflags |= (1 << DASHING);
+						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_LOCALTIMER);
+						te->s.time = level.time;
+						te->s.time2 = 2500;
+
+						// server-side owner pointer
+						te->owner = ent;
+
+						// networked index for cgame
+						te->s.otherentityNum = ent->s.number;
+					}
+
+					if ((client->ps.communicatingflags & (1 << CF_DASHING)) == 0)
+					{
+						client->ps.communicatingflags |= (1 << CF_DASHING);
 					}
 				}
-				else if (level.time - client->ps.dashlaststartTime >= 10)
+				else if ((level.time - client->ps.dashlaststartTime) >= 10)
 				{
 					client->ps.dashstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << DASHING);
+					client->ps.communicatingflags &= ~(1 << CF_DASHING);
 				}
 			}
 			else
 			{
 				if ((client->ps.dashstartTime <= 0) &&
-					(level.time - client->ps.dashlaststartTime >= 2500))
+					((level.time - client->ps.dashlaststartTime) >= 2500))
 				{
 					client->ps.dashstartTime = level.time;
 					client->ps.dashlaststartTime = level.time;
 
-					if ((client->ps.communicatingflags & (1 << DASHING)) == 0)
+					if ((client->ps.communicatingflags & (1 << CF_DASHING)) == 0)
 					{
-						client->ps.communicatingflags |= (1 << DASHING);
+						client->ps.communicatingflags |= (1 << CF_DASHING);
 					}
 				}
-				else if (level.time - client->ps.dashlaststartTime >= 2500)
+				else if ((level.time - client->ps.dashlaststartTime) >= 2500)
 				{
 					client->ps.dashstartTime = 0;
 					client->ps.Dash_Count = 0;
-					client->ps.communicatingflags &= ~(1 << DASHING);
+					client->ps.communicatingflags &= ~(1 << CF_DASHING);
 				}
 			}
 		}
@@ -8568,9 +8618,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				client->ps.kickstartTime = level.time;
 				client->ps.kicklaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << KICKING))
+				if (!(client->ps.communicatingflags & 1 << CF_KICKING))
 				{
-					client->ps.communicatingflags |= 1 << KICKING;
+					client->ps.communicatingflags |= 1 << CF_KICKING;
 				}
 			}
 			else
@@ -8579,7 +8629,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				{
 					// When kick was pressed, wait 3000 before letting go.
 					client->ps.kickstartTime = 0;
-					client->ps.communicatingflags &= ~(1 << KICKING);
+					client->ps.communicatingflags &= ~(1 << CF_KICKING);
 				}
 			}
 		}
@@ -8593,9 +8643,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				client->ps.grapplestartTime = level.time;
 				client->ps.grapplelaststartTime = level.time;
 
-				if (!(client->ps.communicatingflags & 1 << STUNNING))
+				if (!(client->ps.communicatingflags & 1 << CF_STUNNING))
 				{
-					client->ps.communicatingflags |= 1 << STUNNING;
+					client->ps.communicatingflags |= 1 << CF_STUNNING;
 				}
 			}
 			else
@@ -8604,7 +8654,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				{
 					// When grapple was pressed, wait 1500 before letting go of grapple.
 					client->ps.grapplestartTime = 0;
-					client->ps.communicatingflags &= ~(1 << STUNNING);
+					client->ps.communicatingflags &= ~(1 << CF_STUNNING);
 				}
 			}
 		}
@@ -8631,18 +8681,18 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 		{
 			client->ps.communicatingflags &= ~(1 << CF_SABERLOCK_ADVANCE);
 			client->ps.communicatingflags &= ~(1 << CF_SABERLOCKING);
-			client->ps.communicatingflags &= ~(1 << SURRENDERING);
-			client->ps.communicatingflags &= ~(1 << RESPECTING);
-			client->ps.communicatingflags &= ~(1 << GESTURING);
-			client->ps.communicatingflags &= ~(1 << DASHING);
-			client->ps.communicatingflags &= ~(1 << KICKING);
-			client->ps.communicatingflags &= ~(1 << UNDERSIZEDJEDI);
-			client->ps.communicatingflags &= ~(1 << OVERSIZEDGUNNER);
-			client->ps.communicatingflags &= ~(1 << UNDERSIZEDGUNNER);
+			client->ps.communicatingflags &= ~(1 << CF_SURRENDERING);
+			client->ps.communicatingflags &= ~(1 << CF_RESPECTING);
+			client->ps.communicatingflags &= ~(1 << CF_GESTURING);
+			client->ps.communicatingflags &= ~(1 << CF_DASHING);
+			client->ps.communicatingflags &= ~(1 << CF_KICKING);
+			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDJEDI);
+			client->ps.communicatingflags &= ~(1 << CF_OVERSIZEDGUNNER);
+			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDGUNNER);
 			if (client->ps.weapon != WP_STUN_BATON ||
 				(client->ps.communicatingflags |= client->ps.grapplestartTime >= 3000))
 			{
-				client->ps.communicatingflags &= ~(1 << STUNNING);
+				client->ps.communicatingflags &= ~(1 << CF_STUNNING);
 			}
 		}
 	}
@@ -8959,8 +9009,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 
 	if (ent->client->ps.weapon == WP_MELEE)
 	{
-		if (ucmd->buttons & BUTTON_GRAPPLE && !(ucmd->buttons & BUTTON_WALKING) && !
-			PM_RunningAnim(ent->client->ps.legsAnim) && !PM_WalkingAnim(ent->client->ps.legsAnim)
+		if (ucmd->buttons & BUTTON_GRAPPLE && !(ucmd->buttons & BUTTON_WALKING) &&
+			!PM_RunningAnim(ent->client->ps.legsAnim) &&
+			!PM_WalkingAnim(ent->client->ps.legsAnim)
 			&& ent->client->ps.pm_type != PM_DEAD
 			&& !ent->client->hookhasbeenfired)
 		{
@@ -8973,8 +9024,10 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			}
 			else
 			{
-				if (ent->client->moveType == MT_FLYSWIM || ent->s.groundEntityNum == ENTITYNUM_NONE || JET_Flying(ent)
-					|| PM_CrouchAnim(ent->client->ps.legsAnim))
+				if (ent->client->moveType == MT_FLYSWIM ||
+					ent->s.groundEntityNum == ENTITYNUM_NONE ||
+					JET_Flying(ent) ||
+					PM_CrouchAnim(ent->client->ps.legsAnim))
 				{
 					Boba_FireWristMissile(ent, BOBA_MISSILE_VIBROBLADE);
 				}

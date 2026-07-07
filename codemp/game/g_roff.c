@@ -33,10 +33,10 @@ extern void Q3_TaskIDComplete(gentity_t* ent, taskID_t taskType);
 static void G_RoffNotetrackCallback(const gentity_t* cent, const char* notetrack)
 {
 	int i = 0, r = 0;
-	char type[256];
-	char argument[512];
-	char addlArg[512];
-	char errMsg[256];
+	char type[256] = { 0 };
+	char argument[512] = { 0 };
+	char addlArg[512] = { 0 };
+	char errMsg[256] = { 0 };
 	int addlArgs = 0;
 
 	if (!cent || !notetrack)
@@ -96,8 +96,8 @@ static void G_RoffNotetrackCallback(const gentity_t* cent, const char* notetrack
 	if (strcmp(type, "effect") == 0)
 	{
 		vec3_t parsedOffset;
-		char teststr[256];
-		char t[64];
+		char teststr[256] = { 0 };
+		char t[64] = { 0 };
 		int posoffsetGathered = 0;
 		int r2 = 0;
 		if (!addlArgs)
@@ -186,7 +186,7 @@ static void G_RoffNotetrackCallback(const gentity_t* cent, const char* notetrack
 			vec3_t useAngles;
 			if (addlArgs)
 			{
-				vec3_t parsedAngles;
+				vec3_t parsedAngles = { 0 };
 				int anglesGathered = 0;
 				//if there is an additional argument for an effect it is expected to be XANGLE-YANGLE-ZANGLE
 				i++;
@@ -473,7 +473,7 @@ int G_LoadRoffs(const char* fileName)
 
 void G_Roffs(gentity_t* ent)
 {
-	//updates roff scripting for this entity.
+	// updates roff scripting for this entity.
 	vec3_t org, ang;
 
 	if (!ent->next_roff_time)
@@ -500,17 +500,22 @@ void G_Roffs(gentity_t* ent)
 
 	if (roff->type == 2)
 	{
-		const move_rotate2_t* data = &roffs[roff_id - 1].data[ent->roff_ctr];
+		const move_rotate2_t* data = &roff->data[ent->roff_ctr];
 		VectorCopy(data->origin_delta, org);
 		VectorCopy(data->rotate_delta, ang);
-		if (data->mStartNote != -1 || data->mNumNotes)
+
+		// Safely access note track index: valid start note, within bounds, and table exists
+		if (data->mStartNote >= 0 &&
+			data->mNumNotes > 0 &&
+			roff->mNoteTrackIndexes &&
+			data->mStartNote < data->mNumNotes)
 		{
-			G_RoffNotetrackCallback(ent, roffs[roff_id - 1].mNoteTrackIndexes[data->mStartNote]);
+			G_RoffNotetrackCallback(ent, roff->mNoteTrackIndexes[data->mStartNote]);
 		}
 	}
 	else
 	{
-		const move_rotate2_t* data = &roffs[roff_id - 1].data[ent->roff_ctr];
+		const move_rotate2_t* data = &roff->data[ent->roff_ctr];
 		VectorCopy(data->origin_delta, org);
 		VectorCopy(data->rotate_delta, ang);
 	}
@@ -528,7 +533,6 @@ void G_Roffs(gentity_t* ent)
 	if (ent->client)
 	{
 		// Set up the angle interpolation
-		//-------------------------------------
 		VectorAdd(ent->s.apos.trBase, ang, ent->s.apos.trBase);
 		ent->s.apos.trTime = level.time;
 		ent->s.apos.trType = TR_INTERPOLATE;
@@ -543,7 +547,6 @@ void G_Roffs(gentity_t* ent)
 		}
 
 		// Set up the origin interpolation
-		//-------------------------------------
 		VectorAdd(ent->s.pos.trBase, org, ent->s.pos.trBase);
 		ent->s.pos.trTime = level.time;
 		ent->s.pos.trType = TR_INTERPOLATE;
@@ -555,7 +558,6 @@ void G_Roffs(gentity_t* ent)
 	else
 	{
 		// Set up the angle interpolation
-		//-------------------------------------
 		VectorScale(ang, roff->mLerp, ent->s.apos.trDelta);
 		VectorCopy(ent->pos2, ent->s.apos.trBase);
 		ent->s.apos.trTime = level.time;
@@ -565,16 +567,15 @@ void G_Roffs(gentity_t* ent)
 		VectorAdd(ent->pos2, ang, ent->pos2);
 
 		// Set up the origin interpolation
-		//-------------------------------------
 		VectorScale(org, roff->mLerp, ent->s.pos.trDelta);
 		VectorCopy(ent->pos1, ent->s.pos.trBase);
 		ent->s.pos.trTime = level.time;
 		ent->s.pos.trType = TR_LINEAR;
 
-		// Store what the next apos->trBase should be
+		// Store what the next pos->trBase should be
 		VectorAdd(ent->pos1, org, ent->pos1);
 
-		//make it true linear... FIXME: sticks around after ROFF is done, but do we really care?
+		// make it true linear... FIXME: sticks around after ROFF is done, but do we really care?
 		ent->alt_fire = qtrue;
 
 		if (!ent->think
@@ -582,7 +583,7 @@ void G_Roffs(gentity_t* ent)
 			&& ent->s.eType != ET_ITEM
 			&& ent->s.eType != ET_MOVER)
 		{
-			//will never set currentAngles & currentOrigin itself ( why do we limit which one's get set?, just set all the time? )
+			// will never set currentAngles & currentOrigin itself
 			BG_EvaluateTrajectory(&ent->s.apos, level.time, ent->r.currentAngles);
 			BG_EvaluateTrajectory(&ent->s.pos, level.time, ent->r.currentOrigin);
 		}
@@ -592,7 +593,6 @@ void G_Roffs(gentity_t* ent)
 	trap->LinkEntity((sharedEntity_t*)ent);
 
 	// See if the ROFF playback is done
-	//-------------------------------------
 	if (++ent->roff_ctr >= roff->frames)
 	{
 		// We are done, so let me think no more, then tell the task that we're done.

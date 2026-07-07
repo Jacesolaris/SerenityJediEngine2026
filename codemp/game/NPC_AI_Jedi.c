@@ -2038,7 +2038,7 @@ static void Jedi_CheckCloak(void)
 		{
 			//still alive, have saber in hand, not taking pain and not being gripped
 			if (NPCS.NPC->r.svFlags & SVF_BOT && !(NPCS.NPC->client->ps.communicatingflags & 1 <<
-				CLOAK_CHARGE_RESTRICTION))
+				CF_CLOAK_CHARGE_RESTRICTION))
 			{
 				if (!PM_SaberInAttack(NPCS.NPC->client->ps.saberMove))
 				{

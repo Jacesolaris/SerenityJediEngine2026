@@ -112,8 +112,7 @@ void WP_FireBlasterMissile(gentity_t* ent, vec3_t start, vec3_t dir, const qbool
 void WP_FireBlaster(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
-	// SAFETY: ent or ent->client may be NULL in edge cases
-	if (ent == NULL || ent->client == NULL)
+	if (ent == nullptr || ent->client == nullptr)
 	{
 		Com_Printf(S_COLOR_YELLOW "WP_FireBlaster: NULL ent or ent->client\n");
 		return;
@@ -122,96 +121,77 @@ void WP_FireBlaster(gentity_t* ent, const qboolean alt_fire)
 	vec3_t dir;
 	vec3_t angs;
 
-	// Convert forward vector to angles
+	// Start from perfect forward aim
 	vectoangles(forward_vec, angs);
 
-	// ---------------------------------------------------------------------
-	// AIM / SPREAD LOGIC
-	// ---------------------------------------------------------------------
-	if (ent->client->NPC_class == CLASS_VEHICLE)
-	{
-		// Vehicles: no inherent aim screw up
-	}
-	else if (NPC_IsNotHavingEnoughForceSight(ent) == qtrue)
-	{
-		const qboolean is_player_or_controlled =
-			((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))
-			? qtrue : qfalse;
+	const qboolean is_player_controlled = ((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue)) ? qtrue : qfalse;
+	const int mishap = ent->client ? ent->client->ps.BlasterAttackChainCount : 0;
+	// Determine movement state
+	const int running = (ent->client && PM_RunningAnim(ent->client->ps.legsAnim));
+	const int walking = (ent->client && PM_WalkingAnim(ent->client->ps.legsAnim));
 
-		if (alt_fire == qtrue)
+	float pitchSpread = 0.0f;
+	float yawSpread = 0.0f;
+
+	if (!(ent->client && ent->client->NPC_class == CLASS_VEHICLE)) // if not a vehicle, apply spread
+	{
+		if (NPC_IsNotHavingEnoughForceSight(ent)) // if the NPC is not having enough force sight, apply spread
 		{
-			if (is_player_or_controlled == qtrue)
+			if (is_player_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if ((PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue) || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
-					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
-					angs[YAW] += Q_flrand(-0.0f, 0.0f);
+					pitchSpread = 0.0f;
+					yawSpread = 0.0f;
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+					if (running || mishap >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+					else if (walking || mishap >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 					}
 					else
 					{
-						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
-						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
+						if (g_entities[ent->s.number].client->IsAiming == qfalse)
+						{
+							if (alt_fire == qtrue)
+							{
+								angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
+								angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
+							}
+							else
+							{
+								angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+								angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
+							}
+						}
 					}
 				}
 			}
 			else
 			{
-				// NPC alt-fire spread
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_ALT_SPREAD;
-			}
-		}
-		else // PRIMARY FIRE
-		{
-			if (is_player_or_controlled == qtrue)
-			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
-				{
-					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
-					angs[YAW] += Q_flrand(-0.0f, 0.0f);
+				if (alt_fire == qtrue)
+				{// NPCs have a much harder time hitting with alt fire, so we give them a bit of a boost
+					pitchSpread = BLASTER_ALT_SPREAD;
+					yawSpread = BLASTER_ALT_SPREAD;
 				}
 				else
 				{
-					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
-					{
-						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
-						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
-					}
-					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
-					{
-						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
-						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
-					}
-					else
-					{
-						angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-						angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-					}
+					pitchSpread = BLASTER_NPC_SPREAD * 0.5f;
+					yawSpread = BLASTER_NPC_SPREAD * 0.5f;
 				}
 			}
-			else
-			{
-				// NPC primary-fire spread
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_MAIN_SPREAD;
-			}
 		}
+
+		// Apply randomised spread
+		angs[PITCH] += Q_flrand(-pitchSpread, pitchSpread);
+		angs[YAW] += Q_flrand(-yawSpread, yawSpread);
 	}
 
 	// Convert final angles back to direction vector
@@ -220,7 +200,6 @@ void WP_FireBlaster(gentity_t* ent, const qboolean alt_fire)
 	// Fire the missile
 	WP_FireBlasterMissile(ent, muzzle, dir, alt_fire);
 }
-
 
 //---------------------------------------------------------
 static void WP_FireJangoWristMissile(gentity_t* ent, vec3_t start, vec3_t dir, const qboolean alt_fire)
@@ -328,7 +307,7 @@ void WP_FireWristPistol(gentity_t* ent, const qboolean alt_fire)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -336,13 +315,13 @@ void WP_FireWristPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.5f, 1.5f) * WALKING_SPREAD;
@@ -365,7 +344,7 @@ void WP_FireWristPistol(gentity_t* ent, const qboolean alt_fire)
 		{
 			if (is_player_or_controlled == qtrue)
 			{
-				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue)
+				if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
 				{
 					angs[PITCH] += Q_flrand(-0.0f, 0.0f);
 					angs[YAW] += Q_flrand(-0.0f, 0.0f);
@@ -373,13 +352,13 @@ void WP_FireWristPistol(gentity_t* ent, const qboolean alt_fire)
 				else
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 						angs[YAW] += Q_flrand(-2.0f, 2.0f) * RUNNING_SPREAD;
 					}
 					else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
-						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF)
+						ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
 					{
 						angs[PITCH] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
 						angs[YAW] += Q_flrand(-1.1f, 1.1f) * WALKING_SPREAD;
@@ -406,7 +385,6 @@ void WP_FireWristPistol(gentity_t* ent, const qboolean alt_fire)
 	// Fire the missile
 	WP_FireJangoWristMissile(ent, muzzle, dir, alt_fire);
 }
-
 
 //////// DROIDEKA ////////
 
@@ -510,7 +488,6 @@ static void WP_FireDroidekaDualPistolMissileDuals(gentity_t* ent, vec3_t start, 
 	}
 }
 
-
 //---------------------------------------------------------
 static void WP_FireDroidekaDualPistolMissile(gentity_t* ent, vec3_t start, vec3_t dir, const qboolean alt_fire)
 //---------------------------------------------------------
@@ -610,7 +587,6 @@ static void WP_FireDroidekaDualPistolMissile(gentity_t* ent, vec3_t start, vec3_
 		ent->count = (ent->count != 0) ? 0 : 1;
 	}
 }
-
 
 //---------------------------------------------------------
 void WP_FireDroidekaDualPistol(gentity_t* ent, const qboolean alt_fire)
