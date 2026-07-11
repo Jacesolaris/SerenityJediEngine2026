@@ -479,11 +479,9 @@ void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 
 		pEnt->client->ps.stats[STAT_WEAPONS] |= (1 << WP_ATST_MAIN | 1 << WP_ATST_SIDE);
 
-		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] =
-			ammoData[weaponData[WP_ATST_MAIN].ammoIndex].max;
+		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] =	ammoData[weaponData[WP_ATST_MAIN].ammoIndex].max;
 
-		pEnt->client->ps.ammo[weaponData[WP_ATST_SIDE].ammoIndex] =
-			ammoData[weaponData[WP_ATST_SIDE].ammoIndex].max;
+		pEnt->client->ps.ammo[weaponData[WP_ATST_SIDE].ammoIndex] = ammoData[weaponData[WP_ATST_SIDE].ammoIndex].max;
 
 		CG_ChangeWeapon(WP_ATST_MAIN);
 

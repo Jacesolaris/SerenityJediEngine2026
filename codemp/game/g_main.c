@@ -272,6 +272,7 @@ extern void InitSpawnScriptValues(void);
 void SP_info_jedimaster_start(gentity_t* ent);
 extern void Load_Autosaves(void);
 void SP_light(gentity_t* self);
+extern void BG_InitPool(void);
 
 void G_InitGame(int levelTime, int randomSeed, int restart)
 {
@@ -293,6 +294,8 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	BG_InitAnimsets(); //clear it out
 
 	B_InitAlloc(); //make sure everything is clean
+
+	BG_InitPool();
 
 	trap->SV_RegisterSharedMemory(gSharedBuffer.raw);
 
@@ -623,7 +626,7 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	trap->SetConfigstring(CS_CLIENT_DUELHEALTHS, va("-1|-1|!"));
 	trap->SetConfigstring(CS_CLIENT_DUELWINNER, va("-1"));
 
-	save_registered_items();
+	SaveRegisteredItems();
 
 	//trap->Print ("-----------------------------------\n");
 

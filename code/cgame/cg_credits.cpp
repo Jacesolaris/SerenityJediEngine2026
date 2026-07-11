@@ -97,10 +97,10 @@ struct CreditCard_t
 
 struct CreditLine_t
 {
-	int i_line{};
-	StringAndSize_t str_text;
-	std::vector<StringAndSize_t> vstr_text;
-	bool b_dotted{};
+	int iLine{};
+	StringAndSize_t strText;
+	std::vector<StringAndSize_t> vstrText;
+	bool bDotted{};
 };
 
 using CreditLines_t = std::list<CreditLine_t>;
@@ -398,8 +398,8 @@ void CG_Credits_Init(const char* psStripReference, vec4_t* pv4Color)
 			case eLine:
 			{
 				CreditLine_t CreditLine;
-				CreditLine.i_line = iLineNumber++;
-				CreditLine.str_text = sLine;
+				CreditLine.iLine = iLineNumber++;
+				CreditLine.strText = sLine;
 
 				CreditData.CreditLines.push_back(CreditLine);
 			}
@@ -408,31 +408,31 @@ void CG_Credits_Init(const char* psStripReference, vec4_t* pv4Color)
 			case eDotEntry:
 			{
 				CreditLine_t CreditLine;
-				CreditLine.i_line = iLineNumber;
-				CreditLine.b_dotted = true;
+				CreditLine.iLine = iLineNumber;
+				CreditLine.bDotted = true;
 
 				std::string strResult(sLine);
 				const char* p;
 				while ((p = GetSubString(strResult)) != nullptr)
 				{
-					if (CreditLine.str_text.IsEmpty())
+					if (CreditLine.strText.IsEmpty())
 					{
-						CreditLine.str_text = p;
+						CreditLine.strText = p;
 					}
 					else
 					{
-						CreditLine.vstr_text.emplace_back(UpperCaseFirstLettersOnly(p));
+						CreditLine.vstrText.emplace_back(UpperCaseFirstLettersOnly(p));
 					}
 				}
 
-				if (!CreditLine.str_text.IsEmpty() && CreditLine.vstr_text.size())
+				if (!CreditLine.strText.IsEmpty() && CreditLine.vstrText.size())
 				{
 					// sort entries RHS dotted entries by alpha...
 					//
-					std::sort(CreditLine.vstr_text.begin(), CreditLine.vstr_text.end(), SortBySurname);
+					std::sort(CreditLine.vstrText.begin(), CreditLine.vstrText.end(), SortBySurname);
 
 					CreditData.CreditLines.push_back(CreditLine);
-					iLineNumber += CreditLine.vstr_text.size();
+					iLineNumber += CreditLine.vstrText.size();
 				}
 			}
 			break;
@@ -442,8 +442,8 @@ void CG_Credits_Init(const char* psStripReference, vec4_t* pv4Color)
 				iLineNumber++; // leading blank line
 
 				CreditLine_t CreditLine;
-				CreditLine.i_line = iLineNumber++;
-				CreditLine.str_text = Capitalize(sLine);
+				CreditLine.iLine = iLineNumber++;
+				CreditLine.strText = Capitalize(sLine);
 
 				CreditData.CreditLines.push_back(CreditLine);
 
@@ -607,10 +607,10 @@ qboolean CG_Credits_Draw()
 
 				static constexpr float fPixelsPerSecond = static_cast<float>(SCREEN_HEIGHT) / fLINE_SECONDTOSCROLLUP;
 
-				int iYpos = SCREEN_HEIGHT + CreditLine.i_line * iFontHeight;
+				int iYpos = SCREEN_HEIGHT + CreditLine.iLine * iFontHeight;
 				iYpos -= static_cast<int>(fPixelsPerSecond * fSecondsElapsed);
 
-				const int iTextLinesThisItem = Q_max((int)CreditLine.vstr_text.size(), 1);
+				const int iTextLinesThisItem = Q_max((int)CreditLine.vstrText.size(), 1);
 				if (iYpos + iTextLinesThisItem * iFontHeight < 0)
 				{
 					// scrolled off top of screen, so erase it...
@@ -622,19 +622,19 @@ qboolean CG_Credits_Draw()
 				{
 					// onscreen, so print it...
 					//
-					const bool bIsDotted = !!CreditLine.vstr_text.size(); // eg "STUNTS ...................... MR ED"
+					const bool bIsDotted = !!CreditLine.vstrText.size(); // eg "STUNTS ...................... MR ED"
 
-					int iWidth = CreditLine.str_text.GetPixelLength();
+					int iWidth = CreditLine.strText.GetPixelLength();
 					int iXpos = bIsDotted ? 4 : (SCREEN_WIDTH - iWidth) / 2;
 
 					gv4Color[3] = 1.0f;
 
-					cgi_R_Font_DrawString(iXpos, iYpos, CreditLine.str_text.c_str(), gv4Color, ghFontHandle, -1,
+					cgi_R_Font_DrawString(iXpos, iYpos, CreditLine.strText.c_str(), gv4Color, ghFontHandle, -1,
 						gfFontScale);
 
 					// now print any dotted members...
 					//
-					for (StringAndSize_t& StringAndSize : CreditLine.vstr_text)
+					for (StringAndSize_t& StringAndSize : CreditLine.vstrText)
 					{
 						iWidth = StringAndSize.GetPixelLength();
 						iXpos = SCREEN_WIDTH - 4 - iWidth;

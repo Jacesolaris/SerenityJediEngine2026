@@ -1707,7 +1707,7 @@ Write the needed items to a config string
 so the client will know which ones to precache
 ===============
 */
-void save_registered_items()
+void SaveRegisteredItems()
 {
 	gi.SetConfigstring(CS_ITEMS, itemRegistered);
 }

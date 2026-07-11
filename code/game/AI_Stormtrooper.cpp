@@ -48,7 +48,7 @@ extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thre
 extern qboolean PM_InKnockDown(const playerState_t* ps);
 extern qboolean NPC_CanUseAdvancedFighting();
 extern void NPC_AngerSound();
-extern qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t push_dir);
+extern qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push_dir);
 extern cvar_t* g_allowgunnerbash;
 extern void npc_check_speak(gentity_t* speaker_npc);
 

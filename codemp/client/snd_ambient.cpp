@@ -405,7 +405,9 @@ static void AS_GetSubWaves(ambientSet_t& set)
 	}
 
 	AS_SkipLine();
-}// -----------------------------------------------------------------------------
+}
+
+// -----------------------------------------------------------------------------
 // AS_GetLoopedWave
 // Parses: loopedWave <name>
 // Fixes warnings C6031 and C6054 by validating sscanf result and ensuring

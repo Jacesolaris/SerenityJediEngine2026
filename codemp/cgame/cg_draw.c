@@ -9173,7 +9173,7 @@ static void CG_DrawCrosshairNames(void)
 			{
 				if (cgs.gametype == GT_FFA)
 				{
-					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
+					CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_WHITE]);
 				}
 				else
 				{

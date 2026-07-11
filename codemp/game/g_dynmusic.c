@@ -5,6 +5,7 @@
 DynamicMusicGroup_t DMSData; //holds all our dynamic music data
 
 void LoadDynamicMusicGroup(char* mapname, char* buffer);
+
 void LoadDynamicMusic(void)
 {
 	// Tries to load dynamic music data for this map.
@@ -347,7 +348,7 @@ void G_DynamicMusicUpdate(void)
 {
 	int battle = 0;
 	int entTeam;
-	vec3_t mins, maxs;
+	vec3_t mins = { 0, 0, 0 }, maxs = { 0, 0, 0 };
 
 	if (DMSData.dmDebounceTime >= 0 && DMSData.dmDebounceTime < level.time)
 	{

@@ -455,7 +455,7 @@ static qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 	return qtrue;
 }
 
-qboolean VEH_TryEject(const Vehicle_t* p_veh,
+static qboolean VEH_TryEject(const Vehicle_t* p_veh,
 	const gentity_t* parent,
 	gentity_t* ent,
 	const int ejectDir,

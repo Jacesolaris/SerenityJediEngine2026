@@ -415,7 +415,7 @@ void Touch_Item(gentity_t* ent, gentity_t* other, trace_t* trace);
 
 void clear_registered_items();
 void RegisterItem(const gitem_t* item);
-void save_registered_items();
+void SaveRegisteredItems();
 
 //
 // g_utils.c

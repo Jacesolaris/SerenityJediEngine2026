@@ -4194,9 +4194,21 @@ void CG_Weapon_f()
 		return;
 	}
 
-	if (cg.snap->ps.eFlags & EF_LOCKED_TO_WEAPON)
+	if (cg.snap->ps.eFlags & EF_FORCE_GRIPPED)
 	{
-		// can't do any sort of weapon switching when in the emplaced gun
+		// can't do any sort of weapon switching when being gripped
+		return;
+	}
+
+	if (cg.snap->ps.eFlags & EF_FORCE_GRABBED)
+	{
+		// can't do any sort of weapon switching when being gripped
+		return;
+	}
+
+	if (cg.snap->ps.eFlags & EF_FORCE_DRAINED)
+	{
+		// can't do any sort of weapon switching when being drained
 		return;
 	}
 

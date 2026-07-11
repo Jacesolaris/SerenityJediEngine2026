@@ -1185,25 +1185,56 @@ NPC_SpotWouldTelefrag
 
 ================
 */
+// Check whether placing an NPC at its current origin would telefrag another entity.
+// Behaviour preserved; only stack usage and safety improved.
 static qboolean NPC_SpotWouldTelefrag(const gentity_t* npc)
 {
-	int touch[MAX_GENTITIES];
+	// SAFETY FIX: npc must exist
+	if (npc == NULL)
+	{
+		return qfalse;
+	}
+
+	// Allocate large array on heap to avoid C6262 stack warning
+	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (touch == NULL)
+	{
+		return qfalse;
+	}
+
 	vec3_t mins, maxs;
 
+	// Compute bounding box for telefrag check
 	VectorAdd(npc->r.currentOrigin, npc->r.mins, mins);
 	VectorAdd(npc->r.currentOrigin, npc->r.maxs, maxs);
+
+	// Query entities inside bounding box
 	const int num = trap->EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
 
 	for (int i = 0; i < num; i++)
 	{
-		const gentity_t* hit = &g_entities[touch[i]];
-		//if ( hit->client && hit->client->ps.stats[STAT_HEALTH] > 0 ) {
-		if (hit->inuse
-			&& hit->client
-			&& hit->s.number != npc->s.number
-			&& hit->r.contents & MASK_NPCSOLID
-			&& hit->s.number != npc->r.ownerNum
-			&& hit->r.ownerNum != npc->s.number)
+		const int entNum = touch[i];
+
+		// Validate index
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
+		{
+			continue;
+		}
+
+		const gentity_t* hit = &g_entities[entNum];
+
+		// Telefrag conditions:
+		// - entity is in use
+		// - entity has a client
+		// - entity is not the NPC itself
+		// - entity is solid to NPCs
+		// - entity is not owned by NPC and NPC is not owned by entity
+		if (hit->inuse &&
+			hit->client &&
+			hit->s.number != npc->s.number &&
+			(hit->r.contents & MASK_NPCSOLID) &&
+			hit->s.number != npc->r.ownerNum &&
+			hit->r.ownerNum != npc->s.number)
 		{
 			return qtrue;
 		}
@@ -1211,6 +1242,7 @@ static qboolean NPC_SpotWouldTelefrag(const gentity_t* npc)
 
 	return qfalse;
 }
+
 
 extern qboolean G_ValidSaberStyle(const gentity_t* ent, int saber_style);
 extern qboolean WP_SaberCanTurnOffSomeBlades(const saberInfo_t* saber);
@@ -1758,7 +1790,7 @@ extern void G_CreateFighterNPC(Vehicle_t** p_veh, const char* strType);
 static qboolean NPC_SafeSpawn(const gentity_t* ent, const float safeRadius)
 {
 	int radius_ents[MAX_SAFESPAWN_ENTS];
-	vec3_t safeMins, safeMaxs;
+	vec3_t safeMins = { 0 }, safeMaxs = { 0 };
 	int i;
 	const float safeRadiusSquared = safeRadius * safeRadius;
 
@@ -2682,7 +2714,7 @@ static qboolean NPC_VehiclePrecache(const gentity_t* spawner)
 		if (tempG2)
 		{
 			//now, cache the anim config.
-			char GLAName[1024];
+			char GLAName[1024] = { 0 };
 
 			GLAName[0] = 0;
 			trap->G2API_GetGLAName(tempG2, 0, GLAName);

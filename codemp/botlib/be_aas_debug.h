@@ -46,7 +46,7 @@ void AAS_PermanentLine(vec3_t start, vec3_t end, int color);
 //show a permanent cross
 void AAS_DrawPermanentCross(vec3_t origin, float size, int color);
 //draw a cross in the plane
-void AAS_DrawPlaneCross(vec3_t point, vec3_t normal, float dist, int type, int color);
+void AAS_DrawPlaneCross(vec3_t point, vec3_t normal, const float dist, const int type, const int color);
 //show a bounding box
 void AAS_ShowBoundingBox(vec3_t origin, vec3_t mins, vec3_t maxs);
 //show a face

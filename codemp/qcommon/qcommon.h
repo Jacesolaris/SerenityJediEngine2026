@@ -196,7 +196,7 @@ using netchan_t = struct netchan_s
 void Netchan_Init(int port);
 void Netchan_Setup(netsrc_t sock, netchan_t* chan, netadr_t adr, int qport);
 
-void Netchan_Transmit(netchan_t* chan, int length, const byte* data);
+void Netchan_Transmit(netchan_t* chan, const int length, const byte* data);
 void Netchan_TransmitNextFragment(netchan_t* chan);
 
 qboolean Netchan_Process(netchan_t* chan, msg_t* msg);

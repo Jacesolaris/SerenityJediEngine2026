@@ -18235,7 +18235,7 @@ SkipTrueView:
 	{
 		matrix3_t axis;
 		vec3_t t_ang, f_ang, fx_dir;
-		vec3_t ef_org;
+		vec3_t ef_org = { 0 };
 
 		int real_force_lev = cent->currentState.activeForcePass - FORCE_LEVEL_3;
 
@@ -18289,8 +18289,8 @@ SkipTrueView:
 		//doing the electrocuting
 		vec3_t axis[3];
 		vec3_t t_ang, f_ang, fx_dir;
-		vec3_t ef_org_l; //origin left hand
-		vec3_t ef_org_r; //origin right hand
+		vec3_t ef_org_l = { 0 }; //origin left hand
+		vec3_t ef_org_r = { 0 }; //origin right hand
 
 		VectorSet(t_ang, cent->turAngles[PITCH], cent->turAngles[YAW], cent->turAngles[ROLL]);
 
@@ -18465,7 +18465,7 @@ SkipTrueView:
 		//player is firing flamethrower, render effect.
 		vec3_t axis[3];
 		vec3_t t_ang, f_ang, fx_dir;
-		vec3_t ef_org;
+		vec3_t ef_org = { 0 };
 
 		VectorSet(t_ang, cent->turAngles[PITCH], cent->turAngles[YAW], cent->turAngles[ROLL]);
 
@@ -18514,7 +18514,7 @@ SkipTrueView:
 	if (cent->currentState.powerups & 1 << PW_DISINT_4)
 	{
 		vec3_t t_ang;
-		vec3_t ef_org;
+		vec3_t ef_org = { 0 };
 
 		VectorSet(t_ang, cent->turAngles[PITCH], cent->turAngles[YAW], cent->turAngles[ROLL]);
 
@@ -18649,7 +18649,7 @@ SkipTrueView:
 	}
 
 	//If you've tricked this client.
-	if (CG_IsMindTricked(cg.snap->ps.fd.forceMindtrickTargetIndex,
+	if (cg.snap && CG_IsMindTricked(cg.snap->ps.fd.forceMindtrickTargetIndex,
 		cg.snap->ps.fd.forceMindtrickTargetIndex2,
 		cg.snap->ps.fd.forceMindtrickTargetIndex3,
 		cg.snap->ps.fd.forceMindtrickTargetIndex4,
@@ -19578,87 +19578,13 @@ stillDoSaber:
 		//goto endOfCall;
 	}
 
-	if (cg.snap->ps.fd.forcePowersActive & 1 << FP_SEE && cg.snap->ps.clientNum != cent->currentState.number)
+	if (cg.snap && cg.snap->ps.fd.forcePowersActive & 1 << FP_SEE && cg.snap->ps.clientNum != cent->currentState.number)
 	{
 		legs.shaderRGBA[0] = 255;
 		legs.shaderRGBA[1] = 255;
 		legs.shaderRGBA[2] = 0;
 		legs.renderfx |= RF_MINLIGHT;
 	}
-
-	//if (cg.snap->ps.duelInProgress /*&& cent->currentState.number != cg.snap->ps.clientNum*/)
-	//{ //I guess go ahead and glow your own client too in a duel
-	//	if (cent->currentState.number != cg.snap->ps.duelIndex &&
-	//		cent->currentState.number != cg.snap->ps.clientNum)
-	//	{ //everyone not involved in the duel is drawn very dark
-	//		legs.shaderRGBA[0] /= 5.0f;
-	//		legs.shaderRGBA[1] /= 5.0f;
-	//		legs.shaderRGBA[2] /= 5.0f;
-	//		legs.renderfx |= RF_RGB_TINT;
-	//	}
-	//	else
-	//	{ //adjust the glow by how far away you are from your dueling partner
-	//		centity_t *duelEnt;
-
-	//		duelEnt = &cg_entities[cg.snap->ps.duelIndex];
-
-	//		if (duelEnt)
-	//		{
-	//			vec3_t vecSub;
-	//			float subLen = 0;
-
-	//			VectorSubtract(duelEnt->lerpOrigin, cg.snap->ps.origin, vecSub);
-	//			subLen = VectorLength(vecSub);
-
-	//			if (subLen < 1)
-	//			{
-	//				subLen = 1;
-	//			}
-
-	//			if (subLen > 1020)
-	//			{
-	//				subLen = 1020;
-	//			}
-
-	//			{
-	//				unsigned char savRGBA[3];
-	//				savRGBA[0] = legs.shaderRGBA[0];
-	//				savRGBA[1] = legs.shaderRGBA[1];
-	//				savRGBA[2] = legs.shaderRGBA[2];
-	//				legs.shaderRGBA[0] = Q_max(255-subLen/4,1);
-	//				legs.shaderRGBA[1] = Q_max(255-subLen/4,1);
-	//				legs.shaderRGBA[2] = Q_max(255-subLen/4,1);
-
-	//				legs.renderfx &= ~RF_RGB_TINT;
-	//				legs.renderfx &= ~RF_FORCE_ENT_ALPHA;
-	//				legs.customShader = cgs.media.forceShell;
-
-	//				trap->R_AddRefEntityToScene( &legs );	//draw the shell
-
-	//				legs.customShader = 0;	//reset to player model
-
-	//				legs.shaderRGBA[0] = Q_max(savRGBA[0]-subLen/8,1);
-	//				legs.shaderRGBA[1] = Q_max(savRGBA[1]-subLen/8,1);
-	//				legs.shaderRGBA[2] = Q_max(savRGBA[2]-subLen/8,1);
-	//			}
-
-	//			if (subLen <= 1024)
-	//			{
-	//				legs.renderfx |= RF_RGB_TINT;
-	//			}
-	//		}
-	//	}
-	//}
-	//else
-	//{
-	//	if (cent->currentState.bolt1 && !(cent->currentState.eFlags & EF_DEAD) && cent->currentState.number != cg.snap->ps.clientNum && (!cg.snap->ps.duelInProgress || cg.snap->ps.duelIndex != cent->currentState.number))
-	//	{
-	//		legs.shaderRGBA[0] = 50;
-	//		legs.shaderRGBA[1] = 50;
-	//		legs.shaderRGBA[2] = 50;
-	//		legs.renderfx |= RF_RGB_TINT;
-	//	}
-	//}
 
 	if (cent->currentState.eFlags & EF_DISINTEGRATION)
 	{

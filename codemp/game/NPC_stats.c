@@ -3426,7 +3426,7 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 			if (!player)
 			{
 				//no players have spawned in yet.  As such, wing it by using jan
-				int scan, rgb[3];
+				int scan, rgb[3] = { 255, 255, 255 };
 				char* s2;
 				Q_strncpyz(playerModel, g_spmodel.string, sizeof playerModel);
 				s2 = va("%s", g_spmodelrgb.string);
@@ -3515,23 +3515,35 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 
 char npcParseBuffer[MAX_NPC_DATA_SIZE];
 
+// Load NPC extension files from ext_data/mpnpcs and append them to NPCParms.
+// Behaviour preserved; only safety and stack usage improved.
 void NPC_LoadParms(void)
 {
-	int npcExtFNLen;
-	char npcExtensionListBuf[16384]; //	The list of file names read in
+	int npcExtFNLen = 0;
 	fileHandle_t f;
 	int len = 0;
 
-	//remember where to store the next one
-	int totallen = len;
+	// Allocate large buffer on heap to avoid C6262 stack warning
+	char* npcExtensionListBuf = (char*)BG_Alloc(16384);
+	if (npcExtensionListBuf == NULL)
+	{
+		return;
+	}
+
+	// Remember where to store the next one
+	int totallen = 0;
 	char* marker = NPCParms + totallen;
 	*marker = 0;
 
-	//now load in the extra .npc extensions
-	const int fileCnt = trap->FS_GetFileList("ext_data/mpnpcs", ".npc", npcExtensionListBuf,
-		sizeof npcExtensionListBuf);
+	// Load .npc extension list
+	const int fileCnt = trap->FS_GetFileList(
+		"ext_data/mpnpcs",
+		".npc",
+		npcExtensionListBuf,
+		16384);
 
 	char* holdChar = npcExtensionListBuf;
+
 	for (int i = 0; i < fileCnt; i++, holdChar += npcExtFNLen + 1)
 	{
 		npcExtFNLen = strlen(holdChar);
@@ -3540,32 +3552,39 @@ void NPC_LoadParms(void)
 
 		if (len == -1)
 		{
-			Com_Printf("error reading file\n");
+			Com_Printf("NPC_LoadParms: error reading file %s\n", holdChar);
+			continue;
 		}
-		else
+
+		// Check space
+		if (totallen + len >= MAX_NPC_DATA_SIZE)
 		{
-			if (totallen + len >= MAX_NPC_DATA_SIZE)
-			{
-				trap->FS_Close(f);
-				trap->Error(
-					ERR_DROP,
-					"NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)");
-			}
-			trap->FS_Read(npcParseBuffer, len, f);
-			npcParseBuffer[len] = 0;
-
-			len = COM_Compress(npcParseBuffer);
-
-			strcat(marker, npcParseBuffer);
-			strcat(marker, "\n");
-			len++;
 			trap->FS_Close(f);
-
-			totallen += len;
-			marker = NPCParms + totallen;
+			trap->Error(
+				ERR_DROP,
+				"NPC_LoadParms: ran out of space before reading %s\n(you must make the .npc files smaller)",
+				holdChar);
 		}
+
+		// Read file
+		trap->FS_Read(npcParseBuffer, len, f);
+		npcParseBuffer[len] = 0;
+
+		// Compress
+		len = COM_Compress(npcParseBuffer);
+
+		// Append to NPCParms
+		strcat(marker, npcParseBuffer);
+		strcat(marker, "\n");
+		len++;
+
+		trap->FS_Close(f);
+
+		totallen += len;
+		marker = NPCParms + totallen;
 	}
 }
+
 
 extern void npc_shadow_trooper_precache(void);
 extern void NPC_Gonk_Precache(void);

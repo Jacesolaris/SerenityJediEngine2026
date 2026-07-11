@@ -130,6 +130,7 @@ IGhoul2InfoArray& _TheGhoul2InfoArray()
 static void CL_ShutdownRef(qboolean restarting);
 void CL_InitRef();
 void CL_CheckForResend();
+extern void CL_FreeServerCommands();
 
 /*
 =======================================================================
@@ -319,8 +320,6 @@ void CL_Disconnect()
 	CL_ClearState();
 
 	CL_FreeReliableCommands();
-
-	extern void CL_FreeServerCommands();
 	CL_FreeServerCommands();
 
 	memset(&clc, 0, sizeof clc);

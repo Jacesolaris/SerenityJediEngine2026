@@ -634,7 +634,7 @@ static void Svcmd_SaberAttackCycle_f()
 	int saberAnimLevel;
 	if (!self->s.number)
 	{
-		saberAnimLevel = cg.saber_anim_levelPending;
+		saberAnimLevel = cg.saberAnimLevelPending;
 	}
 	else
 	{
@@ -694,7 +694,7 @@ static void Svcmd_SaberAttackCycle_f()
 	WP_UseFirstValidSaberStyle(self, &saberAnimLevel);
 	if (!self->s.number)
 	{
-		cg.saber_anim_levelPending = saberAnimLevel;
+		cg.saberAnimLevelPending = saberAnimLevel;
 
 		if (!self->client->ps.saberInFlight)
 		{

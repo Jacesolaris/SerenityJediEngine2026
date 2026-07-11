@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_local.h"
 #include "g_vehicles.h"
 
-extern qboolean PM_ClientImpact(const trace_t* trace, qboolean damage_self);
+extern qboolean PM_ClientImpact(const trace_t* trace, qboolean damageSelf);
 extern qboolean PM_ControlledByPlayer();
 extern qboolean PM_InReboundHold(int anim);
 extern cvar_t* g_stepSlideFix;
@@ -53,7 +53,7 @@ qboolean PM_SlideMove(const float gravity)
 	int i;
 	trace_t trace;
 	vec3_t end_velocity;
-	qboolean damage_self;
+	qboolean damageSelf;
 	int slideMoveContents = pm->tracemask;
 
 	if (pm->ps->clientNum >= MAX_CLIENTS
@@ -183,19 +183,19 @@ qboolean PM_SlideMove(const float gravity)
 		//Hit it
 		if (trace.surfaceFlags & SURF_NODAMAGE)
 		{
-			damage_self = qfalse;
+			damageSelf = qfalse;
 		}
 		else if (trace.entityNum == ENTITYNUM_WORLD && trace.plane.normal[2] > 0.5f)
 		{
 			//if we land on the ground, let falling damage do it's thing itself, otherwise do impact damage
-			damage_self = qfalse;
+			damageSelf = qfalse;
 		}
 		else
 		{
-			damage_self = qtrue;
+			damageSelf = qtrue;
 		}
 
-		if (PM_ClientImpact(&trace, damage_self))
+		if (PM_ClientImpact(&trace, damageSelf))
 		{
 			continue;
 		}

@@ -389,7 +389,7 @@ using cg_t = struct
 
 	// input state sent to server
 	int weaponSelect;
-	int saber_anim_levelPending;
+	int saberAnimLevelPending;
 
 	// auto rotating items
 	vec3_t autoAngles;
@@ -734,7 +734,7 @@ extern vmCvar_t cg_com_rend2;
 
 extern vmCvar_t cg_textprintscale;
 
-void CG_NewClientinfo(int clientNum);
+void CG_NewClientinfo(const int clientNum);
 //
 // cg_main.c
 //

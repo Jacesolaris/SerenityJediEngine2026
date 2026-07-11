@@ -2820,7 +2820,7 @@ void WP_RemoveSaber(gentity_t* ent, const int saberNum)
 				ent->client->ps.saberAnimLevel = i;
 				if (ent->s.number < MAX_CLIENTS)
 				{
-					cg.saber_anim_levelPending = ent->client->ps.saberAnimLevel;
+					cg.saberAnimLevelPending = ent->client->ps.saberAnimLevel;
 				}
 				break;
 			}
@@ -2857,7 +2857,7 @@ void WP_RemoveSecondSaber(gentity_t* ent, const int saberNum)
 				ent->client->ps.saberAnimLevel = i;
 				if (ent->s.number < MAX_CLIENTS)
 				{
-					cg.saber_anim_levelPending = ent->client->ps.saberAnimLevel;
+					cg.saberAnimLevelPending = ent->client->ps.saberAnimLevel;
 				}
 				break;
 			}
@@ -2927,7 +2927,7 @@ void WP_SetSaber(gentity_t* ent, const int saberNum, const char* saber_name)
 	WP_UseFirstValidSaberStyle(ent, &ent->client->ps.saberAnimLevel);
 	if (ent->s.number < MAX_CLIENTS)
 	{
-		cg.saber_anim_levelPending = ent->client->ps.saberAnimLevel;
+		cg.saberAnimLevelPending = ent->client->ps.saberAnimLevel;
 	}
 }
 

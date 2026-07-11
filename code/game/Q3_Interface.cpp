@@ -7247,7 +7247,6 @@ int CQuake3GameInterface::GetVectorVariable(const char* name, vec3_t value)
 	return qfalse;
 }
 
-
 /*
 -------------------------
 InitVariables
@@ -8237,7 +8236,6 @@ void CQuake3GameInterface::DebugPrint(const e_DebugPrintLevel level, const char*
 	}
 }
 
-
 //Gets the current time
 unsigned int CQuake3GameInterface::GetTime()
 {
@@ -8565,38 +8563,104 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 	switch (toSet)
 	{
 	case SET_ORIGIN:
-		sscanf(data, "%f %f %f", &vector_data[0], &vector_data[1], &vector_data[2]);
+	{
+		// Parse vector safely
+		float x = 0.0f, y = 0.0f, z = 0.0f;
+
+		const int parsed = sscanf(data, "%f %f %f", &x, &y, &z);
+
+		if (parsed != 3)
+		{
+			DebugPrint(WL_WARNING,
+				"Set: SET_ORIGIN — failed to parse origin '%s' (parsed %d components)\n",
+				data, parsed);
+			break; // behaviour-preserving: do nothing if invalid
+		}
+
+		vector_data[0] = x;
+		vector_data[1] = y;
+		vector_data[2] = z;
+
+		// Move entity
 		G_SetOrigin(ent, vector_data);
+
+		// Hack for moving spawners (behaviour preserved)
 		if (Q_strncmp("NPC_", ent->classname, 4) == 0)
 		{
-			//hack for moving spawners
 			VectorCopy(vector_data, ent->s.origin);
 		}
-		if (ent->client)
+
+		// Clear jump start positions so landing does not cause damage
+		if (ent->client != NULL)
 		{
-			//clear jump start positions so we don't take damage when we land...
-			ent->client->ps.jumpZStart = ent->client->ps.forceJumpZStart = vector_data[2];
+			ent->client->ps.jumpZStart = vector_data[2];
+			ent->client->ps.forceJumpZStart = vector_data[2];
 		}
+
 		gi.linkentity(ent);
 		break;
+	}
 
 	case SET_TELEPORT_DEST:
-		sscanf(data, "%f %f %f", &vector_data[0], &vector_data[1], &vector_data[2]);
-		if (!Q3_SetTeleportDest(entID, vector_data))
+	{
+		// Parse vector safely
+		float x = 0.0f, y = 0.0f, z = 0.0f;
+
+		const int parsed = sscanf(data, "%f %f %f", &x, &y, &z);
+
+		if (parsed != 3)
 		{
+			DebugPrint(WL_WARNING,
+				"Set: SET_TELEPORT_DEST — failed to parse teleport destination '%s' (parsed %d components)\n",
+				data, parsed);
+			break; // behaviour-preserving: do nothing if invalid
+		}
+
+		vector_data[0] = x;
+		vector_data[1] = y;
+		vector_data[2] = z;
+
+		// Attempt to set teleport destination
+		const qboolean success = Q3_SetTeleportDest(entID, vector_data);
+
+		if (success == qfalse)
+		{
+			// Behaviour preserved: fallback to MOVE_NAV task
 			Q3_TaskIDSet(ent, TID_MOVE_NAV, task_id);
 			return;
 		}
+
 		break;
+	}
 
 	case SET_COPY_ORIGIN:
 		Q3_SetCopyOrigin(entID, data);
 		break;
 
 	case SET_ANGLES:
-		sscanf(data, "%f %f %f", &vector_data[0], &vector_data[1], &vector_data[2]);
+	{
+		// Parse safely into temporary floats
+		float x = 0.0f, y = 0.0f, z = 0.0f;
+
+		const int parsed = sscanf(data, "%f %f %f", &x, &y, &z);
+
+		if (parsed != 3)
+		{
+			DebugPrint(WL_WARNING,
+				"Set: SET_ANGLES — failed to parse angles '%s' (parsed %d components)\n",
+				data, parsed);
+			break; // behaviour-preserving: do nothing if invalid
+		}
+
+		vector_data[0] = x;
+		vector_data[1] = y;
+		vector_data[2] = z;
+
+		// Behaviour preserved: apply angles
 		Q3_SetAngles(entID, vector_data);
+
 		break;
+	}
 
 	case SET_XVELOCITY:
 		float_data = atof(data);
@@ -9459,9 +9523,29 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		break;
 
 	case SET_SABER_ORIGIN:
-		sscanf(data, "%f %f %f", &vector_data[0], &vector_data[1], &vector_data[2]);
+	{
+		// Parse safely into temporary floats
+		float x = 0.0f, y = 0.0f, z = 0.0f;
+
+		const int parsed = sscanf(data, "%f %f %f", &x, &y, &z);
+
+		if (parsed != 3)
+		{
+			DebugPrint(WL_WARNING,
+				"Set: SET_SABER_ORIGIN — failed to parse saber origin '%s' (parsed %d components)\n",
+				data, parsed);
+			break; // behaviour-preserving: do nothing if invalid
+		}
+
+		vector_data[0] = x;
+		vector_data[1] = y;
+		vector_data[2] = z;
+
+		// Behaviour preserved: apply saber origin
 		WP_SetSaberOrigin(ent, vector_data);
+
 		break;
+	}
 
 	case SET_ADJUST_AREA_PORTALS:
 		if (!Q_stricmp("true", data))
@@ -10938,7 +11022,6 @@ int CQuake3GameInterface::GetVector(const int entID, const char* name, vec3_t va
 	return qtrue;
 }
 
-
 int CQuake3GameInterface::GetString(const int entID, const char* name, char** value)
 {
 	const gentity_t* ent = &g_entities[entID];
@@ -11249,25 +11332,74 @@ int CQuake3GameInterface::Evaluate(int p1Type, const char* p1, int p2Type, const
 	switch (p1Type)
 	{
 	case TK_FLOAT:
-		sscanf(p1, "%f", &f1);
-		sscanf(p2, "%f", &f2);
+	{
+		float fx = 0.0f, fy = 0.0f;
+
+		const int parsed1 = sscanf(p1, "%f", &fx);
+		const int parsed2 = sscanf(p2, "%f", &fy);
+
+		if (parsed1 != 1 || parsed2 != 1)
+		{
+			DebugPrint(WL_WARNING,
+				"Set: TK_FLOAT — failed to parse float values ('%s', '%s') parsed (%d, %d)\n",
+				p1, p2, parsed1, parsed2);
+			break; // behaviour-preserving: do nothing if invalid
+		}
+
+		f1 = fx;
+		f2 = fy;
 		break;
+	}
 
 	case TK_INT:
-		sscanf(p1, "%d", &i1);
-		sscanf(p2, "%d", &i2);
+	{
+		int ix = 0, iy = 0;
+
+		const int parsed1 = sscanf(p1, "%d", &ix);
+		const int parsed2 = sscanf(p2, "%d", &iy);
+
+		if (parsed1 != 1 || parsed2 != 1)
+		{
+			DebugPrint(WL_WARNING,
+				"Set: TK_INT — failed to parse int values ('%s', '%s') parsed (%d, %d)\n",
+				p1, p2, parsed1, parsed2);
+			break;
+		}
+
+		i1 = ix;
+		i2 = iy;
 		break;
+	}
 
 	case TK_VECTOR:
-		sscanf(p1, "%f %f %f", &v1[0], &v1[1], &v1[2]);
-		sscanf(p2, "%f %f %f", &v2[0], &v2[1], &v2[2]);
+	{
+		float x1 = 0.0f, y1 = 0.0f, z1 = 0.0f;
+		float x2 = 0.0f, y2 = 0.0f, z2 = 0.0f;
+
+		const int parsed1 = sscanf(p1, "%f %f %f", &x1, &y1, &z1);
+		const int parsed2 = sscanf(p2, "%f %f %f", &x2, &y2, &z2);
+
+		if (parsed1 != 3 || parsed2 != 3)
+		{
+			DebugPrint(WL_WARNING,
+				"Set: TK_VECTOR — failed to parse vectors ('%s', '%s') parsed (%d, %d)\n",
+				p1, p2, parsed1, parsed2);
+			break;
+		}
+
+		v1[0] = x1; v1[1] = y1; v1[2] = z1;
+		v2[0] = x2; v2[1] = y2; v2[2] = z2;
 		break;
+	}
 
 	case TK_STRING:
 	case TK_IDENTIFIER:
+	{
+		// Behaviour preserved: direct pointer assignment
 		c1 = const_cast<char*>(p1);
 		c2 = const_cast<char*>(p2);
 		break;
+	}
 
 	default:
 		DebugPrint(WL_WARNING, "Evaluate unknown type used!\n");

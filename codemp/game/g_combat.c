@@ -3046,8 +3046,11 @@ void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker
 	//Use any target we had
 	G_UseTargets(self, self);
 
-	if (g_slowmoDuelEnd.integer && (level.gametype == GT_DUEL || level.gametype == GT_POWERDUEL) && attacker && attacker
-		->inuse && attacker->client)
+	if (g_slowmoDuelEnd.integer &&
+		(level.gametype == GT_DUEL ||
+			level.gametype == GT_POWERDUEL) &&
+		attacker && attacker->inuse &&
+		attacker->client)
 	{
 		if (!gDoSlowMoDuel)
 		{

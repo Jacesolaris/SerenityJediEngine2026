@@ -1961,7 +1961,7 @@ int wp_saber_init_blade_data(gentity_t* ent)
 				}
 			}
 
-			cg.saber_anim_levelPending = ent->client->ps.saberAnimLevel;
+			cg.saberAnimLevelPending = ent->client->ps.saberAnimLevel;
 			if (ent->client->sess.missionStats.weaponUsed[WP_SABER] <= 0)
 			{
 				//let missionStats know that we actually do have the saber, even if we never use it
@@ -4641,9 +4641,8 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 								}
 								else
 								{
-									if (attacker->client->ps.saber[saberNum].hitOtherEffect && !
-										WP_SaberBladeUseSecondBladeStyle(
-											&attacker->client->ps.saber[saberNum], bladeNum))
+									if (attacker->client->ps.saber[saberNum].hitOtherEffect &&
+										!WP_SaberBladeUseSecondBladeStyle(&attacker->client->ps.saber[saberNum], bladeNum))
 									{
 										hit_effect = attacker->client->ps.saber[saberNum].hitOtherEffect;
 									}
@@ -18103,10 +18102,7 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 				&& InFront(self->currentOrigin, push_target[x]->currentOrigin, push_target[x]->client->ps.viewangles,
 					0.3f) //I'm in front of him
 				&& (push_target[x]->client->ps.powerups[PW_FORCE_PUSH] > level.time || //he's pushing too
-					push_target[x]->s.number != 0 && push_target[x]->client->ps.weaponTime < level.time
-					//not the player and not attacking (NPC jedi auto-defend against pushes)
-					)
-				)
+					push_target[x]->s.number != 0 && push_target[x]->client->ps.weaponTime < level.time))
 			{
 				//Jedi don't get pushed, they resist as long as they aren't already attacking and are on the ground
 				if (push_target[x]->client->ps.saberLockTime > level.time)
@@ -29688,10 +29684,9 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		self->client->NPC_class == CLASS_BOBAFETT) ||
 		self->client->NPC_class == CLASS_MANDO)
 	{
-		if (self->client->ps.weapon != WP_MELEE &&
-			self->client->ps.weapon != WP_BLASTER_PISTOL &&
-			(ucmd->buttons & BUTTON_WALKING) &&
-			(ucmd->buttons & BUTTON_BLOCK))
+		if (self->client->ps.weapon == WP_MELEE &&
+			(ucmd->buttons & BUTTON_BLOCK) &&
+			!(ucmd->buttons & BUTTON_WALKING))
 		{
 			Boba_FireWristMissile(self, BOBA_MISSILE_VIBROBLADE);
 			return;

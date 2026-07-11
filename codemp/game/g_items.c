@@ -3075,7 +3075,8 @@ static int Pickup_Armor(const gentity_t* ent, const gentity_t* other)
 ===============
 RespawnItem
 ===============
-*/void RespawnItem(gentity_t* ent)
+*/
+void RespawnItem(gentity_t* ent)
 {
 	// Safety: ent must never be NULL
 	if (!ent)
@@ -3994,7 +3995,7 @@ Write the needed items to a config string
 so the client will know which ones to precache
 ===============
 */
-void save_registered_items(void)
+void SaveRegisteredItems(void)
 {
 	char string[MAX_ITEMS + 1] = { 0 };
 

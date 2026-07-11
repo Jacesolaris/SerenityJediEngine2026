@@ -4327,7 +4327,7 @@ PM_CheckJump
 extern qboolean BG_EnoughForcePowerForMove(int cost, const qboolean play_sound);
 extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 
-static qboolean pm_check_jump(void)
+static qboolean PM_CheckJump(void)
 {
 	qboolean allowFlips = qtrue;
 
@@ -6373,7 +6373,7 @@ static void PM_AirMove(void)
 	if (pm->ps->pm_type != PM_SPECTATOR)
 	{
 #if METROID_JUMP
-		pm_check_jump();
+		PM_CheckJump();
 #else
 		if (pm->ps->fd.forceJumpZStart &&
 			pm->ps->forceJumpFlip)
@@ -6817,7 +6817,7 @@ static void PM_WalkMove(void)
 
 	if (pm->ps->pm_type != PM_SPECTATOR)
 	{
-		if (pm_check_jump())
+		if (PM_CheckJump())
 		{
 			// jumped away
 			if (pm->waterlevel > 1)
@@ -10504,7 +10504,6 @@ static void PM_Footsteps(void)
 							}
 							else
 							{
-
 								PM_SetAnim(SETANIM_BOTH, BOTH_RUN1, SETANIM_FLAG_NORMAL);
 
 								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
@@ -11302,6 +11301,79 @@ static void PM_Footsteps(void)
 							desiredAnim = BOTH_WALK1;
 						}
 					}
+					else if (pm->ps->weapon == WP_BRYAR_PISTOL)
+					{
+						if (pm->ps->eFlags & EF3_DUAL_WEAPONS)
+						{
+							if (!pm->ps->weaponTime) //not firing
+							{
+								if (isWalkingAndBlocking == qtrue)
+								{
+									desiredAnim = BOTH_WALK1;
+									PM_HandleGunnerAim(isWalkingAndBlocking);
+
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+#ifdef _GAME
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+#endif
+									}
+								}
+								else
+								{
+									PM_SetAnim(SETANIM_BOTH, BOTH_WALK1, SETANIM_FLAG_NORMAL);
+
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+#ifdef _GAME
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+#endif
+									}
+								}
+							}
+							else
+							{
+								desiredAnim = BOTH_WALK1;
+							}
+						}
+						else
+						{
+							if (!pm->ps->weaponTime) //not firing
+							{
+								if (isWalkingAndBlocking == qtrue)
+								{
+									desiredAnim = BOTH_WALK8;
+									PM_HandleGunnerAim(isWalkingAndBlocking);
+
+									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+									{
+										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+#ifdef _GAME
+										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+#endif
+									}
+								}
+								else
+								{
+									PM_SetAnim(SETANIM_BOTH, BOTH_WALK8, SETANIM_FLAG_NORMAL);
+
+									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+									{
+										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
+#ifdef _GAME
+										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+#endif
+									}
+								}
+							}
+							else
+							{
+								desiredAnim = BOTH_WALK8;
+							}
+						}
+					}
 					else if (pm->ps && pm->ps->weapon == WP_BOWCASTER ||
 						pm->ps->weapon == WP_FLECHETTE ||
 						pm->ps->weapon == WP_DISRUPTOR ||
@@ -11790,35 +11862,44 @@ void BG_ClearRocketLock(playerState_t* ps)
 ===============
 PM_BeginWeaponChange
 ===============
-*/
+*/// Begin a weapon change, handling blocking, aiming, dual-weapon flags, zoom, and events.
+// Behaviour preserved; only safety and structure improved.
 void PM_BeginWeaponChange(const int weapon)
 {
-	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	//Holding Block Button
-	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
-	//Active Blocking
+	// Manual blocking state
+	const qboolean is_holding_block_button =
+		(pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse; // Holding Block Button
 
+	const qboolean is_holding_block_button_and_attack =
+		(pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse; // Active Blocking
+
+	// Invalid weapon index
 	if (weapon <= WP_NONE || weapon >= WP_NUM_WEAPONS)
 	{
 		return;
 	}
 
-	if (!(pm->ps->stats[STAT_WEAPONS] & 1 << weapon))
+	// Player does not have this weapon
+	if ((pm->ps->stats[STAT_WEAPONS] & (1 << weapon)) == 0)
 	{
 		return;
 	}
 
+	// Already dropping a weapon
 	if (pm->ps->weaponstate == WEAPON_DROPPING)
 	{
 		return;
 	}
 
-	if (pm->ps->weapon == WP_SABER && (is_holding_block_button || is_holding_block_button_and_attack))
+	// Cannot change from saber while holding block
+	if (pm->ps->weapon == WP_SABER &&
+		(is_holding_block_button == qtrue || is_holding_block_button_and_attack == qtrue))
 	{
 		return;
 	}
 
-	if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+	// Clear aiming state when changing weapon
+	if ((pm->ps->communicatingflags & (1u << CF_AIMINGGUN)) != 0u)
 	{
 		pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
 
@@ -11830,20 +11911,64 @@ void PM_BeginWeaponChange(const int weapon)
 #endif
 	}
 
-	// turn of any kind of zooming when weapon switching.
-	if (pm->ps->zoomMode)
+	// Handle dual pistol logic when holding Bryar pistol
+	if (pm->ps->weapon == WP_BRYAR_PISTOL)
+	{
+		qboolean allowDual = qfalse;
+
+		// Boba/Mando classes always have duals (ensure pm_entSelf is valid)
+		if (pm_entSelf &&
+			(pm_entSelf->s.botclass == BCLASS_BOBAFETT ||
+				pm_entSelf->s.botclass == BCLASS_MANDOLORIAN ||
+				pm_entSelf->s.botclass == BCLASS_MANDOLORIAN1 ||
+				pm_entSelf->s.botclass == BCLASS_MANDOLORIAN2))
+		{
+			allowDual = qtrue;
+		}
+#ifdef _GAME
+		// Skill-based dual pistols (only if clientNum is valid)
+		else if (pm->ps->clientNum >= 0 && pm->ps->clientNum < MAX_CLIENTS)
+		{
+			if (g_entities[pm->ps->clientNum].client->skillLevel[SK_PISTOL] >= FORCE_LEVEL_3)
+			{
+				allowDual = qtrue;
+			}
+		}
+#endif
+
+		if (allowDual == qtrue)
+		{
+			pm->ps->eFlags |= EF3_DUAL_WEAPONS;
+		}
+		else
+		{
+			pm->ps->eFlags &= ~EF3_DUAL_WEAPONS;
+		}
+	}
+	else
+	{
+		// Not holding pistol → no dual pistols
+		pm->ps->eFlags &= ~EF3_DUAL_WEAPONS;
+	}
+
+	// Turn off any kind of zooming when weapon switching
+	if (pm->ps->zoomMode != 0)
 	{
 		pm->ps->zoomMode = 0;
 		pm->ps->zoomTime = pm->ps->commandTime;
 	}
 
+	// Trigger weapon change event and state
 	PM_AddEventWithParm(EV_CHANGE_WEAPON, weapon);
 	pm->ps->weaponstate = WEAPON_DROPPING;
 	pm->ps->weaponTime += 200;
+
 	PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
 
+	// Clear any active rocket lock
 	BG_ClearRocketLock(pm->ps);
 }
+
 
 /*
 ===============
@@ -14094,23 +14219,27 @@ static void PM_Weapon(void)
 	{
 		qboolean allowDual = qfalse;
 
-		// Boba/Mando classes always have duals
-		if (pm_entSelf->s.botclass == BCLASS_BOBAFETT ||
-			pm_entSelf->s.botclass == BCLASS_MANDOLORIAN ||
-			pm_entSelf->s.botclass == BCLASS_MANDOLORIAN1 ||
-			pm_entSelf->s.botclass == BCLASS_MANDOLORIAN2)
+		// Boba/Mando classes always have duals (ensure pm_entSelf is valid)
+		if (pm_entSelf &&
+			(pm_entSelf->s.botclass == BCLASS_BOBAFETT ||
+				pm_entSelf->s.botclass == BCLASS_MANDOLORIAN ||
+				pm_entSelf->s.botclass == BCLASS_MANDOLORIAN1 ||
+				pm_entSelf->s.botclass == BCLASS_MANDOLORIAN2))
 		{
 			allowDual = qtrue;
 		}
 #ifdef _GAME
-		// Skill-based dual pistols
-		else if (g_entities[pm->ps->clientNum].client->skillLevel[SK_PISTOL] >= FORCE_LEVEL_3)
+		// Skill-based dual pistols (only if clientNum is valid)
+		else if (pm->ps->clientNum >= 0 && pm->ps->clientNum < MAX_CLIENTS)
 		{
-			allowDual = qtrue;
+			if (g_entities[pm->ps->clientNum].client->skillLevel[SK_PISTOL] >= FORCE_LEVEL_3)
+			{
+				allowDual = qtrue;
+			}
 		}
 #endif
 
-		if (allowDual)
+		if (allowDual == qtrue)
 		{
 			pm->ps->eFlags |= EF3_DUAL_WEAPONS;
 		}

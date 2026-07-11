@@ -7476,7 +7476,9 @@ void Menu_Paint(menuDef_t* menu, const qboolean forcePaint)
 ===============
 Item_ValidateTypeData
 ===============
-*/void Item_ValidateTypeData(itemDef_t* item)
+*/
+
+void Item_ValidateTypeData(itemDef_t* item)
 {
 	// ---------------------------------------------------------
 	// Safety: item must be valid

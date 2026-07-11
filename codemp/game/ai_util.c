@@ -610,12 +610,15 @@ static int ReadChatGroups(const bot_state_t* bs, const char* buf)
 
 	return 1;
 }
+#define BOT_PERSONALITY_BUF_SIZE 131072
+#define BOT_READBUF_SIZE         1024
+#define BOT_GROUPBUF_SIZE        65536
 
 void BotUtilizePersonality(bot_state_t* bs)
 {
 	fileHandle_t f;
-	//char buf[131072];
-	char* buf = B_TempAlloc(131072);
+
+	char* buf = B_TempAlloc(BOT_PERSONALITY_BUF_SIZE);
 
 	int len = trap->FS_Open(bs->settings.personalityfile, &f, FS_READ);
 
@@ -644,9 +647,9 @@ void BotUtilizePersonality(bot_state_t* bs)
 		buf[len] = '\0';
 		len++;
 	}
-
-	char* readbuf = B_TempAlloc(1024);
-	char* group = B_TempAlloc(65536);
+	
+	char* readbuf = B_TempAlloc(BOT_READBUF_SIZE);
+	char* group = B_TempAlloc(BOT_GROUPBUF_SIZE);
 
 	if (!GetValueGroup(buf, "GeneralBotInfo", group))
 	{
@@ -925,8 +928,8 @@ void BotUtilizePersonality(bot_state_t* bs)
 		ParseEmotionalAttachments(bs, group);
 	}
 
-	B_TempFree(131072); //buf
-	B_TempFree(1024); //readbuf
-	B_TempFree(65536); //group
+	B_TempFree(BOT_PERSONALITY_BUF_SIZE);
+	B_TempFree(BOT_READBUF_SIZE);
+	B_TempFree(BOT_GROUPBUF_SIZE);
 	trap->FS_Close(f);
 }

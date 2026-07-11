@@ -1976,12 +1976,12 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 	if (cent->interpolate)
 	{
 		vec3_t		current, next;
-		const float	f = cg.frameInterpolation;
 
 		if (cg.nextSnap == nullptr)
 		{
 			CG_Error("CG_AddCEntity: cg.nextSnap == nullptr");
 		}
+		const float	f = cg.frameInterpolation;
 
 		if (cent->currentState.apos.trType == TR_INTERPOLATE && cent->nextState)
 		{

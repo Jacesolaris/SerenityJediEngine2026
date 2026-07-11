@@ -173,7 +173,7 @@ using netchan_t = struct
 void Netchan_Init(int port);
 void Netchan_Setup(netsrc_t sock, netchan_t* chan, netadr_t adr, int qport);
 
-void Netchan_Transmit(netchan_t* chan, int length, const byte* data);
+void Netchan_Transmit(netchan_t* chan, const int length, const byte* data);
 qboolean Netchan_Process(netchan_t* chan, msg_t* msg);
 
 /*
@@ -595,7 +595,7 @@ void QDECL Com_Printf(const char* fmt, ...);
 void QDECL Com_DPrintf(const char* fmt, ...);
 void NORETURN QDECL Com_Error(int level, const char* fmt, ...);
 void NORETURN Com_Quit_f();
-int Com_EventLoop();
+int Com_EventLoop(void);
 int Com_Milliseconds(); // will be journaled properly
 uint32_t Com_BlockChecksum(const void* buffer, int length);
 int Com_Filter(const char* filter, const char* name, int casesensitive);

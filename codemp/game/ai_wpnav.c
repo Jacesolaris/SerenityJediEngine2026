@@ -58,13 +58,14 @@ int gLevelFlags = 0;
 // ------------------------------------------------------------
 static char* GetFlagStr(const int flags)
 {
-	char* flagstr = B_TempAlloc(128);
+	// Permanent allocation — safe because caller keeps the string
+	char* flagstr = BG_Alloc(128);
 	int i = 0;
 
 	if (flags == 0)
 	{
 		strcpy(flagstr, "none");
-		goto fend;
+		return flagstr;
 	}
 
 	// Simple one‑character flags
@@ -84,7 +85,7 @@ static char* GetFlagStr(const int flags)
 	if ((flags & WPFLAG_FORCEPUSH) != 0) { flagstr[i++] = 'p'; }
 	if ((flags & WPFLAG_FORCEPULL) != 0) { flagstr[i++] = 'o'; }
 
-	// Multi‑character flags (words)
+	// Multi‑character flags
 	if ((flags & WPFLAG_RED_FLAG) != 0)
 	{
 		if (i > 0) { flagstr[i++] = ' '; }
@@ -113,9 +114,7 @@ static char* GetFlagStr(const int flags)
 		i += 8;
 	}
 
-	// ------------------------------------------------------------
-	// NEW SPAWN FLAGS (your additions)
-	// ------------------------------------------------------------
+	// New spawn flags
 	if ((flags & WPFLAG_SPAWN_NEUTRAL) != 0)
 	{
 		if (i > 0) { flagstr[i++] = ' '; }
@@ -140,15 +139,14 @@ static char* GetFlagStr(const int flags)
 	// Null‑terminate
 	flagstr[i] = '\0';
 
-	// If nothing was written, return "unknown"
 	if (i == 0)
 	{
 		strcpy(flagstr, "unknown");
 	}
 
-fend:
 	return flagstr;
 }
+
 
 void G_TestLine(vec3_t start, vec3_t end, const int color, const int time)
 {

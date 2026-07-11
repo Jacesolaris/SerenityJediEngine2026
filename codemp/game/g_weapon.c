@@ -3400,10 +3400,15 @@ void CreateLaserTrap(gentity_t* laser_trap, vec3_t start, gentity_t* owner)
 	laser_trap->touch = touchLaserTrap;
 	laser_trap->think = TrapThink;
 	laser_trap->nextthink = level.time + 50;
-}
-
-void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
+}void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 {
+	// Validate entity and client
+	if (!ent || !ent->client)
+	{
+		Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: invalid ent or ent->client\n");
+		return;
+	}
+
 	gentity_t* found = NULL;
 	vec3_t dir = { 0 }, start = { 0 };
 	int trapcount = 0;
@@ -3416,44 +3421,70 @@ void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 		return;
 	}
 
-	// initialize first entry
-	found_laser_traps[0] = ENTITYNUM_NONE;
+	// Initialize array
+	for (int i = 0; i < MAX_GENTITIES; i++)
+	{
+		found_laser_traps[i] = ENTITYNUM_NONE;
+	}
 
+	// Copy direction + muzzle start
 	VectorCopy(forward, dir);
 	VectorCopy(muzzle, start);
 
+	// Spawn new trap entity
 	gentity_t* laserTrap = G_Spawn();
+	if (!laserTrap)
+	{
+		Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: G_Spawn failed\n");
+		return;
+	}
 
-	// limit to 10 placed at any one time
-	// see how many there are now
+	// Count existing traps belonging to this entity
 	while ((found = G_Find(found, FOFS(classname), "laserTrap")) != NULL)
 	{
 		if (found->parent != ent)
 		{
 			continue;
 		}
+
+		if (trapcount >= MAX_GENTITIES)
+		{
+			Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: trapcount exceeded MAX_GENTITIES\n");
+			break;
+		}
+
 		found_laser_traps[trapcount++] = found->s.number;
 	}
 
-	// now remove first ones we find until there are only 9 left
-	found = NULL;
+	// Remove oldest traps until only 9 remain
 	const int trapcount_org = trapcount;
-	int lowestTimeStamp = level.time;
 
 	while (trapcount > 9)
 	{
 		int removeMe = -1;
+		int lowestTimeStamp = level.time;
 
 		for (int i = 0; i < trapcount_org; i++)
 		{
-			if (found_laser_traps[i] == ENTITYNUM_NONE)
+			const int entNum = found_laser_traps[i];
+
+			if (entNum == ENTITYNUM_NONE)
 			{
 				continue;
 			}
 
-			found = &g_entities[found_laser_traps[i]];
+			// Validate index
+			if (entNum < 0 || entNum >= MAX_GENTITIES)
+			{
+				Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: invalid trap index %d\n", entNum);
+				found_laser_traps[i] = ENTITYNUM_NONE;
+				continue;
+			}
 
-			if (laserTrap && found->setTime < lowestTimeStamp)
+			found = &g_entities[entNum];
+
+			// Find oldest trap
+			if (found->setTime < lowestTimeStamp)
 			{
 				removeMe = i;
 				lowestTimeStamp = found->setTime;
@@ -3462,46 +3493,54 @@ void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 
 		if (removeMe != -1)
 		{
-			// remove it... or blow it?
-			if (&g_entities[found_laser_traps[removeMe]] == NULL)
+			const int entNum = found_laser_traps[removeMe];
+
+			if (entNum < 0 || entNum >= MAX_GENTITIES)
 			{
-				break;
+				Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: removeMe index %d out of range\n", entNum);
+				found_laser_traps[removeMe] = ENTITYNUM_NONE;
+				trapcount--;
+				continue;
 			}
 
-			G_FreeEntity(&g_entities[found_laser_traps[removeMe]]);
+			// Remove oldest trap
+			G_FreeEntity(&g_entities[entNum]);
+
 			found_laser_traps[removeMe] = ENTITYNUM_NONE;
 			trapcount--;
 		}
 		else
 		{
+			// No valid trap found to remove
 			break;
 		}
 	}
 
-	// now make the new one
+	// Create the new trap
 	CreateLaserTrap(laserTrap, start, ent);
 
-	// set player-created-specific fields
-	laserTrap->setTime = level.time; // remember when we placed it
+	// Remember placement time
+	laserTrap->setTime = level.time;
 
-	if (!alt_fire)
+	// Tripwire mode
+	if (alt_fire == qfalse)
 	{
-		// tripwire
 		laserTrap->count = 1;
 	}
 
-	// move it
+	// Movement physics
 	laserTrap->s.pos.trType = TR_GRAVITY;
 
-	if (alt_fire)
+	if (alt_fire == qtrue)
 	{
-		VectorScale(dir, 512, laserTrap->s.pos.trDelta);
+		VectorScale(dir, 512.0f, laserTrap->s.pos.trDelta);
 	}
 	else
 	{
-		VectorScale(dir, 256, laserTrap->s.pos.trDelta);
+		VectorScale(dir, 256.0f, laserTrap->s.pos.trDelta);
 	}
 
+	// Link into world
 	trap->LinkEntity((sharedEntity_t*)laserTrap);
 }
 
@@ -3799,14 +3838,19 @@ static qboolean CheatsOn(void)
 		return qfalse;
 	}
 	return qtrue;
-}
-
-static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
+}static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 {
 	gentity_t* found = NULL;
 	int trapcount = 0;
 
-	// FIX: move large array off stack (C6262)
+	// Early out if entity or client is invalid
+	if (!ent || !ent->client)
+	{
+		Com_Printf(S_COLOR_RED "WP_DropDetPack: invalid ent or ent->client\n");
+		return;
+	}
+
+	// FIX: move large array off stack (C6262) and initialize safely
 	int* found_det_packs = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
 	if (!found_det_packs)
 	{
@@ -3814,42 +3858,56 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 		return;
 	}
 
-	// initialize first entry
-	found_det_packs[0] = ENTITYNUM_NONE;
-
-	if (!ent || !ent->client)
+	// Initialize all entries to ENTITYNUM_NONE
+	for (int i = 0; i < MAX_GENTITIES; i++)
 	{
-		return;
+		found_det_packs[i] = ENTITYNUM_NONE;
 	}
 
-	// limit to 10 placed at any one time
-	// see how many there are now
+	// Limit to 10 placed at any one time
+	// See how many there are now
 	while ((found = G_Find(found, FOFS(classname), "detpack")) != NULL)
 	{
 		if (found->parent != ent)
 		{
 			continue;
 		}
+
+		if (trapcount >= MAX_GENTITIES)
+		{
+			Com_Printf(S_COLOR_RED "WP_DropDetPack: trapcount exceeded MAX_GENTITIES\n");
+			break;
+		}
+
 		found_det_packs[trapcount++] = found->s.number;
 	}
 
-	// now remove first ones we find until there are only 9 left
+	// Now remove first ones we find until there are only 9 left
 	found = NULL;
 	const int trapcount_org = trapcount;
-	int lowestTimeStamp = level.time;
 
 	while (trapcount > 9)
 	{
 		int removeMe = -1;
+		int lowestTimeStamp = level.time;
 
 		for (int i = 0; i < trapcount_org; i++)
 		{
-			if (found_det_packs[i] == ENTITYNUM_NONE)
+			const int entNum = found_det_packs[i];
+
+			if (entNum == ENTITYNUM_NONE)
 			{
 				continue;
 			}
 
-			found = &g_entities[found_det_packs[i]];
+			if (entNum < 0 || entNum >= MAX_GENTITIES)
+			{
+				Com_Printf(S_COLOR_RED "WP_DropDetPack: invalid detpack entity index %d\n", entNum);
+				found_det_packs[i] = ENTITYNUM_NONE;
+				continue;
+			}
+
+			found = &g_entities[entNum];
 
 			if (found->setTime < lowestTimeStamp)
 			{
@@ -3860,16 +3918,21 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 
 		if (removeMe != -1)
 		{
-			// remove it... or blow it?
-			if (&g_entities[found_det_packs[removeMe]] == NULL)
+			const int entNum = found_det_packs[removeMe];
+
+			if (entNum < 0 || entNum >= MAX_GENTITIES)
 			{
-				break;
+				Com_Printf(S_COLOR_RED "WP_DropDetPack: removeMe index %d out of range\n", entNum);
+				found_det_packs[removeMe] = ENTITYNUM_NONE;
+				trapcount--;
+				continue;
 			}
 
+			// Remove it... or blow it?
 			if (!CheatsOn())
 			{
 				// Let them have unlimited if cheats are enabled
-				G_FreeEntity(&g_entities[found_det_packs[removeMe]]);
+				G_FreeEntity(&g_entities[entNum]);
 			}
 
 			found_det_packs[removeMe] = ENTITYNUM_NONE;
@@ -3877,11 +3940,12 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 		}
 		else
 		{
+			// No valid detpack found to remove
 			break;
 		}
 	}
 
-	if (alt_fire)
+	if (alt_fire == qtrue)
 	{
 		BlowDetpacks(ent);
 	}
@@ -3892,7 +3956,7 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 		calcmuzzlePoint(ent, forward, vright, muzzle);
 
 		VectorNormalize(forward);
-		VectorMA(muzzle, -4, forward, muzzle);
+		VectorMA(muzzle, -4.0f, forward, muzzle);
 
 		drop_charge(ent, muzzle, forward);
 

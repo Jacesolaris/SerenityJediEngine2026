@@ -2408,7 +2408,7 @@ qboolean PM_StandingAtReadyAnim(const int anim)
 	return qfalse;
 }
 
-qboolean BG_InKnockDownOnGround(const playerState_t* ps)
+qboolean PM_InKnockDownOnGround(const playerState_t* ps)
 {
 	switch (ps->legsAnim)
 	{

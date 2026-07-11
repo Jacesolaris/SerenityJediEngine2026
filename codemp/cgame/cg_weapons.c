@@ -1003,8 +1003,7 @@ void cg_add_player_weaponduals(refEntity_t* parent,
 	}
 }
 
-void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent, vec3_t new_angles,
-	qboolean third_person)
+void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent, vec3_t new_angles, qboolean third_person)
 {
 	refEntity_t gun;
 	refEntity_t barrel;
@@ -3640,7 +3639,6 @@ void* CG_G2HolsterWeaponInstance(const centity_t* cent, const int weapon, const 
 }
 
 // what ghoul2 model do we want to copy ?
-// what ghoul2 model do we want to copy ?
 void CG_CopyG2WeaponInstance(const centity_t* cent, const int weapon_num, void* to_ghoul2)
 {
 	void* weapG2;
@@ -3772,7 +3770,9 @@ void CG_CopyG2WeaponInstance(const centity_t* cent, const int weapon_num, void* 
 			trap->G2API_RemoveGhoul2Model(&to_ghoul2, 1);
 		}
 	}
-}void CG_CheckPlayerG2Weapons(const playerState_t* ps, centity_t* cent)
+}
+
+void CG_CheckPlayerG2Weapons(const playerState_t* ps, centity_t* cent)
 {
 	qboolean isFollow = qfalse;
 	qboolean isNPC = qfalse;

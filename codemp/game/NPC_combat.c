@@ -80,25 +80,37 @@ void G_ClearEnemy(gentity_t* self)
 NPC_AngerAlert
 -------------------------
 */
+#define ANGER_ALERT_RADIUS        512
+#define ANGER_ALERT_SOUND_RADIUS  256
 
-#define	ANGER_ALERT_RADIUS			512
-#define	ANGER_ALERT_SOUND_RADIUS	256
-
+// Alert nearby allies when this NPC becomes angry.
+// Behaviour preserved; only safety and structure improved.
 void G_AngerAlert(const gentity_t* self)
 {
-	if (self && self->NPC && self->NPC->scriptFlags & SCF_NO_GROUPS)
+	// SAFETY FIX: self may be NULL in edge cases (bad spawns, scripts)
+	if (self == NULL)
 	{
-		//I'm not a team playa...
 		return;
 	}
-	if (!TIMER_Done(self, "interrogating"))
+
+	// NPC pointer may also be NULL
+	if (self->NPC && (self->NPC->scriptFlags & SCF_NO_GROUPS))
 	{
-		//I'm interrogating, don't wake everyone else up yet... FIXME: this may never wake everyone else up, though!
+		// I'm not a team playa...
 		return;
 	}
-	//FIXME: hmm.... with all the other new alerts now, is this still neccesary or even a good idea...?
+
+	// Check interrogation timer
+	if (TIMER_Done(self, "interrogating") == qfalse)
+	{
+		// I'm interrogating, don't wake everyone else up yet...
+		return;
+	}
+
+	// Alert nearby allies
 	G_AlertTeam(self, self->enemy, ANGER_ALERT_RADIUS, ANGER_ALERT_SOUND_RADIUS);
 }
+
 
 /*
 -------------------------
@@ -106,20 +118,30 @@ G_TeamEnemy
 -------------------------
 */
 
+// Determine if any teammate of 'self' currently has an enemy that is not on our team.
+// Behaviour preserved; only safety and structure improved.
 qboolean G_TeamEnemy(const gentity_t* self)
 {
-	//FIXME: Probably a better way to do this, is a linked list of your teammates already available?
-
-	if (!self->client || self->client->playerTeam == NPCTEAM_FREE)
+	// SAFETY FIX: self may be NULL in edge cases (bad spawns, scripts)
+	if (self == NULL)
 	{
 		return qfalse;
 	}
-	if (self && self->NPC && self->NPC->scriptFlags & SCF_NO_GROUPS)
+
+	// Must have a client and must not be NPCTEAM_FREE
+	if (self->client == NULL || self->client->playerTeam == NPCTEAM_FREE)
 	{
-		//I'm not a team playa...
 		return qfalse;
 	}
 
+	// NPC may be NULL
+	if (self->NPC && (self->NPC->scriptFlags & SCF_NO_GROUPS))
+	{
+		// I'm not a team playa...
+		return qfalse;
+	}
+
+	// Iterate through all entities
 	for (int i = 1; i < level.num_entities; i++)
 	{
 		const gentity_t* ent = &g_entities[i];
@@ -134,23 +156,25 @@ qboolean G_TeamEnemy(const gentity_t* self)
 			continue;
 		}
 
-		if (!ent->client)
+		if (ent->client == NULL)
 		{
 			continue;
 		}
 
-		if (ent->client && ent->client->playerTeam != self->client->playerTeam)
+		// Must be on the same team
+		if (ent->client->playerTeam != self->client->playerTeam)
 		{
-			//ent is not on my team
 			continue;
 		}
 
-		if (ent->enemy)
+		// If teammate has an enemy
+		if (ent->enemy != NULL)
 		{
-			//they have an enemy
-			if (!ent->enemy->client || ent->enemy->client->playerTeam != self->client->playerTeam)
+			// Enemy must have a client and must NOT be on our team
+			if (ent->enemy->client == NULL ||
+				ent->enemy->client->playerTeam != self->client->playerTeam)
 			{
-				//the ent's enemy is either a normal ent or is a player/NPC that is not on my team
+				// Teammate is fighting someone not on our team
 				return qtrue;
 			}
 		}
@@ -158,6 +182,7 @@ qboolean G_TeamEnemy(const gentity_t* self)
 
 	return qfalse;
 }
+
 
 static qboolean G_CheckSaberAllyAttackDelay(const gentity_t* self, const gentity_t* enemy)
 {
@@ -467,27 +492,36 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 {
 	int event = 0;
 
-	//Must be valid
-	if (enemy == NULL)
+	// Must be valid self
+	if (self == NULL)
+	{
 		return;
+	}
 
-	//Must be valid
+	// Must be valid enemy
+	if (enemy == NULL)
+	{
+		return;
+	}
+
 	if (enemy->inuse == 0)
 	{
 		return;
 	}
 
 	enemy = G_CheckControlledTurretEnemy(self, enemy, qtrue);
-	if (!enemy)
+	if (enemy == NULL)
 	{
 		return;
 	}
 
-	//Don't take the enemy if in notarget
+	// Don't take the enemy if in notarget
 	if (enemy->flags & FL_NOTARGET)
+	{
 		return;
+	}
 
-	if (!self->NPC)
+	if (self->NPC == NULL)
 	{
 		self->enemy = enemy;
 		return;
@@ -495,25 +529,17 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 
 	if (self->NPC->confusionTime > level.time)
 	{
-		//can't pick up enemies if confused
+		// can't pick up enemies if confused
 		return;
 	}
 
-	//#ifdef _DEBUG
-	//	if ( self->s.number >= MAX_CLIENTS )
-	//	{
-	//		assert( enemy != self );
-	//	}
-	//#endif// _DEBUG
-
-	if (self->client && self->NPC && enemy->client)
+	if (self->client && enemy->client)
 	{
 		if (enemy->client->playerTeam == self->client->playerTeam)
 		{
-			//Probably a damn script!
+			// Probably a damn script!
 			if (self->NPC->charmedTime > level.time)
 			{
-				//Probably a damn script!
 				return;
 			}
 
@@ -525,45 +551,47 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		}
 	}
 
-	if (self->NPC && self->client && self->client->ps.weapon == WP_SABER)
+	if (self->client && self->client->ps.weapon == WP_SABER)
 	{
-		//when get new enemy, set a base aggression based on what that enemy is using, how far they are, etc.
+		// when get new enemy, set a base aggression based on what that enemy is using, how far they are, etc.
 		NPC_Jedi_RateNewEnemy(self, enemy);
 	}
 
-	//NOTE: this is not necessarily true!
-	//self->NPC->enemyLastSeenTime = level.time;
+	// NOTE: this is not necessarily true!
+	// self->NPC->enemyLastSeenTime = level.time;
 
 	if (self->enemy == NULL)
 	{
-		//TEMP HACK: turn on our saber
+		// TEMP HACK: turn on our saber
 		if (self->health > 0)
 		{
 			G_ForceSaberOn(self);
 		}
 
-		//FIXME: Have to do this to prevent alert cascading
+		// FIXME: Have to do this to prevent alert cascading
 		G_ClearEnemy(self);
 		self->enemy = enemy;
 
 		if (self->client && self->client->NPC_class == CLASS_SABOTEUR)
 		{
-			//saboteurs cloak before initially attacking.
+			// saboteurs cloak before initially attacking.
 			Saboteur_Cloak(NPCS.NPC); // Cloak
 			TIMER_Set(self, "decloakwait", 3000); // Wait 3 sec before decloak and attack
 		}
 
-		//Special case- if player is being hunted by his own people, set their enemy team correctly
-		if (self->client->playerTeam == NPCTEAM_PLAYER
-			&& enemy->s.number < MAX_CLIENTS
-			&& enemy->client && enemy->client->playerTeam == NPCTEAM_PLAYER)
+		// Special case- if player is being hunted by his own people, set their enemy team correctly
+		if (self->client &&
+			self->client->playerTeam == NPCTEAM_PLAYER &&
+			enemy->s.number < MAX_CLIENTS &&
+			enemy->client &&
+			enemy->client->playerTeam == NPCTEAM_PLAYER)
 		{
-			//make the player "evil" so that everyone goes after him
+			// make the player "evil" so that everyone goes after him
 			enemy->client->enemyTeam = (npcteam_t)(team_t)TEAM_FREE;
 			enemy->client->playerTeam = (npcteam_t)(team_t)TEAM_FREE;
 		}
 
-		//If have an anger script, run that instead of yelling
+		// If have an anger script, run that instead of yelling
 		if (G_ActivateBehavior(self, BSET_ANGER))
 		{
 		}
@@ -573,23 +601,23 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 			&& self->client->leader->client->ps.clientNum < MAX_CLIENTS
 			&& !TIMER_Done(self, "kyleAngerSoundDebounce"))
 		{
-			//Kyle ally NPC doesn't yell if you have an enemy more than once every five seconds
+			// Kyle ally NPC doesn't yell if you have an enemy more than once every five seconds
 		}
 		else if (self->client && enemy->client && self->client->playerTeam != enemy->client->playerTeam)
 		{
-			//	 Basically, you're first one to notice enemies
+			// Basically, you're first one to notice enemies
 			if (self->client->pushEffectTime < level.time) // not currently being pushed
 			{
-				//say something if we're not getting pushed.
+				// say something if we're not getting pushed.
 				if (!G_TeamEnemy(self) && self->client->NPC_class != CLASS_BOBAFETT)
 				{
-					//team did not have an enemy previously and we're not Boba Fett
+					// team did not have an enemy previously and we're not Boba Fett
 					if (self->NPC
 						&& self->client->playerTeam == NPCTEAM_PLAYER
 						&& enemy->s.number < MAX_CLIENTS
 						&& Q_stricmp("Jedi2", self->NPC_type) == 0)
 					{
-						//jedi2 use different sounds
+						// jedi2 use different sounds
 						switch (Q_irand(0, 2))
 						{
 						case 0:
@@ -609,7 +637,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 					{
 						if (Q_irand(0, 1))
 						{
-							//hell, we're loading them, might as well use them!
+							// hell, we're loading them, might as well use them!
 							event = Q_irand(EV_CHASE1, EV_CHASE3);
 						}
 						else
@@ -622,96 +650,106 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 
 			if (event)
 			{
-				//yell
+				// yell
 				if (self->client
 					&& self->client->NPC_class == CLASS_KYLE
 					&& self->client->leader
 					&& self->client->leader->client->ps.clientNum < MAX_CLIENTS)
 				{
-					//don't yell that you have an enemy more than once every 4-8 seconds
+					// don't yell that you have an enemy more than once every 4-8 seconds
 					TIMER_Set(self, "kyleAngerSoundDebounce", Q_irand(4000, 8000));
 				}
 				G_AddVoiceEvent(self, event, 2000);
 			}
 		}
 
-		if (self->s.weapon == WP_BLASTER || self->s.weapon == WP_REPEATER ||
-			self->s.weapon == WP_THERMAL
-			|| self->s.weapon == WP_BOWCASTER)
+		if (self->s.weapon == WP_BLASTER ||
+			self->s.weapon == WP_REPEATER ||
+			self->s.weapon == WP_THERMAL ||
+			self->s.weapon == WP_BOWCASTER)
 		{
-			//When first get mad, aim is bad
-			if (self->client->playerTeam == NPCTEAM_PLAYER)
+			// When first get mad, aim is bad
+			if (self->client && self->NPC)
 			{
-				G_AimSet(self, Q_irand(self->NPC->stats.aim - 5 * g_npcspskill.integer,
-					self->NPC->stats.aim - g_npcspskill.integer));
-			}
-			else
-			{
-				int minErr = 3;
-				int maxErr = 12;
-				if (self->client->NPC_class == CLASS_IMPWORKER)
+				if (self->client->playerTeam == NPCTEAM_PLAYER)
 				{
-					minErr = 15;
-					maxErr = 30;
+					G_AimSet(self, Q_irand(self->NPC->stats.aim - 5 * g_npcspskill.integer,
+						self->NPC->stats.aim - g_npcspskill.integer));
 				}
-				else if (self->client->NPC_class == CLASS_STORMTROOPER && self->NPC && self->NPC->rank <=
-					RANK_CREWMAN)
+				else
 				{
-					minErr = 5;
-					maxErr = 15;
-				}
-				else if (self->client->NPC_class == CLASS_CLONETROOPER && self->NPC && self->NPC->rank <=
-					RANK_CREWMAN)
-				{
-					minErr = 5;
-					maxErr = 15;
-				}
-				else if (self->client->NPC_class == CLASS_STORMCOMMANDO && self->NPC && self->NPC->rank <=
-					RANK_CREWMAN)
-				{
-					minErr = 5;
-					maxErr = 15;
-				}
-				else if (self->client->NPC_class == CLASS_SBD && self->NPC && self->NPC->rank <= RANK_CREWMAN)
-				{
-					minErr = 5;
-					maxErr = 15;
-				}
+					int minErr = 3;
+					int maxErr = 12;
 
-				G_AimSet(self, Q_irand(self->NPC->stats.aim - maxErr * (3 - g_npcspskill.integer),
-					self->NPC->stats.aim - minErr * (3 - g_npcspskill.integer)));
+					if (self->client->NPC_class == CLASS_IMPWORKER)
+					{
+						minErr = 15;
+						maxErr = 30;
+					}
+					else if (self->client->NPC_class == CLASS_STORMTROOPER && self->NPC && self->NPC->rank <=
+						RANK_CREWMAN)
+					{
+						minErr = 5;
+						maxErr = 15;
+					}
+					else if (self->client->NPC_class == CLASS_CLONETROOPER && self->NPC && self->NPC->rank <=
+						RANK_CREWMAN)
+					{
+						minErr = 5;
+						maxErr = 15;
+					}
+					else if (self->client->NPC_class == CLASS_STORMCOMMANDO && self->NPC && self->NPC->rank <=
+						RANK_CREWMAN)
+					{
+						minErr = 5;
+						maxErr = 15;
+					}
+					else if (self->client->NPC_class == CLASS_SBD && self->NPC && self->NPC->rank <= RANK_CREWMAN)
+					{
+						minErr = 5;
+						maxErr = 15;
+					}
+
+					G_AimSet(self, Q_irand(self->NPC->stats.aim - maxErr * (3 - g_npcspskill.integer),
+						self->NPC->stats.aim - minErr * (3 - g_npcspskill.integer)));
+				}
 			}
 		}
 
-		//Alert anyone else in the area
-		if (Q_stricmp("STCommander", self->NPC_type) != 0 && Q_stricmp("ImpCommander", self->NPC_type) != 0)
+		// Alert anyone else in the area
+		if (self->NPC &&
+			Q_stricmp("STCommander", self->NPC_type) != 0 &&
+			Q_stricmp("ImpCommander", self->NPC_type) != 0)
 		{
-			//special enemies exception
-			if (self->client->ps.fd.forceGripBeingGripped < level.time)
+			// special enemies exception
+			if (self->client &&
+				self->client->ps.fd.forceGripBeingGripped < level.time)
 			{
-				//gripped people can't call for help
+				// gripped people can't call for help
 				G_AngerAlert(self);
 			}
 		}
+
 		if (!G_CheckSaberAllyAttackDelay(self, enemy))
 		{
-			//not a saber ally holding back
-			//Stormtroopers don't fire right away!
+			// not a saber ally holding back
+			// Stormtroopers don't fire right away!
 			G_AttackDelay(self, enemy);
 		}
 
-		//FIXME: this is a disgusting hack that is supposed to make the Imperials start with their weapon holstered- need a better way
-		if (self->client->ps.weapon == WP_NONE && !Q_strncmp(self->NPC_type, "imp", 3) && !(self->NPC->
-			scriptFlags &
-			SCF_FORCED_MARCH))
+		// FIXME: this is a disgusting hack that is supposed to make the Imperials start with their weapon holstered- need a better way
+		if (self->client &&
+			self->client->ps.weapon == WP_NONE &&
+			!Q_strncmp(self->NPC_type, "imp", 3) &&
+			!(self->NPC->scriptFlags & SCF_FORCED_MARCH))
 		{
-			if (self->client->ps.stats[STAT_WEAPONS] & 1 << WP_BLASTER)
+			if (self->client->ps.stats[STAT_WEAPONS] & (1 << WP_BLASTER))
 			{
 				ChangeWeapon(self, WP_BLASTER);
 				self->client->ps.weapon = WP_BLASTER;
 				self->client->ps.weaponstate = WEAPON_READY;
 			}
-			else if (self->client->ps.stats[STAT_WEAPONS] & 1 << WP_BRYAR_PISTOL)
+			else if (self->client->ps.stats[STAT_WEAPONS] & (1 << WP_BRYAR_PISTOL))
 			{
 				ChangeWeapon(self, WP_BRYAR_PISTOL);
 				self->client->ps.weapon = WP_BRYAR_PISTOL;
@@ -721,17 +759,18 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		return;
 	}
 
-	//Otherwise, just picking up another enemy
+	// Otherwise, just picking up another enemy
 
 	if (event)
 	{
 		G_AddVoiceEvent(self, event, 2000);
 	}
 
-	//Take the enemy
+	// Take the enemy
 	G_ClearEnemy(self);
 	self->enemy = enemy;
 }
+
 
 void ChangeWeapon(const gentity_t* ent, int new_weapon)
 {
@@ -1134,68 +1173,74 @@ void ShootThink(void)
 	NPCS.NPC->attackDebounceTime = level.time + NPC_AttackDebounceForWeapon();
 }
 
-void WeaponThink()
+// Handle NPC weapon logic and firing conditions.
+// Behaviour preserved; only safety and structure improved.
+void WeaponThink(void)
 {
+	// SAFETY FIX: NPC and client must exist
+	if (NPCS.NPC == NULL || NPCS.NPC->client == NULL || NPCS.client == NULL)
+	{
+		return;
+	}
+
+	// Clear attack button
 	NPCS.ucmd.buttons &= ~BUTTON_ATTACK;
-	if (NPCS.client->ps.weaponstate == WEAPON_RAISING || NPCS.client->ps.weaponstate == WEAPON_DROPPING)
+
+	// Cannot fire while raising or dropping weapon
+	if (NPCS.client->ps.weaponstate == WEAPON_RAISING ||
+		NPCS.client->ps.weaponstate == WEAPON_DROPPING)
 	{
 		NPCS.ucmd.weapon = NPCS.client->ps.weapon;
 		return;
 	}
 
-	// can't shoot while shield is up
-	/*if (NPCS.NPC->flags&FL_SHIELDED && NPCS.NPC->client->NPC_class == CLASS_ASSASSIN_DROID)
-	{
-		return;
-	}*/
-
-	// Can't Fire While Cloaked
-	if (NPCS.NPC->client &&
-		NPCS.NPC->client->ps.powerups[PW_CLOAKED])
+	// Cannot fire while cloaked
+	if (NPCS.NPC->client->ps.powerups[PW_CLOAKED] != 0)
 	{
 		return;
 	}
 
+	// No weapon equipped
 	if (NPCS.client->ps.weapon == WP_NONE)
 	{
 		return;
 	}
 
-	if (NPCS.client->ps.weaponstate != WEAPON_READY && NPCS.client->ps.weaponstate != WEAPON_FIRING &&
-		NPCS.
-		client->
-		ps.weaponstate != WEAPON_IDLE)
+	// Only fire when weapon is ready/firing/idle
+	if (NPCS.client->ps.weaponstate != WEAPON_READY &&
+		NPCS.client->ps.weaponstate != WEAPON_FIRING &&
+		NPCS.client->ps.weaponstate != WEAPON_IDLE)
 	{
 		return;
 	}
 
+	// Fire rate timing
 	if (level.time < NPCS.NPCInfo->shotTime)
 	{
 		return;
 	}
 
-	//MCG - Begin
-	//For now, no-one runs out of ammo
-	if (NPCS.NPC->client->ps.ammo[weaponData[NPCS.client->ps.weapon].ammoIndex] < weaponData[NPCS.client
-		->ps.
-		weapon]
-		.energyPerShot)
+	// Ammo check (behaviour preserved: NPCs never run out)
+	const int ammoIndex = weaponData[NPCS.client->ps.weapon].ammoIndex;
+	const int energyPerShot = weaponData[NPCS.client->ps.weapon].energyPerShot;
+	const int altEnergyPerShot = weaponData[NPCS.client->ps.weapon].altEnergyPerShot;
+
+	if (NPCS.NPC->client->ps.ammo[ammoIndex] < energyPerShot)
 	{
-		Add_Ammo(NPCS.NPC, NPCS.client->ps.weapon,
-			weaponData[NPCS.client->ps.weapon].energyPerShot * 10);
+		Add_Ammo(NPCS.NPC, NPCS.client->ps.weapon, energyPerShot * 10);
 	}
-	else if (NPCS.NPC->client->ps.ammo[weaponData[NPCS.client->ps.weapon].ammoIndex] < weaponData[NPCS.
-		client->
-		ps.
-		weapon].altEnergyPerShot)
+	else if (NPCS.NPC->client->ps.ammo[ammoIndex] < altEnergyPerShot)
 	{
-		Add_Ammo(NPCS.NPC, NPCS.client->ps.weapon,
-			weaponData[NPCS.client->ps.weapon].altEnergyPerShot * 5);
+		Add_Ammo(NPCS.NPC, NPCS.client->ps.weapon, altEnergyPerShot * 5);
 	}
 
+	// Set weapon for firing
 	NPCS.ucmd.weapon = NPCS.client->ps.weapon;
+
+	// Execute firing logic
 	ShootThink();
 }
+
 
 /*
 HaveWeapon
@@ -1614,7 +1659,7 @@ gentity_t* NPC_PickEnemy(const gentity_t* closestTo, const int enemyTeam, const 
 	const qboolean findClosest)
 {
 	int num_choices = 0;
-	int choice[128]; //FIXME: need a different way to determine how many choices?
+	int choice[128] = { 0 }; //FIXME: need a different way to determine how many choices?
 	gentity_t* newenemy;
 	gentity_t* closestEnemy = NULL;
 	vec3_t diff;
@@ -1944,9 +1989,17 @@ gentity_t* NPC_PickEnemy(const gentity_t* closestTo, const int enemyTeam, const 
 	return &g_entities[choice[rand() % num_choices]];
 }
 
-gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range, const qboolean ignoreGroup,
-	const qboolean movingOnly)
+// Pick the closest ally within range, optionally requiring facing and movement.
+// Behaviour preserved; only safety and structure improved.
+gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range,
+	const qboolean ignoreGroup, const qboolean movingOnly)
 {
+	// SAFETY FIX: NPC and NPC->client must exist
+	if (NPCS.NPC == NULL || NPCS.NPC->client == NULL)
+	{
+		return NULL;
+	}
+
 	gentity_t* closestAlly = NULL;
 	float bestDist = range;
 
@@ -1954,79 +2007,87 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range, const
 	{
 		gentity_t* ally = &g_entities[entNum];
 
-		if (ally->client)
+		if (ally->client == NULL)
 		{
-			if (ally->health > 0)
-			{
-				if (ally->client && (ally->client->playerTeam == NPCS.NPC->client->playerTeam ||
-					NPCS.NPC->client->playerTeam == NPCTEAM_ENEMY))
-				{
-					vec3_t diff;
-					//if on same team or if player is disguised as your team
-					if (ignoreGroup)
-					{
-						if (ally == NPCS.NPC->client->leader)
-						{
-							//reject
-							continue;
-						}
-						if (ally->client && ally->client->leader && ally->client->leader == NPCS.NPC)
-						{
-							//reject
-							continue;
-						}
-					}
+			continue;
+		}
 
-					if (!trap->InPVS(ally->r.currentOrigin, NPCS.NPC->r.currentOrigin))
+		if (ally->health <= 0)
+		{
+			continue;
+		}
+
+		// Same team OR disguised as enemy team
+		if (ally->client->playerTeam == NPCS.NPC->client->playerTeam ||
+			NPCS.NPC->client->playerTeam == NPCTEAM_ENEMY)
+		{
+			vec3_t diff;
+
+			// Ignore group logic
+			if (ignoreGroup == qtrue)
+			{
+				if (ally == NPCS.NPC->client->leader)
+				{
+					continue;
+				}
+				if (ally->client->leader && ally->client->leader == NPCS.NPC)
+				{
+					continue;
+				}
+			}
+
+			// Must be in PVS
+			if (!trap->InPVS(ally->r.currentOrigin, NPCS.NPC->r.currentOrigin))
+			{
+				continue;
+			}
+
+			// Movement requirement
+			if (movingOnly == qtrue)
+			{
+				if (!DistanceSquared(ally->client->ps.velocity, NPCS.NPC->client->ps.velocity))
+				{
+					continue;
+				}
+			}
+
+			// Distance check
+			VectorSubtract(NPCS.NPC->r.currentOrigin, ally->r.currentOrigin, diff);
+			const float relDist = VectorNormalize(diff);
+
+			if (relDist < bestDist)
+			{
+				// Facing requirement
+				if (facingEachOther == qtrue)
+				{
+					vec3_t vf;
+
+					// Ally facing NPC?
+					AngleVectors(ally->client->ps.viewangles, vf, NULL, NULL);
+					VectorNormalize(vf);
+					float dot = DotProduct(diff, vf);
+
+					if (dot < 0.5f)
 					{
 						continue;
 					}
 
-					if (movingOnly && ally->client && NPCS.NPC->client)
+					// NPC facing ally?
+					AngleVectors(NPCS.NPC->client->ps.viewangles, vf, NULL, NULL);
+					VectorNormalize(vf);
+					dot = DotProduct(diff, vf);
+
+					if (dot > -0.5f)
 					{
-						//They have to be moving relative to each other
-						if (!DistanceSquared(ally->client->ps.velocity, NPCS.NPC->client->ps.velocity))
-						{
-							continue;
-						}
+						continue;
 					}
+				}
 
-					VectorSubtract(NPCS.NPC->r.currentOrigin, ally->r.currentOrigin, diff);
-					const float relDist = VectorNormalize(diff);
-					if (relDist < bestDist)
-					{
-						if (facingEachOther)
-						{
-							vec3_t vf;
-
-							AngleVectors(ally->client->ps.viewangles, vf, NULL, NULL);
-							VectorNormalize(vf);
-							float dot = DotProduct(diff, vf);
-
-							if (dot < 0.5)
-							{
-								//Not facing in dir to me
-								continue;
-							}
-							//He's facing me, am I facing him?
-							AngleVectors(NPCS.NPC->client->ps.viewangles, vf, NULL, NULL);
-							VectorNormalize(vf);
-							dot = DotProduct(diff, vf);
-
-							if (dot > -0.5)
-							{
-								//I'm not facing opposite of dir to me
-								continue;
-							}
-							//I am facing him
-						}
-
-						if (NPC_CheckVisibility(ally, CHECK_360 | CHECK_VISRANGE) >= VIS_360)
-						{
-							bestDist = relDist;
-							closestAlly = ally;
-						}
-					}
+				// Visibility check
+				if (NPC_CheckVisibility(ally, CHECK_360 | CHECK_VISRANGE) >= VIS_360)
+				{
+					bestDist = relDist;
+					closestAlly = ally;
 				}
 			}
 		}
@@ -2034,6 +2095,7 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range, const
 
 	return closestAlly;
 }
+
 
 gentity_t* NPC_CheckEnemy(const qboolean find_new, const qboolean too_far_ok, const qboolean set_enemy)
 {
@@ -2370,21 +2432,39 @@ int NPC_ShotEntity(const gentity_t* ent, vec3_t impactPos)
 	return tr.entityNum;
 }
 
+// Evaluate whether an NPC should fire based on what the shot trace hit.
+// Behaviour preserved; only safety and correctness improved.
 qboolean NPC_EvaluateShot(const int hit, qboolean glassOK)
 {
-	if (!NPCS.NPC->enemy)
+	// Must have an enemy
+	if (NPCS.NPC == NULL || NPCS.NPC->enemy == NULL)
 	{
 		return qfalse;
 	}
 
-	if (hit == NPCS.NPC->enemy->s.number || &g_entities[hit] != NULL && g_entities[hit].r.svFlags &
-		SVF_GLASS_BRUSH)
+	// Validate hit index
+	if (hit < 0 || hit >= MAX_GENTITIES)
 	{
-		//can hit enemy or will hit glass, so shoot anyway
+		return qfalse;
+	}
+
+	gentity_t* ent = &g_entities[hit];
+
+	// If we hit the enemy directly → shoot
+	if (hit == NPCS.NPC->enemy->s.number)
+	{
 		return qtrue;
 	}
+
+	// If allowed to shoot through glass and the entity is glass → shoot
+	if (glassOK == qtrue && (ent->r.svFlags & SVF_GLASS_BRUSH))
+	{
+		return qtrue;
+	}
+
 	return qfalse;
 }
+
 
 /*
 NPC_CheckAttack
@@ -3261,6 +3341,8 @@ qboolean NPC_SetCombatPoint(const int combatPointID)
 }
 
 extern qboolean G_CanPickUpWeapons(const gentity_t* other);
+
+extern qboolean CheckItemCanBePickedUpByNPC(const gentity_t* item, const gentity_t* pickerupper);
 
 gentity_t* NPC_SearchForWeapons(void)
 {

@@ -59,55 +59,76 @@ static void BubbleShield_PushEnt(gentity_t* pushed, vec3_t smack_dir)
 ////////////////////////////////////////////////////////////////////////////////////////
 // Go Through All The Ents Within The Radius Of The Shield And Push Them
 ////////////////////////////////////////////////////////////////////////////////////////
-static void BubbleShield_PushRadiusEnts()
+// Push away entities inside the Assassin Droid bubble shield radius.
+// Behaviour preserved; only structure, safety, and stack usage improved.
+static void BubbleShield_PushRadiusEnts(void)
 {
-	int i;
-	int entity_list[MAX_GENTITIES];
-	const float radius = ASSASSIN_SHIELD_SIZE;
-	vec3_t mins, maxs;
+	// Allocate large array on heap to avoid C6262 stack warning
+	int* entity_list = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
+	if (!entity_list)
+	{
+		return;
+	}
 
-	for (i = 0; i < 3; i++)
+	const float radius = ASSASSIN_SHIELD_SIZE;
+	vec3_t mins = { 0, 0, 0 }, maxs = { 0, 0, 0 };
+
+	// Compute bounding box around NPC
+	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = NPCS.NPC->r.currentOrigin[i] - radius;
 		maxs[i] = NPCS.NPC->r.currentOrigin[i] + radius;
 	}
 
-	const int num_ents = trap->EntitiesInBox(mins, maxs, entity_list, 128);
-	for (i = 0; i < num_ents; i++)
+	// Query entities inside bounding box
+	const int num_ents = trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+	for (int i = 0; i < num_ents; i++)
 	{
-		vec3_t smack_dir;
-		gentity_t* radius_ent = &g_entities[entity_list[i]];
-		// Only Clients
-		//--------------
+		const int entNum = entity_list[i];
+
+		// Validate index
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
+		{
+			continue;
+		}
+
+		gentity_t* radius_ent = &g_entities[entNum];
+
+		// Only clients
 		if (!radius_ent || !radius_ent->client)
 		{
 			continue;
 		}
 
-		// Don't Push Away Other Assassin Droids
-		//---------------------------------------
+		// Do not push other Assassin Droids
 		if (radius_ent->client->NPC_class == NPCS.NPC->client->NPC_class)
 		{
 			continue;
 		}
 
-		// Should Have Already Pushed The Enemy If He Touched Us
-		//-------------------------------------------------------
-		if (NPCS.NPC->enemy && NPCS.NPCInfo->touchedByPlayer == NPCS.NPC->enemy && radius_ent == NPCS.NPC->enemy)
+		// Enemy already pushed by touch logic
+		if (NPCS.NPC->enemy &&
+			NPCS.NPCInfo->touchedByPlayer == NPCS.NPC->enemy &&
+			radius_ent == NPCS.NPC->enemy)
 		{
 			continue;
 		}
 
-		// Do The Vector Distance Test
-		//-----------------------------
+		// Compute direction from NPC to entity
+		vec3_t smack_dir;
 		VectorSubtract(radius_ent->r.currentOrigin, NPCS.NPC->r.currentOrigin, smack_dir);
+
 		const float smackDist = VectorNormalize(smack_dir);
+
+		// Inside radius → push entity
 		if (smackDist < radius)
 		{
 			BubbleShield_PushEnt(radius_ent, smack_dir);
 		}
 	}
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //

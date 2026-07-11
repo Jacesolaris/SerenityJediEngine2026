@@ -1242,58 +1242,74 @@ qboolean NPC_IsAlive(const gentity_t* self, const gentity_t* npc)
 
 extern qboolean NPC_MoveDirClear(int forwardmove, int rightmove, qboolean reset);
 
-static qboolean SJE_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t dir, qboolean walk, vec3_t dest)
+// Move an NPC or bot in a given direction using usercmd logic.
+// Behaviour preserved; only safety and structure improved.
+static qboolean SJE_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd,
+	vec3_t dir, qboolean walk, vec3_t dest)
 {
 	vec3_t forward, right;
 
-	const float walkSpeed = 63.0;
-	const gentity_t* aiEnt = self;
-
-	if (self->waterlevel > 0 && self->enemy && self->enemy->client && NPC_IsAlive(self, self->enemy))
+	// SAFETY FIX: self and self->client must exist
+	if (self == NULL || self->client == NULL)
 	{
-		// When we have a valid enemy, always check water level so we don't drown while attacking them...
+		DebugPrint(WL_WARNING, "SJE_UcmdMoveForDir: self or self->client was NULL\n");
+		return qfalse;
 	}
 
-	if (self->client
-		&& self->client->ps.weapon == WP_SABER
-		&& self->enemy
-		&& self->enemy->client
-		&& self->enemy->client->ps.weapon == WP_SABER
-		&& Distance(self->r.currentOrigin, self->enemy->r.currentOrigin) < 110.0)
+	const float walkSpeed = 63.0f;
+	const gentity_t* aiEnt = self;
+
+	// Water combat logic (behaviour preserved)
+	if (self->waterlevel > 0 &&
+		self->enemy &&
+		self->enemy->client &&
+		NPC_IsAlive(self, self->enemy) == qtrue)
 	{
-		// Jedi always walk when in combat with saber...
+		// NPC checks water level to avoid drowning while attacking
+	}
+
+	// Jedi always walk when in saber combat
+	if (self->client->ps.weapon == WP_SABER &&
+		self->enemy &&
+		self->enemy->client &&
+		self->enemy->client->ps.weapon == WP_SABER &&
+		Distance(self->r.currentOrigin, self->enemy->r.currentOrigin) < 110.0f)
+	{
 		walk = qtrue;
 	}
 
-	if (walk)
+	if (walk == qtrue)
 	{
 		cmd->buttons |= BUTTON_WALKING;
 	}
 
-	AngleVectors(self->client->ps.viewangles/*self->r.currentAngles*/, forward, right, NULL);
+	// Safe: self->client is guaranteed non‑NULL above
+	AngleVectors(self->client->ps.viewangles, forward, right, NULL);
 
 	cmd->upmove = 0;
 
+	// Flatten vectors
 	dir[2] = 0;
 	VectorNormalize(dir);
+
 	forward[2] = 0;
 	VectorNormalize(forward);
+
 	right[2] = 0;
 	VectorNormalize(right);
 
-	//NPCs cheat and store this directly because converting movement into a ucmd loses precision
+	// NPCs cheat and store moveDir directly
 	VectorCopy(dir, self->client->ps.moveDir);
 
-	// get direction and non-optimal magnitude
-	const float speed = walk ? walkSpeed : 127.0f;
+	// Compute movement magnitude
+	const float speed = (walk == qtrue) ? walkSpeed : 127.0f;
 	const float forwardmove = speed * DotProduct(forward, dir);
 	const float rightmove = speed * DotProduct(right, dir);
 
-	// find optimal magnitude to make speed as high as possible
+	// Optimize magnitude for maximum speed
 	if (Q_fabs(forwardmove) > Q_fabs(rightmove))
 	{
-		const float highestforward = forwardmove < 0 ? -speed : speed;
-
+		const float highestforward = (forwardmove < 0.0f) ? -speed : speed;
 		const float highestright = highestforward * rightmove / forwardmove;
 
 		cmd->forwardmove = ClampChar(highestforward);
@@ -1301,62 +1317,66 @@ static qboolean SJE_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t
 	}
 	else
 	{
-		const float highestright = rightmove < 0 ? -speed : speed;
-
+		const float highestright = (rightmove < 0.0f) ? -speed : speed;
 		const float highestforward = highestright * forwardmove / rightmove;
 
 		cmd->forwardmove = ClampChar(highestforward);
 		cmd->rightmove = ClampChar(highestright);
 	}
 
+	// Swimming → always go upward
 	if (self->waterlevel > 0)
 	{
-		// Always go to surface...
-		cmd->upmove = 127.0;
+		cmd->upmove = 127.0f;
 	}
 
-	if (self->client->ps.groundEntityNum != ENTITYNUM_NONE
-		&& !NPC_MoveDirClear(cmd->forwardmove, cmd->rightmove, qfalse))
+	// Ground movement safety check
+	if (self->client->ps.groundEntityNum != ENTITYNUM_NONE &&
+		NPC_MoveDirClear(cmd->forwardmove, cmd->rightmove, qfalse) == qfalse)
 	{
-		// Dir not clear, or we would fall!
 		cmd->forwardmove = 0;
 		cmd->rightmove = 0;
 		return qfalse;
 	}
 
+	// Bot AI movement (ET_PLAYER)
 	if (aiEnt->s.eType == ET_PLAYER)
 	{
 		vec3_t viewAngles;
 		vectoangles(dir, viewAngles);
 		trap->EA_View(aiEnt->s.number, viewAngles);
 
-		if (aiEnt->client && aiEnt->client->pers.cmd.buttons & BUTTON_WALKING)
+		const qboolean walkingCmd =
+			(aiEnt->client && (aiEnt->client->pers.cmd.buttons & BUTTON_WALKING)) ? qtrue : qfalse;
+
+		if (walkingCmd == qtrue)
 		{
 			trap->EA_Action(aiEnt->s.number, 0x0080000);
 			trap->EA_Move(aiEnt->s.number, dir, 100);
-
-			if (self->bot_strafe_jump_timer > level.time)
-				trap->EA_Jump(aiEnt->s.number);
-			else if (self->bot_strafe_left_timer > level.time)
-				trap->EA_MoveLeft(aiEnt->s.number);
-			else if (self->bot_strafe_right_timer > level.time)
-				trap->EA_MoveRight(aiEnt->s.number);
 		}
 		else
 		{
 			trap->EA_Move(aiEnt->s.number, dir, 200);
+		}
 
-			if (self->bot_strafe_jump_timer > level.time)
-				trap->EA_Jump(aiEnt->s.number);
-			else if (self->bot_strafe_left_timer > level.time)
-				trap->EA_MoveLeft(aiEnt->s.number);
-			else if (self->bot_strafe_right_timer > level.time)
-				trap->EA_MoveRight(aiEnt->s.number);
+		// Strafe / jump logic
+		if (self->bot_strafe_jump_timer > level.time)
+		{
+			trap->EA_Jump(aiEnt->s.number);
+		}
+		else if (self->bot_strafe_left_timer > level.time)
+		{
+			trap->EA_MoveLeft(aiEnt->s.number);
+		}
+		else if (self->bot_strafe_right_timer > level.time)
+		{
+			trap->EA_MoveRight(aiEnt->s.number);
 		}
 	}
 
 	return qtrue;
 }
+
 
 void G_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t dir)
 {

@@ -84,7 +84,7 @@ void G_BounceObject(gentity_t* ent, const trace_t* trace)
 G_RunObject
 ================
 */
-extern void DoImpact(gentity_t* self, gentity_t* other, qboolean damage_self, const trace_t* trace);
+extern void DoImpact(gentity_t* self, gentity_t* other, qboolean damageSelf, const trace_t* trace);
 
 void G_RunObject(gentity_t* ent)
 {

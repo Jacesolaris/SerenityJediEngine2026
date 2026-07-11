@@ -69,7 +69,7 @@ qboolean PM_SaberInDeflect(int move);
 qboolean PM_SaberInBrokenParry(int move);
 qboolean PM_SaberInBounce(int move);
 qboolean BG_SaberInReturn(int move);
-qboolean BG_InKnockDownOnGround(const playerState_t* ps);
+qboolean PM_InKnockDownOnGround(const playerState_t* ps);
 extern qboolean BG_InKnockDown(int anim);
 qboolean BG_StabDownAnim(int anim);
 qboolean BG_SabersOff(const playerState_t* ps);
@@ -3328,14 +3328,17 @@ int wp_saber_must_block(gentity_t* self, const gentity_t* atk, const qboolean ch
 
 	if (!(self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
 	{
-		// Bots cheat-block here (original behaviour preserved)
+		// Bots cheat-block here
 		if (self->r.svFlags & SVF_BOT)
-		{
-			if (manual_saberblocking(self))
+		{// 20% chance to check blocking, 80% is blocking
+			if (!Q_irand(0, 4))
+			{
+				return manual_saberblocking(self);
+			}
+			else
 			{
 				return 1;
 			}
-			return 0;
 		}
 		return 0;
 	}
@@ -3387,13 +3390,17 @@ int wp_saber_must_block(gentity_t* self, const gentity_t* atk, const qboolean ch
 
 	if (self->client->ps.weaponstate == WEAPON_RAISING)
 	{
+		// Bots cheat-block here
 		if (self->r.svFlags & SVF_BOT)
-		{
-			if (manual_saberblocking(self))
+		{// 20% chance to check blocking, 80% is blocking
+			if (!Q_irand(0, 4))
+			{
+				return manual_saberblocking(self);
+			}
+			else
 			{
 				return 1;
 			}
-			return 0;
 		}
 		return 0;
 	}
@@ -3415,13 +3422,17 @@ int wp_saber_must_block(gentity_t* self, const gentity_t* atk, const qboolean ch
 		//player is attacking with saber
 		if (!BG_SaberInNonIdleDamageMove(&atk->client->ps, atk->localAnimIndex))
 		{
+			// Bots cheat-block here
 			if (self->r.svFlags & SVF_BOT)
-			{
-				if (manual_saberblocking(self))
+			{// 20% chance to check blocking, 80% is blocking
+				if (!Q_irand(0, 4))
+				{
+					return manual_saberblocking(self);
+				}
+				else
 				{
 					return 1;
 				}
-				return 0;
 			}
 			return 0;
 		}
@@ -3464,13 +3475,17 @@ int wp_saber_must_block(gentity_t* self, const gentity_t* atk, const qboolean ch
 	//check to see if we have the force to do this.
 	if (self->client->ps.fd.blockPoints < WP_SaberBlockCost(self, atk, point))
 	{
+		// Bots cheat-block here
 		if (self->r.svFlags & SVF_BOT)
-		{
-			if (manual_saberblocking(self))
+		{// 20% chance to check blocking, 80% is blocking
+			if (!Q_irand(0, 4))
+			{
+				return manual_saberblocking(self);
+			}
+			else
 			{
 				return 1;
 			}
-			return 0;
 		}
 		return 0;
 	}
@@ -9474,7 +9489,7 @@ static void WP_HolsterSaberAndPlayOffSounds(gentity_t* hit_ent)
 }
 
 extern qboolean PM_KnockDownAnim(int anim);
-static void WP_KnockdownAndDrain(gentity_t* hit_ent, const gentity_t* pusher, int knockAnimMin, int knockAnimMax, qboolean addFatigueBonus, qboolean useAbsorbDrain)
+static void WP_KnockdownAndDrain(gentity_t* hit_ent, gentity_t* pusher, int knockAnimMin, int knockAnimMax, qboolean addFatigueBonus, qboolean useAbsorbDrain)
 {
 	const qboolean isBot = (qboolean)((hit_ent->r.svFlags & SVF_BOT) != 0);
 
@@ -9519,7 +9534,7 @@ static void WP_KnockdownAndDrain(gentity_t* hit_ent, const gentity_t* pusher, in
 	}
 }
 
-static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const vec3_t push_dir)
+static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push_dir)
 {
 	if (!hit_ent || !hit_ent->client || !pusher || !pusher->client)
 	{
@@ -9602,6 +9617,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 		pusher->client->ps.torsoAnim == MELEE_STANCE_B)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9610,6 +9626,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 		pusher->client->ps.torsoAnim == BOTH_TUSKENLUNGE1)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNLEFT, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9621,6 +9638,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 
 		if (pusher->client->ps.legsAnim == BOTH_A7_KICK_F2)
 		{
@@ -9640,6 +9658,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN5, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9647,12 +9666,14 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B2)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN5, BOTH_KNOCKDOWN5, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B3)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN4, BOTH_KNOCKDOWN4, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9661,6 +9682,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 		pusher->client->ps.legsAnim == BOTH_A7_KICK_L)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN2, BOTH_KNOCKDOWN2, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9669,6 +9691,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 		pusher->client->ps.torsoAnim == BOTH_SMACK_R)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNRIGHT, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9677,6 +9700,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 		pusher->client->ps.torsoAnim == BOTH_SMACK_L)
 	{
 		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_SLAPDOWNLEFT, BOTH_SLAPDOWNLEFT, qtrue, qfalse);
+		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9698,6 +9722,7 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, const gentity_t* pusher, const
 
 	// Default: generic knockdown
 	WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qfalse, qtrue);
+	G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
 	return qtrue;
 }
 

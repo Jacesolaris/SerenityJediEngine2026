@@ -381,11 +381,11 @@ using TEntEdgeMap = ratl::map_vs<int, TEdgesPerEnt, NAV::MAX_BLOCKING_ENTS>;
 struct SPathPoint
 {
 	CVec3 mPoint;
-	float mSpeed;
-	float mSlowingRadius;
-	float mReachedRadius;
-	float mDist;
-	float mETA;
+	float mSpeed = 0;
+	float mSlowingRadius = 0;
+	float mReachedRadius = 0;
+	float mDist = 0;
+	float mETA = 0;
 	NAV::TNodeHandle mNode;
 };
 
@@ -398,10 +398,10 @@ using TPath = ratl::vector_vs<SPathPoint, NAV::MAX_PATH_SIZE>;
 ////////////////////////////////////////////////////////////////////////////////////////
 struct SPathUser
 {
-	int mEnd;
-	bool mSuccess;
-	int mLastUseTime;
-	int mLastAStarTime;
+	int mEnd = 0;
+	bool mSuccess = false;
+	int mLastUseTime = 0;
+	int mLastAStarTime = 0;
 	TPath mPath;
 };
 
@@ -419,10 +419,10 @@ struct SSteerUser
 {
 	// Constant Values In Entity
 	//---------------------------
-	float mMaxForce;
-	float mMaxSpeed;
-	float mRadius;
-	float mMass;
+	float mMaxForce = 0;
+	float mMaxSpeed = 0;
+	float mRadius = 0;
+	float mMass = 0;
 
 	// Current Values
 	//----------------
@@ -432,7 +432,7 @@ struct SSteerUser
 	CVec3 mPosition;
 
 	CVec3 mVelocity;
-	float mSpeed;
+	float mSpeed = 0;
 
 	// Values Projected From Current Values
 	//--------------------------------------
@@ -443,20 +443,20 @@ struct SSteerUser
 	// Temporary Values
 	//------------------
 	CVec3 mDesiredVelocity;
-	float mDesiredSpeed;
-	float mDistance;
+	float mDesiredSpeed = 0;
+	float mDistance = 0;
 	CVec3 mSeekLocation;
 
-	int mIgnoreEntity;
+	int mIgnoreEntity = 0;
 
-	bool mBlocked;
-	int mBlockedTgtEntity;
+	bool mBlocked = false;
+	int mBlockedTgtEntity = 0;
 	CVec3 mBlockedTgtPosition;
 
 	// Steering
 	//----------
 	CVec3 mSteering;
-	float mNewtons;
+	float mNewtons = 0;
 };
 
 using TSteerUsers = ratl::pool_vs<SSteerUser, 4>;

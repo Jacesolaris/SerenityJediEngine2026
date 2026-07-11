@@ -32,6 +32,8 @@ extern Vehicle_t* G_IsRidingVehicle(const gentity_t* pEnt);
 
 extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 
+extern void CG_ChangeWeapon(int num);
+
 //lock the owner into place relative to the cannon pos
 static void EWebPositionUser(gentity_t* owner, gentity_t* eweb)
 {
@@ -1048,8 +1050,6 @@ void ExitEmplacedWeapon(gentity_t* ent)
 	// Remove the emplaced gun from our inventory
 	ent->client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_EMPLACED_GUN);
 
-	extern void CG_ChangeWeapon(int num);
-
 	if (ent->health <= 0)
 	{
 		// when die, don't set weapon back on when ejected from emplaced/eweb
@@ -1132,12 +1132,12 @@ void ExitEmplacedWeapon(gentity_t* ent)
 	ent->owner->noDamageTeam = TEAM_FREE;
 	ent->owner->svFlags &= ~SVF_NONNPC_ENEMY;
 	ent->owner->delay = level.time;
-	ent->owner->activator = NULL;
+	ent->owner->activator = nullptr;
 
-	if (ent->NPC == NULL)
+	if (ent->NPC == nullptr)
 	{
 		// by keeping the owner, a dead npc can be pushed out of the chair without colliding with it
-		ent->owner = NULL;
+		ent->owner = nullptr;
 	}
 }
 

@@ -3973,56 +3973,75 @@ static char bg_pool[MAX_POOL_SIZE];
 static int bg_poolSize = 0;
 static int bg_poolTail = MAX_POOL_SIZE;
 
+// Reset pool (call once per level load or game init)
+void BG_InitPool(void)
+{
+	bg_poolSize = 0;
+	bg_poolTail = MAX_POOL_SIZE;
+}
+
+// Correct aligned allocator
 void* BG_Alloc(const int size)
 {
-	bg_poolSize = bg_poolSize + 0x00000003 & 0xfffffffc;
+	// Align to 4 bytes
+	bg_poolSize = (bg_poolSize + 3) & ~3;
 
 	if (bg_poolSize + size > bg_poolTail)
 	{
-		Com_Error(ERR_DROP, "BG_Alloc: buffer exceeded tail (%d > %d)", bg_poolSize + size, bg_poolTail);
-		return 0;
+		Com_Error(ERR_DROP,
+			"BG_Alloc: buffer exceeded tail (%d > %d)\n"
+			"Increase MAX_POOL_SIZE or reduce allocations.",
+			bg_poolSize + size, bg_poolTail);
+		return NULL;
 	}
 
+	void* ptr = &bg_pool[bg_poolSize];
 	bg_poolSize += size;
-
-	return &bg_pool[bg_poolSize - size];
+	return ptr;
 }
 
+// Unaligned allocator
 void* BG_AllocUnaligned(const int size)
 {
 	if (bg_poolSize + size > bg_poolTail)
 	{
-		Com_Error(ERR_DROP, "BG_AllocUnaligned: buffer exceeded tail (%d > %d)", bg_poolSize + size, bg_poolTail);
-		return 0;
+		Com_Error(ERR_DROP,
+			"BG_AllocUnaligned: buffer exceeded tail (%d > %d)",
+			bg_poolSize + size, bg_poolTail);
+		return NULL;
 	}
 
+	void* ptr = &bg_pool[bg_poolSize];
 	bg_poolSize += size;
-
-	return &bg_pool[bg_poolSize - size];
+	return ptr;
 }
 
+// Temporary allocator (from the tail)
 void* BG_TempAlloc(int size)
 {
-	size = size + 0x00000003 & 0xfffffffc;
+	size = (size + 3) & ~3;
 
 	if (bg_poolTail - size < bg_poolSize)
 	{
-		Com_Error(ERR_DROP, "BG_TempAlloc: buffer exceeded head (%d > %d)", bg_poolTail - size, bg_poolSize);
-		return 0;
+		Com_Error(ERR_DROP,
+			"BG_TempAlloc: buffer exceeded head (%d < %d)",
+			bg_poolTail - size, bg_poolSize);
+		return NULL;
 	}
 
 	bg_poolTail -= size;
-
 	return &bg_pool[bg_poolTail];
 }
 
 void BG_TempFree(int size)
 {
-	size = size + 0x00000003 & 0xfffffffc;
+	size = (size + 3) & ~3;
 
 	if (bg_poolTail + size > MAX_POOL_SIZE)
 	{
-		Com_Error(ERR_DROP, "BG_TempFree: tail greater than size (%d > %d)", bg_poolTail + size, MAX_POOL_SIZE);
+		Com_Error(ERR_DROP,
+			"BG_TempFree: tail greater than size (%d > %d)",
+			bg_poolTail + size, MAX_POOL_SIZE);
 	}
 
 	bg_poolTail += size;
@@ -4030,15 +4049,24 @@ void BG_TempFree(int size)
 
 char* BG_StringAlloc(const char* source)
 {
-	char* dest = BG_Alloc(strlen(source) + 1);
+	const int len = strlen(source) + 1;
+	char* dest = (char*)BG_Alloc(len);
+
+	if (dest == NULL)
+	{
+		Com_Printf("BG_StringAlloc: out of memory\n");
+		return NULL;
+	}
+
 	strcpy(dest, source);
 	return dest;
 }
 
 qboolean BG_OutOfMemory(void)
 {
-	return bg_poolSize >= MAX_POOL_SIZE;
+	return (bg_poolSize >= bg_poolTail) ? qtrue : qfalse;
 }
+
 
 qboolean BG_IsWhiteSpace(const char c)
 {

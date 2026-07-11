@@ -94,12 +94,12 @@ static void CL_ParsePacketEntities(msg_t* msg, const clSnapshot_t* oldframe, clS
 	newframe->numEntities = 0;
 
 	int oldindex = 0;
-	const entityState_t* oldstate = NULL;
+	const entityState_t* oldstate = nullptr;
 
 	/* ---------------------------------------------------------
 	   Establish initial oldnum safely
 	   --------------------------------------------------------- */
-	if (oldframe == NULL)
+	if (oldframe == nullptr)
 	{
 		oldnum = 99999;
 	}
@@ -148,7 +148,7 @@ static void CL_ParsePacketEntities(msg_t* msg, const clSnapshot_t* oldframe, clS
 
 			oldindex++;
 
-			if (oldframe == NULL || oldindex >= oldframe->numEntities)
+			if (oldframe == nullptr || oldindex >= oldframe->numEntities)
 			{
 				oldnum = 99999;
 			}
@@ -458,7 +458,7 @@ static void CL_ParseGamestate(msg_t* msg)
 
 			// append it to the gameState string buffer
 			cl.gameState.stringOffsets[i] = cl.gameState.dataCount;
-			memcpy(cl.gameState.stringData + cl.gameState.dataCount, s, len + 1);
+			memcpy(cl.gameState.stringData + cl.gameState.dataCount, s, static_cast<size_t>(len) + 1);
 			cl.gameState.dataCount += len + 1;
 			if (cl_shownet->integer == 3)
 			{
@@ -515,7 +515,7 @@ Command strings are just saved off until cgame asks for them
 when it transitions a snapshot
 =====================
 */
-void CL_ParseCommandString(msg_t* msg)
+static void CL_ParseCommandString(msg_t* msg)
 {
 	const int seq = MSG_ReadLong(msg);
 	const char* s = MSG_ReadString(msg);
