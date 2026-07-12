@@ -21340,12 +21340,6 @@ void Pmove(pmove_t* pmove)
 {
 	Vehicle_t* p_veh = nullptr;
 
-	// Defensive: ensure pm and pm->ps exist before any dereference.
-	if (!pm || !pm->ps)
-	{
-		return;
-	}
-
 	pm = pmove;
 
 	// this counter lets us debug movement problems with a journal by setting a conditional breakpoint fot the previous frame
