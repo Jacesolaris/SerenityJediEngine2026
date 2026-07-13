@@ -2335,6 +2335,8 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 
 static void G_SetsaberdownorAnim(gentity_t* ent)
 {
+	const qboolean is_holding_block_button = ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+
 	if (ent->client->ps.saberLockTime >= level.time)
 	{
 		return;
@@ -2358,7 +2360,7 @@ static void G_SetsaberdownorAnim(gentity_t* ent)
 				// deactivate saber
 				ent->client->ps.SaberDeactivate();
 
-				if (!g_noIgniteTwirl->integer)
+				if (!g_noIgniteTwirl->integer && !is_holding_block_button)
 				{//twirl on
 					switch (ent->client->ps.saberAnimLevel)
 					{
@@ -2395,7 +2397,7 @@ static void G_SetsaberdownorAnim(gentity_t* ent)
 			{			// activate saber
 				ent->client->ps.SaberActivate();
 
-				if (!g_noIgniteTwirl->integer) //twirl on
+				if (!g_noIgniteTwirl->integer && !is_holding_block_button) //twirl on
 				{
 					if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.groundEntityNum == ENTITYNUM_NONE || in_camera)
 					{// airborne or running

@@ -5298,7 +5298,7 @@ void PM_WeaponLightsaber(void)
 						}
 
 						PM_SetSaberMove(LS_ROLL_STAB);
-						WP_ForcePowerDrain(pm->ps, FP_SABER_OFFENSE, SABER_KATA_ATTACK_POWER);
+						WP_ForcePowerDrain(pm->ps, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 					}
 				}
 			}
@@ -5816,165 +5816,99 @@ weapChecks:
 		// Just selected the weapon
 		pm->ps->weaponstate = WEAPON_IDLE;
 
-		if (pm->ps->legsAnim == BOTH_WALK1)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK1, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_MENUIDLE1)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_MENUIDLE1, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN1)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN1, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN2)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN2, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_SPRINT)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_SPRINT, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_SPRINT_MP)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_SPRINT_MP, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_SPRINT_SABER_MP)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_SPRINT_SABER_MP, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN3)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN3, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN3_MP)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN3_MP, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN4)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN4, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN5)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN5, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN6)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN6, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN7)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN7, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN8)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN8, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN9)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN9, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN10)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN10, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN_STAFF)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN_STAFF, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_RUN_DUAL)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_RUN_DUAL, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_VADERRUN1)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_VADERRUN1, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_VADERRUN2)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_VADERRUN2, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK2)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK2, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK5)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK5, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK6)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK6, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK7)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK7, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK8)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK8, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK9)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK9, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK10)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK10, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK_STAFF)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK_STAFF, SETANIM_FLAG_NORMAL);
-		}
-		else if (pm->ps->legsAnim == BOTH_WALK_DUAL)
-		{
-			PM_SetAnim(SETANIM_TORSO, BOTH_WALK_DUAL, SETANIM_FLAG_NORMAL);
-		}
-		else
-		{
 #ifdef _GAME
-			if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) ||
-				pm_entSelf->s.eType == ET_NPC)
+		if (!(g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) && !(pm_entSelf->s.eType == ET_NPC))
+		{// player only
+			if (!(is_holding_block_button))
 			{
-				PM_SetAnim(SETANIM_TORSO,
-					PM_ReadyPoseForsaber_anim_levelBOT(),
-					SETANIM_FLAG_NORMAL);
+				switch (pm->ps->legsAnim)
+				{
+				case BOTH_WALK1:
+				case BOTH_WALK1TALKCOMM1:
+				case BOTH_WALK2:
+				case BOTH_WALK2B:
+				case BOTH_WALK3:
+				case BOTH_WALK4:
+				case BOTH_WALK5:
+				case BOTH_WALK6:
+				case BOTH_WALK7:
+				case BOTH_WALK8:
+				case BOTH_WALK9:
+				case BOTH_WALK10:
+				case BOTH_WALK_STAFF:
+				case BOTH_WALK_DUAL:
+				case BOTH_WALKBACK1:
+				case BOTH_WALKBACK2:
+				case BOTH_WALKBACK_STAFF:
+				case BOTH_WALKBACK_DUAL:
+				case BOTH_VADERWALK1:
+				case BOTH_VADERWALK2:
+				case BOTH_RUN1:
+				case BOTH_RUN2:
+				case BOTH_RUN3:
+				case BOTH_RUN3_MP:
+				case BOTH_RUN4:
+				case BOTH_RUN5:
+				case BOTH_RUN6:
+				case BOTH_RUN7:
+				case BOTH_RUN8:
+				case BOTH_RUN9:
+				case BOTH_RUN10:
+				case BOTH_SPRINT:
+				case BOTH_SPRINT_SABER:
+				case BOTH_RUN_STAFF:
+				case BOTH_RUN_DUAL:
+				case BOTH_RUNBACK1:
+				case BOTH_RUNBACK2:
+				case BOTH_RUNBACK_STAFF:
+				case SBD_WALK_WEAPON:
+				case SBD_WALK_NORMAL:
+				case SBD_WALKBACK_NORMAL:
+				case SBD_WALKBACK_WEAPON:
+				case SBD_RUNBACK_NORMAL:
+				case SBD_RUNING_WEAPON:
+				case SBD_RUNBACK_WEAPON:
+				case BOTH_VADERRUN1:
+				case BOTH_VADERRUN2:
+				case BOTH_MENUIDLE1:
+				case BOTH_PARRY_WALK:
+				case BOTH_PARRY_WALK_DUAL:
+				case BOTH_PARRY_WALK_STAFF:
+					PM_SetAnim(SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+					break;
+				default:;
+					anim = PM_IdlePoseForsaber_anim_level();
+					if (anim != -1)
+					{
+						PM_SetAnim(SETANIM_TORSO, anim, SETANIM_FLAG_NORMAL);
+					}
+					break;
+				}
 			}
 			else
-#endif
 			{
-				if (is_holding_block_button &&
-					(pm->cmd.buttons & BUTTON_WALKING))
+				if (is_holding_block_button)
 				{
-					if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+					if (pm->ps->saberAnimLevel == SS_DUAL)
 					{
-						PM_SetAnim(SETANIM_TORSO,
-							PM_BlockingPoseForsaber_anim_levelDual(),
-							SETANIM_FLAG_NORMAL);
+						PM_BlockingPoseForsaber_anim_levelDual();
 					}
-					else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
+					else if (pm->ps->saberAnimLevel == SS_STAFF)
 					{
-						PM_SetAnim(SETANIM_TORSO,
-							PM_BlockingPoseForsaber_anim_levelStaff(),
-							SETANIM_FLAG_NORMAL);
+						PM_BlockingPoseForsaber_anim_levelStaff();
 					}
 					else
 					{
-						PM_SetAnim(SETANIM_TORSO,
-							PM_BlockingPoseForsaber_anim_levelSingle(),
-							SETANIM_FLAG_NORMAL);
+						PM_BlockingPoseForsaber_anim_levelSingle();
 					}
 				}
 				else
 				{
-					PM_SetAnim(SETANIM_TORSO,
-						PM_IdlePoseForsaber_anim_level(),
-						SETANIM_FLAG_NORMAL);
+					PM_IdlePoseForsaber_anim_level();
 				}
 			}
 		}
+#endif
 	}
 
 	if (check_only_weap)

@@ -6804,7 +6804,7 @@ static void PM_TorsoAnimLightsaber()
 			}
 			else
 			{
-				if (!g_noIgniteTwirl->integer) //twirl on
+				if (!g_noIgniteTwirl->integer && !is_holding_block_button) //twirl on
 				{
 					if (PM_RunningAnim(pm->ps->legsAnim) || pm->ps->groundEntityNum == ENTITYNUM_NONE || in_camera)
 					{//running or in air or in camera
@@ -6937,7 +6937,7 @@ static void PM_TorsoAnimLightsaber()
 		pm->ps->weaponstate == WEAPON_CHARGING_ALT)
 	{
 		//ready
-		if (pm->ps->weapon == WP_SABER && pm->ps->SaberLength() || !g_noIgniteTwirl->integer)
+		if (pm->ps->weapon == WP_SABER && pm->ps->SaberLength() || !g_noIgniteTwirl->integer && !is_holding_block_button)
 		{
 			//saber is on
 			// Select the proper idle Lightsaber attack move from the chart.
@@ -7614,7 +7614,6 @@ void PM_TorsoAnimation()
 				{
 					if (PM_InSlopeAnim(pm->ps->legsAnim))
 					{
-						//HMM... this probably breaks the saber putaway and select anims
 						if (pm->ps->SaberLength() > 0 && (pm->ps->SaberActive() || !g_noIgniteTwirl->integer))
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND2, SETANIM_FLAG_NORMAL);

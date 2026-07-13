@@ -11867,11 +11867,8 @@ PM_BeginWeaponChange
 void PM_BeginWeaponChange(const int weapon)
 {
 	// Manual blocking state
-	const qboolean is_holding_block_button =
-		(pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse; // Holding Block Button
-
-	const qboolean is_holding_block_button_and_attack =
-		(pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse; // Active Blocking
+	const qboolean is_holding_block_button = (pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = (pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
 
 	// Invalid weapon index
 	if (weapon <= WP_NONE || weapon >= WP_NUM_WEAPONS)
@@ -11892,8 +11889,7 @@ void PM_BeginWeaponChange(const int weapon)
 	}
 
 	// Cannot change from saber while holding block
-	if (pm->ps->weapon == WP_SABER &&
-		(is_holding_block_button == qtrue || is_holding_block_button_and_attack == qtrue))
+	if (pm->ps->weapon == WP_SABER && (is_holding_block_button == qtrue || is_holding_block_button_and_attack == qtrue))
 	{
 		return;
 	}
@@ -11969,7 +11965,6 @@ void PM_BeginWeaponChange(const int weapon)
 	BG_ClearRocketLock(pm->ps);
 }
 
-
 /*
 ===============
 PM_FinishWeaponChange
@@ -11978,6 +11973,7 @@ PM_FinishWeaponChange
 void PM_FinishWeaponChange(void)
 {
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
+	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
 
 	int weapon = pm->cmd.weapon;
 	if (weapon < WP_NONE || weapon >= WP_NUM_WEAPONS)
@@ -12033,7 +12029,7 @@ void PM_FinishWeaponChange(void)
 			else
 #endif
 			{
-				if (!g_noIgniteTwirl.integer &&
+				if (!g_noIgniteTwirl.integer && !is_holding_block_button &&
 					!PM_InLedgeMove(pm->ps->legsAnim) &&
 					!PM_InLedgeMove(pm->ps->torsoAnim))
 				{// twirl if we aren't already doing a ledge move

@@ -11725,9 +11725,7 @@ PM_BeginWeaponChange
 static void PM_BeginWeaponChange(const int weapon)
 {
 	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	//Holding Block Button
 	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
-	//Active Blocking
 
 	if (pm->gent && pm->gent->client && pm->gent->client->pers.enterTime >= level.time - 500)
 	{
@@ -11844,7 +11842,7 @@ static void PM_BeginWeaponChange(const int weapon)
 				}
 				else
 				{
-					if (!g_noIgniteTwirl->integer && !IsSurrendering(pm->gent))
+					if (!g_noIgniteTwirl->integer && !is_holding_block_button && !IsSurrendering(pm->gent))
 					{
 						if (PM_RunningAnim(pm->ps->legsAnim) || pm->ps->groundEntityNum == ENTITYNUM_NONE ||
 							in_camera)
@@ -11854,15 +11852,7 @@ static void PM_BeginWeaponChange(const int weapon)
 						else if (PM_WalkingAnim(pm->ps->legsAnim))
 						{
 							PM_SetSaberMove(LS_PUTAWAY);
-							//PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						}
-					}
-					else
-					{
-						/*if (!IsSurrendering(pm->gent))
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-						}*/
 					}
 				}
 			}
@@ -17656,7 +17646,7 @@ static void PM_WeaponLightsaber(void)
 	// Saber style overrides based on weapons and saber configuration.
 	// ----------------------------------------------------------------------
 	if ((pm->ps->stats[STAT_WEAPONS] & (1 << WP_SCEPTER)) &&
-		!pm->ps->dualSabers	&&
+		!pm->ps->dualSabers &&
 		pm->gent &&
 		pm->gent->weaponModel[1])
 	{
@@ -17743,7 +17733,7 @@ static void PM_WeaponLightsaber(void)
 				{
 					//okay to do roll-stab
 					PM_SetSaberMove(LS_ROLL_STAB);
-					WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_KATA_ATTACK_POWER);
+					WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER_FB);
 				}
 			}
 		}
@@ -17812,7 +17802,7 @@ static void PM_WeaponLightsaber(void)
 	// ----------------------------------------------------------------------
 	if (pm->ps->saberEventFlags & SEF_INWATER)
 	{
-		pm->cmd.buttons &=~(BUTTON_ATTACK | BUTTON_ALT_ATTACK | BUTTON_FORCE_FOCUS | BUTTON_DASH);
+		pm->cmd.buttons &= ~(BUTTON_ATTACK | BUTTON_ALT_ATTACK | BUTTON_FORCE_FOCUS | BUTTON_DASH);
 	}
 
 	// ----------------------------------------------------------------------
@@ -18013,89 +18003,94 @@ static void PM_WeaponLightsaber(void)
 		pm->ps->weaponstate = WEAPON_IDLE;
 
 		if (pm->gent->s.number < MAX_CLIENTS || G_ControlledByPlayer(pm->gent))
-		{
-			switch (pm->ps->legsAnim)
+		{// player only
+			if (!(is_holding_block_button))
 			{
-			case BOTH_WALK1:
-			case BOTH_WALK1TALKCOMM1:
-			case BOTH_WALK2:
-			case BOTH_WALK2B:
-			case BOTH_WALK3:
-			case BOTH_WALK4:
-			case BOTH_WALK5:
-			case BOTH_WALK6:
-			case BOTH_WALK7:
-			case BOTH_WALK8:
-			case BOTH_WALK9:
-			case BOTH_WALK10:
-			case BOTH_WALK_STAFF:
-			case BOTH_WALK_DUAL:
-			case BOTH_WALKBACK1:
-			case BOTH_WALKBACK2:
-			case BOTH_WALKBACK_STAFF:
-			case BOTH_WALKBACK_DUAL:
-			case BOTH_VADERWALK1:
-			case BOTH_VADERWALK2:
-			case BOTH_RUN1:
-			case BOTH_RUN2:
-			case BOTH_RUN3:
-			case BOTH_RUN3_MP:
-			case BOTH_RUN4:
-			case BOTH_RUN5:
-			case BOTH_RUN6:
-			case BOTH_RUN7:
-			case BOTH_RUN8:
-			case BOTH_RUN9:
-			case BOTH_RUN10:
-			case BOTH_SPRINT:
-			case BOTH_SPRINT_SABER:
-			case BOTH_RUN_STAFF:
-			case BOTH_RUN_DUAL:
-			case BOTH_RUNBACK1:
-			case BOTH_RUNBACK2:
-			case BOTH_RUNBACK_STAFF:
-			case SBD_WALK_WEAPON:
-			case SBD_WALK_NORMAL:
-			case SBD_WALKBACK_NORMAL:
-			case SBD_WALKBACK_WEAPON:
-			case SBD_RUNBACK_NORMAL:
-			case SBD_RUNING_WEAPON:
-			case SBD_RUNBACK_WEAPON:
-			case BOTH_VADERRUN1:
-			case BOTH_VADERRUN2:
-			case BOTH_MENUIDLE1:
-			case BOTH_PARRY_WALK:
-			case BOTH_PARRY_WALK_DUAL:
-			case BOTH_PARRY_WALK_STAFF:
-				PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-				break;
-
-			default:
+				switch (pm->ps->legsAnim)
+				{
+				case BOTH_WALK1:
+				case BOTH_WALK1TALKCOMM1:
+				case BOTH_WALK2:
+				case BOTH_WALK2B:
+				case BOTH_WALK3:
+				case BOTH_WALK4:
+				case BOTH_WALK5:
+				case BOTH_WALK6:
+				case BOTH_WALK7:
+				case BOTH_WALK8:
+				case BOTH_WALK9:
+				case BOTH_WALK10:
+				case BOTH_WALK_STAFF:
+				case BOTH_WALK_DUAL:
+				case BOTH_WALKBACK1:
+				case BOTH_WALKBACK2:
+				case BOTH_WALKBACK_STAFF:
+				case BOTH_WALKBACK_DUAL:
+				case BOTH_VADERWALK1:
+				case BOTH_VADERWALK2:
+				case BOTH_RUN1:
+				case BOTH_RUN2:
+				case BOTH_RUN3:
+				case BOTH_RUN3_MP:
+				case BOTH_RUN4:
+				case BOTH_RUN5:
+				case BOTH_RUN6:
+				case BOTH_RUN7:
+				case BOTH_RUN8:
+				case BOTH_RUN9:
+				case BOTH_RUN10:
+				case BOTH_SPRINT:
+				case BOTH_SPRINT_SABER:
+				case BOTH_RUN_STAFF:
+				case BOTH_RUN_DUAL:
+				case BOTH_RUNBACK1:
+				case BOTH_RUNBACK2:
+				case BOTH_RUNBACK_STAFF:
+				case SBD_WALK_WEAPON:
+				case SBD_WALK_NORMAL:
+				case SBD_WALKBACK_NORMAL:
+				case SBD_WALKBACK_WEAPON:
+				case SBD_RUNBACK_NORMAL:
+				case SBD_RUNING_WEAPON:
+				case SBD_RUNBACK_WEAPON:
+				case BOTH_VADERRUN1:
+				case BOTH_VADERRUN2:
+				case BOTH_MENUIDLE1:
+				case BOTH_PARRY_WALK:
+				case BOTH_PARRY_WALK_DUAL:
+				case BOTH_PARRY_WALK_STAFF:
+					PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
+					break;
+				default:;
+					anim = PM_IdlePoseForsaber_anim_level();
+					if (anim != -1)
+					{
+						PM_SetAnim(pm, SETANIM_TORSO, anim, SETANIM_FLAG_NORMAL);
+					}
+					break;
+				}
+			}
+			else
+			{
 				if (is_holding_block_button)
 				{
 					if (pm->ps->saberAnimLevel == SS_DUAL)
 					{
-						anim = PM_BlockingPoseForsaber_anim_levelDual();
+						PM_BlockingPoseForsaber_anim_levelDual();
 					}
 					else if (pm->ps->saberAnimLevel == SS_STAFF)
 					{
-						anim = PM_BlockingPoseForsaber_anim_levelStaff();
+						PM_BlockingPoseForsaber_anim_levelStaff();
 					}
 					else
 					{
-						anim = PM_BlockingPoseForsaber_anim_levelSingle();
+						PM_BlockingPoseForsaber_anim_levelSingle();
 					}
 				}
 				else
 				{
-					anim = PM_IdlePoseForsaber_anim_level();
+					PM_IdlePoseForsaber_anim_level();
 				}
-
-				if (anim != -1)
-				{
-					PM_SetAnim(pm, SETANIM_TORSO, anim, SETANIM_FLAG_NORMAL);
-				}
-				break;
 			}
 		}
 		else
@@ -18746,7 +18741,7 @@ static void PM_WeaponLightsaber(void)
 					else
 					{
 						// Players: choose attack based on movement input and current move.
-						newmove = PM_SaberAttackForMovement(pm->cmd.forwardmove,pm->cmd.rightmove,	curmove);
+						newmove = PM_SaberAttackForMovement(pm->cmd.forwardmove, pm->cmd.rightmove, curmove);
 
 						// ------------------------------------------------------------------
 						// Prevent repeating blocked attacks when fatigue is low.
@@ -18885,18 +18880,18 @@ static void PM_WeaponLightsaber(void)
 				{
 					switch (pm->ps->legsAnim)
 					{
-					case BOTH_WALK1:              // Normal walk
+					case BOTH_WALK1:
 					case BOTH_WALK1TALKCOMM1:
-					case BOTH_WALK2:              // Normal walk with saber
-					case BOTH_WALK2B:             // Normal walk with saber
+					case BOTH_WALK2:
+					case BOTH_WALK2B:
 					case BOTH_WALK3:
 					case BOTH_WALK4:
-					case BOTH_WALK5:              // Tavion taunting Kyle (cin 22)
-					case BOTH_WALK6:              // Slow walk for Luke (cin 12)
-					case BOTH_WALK7:              // Fast walk
-					case BOTH_WALK8:              // pistolwalk
-					case BOTH_WALK9:              // riflewalk
-					case BOTH_WALK10:             // grenadewalk
+					case BOTH_WALK5:
+					case BOTH_WALK6:
+					case BOTH_WALK7:
+					case BOTH_WALK8:
+					case BOTH_WALK9:
+					case BOTH_WALK10:
 					case BOTH_WALK_STAFF:
 					case BOTH_WALK_DUAL:
 					case BOTH_WALKBACK1:
@@ -18905,8 +18900,6 @@ static void PM_WeaponLightsaber(void)
 					case BOTH_WALKBACK_DUAL:
 					case BOTH_VADERWALK1:
 					case BOTH_VADERWALK2:
-					case BOTH_SPRINT:
-					case BOTH_SPRINT_SABER:
 					case BOTH_RUN1:
 					case BOTH_RUN2:
 					case BOTH_RUN3:
@@ -18918,6 +18911,8 @@ static void PM_WeaponLightsaber(void)
 					case BOTH_RUN8:
 					case BOTH_RUN9:
 					case BOTH_RUN10:
+					case BOTH_SPRINT:
+					case BOTH_SPRINT_SABER:
 					case BOTH_RUN_STAFF:
 					case BOTH_RUN_DUAL:
 					case BOTH_RUNBACK1:
@@ -18930,7 +18925,6 @@ static void PM_WeaponLightsaber(void)
 					case SBD_RUNBACK_NORMAL:
 					case SBD_RUNING_WEAPON:
 					case SBD_RUNBACK_WEAPON:
-					case BOTH_RUNINJURED1:
 					case BOTH_VADERRUN1:
 					case BOTH_VADERRUN2:
 					case BOTH_MENUIDLE1:
@@ -18940,7 +18934,7 @@ static void PM_WeaponLightsaber(void)
 						// Use the current legs anim as the attack anim.
 						anim = pm->ps->legsAnim;
 						break;
-					default:
+					default:;
 						anim = PM_IdlePoseForsaber_anim_level();
 						break;
 					}

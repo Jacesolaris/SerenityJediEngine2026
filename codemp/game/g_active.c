@@ -3949,6 +3949,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 void G_SetsaberdownorAnim(gentity_t* ent)
 {
 	const saberInfo_t* saber1 = BG_MySaber(ent->clientNum, 0);
+	const qboolean is_holding_block_button = ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
 
 	if (ent->client->ps.saberLockTime >= level.time)
 	{
@@ -3973,7 +3974,7 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 			{
 				ent->client->ps.saberHolstered = 0;
 
-				if (!g_noIgniteTwirl.integer)
+				if (!g_noIgniteTwirl.integer && !is_holding_block_button)
 				{ //twirl on
 					if (PM_RunningAnim(ent->client->ps.legsAnim)
 						|| ent->client->ps.groundEntityNum == ENTITYNUM_NONE
@@ -4107,7 +4108,7 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 			{
 				ent->client->ps.saberHolstered = 2;
 
-				if (!g_noIgniteTwirl.integer &&
+				if (!g_noIgniteTwirl.integer && !is_holding_block_button &&
 					!IsSurrendering(ent) && !PM_InLedgeMove(ent->client->ps.legsAnim) && !PM_InLedgeMove(ent->client->ps.torsoAnim)) //twirl on
 				{
 					switch (ent->client->ps.fd.saberAnimLevel)
