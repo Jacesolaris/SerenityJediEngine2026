@@ -6571,102 +6571,104 @@ weapChecks:
 			// ----------------------------------------------------------------------
 			if (anim == -1)
 			{
-				switch (pm->ps->legsAnim)
+				if (!(is_holding_block_button))
 				{
-				case BOTH_WALK1:
-				case BOTH_WALK1TALKCOMM1:
-				case BOTH_WALK2:
-				case BOTH_WALK2B:
-				case BOTH_WALK3:
-				case BOTH_WALK4:
-				case BOTH_WALK5:
-				case BOTH_WALK6:
-				case BOTH_WALK7:
-				case BOTH_WALK8:
-				case BOTH_WALK9:
-				case BOTH_WALK10:
-				case BOTH_WALK_STAFF:
-				case BOTH_WALK_DUAL:
-				case BOTH_WALKBACK1:
-				case BOTH_WALKBACK2:
-				case BOTH_WALKBACK_STAFF:
-				case BOTH_WALKBACK_DUAL:
-				case BOTH_VADERWALK1:
-				case BOTH_VADERWALK2:
-				case BOTH_SPRINT:
-				case BOTH_SPRINT_SABER:
-				case BOTH_SPRINT_MP:
-				case BOTH_SPRINT_SABER_MP:
-				case BOTH_RUN1:
-				case BOTH_RUN2:
-				case BOTH_RUN3:
-				case BOTH_RUN3_MP:
-				case BOTH_RUN4:
-				case BOTH_RUN5:
-				case BOTH_RUN6:
-				case BOTH_RUN7:
-				case BOTH_RUN8:
-				case BOTH_RUN9:
-				case BOTH_RUN10:
-				case BOTH_RUN_STAFF:
-				case BOTH_RUN_DUAL:
-				case BOTH_RUNBACK1:
-				case BOTH_RUNBACK2:
-				case BOTH_RUNBACK_STAFF:
-				case SBD_WALK_WEAPON:
-				case SBD_WALK_NORMAL:
-				case SBD_WALKBACK_NORMAL:
-				case SBD_WALKBACK_WEAPON:
-				case SBD_RUNBACK_NORMAL:
-				case SBD_RUNING_WEAPON:
-				case SBD_RUNBACK_WEAPON:
-				case BOTH_RUNINJURED1:
-				case BOTH_VADERRUN1:
-				case BOTH_VADERRUN2:
-				case BOTH_MENUIDLE1:
-				case BOTH_PARRY_WALK:
-				case BOTH_PARRY_WALK_DUAL:
-				case BOTH_PARRY_WALK_STAFF:
-					// Use the current legs anim as the fallback anim.
-					anim = pm->ps->legsAnim;
-					break;
-
-				default:
+					switch (pm->ps->legsAnim)
+					{
+					case BOTH_WALK1:              // Normal walk
+					case BOTH_WALK1TALKCOMM1:
+					case BOTH_WALK2:              // Normal walk with saber
+					case BOTH_WALK2B:             // Normal walk with saber
+					case BOTH_WALK3:
+					case BOTH_WALK4:
+					case BOTH_WALK5:              // Tavion taunting Kyle (cin 22)
+					case BOTH_WALK6:              // Slow walk for Luke (cin 12)
+					case BOTH_WALK7:              // Fast walk
+					case BOTH_WALK8:              // pistolwalk
+					case BOTH_WALK9:              // riflewalk
+					case BOTH_WALK10:             // grenadewalk
+					case BOTH_WALK_STAFF:
+					case BOTH_WALK_DUAL:
+					case BOTH_WALKBACK1:
+					case BOTH_WALKBACK2:
+					case BOTH_WALKBACK_STAFF:
+					case BOTH_WALKBACK_DUAL:
+					case BOTH_VADERWALK1:
+					case BOTH_VADERWALK2:
+					case BOTH_SPRINT:
+					case BOTH_SPRINT_SABER:
+					case BOTH_RUN1:
+					case BOTH_RUN2:
+					case BOTH_RUN3:
+					case BOTH_RUN3_MP:
+					case BOTH_RUN4:
+					case BOTH_RUN5:
+					case BOTH_RUN6:
+					case BOTH_RUN7:
+					case BOTH_RUN8:
+					case BOTH_RUN9:
+					case BOTH_RUN10:
+					case BOTH_RUN_STAFF:
+					case BOTH_RUN_DUAL:
+					case BOTH_RUNBACK1:
+					case BOTH_RUNBACK2:
+					case BOTH_RUNBACK_STAFF:
+					case SBD_WALK_WEAPON:
+					case SBD_WALK_NORMAL:
+					case SBD_WALKBACK_NORMAL:
+					case SBD_WALKBACK_WEAPON:
+					case SBD_RUNBACK_NORMAL:
+					case SBD_RUNING_WEAPON:
+					case SBD_RUNBACK_WEAPON:
+					case BOTH_RUNINJURED1:
+					case BOTH_VADERRUN1:
+					case BOTH_VADERRUN2:
+					case BOTH_MENUIDLE1:
+					case BOTH_PARRY_WALK:
+					case BOTH_PARRY_WALK_DUAL:
+					case BOTH_PARRY_WALK_STAFF:
+						// Use the current legs anim as the attack anim.
+						anim = pm->ps->legsAnim;
+						break;
+					default:
 #ifdef _GAME
-					// Bots/NPCs use a dedicated ready pose.
-					if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) ||
-						(pm_entSelf->s.eType == ET_NPC))
-					{
-						anim = PM_ReadyPoseForsaber_anim_levelBOT();
-					}
-					else
-#endif
-					{
-						// Players: choose blocking or idle pose based on block state and saber style.
-						if (is_holding_block_button)
+						// Bots/NPCs use a dedicated ready pose.
+						if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) ||
+							(pm_entSelf->s.eType == ET_NPC))
 						{
-							if (pm->ps->fd.saberAnimLevel == SS_DUAL)
-							{
-								anim = PM_BlockingPoseForsaber_anim_levelDual();
-							}
-							else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
-							{
-								anim = PM_BlockingPoseForsaber_anim_levelStaff();
-							}
-							else
-							{
-								anim = PM_BlockingPoseForsaber_anim_levelSingle();
-							}
+							anim = PM_ReadyPoseForsaber_anim_levelBOT();
 						}
 						else
+#endif
 						{
 							anim = PM_IdlePoseForsaber_anim_level();
 						}
+						break;
 					}
-					break;
+				}
+				else
+				{
+					if (is_holding_block_button)
+					{
+						if (pm->ps->saberAnimLevel == SS_DUAL)
+						{
+							PM_BlockingPoseForsaber_anim_levelDual();
+						}
+						else if (pm->ps->saberAnimLevel == SS_STAFF)
+						{
+							PM_BlockingPoseForsaber_anim_levelStaff();
+						}
+						else
+						{
+							PM_BlockingPoseForsaber_anim_levelSingle();
+						}
+					}
+					else
+					{
+						PM_IdlePoseForsaber_anim_level();
+					}
 				}
 
-				// At this point we are effectively in a ready state.
 				newmove = LS_READY;
 			}
 
@@ -6715,24 +6717,19 @@ weapChecks:
 	{
 		if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 		{
-			PM_SetAnim(SETANIM_TORSO,
-				PM_BlockingPoseForsaber_anim_levelStaff(),
+			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(),
 				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 		}
 		else if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 		{
-			PM_SetAnim(SETANIM_TORSO,
-				PM_BlockingPoseForsaber_anim_levelDual(),
+			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(),
 				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 		}
 		else
 		{
-			PM_SetAnim(SETANIM_TORSO,
-				PM_BlockingPoseForsaber_anim_levelSingle(),
+			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(),
 				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 		}
-
-		// While blocking during firing, treat saber as in ready state.
 		PM_SetSaberMove(LS_READY);
 	}
 
