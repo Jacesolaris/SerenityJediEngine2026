@@ -924,6 +924,10 @@ public:
 	qboolean IsAiming;
 	char* fullName; // Character's full name
 
+	// Tracks which entities have been hit in the current saber swing
+	int			saberHitEntityBitMask;
+	int			saberLastAttackSequence;
+
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const
 	{
@@ -1033,6 +1037,8 @@ public:
 		saved_game.write<int32_t>(painCooldownTime);
 		saved_game.write<int32_t>(IsAiming);
 		saved_game.write<int32_t>(fullName);
+		saved_game.write<int32_t>(saberHitEntityBitMask);
+		saved_game.write<int32_t>(saberLastAttackSequence);
 	}
 
 	void sg_import(
@@ -1144,6 +1150,8 @@ public:
 		saved_game.read<int32_t>(painCooldownTime);
 		saved_game.read<int32_t>(IsAiming);
 		saved_game.read<int32_t>(fullName);
+		saved_game.read<int32_t>(saberHitEntityBitMask);
+		saved_game.read<int32_t>(saberLastAttackSequence);
 	}
 }; // GClientBase
 

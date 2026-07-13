@@ -1699,7 +1699,7 @@ static void g_missile_add_alerts(gentity_t* ent)
 }
 
 //------------------------------------------------------
-static void g_missile_impact(gentity_t* ent, trace_t* trace, const int hit_loc = HL_NONE)
+static void G_MissileImpact(gentity_t* ent, trace_t* trace, const int hit_loc = HL_NONE)
 {
 	vec3_t diff;
 
@@ -2337,7 +2337,7 @@ constexpr auto BUMPCLIP = 1.5f;
 //  - Applies gravity over the frame
 //  - Slides along ground if grounded
 //  - Handles up to 4 bump iterations with clip planes
-//  - Calls g_missile_impact when hitting damageable entities or sabers
+//  - Calls G_MissileImpact when hitting damageable entities or sabers
 //
 // Behaviour preserved; structure cleaned; NULL/array safety improved.
 //------------------------------------------------------------------------------
@@ -2413,7 +2413,7 @@ static void g_roll_missile(gentity_t* ent)
 
 			if (hit_ent && (hit_ent->takedamage || (hit_ent->contents & CONTENTS_LIGHTSABER)))
 			{
-				g_missile_impact(ent, &trace);
+				G_MissileImpact(ent, &trace);
 
 				if (ent->s.eType == ET_GENERAL)
 				{
@@ -2816,7 +2816,7 @@ void g_run_missile(gentity_t* ent)
 		}
 	}
 
-	g_missile_impact(ent, &tr, tr_hit_loc);
+	G_MissileImpact(ent, &tr, tr_hit_loc);
 }
 
 //===========================grapplemod===============================

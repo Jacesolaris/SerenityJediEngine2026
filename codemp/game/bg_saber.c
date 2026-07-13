@@ -5658,6 +5658,12 @@ void PM_WeaponLightsaber(void)
 		}
 
 		pm->ps->weaponTime -= pml.msec;
+
+		if (is_holding_block_button)
+		{ // keep him in the blocking pose until he can attack again
+			PM_SetAnim(SETANIM_FLAG_NORMAL, saberMoveData[pm->ps->saberMove].animToUse, saberMoveData[pm->ps->saberMove].animSetFlags | SETANIM_FLAG_HOLD);
+			return;
+		}
 	}
 	else
 	{
@@ -5810,7 +5816,6 @@ weapChecks:
 	// *********************************************************
 	// WEAPON_RAISING
 	// *********************************************************
-
 	if (pm->ps->weaponstate == WEAPON_RAISING)
 	{
 		// Just selected the weapon
@@ -6646,25 +6651,26 @@ weapChecks:
 	// We are in a firing state for the weapon.
 	pm->ps->weaponstate = WEAPON_FIRING;
 
-	// If we are still in weaponTime and holding block, force a blocking pose.
-	if (pm->ps->weaponTime > 0 && is_holding_block_button)
+	// If we are still in weaponTime and holding block, with enough BP force a blocking pose.
+	if (pm->ps->fd.blockPoints > BLOCKPOINTS_MISSILE)
 	{
-		if (pm->ps->fd.saberAnimLevel == SS_STAFF)
+		// If we are still in weaponTime and holding block, force a blocking pose.
+		if (pm->ps->weaponTime > 0 && is_holding_block_button)
 		{
-			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			if (pm->ps->fd.saberAnimLevel == SS_STAFF)
+			{
+				PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(),SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+			{
+				PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(),SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else
+			{
+				PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(),SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			PM_SetSaberMove(LS_READY);
 		}
-		else if (pm->ps->fd.saberAnimLevel == SS_DUAL)
-		{
-			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-		}
-		else
-		{
-			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-		}
-		PM_SetSaberMove(LS_READY);
 	}
 
 	// If this entity has a fireDelay, we are not actually firing yet.
@@ -6675,6 +6681,8 @@ weapChecks:
 		pm->ps->eFlags &= ~EF_ALT_FIRING;
 		return;
 	}
+
+	//pm->ps->saberAttackSequence = pm->ps->torsoAnim; // Save the current torso anim as the saber attack sequence.
 
 	// ----------------------------------------------------------------------
 	// Base additional time on current weaponTime.

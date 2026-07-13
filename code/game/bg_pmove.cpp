@@ -10338,7 +10338,8 @@ static void PM_Footsteps()
 			}
 			else if (pm->ps->weapon == WP_SABER
 				&& pm->ps->SaberLength() > 0
-				&& (pm->ps->SaberActive() || !g_noIgniteTwirl->integer && !is_holding_block_button_and_attack
+				&& (pm->ps->SaberActive() || !g_noIgniteTwirl->integer
+					&& !is_holding_block_button_and_attack
 					&& !is_holding_block_button)
 				&& !pm->ps->saberInFlight
 				&& !PM_SaberDrawPutawayAnim(pm->ps->legsAnim))
@@ -11842,9 +11843,10 @@ static void PM_BeginWeaponChange(const int weapon)
 				}
 				else
 				{
-					if (!g_noIgniteTwirl->integer && !is_holding_block_button && !IsSurrendering(pm->gent))
+					if (!g_noIgniteTwirl->integer && !IsSurrendering(pm->gent))
 					{
-						if (PM_RunningAnim(pm->ps->legsAnim) || pm->ps->groundEntityNum == ENTITYNUM_NONE ||
+						if (PM_RunningAnim(pm->ps->legsAnim) ||
+							pm->ps->groundEntityNum == ENTITYNUM_NONE ||
 							in_camera)
 						{
 							PM_SetSaberMove(LS_PUTAWAY);
@@ -12008,10 +12010,13 @@ static void PM_FinishWeaponChange()
 				}
 				else
 				{
-					if (!g_noIgniteTwirl->integer && !IsSurrendering(pm->gent) && !is_holding_block_button_and_attack
-						&& !is_holding_block_button)
+					if (!g_noIgniteTwirl->integer &&
+						!IsSurrendering(pm->gent) &&
+						!is_holding_block_button_and_attack &&
+						!is_holding_block_button)
 					{
-						if (PM_RunningAnim(pm->ps->legsAnim) || pm->ps->groundEntityNum == ENTITYNUM_NONE ||
+						if (PM_RunningAnim(pm->ps->legsAnim) ||
+							pm->ps->groundEntityNum == ENTITYNUM_NONE ||
 							in_camera)
 						{
 							//running or in air or in camera
@@ -17625,6 +17630,12 @@ static void PM_WeaponLightsaber(void)
 		}
 
 		pm->ps->weaponTime -= pml.msec;
+
+		if (is_holding_block_button)
+		{ // keep him in the blocking pose until he can attack again
+			PM_SetAnim(pm, SETANIM_FLAG_NORMAL, saberMoveData[pm->ps->saberMove].animToUse, saberMoveData[pm->ps->saberMove].animSetFlags | SETANIM_FLAG_HOLD);
+			return;
+		}
 	}
 	else
 	{
@@ -19004,24 +19015,25 @@ static void PM_WeaponLightsaber(void)
 	// We are in a firing state for the weapon.
 	pm->ps->weaponstate = WEAPON_FIRING;
 
-	if (pm->ps->weaponTime > 0 && (is_holding_block_button))
+	// If we are still in weaponTime and holding block, with enough BP force a blocking pose.
+	if (pm->ps->blockPoints > BLOCKPOINTS_MISSILE)
 	{
-		if (pm->ps->saberAnimLevel == SS_STAFF)
+		if (pm->ps->weaponTime > 0 && (is_holding_block_button))
 		{
-			PM_SetAnim(pm, SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			if (pm->ps->saberAnimLevel == SS_STAFF)
+			{
+				PM_SetAnim(pm, SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else if (pm->ps->saberAnimLevel == SS_DUAL)
+			{
+				PM_SetAnim(pm, SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else
+			{
+				PM_SetAnim(pm, SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			PM_SetSaberMove(LS_READY);
 		}
-		else if (pm->ps->saberAnimLevel == SS_DUAL)
-		{
-			PM_SetAnim(pm, SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-		}
-		else
-		{
-			PM_SetAnim(pm, SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(),
-				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-		}
-		PM_SetSaberMove(LS_READY);
 	}
 
 	// If this entity has a fireDelay, we are not actually firing yet.
@@ -19032,6 +19044,8 @@ static void PM_WeaponLightsaber(void)
 		pm->ps->eFlags &= ~EF_ALT_FIRING;
 		return;
 	}
+
+	pm->ps->saberAttackSequence = pm->ps->torsoAnim; // Save the current torso anim as the saber attack sequence.
 
 	// ----------------------------------------------------------------------
 	// Base additional time on current weaponTime.

@@ -1090,6 +1090,10 @@ struct gclient_s
 	int botLastStyleSwitch;
 	int painCooldownTime;
 	qboolean IsAiming;
+
+	// Tracks which entities have been hit in the current saber swing
+	int	saberHitEntityBitMask;
+	int	saberLastAttackSequence;
 };
 
 //animations

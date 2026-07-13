@@ -6157,22 +6157,11 @@ static QINLINE qboolean CheckSaberDamage(
 	const int rBladeNum,
 	vec3_t saber_start,   // made const: function never modifies these
 	vec3_t saber_end,
-	const int trMask
-)
+	const int trMask)
 {
-	// --- SAFETY IMPROVEMENT ---
-	// These were previously static, which is dangerous:
-	//  • Not thread‑safe
-	//  • Persist between calls
-	//  • Can cause cross‑frame contamination
-	// Removing 'static' does NOT change behaviour because the function
-	// is always called synchronously per-frame.
 	trace_t tr;
 	vec3_t dir;
 	vec3_t saber_tr_mins, saber_tr_maxs;
-
-	// --- SAFETY IMPROVEMENT ---
-	// self_saber_level was static for no reason.
 	int self_saber_level = 0;
 
 	int dmg = 0;
@@ -6184,16 +6173,11 @@ static QINLINE qboolean CheckSaberDamage(
 	qboolean saber_hit_wall = qfalse;
 	gentity_t* blocker = NULL;
 
-	// --- NULL SAFETY ---
-	// This function assumes self and self->client are valid.
-	// Adding these checks prevents crashes without changing gameplay.
 	if (!self || !self->client)
 	{
 		return qfalse;
 	}
 
-	// --- BOUNDS SAFETY ---
-	// Prevent invalid saber index access.
 	if (rSaberNum < 0 || rSaberNum >= MAX_SABERS ||
 		rBladeNum < 0 || rBladeNum >= MAX_BLADES)
 	{
@@ -6205,28 +6189,13 @@ static QINLINE qboolean CheckSaberDamage(
 	float saber_box_size = d_saberBoxTraceSize.value;
 	const float hilt_radius = self->client->saber[rSaberNum].blade[rBladeNum].radius * 1.2f;
 
-	// --- OPERATOR PRECEDENCE FIX ---
-	// Original:
-	//   self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK
-	// This is parsed as:
-	//   self->client->ps.ManualBlockingFlags & (1) << HOLDINGBLOCK
-	// which is WRONG.
-	//
-	// Correct:
-	//   (flags & (1 << HOLDINGBLOCK))
-	//
-	// This fix preserves intended behaviour.
-	const qboolean self_is_holding_block_button =
-		(self->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
+	const qboolean self_is_holding_block_button = (self->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
 
-	const qboolean self_active_blocking =
-		(self->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
+	const qboolean self_active_blocking = (self->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
 
-	const qboolean self_m_blocking =
-		(self->client->ps.ManualBlockingFlags & (1 << PERFECTBLOCKING)) ? qtrue : qfalse;
+	const qboolean self_m_blocking = (self->client->ps.ManualBlockingFlags & (1 << PERFECTBLOCKING)) ? qtrue : qfalse;
 
-	const qboolean saber_in_kill_move =
-		PM_SaberInKillMove(self->client->ps.saberMove);
+	const qboolean saber_in_kill_move = PM_SaberInKillMove(self->client->ps.saberMove);
 
 	// --- INITIALIZE TRACE STRUCT ---
 	// Prevents undefined values in unused fields.
@@ -6313,12 +6282,12 @@ static QINLINE qboolean CheckSaberDamage(
 	}
 
 	// ------------------------------------------------------------
-// SECTION 3 — Real trace call and early hit/miss handling
-// ------------------------------------------------------------
+	// SECTION 3 — Real trace call and early hit/miss handling
+	// ------------------------------------------------------------
 
-// Perform the actual saber trace.
-// NOTE: g_real_trace now correctly takes const vec3_t parameters,
-// so this call is 100% warning‑free.
+	// Perform the actual saber trace.
+	// NOTE: g_real_trace now correctly takes const vec3_t parameters,
+	// so this call is 100% warning‑free.
 	const int real_trace_result = g_real_trace(
 		self,
 		&tr,
@@ -6569,9 +6538,9 @@ static QINLINE qboolean CheckSaberDamage(
 		saber_hit_wall = qtrue;
 	}
 	// ------------------------------------------------------------
-// SECTION 5 — Entity hit handling, blocking logic,
-//              saber-on-saber collisions, clash setup
-// ------------------------------------------------------------
+	// SECTION 5 — Entity hit handling, blocking logic,
+	//              saber-on-saber collisions, clash setup
+	// ------------------------------------------------------------
 
 	gentity_t* hitEnt = &g_entities[tr.entityNum];
 
@@ -6763,8 +6732,8 @@ static QINLINE qboolean CheckSaberDamage(
 		}
 	}
 	// ------------------------------------------------------------
-// SECTION 6 — Damage application, beskar, knockback, bounce logic
-// ------------------------------------------------------------
+	// SECTION 6 — Damage application, beskar, knockback, bounce logic
+	// ------------------------------------------------------------
 
 	if (did_hit &&
 		(!OnSameTeam(self, hitEnt) || g_friendlySaber.integer))
@@ -6854,6 +6823,23 @@ static QINLINE qboolean CheckSaberDamage(
 				G_SaberBounce(self, victim);
 			}
 		}
+
+		// --------------------------------------------------------
+		// SINGLE-HIT ENFORCEMENT (correct location)
+		// --------------------------------------------------------
+		//if (victim->s.number < MAX_CLIENTS && (self->client->saberHitEntityBitMask & (1 << victim->s.number)))
+		//{
+		//	if (g_DebugSaberCombat.integer)
+		//	{
+		//		Com_Printf(S_COLOR_RED "Single-hit enforcement: skip if already damaged this swing\n");
+		//	}
+		//	return qfalse; // already hit this swing
+		//}
+
+		/*if (victim->s.number < MAX_CLIENTS)
+		{
+			self->client->saberHitEntityBitMask |= (1 << victim->s.number);
+		}*/
 
 		// --------------------------------------------------------
 		// APPLY DAMAGE
@@ -9498,7 +9484,7 @@ static void WP_KnockdownAndDrain(gentity_t* hit_ent, gentity_t* pusher, int knoc
 		return;
 	}
 
-	G_SetAnim(hit_ent, &hit_ent->client->pers.cmd,SETANIM_BOTH,(knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax),SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD,0);
+	G_SetAnim(hit_ent, &hit_ent->client->pers.cmd, SETANIM_BOTH, (knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 
 	if (useAbsorbDrain)
 	{
@@ -9541,11 +9527,11 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 		return qfalse;
 	}
 
-	const qboolean is_holding_block_button_and_attack =(hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = (hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
 
-	const qboolean is_holding_block_button =(hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = (hit_ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
 
-	const qboolean npc_blocking =(hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) ? qtrue : qfalse;
+	const qboolean npc_blocking = (hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) ? qtrue : qfalse;
 
 	const qboolean isPlayer = (qboolean)((hit_ent->r.svFlags & SVF_BOT) == 0);
 
@@ -12056,6 +12042,19 @@ nextStep:
 				rSaberNum = 0; //was 1?
 			}
 		}
+
+		// Reset hit tracking when a new swing begins
+		/*if (self->client->ps.saberAttackSequence != self->client->saberLastAttackSequence)
+		{
+			if (g_DebugSaberCombat.integer)
+			{
+				Com_Printf(S_COLOR_RED "Reset hit tracking when a new swing begins\n");
+			}
+			self->client->saberHitEntityBitMask = 0;
+			self->client->saberLastAttackSequence = self->client->ps.saberAttackSequence;
+		}*/
+
+		WP_SaberClearDamage();
 		saberDoClashEffect = qfalse;
 
 		//Now cycle through each saber and each blade on the saber and do damage traces.

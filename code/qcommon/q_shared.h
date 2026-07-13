@@ -2250,6 +2250,8 @@ public:
 	int      weaponfiredelaytime;
 	qboolean IsAiming;
 
+	int			saberAttackSequence;
+
 #endif // !JK2_MODE
 
 	void sg_export(
@@ -2513,6 +2515,7 @@ public:
 		saved_game.write<int32_t>(saberstuckinwalltimer);
 		saved_game.write<int32_t>(weaponfiredelaytime);
 		saved_game.write<int32_t>(IsAiming);
+		saved_game.write<int32_t>(saberAttackSequence);
 #endif // !JK2_MODE
 	}
 
@@ -2777,6 +2780,7 @@ public:
 		saved_game.read<int32_t>(saberstuckinwalltimer);
 		saved_game.read<int32_t>(weaponfiredelaytime);
 		saved_game.read<int32_t>(IsAiming);
+		saved_game.read<int32_t>(saberAttackSequence);
 #endif // !JK2_MODE
 	}
 }; // PlayerStateBase

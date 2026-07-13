@@ -2641,6 +2641,16 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 					continue;
 				}
 
+				// Single-hit enforcement: skip if already damaged this swing
+				if (victim->s.number < MAX_CLIENTS && (ent->client->saberHitEntityBitMask & (1 << victim->s.number)))
+				{
+					if (g_DebugSaberCombat->integer)
+					{
+						Com_Printf(S_COLOR_RED "Single-hit enforcement: skip if already damaged this swing\n");
+					}
+					continue;
+				}
+
 				if (victim->e_DieFunc == dieF_maglock_die)
 				{
 					//*sigh*, special check for maglocks
@@ -3236,6 +3246,10 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 						else
 						{
 							damage = ceil(totalDmg[i]);
+						}
+						if (victim->s.number < MAX_CLIENTS)
+						{
+							ent->client->saberHitEntityBitMask |= (1 << victim->s.number);
 						}
 						G_Damage(victim, inflictor, ent, dmgDir[i], dmgSpot[i], damage, d_flags, MOD_SABER,
 							hitDismemberLoc[i]);
@@ -7936,6 +7950,17 @@ void WP_SabersDamageTrace(gentity_t* ent, const qboolean no_effects)
 	{
 		return;
 	}
+
+	// Reset hit tracking when a new swing begins
+	if (ent->client->ps.saberAttackSequence != ent->client->saberLastAttackSequence)
+	{
+		if (g_DebugSaberCombat->integer)
+		{
+			Com_Printf(S_COLOR_RED "Reset hit tracking when a new swing begins\n");
+		}
+		ent->client->saberHitEntityBitMask = 0;
+		ent->client->saberLastAttackSequence = ent->client->ps.saberAttackSequence;
+	}
 	// Saber 1.
 	g_saberNoEffects = no_effects;
 	for (int i = 0; i < ent->client->ps.saber[0].numBlades; i++)
@@ -10562,8 +10587,9 @@ static void WP_SaberThrow(gentity_t* self, const usercmd_t* ucmd)
 		if (self->client->ps.forcePowerLevel[FP_SABERTHROW] > FORCE_LEVEL_2)
 		{
 			//still holding it out
-			if (!(ucmd->buttons & BUTTON_ALT_ATTACK) && !(ucmd->buttons & BUTTON_BLOCK) && self->client->ps.
-				forcePowerDebounce[FP_SABERTHROW] < level.time)
+			if (!(ucmd->buttons & BUTTON_ALT_ATTACK) &&
+				!(ucmd->buttons & BUTTON_BLOCK) &&
+				self->client->ps.forcePowerDebounce[FP_SABERTHROW] < level.time)
 			{
 				//done throwing, return to me
 				if (self->client->ps.saber[0].Active())
@@ -10598,8 +10624,8 @@ static void WP_SaberThrow(gentity_t* self, const usercmd_t* ucmd)
 				}
 			}
 			else if (level.time - self->client->ps.saberThrowTime > 3000
-				|| self->client->ps.forcePowerLevel[FP_SABERTHROW] == FORCE_LEVEL_1 && sabers_dist >= self->client->ps.
-				saberEntityDist)
+				|| self->client->ps.forcePowerLevel[FP_SABERTHROW] == FORCE_LEVEL_1 &&
+				sabers_dist >= self->client->ps.saberEntityDist)
 			{
 				//been out too long, or saber throw 1 went too far, return to me
 				if (self->client->ps.saber[0].Active())
