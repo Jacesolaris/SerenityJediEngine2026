@@ -36,7 +36,7 @@ extern int BG_AnimLength(int index, animNumber_t anim);
 extern void Vehicle_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags, int i_blend);
 extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern void G_VehicleTrace(trace_t* results, const vec3_t start, const vec3_t tMins, const vec3_t tMaxs,
-	const vec3_t end, int pass_entity_num, int contentmask);
+	const vec3_t end, int passEntityNum, int contentmask);
 
 // Update death sequence.
 static void DeathUpdate(Vehicle_t* p_veh)

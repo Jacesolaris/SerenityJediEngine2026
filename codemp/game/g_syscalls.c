@@ -187,20 +187,20 @@ void trap_SetBrushModel(sharedEntity_t* ent, const char* name)
 }
 
 void trap_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int contentmask)
+	const int passEntityNum, const int contentmask)
 {
-	Q_syscall(G_TRACE, results, start, mins, maxs, end, pass_entity_num, contentmask, 0, 10);
+	Q_syscall(G_TRACE, results, start, mins, maxs, end, passEntityNum, contentmask, 0, 10);
 }
 
 void trap_G2Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int contentmask, const int g2TraceType, const int traceLod)
+	const int passEntityNum, const int contentmask, const int g2TraceType, const int traceLod)
 {
-	Q_syscall(G_G2TRACE, results, start, mins, maxs, end, pass_entity_num, contentmask, g2TraceType, traceLod);
+	Q_syscall(G_G2TRACE, results, start, mins, maxs, end, passEntityNum, contentmask, g2TraceType, traceLod);
 }
 
-int trap_PointContents(const vec3_t point, const int pass_entity_num)
+int trap_PointContents(const vec3_t point, const int passEntityNum)
 {
-	return Q_syscall(G_POINT_CONTENTS, point, pass_entity_num);
+	return Q_syscall(G_POINT_CONTENTS, point, passEntityNum);
 }
 
 qboolean trap_InPVS(const vec3_t p1, const vec3_t p2)
@@ -299,9 +299,9 @@ void trap_SnapVector(float* v)
 }
 
 void trap_TraceCapsule(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int contentmask)
+	const int passEntityNum, const int contentmask)
 {
-	Q_syscall(G_TRACECAPSULE, results, start, mins, maxs, end, pass_entity_num, contentmask, 0, 10);
+	Q_syscall(G_TRACECAPSULE, results, start, mins, maxs, end, passEntityNum, contentmask, 0, 10);
 }
 
 qboolean trap_EntityContactCapsule(const vec3_t mins, const vec3_t maxs, const sharedEntity_t* ent)
@@ -1702,15 +1702,15 @@ static qboolean SVSyscall_EntityContact(const vec3_t mins, const vec3_t maxs, co
 }
 
 static void SVSyscall_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int contentmask, const int capsule, const int traceFlags,
+	const int passEntityNum, const int contentmask, const int capsule, const int traceFlags,
 	const int useLod)
 {
 	if (capsule)
-		trap_TraceCapsule(results, start, mins, maxs, end, pass_entity_num, contentmask);
+		trap_TraceCapsule(results, start, mins, maxs, end, passEntityNum, contentmask);
 	else if (traceFlags)
-		trap_G2Trace(results, start, mins, maxs, end, pass_entity_num, contentmask, traceFlags, useLod);
+		trap_G2Trace(results, start, mins, maxs, end, passEntityNum, contentmask, traceFlags, useLod);
 	else
-		trap_Trace(results, start, mins, maxs, end, pass_entity_num, contentmask);
+		trap_Trace(results, start, mins, maxs, end, passEntityNum, contentmask);
 }
 
 static void QDECL G_Error(int errorLevel, const char* error, ...)

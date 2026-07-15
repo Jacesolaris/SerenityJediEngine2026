@@ -242,7 +242,7 @@ extern void bg_vehicle_adjust_b_box_for_orientation(const Vehicle_t* veh, vec3_t
 	void (*local_trace)(trace_t* results, const vec3_t start,
 		const vec3_t minimum_mins,
 		const vec3_t maximum_maxs, const vec3_t end,
-		int pass_entity_num,
+		int passEntityNum,
 		int content_mask)); // bg_pmove.c
 
 static void CG_ClipMoveToEntities(const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
@@ -486,7 +486,7 @@ void CG_G2Trace(trace_t* result, const vec3_t start, const vec3_t mins, const ve
 CG_PointContents
 ================
 */
-int CG_PointContents(const vec3_t point, const int pass_entity_num)
+int CG_PointContents(const vec3_t point, const int passEntityNum)
 {
 	int contents = trap->CM_PointContents(point, 0);
 
@@ -496,7 +496,7 @@ int CG_PointContents(const vec3_t point, const int pass_entity_num)
 
 		const entityState_t* ent = &cent->currentState;
 
-		if (ent->number == pass_entity_num)
+		if (ent->number == passEntityNum)
 		{
 			continue;
 		}

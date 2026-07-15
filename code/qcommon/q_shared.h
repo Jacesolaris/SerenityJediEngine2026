@@ -2249,8 +2249,7 @@ public:
 	int      saberstuckinwalltimer;
 	int      weaponfiredelaytime;
 	qboolean IsAiming;
-
-	int			saberAttackSequence;
+	int		saberAttackSequence;
 
 #endif // !JK2_MODE
 

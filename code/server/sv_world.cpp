@@ -53,14 +53,14 @@ static const float superSizedAdd = 64.0f;
 
 /*
 ================
-SV_clip_handleForEntity
+SV_ClipHandleForEntity
 
 Returns a headnode that can be used for testing or clipping to a
 given entity.  If the entity is a bsp model, the headnode will
 be returned, otherwise a custom box tree will be constructed.
 ================
 */
-clipHandle_t SV_clip_handleForEntity(const gentity_t* ent)
+clipHandle_t SV_ClipHandleForEntity(const gentity_t* ent)
 {
 	if (ent->bmodel)
 	{
@@ -587,24 +587,24 @@ void SV_SectorList_f(void)
 
 using moveclip_t = struct
 {
-	vec3_t boxmins, boxmaxs; // enclose the test object along entire move
-	const float* mins;
-	const float* maxs; // size of the moving object
+	vec3_t boxmins = { 0, 0, 0 }, boxmaxs = { 0, 0, 0 }; // enclose the test object along entire move
+	const float* mins = NULL;
+	const float* maxs = NULL; // size of the moving object
 	/*
 	Ghoul2 Insert Start
 	*/
-	vec3_t start;
+	vec3_t start = { 0, 0, 0 };
 	/*
 	Ghoul2 Insert End
 	*/
-	vec3_t end;
-	int pass_entity_num;
-	int contentmask;
+	vec3_t end = { 0, 0, 0 };
+	int passEntityNum = ENTITYNUM_NONE;
+	int contentmask = 0;
 	/*
 	Ghoul2 Insert Start
 	*/
 	EG2_Collision eG2TraceType;
-	int useLod;
+	int useLod = 0;
 	trace_t trace; // make sure nothing goes under here for Ghoul2 collision purposes
 	/*
 	Ghoul2 Insert End
@@ -616,9 +616,13 @@ using moveclip_t = struct
 SV_ClipMoveToEntities
 
 ====================
-*/static void SV_ClipMoveToEntities(moveclip_t* clip)
+*/
+
+static void SV_ClipMoveToEntities(moveclip_t* clip)
 {
-	gentity_t* touchlist[MAX_GENTITIES];
+	// Move large arrays off stack → static scratch (SV is single-threaded)
+	static gentity_t* touchlist[MAX_GENTITIES];
+
 	gentity_t* owner = NULL;
 	trace_t trace;
 	trace_t old_trace;
@@ -634,9 +638,9 @@ SV_ClipMoveToEntities
 	const int num = SV_AreaEntities(clip->boxmins, clip->boxmaxs, touchlist, MAX_GENTITIES);
 
 	// Resolve owner of the pass entity, if any
-	if (clip->pass_entity_num != ENTITYNUM_NONE)
+	if (clip->passEntityNum != ENTITYNUM_NONE)
 	{
-		gentity_t* passEnt = SV_Gentity_num(clip->pass_entity_num);
+		gentity_t* passEnt = SV_GentityNum(clip->passEntityNum);
 		if (passEnt != NULL)
 		{
 			owner = passEnt->owner;
@@ -659,16 +663,16 @@ SV_ClipMoveToEntities
 		// --------------------------------------------------------------------
 		// Ignore entities we should not collide with
 		// --------------------------------------------------------------------
-		if (clip->pass_entity_num != ENTITYNUM_NONE)
+		if (clip->passEntityNum != ENTITYNUM_NONE)
 		{
 			// Don't clip against the pass entity itself
-			if (touch->s.number == clip->pass_entity_num)
+			if (touch->s.number == clip->passEntityNum)
 			{
 				continue;
 			}
 
 			// Don't clip against missiles owned by the pass entity
-			if (touch->owner != NULL && touch->owner->s.number == clip->pass_entity_num)
+			if (touch->owner != NULL && touch->owner->s.number == clip->passEntityNum)
 			{
 				continue;
 			}
@@ -697,7 +701,7 @@ SV_ClipMoveToEntities
 		// --------------------------------------------------------------------
 		// Exact box trace against this entity
 		// --------------------------------------------------------------------
-		const clipHandle_t clip_handle = SV_clip_handleForEntity(touch);
+		const clipHandle_t clip_handle = SV_ClipHandleForEntity(touch);
 
 		const float* origin = touch->currentOrigin;
 		const float* angles = touch->currentAngles;
@@ -708,48 +712,17 @@ SV_ClipMoveToEntities
 			angles = vec3_origin;
 		}
 
-#if 0 // G2_SUPERSIZEDBBOX is not being used
-		qboolean shrinkBox = qfalse;
-
-		if (clip->eG2TraceType == G2_SUPERSIZEDBBOX)
-		{
-			shrinkBox = qtrue;
-			if (trace.entityNum == touch->s.number && touch->ghoul2.size() &&
-				(touch->contents & CONTENTS_LIGHTSABER) == 0)
-			{
-				shrinkBox = qfalse;
-			}
-		}
-
-		if (shrinkBox == qtrue)
-		{
-			vec3_t sh_mins;
-			vec3_t sh_maxs;
-
-			for (int j = 0; j < 3; j++)
-			{
-				sh_mins[j] = clip->mins[j] + superSizedAdd;
-				sh_maxs[j] = clip->maxs[j] - superSizedAdd;
-			}
-
-			CM_TransformedBoxTrace(&trace, clip->start, clip->end,
-				sh_mins, sh_maxs, clip_handle, clip->contentmask,
-				origin, angles);
-		}
-		else
-#endif
-		{
 #ifdef __MACOS__
-			CM_TransformedBoxTrace(&trace, (float*)clip->start, (float*)clip->end,
-				(float*)clip->mins, (float*)clip->maxs, clip_handle, clip->contentmask,
-				origin, angles);
+		CM_TransformedBoxTrace(&trace, (float*)clip->start, (float*)clip->end,
+			(float*)clip->mins, (float*)clip->maxs,
+			clip_handle, clip->contentmask,
+			origin, angles);
 #else
-			CM_TransformedBoxTrace(&trace, clip->start, clip->end,
-				clip->mins, clip->maxs, clip_handle, clip->contentmask,
-				origin, angles);
+		CM_TransformedBoxTrace(&trace, clip->start, clip->end,
+			clip->mins, clip->maxs,
+			clip_handle, clip->contentmask,
+			origin, angles);
 #endif
-			// NOTE: startsolid behaviour with multiple ents is imperfect, but preserved
-		}
 
 		old_trace = clip->trace;
 
@@ -794,121 +767,109 @@ SV_ClipMoveToEntities
 		// --------------------------------------------------------------------
 		// Ghoul2 collision refinement
 		// --------------------------------------------------------------------
-		if (trace.entityNum == touch->s.number && clip->eG2TraceType != G2_NOCOLLIDE)
+		if (trace.entityNum == touch->s.number &&
+			clip->eG2TraceType != G2_NOCOLLIDE &&
+			touch->ghoul2.size() &&
+			(touch->contents & CONTENTS_LIGHTSABER) == 0)
 		{
-			if (touch->ghoul2.size() && (touch->contents & CONTENTS_LIGHTSABER) == 0)
+			int old_trace_rec_size = 0;
+			int new_trace_rec_size = 0;
+
+			// Count existing collision records
+			for (int z = 0; z < MAX_G2_COLLISIONS; z++)
 			{
-				int old_trace_rec_size = 0;
-				int new_trace_rec_size = 0;
+				if (clip->trace.G2CollisionMap[z].mEntityNum != -1)
+				{
+					old_trace_rec_size++;
+				}
+			}
 
-				// Count existing collision records
+			// Compute radius for Ghoul2 collision
+			const float radius = (clip->maxs[0] - clip->mins[0]) * 0.5f;
+
+			// Use client state if present
+			if (touch->client != NULL)
+			{
+				vec3_t world_angles{};
+				world_angles[PITCH] = 0.0f;
+				world_angles[YAW] = touch->client->legsYaw;
+				world_angles[ROLL] = 0.0f;
+
+				re.G2API_CollisionDetect(
+					clip->trace.G2CollisionMap,
+					touch->ghoul2,
+					world_angles,
+					touch->client->origin,
+					sv.time,
+					touch->s.number,
+					clip->start,
+					clip->end,
+					touch->s.modelScale,
+					G2VertSpaceServer,
+					clip->eG2TraceType,
+					clip->useLod,
+					radius);
+			}
+			else
+			{
+				re.G2API_CollisionDetect(
+					clip->trace.G2CollisionMap,
+					touch->ghoul2,
+					touch->currentAngles,
+					touch->currentOrigin,
+					sv.time,
+					touch->s.number,
+					clip->start,
+					clip->end,
+					touch->s.modelScale,
+					G2VertSpaceServer,
+					clip->eG2TraceType,
+					clip->useLod,
+					radius);
+			}
+
+			// Count new collision records
+			for (int z = 0; z < MAX_G2_COLLISIONS; z++)
+			{
+				if (clip->trace.G2CollisionMap[z].mEntityNum != -1)
+				{
+					new_trace_rec_size++;
+				}
+			}
+
+			// If Ghoul2 did not add any new hits, restore previous trace
+			if (new_trace_rec_size == old_trace_rec_size)
+			{
+				clip->trace = old_trace;
+			}
+			else
+			{
+				qboolean found = qfalse;
+
 				for (int z = 0; z < MAX_G2_COLLISIONS; z++)
 				{
-					if (clip->trace.G2CollisionMap[z].mEntityNum != -1)
+					if (clip->trace.G2CollisionMap[z].mEntityNum == touch->s.number)
 					{
-						old_trace_rec_size++;
+						clip->trace.plane.normal[0] = clip->trace.G2CollisionMap[z].mCollisionNormal[0];
+						clip->trace.plane.normal[1] = clip->trace.G2CollisionMap[z].mCollisionNormal[1];
+						clip->trace.plane.normal[2] = clip->trace.G2CollisionMap[z].mCollisionNormal[2];
+						found = qtrue;
+						break;
 					}
 				}
 
-				// Compute radius for Ghoul2 collision
-				float radius;
-#if 0 // G2_SUPERSIZEDBBOX is not being used
-				if (clip->eG2TraceType == G2_SUPERSIZEDBBOX)
+				if (found == qfalse)
 				{
-					radius = (clip->maxs[0] - clip->mins[0] - 2.0f * superSizedAdd) / 2.0f;
-				}
-				else
-#endif
-				{
-					radius = (clip->maxs[0] - clip->mins[0]) / 2.0f;
-				}
-
-				// Use client state if present
-				if (touch->client != NULL)
-				{
-					vec3_t world_angles{};
-
-					world_angles[PITCH] = 0.0f;
-					world_angles[YAW] = touch->client->legsYaw;
-					world_angles[ROLL] = 0.0f;
-
-					re.G2API_CollisionDetect(
-						clip->trace.G2CollisionMap,
-						touch->ghoul2,
-						world_angles,
-						touch->client->origin,
-						sv.time,
-						touch->s.number,
-						clip->start,
-						clip->end,
-						touch->s.modelScale,
-						G2VertSpaceServer,
-						clip->eG2TraceType,
-						clip->useLod,
-						radius);
+					Com_Printf("SV_ClipMoveToEntities: Ghoul2 collision normal not found for ent %d\n",
+						touch->s.number);
 				}
 				else
 				{
-					re.G2API_CollisionDetect(
-						clip->trace.G2CollisionMap,
-						touch->ghoul2,
-						touch->currentAngles,
-						touch->currentOrigin,
-						sv.time,
-						touch->s.number,
-						clip->start,
-						clip->end,
-						touch->s.modelScale,
-						G2VertSpaceServer,
-						clip->eG2TraceType,
-						clip->useLod,
-						radius);
-				}
-
-				// Count new collision records
-				for (int z = 0; z < MAX_G2_COLLISIONS; z++)
-				{
-					if (clip->trace.G2CollisionMap[z].mEntityNum != -1)
+					const float len = VectorLength(clip->trace.plane.normal);
+					if (len <= 0.1f)
 					{
-						new_trace_rec_size++;
-					}
-				}
-
-				// If Ghoul2 did not add any new hits, restore previous trace
-				if (new_trace_rec_size == old_trace_rec_size)
-				{
-					clip->trace = old_trace;
-				}
-				else
-				{
-					// Copy best collision normal into quake trace plane
-					qboolean found = qfalse;
-
-					for (int z = 0; z < MAX_G2_COLLISIONS; z++)
-					{
-						if (clip->trace.G2CollisionMap[z].mEntityNum == touch->s.number)
-						{
-							clip->trace.plane.normal[0] = clip->trace.G2CollisionMap[z].mCollisionNormal[0];
-							clip->trace.plane.normal[1] = clip->trace.G2CollisionMap[z].mCollisionNormal[1];
-							clip->trace.plane.normal[2] = clip->trace.G2CollisionMap[z].mCollisionNormal[2];
-							found = qtrue;
-							break;
-						}
-					}
-
-					if (found == qfalse)
-					{
-						Com_Printf("SV_ClipMoveToEntities: Ghoul2 collision normal not found for ent %d\n",
+						Com_Printf("SV_ClipMoveToEntities: Ghoul2 collision normal too small for ent %d\n",
 							touch->s.number);
-					}
-					else
-					{
-						const float len = VectorLength(clip->trace.plane.normal);
-						if (len <= 0.1f)
-						{
-							Com_Printf("SV_ClipMoveToEntities: Ghoul2 collision normal too small for ent %d\n",
-								touch->s.number);
-						}
 					}
 				}
 			}
@@ -921,14 +882,14 @@ SV_ClipMoveToEntities
 SV_Trace
 
 Moves the given mins/maxs volume through the world from start to end.
-pass_entity_num and entities owned by pass_entity_num are explicitly not checked.
+passEntityNum and entities owned by passEntityNum are explicitly not checked.
 ==================
 */
 /*
 Ghoul2 Insert Start
 */
 void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int contentmask, const EG2_Collision eG2TraceType, const int useLod)
+	const int passEntityNum, const int contentmask, const EG2_Collision eG2TraceType, const int useLod)
 {
 	/*
 	Ghoul2 Insert End
@@ -993,7 +954,7 @@ void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec
 	// we can limit it to the part of the move not
 	// already clipped off by the world, which can be
 	// a significant savings for line of sight and shot traces
-	clip.pass_entity_num = pass_entity_num;
+	clip.passEntityNum = passEntityNum;
 
 #if 0 //G2_SUPERSIZEDBBOX is not being used
 	vec3_t superMin;
@@ -1049,7 +1010,7 @@ void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec
 =============
 SV_PointContents
 =============
-*/int SV_PointContents(const vec3_t p, const int pass_entity_num)
+*/int SV_PointContents(const vec3_t p, const int passEntityNum)
 {
 	// Static to avoid 32 KB stack usage
 	static gentity_t* touch[MAX_GENTITIES];
@@ -1069,13 +1030,13 @@ SV_PointContents
 		}
 
 		// Skip the pass entity
-		if (hit->s.number == pass_entity_num)
+		if (hit->s.number == passEntityNum)
 		{
 			continue;
 		}
 
 		// Exact transformed contents test
-		const clipHandle_t clip_handle = SV_clip_handleForEntity(hit);
+		const clipHandle_t clip_handle = SV_ClipHandleForEntity(hit);
 
 		const int c2 = CM_TransformedPointContents(
 			p,

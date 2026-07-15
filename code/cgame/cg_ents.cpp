@@ -1201,7 +1201,6 @@ static void CG_Item(centity_t* cent)
 	}
 }
 
-
 //============================================================================
 
 /*
@@ -1958,7 +1957,7 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 {
 	if (cent->gent && cent->gent->client && cent->gent->client->NPC_class == CLASS_VEHICLE && cent->nextState)
 	{
-		const float	f = cg.frameInterpolation;
+		const float f = cg.frameInterpolation;
 
 		cent->currentState.vehicleAngles[0] = LerpAngle(cent->currentState.vehicleAngles[0], cent->nextState->vehicleAngles[0], f);
 		cent->currentState.vehicleAngles[1] = LerpAngle(cent->currentState.vehicleAngles[1], cent->nextState->vehicleAngles[1], f);
@@ -1975,13 +1974,18 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 
 	if (cent->interpolate)
 	{
-		vec3_t		current, next;
+		// if the entity has a valid next state, interpolate a value between the frames
+		// unless it is a mover with a known start and stop
+		vec3_t current, next;
 
+		// it would be an internal error to find an entity that interpolates without
+		// a snapshot ahead of the current one
 		if (cg.nextSnap == nullptr)
 		{
-			CG_Error("CG_AddCEntity: cg.nextSnap == nullptr");
+			CG_Error("CG_AddCEntity: cg.nextSnap == NULL");
 		}
-		const float	f = cg.frameInterpolation;
+
+		const float f = cg.frameInterpolation;
 
 		if (cent->currentState.apos.trType == TR_INTERPOLATE && cent->nextState)
 		{
@@ -1992,9 +1996,10 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 			cent->lerpAngles[1] = LerpAngle(current[1], next[1], f);
 			cent->lerpAngles[2] = LerpAngle(current[2], next[2], f);
 		}
-
 		if (cent->currentState.pos.trType == TR_INTERPOLATE && cent->nextState)
 		{
+			// this will linearize a sine or parabolic curve, but it is important
+			// to not extrapolate player positions if more recent data is available
 			EvaluateTrajectory(&cent->currentState.pos, cg.snap->serverTime, current);
 			EvaluateTrajectory(&cent->nextState->pos, cg.nextSnap->serverTime, next);
 
@@ -2018,28 +2023,29 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 	}
 
 	// just use the current frame and evaluate as best we can
-	trajectory_t* posData = &cent->currentState.pos;
+	const trajectory_t* pos_data = &cent->currentState.pos;
 	{
-		gentity_t* ent = &g_entities[cent->currentState.number];
+		const gentity_t* ent = &g_entities[cent->currentState.number];
 
 		if (ent && ent->inuse)
 		{
 			if (ent->s.eFlags & EF_BLOCKED_MOVER || ent->s.pos.trType == TR_STATIONARY)
-			{//this mover has stopped moving and is going to wig out if we predict it
+			{
+				//this mover has stopped moving and is going to wig out if we predict it
 				//based on last frame's info- cut across the network and use the currentOrigin
 				VectorCopy(ent->currentOrigin, cent->lerpOrigin);
-				posData = NULL;
+				pos_data = nullptr;
 			}
 			else
 			{
-				posData = &ent->s.pos;
+				pos_data = &ent->s.pos;
 			}
 		}
 	}
 
-	if (posData)
+	if (pos_data)
 	{
-		EvaluateTrajectory(posData, cg.time, cent->lerpOrigin);
+		EvaluateTrajectory(pos_data, cg.time, cent->lerpOrigin);
 	}
 
 	// FIXME: this will stomp an apos trType of TR_INTERPOLATE!!

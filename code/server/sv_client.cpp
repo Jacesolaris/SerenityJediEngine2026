@@ -123,7 +123,7 @@ gotnewcl:
 	Z_Free(temp);     // free temp
 
 	const int clientNum = newcl - svs.clients;
-	gentity_t* ent = SV_Gentity_num(clientNum);
+	gentity_t* ent = SV_GentityNum(clientNum);
 	newcl->gentity = ent;
 
 	Netchan_Setup(NS_SERVER, &newcl->netchan, from, qport);
@@ -252,7 +252,7 @@ void SV_ClientEnterWorld(client_t* client, const usercmd_t* cmd, const SavedGame
 
 	// set up the entity for the client
 	const int clientNum = client - svs.clients;
-	gentity_t* ent = SV_Gentity_num(clientNum);
+	gentity_t* ent = SV_GentityNum(clientNum);
 	ent->s.number = clientNum;
 	client->gentity = ent;
 

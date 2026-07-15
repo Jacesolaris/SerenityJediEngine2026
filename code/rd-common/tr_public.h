@@ -108,7 +108,7 @@ using refimport_t = struct
 
 	// ============= NOT IN MP BEYOND THIS POINT
 	void (*SV_Trace)(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-		int pass_entity_num, int contentmask,
+		int passEntityNum, int contentmask,
 		EG2_Collision eG2TraceType, int useLod);
 
 	ojk::ISavedGame* saved_game;

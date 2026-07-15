@@ -158,7 +158,8 @@ static void UpdateIPBans(void)
 =================
 G_FilterPacket
 =================
-*/qboolean G_FilterPacket(char* from)
+*/
+qboolean G_FilterPacket(char* from)
 {
 	// FIX: ensure union is fully initialized
 	byteAlias_t m = { 0 };

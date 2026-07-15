@@ -430,32 +430,38 @@ int CIcarus::Run(const int icarus_id, char* buffer, const long length)
 
 int CIcarus::SaveSequenceIDTable()
 {
-	//Save out the number of sequences to follow
-	const int numSequences = m_sequences.size();
+	// Number of sequences to save
+	const int numSequences = static_cast<int>(m_sequences.size());
 
-	BufferWrite(&numSequences, sizeof numSequences);
+	// Write count
+	BufferWrite(&numSequences, sizeof(numSequences));
 
-	//Sequences are saved first, by ID and information
-	sequence_l::iterator sqi;
+	// Use vector to avoid raw allocation and suppress C6386
+	std::vector<int> idTable;
+	idTable.reserve(numSequences);
 
-	//First pass, save all sequences ID for reconstruction
-	const auto idTable = new int[numSequences];
-	int itr = 0;
-
-	if (idTable == nullptr)
-		return false;
-
-	STL_ITERATE(sqi, m_sequences)
+	// Fill ID table
+	for (CSequence* seq : m_sequences)
 	{
-		idTable[itr++] = (*sqi)->GetID();
+		if (seq)
+		{
+			idTable.push_back(seq->GetID());
+		}
+		else
+		{
+			Com_Printf("SaveSequenceIDTable: NULL sequence encountered\n");
+			idTable.push_back(0);
+		}
 	}
 
-	//game->WriteSaveData( INT_ID('S','Q','T','B'), idTable, sizeof( int ) * numSequences );
-	BufferWrite(idTable, sizeof(int) * numSequences);
+	// Write contiguous block safely
+	if (!idTable.empty())
+	{
+		BufferWrite(idTable.data(),
+			static_cast<int>(idTable.size()) * sizeof(int));
+	}
 
-	delete[] idTable;
-
-	return true;
+	return qtrue;
 }
 
 int CIcarus::SaveSequences()

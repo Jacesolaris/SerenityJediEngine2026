@@ -1778,41 +1778,52 @@ NPC_BSST_Patrol
 
 void NPC_BSST_Patrol()
 {
-	//FIXME: pick up on bodies of dead buddies?
-	//Not a scriptflag, but...
-	if (NPC->client->NPC_class == CLASS_ROCKETTROOPER && NPC->client->ps.eFlags & EF_SPOTLIGHT)
+	if (!NPC || !NPCInfo || !NPC->client)
 	{
-		//using spotlight search mode
+		return;
+	}
+
+	// ROCKET TROOPER SPOTLIGHT MODE
+	//===========================================================
+	if (NPC->client->NPC_class == CLASS_ROCKETTROOPER &&
+		(NPC->client->ps.eFlags & EF_SPOTLIGHT))
+	{
 		vec3_t eye_fwd, end;
 		constexpr vec3_t maxs = { 2, 2, 2 };
 		constexpr vec3_t mins = { -2, -2, -2 };
 		trace_t trace;
+
 		AngleVectors(NPC->client->renderInfo.eyeAngles, eye_fwd, nullptr, nullptr);
 		VectorMA(NPC->client->renderInfo.eyePoint, NPCInfo->stats.visrange, eye_fwd, end);
-		//get server-side trace impact point
-		gi.trace(&trace, NPC->client->renderInfo.eyePoint, mins, maxs, end, NPC->s.number,
-			MASK_OPAQUE | CONTENTS_BODY | CONTENTS_CORPSE, static_cast<EG2_Collision>(0), 0);
+
+		gi.trace(&trace,
+			NPC->client->renderInfo.eyePoint,
+			mins, maxs,
+			end,
+			NPC->s.number,
+			MASK_OPAQUE | CONTENTS_BODY | CONTENTS_CORPSE,
+			static_cast<EG2_Collision>(0),
+			0);
+
 		NPC->speed = trace.fraction * NPCInfo->stats.visrange;
+
 		if (NPCInfo->scriptFlags & SCF_LOOK_FOR_ENEMIES)
 		{
-			//FIXME: do a FOV cone check, then a trace
 			if (trace.entityNum < ENTITYNUM_WORLD)
 			{
-				//hit something
-				//try cheap check first
 				gentity_t* enemy = &g_entities[trace.entityNum];
-				if (enemy && enemy->client && NPC_ValidEnemy(enemy) && enemy->client->playerTeam == NPC->client->
-					enemyTeam)
+				if (enemy && enemy->inuse && enemy->client &&
+					NPC_ValidEnemy(enemy) &&
+					enemy->client->playerTeam == NPC->client->enemyTeam)
 				{
 					G_SetEnemy(NPC, enemy);
-					TIMER_Set(NPC, "attackDelay", Q_irand(500, 1500));
+					TIMER_Set(NPC, "attackDelay", Q_irand(500, 2500));
 					NPC_AngerSound();
 					NPC_UpdateAngles(qtrue, qtrue);
 					return;
 				}
 			}
-			//FIXME: maybe do a quick check of ents within the spotlight's radius?
-			//hmmm, look around
+
 			if (NPC_CheckEnemiesInSpotlight())
 			{
 				NPC_AngerSound();
@@ -1823,12 +1834,12 @@ void NPC_BSST_Patrol()
 	}
 	else
 	{
-		//get group- mainly for group speech debouncing, but may use for group scouting/investigating AI, too
+		// NORMAL PATROL MODE
+		//===========================================================
 		AI_GetGroup(NPC);
 
-		if (NPCInfo->confusionTime < level.time && NPCInfo->insanityTime < level.time)
+		if (NPCInfo->confusionTime < level.time)
 		{
-			//Look for any enemies
 			if (NPCInfo->scriptFlags & SCF_LOOK_FOR_ENEMIES)
 			{
 				if (NPC_CheckPlayerTeamStealth())
@@ -1841,44 +1852,46 @@ void NPC_BSST_Patrol()
 		}
 	}
 
+	// ALERT EVENT HANDLING
+	//===========================================================
 	if (!(NPCInfo->scriptFlags & SCF_IGNORE_ALERTS))
 	{
-		const int alert_event = NPC_CheckAlertEvents(qtrue, qtrue);
+		const int alertEvent = NPC_CheckAlertEvents(qtrue, qtrue);
 
 		//There is an event to look at
-		if (alert_event >= 0)
+		if (alertEvent >= 0)
 		{
-			if (NPC_CheckForDanger(alert_event))
-			{
-				//going to run?
+			if (NPC_CheckForDanger(alertEvent))
+			{//going to run?
 				ST_Speech(NPC, SPEECH_COVER, 0);
 				return;
 			}
-			if (NPC->client->NPC_class == CLASS_BOBAFETT /*|| NPC->client->NPC_class == CLASS_MANDO*/)
+			else if (NPC->client->NPC_class == CLASS_BOBAFETT ||
+				NPC->client->NPC_class == CLASS_MANDO)
 			{
-				if (!level.alertEvents[alert_event].owner ||
-					!level.alertEvents[alert_event].owner->client ||
-					level.alertEvents[alert_event].owner->health <= 0 ||
-					level.alertEvents[alert_event].owner->client->playerTeam != NPC->client->enemyTeam)
-				{
-					//not an enemy
+				if (!level.alertEvents[alertEvent].owner ||
+					!level.alertEvents[alertEvent].owner->client ||
+					level.alertEvents[alertEvent].owner->health <= 0 ||
+					level.alertEvents[alertEvent].owner->client->playerTeam != NPC->client->enemyTeam)
+				{//not an enemy
 					return;
 				}
-				G_SetEnemy(NPC, level.alertEvents[alert_event].owner);
+				ST_Speech(NPC, SPEECH_CHASE, 0);
+				G_SetEnemy(NPC, level.alertEvents[alertEvent].owner);
 				NPCInfo->enemyLastSeenTime = level.time;
-				TIMER_Set(NPC, "attackDelay", Q_irand(500, 1500));
+				TIMER_Set(NPC, "attackDelay", Q_irand(500, 2500));
 				return;
 			}
-			if (NPC_ST_InvestigateEvent(alert_event, qfalse))
-			{
-				//actually going to investigate it
+			else if (NPC_ST_InvestigateEvent(alertEvent, qfalse))
+			{//actually going to investigate it
 				NPC_UpdateAngles(qtrue, qtrue);
 				return;
 			}
 		}
 	}
 
-	//If we have somewhere to go, then do that
+	// MOVEMENT TOWARD GOAL
+	//===========================================================
 	if (UpdateGoal())
 	{
 		ucmd.buttons |= BUTTON_WALKING;
@@ -1886,54 +1899,62 @@ void NPC_BSST_Patrol()
 	}
 	else
 	{
-		if (TIMER_Done(NPC, "enemyLastVisible"))
+		// IDLE LOOK-AROUND BEHAVIOUR
+		//===========================================================
+		if (NPC->client->NPC_class != CLASS_IMPERIAL &&
+			NPC->client->NPC_class != CLASS_IMPWORKER)
 		{
-			//nothing suspicious, look around
-			if (!Q_irand(0, 30))
+			if (TIMER_Done(NPC, "enemyLastVisible"))
 			{
-				NPCInfo->desiredYaw = NPC->s.angles[1] + Q_irand(-90, 90);
-			}
-			if (!Q_irand(0, 30))
-			{
-				NPCInfo->desiredPitch = Q_irand(-20, 20);
+				if (!Q_irand(0, 10))
+				{
+					NPCInfo->desiredYaw = NPC->s.angles[1] + Q_irand(-45, 45);
+				}
+				if (!Q_irand(0, 10))
+				{
+					NPCInfo->desiredPitch = Q_irand(-10, 10);
+				}
 			}
 		}
 	}
 
 	NPC_UpdateAngles(qtrue, qtrue);
-	//TEMP hack for Imperial stand anim
-	if (NPC->client->NPC_class == CLASS_IMPERIAL || NPC->client->NPC_class == CLASS_IMPWORKER)
+
+	// IMPERIAL IDLE ANIMATION HACK
+	//===========================================================
+	if (NPC->client->NPC_class == CLASS_IMPERIAL ||
+		NPC->client->NPC_class == CLASS_IMPWORKER)
 	{
-		//hack
 		if (NPC->client->ps.weapon != WP_CONCUSSION)
 		{
-			//not Rax
 			if (ucmd.forwardmove || ucmd.rightmove || ucmd.upmove)
 			{
-				//moving
-				if (!NPC->client->ps.torsoAnimTimer || NPC->client->ps.torsoAnim == BOTH_STAND4)
+				if (!NPC->client->ps.torsoAnimTimer ||
+					NPC->client->ps.torsoAnim == BOTH_STAND4)
 				{
-					if (ucmd.buttons & BUTTON_WALKING && !(NPCInfo->scriptFlags & SCF_RUNNING))
+					if (ucmd.buttons & BUTTON_WALKING &&
+						!(NPCInfo->scriptFlags & SCF_RUNNING))
 					{
-						//not running, only set upper anim
-						//  No longer overrides scripted anims
-						NPC_SetAnim(NPC, SETANIM_TORSO, BOTH_STAND4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+						NPC_SetAnim(NPC, SETANIM_TORSO, BOTH_STAND4,
+							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						NPC->client->ps.torsoAnimTimer = 200;
 					}
 				}
 			}
 			else
 			{
-				//standing still, set both torso and legs anim
-				//  No longer overrides scripted anims
-				if ((!NPC->client->ps.torsoAnimTimer || NPC->client->ps.torsoAnim == BOTH_STAND4) &&
-					(!NPC->client->ps.legsAnimTimer || NPC->client->ps.legsAnim == BOTH_STAND4))
+				if ((!NPC->client->ps.torsoAnimTimer ||
+					NPC->client->ps.torsoAnim == BOTH_STAND4) &&
+					(!NPC->client->ps.legsAnimTimer ||
+						NPC->client->ps.legsAnim == BOTH_STAND4))
 				{
-					NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_STAND4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-					NPC->client->ps.torsoAnimTimer = NPC->client->ps.legsAnimTimer = 200;
+					NPC_SetAnim(NPC, SETANIM_BOTH, BOTH_STAND4,
+						SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+					NPC->client->ps.torsoAnimTimer =
+						NPC->client->ps.legsAnimTimer = 200;
 				}
 			}
-			//FIXME: this is a disgusting hack that is supposed to make the Imperials start with their weapon holstered- need a better way
+
 			if (NPC->client->ps.weapon != WP_NONE)
 			{
 				ChangeWeapon(NPC, WP_NONE);

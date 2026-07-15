@@ -160,7 +160,7 @@ void FreeWeightConfig(weightconfig_t* config)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-fuzzyseperator_t* ReadFuzzySeperators_r(source_t* source)
+static fuzzyseperator_t* ReadFuzzySeperators_r(source_t* source)
 {
 	token_t token;
 	fuzzyseperator_t* fs;
@@ -291,7 +291,6 @@ fuzzyseperator_t* ReadFuzzySeperators_r(source_t* source)
 			FreeFuzzySeperators_r(firstfs);
 			return nullptr;
 		}
-
 	} while (strcmp(token.string, "}") != 0);
 
 	if (!founddefault)

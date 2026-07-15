@@ -3830,7 +3830,7 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 
 		if (!ent->client->ps.saberInFlight)
 		{
-			if (!(ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) && !PM_SaberInAttack(ent->client->ps.saberMove) && ent->client->ps.saberLockTime < level.time) // lets do a movement when changing styles // need better anims for this
+			if (!(((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)) && !PM_SaberInAttack(ent->client->ps.saberMove) && ent->client->ps.saberLockTime < level.time) // lets do a movement when changing styles // need better anims for this
 			{
 				G_SetAnim(ent, &ent->client->pers.cmd, SETANIM_TORSO, BOTH_STAND2TO1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 

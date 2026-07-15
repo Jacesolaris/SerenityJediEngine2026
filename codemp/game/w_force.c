@@ -1405,7 +1405,7 @@ void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt)
 
 void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt)
 {
-	const qboolean is_holding_block_button = self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!is_holding_block_button)
@@ -9044,8 +9044,8 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		using_force = qtrue;
 	}
 
-	const qboolean is_holding_block_button_and_attack = self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
-	const qboolean is_holding_block_button = self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!using_force
@@ -9257,7 +9257,7 @@ powersetcheck:
 
 void WP_BlockPointsUpdate(const gentity_t* self)
 {
-	const qboolean is_holding_block_button = self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!(self->r.svFlags & SVF_BOT))

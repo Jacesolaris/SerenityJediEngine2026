@@ -1174,9 +1174,9 @@ void g_mover_touch_push_triggers(gentity_t* ent, vec3_t old_org)
 }
 
 static void SV_PMTrace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int content_mask)
+	const int passEntityNum, const int content_mask)
 {
-	trap->Trace(results, start, mins, maxs, end, pass_entity_num, content_mask, qfalse, 0, 10);
+	trap->Trace(results, start, mins, maxs, end, passEntityNum, content_mask, qfalse, 0, 10);
 }
 
 /*
@@ -1329,7 +1329,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 		--------------------------------------------------------- */
 		if (!(ent->r.svFlags & SVF_BOT) &&
 			!PM_SaberInAttack(ent->client->ps.saberMove) &&
-			!(ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) &&
+			!((ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) &&
 			!ent->client->poisonTime &&
 			!ent->client->stunTime &&
 			!ent->client->AmputateTime &&
@@ -1396,7 +1396,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			ent->client->ps.saberBlockingTime < level.time &&
 			ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
-			if (!(client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
+			if (!(((client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)))
 			{
 				if (client->ps.saberFatigueChainCount > MISHAPLEVEL_HUDFLASH)
 				{
@@ -2891,7 +2891,7 @@ static void BotDelayedTauntReply(gentity_t* bot)
 void G_SetTauntAnim(gentity_t* ent, int taunt)
 {
 	const saberInfo_t* saber1 = BG_MySaber(ent->clientNum, 0);
-	const qboolean is_holding_block_button = ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;//Normal Blocking
+	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;//Normal Blocking
 
 	// dead clients dont get to spam taunt
 	if (ent->client->ps.stats[STAT_HEALTH] <= 0)
@@ -3949,7 +3949,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 void G_SetsaberdownorAnim(gentity_t* ent)
 {
 	const saberInfo_t* saber1 = BG_MySaber(ent->clientNum, 0);
-	const qboolean is_holding_block_button = ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 
 	if (ent->client->ps.saberLockTime >= level.time)
 	{
@@ -5631,7 +5631,7 @@ static void ClientThink_real(gentity_t* ent)
 	{
 		if (manual_running_and_saberblocking(ent))
 		{
-			if (!(client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
+			if (!(((client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)))
 			{
 				client->ps.ManualBlockingFlags |= 1 << HOLDINGBLOCK;
 				client->ps.userInt3 |= 1 << FLAG_BLOCKING;
@@ -5640,7 +5640,7 @@ static void ClientThink_real(gentity_t* ent)
 		}
 		else if (manual_saberblocking(ent))
 		{
-			if (!(client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK))
+			if (!(((client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)))
 			{
 				client->ps.ManualBlockingFlags |= 1 << HOLDINGBLOCK;
 				client->ps.userInt3 |= 1 << FLAG_BLOCKING;

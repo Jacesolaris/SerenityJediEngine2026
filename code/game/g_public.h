@@ -225,10 +225,10 @@ using game_import_t = struct
 
 	// collision detection against all linked entities
 	void (*trace)(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-		int pass_entity_num, int contentmask, EG2_Collision eG2TraceType, int useLod);
+		int passEntityNum, int contentmask, EG2_Collision eG2TraceType, int useLod);
 
 	// point contents against all linked entities
-	int (*pointcontents)(const vec3_t point, int pass_entity_num);
+	int (*pointcontents)(const vec3_t point, int passEntityNum);
 	// what contents are on the map?
 	int (*totalMapContents)();
 

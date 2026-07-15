@@ -923,7 +923,6 @@ public:
 	int painCooldownTime;
 	qboolean IsAiming;
 	char* fullName; // Character's full name
-
 	// Tracks which entities have been hit in the current saber swing
 	int			saberHitEntityBitMask;
 	int			saberLastAttackSequence;

@@ -2066,7 +2066,7 @@ void CG_PlayerShieldHit(int entityNum, vec3_t dir, int amount);
 // cg_predict.c
 //
 void CG_BuildSolidList(void);
-int	CG_PointContents(const vec3_t point, int pass_entity_num);
+int	CG_PointContents(const vec3_t point, int passEntityNum);
 void CG_Trace(trace_t* result, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
 	int skip_number, int mask);
 void CG_G2Trace(trace_t* result, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,

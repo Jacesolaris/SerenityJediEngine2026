@@ -2548,7 +2548,7 @@ int ragSSCount = 0;
 int ragTraceCount = 0;
 #endif
 
-void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int pass_entity_num, const int contentmask)
+void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int passEntityNum, const int contentmask)
 {
 #ifdef _DEBUG
 	const int rag_pre_trace = ri->Milliseconds();
@@ -2561,7 +2561,7 @@ void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const ve
 		VectorCopy(end, call_data->end);
 		VectorCopy(mins, call_data->mins);
 		VectorCopy(maxs, call_data->maxs);
-		call_data->ignore = pass_entity_num;
+		call_data->ignore = passEntityNum;
 		call_data->mask = contentmask;
 
 		ri->CGVM_RagCallback(RAG_CALLBACK_TRACELINE);
@@ -2571,7 +2571,7 @@ void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const ve
 	else
 	{
 		results->entityNum = ENTITYNUM_NONE;
-		//SV_Trace(results, start, mins, maxs, end, pass_entity_num, contentmask, eG2TraceType, useLod);
+		//SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
 		ri->CM_BoxTrace(results, start, end, mins, maxs, 0, contentmask, 0);
 		results->entityNum = results->fraction != 1.0 ? ENTITYNUM_WORLD : ENTITYNUM_NONE;
 	}

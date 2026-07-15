@@ -203,7 +203,7 @@ using traceWork_t = struct traceWork_s
 	float baseLeaveFrac = 1.0f; // global leave fraction (before processing subsections of the brush)
 	float enterFrac = 0.0f; // fraction where the ray enters the brush
 	float leaveFrac = 1.0f; // fraction where the ray leaves the brush
-	cbrushside_t* leadside;
+	cbrushside_t* leadside = nullptr;
 	cplane_t* clipplane = nullptr;
 	bool startout = false;
 	bool getout = false;

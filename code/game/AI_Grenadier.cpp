@@ -45,6 +45,7 @@ extern void NPC_AimAdjust(int change);
 extern qboolean FlyingCreature(const gentity_t* ent);
 extern qboolean NPC_IsGunner(const gentity_t* self);
 extern void npc_check_speak(gentity_t* speaker_npc);
+extern void NPC_AngerSound();
 
 constexpr auto MAX_VIEW_DIST = 1024;
 constexpr auto MAX_VIEW_SPEED = 250;
@@ -227,6 +228,7 @@ static void NPC_BSGrenadier_Patrol()
 		{
 			if (NPC_CheckPlayerTeamStealth())
 			{
+				NPC_AngerSound();
 				NPC_UpdateAngles(qtrue, qtrue);
 				return;
 			}

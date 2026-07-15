@@ -426,7 +426,7 @@ static void SV_AddEntitiesVisibleFromPoint(vec3_t origin, clientSnapshot_t* fram
 
 	for (int e = 0; e < sv.num_entities; e++)
 	{
-		sharedEntity_t* ent = SV_Gentity_num(e);
+		sharedEntity_t* ent = SV_GentityNum(e);
 
 		// never send entities that aren't linked in
 		if (!ent->r.linked)
@@ -641,7 +641,7 @@ static void SV_BuildClientSnapshot(client_t* client)
 	if (ps->m_iVehicleNum)
 	{
 		//get the vehicle's playerstate too then
-		sharedEntity_t* veh = SV_Gentity_num(ps->m_iVehicleNum);
+		sharedEntity_t* veh = SV_GentityNum(ps->m_iVehicleNum);
 
 		if (veh && veh->playerState)
 		{
@@ -693,7 +693,7 @@ static void SV_BuildClientSnapshot(client_t* client)
 	frame->first_entity = svs.nextSnapshotEntities;
 	for (i = 0; i < entity_numbers.numSnapshotEntities; i++)
 	{
-		ent = SV_Gentity_num(entity_numbers.snapshotEntities[i]);
+		ent = SV_GentityNum(entity_numbers.snapshotEntities[i]);
 		state = &svs.snapshotEntities[svs.nextSnapshotEntities % svs.numSnapshotEntities];
 		*state = ent->s;
 		svs.nextSnapshotEntities++;

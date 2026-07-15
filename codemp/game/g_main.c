@@ -4847,8 +4847,9 @@ void G_RunFrame(const int levelTime)
 					ent->client->sprintDebReduce = level.time + SPRINT_DEFUEL_RATE;
 				}
 			}
-			else if (ent->client->ps.sprintFuel < 100 && !(ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) && !(
-				ent->client->ps.PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
+			else if (ent->client->ps.sprintFuel < 100 &&
+				!(ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) &&
+				!(ent->client->ps.PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
 			{
 				//recharge jetpack
 				if (ent->client->sprintkDebRecharge < level.time && !ent->client->IsSprinting)

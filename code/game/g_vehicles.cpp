@@ -109,12 +109,12 @@ void Vehicle_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlag
 }
 
 void G_VehicleTrace(trace_t* results, const vec3_t start, const vec3_t tMins, const vec3_t tMaxs, const vec3_t end,
-	int pass_entity_num, int contentmask)
+	int passEntityNum, int contentmask)
 {
 #ifdef _JK2MP
-	trap_Trace(results, start, tMins, tMaxs, end, pass_entity_num, contentmask);
+	trap_Trace(results, start, tMins, tMaxs, end, passEntityNum, contentmask);
 #else
-	gi.trace(results, start, tMins, tMaxs, end, pass_entity_num, contentmask, static_cast<EG2_Collision>(0), 0);
+	gi.trace(results, start, tMins, tMaxs, end, passEntityNum, contentmask, static_cast<EG2_Collision>(0), 0);
 #endif
 }
 

@@ -398,30 +398,32 @@ CL_GetServerCommand
 
 Set up argc/argv for the given command
 ===================
-*/
-qboolean CL_GetServerCommand(const int serverCommandNumber)
+*/qboolean CL_GetServerCommand(const int serverCommandNumber)
 {
 	static char bigConfigString[BIG_INFO_STRING];
 
-	// if we have irretrievably lost a reliable command, drop the connection
+	// Safety: ensure buffer is always zero‑terminated
+	bigConfigString[0] = '\0';
+
+	// If we have irretrievably lost a reliable command, drop the connection
 	if (serverCommandNumber <= clc.serverCommandSequence - MAX_RELIABLE_COMMANDS)
 	{
 		int i = 0;
 
-		// when a demo record was started after the client got a whole bunch of
-		// reliable commands then the client never got those first reliable commands
-		if (clc.demoplaying)
+		if (clc.demoplaying == qtrue)
+		{
 			return qfalse;
+		}
 
 		while (i < MAX_RELIABLE_COMMANDS)
 		{
-			//spew out the reliable command buffer
-			if (clc.reliableCommands[i][0])
+			if (clc.reliableCommands[i][0] != '\0')
 			{
 				Com_Printf("%i: %s\n", i, clc.reliableCommands[i]);
 			}
 			i++;
 		}
+
 		Com_Error(ERR_DROP, "CL_GetServerCommand: a reliable command was cycled out");
 	}
 
@@ -430,7 +432,7 @@ qboolean CL_GetServerCommand(const int serverCommandNumber)
 		Com_Error(ERR_DROP, "CL_GetServerCommand: requested a command not received");
 	}
 
-	char* s = clc.serverCommands[serverCommandNumber & MAX_RELIABLE_COMMANDS - 1];
+	char* s = clc.serverCommands[(serverCommandNumber & (MAX_RELIABLE_COMMANDS - 1))];
 	clc.lastExecutedServerCommand = serverCommandNumber;
 
 	Com_DPrintf("serverCommand: %i : %s\n", serverCommandNumber, s);
@@ -439,86 +441,115 @@ rescan:
 	Cmd_TokenizeString(s);
 	const char* cmd = Cmd_Argv(0);
 
+	// ------------------------------------------------------------
+	// disconnect
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "disconnect") == 0)
 	{
 		char strEd[MAX_STRINGED_SV_STRING];
 		CL_CheckSVStringEdRef(strEd, Cmd_Argv(1));
-		Com_Error(ERR_SERVERDISCONNECT, "%s: %s\n", SE_GetString("MP_SVGAME_SERVER_DISCONNECTED"), strEd);
+		Com_Error(ERR_SERVERDISCONNECT, "%s: %s\n",
+			SE_GetString("MP_SVGAME_SERVER_DISCONNECTED"), strEd);
 	}
 
+	// ------------------------------------------------------------
+	// bcs0 — begin big configstring
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "bcs0") == 0)
 	{
-		Com_sprintf(bigConfigString, BIG_INFO_STRING, "cs %s \"%s", Cmd_Argv(1), Cmd_Argv(2));
+		// Safe zero‑termination
+		bigConfigString[0] = '\0';
+
+		Com_sprintf(bigConfigString, BIG_INFO_STRING,
+			"cs %s \"%s", Cmd_Argv(1), Cmd_Argv(2));
+
+		// Guarantee zero‑termination for MSVC analyzer
+		bigConfigString[BIG_INFO_STRING - 1] = '\0';
+
 		return qfalse;
 	}
 
+	// ------------------------------------------------------------
+	// bcs1 — append chunk
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "bcs1") == 0)
 	{
 		s = Cmd_Argv(2);
-		if (strlen(bigConfigString) + strlen(s) >= BIG_INFO_STRING)
+
+		if ((strlen(bigConfigString) + strlen(s)) >= (BIG_INFO_STRING - 1))
 		{
 			Com_Error(ERR_DROP, "bcs exceeded BIG_INFO_STRING");
 		}
+
 		strcat(bigConfigString, s);
+
+		// Guarantee zero‑termination
+		bigConfigString[BIG_INFO_STRING - 1] = '\0';
+
 		return qfalse;
 	}
 
+	// ------------------------------------------------------------
+	// bcs2 — final chunk + closing quote
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "bcs2") == 0)
 	{
 		s = Cmd_Argv(2);
-		if (strlen(bigConfigString) + strlen(s) + 1 >= BIG_INFO_STRING)
+
+		if ((strlen(bigConfigString) + strlen(s) + 1) >= (BIG_INFO_STRING - 1))
 		{
 			Com_Error(ERR_DROP, "bcs exceeded BIG_INFO_STRING");
 		}
+
 		strcat(bigConfigString, s);
 		strcat(bigConfigString, "\"");
+
+		// Guarantee zero‑termination
+		bigConfigString[BIG_INFO_STRING - 1] = '\0';
+
 		s = bigConfigString;
 		goto rescan;
 	}
 
+	// ------------------------------------------------------------
+	// cs — configstring update
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "cs") == 0)
 	{
 		CL_ConfigstringModified();
-		// reparse the string, because CL_ConfigstringModified may have done another Cmd_TokenizeString()
 		Cmd_TokenizeString(s);
 		return qtrue;
 	}
 
+	// ------------------------------------------------------------
+	// map_restart
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "map_restart") == 0)
 	{
-		// clear notify lines and outgoing commands before passing
-		// the restart to the cgame
 		Con_ClearNotify();
-		// reparse the string, because Con_ClearNotify() may have done another Cmd_TokenizeString()
 		Cmd_TokenizeString(s);
-		Com_Memset(cl.cmds, 0, sizeof cl.cmds);
+		Com_Memset(cl.cmds, 0, sizeof(cl.cmds));
 		return qtrue;
 	}
 
-	// the clientLevelShot command is used during development
-	// to generate 128*128 screenshots from the intermission
-	// point of levels for the menu system to use
-	// we pass it along to the cgame to make appropriate adjustments,
-	// but we also clear the console and notify lines here
+	// ------------------------------------------------------------
+	// clientLevelShot
+	// ------------------------------------------------------------
 	if (strcmp(cmd, "clientLevelShot") == 0)
 	{
-		// don't do it if we aren't running the server locally,
-		// otherwise malicious remote servers could overwrite
-		// the existing thumbnails
-		if (!com_sv_running->integer)
+		if (com_sv_running->integer == 0)
 		{
 			return qfalse;
 		}
-		// close the console
+
 		Con_Close();
-		// take a special screenshot next frame
 		Cbuf_AddText("wait ; wait ; wait ; wait ; screenshot levelshot\n");
 		return qtrue;
 	}
 
-	// we may want to put a "connect to other server" command here
-
-	// cgame can now act on the command
+	// ------------------------------------------------------------
+	// default: pass to cgame
+	// ------------------------------------------------------------
 	return qtrue;
 }
 

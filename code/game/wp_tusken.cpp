@@ -25,9 +25,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_functions.h"
 #include "wp_saber.h"
 #include "w_local.h"
+extern qboolean PM_CrouchAnim(const int anim);
+extern qboolean PM_RunningAnim(int anim);
+extern qboolean PM_WalkingAnim(int anim);
+extern qboolean G_ControlledByPlayer(const gentity_t* self);
 extern qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self);
-extern int wp_saber_must_block(gentity_t* self, const gentity_t* atk, qboolean check_b_box_block, vec3_t point,
-	int rSaberNum, int rBladeNum);
+extern int wp_saber_must_block(gentity_t* self, const gentity_t* atk, qboolean check_b_box_block, vec3_t point, int rSaberNum, int rBladeNum);
 extern qboolean WP_SaberBlockBolt(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern void G_MissileReflectEffect(const gentity_t* ent, vec3_t dir);
 extern void WP_ForcePowerDrain(const gentity_t* self, forcePowers_t force_power, int override_amt);
@@ -37,6 +40,12 @@ extern int WP_SaberBlockCost(gentity_t* defender, const gentity_t* attacker, vec
 void WP_FireTuskenRifle(gentity_t* ent)
 //---------------------------------------------------------
 {
+	// SAFETY: ent or ent->client may be NULL in edge cases
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_FireTuskenRifle: NULL ent or ent->client\n");
+		return;
+	}
 	vec3_t start;
 	trace_t tr;
 
@@ -85,39 +94,58 @@ void WP_FireTuskenRifle(gentity_t* ent)
 		//a Jedi is not dodging this shot
 		break;
 	}
-
 	//make sure our start point isn't on the other side of a wall
 
-	if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_HALF)
+	if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_FULL)
 	{
 		NPC_SetAnim(ent, SETANIM_BOTH, BOTH_H1_S1_TR, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 	}
 
-	if (NPC_IsNotHavingEnoughForceSight(ent))
+	if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
 	{
-		//force sight 2+ gives perfect aim
-		if (ent->NPC && ent->NPC->currentAim < 5)
+		//no inherent aim screw up
+	}
+	else if (NPC_IsNotHavingEnoughForceSight(ent) == qtrue)
+	{//force sight 2+ gives perfect aim
+		vec3_t angs;
+
+		vectoangles(forward_vec, angs); const qboolean is_player_or_controlled = ((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue)) ? qtrue : qfalse;
+
+		if (is_player_or_controlled == qtrue)
 		{
-			vec3_t angs;
-
-			vectoangles(forward_vec, angs);
-
-			if (ent->client->NPC_class == CLASS_IMPWORKER)
+			if (PM_CrouchAnim(ent->client->ps.legsAnim) == qtrue || g_entities[ent->s.number].client->IsAiming == qtrue)
 			{
-				//*sigh*, hack to make impworkers less accurate without affecteing imperial officer accuracy
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * (BLASTER_NPC_SPREAD + (1 - ent->NPC->currentAim) * 0.25f);
-				//was 0.5f
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * (BLASTER_NPC_SPREAD + (1 - ent->NPC->currentAim) * 0.25f);
-				//was 0.5f
+				angs[PITCH] += Q_flrand(-0.0f, 0.0f);
+				angs[YAW] += Q_flrand(-0.0f, 0.0f);
 			}
 			else
 			{
-				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * ((5 - ent->NPC->currentAim) * 0.25f);
-				angs[YAW] += Q_flrand(-1.0f, 1.0f) * ((5 - ent->NPC->currentAim) * 0.25f);
+				if (PM_RunningAnim(ent->client->ps.legsAnim) == qtrue ||
+					ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_ELEVEN && g_entities[ent->s.number].client->IsAiming == qfalse)
+				{
+					angs[PITCH] += Q_flrand(-1.2f, 1.2f) * RUNNING_SPREAD;
+					angs[YAW] += Q_flrand(-1.2f, 1.2f) * RUNNING_SPREAD;
+				}
+				else if (PM_WalkingAnim(ent->client->ps.legsAnim) == qtrue ||
+					ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HALF && g_entities[ent->s.number].client->IsAiming == qfalse)
+				{
+					angs[PITCH] += Q_flrand(-1.0f, 1.0f) * WALKING_SPREAD;
+					angs[YAW] += Q_flrand(-1.0f, 1.0f) * WALKING_SPREAD;
+				}
+				else
+				{
+					angs[PITCH] += Q_flrand(-0.5f, 0.5f) * BLASTER_MAIN_SPREAD;
+					angs[YAW] += Q_flrand(-0.5f, 0.5f) * BLASTER_MAIN_SPREAD;
+				}
 			}
-
-			AngleVectors(angs, forward_vec, nullptr, nullptr);
 		}
+		else
+		{// add some slop to the fire direction for NPC,s
+			angs[PITCH] += Q_flrand(-1.0f, 1.0f) * BLASTER_NPC_SPREAD;
+			angs[YAW] += Q_flrand(-1.0f, 1.0f) * BLASTER_NPC_SPREAD;
+		}
+
+		AngleVectors(angs, forward_vec, nullptr, nullptr);
 	}
 
 	WP_MissileTargetHint(ent, start, forward_vec);
@@ -139,11 +167,12 @@ void WP_FireTuskenRifle(gentity_t* ent)
 	{
 		missile->damage = TUSKEN_RIFLE_DAMAGE_EASY;
 	}
-	missile->dflags = DAMAGE_DEATH_KNOCKBACK | DAMAGE_EXTRA_KNOCKBACK;
 
-	missile->methodOfDeath = MOD_PISTOL; //???
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK;
 
-	missile->clipmask = MASK_SHOT;
+	missile->methodOfDeath = MOD_BRYAR; //???
+
+	missile->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
 
 	// we don't want it to bounce forever
 	missile->bounceCount = 8;

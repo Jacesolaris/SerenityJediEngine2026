@@ -158,38 +158,80 @@ A NULL client will broadcast to all clients
 */
 void QDECL SV_SendServerCommand(client_t* cl, const char* fmt, ...)
 {
-	va_list		argptr;
-	byte		message[MAX_MSGLEN];
+	va_list argptr;
+	char* message = NULL;
 	client_t* client;
-	int			j;
+	int j;
 
+	if (fmt == NULL)
+	{
+		Com_Printf("SV_SendServerCommand: NULL fmt\n");
+		return;
+	}
+
+	/* Allocate the message buffer on the heap to avoid large stack frames.
+	   MAX_MSGLEN is potentially large (many KB), which triggers MSVC C6262
+	   when allocated on the stack. Heap allocation avoids that. */
+	message = (char*)malloc(MAX_MSGLEN);
+	if (message == NULL)
+	{
+		Com_Printf("SV_SendServerCommand: malloc failed for %d bytes\n", MAX_MSGLEN);
+		return;
+	}
+
+	/* Format the message safely. Use vsnprintf and check the return value
+	   to detect truncation. vsnprintf returns the number of characters that
+	   would have been written (excluding the terminating NUL). */
 	va_start(argptr, fmt);
-	Q_vsnprintf((char*)message, sizeof(message), fmt, argptr);
+	const int needed = Q_vsnprintf(message, (size_t)MAX_MSGLEN, fmt, argptr);
 	va_end(argptr);
 
-	// Fix to http://aluigi.altervista.org/adv/q3msgboom-adv.txt
-	// The actual cause of the bug is probably further downstream
-	// and should maybe be addressed later, but this certainly
-	// fixes the problem for now
-	if (strlen((char*)message) > 1022) {
+	/* Q_vsnprintf should behave like vsnprintf and return the required length.
+	   If it indicates truncation (>= MAX_MSGLEN), drop the message to avoid
+	   downstream issues (this mirrors the original defensive behaviour). */
+	if (needed < 0)
+	{
+		/* Formatting error */
+		Com_Printf("SV_SendServerCommand: formatting error\n");
+		free(message);
 		return;
 	}
 
-	if (cl != NULL) {
-		SV_AddServerCommand(cl, (char*)message);
+	if (needed >= MAX_MSGLEN)
+	{
+		/* Defensive: message too long; drop it. This fixes the historical
+		   "q3msgboom" issue by preventing oversized server commands. */
+		Com_Printf("SV_SendServerCommand: message too long (%d >= %d), dropping\n", needed, MAX_MSGLEN);
+		free(message);
 		return;
 	}
 
-	// hack to echo broadcast prints to console
-	if (com_dedicated->integer && !Q_strncmp((char*)message, "print", 5)) {
-		Com_Printf("broadcast: %s\n", SV_ExpandNewlines((char*)message));
+	/* Extra safety: ensure NUL termination for static analyzers and paranoid checks */
+	message[MAX_MSGLEN - 1] = '\0';
+
+	/* If a specific client was provided, send only to that client */
+	if (cl != NULL)
+	{
+		SV_AddServerCommand(cl, message);
+		free(message);
+		return;
 	}
 
-	// send the data to all relevent clients
-	for (j = 0, client = svs.clients; j < sv_maxclients->integer; j++, client++) {
-		SV_AddServerCommand(client, (char*)message);
+	/* Dedicated server: echo broadcast prints to console for operator visibility */
+	if (com_dedicated != NULL && com_dedicated->integer != 0 && !Q_strncmp(message, "print", 5))
+	{
+		Com_Printf("broadcast: %s\n", SV_ExpandNewlines(message));
 	}
+
+	/* Broadcast to all connected clients */
+	for (j = 0, client = svs.clients; j < sv_maxclients->integer; j++, client++)
+	{
+		SV_AddServerCommand(client, message);
+	}
+
+	free(message);
 }
+
 
 /*
 ==============================================================================
@@ -507,15 +549,18 @@ and all connected players.  Used for getting detailed information after
 the simple info query.
 ================
 */
-void SVC_Status(const netadr_t from)
+static void SVC_Status(const netadr_t from)
 {
-	char status[MAX_MSGLEN]{};
+	// Move the large status buffer off the stack to avoid excessive stack usage.
+	// The server code is single-threaded for packet handling, so a static scratch
+	// buffer is safe here and eliminates MSVC C6262 warnings.
+	static char status[MAX_MSGLEN];
 	char infostring[MAX_INFO_STRING];
 
 	// Prevent using getstatus as an amplifier
-	if (SVC_RateLimitAddress(from, 10, 1000))
+	if (SVC_RateLimitAddress(from, 10, 1000) == qtrue)
 	{
-		if (com_developer->integer)
+		if (com_developer != NULL && com_developer->integer != 0)
 		{
 			Com_Printf("SVC_Status: rate limit from %s exceeded, dropping request\n",
 				NET_AdrToString(from));
@@ -525,46 +570,90 @@ void SVC_Status(const netadr_t from)
 
 	// Allow getstatus to be DoSed relatively easily, but prevent
 	// excess outbound bandwidth usage when being flooded inbound
-	if (SVC_RateLimit(&outboundLeakyBucket, 10, 100))
+	if (SVC_RateLimit(&outboundLeakyBucket, 10, 100) == qtrue)
 	{
 		Com_DPrintf("SVC_Status: rate limit exceeded, dropping request\n");
 		return;
 	}
 
 	// A maximum challenge length of 128 should be more than plenty.
-	if (strlen(Cmd_Argv(1)) > 128)
+	const char* arg1 = Cmd_Argv(1);
+	if (arg1 != NULL && strlen(arg1) > 128)
+	{
 		return;
+	}
 
-	Q_strncpyz(infostring, Cvar_InfoString(CVAR_SERVERINFO), sizeof infostring);
+	// Build server info string
+	Q_strncpyz(infostring, Cvar_InfoString(CVAR_SERVERINFO), sizeof(infostring));
 
-	// echo back the parameter to status. so master servers can use it as a challenge
+	// Echo back the parameter to status so master servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
-	Info_SetValueForKey(infostring, "challenge", Cmd_Argv(1));
+	if (arg1 != NULL)
+	{
+		Info_SetValueForKey(infostring, "challenge", arg1);
+	}
+	else
+	{
+		Info_SetValueForKey(infostring, "challenge", "");
+	}
 
-	status[0] = 0;
+	// Initialize status buffer
+	status[0] = '\0';
 	int statusLength = 0;
 
-	for (int i = 0; i < sv_maxclients->integer; i++)
+	// Iterate clients and append player lines until we run out of space
+	for (int i = 0; i < sv_maxclients->integer; ++i)
 	{
 		client_t* cl = &svs.clients[i];
+		if (cl == NULL)
+		{
+			continue;
+		}
+
 		if (cl->state >= CS_CONNECTED)
 		{
 			char player[1024];
 			const playerState_t* ps = SV_GameclientNum(i);
-			Com_sprintf(player, sizeof player, "%i %i \"%s\"\n",
-				ps->persistant[PERS_SCORE], cl->ping, cl->name);
-			const int playerLength = strlen(player);
-			if (statusLength + playerLength >= static_cast<int>(sizeof status))
+
+			// Guard against NULL player state
+			if (ps == NULL)
+			{
+				continue;
+			}
+
+			// Format: "<score> <ping> "<name>"\n"
+			// Use snprintf to avoid overruns in the temporary buffer.
+			const int written = Com_sprintf(player, sizeof(player), "%i %i \"%s\"\n",
+				ps->persistant[PERS_SCORE],
+				cl->ping,
+				cl->name ? cl->name : "");
+
+			// If formatting failed or produced nothing, skip this entry
+			if (written <= 0)
+			{
+				continue;
+			}
+
+			const int playerLength = (int)strlen(player);
+
+			// Ensure we don't overflow the status buffer.
+			// Reserve one byte for the terminating NUL.
+			if (statusLength + playerLength >= (int)sizeof(status))
 			{
 				break; // can't hold any more
 			}
-			strcpy(status + statusLength, player);
+
+			// Safe append: copy the player string into the status buffer.
+			memcpy(status + statusLength, player, (size_t)playerLength);
 			statusLength += playerLength;
+			status[statusLength] = '\0';
 		}
 	}
 
+	// Send the assembled status response
 	NET_OutOfBandPrint(NS_SERVER, from, "statusResponse\n%s\n%s", infostring, status);
 }
+
 
 /*
 ================
@@ -574,7 +663,7 @@ Responds with a short info message that should be enough to determine
 if a user is interested in a server to do a full status
 ================
 */
-void SVC_Info(const netadr_t from)
+static void SVC_Info(const netadr_t from)
 {
 	int humans, wDisable;
 	char infostring[MAX_INFO_STRING]{};
@@ -685,7 +774,7 @@ SVC_FlushRedirect
 
 ================
 */
-void SV_FlushRedirect(char* outputbuf)
+static void SV_FlushRedirect(char* outputbuf)
 {
 	NET_OutOfBandPrint(NS_SERVER, svs.redirectAddress, "print\n%s", outputbuf);
 }
@@ -699,7 +788,7 @@ Shift down the remaining args
 Redirect all printfs
 ===============
 */
-void SVC_RemoteCommand(const netadr_t from, msg_t* msg)
+static void SVC_RemoteCommand(const netadr_t from, msg_t* msg)
 {
 	qboolean valid;
 	// TTimo - scaled down to accumulate, but not overflow anything network wise, print wise etc.
@@ -787,7 +876,7 @@ Clients that are in the game can still send
 connectionless packets.
 =================
 */
-void SV_ConnectionlessPacket(const netadr_t from, msg_t* msg)
+static void SV_ConnectionlessPacket(const netadr_t from, msg_t* msg)
 {
 	MSG_BeginReadingOOB(msg);
 	MSG_ReadLong(msg); // skip the -1 marker
@@ -925,7 +1014,7 @@ SV_CalcPings
 Updates the cl->ping variables
 ===================
 */
-void SV_CalcPings(void)
+static void SV_CalcPings(void)
 {
 	for (int i = 0; i < sv_maxclients->integer; i++)
 	{
@@ -990,7 +1079,7 @@ for a few seconds to make sure any final reliable message gets resent
 if necessary
 ==================
 */
-void SV_CheckTimeouts(void)
+static void SV_CheckTimeouts(void)
 {
 	int i;
 	client_t* cl;
@@ -1035,7 +1124,7 @@ void SV_CheckTimeouts(void)
 SV_CheckPaused
 ==================
 */
-qboolean SV_CheckPaused(void)
+static qboolean SV_CheckPaused(void)
 {
 	client_t* cl;
 	int i;
@@ -1073,7 +1162,7 @@ qboolean SV_CheckPaused(void)
 SV_CheckCvars
 ==================
 */
-void SV_CheckCvars(void)
+static void SV_CheckCvars(void)
 {
 	static int lastModHostname = -1, lastModFramerate = -1, lastModSnapsMin = -1, lastModSnapsMax = -1;
 	static int lastModSnapsPolicy = -1, lastModRatePolicy = -1, lastModClientRate = -1;

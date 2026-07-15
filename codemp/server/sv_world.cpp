@@ -29,14 +29,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 /*
 ================
-SV_clip_handleForEntity
+SV_ClipHandleForEntity
 
 Returns a headnode that can be used for testing or clipping to a
 given entity.  If the entity is a bsp model, the headnode will
 be returned, otherwise a custom box tree will be constructed.
 ================
 */
-clipHandle_t SV_clip_handleForEntity(const sharedEntity_t* ent)
+clipHandle_t SV_ClipHandleForEntity(const sharedEntity_t* ent)
 {
 	if (ent->r.bmodel)
 	{
@@ -485,7 +485,7 @@ using moveclip_t = struct moveclip_s
 
 	vec3_t end;
 
-	int pass_entity_num;
+	int passEntityNum;
 	int contentmask;
 	int capsule;
 
@@ -506,7 +506,7 @@ SV_ClipToEntity
 void SV_ClipToEntity(trace_t* trace, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
 	const int entityNum, const int contentmask, const int capsule)
 {
-	const sharedEntity_t* touch = SV_Gentity_num(entityNum);
+	const sharedEntity_t* touch = SV_GentityNum(entityNum);
 
 	Com_Memset(trace, 0, sizeof(trace_t));
 
@@ -519,7 +519,7 @@ void SV_ClipToEntity(trace_t* trace, const vec3_t start, const vec3_t mins, cons
 	}
 
 	// might intersect, so do an exact clip
-	const clipHandle_t clip_handle = SV_clip_handleForEntity(touch);
+	const clipHandle_t clip_handle = SV_ClipHandleForEntity(touch);
 
 	const float* origin = touch->r.currentOrigin;
 	const float* angles = touch->r.currentAngles;
@@ -564,9 +564,9 @@ static void SV_ClipMoveToEntities(moveclip_t* clip)
 
 	const int num = SV_AreaEntities(clip->boxmins, clip->boxmaxs, touchlist, MAX_GENTITIES);
 
-	if (clip->pass_entity_num != ENTITYNUM_NONE)
+	if (clip->passEntityNum != ENTITYNUM_NONE)
 	{
-		passOwnerNum = SV_Gentity_num(clip->pass_entity_num)->r.ownerNum;
+		passOwnerNum = SV_GentityNum(clip->passEntityNum)->r.ownerNum;
 		if (passOwnerNum == ENTITYNUM_NONE)
 		{
 			passOwnerNum = -1;
@@ -577,7 +577,7 @@ static void SV_ClipMoveToEntities(moveclip_t* clip)
 		passOwnerNum = -1;
 	}
 
-	if (SV_Gentity_num(clip->pass_entity_num)->r.svFlags & SVF_OWNERNOTSHARED)
+	if (SV_GentityNum(clip->passEntityNum)->r.svFlags & SVF_OWNERNOTSHARED)
 	{
 		thisOwnerShared = 0;
 	}
@@ -588,16 +588,16 @@ static void SV_ClipMoveToEntities(moveclip_t* clip)
 		{
 			return;
 		}
-		sharedEntity_t* touch = SV_Gentity_num(touchlist[i]);
+		sharedEntity_t* touch = SV_GentityNum(touchlist[i]);
 
 		// see if we should ignore this entity
-		if (clip->pass_entity_num != ENTITYNUM_NONE)
+		if (clip->passEntityNum != ENTITYNUM_NONE)
 		{
-			if (touchlist[i] == clip->pass_entity_num)
+			if (touchlist[i] == clip->passEntityNum)
 			{
 				continue; // don't clip against the pass entity
 			}
-			if (touch->r.ownerNum == clip->pass_entity_num)
+			if (touch->r.ownerNum == clip->passEntityNum)
 			{
 				if (touch->r.svFlags & SVF_OWNERNOTSHARED)
 				{
@@ -643,7 +643,7 @@ static void SV_ClipMoveToEntities(moveclip_t* clip)
 		}
 
 		// might intersect, so do an exact clip
-		const clipHandle_t clip_handle = SV_clip_handleForEntity(touch);
+		const clipHandle_t clip_handle = SV_ClipHandleForEntity(touch);
 
 		float* origin = touch->r.currentOrigin;
 		float* angles = touch->r.currentAngles;
@@ -856,14 +856,14 @@ static void SV_ClipMoveToEntities(moveclip_t* clip)
 SV_Trace
 
 Moves the given mins/maxs volume through the world from start to end.
-pass_entity_num and entities owned by pass_entity_num are explicitly not checked.
+passEntityNum and entities owned by passEntityNum are explicitly not checked.
 ==================
 */
 /*
 Ghoul2 Insert Start
 */
 void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	const int pass_entity_num, const int contentmask, const int capsule, const int traceFlags, const int useLod)
+	const int passEntityNum, const int contentmask, const int capsule, const int traceFlags, const int useLod)
 {
 	/*
 	Ghoul2 Insert End
@@ -904,7 +904,7 @@ void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec
 	VectorCopy(end, clip.end);
 	clip.mins = mins;
 	clip.maxs = maxs;
-	clip.pass_entity_num = pass_entity_num;
+	clip.passEntityNum = passEntityNum;
 	clip.capsule = capsule;
 
 	// create the bounding box of the entire move
@@ -936,7 +936,7 @@ void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec
 SV_PointContents
 =============
 */
-int SV_PointContents(const vec3_t p, const int pass_entity_num)
+int SV_PointContents(const vec3_t p, const int passEntityNum)
 {
 	int touch[MAX_GENTITIES];
 
@@ -948,13 +948,13 @@ int SV_PointContents(const vec3_t p, const int pass_entity_num)
 
 	for (int i = 0; i < num; i++)
 	{
-		if (touch[i] == pass_entity_num)
+		if (touch[i] == passEntityNum)
 		{
 			continue;
 		}
-		const sharedEntity_t* hit = SV_Gentity_num(touch[i]);
+		const sharedEntity_t* hit = SV_GentityNum(touch[i]);
 		// might intersect, so do an exact clip
-		const clipHandle_t clip_handle = SV_clip_handleForEntity(hit);
+		const clipHandle_t clip_handle = SV_ClipHandleForEntity(hit);
 
 		const int c2 = CM_TransformedPointContents(p, clip_handle, hit->r.currentOrigin, hit->r.currentAngles);
 

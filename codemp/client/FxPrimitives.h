@@ -252,8 +252,8 @@ public:
 		float curST[2];
 	};
 
-	TVert mVerts[4];
-	qhandle_t mShader;
+	TVert mVerts[4] = {};
+	qhandle_t mShader = 0;
 
 	CTrail()
 	{
@@ -270,19 +270,19 @@ public:
 class CLight : public CEffect
 {
 protected:
-	float mSizeStart;
-	float mSizeEnd;
-	float mSizeParm;
+	float mSizeStart = 0.0f;
+	float mSizeEnd = 0.0f;
+	float mSizeParm = 0.0f;
 
-	vec3_t mOrgOffset;
-	vec3_t mRGBStart;
-	vec3_t mRGBEnd;
-	float mRGBParm;
+	vec3_t mOrgOffset = { 0.0f, 0.0f, 0.0f };
+	vec3_t mRGBStart = { 0.0f, 0.0f, 0.0f };
+	vec3_t mRGBEnd = { 0.0f, 0.0f, 0.0f };
+	float mRGBParm = 0.0f;
 
 	CGhoul2Info_v* mGhoul2;
-	short mEntNum;
-	char mModelNum;
-	char mBoltNum;
+	short mEntNum = -1;
+	char mModelNum = -1;
+	char mBoltNum = -1;
 
 	void UpdateSize();
 	void UpdateRGB();

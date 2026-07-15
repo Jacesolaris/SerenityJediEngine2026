@@ -1117,7 +1117,6 @@ static void CM_PatchCollideFromGrid(cGrid_t* grid, patchCollide_t* pf)
 	memcpy(pf->planes, planes, numPlanes * sizeof(*pf->planes));
 }
 
-
 static patchCollide_t* pfScratch = nullptr;
 static void CM_PreparePatchCollide(int num)
 {
@@ -1228,7 +1227,6 @@ patchCollide_s* CM_GeneratePatchCollide(int width, int height, vec3_t* points)
 
 	return pf;
 }
-
 
 /*
 ================================================================================
@@ -1346,7 +1344,7 @@ CM_TracePointThroughPatchCollide
 */
 static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide_s* pc)
 {
-	// move large arrays off stack → static scratch (CM is single-threaded)
+	// Move large arrays off stack → static scratch (CM is single-threaded)
 	static qboolean frontFacing[MAX_PATCH_PLANES];
 	static float    intersection[MAX_PATCH_PLANES];
 
@@ -1356,14 +1354,16 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide
 	int                 i, j, k;
 	float               offset;
 	float               d1, d2;
+
 #ifndef BSPC
-	static cvar_t* cv;
-#endif // BSPC
+	// Safe static pointer; initialize lazily
+	static cvar_t* cv = NULL;
+#endif
 
 #ifndef BSPC
 	if ((cm_playerCurveClip->integer == 0) && (tw->isPoint == qfalse))
 	{
-		return; // FIXME: until player-sized clipping works right
+		return; // original behaviour preserved
 	}
 #endif
 
@@ -1372,8 +1372,11 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide
 		return;
 	}
 
-	// determine the trace's relationship to all planes
+	// ------------------------------------------------------------
+	// Determine trace relationship to all planes
+	// ------------------------------------------------------------
 	planes = pc->planes;
+
 	for (i = 0; i < pc->numPlanes; i++, planes++)
 	{
 		offset = DotProduct(tw->offsets[planes->signbits], planes->plane);
@@ -1388,16 +1391,16 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide
 		}
 		else
 		{
-			intersection[i] = d1 / (d1 - d2);
-			if (intersection[i] <= 0.0f)
-			{
-				intersection[i] = WORLD_SIZE;
-			}
+			float frac = d1 / (d1 - d2);
+			intersection[i] = (frac > 0.0f) ? frac : WORLD_SIZE;
 		}
 	}
 
-	// see if any of the surface planes are intersected
+	// ------------------------------------------------------------
+	// Check facet intersections
+	// ------------------------------------------------------------
 	facet = pc->facets;
+
 	for (i = 0; i < pc->numFacets; i++, facet++)
 	{
 		if (frontFacing[facet->surfacePlane] == qfalse)
@@ -1409,14 +1412,15 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide
 
 		if (intersect < 0.0f)
 		{
-			continue; // surface is behind the starting point
+			continue;
 		}
 
 		if (intersect > tw->trace.fraction)
 		{
-			continue; // already hit something closer
+			continue;
 		}
 
+		// Border checks
 		for (j = 0; j < facet->numBorders; j++)
 		{
 			k = facet->borderPlanes[j];
@@ -1439,21 +1443,30 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide
 
 		if (j == facet->numBorders)
 		{
-			// we hit this facet
+			// ------------------------------------------------------------
+			// We hit this facet
+			// ------------------------------------------------------------
 #ifndef BSPC
+			// Safe lazy initialization — eliminates C6011
 			if (cv == NULL)
 			{
 				cv = Cvar_Get("r_debugSurfaceUpdate", "1", 0);
+				if (cv == NULL)
+				{
+					Com_Printf("CM_TracePointThroughPatchCollide: failed to get r_debugSurfaceUpdate\n");
+				}
 			}
-			if (cv->integer != 0)
+
+			if (cv != NULL && cv->integer != 0)
 			{
 				debugPatchCollide = pc;
 				debugFacet = facet;
 			}
-#endif // BSPC
+#endif
+
 			planes = &pc->planes[facet->surfacePlane];
 
-			// calculate intersection with a slight pushoff
+			// Compute intersection with slight pushoff
 			offset = DotProduct(tw->offsets[planes->signbits], planes->plane);
 			d1 = DotProduct(tw->start, planes->plane) - planes->plane[3] + offset;
 			d2 = DotProduct(tw->end, planes->plane) - planes->plane[3] + offset;
@@ -1470,7 +1483,6 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide
 		}
 	}
 }
-
 
 /*
 ====================
@@ -1750,7 +1762,6 @@ qboolean CM_PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_s* pc
 
 	return qfalse;
 }
-
 
 /*
 =======================================================================

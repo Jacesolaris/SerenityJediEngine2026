@@ -307,7 +307,7 @@ void SV_SaveGame_f()
 		return;
 	}
 
-	const gentity_t* svent = SV_Gentity_num(0);
+	const gentity_t* svent = SV_GentityNum(0);
 	if (svent->client->stats[STAT_HEALTH] <= 0)
 	{
 #ifdef JK2_MODE

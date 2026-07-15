@@ -330,7 +330,7 @@ gotnewcl:
 	// this is the only place a client_t is ever initialized
 	*newcl = temp;
 	clientNum = newcl - svs.clients;
-	ent = SV_Gentity_num(clientNum);
+	ent = SV_GentityNum(clientNum);
 	newcl->gentity = ent;
 
 	// save the challenge
@@ -601,7 +601,7 @@ void SV_ClientEnterWorld(client_t* client, usercmd_t* cmd)
 
 	// set up the entity for the client
 	const int clientNum = client - svs.clients;
-	sharedEntity_t* ent = SV_Gentity_num(clientNum);
+	sharedEntity_t* ent = SV_GentityNum(clientNum);
 	ent->s.number = clientNum;
 	client->gentity = ent;
 

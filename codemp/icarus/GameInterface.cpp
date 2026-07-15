@@ -185,7 +185,7 @@ void ICARUS_Shutdown(void)
 	//Release all ICARUS resources from the entities
 	for (int i = 0; i < /*globals.num_entities*/MAX_GENTITIES; i++)
 	{
-		sharedEntity_t* ent = SV_Gentity_num(i);
+		sharedEntity_t* ent = SV_GentityNum(i);
 
 		if (gSequencers[i])
 		{
@@ -296,7 +296,7 @@ bool ICARUS_ValidEnt(const sharedEntity_t* ent)
 			//and while this allows us to read it on our "fake" entity here, we can't modify pointers like this. We can however do
 			//something completely hackish such as the following.
 			assert(ent->s.number >= 0 && ent->s.number < MAX_GENTITIES);
-			sharedEntity_t* trueEntity = SV_Gentity_num(ent->s.number);
+			sharedEntity_t* trueEntity = SV_GentityNum(ent->s.number);
 			//This works because we're modifying the actual shared game vm data and turning one pointer into another.
 			//While these pointers both look like garbage to us in here, they are not.
 			trueEntity->script_targetname = trueEntity->targetname;
@@ -691,7 +691,7 @@ ICARUS_LinkEntity
 
 int ICARUS_LinkEntity(const int entID, CSequencer* sequencer, CTaskManager* task_manager)
 {
-	const sharedEntity_t* ent = SV_Gentity_num(entID);
+	const sharedEntity_t* ent = SV_GentityNum(entID);
 
 	if (ent == nullptr)
 		return false;

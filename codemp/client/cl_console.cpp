@@ -70,7 +70,7 @@ void Con_ToggleConsole_f(void)
 Con_ToggleMenu_f
 ===================
 */
-void Con_ToggleMenu_f(void)
+static void Con_ToggleMenu_f(void)
 {
 	CL_KeyEvent(A_ESCAPE, qtrue, Sys_Milliseconds());
 	CL_KeyEvent(A_ESCAPE, qfalse, Sys_Milliseconds());
@@ -81,7 +81,7 @@ void Con_ToggleMenu_f(void)
 Con_MessageMode_f
 ================
 */
-void Con_MessageMode_f(void)
+static void Con_MessageMode_f(void)
 {
 	//yell
 	chat_playerNum = -1;
@@ -97,7 +97,7 @@ void Con_MessageMode_f(void)
 Con_MessageMode2_f
 ================
 */
-void Con_MessageMode2_f(void)
+static void Con_MessageMode2_f(void)
 {
 	//team chat
 	chat_playerNum = -1;
@@ -112,7 +112,7 @@ void Con_MessageMode2_f(void)
 Con_MessageMode3_f
 ================
 */
-void Con_MessageMode3_f(void)
+static void Con_MessageMode3_f(void)
 {
 	//target chat
 	if (!cls.cgameStarted)
@@ -138,7 +138,7 @@ void Con_MessageMode3_f(void)
 Con_MessageMode4_f
 ================
 */
-void Con_MessageMode4_f(void)
+static void Con_MessageMode4_f(void)
 {
 	//attacker
 	if (!cls.cgameStarted)
@@ -277,62 +277,77 @@ Con_CheckResize
 
 If the line width has changed, reformat the buffer.
 ================
-*/
-void Con_CheckResize(void)
+*/void Con_CheckResize(void)
 {
 	int i;
 
-	//	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH) - 2;
-	int width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 2;
+	// Move large buffer off stack → static scratch (console is single-threaded)
+	static short tbuf[CON_TEXTSIZE];
 
+	// Compute new width
+	int width = (cls.glconfig.vidWidth / SMALLCHAR_WIDTH) - 2;
+
+	// No change
 	if (width == con.linewidth)
-		return;
-
-	if (width < 1) // video hasn't been initialized yet
 	{
-		con.xadjust = 1;
-		con.yadjust = 1;
+		return;
+	}
+
+	// Video not initialized yet
+	if (width < 1)
+	{
+		con.xadjust = 1.0f;
+		con.yadjust = 1.0f;
+
 		width = DEFAULT_CONSOLE_WIDTH;
 		con.linewidth = width;
-		con.totallines = CON_TEXTSIZE / con.linewidth;
+		con.totallines = (CON_TEXTSIZE / con.linewidth);
+
 		for (i = 0; i < CON_TEXTSIZE; i++)
 		{
-			con.text[i] = ColorIndex(COLOR_WHITE) << 8 | ' ';
+			con.text[i] = (ColorIndex(COLOR_WHITE) << 8) | ' ';
 		}
 	}
 	else
 	{
-		short tbuf[CON_TEXTSIZE];
-		// on wide screens, we will center the text
+		// Wide-screen centering
 		con.xadjust = 640.0f / cls.glconfig.vidWidth;
 		con.yadjust = 480.0f / cls.glconfig.vidHeight;
 
 		const int oldwidth = con.linewidth;
-		con.linewidth = width;
 		const int oldtotallines = con.totallines;
-		con.totallines = CON_TEXTSIZE / con.linewidth;
-		int numlines = oldtotallines;
 
+		con.linewidth = width;
+		con.totallines = (CON_TEXTSIZE / con.linewidth);
+
+		int numlines = oldtotallines;
 		if (con.totallines < numlines)
+		{
 			numlines = con.totallines;
+		}
 
 		int numchars = oldwidth;
-
 		if (con.linewidth < numchars)
+		{
 			numchars = con.linewidth;
+		}
 
+		// Copy old text into static buffer
 		Com_Memcpy(tbuf, con.text, CON_TEXTSIZE * sizeof(short));
+
+		// Clear console text
 		for (i = 0; i < CON_TEXTSIZE; i++)
+		{
+			con.text[i] = (ColorIndex(COLOR_WHITE) << 8) | ' ';
+		}
 
-			con.text[i] = ColorIndex(COLOR_WHITE) << 8 | ' ';
-
+		// Reflow text into new layout
 		for (i = 0; i < numlines; i++)
 		{
 			for (int j = 0; j < numchars; j++)
 			{
 				con.text[(con.totallines - 1 - i) * con.linewidth + j] =
-					tbuf[(con.current - i + oldtotallines) %
-					oldtotallines * oldwidth + j];
+					tbuf[((con.current - i + oldtotallines) % oldtotallines) * oldwidth + j];
 			}
 		}
 
@@ -348,7 +363,7 @@ void Con_CheckResize(void)
 Cmd_CompleteTxtName
 ==================
 */
-void Cmd_CompleteTxtName(char* args, const int argNum)
+static void Cmd_CompleteTxtName(char* args, const int argNum)
 {
 	if (argNum == 2)
 		Field_CompleteFilename("", "txt", qfalse, qtrue);
@@ -430,39 +445,54 @@ static void Con_Linefeed(const qboolean skipnotify)
 		con.text[con.current % con.totallines * con.linewidth + i] = ColorIndex(COLOR_WHITE) << 8 | ' ';
 }
 
-/*
-================
-CL_ConsolePrint
-
-Handles cursor positioning, line wrapping, etc
-All console printing must go through this in order to be logged to disk
-If no console is visible, the text will appear at the top of the game window
-================
-*/
+// -----------------------------------------------------------------------------
+// CL_ConsolePrint
+//
+// Append text to the in‑game console buffer with color escape handling and
+// word‑wrapping. This version is modernized, fully commented, and hardened
+// against MSVC static analysis warnings (C6386/C6011/C6262).
+//
+// Changes made (behaviour preserved unless noted):
+//  - Added NULL checks for input pointers.
+//  - Ensured console geometry is valid before writing (prevents out-of-bounds).
+//  - Bounds-checked every write into con.text to eliminate buffer overrun.
+//  - Used explicit qtrue/qfalse ternaries where qboolean values are set/read.
+//  - Added explanatory comments and kept original logic/flow intact.
+//  - No asserts; debug prints used where appropriate.
+// -----------------------------------------------------------------------------
 void CL_ConsolePrint(const char* txt)
 {
-	int c, l;
-	qboolean skipnotify = qfalse; // NERVE - SMF
+	// Safety: validate input pointer
+	if (txt == NULL)
+	{
+		Com_Printf("CL_ConsolePrint: NULL txt\n");
+		return;
+	}
+
+	int c = 0;
+	int l = 0;
+	qboolean skipnotify = qfalse;
 
 	// TTimo - prefix for text that shows up in console but not in notify
-	// backported from RTCW
-	if (!Q_strncmp(txt, "[skipnotify]", 12))
+	if (Q_strncmp(txt, "[skipnotify]", 12) == 0)
 	{
 		skipnotify = qtrue;
 		txt += 12;
 	}
+
 	if (txt[0] == '*')
 	{
 		skipnotify = qtrue;
 		txt += 1;
 	}
 
-	// for some demos we don't want to ever show anything on the console
-	if (cl_noprint && cl_noprint->integer)
+	// For some demos we don't want to ever show anything on the console
+	if (cl_noprint != NULL && cl_noprint->integer != 0)
 	{
-		if (con_DebugSaberCombat->integer)
+		if (con_DebugSaberCombat != NULL && con_DebugSaberCombat->integer != 0)
 		{
-			// Always print when debug is on
+			// Always print when debug is on (preserve original behaviour)
+			skipnotify = (skipnotify == qtrue) ? qtrue : qfalse;
 		}
 		else
 		{
@@ -470,43 +500,62 @@ void CL_ConsolePrint(const char* txt)
 		}
 	}
 
-	if (!con.initialized)
+	// Ensure console is initialized and has valid geometry
+	if (con.initialized == qfalse)
 	{
-		con.color[0] =
-			con.color[1] =
-			con.color[2] =
-			con.color[3] = 1.0f;
+		con.color[0] = 1.0f;
+		con.color[1] = 1.0f;
+		con.color[2] = 1.0f;
+		con.color[3] = 1.0f;
 		con.linewidth = -1;
 		Con_CheckResize();
 		con.initialized = qtrue;
 	}
 
+	// If geometry is still invalid for any reason, attempt to fix and bail safely
+	if (con.linewidth <= 0 || con.totallines <= 0)
+	{
+		Com_Printf("CL_ConsolePrint: invalid console geometry (linewidth=%d totallines=%d)\n",
+			con.linewidth, con.totallines);
+		Con_CheckResize();
+		if (con.linewidth <= 0 || con.totallines <= 0)
+		{
+			// Give up rather than risk buffer overrun
+			return;
+		}
+	}
+
 	int color = ColorIndex(COLOR_WHITE);
 
-	while ((c = static_cast<unsigned char>(*txt)) != 0)
+	// Walk the input string
+	while ((c = (int)(unsigned char)(*txt)) != 0)
 	{
-		if (Q_IsColorString((unsigned char*)txt))
+		// Color escape handling
+		if (Q_IsColorString(txt))
 		{
 			color = ColorIndex(*(txt + 1));
 			txt += 2;
 			continue;
 		}
 
-		// count word length
-		for (l = 0; l < con.linewidth; l++)
+		// Count word length for wrapping (do not read past end)
+		l = 0;
+		for (; l < con.linewidth; ++l)
 		{
-			if (txt[l] <= ' ')
+			// If we hit end of string, break
+			if (txt[l] == '\0' || txt[l] <= ' ')
 			{
 				break;
 			}
 		}
 
-		// word wrap
-		if (l != con.linewidth && con.x + l >= con.linewidth)
+		// Word wrap: if the word won't fit on the current line, advance line
+		if (l != con.linewidth && (con.x + l) >= con.linewidth)
 		{
 			Con_Linefeed(skipnotify);
 		}
 
+		// Advance input pointer (we will handle the character in switch)
 		txt++;
 
 		switch (c)
@@ -514,36 +563,82 @@ void CL_ConsolePrint(const char* txt)
 		case '\n':
 			Con_Linefeed(skipnotify);
 			break;
+
 		case '\r':
 			con.x = 0;
 			break;
-		default: // display character and advance
-			const int y = con.current % con.totallines;
-			con.text[y * con.linewidth + con.x] = static_cast<short>(color << 8 | c);
-			con.x++;
-			if (con.x >= con.linewidth)
+
+		default:
+		{
+			// Compute safe write index into con.text
+			// Ensure con.current is non-negative
+			if (con.current < 0)
 			{
+				con.current = 0;
+			}
+
+			const int y = con.current % con.totallines;
+			const int writeIndex = y * con.linewidth + con.x;
+
+			// Bounds check before writing to avoid buffer overrun
+			if (writeIndex < 0 || writeIndex >= CON_TEXTSIZE)
+			{
+				// If out of bounds, force a linefeed and recompute
 				Con_Linefeed(skipnotify);
+
+				// Recompute safe indices after linefeed
+				if (con.current < 0)
+				{
+					con.current = 0;
+				}
+				const int y2 = con.current % con.totallines;
+				const int writeIndex2 = y2 * con.linewidth + con.x;
+
+				if (writeIndex2 < 0 || writeIndex2 >= CON_TEXTSIZE)
+				{
+					// If still invalid, print debug and skip this character
+					Com_Printf("CL_ConsolePrint: writeIndex out of range (%d)\n", writeIndex2);
+					break;
+				}
+
+				con.text[writeIndex2] = (short)((color << 8) | c);
+				con.x++;
+				if (con.x >= con.linewidth)
+				{
+					Con_Linefeed(skipnotify);
+				}
+			}
+			else
+			{
+				// Normal, safe write
+				con.text[writeIndex] = (short)((color << 8) | c);
+				con.x++;
+				if (con.x >= con.linewidth)
+				{
+					Con_Linefeed(skipnotify);
+				}
 			}
 			break;
 		}
-	}
+		} // switch
+	} // while
 
-	// mark time for transparent overlay
-
+	// Mark time for transparent overlay
 	if (con.current >= 0)
 	{
-		// NERVE - SMF
-		if (skipnotify)
+		if (skipnotify == qtrue)
 		{
-			int prev = con.current % NUM_CON_TIMES - 1;
+			int prev = (con.current % NUM_CON_TIMES) - 1;
 			if (prev < 0)
+			{
 				prev = NUM_CON_TIMES - 1;
+			}
 			con.times[prev] = 0;
 		}
 		else
-			// -NERVE - SMF
+		{
 			con.times[con.current % NUM_CON_TIMES] = cls.realtime;
+		}
 	}
 }
 
@@ -562,7 +657,7 @@ Con_DrawInput
 Draw the editline after a ] prompt
 ================
 */
-void Con_DrawInput(void)
+static void Con_DrawInput(void)
 {
 	if (cls.state != CA_DISCONNECTED && !(Key_GetCatcher() & KEYCATCH_CONSOLE))
 	{
@@ -712,7 +807,7 @@ Con_DrawSolidConsole
 Draws the console with the solid background
 ================
 */
-void Con_DrawSolidConsole(const float frac)
+static void Con_DrawSolidConsole(const float frac)
 {
 	int x;
 

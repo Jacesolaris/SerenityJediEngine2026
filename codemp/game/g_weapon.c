@@ -59,7 +59,7 @@ extern qboolean PM_CrouchAnim(int anim);
 const int FROZEN_TIME = 5000;
 
 extern qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self);
-extern int wp_saber_must_bolt_block(gentity_t* self, const gentity_t* atk, qboolean check_b_box_block, vec3_t point, int rSaberNum, int rBladeNum);
+extern int WP_SaberMustBoltBlock(gentity_t* self, const gentity_t* atk, qboolean check_b_box_block, vec3_t point, int rSaberNum, int rBladeNum);
 extern int wp_player_must_dodge(const gentity_t* self, const gentity_t* shooter);
 extern qboolean WP_SaberBlockBolt(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern void G_MissileReflectEffect(const gentity_t* ent, vec3_t dir);
@@ -766,7 +766,7 @@ static void WP_FireWrist(gentity_t* ent)
 }
 
 //---------------------------------------------------------
-void WP_FireBlaster(gentity_t* ent, const qboolean alt_fire)
+static void WP_FireBlaster(gentity_t* ent, const qboolean alt_fire)
 {
 	if (ent->client == NULL)
 	{
@@ -945,7 +945,7 @@ static void WP_DisruptorMainFire(gentity_t* ent)
 		// BLOCK / DODGE logic only valid for client entities
 		if (traceEnt && traceEnt->client)
 		{
-			if (wp_saber_must_bolt_block(traceEnt, ent, qfalse, tr.endpos, -1, -1) &&
+			if (WP_SaberMustBoltBlock(traceEnt, ent, qfalse, tr.endpos, -1, -1) &&
 				!WP_DoingForcedAnimationForForcePowers(traceEnt))
 			{
 				// players can block or dodge disruptor shots
@@ -1220,7 +1220,7 @@ static void WP_DisruptorAltFire(gentity_t* ent)
 
 		if (traceEnt)
 		{
-			if (wp_saber_must_bolt_block(traceEnt, ent, qfalse, tr.endpos, -1, -1) &&
+			if (WP_SaberMustBoltBlock(traceEnt, ent, qfalse, tr.endpos, -1, -1) &&
 				!WP_DoingForcedAnimationForForcePowers(traceEnt))
 			{
 				// players can block disruptor shots
@@ -1772,7 +1772,7 @@ static void WP_DEMP2_MainFire(gentity_t* ent)
 
 static gentity_t* ent_list[MAX_GENTITIES];
 
-void DEMP2_AltRadiusDamage(gentity_t* ent)
+static void DEMP2_AltRadiusDamage(gentity_t* ent)
 {
 	float frac = (level.time - ent->genericValue5) / 800.0f;
 
@@ -3400,7 +3400,9 @@ void CreateLaserTrap(gentity_t* laser_trap, vec3_t start, gentity_t* owner)
 	laser_trap->touch = touchLaserTrap;
 	laser_trap->think = TrapThink;
 	laser_trap->nextthink = level.time + 50;
-}void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
+}
+
+static void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 {
 	// Validate entity and client
 	if (!ent || !ent->client)
@@ -3838,7 +3840,9 @@ static qboolean CheatsOn(void)
 		return qfalse;
 	}
 	return qtrue;
-}static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
+}
+
+static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 {
 	gentity_t* found = NULL;
 	int trapcount = 0;
@@ -5713,6 +5717,7 @@ static qboolean doesnot_drain_mishap(const gentity_t* ent)
 extern void FireOverheatFail(gentity_t* ent);
 extern qboolean PM_ReloadAnim(int anim);
 extern qboolean PM_WeponRestAnim(int anim);
+extern qboolean PM_PainAnim(int anim);
 
 void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 {
@@ -5788,6 +5793,11 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 	}
 
 	if (ent && ent->client && PM_WeponRestAnim(ent->client->ps.torsoAnim))
+	{
+		return;
+	}
+
+	if (ent && ent->client && PM_PainAnim(ent->client->ps.torsoAnim))
 	{
 		return;
 	}

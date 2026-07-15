@@ -42,7 +42,7 @@ int SV_NumForGentity(sharedEntity_t* ent)
 	return num;
 }
 
-sharedEntity_t* SV_Gentity_num(const int num)
+sharedEntity_t* SV_GentityNum(const int num)
 {
 	const auto ent = reinterpret_cast<sharedEntity_t*>(reinterpret_cast<byte*>(sv.gentities) + sv.gentitySize * num);
 
@@ -68,7 +68,7 @@ svEntity_t* SV_SvEntityForGentity(sharedEntity_t* gEnt)
 sharedEntity_t* SV_GEntityForSvEntity(svEntity_t* svEnt)
 {
 	const int num = svEnt - sv.svEntities;
-	return SV_Gentity_num(num);
+	return SV_GentityNum(num);
 }
 
 /*

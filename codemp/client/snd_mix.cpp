@@ -32,7 +32,7 @@ short* snd_out;
 
 // FIXME: proper fix for that ?
 #if !defined(_MSC_VER) || !id386
-void S_WriteLinearBlastStereo16(void)
+static void S_WriteLinearBlastStereo16(void)
 {
 	int		i;
 	int		val;
@@ -145,39 +145,48 @@ __declspec(naked) void S_WriteLinearBlastStereo16(void)
 
 #endif
 
-void S_TransferStereo16(unsigned long* pbuf, int endtime)
+static void S_TransferStereo16(unsigned long* pbuf, const int endtime)
 {
-	int		lpos;
-	int		ls_paintedtime;
-
+	/* snd_p points into paintbuffer (global mix buffer) */
 	snd_p = (int*)paintbuffer;
-	ls_paintedtime = s_paintedtime;
+
+	int ls_paintedtime = s_paintedtime;
 
 	while (ls_paintedtime < endtime)
 	{
-		// handle recirculating buffer issues
-		lpos = ls_paintedtime & ((dma.samples >> 1) - 1);
+		/* Safe half-sample count */
+		const int halfSamples = (int)(dma.samples >> 1);
 
-		snd_out = (short*)pbuf + (lpos << 1);
+		/* Ring-buffer mask */
+		const int mask = (halfSamples - 1);
 
-		snd_linear_count = (dma.samples >> 1) - lpos;
-		if (ls_paintedtime + snd_linear_count > endtime)
-			snd_linear_count = endtime - ls_paintedtime;
+		/* Wrapped position */
+		const int lpos = (ls_paintedtime & mask);
 
-		snd_linear_count <<= 1;
+		/* Compute stereo output pointer safely using ptrdiff_t */
+		const ptrdiff_t stereoOffset = ((ptrdiff_t)lpos << 1);
+		snd_out = (short*)pbuf + stereoOffset;
 
-		// write a linear blast of samples
+		/* Remaining samples until wrap/end */
+		int remaining = (halfSamples - lpos);
+
+		if ((ls_paintedtime + remaining) > endtime)
+		{
+			remaining = (endtime - ls_paintedtime);
+		}
+
+		/* Convert sample count to stereo 16-bit count using ptrdiff_t */
+		const ptrdiff_t stereoCount = ((ptrdiff_t)remaining << 1);
+		snd_linear_count = (int)stereoCount;
+
+		/* Write samples */
 		S_WriteLinearBlastStereo16();
 
+		/* Advance pointers */
 		snd_p += snd_linear_count;
-		ls_paintedtime += (snd_linear_count >> 1);
 
-		if (CL_VideoRecording())
-		{
-			if (cls.state == CA_ACTIVE || cl_forceavidemo->integer) {
-				CL_WriteAVIAudioFrame((byte*)snd_out, snd_linear_count << 1);
-			}
-		}
+		/* Advance painted time (divide by 2 safely) */
+		ls_paintedtime += (snd_linear_count >> 1);
 	}
 }
 
@@ -187,7 +196,7 @@ S_TransferPaintBuffer
 
 ===================
 */
-void S_TransferPaintBuffer(int endtime)
+static void S_TransferPaintBuffer(int endtime)
 {
 	int 	out_idx;
 	int 	count;
@@ -287,7 +296,7 @@ static void S_PaintChannelFrom16(channel_t* ch, const sfx_t* sfx, int count, int
 	}
 }
 
-void S_PaintChannelFromMP3(channel_t* ch, const sfx_t* sc, int count, int sampleOffset, int bufferOffset)
+static void S_PaintChannelFromMP3(channel_t* ch, const sfx_t* sc, int count, int sampleOffset, int bufferOffset)
 {
 	int data;
 	int leftvol, rightvol;
@@ -335,7 +344,7 @@ void S_PaintChannelFromMP3(channel_t* ch, const sfx_t* sc, int count, int sample
 
 // subroutinised to save code dup (called twice)	-ste
 //
-void ChannelPaint(channel_t* ch, sfx_t* sc, int count, int sampleOffset, int bufferOffset)
+static void ChannelPaint(channel_t* ch, sfx_t* sc, int count, int sampleOffset, int bufferOffset)
 {
 	switch (sc->eSoundCompressionMethod)
 	{
@@ -384,7 +393,7 @@ void S_PaintChannels(int endtime)
 			{
 				//Com_DPrintf ("background sound underrun\n");
 			}
-			memset(paintbuffer, 0, (end - s_paintedtime) * sizeof(portable_samplepair_t));
+			memset(paintbuffer, 0, (static_cast<unsigned long long>(end) - s_paintedtime) * sizeof(portable_samplepair_t));
 		}
 		else {
 			// copy from the streaming sound source

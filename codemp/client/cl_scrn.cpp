@@ -164,55 +164,79 @@ to a fixed color.
 
 Coordinates are at 640 by 480 virtual resolution
 ==================
-*/
-void SCR_DrawStringExt(const int x, const int y, const float size, const char* string, const float* setColor,
+*/static void SCR_DrawStringExt(const int x, const int y, const float size,
+	const char* string, const float* setColor,
 	const qboolean forceColor, const qboolean noColorEscape)
 {
+	// Safety: validate pointers
+	if (string == NULL || setColor == NULL)
+	{
+		Com_Printf("SCR_DrawStringExt: NULL string or color\n");
+		return;
+	}
+
 	vec4_t color{};
 
-	// draw the drop shadow
-	color[0] = color[1] = color[2] = 0;
+	// ------------------------------------------------------------
+	// Drop shadow pass (black, same alpha as setColor)
+	// ------------------------------------------------------------
+	color[0] = 0.0f;
+	color[1] = 0.0f;
+	color[2] = 0.0f;
 	color[3] = setColor[3];
+
 	re->SetColor(color);
+
 	const char* s = string;
 	int xx = x;
-	while (*s)
+
+	while (*s != '\0')
 	{
-		if (!noColorEscape && Q_IsColorString(s))
+		if (noColorEscape == qfalse && Q_IsColorString(s))
 		{
 			s += 2;
 			continue;
 		}
+
 		SCR_DrawChar(xx + 2, y + 2, size, *s);
-		xx += size;
+		xx += (int)size;
 		s++;
 	}
 
-	// draw the colored text
+	// ------------------------------------------------------------
+	// Colored text pass
+	// ------------------------------------------------------------
 	s = string;
 	xx = x;
+
 	re->SetColor(setColor);
-	while (*s)
+
+	while (*s != '\0')
 	{
 		if (Q_IsColorString(s))
 		{
-			if (!forceColor)
+			if (forceColor == qfalse)
 			{
-				Com_Memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof color);
+				Com_Memcpy(color,
+					g_color_table[ColorIndex(*(s + 1))],
+					sizeof(color));
 				color[3] = setColor[3];
 				re->SetColor(color);
 			}
-			if (!noColorEscape)
+
+			if (noColorEscape == qfalse)
 			{
 				s += 2;
 				continue;
 			}
 		}
+
 		SCR_DrawChar(xx, y, size, *s);
-		xx += size;
+		xx += (int)size;
 		s++;
 	}
-	re->SetColor(nullptr);
+
+	re->SetColor(NULL);
 }
 
 void SCR_DrawBigString(const int x, const int y, const char* s, const float alpha, const qboolean noColorEscape)
@@ -238,37 +262,63 @@ to a fixed color.
 
 Coordinates are at 640 by 480 virtual resolution
 ==================
-*/
-void SCR_DrawSmallStringExt(const int x, const int y, const char* string, const float* setColor,
+*/void SCR_DrawSmallStringExt(const int x, const int y,
+	const char* string, const float* setColor,
 	const qboolean forceColor, const qboolean noColorEscape)
 {
+	// ------------------------------------------------------------
+	// Safety: validate pointers (fixes C6011)
+	// ------------------------------------------------------------
+	if (string == NULL)
+	{
+		Com_Printf("SCR_DrawSmallStringExt: NULL string\n");
+		return;
+	}
+
+	if (setColor == NULL)
+	{
+		Com_Printf("SCR_DrawSmallStringExt: NULL setColor\n");
+		return;
+	}
+
 	vec4_t color;
 
-	// draw the colored text
+	// ------------------------------------------------------------
+	// Colored text pass
+	// ------------------------------------------------------------
 	const char* s = string;
 	int xx = x;
+
 	re->SetColor(setColor);
-	while (*s)
+
+	while (*s != '\0')
 	{
 		if (Q_IsColorString(s))
 		{
-			if (!forceColor)
+			if (forceColor == qfalse)
 			{
-				Com_Memcpy(color, g_color_table[ColorIndex(*(s + 1))], sizeof color);
+				Com_Memcpy(color,
+					g_color_table[ColorIndex(*(s + 1))],
+					sizeof(color));
+
+				// Preserve alpha from setColor
 				color[3] = setColor[3];
 				re->SetColor(color);
 			}
-			if (!noColorEscape)
+
+			if (noColorEscape == qfalse)
 			{
 				s += 2;
 				continue;
 			}
 		}
+
 		SCR_DrawSmallChar(xx, y, *s);
 		xx += SMALLCHAR_WIDTH;
 		s++;
 	}
-	re->SetColor(nullptr);
+
+	re->SetColor(NULL);
 }
 
 /*
@@ -310,7 +360,7 @@ int SCR_GetBigStringWidth(const char* str)
 SCR_DrawDemoRecording
 =================
 */
-void SCR_DrawDemoRecording(void)
+static void SCR_DrawDemoRecording(void)
 {
 	char string[1024];
 
@@ -368,7 +418,7 @@ void SCR_DebugGraph(const float value, const int color)
 SCR_DrawDebugGraph
 ==============
 */
-void SCR_DrawDebugGraph(void)
+static void SCR_DrawDebugGraph(void)
 {
 	//
 	// draw the graph
@@ -421,7 +471,7 @@ SCR_DrawScreenField
 This will be called twice if rendering in stereo mode
 ==================
 */
-void SCR_DrawScreenField(const stereoFrame_t stereoFrame)
+static void SCR_DrawScreenField(const stereoFrame_t stereoFrame)
 {
 	re->BeginFrame(stereoFrame);
 

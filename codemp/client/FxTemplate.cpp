@@ -93,7 +93,6 @@ CPrimitiveTemplate::CPrimitiveTemplate()
 	mDensity.SetRange(10.0f, 10.0f); // default this high so it doesn't do bad things
 }
 
-
 //-----------------------------------------------------------
 CPrimitiveTemplate& CPrimitiveTemplate::operator=(const CPrimitiveTemplate& that)
 {

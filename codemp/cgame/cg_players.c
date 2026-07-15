@@ -3161,8 +3161,8 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 	int flags = BONE_ANIM_OVERRIDE_FREEZE;
 	const float old_speed = lf->animationSpeed;
 
-	const qboolean is_holding_block_button = cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
 
 	if (cent->localAnimIndex > 0)
 	{
@@ -3273,8 +3273,7 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 
 		animSpeed *= anim_speed_mult;
 
-		PM_SaberStartTransAnim(cent->currentState.number, cent->currentState.fireflag, cent->currentState.weapon,
-			new_animation, &animSpeed, cent->currentState.userInt3);
+		PM_SaberStartTransAnim(cent->currentState.number, cent->currentState.fireflag, cent->currentState.weapon, new_animation, &animSpeed, cent->currentState.userInt3);
 
 		if (torso_only)
 		{
@@ -3285,10 +3284,6 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 				resume_frame = qtrue;
 			}
 			lf->animationTorsoSpeed = anim_speed_mult;
-			if ((is_holding_block_button_and_attack || is_holding_block_button) && cent->currentState.saberMove == LS_READY)
-			{
-				blendTime *= 1.8f;
-			}
 		}
 		else
 		{
@@ -3696,10 +3691,8 @@ static void CG_PlayerAnimation(centity_t* cent, int* legs_old, int* legs, float*
 
 	const int clientNum = cent->currentState.clientNum;
 
-	const qboolean is_holding_block_button = cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK
-		? qtrue
-		: qfalse;
+	const qboolean is_holding_block_button = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
 
 	if (cg_noPlayerAnims.integer)
 	{
@@ -14375,7 +14368,7 @@ static qboolean CG_VehicleShouldDrawShields(const centity_t* veh_cent)
 extern	vmCvar_t		cg_showVehBounds;
 extern void BG_VehicleAdjustBBoxForOrientation( Vehicle_t *veh, vec3_t origin, vec3_t mins, vec3_t maxs,
 										int clientNum, int tracemask,
-										void (*localTrace)(trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int pass_entity_num, int content_mask)); // bg_pmove.c
+										void (*localTrace)(trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int content_mask)); // bg_pmove.c
 */
 static qboolean CG_VehicleAttachDroidUnit(centity_t* droid_cent)
 {

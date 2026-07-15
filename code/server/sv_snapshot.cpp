@@ -415,7 +415,7 @@ static void SV_AddEntitiesVisibleFromPoint(vec3_t origin, clientSnapshot_t* fram
 
 	for (int e = 0; e < ge->num_entities; e++)
 	{
-		ent = SV_Gentity_num(e);
+		ent = SV_GentityNum(e);
 
 		if (!ent->inuse)
 		{
@@ -653,7 +653,7 @@ static clientSnapshot_t* SV_BuildClientSnapshot(client_t* client)
 	frame->first_entity = svs.nextSnapshotEntities;
 	for (i = 0; i < entity_numbers.numSnapshotEntities; i++)
 	{
-		const gentity_t* ent = SV_Gentity_num(entity_numbers.snapshotEntities[i]);
+		const gentity_t* ent = SV_GentityNum(entity_numbers.snapshotEntities[i]);
 		entityState_t* state = &svs.snapshotEntities[svs.nextSnapshotEntities % svs.numSnapshotEntities];
 		*state = ent->s;
 		svs.nextSnapshotEntities++;

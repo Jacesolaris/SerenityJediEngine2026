@@ -8347,49 +8347,48 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 		}
 	}
 
-	if (targ->client && attacker->client && targ->health > 0 &&
-		g_standard_humanoid(targ) && !NPC_IsNotDismemberable(targ))
+	if (targ->client &&
+		attacker->client &&
+		targ->health > 0 &&
+		g_standard_humanoid(targ) &&
+		!NPC_IsNotDismemberable(targ) &&
+		inflictor &&
+		(inflictor->s.weapon == WP_BLASTER ||
+			inflictor->s.weapon == WP_TUSKEN_RIFLE ||
+			inflictor->s.weapon == WP_FLECHETTE ||
+			inflictor->s.weapon == WP_BRYAR_PISTOL ||
+			inflictor->s.weapon == WP_SBD_PISTOL ||
+			inflictor->s.weapon == WP_TURRET ||
+			inflictor->s.weapon == WP_BLASTER_PISTOL ||
+			inflictor->s.weapon == WP_WRIST_BLASTER ||
+			inflictor->s.weapon == WP_DROIDEKA ||
+			inflictor->s.weapon == WP_EMPLACED_GUN))
 	{
-		//do head shots
-		if (inflictor->s.weapon == WP_BLASTER
-			|| inflictor->s.weapon == WP_TUSKEN_RIFLE
-			|| inflictor->s.weapon == WP_FLECHETTE
-			|| inflictor->s.weapon == WP_BRYAR_PISTOL
-			|| inflictor->s.weapon == WP_SBD_PISTOL
-			|| inflictor->s.weapon == WP_TURRET
-			|| inflictor->s.weapon == WP_BLASTER_PISTOL
-			|| inflictor->s.weapon == WP_WRIST_BLASTER
-			|| inflictor->s.weapon == WP_DROIDEKA
-			|| inflictor->s.weapon == WP_EMPLACED_GUN)
-		{
-			float z_rel;
-			int height;
-			float targ_maxs2;
-			float z_ratio;
-			targ_maxs2 = targ->maxs[2];
-			// handling crouching
-			if (targ->client->ps.pm_flags & PMF_DUCKED)
-			{
-				height = (abs(targ->mins[2]) + targ_maxs2) * 0.75;
-			}
-			else
-			{
-				height = abs(targ->mins[2]) + targ_maxs2;
-			}
-			// project the z component of point
-			// onto the z component of the model's origin
-			// this results in the z component from the origin at 0
-			z_rel = point[2] - targ->currentOrigin[2] + abs(targ->mins[2]);
-			z_ratio = z_rel / height;
+		// Relative vertical size of the target
+		const float targ_maxs2 = targ->maxs[2];
+		const float mins2_abs = (float)fabs(targ->mins[2]);
 
-			if (z_ratio > 0.90)
+		// Handle crouching: reduce effective height
+		float height = mins2_abs + targ_maxs2;
+		if (targ->client->ps.pm_flags & PMF_DUCKED)
+		{
+			height *= 0.75f;
+		}
+
+		if (height > 0.0f)
+		{
+			// Project hit point onto target's vertical span
+			const float z_rel = point[2] - targ->currentOrigin[2] + mins2_abs;
+			const float z_ratio = z_rel / height;
+
+			// Head vs body classification
+			take = G_LocationDamage(point, targ, take);
+			if (z_ratio > 0.90f)
 			{
-				take = G_LocationDamage(point, targ, take);
 				mod = MOD_HEADSHOT;
 			}
 			else
 			{
-				take = G_LocationDamage(point, targ, take);
 				mod = MOD_BODYSHOT;
 			}
 		}

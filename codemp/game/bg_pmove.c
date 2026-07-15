@@ -644,9 +644,8 @@ int PM_IdlePoseForsaber_anim_level(void)
 
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
 
-	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;	//Holding Block Button
-
-	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse; //Holding Block and attack Buttons
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse; //Holding Block and attack Buttons
 
 	if (!pm->ps->saberEntityNum)
 	{
@@ -1731,9 +1730,17 @@ int PM_BlockingPoseForsaber_anim_levelSingle(void)
 							anim = BOTH_SABEREADY_STANCE;
 						}
 					}
+
 					else
 					{
-						anim = PM_ReadyPoseForsaber_anim_level();
+						if (pm->ps->pm_flags & PMF_DUCKED)
+						{
+							anim = PM_ReadyPoseForsaber_anim_levelDucked();
+						}
+						else
+						{
+							anim = PM_ReadyPoseForsaber_anim_level();
+						}
 					}
 				}
 			}
@@ -1774,7 +1781,7 @@ int PM_BlockingPoseForsaber_anim_levelDual(void)
 	else
 	{
 #ifdef _GAME
-		if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm_entSelf->s.eType == ET_NPC)
+		if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) || (pm_entSelf->s.eType == ET_NPC))
 		{
 			anim = PM_ReadyPoseForsaber_anim_levelBOT();
 		}
@@ -1951,7 +1958,7 @@ int PM_BlockingPoseForsaber_anim_levelStaff(void)
 	else
 	{
 #ifdef _GAME
-		if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm_entSelf->s.eType == ET_NPC)
+		if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) || (pm_entSelf->s.eType == ET_NPC))
 		{
 			anim = PM_ReadyPoseForsaber_anim_levelBOT();
 		}
@@ -5682,6 +5689,7 @@ void PM_CheckGrab(void)
 	float lerpfwd = 0;
 	float lerpyaw = 0;
 	qboolean skip_Cmdtrace = qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
 	if (pm->ps->groundEntityNum != ENTITYNUM_NONE && pm->ps->inAirAnim)
 	{
@@ -5716,7 +5724,7 @@ void PM_CheckGrab(void)
 		return;
 	}
 
-	if (pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ||
+	if (is_holding_block_button ||
 		pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
 		pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
 	{
@@ -7432,7 +7440,7 @@ PM_CrashLand
 Check for hard landings that generate sound events
 =================
 */
-static void PM_HandleGunnerAim(qboolean isWalkingAndBlocking);
+static void PM_HandleGunnerAim(qboolean is_walking_and_blocking);
 static void PM_CrashLand(void)
 {
 	float    delta;
@@ -7441,7 +7449,8 @@ static void PM_CrashLand(void)
 	float    t;
 	float    a, b, c, den;
 	qboolean didRoll = qfalse;
-	const qboolean isWalkingAndBlocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (is_holding_block_button)) ? qtrue : qfalse;
 
 	const qboolean isBotWithSaber =
 #ifdef _GAME
@@ -7634,9 +7643,9 @@ static void PM_CrashLand(void)
 			}
 			else
 			{ // set the weapon anims
-				if (isWalkingAndBlocking == qtrue)
+				if (is_walking_and_blocking == qtrue)
 				{// If we're walking and blocking, we want to go into a aim walk stance
-					PM_HandleGunnerAim(isWalkingAndBlocking);
+					PM_HandleGunnerAim(is_walking_and_blocking);
 				}
 				else
 				{
@@ -9962,8 +9971,8 @@ static void PM_Footsteps(void)
 	}
 
 	//Holding Block Button
-	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	const qboolean isWalkingAndBlocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (is_holding_block_button)) ? qtrue : qfalse;
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
 
 	if (PM_SpinningSaberAnim(pm->ps->legsAnim) && pm->ps->legsTimer)
@@ -10136,52 +10145,29 @@ static void PM_Footsteps(void)
 						{
 							if (pm->ps->weapon == WP_SABER)
 							{
-#ifdef _GAME
-								if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT ||
-									pm_entSelf->s.eType == ET_NPC)
+								if (is_walking_and_blocking)
 								{
-									PM_ContinueLegsAnim(
-										PM_LegsSlopeBackTransition(
-											PM_ReadyPoseForsaber_anim_levelBOT()));
-								}
-								else
-#endif
-								{
-									if (is_holding_block_button &&
-										(pm->cmd.buttons & BUTTON_WALKING))
+									if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 									{
-										if (pm->ps->fd.saberAnimLevel == SS_DUAL)
-										{
-											PM_ContinueLegsAnim(
-												PM_LegsSlopeBackTransition(
-													PM_BlockingPoseForsaber_anim_levelDual()));
-										}
-										else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
-										{
-											PM_ContinueLegsAnim(
-												PM_LegsSlopeBackTransition(
-													PM_BlockingPoseForsaber_anim_levelStaff()));
-										}
-										else
-										{
-											PM_ContinueLegsAnim(
-												PM_LegsSlopeBackTransition(
-													PM_BlockingPoseForsaber_anim_levelSingle()));
-										}
+										PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_BlockingPoseForsaber_anim_levelDual()));
+									}
+									else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
+									{
+										PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_BlockingPoseForsaber_anim_levelStaff()));
 									}
 									else
 									{
-										PM_ContinueLegsAnim(
-											PM_LegsSlopeBackTransition(
-												PM_IdlePoseForsaber_anim_level()));
+										PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_BlockingPoseForsaber_anim_levelSingle()));
 									}
+								}
+								else
+								{
+									PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_IdlePoseForsaber_anim_level()));
 								}
 							}
 							else
 							{
-								PM_ContinueLegsAnim(
-									PM_LegsSlopeBackTransition(
-										WeaponReadyLegsAnim[pm->ps->weapon]));
+								PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(WeaponReadyLegsAnim[pm->ps->weapon]));
 							}
 						}
 					}
@@ -11270,10 +11256,10 @@ static void PM_Footsteps(void)
 					{
 						if (!pm->ps->weaponTime) //not firing
 						{
-							if (isWalkingAndBlocking == qtrue)
+							if (is_walking_and_blocking == qtrue)
 							{
 								desiredAnim = BOTH_WALK2;
-								PM_HandleGunnerAim(isWalkingAndBlocking);
+								PM_HandleGunnerAim(is_walking_and_blocking);
 
 								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
 								{
@@ -11307,10 +11293,10 @@ static void PM_Footsteps(void)
 						{
 							if (!pm->ps->weaponTime) //not firing
 							{
-								if (isWalkingAndBlocking == qtrue)
+								if (is_walking_and_blocking == qtrue)
 								{
 									desiredAnim = BOTH_WALK1;
-									PM_HandleGunnerAim(isWalkingAndBlocking);
+									PM_HandleGunnerAim(is_walking_and_blocking);
 
 									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
 									{
@@ -11342,10 +11328,10 @@ static void PM_Footsteps(void)
 						{
 							if (!pm->ps->weaponTime) //not firing
 							{
-								if (isWalkingAndBlocking == qtrue)
+								if (is_walking_and_blocking == qtrue)
 								{
 									desiredAnim = BOTH_WALK8;
-									PM_HandleGunnerAim(isWalkingAndBlocking);
+									PM_HandleGunnerAim(is_walking_and_blocking);
 
 									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
 									{
@@ -11392,10 +11378,10 @@ static void PM_Footsteps(void)
 						{
 							if (!pm->ps->weaponTime) //not firing
 							{
-								if (isWalkingAndBlocking == qtrue)
+								if (is_walking_and_blocking == qtrue)
 								{
 									desiredAnim = BOTH_WALK2;
-									PM_HandleGunnerAim(isWalkingAndBlocking);
+									PM_HandleGunnerAim(is_walking_and_blocking);
 
 									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
 									{
@@ -11867,8 +11853,8 @@ PM_BeginWeaponChange
 void PM_BeginWeaponChange(const int weapon)
 {
 	// Manual blocking state
-	const qboolean is_holding_block_button = (pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = (pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 
 	// Invalid weapon index
 	if (weapon <= WP_NONE || weapon >= WP_NUM_WEAPONS)
@@ -11973,7 +11959,7 @@ PM_FinishWeaponChange
 void PM_FinishWeaponChange(void)
 {
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
-	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
 	int weapon = pm->cmd.weapon;
 	if (weapon < WP_NONE || weapon >= WP_NUM_WEAPONS)
@@ -12282,7 +12268,8 @@ static qboolean PM_DoChargedWeapons(const qboolean vehicleRocketLock, const bgEn
 //---------------------------------------
 {
 	qboolean charging = qfalse, alt_fire = qfalse;
-	const qboolean isWalkingAndBlocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (is_holding_block_button)) ? qtrue : qfalse;
 
 	if (vehicleRocketLock)
 	{
@@ -12536,9 +12523,9 @@ rest:
 #endif
 		if (pm->ps->weapon == WP_BOWCASTER)
 		{// set the weapon anims
-			if (isWalkingAndBlocking == qtrue)
+			if (is_walking_and_blocking == qtrue)
 			{// If we're walking and blocking, we want to go into a aim walk stance
-				PM_HandleGunnerAim(isWalkingAndBlocking);
+				PM_HandleGunnerAim(is_walking_and_blocking);
 			}
 			else
 			{
@@ -13216,7 +13203,7 @@ backAgain:
 	}
 }
 
-static void PM_HandleGunnerAim(qboolean isWalkingAndBlocking)
+static void PM_HandleGunnerAim(qboolean is_walking_and_blocking)
 {
 	// Only apply to gunner-type weapons
 	if (!PM_IsGunner())
@@ -13224,7 +13211,7 @@ static void PM_HandleGunnerAim(qboolean isWalkingAndBlocking)
 		return;
 	}
 
-	if (isWalkingAndBlocking)
+	if (is_walking_and_blocking)
 	{// If the player is walking and blocking, we want to apply any aim adjustments
 		PM_StartTorsoAnim(PM_GetWeaponAimAnim());
 
@@ -13260,8 +13247,8 @@ static void PM_Weapon(void)
 	bgEntity_t* veh = NULL;
 	qboolean vehicleRocketLock = qfalse;
 
-	const qboolean is_holding_block_button = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK ? qtrue : qfalse;
-	const qboolean isWalkingAndBlocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (is_holding_block_button)) ? qtrue : qfalse;
 
 	// Prevent frozen players/bots from firing any weapon logic
 	if (pm->ps->userInt3 & (1 << FLAG_FROZEN))
@@ -13789,9 +13776,9 @@ static void PM_Weapon(void)
 			pm->ps->weapon == WP_TRIP_MINE ||
 			pm->ps->weapon == WP_DET_PACK)
 		{// set the weapon anims
-			if (isWalkingAndBlocking == qtrue)
+			if (is_walking_and_blocking == qtrue)
 			{// If we're walking and blocking, we want to go into a aim walk stance
-				PM_HandleGunnerAim(isWalkingAndBlocking);
+				PM_HandleGunnerAim(is_walking_and_blocking);
 			}
 			else
 			{
@@ -14136,7 +14123,7 @@ static void PM_Weapon(void)
 	// check for weapon change
 	// can't change if weapon is firing, but can change
 	// again if lowering or raising
-	if (pm->ps->weaponTime <= 0 || pm->ps->weaponstate != WEAPON_FIRING && !(pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK))
+	if (pm->ps->weaponTime <= 0 || pm->ps->weaponstate != WEAPON_FIRING && !(is_holding_block_button))
 	{
 		if (pm->ps->weapon != pm->cmd.weapon)
 		{
@@ -14154,9 +14141,9 @@ static void PM_Weapon(void)
 		{
 			pm->ps->weaponTime = 0;
 
-			if (isWalkingAndBlocking == qtrue)
+			if (is_walking_and_blocking == qtrue)
 			{// If we're walking and blocking, we want to go into a aim walk stance
-				PM_HandleGunnerAim(isWalkingAndBlocking);
+				PM_HandleGunnerAim(is_walking_and_blocking);
 			}
 			else
 			{
@@ -14258,35 +14245,24 @@ static void PM_Weapon(void)
 		{ // set the weapon anims
 			if (pm->ps->weapon == WP_SABER)
 			{
-#ifdef _GAME
-				if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT ||
-					pm_entSelf->s.eType == ET_NPC)
+				if (is_walking_and_blocking)
 				{
-					PM_StartTorsoAnim(PM_ReadyPoseForsaber_anim_levelBOT());
-				}
-				else
-#endif
-				{
-					if (is_holding_block_button == qtrue &&
-						(pm->cmd.buttons & BUTTON_WALKING))
+					if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 					{
-						if (pm->ps->fd.saberAnimLevel == SS_DUAL)
-						{
-							PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelDual());
-						}
-						else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
-						{
-							PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelStaff());
-						}
-						else
-						{
-							PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelSingle());
-						}
+						PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelDual());
+					}
+					else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
+					{
+						PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelStaff());
 					}
 					else
 					{
-						PM_StartTorsoAnim(PM_IdlePoseForsaber_anim_level());
+						PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelSingle());
 					}
+				}
+				else
+				{
+					PM_StartTorsoAnim(PM_IdlePoseForsaber_anim_level());
 				}
 			}
 			else if (pm->ps->weapon == WP_MELEE || PM_IsRocketTrooper() == qtrue)
@@ -14311,9 +14287,9 @@ static void PM_Weapon(void)
 					}
 					else
 					{ // set the weapon anims
-						if (isWalkingAndBlocking == qtrue)
+						if (is_walking_and_blocking == qtrue)
 						{// If we're walking and blocking, we want to go into a aim walk stance
-							PM_HandleGunnerAim(isWalkingAndBlocking);
+							PM_HandleGunnerAim(is_walking_and_blocking);
 						}
 						else
 						{
@@ -14350,9 +14326,9 @@ static void PM_Weapon(void)
 		pm->ps->torsoAnim != TORSO_WEAPONIDLE3 &&
 		pm->ps->weapon != WP_EMPLACED_GUN)
 	{ // set the weapon anims
-		if (isWalkingAndBlocking == qtrue)
+		if (is_walking_and_blocking == qtrue)
 		{// If we're walking and blocking, we want to go into a aim walk stance
-			PM_HandleGunnerAim(isWalkingAndBlocking);
+			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
 		else
 		{
@@ -14415,9 +14391,9 @@ static void PM_Weapon(void)
 		{
 			PM_StartTorsoAnim(BOTH_GUNSIT1);
 		} // set the weapon anims
-		else if (isWalkingAndBlocking == qtrue)
+		else if (is_walking_and_blocking == qtrue)
 		{// If we're walking and blocking, we want to go into a aim walk stance
-			PM_HandleGunnerAim(isWalkingAndBlocking);
+			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
 		else
 		{
@@ -14491,9 +14467,9 @@ static void PM_Weapon(void)
 	{
 		pm->ps->weaponTime = 0;
 
-		if (isWalkingAndBlocking == qtrue)
+		if (is_walking_and_blocking == qtrue)
 		{// If we're walking and blocking, we want to go into a aim walk stance
-			PM_HandleGunnerAim(isWalkingAndBlocking);
+			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
 		else
 		{
@@ -14876,9 +14852,9 @@ static void PM_Weapon(void)
 	}
 	else
 	{// set the weapon anims
-		if (isWalkingAndBlocking == qtrue)
+		if (is_walking_and_blocking == qtrue)
 		{// If we're walking and blocking, we want to go into a aim walk stance
-			PM_HandleGunnerAim(isWalkingAndBlocking);
+			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
 		else
 		{
@@ -16433,6 +16409,7 @@ qboolean PM_SaberInTransition(int move);
 static void BG_AdjustClientSpeed(playerState_t* ps, const usercmd_t* cmd, const int svTime)
 {
 	saberInfo_t* saber;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
 	if (ps->clientNum >= MAX_CLIENTS)
 	{
@@ -16470,7 +16447,7 @@ static void BG_AdjustClientSpeed(playerState_t* ps, const usercmd_t* cmd, const 
 	if (cmd->forwardmove < 0 && cmd->buttons & BUTTON_WALKING && pm->ps->groundEntityNum != ENTITYNUM_NONE)
 	{
 		//walking backwards also makes a player move a little slower
-		if (pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCK)
+		if (is_holding_block_button)
 		{
 			ps->speed *= 0.75f + 0.2f;
 		}
@@ -18604,7 +18581,7 @@ void bg_vehicle_adjust_b_box_for_orientation(const Vehicle_t* veh, vec3_t origin
 	const int clientNum, const int tracemask,
 	void (*local_trace)(trace_t* results, const vec3_t start,
 		const vec3_t minimum_mins, const vec3_t maximum_maxs,
-		const vec3_t end, int pass_entity_num,
+		const vec3_t end, int passEntityNum,
 		int content_mask))
 {
 	if (!veh
@@ -18696,7 +18673,7 @@ PmoveSingle
 */
 extern int BG_EmplacedView(vec3_t base_angles, vec3_t angles, float* new_yaw, float constraint);
 extern qboolean BG_FighterUpdate(Vehicle_t* p_veh, const usercmd_t* pUcmd, vec3_t trMins, vec3_t trMaxs, float gravity, void (*traceFunc)
-	(trace_t* results, const vec3_t start, const vec3_t lmins, const vec3_t lmaxs, const vec3_t end, int pass_entity_num, int content_mask)); //FighterNPC.c
+	(trace_t* results, const vec3_t start, const vec3_t lmins, const vec3_t lmaxs, const vec3_t end, int passEntityNum, int content_mask)); //FighterNPC.c
 
 #define JETPACK_HOVER_HEIGHT	64
 

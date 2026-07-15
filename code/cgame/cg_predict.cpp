@@ -206,12 +206,12 @@ CG_PointContents
 #define USE_SV_PNT_CONTENTS (1)
 
 #if USE_SV_PNT_CONTENTS
-int CG_PointContents(const vec3_t point, const int pass_entity_num)
+int CG_PointContents(const vec3_t point, const int passEntityNum)
 {
-	return gi.pointcontents(point, pass_entity_num);
+	return gi.pointcontents(point, passEntityNum);
 }
 #else
-int	CG_PointContents(const vec3_t point, int pass_entity_num) {
+int	CG_PointContents(const vec3_t point, int passEntityNum) {
 	int			i;
 	entityState_t* ent;
 	centity_t* cent;
@@ -225,7 +225,7 @@ int	CG_PointContents(const vec3_t point, int pass_entity_num) {
 
 		ent = &cent->currentState;
 
-		if (ent->number == pass_entity_num) {
+		if (ent->number == passEntityNum) {
 			continue;
 		}
 

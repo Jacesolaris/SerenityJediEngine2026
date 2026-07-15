@@ -103,11 +103,11 @@ typedef struct entityShared_s {
 	vec3_t		lastAngles;			//Where you were looking last frame
 	qboolean	mIsRoffing;			// set to qtrue when the entity is being roffed
 
-	// when a trace call is made and pass_entity_num != ENTITYNUM_NONE,
+	// when a trace call is made and passEntityNum != ENTITYNUM_NONE,
 	// an ent will be excluded from testing if:
-	// ent->s.number == pass_entity_num	(don't interact with self)
-	// ent->s.ownerNum = pass_entity_num	(don't interact with your own missiles)
-	// entity[ent->s.ownerNum].ownerNum = pass_entity_num	(don't interact with other missiles from owner)
+	// ent->s.number == passEntityNum	(don't interact with self)
+	// ent->s.ownerNum = passEntityNum	(don't interact with your own missiles)
+	// entity[ent->s.ownerNum].ownerNum = passEntityNum	(don't interact with other missiles from owner)
 	int			ownerNum;
 
 	// mask of clients that this entity should be broadcast to
@@ -831,7 +831,7 @@ typedef struct gameImport_s {
 	qboolean(*InPVSIgnorePortals)					(const vec3_t p1, const vec3_t p2);
 	void		(*LinkEntity)							(sharedEntity_t* ent);
 	void		(*LocateGameData)						(sharedEntity_t* gEnts, int numGEntities, int sizeofGEntity_t, playerState_t* clients, int sizeofGClient);
-	int			(*PointContents)						(const vec3_t point, int pass_entity_num);
+	int			(*PointContents)						(const vec3_t point, int passEntityNum);
 	void		(*SendConsoleCommand)					(int exec_when, const char* text);
 	void		(*SendServerCommand)					(int clientNum, const char* text);
 	void		(*SetBrushModel)						(sharedEntity_t* ent, const char* name);
@@ -840,7 +840,7 @@ typedef struct gameImport_s {
 	void		(*SetUserinfo)							(int num, const char* buffer);
 	void		(*SiegePersSet)							(siegePers_t* pers);
 	void		(*SiegePersGet)							(siegePers_t* pers);
-	void		(*Trace)								(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int pass_entity_num, int contentmask, int capsule, int traceFlags, int useLod);
+	void		(*Trace)								(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int contentmask, int capsule, int traceFlags, int useLod);
 	void		(*UnlinkEntity)							(sharedEntity_t* ent);
 
 	qboolean(*SMP_GetStringTextString)				(const char* text, char* buffer, int bufferLength);

@@ -2661,12 +2661,12 @@ int ragSSCount = 0;
 int ragTraceCount = 0;
 #endif
 
-void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int pass_entity_num, const int contentmask, const EG2_Collision eG2TraceType, const int useLod)
+void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int passEntityNum, const int contentmask, const EG2_Collision eG2TraceType, const int useLod)
 {
 #ifdef _DEBUG
 	const int rag_pre_trace = ri.Milliseconds();
 #endif
-	ri.SV_Trace(results, start, mins, maxs, end, pass_entity_num, contentmask, eG2TraceType, useLod);
+	ri.SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
 #ifdef _DEBUG
 	const int rag_post_trace = ri.Milliseconds();
 

@@ -95,7 +95,7 @@ extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 extern void PM_SetAnim(const pmove_t* pm, int setAnimParts, int anim, int setAnimFlags, int blendTime);
 extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern void G_VehicleTrace(trace_t* results, const vec3_t start, const vec3_t tMins, const vec3_t tMaxs,
-	const vec3_t end, int pass_entity_num, int contentmask);
+	const vec3_t end, int passEntityNum, int contentmask);
 #endif
 
 extern qboolean BG_UnrestrainedPitchRoll();
@@ -105,7 +105,7 @@ extern qboolean BG_UnrestrainedPitchRoll();
 //this stuff has got to be predicted, so..
 static bool BG_FighterUpdate(Vehicle_t* p_veh, vec3_t tr_mins, vec3_t tr_maxs,
 	void (*trace_func)(trace_t* results, const vec3_t start, const vec3_t lmins, const vec3_t lmaxs,
-		const vec3_t end, int pass_entity_num, int content_mask))
+		const vec3_t end, int passEntityNum, int content_mask))
 {
 	vec3_t bottom;
 	playerState_t* parent_ps;

@@ -873,11 +873,10 @@ static void WP_HandleBoltBlock(gentity_t* ent, gentity_t* missile, vec3_t forwar
 	constexpr int punish = BLOCKPOINTS_TEN;
 
 	// Manual blocking flags
-	const qboolean manual_blocking = (blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) ? qtrue : qfalse;
-	const qboolean manual_proj_blocking = (blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) ? qtrue : qfalse;
-
-	const qboolean npc_is_blocking = (blocker->client->ps.ManualBlockingFlags & (1 << MBF_NPCBLOCKING)) ? qtrue : qfalse;
-	const qboolean accurate_missile_blocking = (blocker->client->ps.ManualBlockingFlags & (1 << MBF_ACCURATEMISSILEBLOCKING)) ? qtrue : qfalse;
+	const qboolean manual_blocking = ((blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean manual_proj_blocking = ((blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean npc_is_blocking = ((blocker->client->ps.ManualBlockingFlags & (1 << MBF_NPCBLOCKING)) != 0) ? qtrue : qfalse;
+	const qboolean accurate_missile_blocking = ((blocker->client->ps.ManualBlockingFlags & (1 << MBF_ACCURATEMISSILEBLOCKING)) != 0) ? qtrue : qfalse;
 
 	float slop_factor = (FATIGUE_AUTOBOLTBLOCK - 6) * ((float)FORCE_LEVEL_3 - G_GetDefenseLevel(blocker)) / FORCE_LEVEL_3;
 

@@ -68,10 +68,10 @@ int	SV_NumForGentity( gentity_t *ent ) {
 	return num;
 }
 */
-gentity_t* SV_Gentity_num(const int num)
+gentity_t* SV_GentityNum(const int num)
 {
 	assert(num >= 0);
-	const auto ent = (gentity_t*)((byte*)ge->gentities + ge->gentitySize * num);
+	auto* ent = reinterpret_cast<gentity_t*>(reinterpret_cast<byte*>(ge->gentities) + ge->gentitySize * num);
 
 	return ent;
 }
@@ -88,7 +88,7 @@ svEntity_t* SV_SvEntityForGentity(gentity_t* gEnt)
 gentity_t* SV_GEntityForSvEntity(svEntity_t* svEnt)
 {
 	const int num = svEnt - sv.svEntities;
-	return SV_Gentity_num(num);
+	return SV_GentityNum(num);
 }
 
 /*
@@ -340,7 +340,7 @@ qboolean SV_EntityContact(const vec3_t mins, const vec3_t maxs, const gentity_t*
 	const float* origin = gEnt->currentOrigin;
 	const float* angles = gEnt->currentAngles;
 
-	const clipHandle_t ch = SV_clip_handleForEntity(gEnt);
+	const clipHandle_t ch = SV_ClipHandleForEntity(gEnt);
 	CM_TransformedBoxTrace(&trace, vec3_origin, vec3_origin, mins, maxs,
 		ch, -1, origin, angles);
 

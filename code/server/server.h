@@ -125,7 +125,7 @@ using client_t = struct client_s
 	int lastMessageNum; // for delta compression
 	int cmdNum; // command number last executed
 	int lastClientCommand; // reliable client message sequence
-	gentity_t* gentity; // SV_Gentity_num(clientNum)
+	gentity_t* gentity; // SV_GentityNum(clientNum)
 	char name[MAX_NAME_LENGTH]; // extracted from userinfo, high bits masked
 	byte* download; // file being downloaded
 	int downloadsize; // total bytes (can't use EOF because of paks)
@@ -225,7 +225,7 @@ void SV_SendClientSnapshot(client_t* client);
 //
 // sv_game.c
 //
-gentity_t* SV_Gentity_num(int num);
+gentity_t* SV_GentityNum(int num);
 svEntity_t* SV_SvEntityForGentity(gentity_t* gEnt);
 gentity_t* SV_GEntityForSvEntity(svEntity_t* svEnt);
 void SV_InitGameProgs();
@@ -251,7 +251,7 @@ void SV_LinkEntity(gentity_t* g_ent);
 // sets ent->leafnums[] for pvs determination even if the entity
 // is not solid
 
-clipHandle_t SV_clip_handleForEntity(const gentity_t* ent);
+clipHandle_t SV_ClipHandleForEntity(const gentity_t* ent);
 
 void SV_SectorList_f();
 
@@ -263,14 +263,14 @@ int SV_AreaEntities(const vec3_t mins, const vec3_t maxs, gentity_t** elist, int
 // returns the number of pointers filled in
 // The world entity is never returned in this list.
 
-int SV_PointContents(const vec3_t p, int pass_entity_num);
+int SV_PointContents(const vec3_t p, int passEntityNum);
 // returns the CONTENTS_* value from the world and all entities at the given point.
 
 /*
 Ghoul2 Insert Start
 */
 void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-	int pass_entity_num, int contentmask, EG2_Collision eG2TraceType = G2_NOCOLLIDE, int useLod = 0);
+	int passEntityNum, int contentmask, EG2_Collision eG2TraceType = G2_NOCOLLIDE, int useLod = 0);
 /*
 Ghoul2 Insert End
 */
@@ -282,7 +282,7 @@ Ghoul2 Insert End
 // if the starting point is in a solid, it will be allowed to move out
 // to an open area
 
-// pass_entity_num is explicitly excluded from clipping checks (normally ENTITYNUM_NONE)
+// passEntityNum is explicitly excluded from clipping checks (normally ENTITYNUM_NONE)
 
 ///////////////////////////////////////////////
 //

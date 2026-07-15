@@ -100,11 +100,11 @@ extern cvar_t* com_outcast;
 ////////////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////////////
-#define		NAV_VERSION						1.3f
-#define		NEIGHBORING_DIST				200.0f
-#define		SAFE_NEIGHBORINGPOINT_DIST		400.0f
-#define		SAFE_AT_NAV_DIST_SQ				6400.0f			//80*80
-#define		SAFE_GOTO_DIST_SQ				19600.0f		//140*140
+constexpr auto NAV_VERSION = 1.3f;
+constexpr auto NEIGHBORING_DIST = 200.0f;
+constexpr auto SAFE_NEIGHBORINGPOINT_DIST = 400.0f;
+constexpr auto SAFE_AT_NAV_DIST_SQ = 6400.0f; //80*80;
+constexpr auto SAFE_GOTO_DIST_SQ = 19600.0f; //140*140;
 
 namespace NAV
 {
@@ -380,12 +380,12 @@ using TEntEdgeMap = ratl::map_vs<int, TEdgesPerEnt, NAV::MAX_BLOCKING_ENTS>;
 ////////////////////////////////////////////////////////////////////////////////////////
 struct SPathPoint
 {
-	CVec3 mPoint;
-	float mSpeed = 0;
-	float mSlowingRadius = 0;
-	float mReachedRadius = 0;
-	float mDist = 0;
-	float mETA = 0;
+	CVec3 mPoint = CVec3(0, 0, 0);
+	float mSpeed = 0.0f;
+	float mSlowingRadius = 0.0f;
+	float mReachedRadius = 0.0f;
+	float mDist = 0.0f;
+	float mETA = 0.0f;
 	NAV::TNodeHandle mNode;
 };
 
@@ -419,44 +419,44 @@ struct SSteerUser
 {
 	// Constant Values In Entity
 	//---------------------------
-	float mMaxForce = 0;
-	float mMaxSpeed = 0;
-	float mRadius = 0;
-	float mMass = 0;
+	float mMaxForce = 0.0f;
+	float mMaxSpeed = 0.0f;
+	float mRadius = 0.0f;
+	float mMass = 0.0f;
 
 	// Current Values
 	//----------------
-	TNeighbors mNeighbors;
+	TNeighbors mNeighbors = TNeighbors();
 
-	CVec3 mOrientation;
-	CVec3 mPosition;
+	CVec3 mOrientation = CVec3(0, 0, 0);
+	CVec3 mPosition = CVec3(0, 0, 0);
 
-	CVec3 mVelocity;
-	float mSpeed = 0;
+	CVec3 mVelocity = CVec3(0, 0, 0);
+	float mSpeed = 0.0f;
 
 	// Values Projected From Current Values
 	//--------------------------------------
-	CVec3 mProjectFwd;
-	CVec3 mProjectSide;
-	CVec3 mProjectPath;
+	CVec3 mProjectFwd = CVec3(0, 0, 0);
+	CVec3 mProjectSide = CVec3(0, 0, 0);
+	CVec3 mProjectPath = CVec3(0, 0, 0);
 
 	// Temporary Values
 	//------------------
-	CVec3 mDesiredVelocity;
-	float mDesiredSpeed = 0;
-	float mDistance = 0;
-	CVec3 mSeekLocation;
+	CVec3 mDesiredVelocity = CVec3(0, 0, 0);
+	float mDesiredSpeed = 0.0f;
+	float mDistance = 0.0f;
+	CVec3 mSeekLocation = CVec3(0, 0, 0);
 
 	int mIgnoreEntity = 0;
 
 	bool mBlocked = false;
 	int mBlockedTgtEntity = 0;
-	CVec3 mBlockedTgtPosition;
+	CVec3 mBlockedTgtPosition = CVec3(0, 0, 0);
 
 	// Steering
 	//----------
-	CVec3 mSteering;
-	float mNewtons = 0;
+	CVec3 mSteering = CVec3(0, 0, 0);
+	float mNewtons = 0.0f;
 };
 
 using TSteerUsers = ratl::pool_vs<SSteerUser, 4>;

@@ -263,7 +263,7 @@ static sharedEntity_t* Q3_GetEntityByName(const char* name)
 	if (ei == ICARUS_EntList.end())
 		return nullptr;
 
-	sharedEntity_t* ent = SV_Gentity_num((*ei).second);
+	sharedEntity_t* ent = SV_GentityNum((*ei).second);
 
 	return ent;
 	// this now returns the ent instead of the sequencer -- dmv 06/27/01
@@ -620,7 +620,7 @@ void Q3_DebugPrint(const int level, const char* format, ...)
 
 		Com_Printf(
 			S_COLOR_BLUE "DEBUG: %s(%d): %s\n",
-			SV_Gentity_num(entNum)->script_targetname,
+			SV_GentityNum(entNum)->script_targetname,
 			entNum,
 			buffer);
 		break;

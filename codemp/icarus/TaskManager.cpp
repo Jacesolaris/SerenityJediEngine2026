@@ -323,7 +323,7 @@ Update
 
 int CTaskManager::Update(void)
 {
-	const sharedEntity_t* owner = SV_Gentity_num(m_ownerID);
+	const sharedEntity_t* owner = SV_GentityNum(m_ownerID);
 
 	if (owner->r.svFlags & SVF_ICARUS_FREEZE)
 	{

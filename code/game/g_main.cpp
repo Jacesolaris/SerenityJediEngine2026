@@ -268,6 +268,7 @@ cvar_t* g_fixJOItems;
 cvar_t* g_npc_is_smart_range;
 
 cvar_t* g_AimingCinematicCamera;
+cvar_t* g_HitTracking;
 
 qboolean stop_icarus = qfalse;
 
@@ -866,6 +867,8 @@ static void G_InitCvars()
 	g_npc_is_smart_range = gi.cvar("g_npc_is_smart_range", "3500", CVAR_ARCHIVE);
 
 	g_AimingCinematicCamera = gi.cvar("g_AimingCinematicCamera", "1", CVAR_ARCHIVE);
+
+	g_HitTracking = gi.cvar("g_HitTracking", "0", CVAR_ARCHIVE);
 }
 
 /*

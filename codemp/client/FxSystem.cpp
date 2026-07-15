@@ -47,7 +47,6 @@ SFxHelper::SFxHelper() :
 {
 }
 
-
 void SFxHelper::ReInit(refdef_t* pRefdef)
 {
 	mTime = 0;
