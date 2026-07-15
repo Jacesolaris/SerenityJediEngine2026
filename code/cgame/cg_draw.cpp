@@ -31,7 +31,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../game/g_vehicles.h"
 
 extern vmCvar_t cg_debugHealthBars;
-extern vmCvar_t cg_debugBlockBars;
+extern vmCvar_t cg_drawblockpointbar;
 
 extern vmCvar_t cg_newgameplusJKA;
 extern vmCvar_t cg_newgameplusJKO;
@@ -7683,7 +7683,7 @@ static void CG_Draw2D()
 		CG_DrawHealthBars();
 	}
 
-	if (cg_debugBlockBars.integer)
+	if (cg_drawblockpointbar.integer)
 	{
 		CG_DrawBlockPointBars();
 	}

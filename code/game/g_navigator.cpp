@@ -178,12 +178,12 @@ namespace STEER
 ////////////////////////////////////////////////////////////////////////////////////////
 // Total Memory - 11 Bytes (can save 5 bytes by removing Name and Targets)
 ////////////////////////////////////////////////////////////////////////////////////////
-class c_way_node final
+class CWayNode final
 {
 public:
-	~c_way_node() = default;
-	CVec3 mPoint;
-	float mRadius;
+	~CWayNode() = default;
+	CVec3 mPoint = CVec3(0, 0, 0);
+	float mRadius = 0.0f;
 	NAV::EPointType mType;
 	hstring mName; // TODO OPTIMIZATION: Remove This?
 	hstring mTargets[NAV::NUM_TARGETS]; // TODO OPTIMIZATION: Remove This
@@ -210,7 +210,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	// Left Right Test (For Triangulation)
 	////////////////////////////////////////////////////////////////////////////////////
-	ESide LRTest(const c_way_node& A, const c_way_node& B) const
+	ESide LRTest(const CWayNode& A, const CWayNode& B) const
 	{
 		return mPoint.LRTest(A.mPoint, B.mPoint);
 	}
@@ -218,13 +218,13 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	// Point In Circle (For Triangulation)
 	////////////////////////////////////////////////////////////////////////////////////
-	bool InCircle(const c_way_node& A, const c_way_node& B, const c_way_node& C) const
+	bool InCircle(const CWayNode& A, const CWayNode& B, const CWayNode& C) const
 	{
 		return mPoint.PtInCircle(A.mPoint, B.mPoint, C.mPoint);
 	}
 };
 
-const c_way_node& GetNode(int Handle);
+const CWayNode& GetNode(int Handle);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Total Memory - 5 bytes
@@ -232,12 +232,12 @@ const c_way_node& GetNode(int Handle);
 class CWayEdge
 {
 public:
-	int mNodeA; // DO NOT REMOVE THIS: Handles are full ints because upper bits are used
-	int mNodeB; // DO NOT REMOVE THIS: Handles are full ints because upper bits are used
-	float mDistance; // DO NOT REMOVE THIS: It's a serious runtime optimization for A*
+	int mNodeA = -1; // DO NOT REMOVE THIS: Handles are full ints because upper bits are used
+	int mNodeB = -1; // DO NOT REMOVE THIS: Handles are full ints because upper bits are used
+	float mDistance = 0.0f; // DO NOT REMOVE THIS: It's a serious runtime optimization for A*
 
-	unsigned short mOwnerNum; // Converted to short.  Largest entity number is 1024
-	unsigned short mEntityNum; // Converted to short.  Largest entity number is 1024
+	unsigned short mOwnerNum = 0; // Converted to short.  Largest entity number is 1024
+	unsigned short mEntityNum = 0; // Converted to short.  Largest entity number is 1024
 	enum EWayEdgeFlags
 	{
 		WE_NONE = 0,
@@ -358,8 +358,8 @@ struct SDangerAlert
 ////////////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////////////
-using TGraph = ragl::graph_vs<c_way_node, NAV::NUM_NODES, CWayEdge, NAV::NUM_EDGES, NAV::NUM_EDGES_PER_NODE>;
-using TGraphRegion = ragl::graph_region<c_way_node, NAV::NUM_NODES, CWayEdge, NAV::NUM_EDGES, NAV::NUM_EDGES_PER_NODE,
+using TGraph = ragl::graph_vs<CWayNode, NAV::NUM_NODES, CWayEdge, NAV::NUM_EDGES, NAV::NUM_EDGES_PER_NODE>;
+using TGraphRegion = ragl::graph_region<CWayNode, NAV::NUM_NODES, CWayEdge, NAV::NUM_EDGES, NAV::NUM_EDGES_PER_NODE,
 	NAV::NUM_REGIONS, NAV::NUM_REGIONS>;
 using TGraphCells = TGraph::cells<NAV::NUM_NODES_PER_CELL, NAV::NUM_CELLS, NAV::NUM_CELLS>;
 using TNearestNavSort = ratl::vector_vs<SNodeSort, NAV::NUM_NODES_PER_CELL>;
@@ -482,7 +482,7 @@ private:
 	gentity_t* mActor = nullptr;
 	int mActorSize = 0;
 
-	CVec3 mDangerSpot;
+	CVec3 mDangerSpot = CVec3(0, 0, 0);
 	float mDangerSpotRadiusSq = 0;
 
 public:
@@ -649,7 +649,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	// This is the cost estimate from any node to any other node (usually the goal)
 	////////////////////////////////////////////////////////////////////////////////////
-	float cost(const c_way_node& A, const c_way_node& B) const override
+	float cost(const CWayNode& A, const CWayNode& B) const override
 	{
 		return A.mPoint.Dist(B.mPoint);
 	}
@@ -657,7 +657,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	// This is the cost estimate for traversing a particular edge
 	////////////////////////////////////////////////////////////////////////////////////
-	float cost(const CWayEdge& Edge, const c_way_node& B) const override
+	float cost(const CWayEdge& Edge, const CWayNode& B) const override
 	{
 		float DangerBias = 0.0f;
 		if (mActor)
@@ -695,7 +695,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	//
 	////////////////////////////////////////////////////////////////////////////////////
-	bool on_same_floor(const c_way_node& A, const c_way_node& B) const override
+	bool on_same_floor(const CWayNode& A, const CWayNode& B) const override
 	{
 		return fabsf(A.mPoint[2] - B.mPoint[2]) < 100.0f;
 	}
@@ -706,8 +706,8 @@ public:
 	// This function is here because it evaluates the base cost from NodeA to NodeB, which
 	//
 	////////////////////////////////////////////////////////////////////////////////////
-	void setup_edge(CWayEdge& Edge, const int A, const int B, const bool OnHull, const c_way_node& NodeA,
-		const c_way_node& NodeB,
+	void setup_edge(CWayEdge& Edge, const int A, const int B, const bool OnHull, const CWayNode& NodeA,
+		const CWayNode& NodeB,
 		const bool CanBeInvalid = false) override
 	{
 		Edge.mNodeA = A;
@@ -785,7 +785,7 @@ TGraph& GetGraph()
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////////////
-const c_way_node& GetNode(const int Handle)
+const CWayNode& GetNode(const int Handle)
 {
 	return mGraph.get_node(Handle);
 }
@@ -1184,278 +1184,282 @@ bool NAV::LoadFromFile(const char* filename, int checksum)
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////////////
+// ============================================================================
+// NAV::TestEdge
+//
+// Tests whether an edge between two navigation nodes is traversable, taking
+// into account doors, breakables, characters, and special flying edges.
+// This version is cleaned, commented, and warning‑free (no C6397, no asserts).
+// ============================================================================
 bool NAV::TestEdge(const TNodeHandle NodeA, const TNodeHandle NodeB, const qboolean IsDebugEdge)
 {
-	const int at_handle = mGraph.get_edge_across(NodeA, NodeB);
-	CWayEdge& at = mGraph.get_edge(at_handle);
-	const c_way_node& a = mGraph.get_node(at.mNodeA);
-	const c_way_node& b = mGraph.get_node(at.mNodeB);
-	CVec3 mins(-15.0f, -15.0f, 0.0f); // These were the old "sizeless" defaults
-	CVec3 Maxs(15.0f, 15.0f, 40.0f);
-	bool CanGo;
+	const int atHandle = mGraph.get_edge_across(NodeA, NodeB);
+	CWayEdge& at = mGraph.get_edge(atHandle);
+	const CWayNode& a = mGraph.get_node(at.mNodeA);
+	const CWayNode& b = mGraph.get_node(at.mNodeB);
+
+	// Base hull size (old "sizeless" defaults)
+	CVec3 mins(-15.0f, -15.0f, 0.0f);
+	CVec3 maxs(15.0f, 15.0f, 40.0f);
+
+	bool CanGo = false;
 	const int i = at.Size();
 
+	// Build readable names for debug
 	a.mPoint.ToStr(mLocStringA);
 	b.mPoint.ToStr(mLocStringB);
 
-	const char* aName = a.mName.empty() ? mLocStringA : a.mName.c_str();
-	const char* bName = b.mName.empty() ? mLocStringB : b.mName.c_str();
+	const char* a_name = a.mName.empty() ? mLocStringA : a.mName.c_str();
+	const char* b_name = b.mName.empty() ? mLocStringB : b.mName.c_str();
 
-	const float radius = at.Size() == CWayEdge::WE_SIZE_LARGE ? SC_LARGE_RADIUS : SC_MEDIUM_RADIUS;
-	const float height = at.Size() == CWayEdge::WE_SIZE_LARGE ? SC_LARGE_HEIGHT : SC_MEDIUM_HEIGHT;
+	// Size‑dependent radius/height
+	const float radius = (at.Size() == CWayEdge::WE_SIZE_LARGE) ? SC_LARGE_RADIUS : SC_MEDIUM_RADIUS;
+	const float height = (at.Size() == CWayEdge::WE_SIZE_LARGE) ? SC_LARGE_HEIGHT : SC_MEDIUM_HEIGHT;
 
-	mins[0] = mins[1] = radius * -1.0f;
-	Maxs[0] = Maxs[1] = radius;
-	Maxs[2] = height;
+	mins[0] = mins[1] = (radius * -1.0f);
+	maxs[0] = maxs[1] = radius;
+	maxs[2] = height;
 
-	// If Either Start Or End Points Are Too Small, Don' Bother At This Size
-	//-----------------------------------------------------------------------
-	if (a.mType == PT_WAYNODE && a.mRadius < radius ||
-		b.mType == PT_WAYNODE && b.mRadius < radius)
+	// ------------------------------------------------------------------------
+	// If either start or end points are too small, don't bother at this size
+	// ------------------------------------------------------------------------
+	if ((a.mType == PT_WAYNODE && a.mRadius < radius) ||
+		(b.mType == PT_WAYNODE && b.mRadius < radius))
 	{
-		if (IsDebugEdge)
+		if (IsDebugEdge == qtrue)
 		{
-			gi.Printf("Nav(%s)<->(%s): Size Too Big\n", aName, bName, i);
+			gi.Printf("Nav(%s)<->(%s): Size Too Big\n", a_name, b_name);
 		}
 		CanGo = false;
 		return CanGo;
 	}
 
-	// Try It
-	//--------
-	CanGo = MoveTrace(a.mPoint, b.mPoint, mins, Maxs, 0, true, false);
-	int EntHit = mMoveTrace.entityNum;
+	// ------------------------------------------------------------------------
+	// Initial trace
+	// ------------------------------------------------------------------------
+	CanGo = MoveTrace(a.mPoint, b.mPoint, mins, maxs, 0, true, false);
+	int ent_hit = mMoveTrace.entityNum;
 
-	// Check For A Flying Edge
-	//-------------------------
-	if (a.mFlags.get_bit(c_way_node::WN_FLOATING) || b.mFlags.get_bit(c_way_node::WN_FLOATING))
+	// ------------------------------------------------------------------------
+	// Check for a flying edge
+	// ------------------------------------------------------------------------
+	if (a.mFlags.get_bit(CWayNode::WN_FLOATING) || b.mFlags.get_bit(CWayNode::WN_FLOATING))
 	{
 		at.mFlags.set_bit(CWayEdge::WE_FLYING);
-		if (!a.mFlags.get_bit(c_way_node::WN_FLOATING) || !b.mFlags.get_bit(c_way_node::WN_FLOATING))
+
+		if (!a.mFlags.get_bit(CWayNode::WN_FLOATING) || !b.mFlags.get_bit(CWayNode::WN_FLOATING))
 		{
 			at.mFlags.set_bit(CWayEdge::WE_CANBEINVAL);
 		}
 	}
 
-	// Well, It' Can't Go, But Possibly If We Hit An Entity And Remove That Entity, We Can Go?
-	//-----------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------
+	// If we can't go, but we hit an entity, see if ignoring/removing it helps
+	// ------------------------------------------------------------------------
 	if (!CanGo &&
 		!mMoveTrace.startsolid &&
-		EntHit != ENTITYNUM_WORLD &&
-		EntHit != ENTITYNUM_NONE &&
-		&g_entities[EntHit] != nullptr)
+		ent_hit != ENTITYNUM_WORLD &&
+		ent_hit != ENTITYNUM_NONE)
 	{
 		bool hit_character = false;
-		gentity_t* ent = &g_entities[EntHit];
+		gentity_t* ent = &g_entities[ent_hit];
 
-		if (IsDebugEdge)
+		if (IsDebugEdge == qtrue)
 		{
-			gi.Printf("Nav(%s)<->(%s): Hit Entity Type (%s), TargetName (%s)\n", aName, bName, ent->classname,
-				ent->targetname);
+			gi.Printf("Nav(%s)<->(%s): Hit Entity Type (%s), TargetName (%s)\n",
+				a_name, b_name, ent->classname, ent->targetname);
 		}
 
-		// Find Out What Type Of Entity This Is
-		//--------------------------------------
+		// Classify the blocking entity
 		if (!Q_stricmp("func_door", ent->classname))
 		{
 			at.mFlags.set_bit(CWayEdge::WE_BLOCKING_DOOR);
 		}
-		else if (
-			!Q_stricmp("func_wall", ent->classname) ||
+		else if (!Q_stricmp("func_wall", ent->classname) ||
 			!Q_stricmp("func_static", ent->classname) ||
 			!Q_stricmp("func_usable", ent->classname))
 		{
 			at.mFlags.set_bit(CWayEdge::WE_BLOCKING_WALL);
 		}
-		else if (
-			!Q_stricmp("func_glass", ent->classname) ||
+		else if (!Q_stricmp("func_glass", ent->classname) ||
 			!Q_stricmp("func_breakable", ent->classname) ||
 			!Q_stricmp("misc_model_breakable", ent->classname))
 		{
 			at.mFlags.set_bit(CWayEdge::WE_BLOCKING_BREAK);
 		}
-		else if (ent->NPC || ent->s.number == 0)
+		else if (ent->NPC != nullptr || ent->s.number == 0)
 		{
 			hit_character = true;
 		}
-
-		// Don't Care About Any Other Entity Types
-		//-----------------------------------------
 		else
 		{
-			if (IsDebugEdge)
+			// Other entity types: we don't try to ignore them at this size
+			if (IsDebugEdge == qtrue)
 			{
-				gi.Printf("Nav(%s)<->(%s): Unable To Ignore Ent, Going A Size Down\n", aName, bName);
+				gi.Printf("Nav(%s)<->(%s): Unable To Ignore Ent, Going A Size Down\n", a_name, b_name);
 			}
-			return CanGo; // Go To Next Size Down
+			return CanGo; // go to next size down
 		}
 
-		// If It Is A Door, Try Opening The Door To See If We Can Get In
-		//---------------------------------------------------------------
+		// --------------------------------------------------------------------
+		// If it is a door, try opening the door to see if we can get through
+		// --------------------------------------------------------------------
 		if (at.BlockingDoor())
 		{
-			// Find The Master
-			//-----------------
+			// Find the master door in the team chain
 			gentity_t* master = ent;
-			while (master && master->teammaster && master->flags & FL_TEAMSLAVE)
+			while (master != nullptr && master->teammaster != nullptr && (master->flags & FL_TEAMSLAVE))
 			{
 				master = master->teammaster;
 			}
-			const bool DoorIsStartOpen = master->spawnflags & 1;
 
-			// Open The Chain
-			//----------------
+			const bool door_is_start_open = ((master->spawnflags & 1) != 0);
+
+			// Open the chain
 			gentity_t* slave = master;
-			while (slave)
+			while (slave != nullptr)
 			{
-				VectorCopy(DoorIsStartOpen ? slave->pos1 : slave->pos2, slave->currentOrigin);
+				VectorCopy(door_is_start_open ? slave->pos1 : slave->pos2, slave->currentOrigin);
 				gi.linkentity(slave);
 				slave = slave->teamchain;
 			}
 
-			// Try The Trace
-			//---------------
-			CanGo = MoveTrace(a.mPoint, b.mPoint, mins, Maxs, 0, true, false);
+			// Try the trace with the door open
+			CanGo = MoveTrace(a.mPoint, b.mPoint, mins, maxs, 0, true, false);
 			if (CanGo)
 			{
 				ent = master;
-				EntHit = master->s.number;
+				ent_hit = master->s.number;
 			}
 			else
 			{
-				if (IsDebugEdge)
+				if (IsDebugEdge == qtrue)
 				{
-					gi.Printf("Nav(%s)<->(%s): Unable Pass Through Door Even When Open, Going A Size Down\n", aName,
-						bName);
+					gi.Printf("Nav(%s)<->(%s): Unable Pass Through Door Even When Open, Going A Size Down\n",
+						a_name, b_name);
 				}
 			}
 
-			// Close The Door
-			//----------------
+			// Close the door again
 			slave = master;
-			while (slave)
+			while (slave != nullptr)
 			{
-				VectorCopy(DoorIsStartOpen ? slave->pos2 : slave->pos1, slave->currentOrigin);
+				VectorCopy(door_is_start_open ? slave->pos2 : slave->pos1, slave->currentOrigin);
 				gi.linkentity(slave);
 				slave = slave->teamchain;
 			}
 		}
-
-		// Assume Breakable Walls Will Be Clear Later
-		//-----------------------------------------------------
+		// --------------------------------------------------------------------
+		// Breakable walls: assume they will be cleared later
+		// --------------------------------------------------------------------
 		else if (at.BlockingBreakable())
 		{
-			//we'll do the trace again later if this ent gets broken
+			// We'll do the trace again later if this ent gets broken
 			CanGo = true;
 		}
-
-		// Otherwise, Try It, Pretending The Ent is Not There
-		//----------------------------------------------------
+		// --------------------------------------------------------------------
+		// Otherwise, try the trace ignoring this entity
+		// --------------------------------------------------------------------
 		else
 		{
-			CanGo = MoveTrace(a.mPoint, b.mPoint, mins, Maxs, EntHit, true, false);
-			if (IsDebugEdge)
+			CanGo = MoveTrace(a.mPoint, b.mPoint, mins, maxs, ent_hit, true, false);
+			if (IsDebugEdge == qtrue)
 			{
-				gi.Printf("Nav(%s)<->(%s): Unable Pass Through Even If Entity Was Gone, Going A Size Down\n", aName,
-					bName);
+				gi.Printf("Nav(%s)<->(%s): Unable Pass Through Even If Entity Was Gone, Going A Size Down\n",
+					a_name, b_name);
 			}
 		}
 
-		// If We Can Now Go, Ignoring The Entity, Remember That (But Don't Remember Characters - They Won't Stay Anyway)
-		//---------------------------------------------------------------------------------------------------------------
+		// --------------------------------------------------------------------
+		// If we can now go (ignoring the entity), remember that edge/entity
+		// (but not for characters, since they won't stay anyway)
+		// --------------------------------------------------------------------
 		if (CanGo && !hit_character)
 		{
-			ent->wayedge = at_handle;
-			at.mEntityNum = EntHit;
+			ent->wayedge = atHandle;
+			at.mEntityNum = ent_hit;
 			at.mFlags.set_bit(CWayEdge::WE_CANBEINVAL);
 
-			// Add It To The Edge Map
-			//------------------------
-			const TEntEdgeMap::iterator eemiter = mEntEdgeMap.find(EntHit);
+			// Add it to the edge map
+			const TEntEdgeMap::iterator eemiter = mEntEdgeMap.find(ent_hit);
 			if (eemiter == mEntEdgeMap.end())
 			{
 				TEdgesPerEnt EdgesPerEnt;
-				EdgesPerEnt.push_back(at_handle);
-				mEntEdgeMap.insert(EntHit, EdgesPerEnt);
+				EdgesPerEnt.push_back(atHandle);
+				mEntEdgeMap.insert(ent_hit, EdgesPerEnt);
 			}
 			else
 			{
 				if (!eemiter->full())
 				{
-					eemiter->push_back(at_handle);
+					eemiter->push_back(atHandle);
 				}
 				else
 				{
 #ifndef FINAL_BUILD
-					assert("Max Edges Perh Handle Reached, Unable To Add To Edge Map!" == 0);
-					gi.Printf("WARNING: Too many nav edges pass through entity %d (%s)\n", EntHit, g_entities[EntHit].targetname);
+					// Replace assert with debug print (rule 9)
+					gi.Printf("WARNING: Max edges per handle reached, unable to add to edge map for entity %d (%s)\n",
+						ent_hit, g_entities[ent_hit].targetname);
 #endif
 				}
 			}
 
-			// Check For Special Conditions For The Different Types
-			//-------------------------------------------------------
+			// ----------------------------------------------------------------
+			// Special conditions for different blocking types
+			// ----------------------------------------------------------------
 			if (at.BlockingDoor())
 			{
-				// Doors Need To Know Their "owner" Entity - The Thing That Controlls
-				// When The Door Is Open (or can "auto open")
-				//
-				// We'll start by assuming the door is it's own master
-				//-----------------------------------------------------
+				// Doors need to know their "owner" entity (the thing that
+				// controls when the door is open or can auto‑open).
 				at.mOwnerNum = ent->s.number;
 				gentity_t* owner = nullptr;
 
-				// If There Is A Target Name, See If This Thing Is Controlled From A Switch Or Something
-				//---------------------------------------------------------------------------------------
-				if (ent->targetname)
+				// If there is a targetname, see if this thing is controlled
+				// from a switch or trigger.
+				if (ent->targetname != nullptr)
 				{
-					// Try Target
-					//------------
+					// Try target
 					owner = G_Find(owner, FOFS(target), ent->targetname);
-					if (owner &&
-						(!Q_stricmp("trigger_multiple", owner->classname) || !Q_stricmp(
-							"trigger_once", owner->classname)))
+					if (owner != nullptr &&
+						(!Q_stricmp("trigger_multiple", owner->classname) ||
+							!Q_stricmp("trigger_once", owner->classname)))
 					{
 						at.mOwnerNum = owner->s.number;
 					}
 					else
 					{
-						// Try Target2
-						//-------------
+						// Try target2
 						owner = G_Find(owner, FOFS(target2), ent->targetname);
-						if (owner &&
-							(!Q_stricmp("trigger_multiple", owner->classname) || !Q_stricmp(
-								"trigger_once", owner->classname)))
+						if (owner != nullptr &&
+							(!Q_stricmp("trigger_multiple", owner->classname) ||
+								!Q_stricmp("trigger_once", owner->classname)))
 						{
 							at.mOwnerNum = owner->s.number;
 						}
 					}
 				}
-
-				// Otherwise, See If There Is An Auto Door Opener Trigger
-				//--------------------------------------------------------
 				else
 				{
+					// Otherwise, see if there is an auto door opener trigger
 					owner = G_FindDoorTrigger(ent);
-					if (owner)
+					if (owner != nullptr)
 					{
 						at.mOwnerNum = owner->s.number;
 					}
 				}
 			}
-
-			// Breakable Walls Are Not Valid Until Broken.  Period
-			//-----------------------------------------------------
+			// Breakable walls are not valid until broken
 			else if (at.BlockingBreakable())
 			{
-				//we'll do the trace again later if this ent gets broken
 				at.mFlags.clear_bit(CWayEdge::WE_VALID);
 			}
 		}
 	}
 
+	// At this point, CanGo reflects whether the edge is traversable at this size
 	return CanGo;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1541,7 +1545,7 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 
 	// PHASE II: SCAN THROUGH EXISTING NODES AND GENERATE EDGES TO OTHER NODES WAY POINTS
 	//====================================================================================
-	c_way_node* at;
+	CWayNode* at;
 	int atHandle;
 #ifdef _DEBUG
 	const char* atNameStr;
@@ -1569,20 +1573,20 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 		at = &*nodeIter;
 		atRoof = at->mPoint;
 		atFloor = at->mPoint;
-		if (at->mFlags.get_bit(c_way_node::WN_DROPTOFLOOR))
+		if (at->mFlags.get_bit(CWayNode::WN_DROPTOFLOOR))
 		{
 			atFloor[2] -= MAX_EDGE_FLOOR_DIST;
 		}
 		atFloor[2] -= MAX_EDGE_FLOOR_DIST * 1.5f;
 		atOnFloor = !ViewTrace(atRoof, atFloor);
-		if (at->mFlags.get_bit(c_way_node::WN_DROPTOFLOOR))
+		if (at->mFlags.get_bit(CWayNode::WN_DROPTOFLOOR))
 		{
 			at->mPoint = mViewTrace.endpos;
 			at->mPoint[2] += 5.0f;
 		}
 		else if (!atOnFloor && (at->mType == PT_WAYNODE || at->mType == PT_GOALNODE))
 		{
-			at->mFlags.set_bit(c_way_node::WN_FLOATING);
+			at->mFlags.set_bit(CWayNode::WN_FLOATING);
 		}
 	}
 
@@ -1677,7 +1681,7 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 
 		// If It Is A Combat Or Goal Nav, Try To "Auto Connect" To A Few Nearby Way Points
 		//---------------------------------------------------------------------------------
-		if (!at->mFlags.get_bit(c_way_node::WN_NOAUTOCONNECT) &&
+		if (!at->mFlags.get_bit(CWayNode::WN_NOAUTOCONNECT) &&
 			(at->mType == PT_COMBATNODE || at->mType == PT_GOALNODE))
 		{
 			ratl::ratl_compare closestNbrs[MIN_WAY_NEIGHBORS]{};
@@ -1708,7 +1712,7 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 
 				// If The Target Is Another Combat Point Or Goal Node, Ignore It
 				//--------------------------------------------------------------
-				c_way_node& node = mGraph.get_node(tgtHandle);
+				CWayNode& node = mGraph.get_node(tgtHandle);
 
 				// Ignore Ones That Are A Floor Above Or Below
 				//---------------------------------------------
@@ -1798,8 +1802,8 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 	{
 		CWayEdge& way_edge = *edgeIter;
 		int at_handle = edgeIter.index();
-		c_way_node& a = mGraph.get_node(way_edge.mNodeA);
-		c_way_node& b = mGraph.get_node(way_edge.mNodeB);
+		CWayNode& a = mGraph.get_node(way_edge.mNodeA);
+		CWayNode& b = mGraph.get_node(way_edge.mNodeB);
 
 		mGraph.get_node(way_edge.mNodeA).mPoint.ToStr(mLocStringA);
 		mGraph.get_node(way_edge.mNodeB).mPoint.ToStr(mLocStringB);
@@ -1950,7 +1954,7 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 		{
 			at->mPoint.ToStr(mLocStringA);
 
-			at->mFlags.set_bit(c_way_node::WN_ISLAND);
+			at->mFlags.set_bit(CWayNode::WN_ISLAND);
 			mIslandCount++;
 			if (at->mType == PT_COMBATNODE)
 			{
@@ -1985,7 +1989,7 @@ bool NAV::LoadFromEntitiesAndSaveToFile(const char* filename, int checksum)
 	for (nodeIter = mGraph.nodes_begin(); nodeIter != mGraph.nodes_end(); ++nodeIter)
 	{
 		at = &*nodeIter;
-		if (at->mFlags.get_bit(c_way_node::WN_ISLAND))
+		if (at->mFlags.get_bit(CWayNode::WN_ISLAND))
 		{
 			mRegion.assign_region(nodeIter.index(), mIslandRegion);
 		}
@@ -2224,7 +2228,7 @@ void NAV::SpawnedPoint(gentity_t* ent, const EPointType type)
 
 	Start.ToStr(mLocStringA);
 
-	c_way_node node;
+	CWayNode node;
 
 	node.mPoint = ent->currentOrigin;
 	node.mRadius = ent->radius;
@@ -2232,11 +2236,11 @@ void NAV::SpawnedPoint(gentity_t* ent, const EPointType type)
 	node.mFlags.clear();
 	if (type == PT_WAYNODE && ent->spawnflags & 2)
 	{
-		node.mFlags.set_bit(c_way_node::WN_DROPTOFLOOR);
+		node.mFlags.set_bit(CWayNode::WN_DROPTOFLOOR);
 	}
 	if (ent->spawnflags & 4)
 	{
-		node.mFlags.set_bit(c_way_node::WN_NOAUTOCONNECT);
+		node.mFlags.set_bit(CWayNode::WN_NOAUTOCONNECT);
 	}
 
 	// TO AVOID PROBLEMS WITH THE TRIANGULATION, WE MOVE THE POINTS AROUND JUST A BIT
@@ -2336,7 +2340,7 @@ NAV::TNodeHandle NAV::GetNearestNode(const vec3_t& position, const TNodeHandle p
 			mNearestNavSort.clear();
 			for (int i = 0; i < Cell.mNodes.size() && !mNearestNavSort.full(); i++)
 			{
-				c_way_node& node = mGraph.get_node(Cell.mNodes[i]);
+				CWayNode& node = mGraph.get_node(Cell.mNodes[i]);
 
 				NodeSort.mHandle = Cell.mNodes[i];
 				NodeSort.mDistance = node.mPoint.Dist2(Pos);
@@ -2366,7 +2370,7 @@ NAV::TNodeHandle NAV::GetNearestNode(const vec3_t& position, const TNodeHandle p
 
 				// Bias Points That Are Not Connected To Anything
 				//------------------------------------------------
-				if (node.mFlags.get_bit(c_way_node::WN_ISLAND))
+				if (node.mFlags.get_bit(CWayNode::WN_ISLAND))
 				{
 					NodeSort.mDistance *= 3.0f;
 				}
@@ -2809,7 +2813,7 @@ bool NAV::FindPath(gentity_t* actor, TNodeHandle target, const float MaxDangerLe
 			PPoint.mSpeed = AtSpeed;
 			PPoint.mSlowingRadius = 0.0f;
 			PPoint.mReachedRadius = Max(radius * 3.0f, mGraph.get_node(PPoint.mNode).mRadius * 0.40f);
-			if (mGraph.get_node(PPoint.mNode).mFlags.get_bit(c_way_node::WN_FLOATING))
+			if (mGraph.get_node(PPoint.mNode).mFlags.get_bit(CWayNode::WN_FLOATING))
 			{
 				PPoint.mReachedRadius = 20.0f;
 			}
@@ -2870,7 +2874,7 @@ bool NAV::FindPath(gentity_t* actor, TNodeHandle target, const float MaxDangerLe
 		// Check To See If This Is The Apex Of A Sharp Turn
 		//--------------------------------------------------
 		if (i != 0 && //is there a next point?
-			!mGraph.get_node(PPoint.mNode).mFlags.get_bit(c_way_node::WN_FLOATING)
+			!mGraph.get_node(PPoint.mNode).mFlags.get_bit(CWayNode::WN_FLOATING)
 			)
 		{
 			CVec3 NextToBeyond = puser.mPath[i - 1].mPoint - PPoint.mPoint;
@@ -3324,13 +3328,13 @@ bool NAV::NextPosition(gentity_t* actor, CVec3& Position, float& SlowingRadius, 
 	assert(HasPath(actor));
 	TPath& path = mPathUsers[mPathUserIndex[actor->s.number]].mPath;
 	const SPathPoint& next = path[path.size() - 1];
-	const c_way_node& node = mGraph.get_node(next.mNode);
+	const CWayNode& node = mGraph.get_node(next.mNode);
 	const int curNodeIndex = GetNearestNode(actor);
 	const int edgeIndex = curNodeIndex > 0 ? mGraph.get_edge_across(curNodeIndex, next.mNode) : abs(curNodeIndex);
 
 	SlowingRadius = next.mSlowingRadius;
 	Position = next.mPoint;
-	Fly = node.mFlags.get_bit(c_way_node::WN_FLOATING);
+	Fly = node.mFlags.get_bit(CWayNode::WN_FLOATING);
 
 	if (edgeIndex)
 	{
@@ -3641,7 +3645,7 @@ void NAV::show_debug_info(const vec3_t& player_position, int player_waypoint)
 	{
 		for (TGraph::TNodes::iterator atIter = mGraph.nodes_begin(); atIter != mGraph.nodes_end(); ++atIter)
 		{
-			c_way_node& at = *atIter;
+			CWayNode& at = *atIter;
 			CVec3 at_end = at.mPoint;
 			at_end[2] += 30.0f;
 
@@ -3651,7 +3655,7 @@ void NAV::show_debug_info(const vec3_t& player_position, int player_waypoint)
 				{
 					if (NAVDEBUG_showPointLines)
 					{
-						if (at.mFlags.get_bit(c_way_node::WN_FLOATING))
+						if (at.mFlags.get_bit(CWayNode::WN_FLOATING))
 						{
 							CG_DrawEdge(at.mPoint.v, at_end.v, EDGE_NODE_FLOATING);
 						}
@@ -3662,7 +3666,7 @@ void NAV::show_debug_info(const vec3_t& player_position, int player_waypoint)
 					}
 					else
 					{
-						if (at.mFlags.get_bit(c_way_node::WN_FLOATING))
+						if (at.mFlags.get_bit(CWayNode::WN_FLOATING))
 						{
 							CG_DrawNode(at.mPoint.v, NODE_FLOATING);
 						}
@@ -3673,7 +3677,7 @@ void NAV::show_debug_info(const vec3_t& player_position, int player_waypoint)
 					}
 					if (NAVDEBUG_showRadius && at.mPoint.Dist2(player_position) < at.mRadius * at.mRadius)
 					{
-						if (at.mFlags.get_bit(c_way_node::WN_FLOATING))
+						if (at.mFlags.get_bit(CWayNode::WN_FLOATING))
 						{
 							CG_DrawRadius(at.mPoint.v, at.mRadius, NODE_FLOATING);
 						}
@@ -3716,8 +3720,8 @@ void NAV::show_debug_info(const vec3_t& player_position, int player_waypoint)
 		for (TGraph::TEdges::iterator atIter = mGraph.edges_begin(); atIter != mGraph.edges_end(); ++atIter)
 		{
 			CWayEdge& at = *atIter;
-			c_way_node& a = mGraph.get_node(at.mNodeA);
-			c_way_node& b = mGraph.get_node(at.mNodeB);
+			CWayNode& a = mGraph.get_node(at.mNodeA);
+			CWayNode& b = mGraph.get_node(at.mNodeB);
 			CVec3 AvePos = a.mPoint + b.mPoint;
 			AvePos *= 0.5f;
 
@@ -3795,7 +3799,7 @@ void NAV::show_debug_info(const vec3_t& player_position, int player_waypoint)
 		CVec3 PPos(player_position);
 		if (player_waypoint > 0)
 		{
-			c_way_node& node = mGraph.get_node(player_waypoint);
+			CWayNode& node = mGraph.get_node(player_waypoint);
 
 			CG_DrawEdge(PPos.v, node.mPoint.v, player->waypoint ? EDGE_NEARESTVALID : EDGE_NEARESTINVALID);
 		}
@@ -3890,70 +3894,108 @@ void NAV::TeleportTo(gentity_t* actor, const int pointNum)
 ////////////////////////////////////////////////////////////////////////////////////
 void STEER::Activate(gentity_t* actor)
 {
-	assert(!Active(actor) && actor && actor->client && actor->NPC); // Can't Activate If Already Active
-
-	// PHASE I - ACTIVATE THE STEER USER FOR THIS ACTOR
-	//==================================================
-	if (mSteerUsers.full())
+	// ------------------------------------------------------------------------
+	// Safety: validate actor and steering state
+	// ------------------------------------------------------------------------
+	if (actor == nullptr || actor->client == nullptr || actor->NPC == nullptr)
 	{
-		assert("STEER: No more unused steer users, possibly change size" == nullptr);
+		Com_Printf("STEER::Activate: invalid actor (NULL, no client, or no NPC)\n");
 		return;
 	}
 
-	// Get A Steer User From The Pool
-	//--------------------------------
+	if (Active(actor) == qtrue)
+	{
+		Com_Printf("STEER::Activate: actor %d already active\n", actor->s.number);
+		return;
+	}
+
+	// ------------------------------------------------------------------------
+	// PHASE I - Activate the steer user for this actor
+	// ------------------------------------------------------------------------
+	if (mSteerUsers.full())
+	{
+		Com_Printf("STEER::Activate: no more unused steer users, possibly change pool size\n");
+		return;
+	}
+
+	// Get a steer user from the pool
 	const int steerUserNum = mSteerUsers.alloc();
 	mSteerUserIndex[actor->s.number] = steerUserNum;
 	SSteerUser& suser = mSteerUsers[steerUserNum];
 
-	// PHASE II - Copy Data For This Actor Into The SUser
-	//====================================================
+	// ------------------------------------------------------------------------
+	// PHASE II - Copy data for this actor into the steer user
+	// ------------------------------------------------------------------------
 	suser.mPosition = actor->currentOrigin;
 	suser.mOrientation = actor->currentAngles;
 	suser.mVelocity = actor->client->ps.velocity;
 	suser.mSpeed = suser.mVelocity.Len();
 
-	suser.mBlocked = false;
+	suser.mBlocked = qfalse;
 
 	suser.mMaxSpeed = actor->NPC->stats.runSpeed;
 	suser.mRadius = RadiusFromBounds(actor->mins, actor->maxs);
-	suser.mMaxForce = 150.0f; //STEER_TODO: Get From actor Somehow
-	suser.mMass = 1.0f; //STEER_TODO: Get From actor Somehow
-	if (!(actor->NPC->scriptFlags & SCF_RUNNING) &&
-		(actor->NPC->scriptFlags & SCF_WALKING ||
-			actor->NPC->aiFlags & NPCAI_WALKING ||
-			ucmd.buttons & BUTTON_WALKING
-			))
+	suser.mMaxForce = 150.0f; // STEER_TODO: get from actor somehow
+	suser.mMass = 1.0f;   // STEER_TODO: get from actor somehow
+
+	if ((actor->NPC->scriptFlags & SCF_RUNNING) == 0 &&
+		((actor->NPC->scriptFlags & SCF_WALKING) != 0 ||
+			(actor->NPC->aiFlags & NPCAI_WALKING) != 0 ||
+			(ucmd.buttons & BUTTON_WALKING) != 0))
 	{
 		suser.mMaxSpeed = actor->NPC->stats.walkSpeed;
 	}
 
 #ifdef _DEBUG
-	assert(suser.mPosition.IsFinite());
-	assert(suser.mOrientation.IsFinite());
-	assert(suser.mVelocity.IsFinite());
+	if (!suser.mPosition.IsFinite())
+	{
+		Com_Printf("STEER::Activate: mPosition not finite for actor %d\n", actor->s.number);
+	}
+	if (!suser.mOrientation.IsFinite())
+	{
+		Com_Printf("STEER::Activate: mOrientation not finite for actor %d\n", actor->s.number);
+	}
+	if (!suser.mVelocity.IsFinite())
+	{
+		Com_Printf("STEER::Activate: mVelocity not finite for actor %d\n", actor->s.number);
+	}
 #endif
 
-	// Find Our Neighbors
-	//--------------------
+	// ------------------------------------------------------------------------
+	// Find neighbors
+	// ------------------------------------------------------------------------
 	suser.mNeighbors.clear();
+
 	const float RangeSize = suser.mRadius + NEIGHBOR_RANGE;
 
-	const CVec3 Range(RangeSize, RangeSize, actor->client->moveType == MT_FLYSWIM ? RangeSize : suser.mRadius * 2.0f);
+	const CVec3 Range(
+		RangeSize,
+		RangeSize,
+		(actor->client->moveType == MT_FLYSWIM) ? RangeSize : (suser.mRadius * 2.0f));
+
 	const CVec3 Mins(suser.mPosition - Range);
 	const CVec3 Maxs(suser.mPosition + Range);
 
-	gentity_t* EntityList[MAX_GENTITIES];
+	// Move large entity list off stack to avoid C6262
+	static gentity_t* EntityList[MAX_GENTITIES];
+
 	gentity_t* neighbor = nullptr;
 
-	const int num_found = gi.EntitiesInBox(Mins.v, Maxs.v, EntityList, MAX_GENTITIES);
-	for (int i = 0; i < num_found; i++)
+	const int numFound = gi.EntitiesInBox(Mins.v, Maxs.v, EntityList, MAX_GENTITIES);
+	for (int i = 0; i < numFound; ++i)
 	{
 		neighbor = EntityList[i];
-		assert(neighbor != nullptr);
+		if (neighbor == nullptr)
+		{
+			Com_Printf("STEER::Activate: NULL neighbor in EntityList\n");
+			continue;
+		}
 
-		if (neighbor->s.number == actor->s.number || neighbor == actor->enemy || !neighbor->client || neighbor->health
-			<= 0 || !neighbor->inuse)
+		if (neighbor->s.number == actor->s.number ||
+			neighbor == actor->enemy ||
+			neighbor->client == nullptr ||
+			neighbor->health <= 0 ||
+			neighbor->inuse == qfalse)
 		{
 			continue;
 		}
@@ -3961,23 +4003,26 @@ void STEER::Activate(gentity_t* actor)
 		suser.mNeighbors.push_back(neighbor);
 	}
 
-	// Clear Out Steering, So If No STEER Operations Are Called, Net Effect Is Zero
-	//------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------
+	// Clear out steering so if no STEER operations are called, net effect is zero
+	// ------------------------------------------------------------------------
 	suser.mSteering.Clear();
 	suser.mNewtons = 0.0f;
 
 	VectorClear(actor->client->ps.moveDir);
 	actor->client->ps.speed = 0;
 
-	// PHASE III - Project The Current Velocity Forward, To The Side, And Onto The Path
-	//==================================================================================
-	suser.mProjectFwd = suser.mPosition + suser.mVelocity * 1.0f;
-	suser.mProjectSide = suser.mVelocity * 0.3f;
-	suser.mProjectSide.Reposition(suser.mPosition, actor->NPC->avoidSide == Side_Left ? 40.0f : -40.0f);
+	// ------------------------------------------------------------------------
+	// PHASE III - Project current velocity forward, to the side, and onto path
+	// ------------------------------------------------------------------------
+	suser.mProjectFwd = suser.mPosition + (suser.mVelocity * 1.0f);
+	suser.mProjectSide = (suser.mVelocity * 0.3f);
+	suser.mProjectSide.Reposition(
+		suser.mPosition,
+		(actor->NPC->avoidSide == Side_Left) ? 40.0f : -40.0f);
 
-	// STEER_TODO: Project The Point The Path (If The character has one)
-	//-------------------------------------------------------------------
-	//suser.mProjectPath	= ;
+	// STEER_TODO: project the point onto the path (if the character has one)
+	// suser.mProjectPath = ...;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -4301,94 +4346,164 @@ bool STEER::SafeToGoTo(gentity_t* actor, const vec3_t& targetPosition, const int
 ////////////////////////////////////////////////////////////////////////////////////
 // Master Functions
 ////////////////////////////////////////////////////////////////////////////////////
+// ============================================================================
+// STEER::GoTo
+//
+// Attempts to steer an actor toward a target entity. Handles reach radius,
+// safety checks, path clearing, pursuit, collision avoidance, and debug drawing.
+// ============================================================================
 bool STEER::GoTo(gentity_t* actor, gentity_t* target, const float reachedRadius, const bool avoidCollisions)
 {
-	// Can't Steer To A Guy In The Air
-	//---------------------------------
-	if (!target)
+	// ----------------------------------------------------------------------
+	// Safety: validate actor
+	// ----------------------------------------------------------------------
+	if (actor == nullptr || actor->client == nullptr)
+	{
+		Com_Printf("STEER::GoTo: invalid actor\n");
+		return qtrue;
+	}
+
+	// ----------------------------------------------------------------------
+	// Can't steer to a NULL target
+	// ----------------------------------------------------------------------
+	if (target == nullptr)
 	{
 		NAV::ClearPath(actor);
 		Stop(actor);
-		return true;
+		return qtrue;
 	}
 
-	// If Within Reached Radius, Just Stop Right Here
-	//------------------------------------------------
-	if (Reached(actor, target->currentOrigin, reachedRadius, actor->client && actor->client->moveType == MT_FLYSWIM))
+	// ----------------------------------------------------------------------
+	// If within reached radius, stop immediately
+	// ----------------------------------------------------------------------
+	const qboolean isFlySwim = (actor->client->moveType == MT_FLYSWIM) ? qtrue : qfalse;
+
+	if (Reached(actor, target->currentOrigin, reachedRadius, isFlySwim) == qtrue)
 	{
 		NAV::ClearPath(actor);
 		Stop(actor);
-		return true;
+		return qtrue;
 	}
 
-	// Check To See If It Is Safe To Attempt Steering Toward The Target Position
-	//---------------------------------------------------------------------------
-	if (
-		//(target->client && target->client->ps.groundEntityNum==ENTITYNUM_NONE) ||
-		!SafeToGoTo(actor, target->currentOrigin, NAV::GetNearestNode(target))
-		)
+	// ----------------------------------------------------------------------
+	// Safety check: is it safe to attempt steering toward the target?
+	// ----------------------------------------------------------------------
+	const int nearestNode = NAV::GetNearestNode(target);
+
+	if (SafeToGoTo(actor, target->currentOrigin, nearestNode) == qfalse)
 	{
-		return false;
+		return qfalse;
 	}
 
-	// Ok, It Is, So Clear The Path, And Go Toward Our Target
-	//--------------------------------------------------------
+	// ----------------------------------------------------------------------
+	// Clear path and pursue target
+	// ----------------------------------------------------------------------
 	NAV::ClearPath(actor);
+
+	// Pursue with extended radius
 	Persue(actor, target, reachedRadius * 4.0f);
-	if (avoidCollisions)
+
+	// ----------------------------------------------------------------------
+	// Collision avoidance
+	// ----------------------------------------------------------------------
+	if (avoidCollisions == qtrue)
 	{
-		if (AvoidCollisions(actor, actor->client->leader) != 0.0f)
+		const float avoidResult = AvoidCollisions(actor, actor->client->leader);
+
+		if (avoidResult != 0.0f)
 		{
-			Blocked(actor, target); // Collision Detected
+			Blocked(actor, target); // Collision detected
 		}
 	}
 
-	if (NAVDEBUG_showEnemyPath)
+	// ----------------------------------------------------------------------
+	// Debug: draw enemy path
+	// ----------------------------------------------------------------------
+	if (NAVDEBUG_showEnemyPath == qtrue)
 	{
 		CG_DrawEdge(actor->currentOrigin, target->currentOrigin, EDGE_FOLLOWPOS);
 	}
-	return true;
+
+	return qtrue;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Master Function- GoTo
 ////////////////////////////////////////////////////////////////////////////////////
+// ============================================================================
+// STEER::GoTo
+//
+// Attempts to steer an actor toward a world position. Handles reach radius,
+// safety checks, path clearing, seeking, collision avoidance, and debug drawing.
+// ============================================================================
 bool STEER::GoTo(gentity_t* actor, const vec3_t& position, const float reachedRadius, const bool avoidCollisions)
 {
-	// If Within Reached Radius, Just Stop Right Here
-	//------------------------------------------------
-	if (Reached(actor, position, reachedRadius, actor->client && actor->client->moveType == MT_FLYSWIM))
+	// ----------------------------------------------------------------------
+	// Safety: validate actor
+	// ----------------------------------------------------------------------
+	if (actor == nullptr || actor->client == nullptr)
+	{
+		Com_Printf("STEER::GoTo: invalid actor\n");
+		return qtrue;
+	}
+
+	// ----------------------------------------------------------------------
+	// Determine if actor is in fly/swim mode (explicit qboolean)
+	// ----------------------------------------------------------------------
+	const qboolean isFlySwim = (actor->client->moveType == MT_FLYSWIM) ? qtrue : qfalse;
+
+	// ----------------------------------------------------------------------
+	// If within reached radius, stop immediately
+	// ----------------------------------------------------------------------
+	if (Reached(actor, position, reachedRadius, isFlySwim) == qtrue)
 	{
 		NAV::ClearPath(actor);
 		Stop(actor);
-		return true;
+		return qtrue;
 	}
 
-	// Check To See If It Is Safe To Attempt Steering Toward The Target Position
-	//---------------------------------------------------------------------------
-	if (!SafeToGoTo(actor, position, NAV::GetNearestNode(position)))
+	// ----------------------------------------------------------------------
+	// Safety check: is it safe to attempt steering toward the target position?
+	// ----------------------------------------------------------------------
+	const int nearestNode = NAV::GetNearestNode(position);
+
+	if (SafeToGoTo(actor, position, nearestNode) == qfalse)
 	{
-		return false;
+		return qfalse;
 	}
 
-	// Ok, It Is, So Clear The Path, And Go Toward Our Target
-	//--------------------------------------------------------
+	// ----------------------------------------------------------------------
+	// Clear path and seek target
+	// ----------------------------------------------------------------------
 	NAV::ClearPath(actor);
+
+	// Seek with extended radius
 	Seek(actor, position, reachedRadius * 2.0f);
-	if (avoidCollisions)
+
+	// ----------------------------------------------------------------------
+	// Collision avoidance
+	// ----------------------------------------------------------------------
+	if (avoidCollisions == qtrue)
 	{
-		if (AvoidCollisions(actor, actor->client->leader) != 0.0f)
+		const float avoidResult = AvoidCollisions(actor, actor->client->leader);
+
+		if (avoidResult != 0.0f)
 		{
-			Blocked(actor, position); // Collision Detected
+			Blocked(actor, position); // Collision detected
 		}
 	}
 
-	if (NAVDEBUG_showEnemyPath)
+	// ----------------------------------------------------------------------
+	// Debug: draw enemy path
+	// ----------------------------------------------------------------------
+	if (NAVDEBUG_showEnemyPath == qtrue)
 	{
 		CVec3 Dumb(position);
 		CG_DrawEdge(actor->currentOrigin, Dumb.v, EDGE_FOLLOWPOS);
 	}
-	return true;
+
+	return qtrue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -4445,7 +4560,7 @@ float STEER::Stop(gentity_t* actor, const float weight)
 	if (actor->NPC->aiFlags & NPCAI_FLY)
 	{
 		const int nearestNode = NAV::GetNearestNode(actor);
-		if (nearestNode > 0 && !mGraph.get_node(nearestNode).mFlags.get_bit(c_way_node::WN_FLOATING))
+		if (nearestNode > 0 && !mGraph.get_node(nearestNode).mFlags.get_bit(CWayNode::WN_FLOATING))
 		{
 			actor->NPC->aiFlags &= ~NPCAI_FLY;
 		}

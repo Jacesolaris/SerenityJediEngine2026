@@ -46,7 +46,7 @@ extern void WP_SabersDamageTrace(gentity_t* ent, qboolean no_effects);
 extern void wp_saber_update_old_blade_data(gentity_t* ent);
 
 extern vmCvar_t cg_debugHealthBars;
-extern vmCvar_t cg_debugBlockBars;
+extern vmCvar_t cg_drawblockpointbar;
 extern vmCvar_t cg_ignitionSpeed;
 extern vmCvar_t cg_ignitionSpeedstaff;
 extern vmCvar_t cg_ignitionSpeedvader;
@@ -14850,7 +14850,7 @@ void CG_Player(centity_t* cent)
 				CG_AddHealthBarEnt(cent->currentState.clientNum);
 			}
 		}
-		if (cg_debugBlockBars.integer)
+		if (cg_drawblockpointbar.integer)
 		{
 			if (cent->gent && cent->gent->client->ps.blockPoints > 0)
 			{

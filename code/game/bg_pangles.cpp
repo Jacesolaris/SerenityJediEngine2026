@@ -555,8 +555,8 @@ qboolean PM_AdjustAnglesToPuller(gentity_t* ent, const gentity_t* puller, usercm
 
 qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolean do_move)
 {
-	if ((ent->client->ps.legsAnim == BOTH_WALL_RUN_RIGHT || ent->client->ps.legsAnim == BOTH_WALL_RUN_LEFT) && ent->
-		client->ps.legsAnimTimer > 500)
+	if ((ent->client->ps.legsAnim == BOTH_WALL_RUN_RIGHT || ent->client->ps.legsAnim == BOTH_WALL_RUN_LEFT) && 
+		ent->client->ps.legsAnimTimer > 500)
 	{
 		//wall-running and not at end of anim
 		//stick to wall, if there is one

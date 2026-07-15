@@ -15426,7 +15426,7 @@ Based On:  G_GetAnimPoint
 ================
 */
 //Get the point in the leg animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
-float GetSelfLegAnimPoint()
+static float GetSelfLegAnimPoint()
 {
 	return BG_GetLegsAnimPoint(&cg.predictedPlayerState,
 		cg_entities[cg.predictedPlayerState.clientNum].localAnimIndex);
@@ -15440,7 +15440,7 @@ Based On:  G_GetAnimPoint
 ================
 */
 //Get the point in the torso animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
-float GetSelfTorsoAnimPoint()
+static float GetSelfTorsoAnimPoint()
 {
 	return bg_get_torso_anim_point(&cg.predictedPlayerState,
 		cg_entities[cg.predictedPlayerState.clientNum].localAnimIndex);
@@ -15459,7 +15459,7 @@ pitch (x) axis.
 ===============
 */
 
-void SmoothTrueView(vec3_t eye_angles)
+static void SmoothTrueView(vec3_t eye_angles)
 {
 	const float leg_anim_point = GetSelfLegAnimPoint();
 	const float torso_anim_point = GetSelfTorsoAnimPoint();
@@ -16991,6 +16991,8 @@ void CG_VisualWeaponsUpdate(centity_t* cent, clientInfo_t* ci)
 }
 
 extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int color);
+extern void CG_AddHealthBarEnt(int entNum);
+extern void CG_AddBlockPointBarEnt(int entNum);
 
 void CG_Player(centity_t* cent)
 {
@@ -18005,6 +18007,24 @@ void CG_Player(centity_t* cent)
 			VectorCopy(legs.origin, cent->lerpOrigin);
 		}
 	}
+
+	//if (cg_debugHealthBars.integer)
+	//{
+	//	if (cent && cg.snap->ps.stats[STAT_HEALTH] > 0 && cg.snap->ps.stats[STAT_MAX_HEALTH] > 0)
+	//	{
+	//		//draw a health bar over them
+	//		CG_AddHealthBarEnt(cent->currentState.clientNum);
+	//	}
+	//}
+	//if (cg_drawblockpointbar.integer)
+	//{
+	//	if (cent && cg.snap->ps.fd.blockPoints > 0)
+	//	{
+	//		//draw a bp bar over them
+	//		CG_AddBlockPointBarEnt(cent->currentState.clientNum);
+	//	}
+	//}
+
 	//This call is mainly just to reconstruct the skeleton. But we'll get the left hand matrix while we're at it.
 	//If we don't reconstruct the skeleton after setting the bone angles, we will get bad bolt points on the model
 	//(e.g. the weapon model bolt will look "lagged") if there's no other GetBoltMatrix call for the rest of the

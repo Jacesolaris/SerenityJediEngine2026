@@ -3309,7 +3309,8 @@ static void PM_SetPMViewAngle(playerState_t* ps, vec3_t angle, const usercmd_t* 
 
 static qboolean PM_AdjustAngleForWallRun(playerState_t* ps, usercmd_t* ucmd, const qboolean doMove)
 {
-	if ((ps->legsAnim == BOTH_WALL_RUN_RIGHT || ps->legsAnim == BOTH_WALL_RUN_LEFT) && ps->legsTimer > 500)
+	if ((ps->legsAnim == BOTH_WALL_RUN_RIGHT || ps->legsAnim == BOTH_WALL_RUN_LEFT) &&
+		ps->legsTimer > 500)
 	{
 		//wall-running and not at end of anim
 		//stick to wall, if there is one

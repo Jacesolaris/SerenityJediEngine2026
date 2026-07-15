@@ -390,7 +390,7 @@ vmCvar_t cg_smoothPlayerPlatAccel;
 vmCvar_t cg_g2Marks;
 vmCvar_t fx_expensivePhysics;
 vmCvar_t cg_debugHealthBars;
-vmCvar_t cg_debugBlockBars;
+vmCvar_t cg_drawblockpointbar;
 
 vmCvar_t cg_SFXSabers;
 vmCvar_t cg_SFXSabersGlowSize;
@@ -600,7 +600,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_g2Marks, "cg_g2Marks", "1", CVAR_ARCHIVE},
 	{&fx_expensivePhysics, "fx_expensivePhysics", "1", CVAR_ARCHIVE},
 	{&cg_debugHealthBars, "cg_debugHealthBars", "0", CVAR_ARCHIVE},
-	{&cg_debugBlockBars, "cg_drawblockpointbar", "0", CVAR_ARCHIVE},
+	{&cg_drawblockpointbar, "cg_drawblockpointbar", "0", CVAR_ARCHIVE},
 
 	{&cg_SFXSabers, "cg_SFXSabers", "3", CVAR_ARCHIVE},
 	{&cg_SFXSabersGlowSize, "cg_SFXSabersGlowSize", "0.6f", CVAR_ARCHIVE},

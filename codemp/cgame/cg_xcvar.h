@@ -265,5 +265,8 @@ XCVAR_DEF(cg_textprintscale, "0.5f", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(g_noIgniteTwirl, "0", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(in_joystick, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_scaleJoystickSensitivity, "1", NULL, CVAR_ARCHIVE)
+XCVAR_DEF(cg_debugHealthBars, "0", NULL, CVAR_ARCHIVE)
+XCVAR_DEF(cg_drawblockpointbar, "0", NULL, CVAR_ARCHIVE)
+XCVAR_DEF(cg_drawfatiguepointbar, "0", NULL, CVAR_ARCHIVE)
 
 #undef XCVAR_DEF

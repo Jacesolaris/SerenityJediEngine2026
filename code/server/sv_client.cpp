@@ -34,7 +34,7 @@ SV_DirectConnect
 A "connect" OOB command has been received
 ==================
 */
-void SV_DirectConnect(const netadr_t from)
+void SV_DirectConnect(netadr_t from)
 {
 	char userinfo[MAX_INFO_STRING];
 	int i;

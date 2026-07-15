@@ -1010,7 +1010,8 @@ void SV_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec
 =============
 SV_PointContents
 =============
-*/int SV_PointContents(const vec3_t p, const int passEntityNum)
+*/
+int SV_PointContents(const vec3_t p, const int passEntityNum)
 {
 	// Static to avoid 32 KB stack usage
 	static gentity_t* touch[MAX_GENTITIES];

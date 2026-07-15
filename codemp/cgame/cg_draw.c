@@ -7115,6 +7115,292 @@ static void CG_DrawGenericTimerBar(void)
 	CG_FillRect(x + 1.0f, y + 1.0f, CGTIMERBAR_W - 2.0f, CGTIMERBAR_H - percent, cColor);
 }
 
+// Updated multiplayer-safe block/health bar drawing helpers
+
+//#define MAX_BLOCKPOINT_BAR_ENTS 32
+//int cg_numBlockPointBarEnts = 0;
+//int cg_BlockPointBarEnts[MAX_BLOCKPOINT_BAR_ENTS];
+//#define BLOCKPOINT_BAR_WIDTH 50
+//#define BLOCKPOINT_BAR_HEIGHT 5
+//#define BLOCKPOINT_BAR_RANGE 200
+//
+//static void CG_DrawBlockPointBar(const centity_t* cent, const float chX, const float chY, const float ch_w, const float ch_h)
+//{
+//	vec4_t aColor = { 0 };
+//	vec4_t cColor = { 0 };
+//	const float x = chX - ch_w / 2;
+//	const float y = chY - ch_h;
+//
+//	if (!cent)
+//	{
+//		return;
+//	}
+//
+//	// Don't draw for local player
+//	if (cent->currentState.number == cg.snap->ps.clientNum)
+//	{
+//		return;
+//	}
+//
+//	// require saber
+//	if (cent->currentState.weapon != WP_SABER)
+//	{
+//		return;
+//	}
+//
+//	if (PM_DeathCinAnim(cent->currentState.torsoAnim))
+//	{
+//		return;
+//	}
+//
+//	// protect divide-by-zero
+//	if (cent->currentState.blockPointsMax <= 0)
+//	{
+//		return;
+//	}
+//
+//	// percent [0..1]
+//	float pct = (float)cent->currentState.blockPoints / (float)cent->currentState.blockPointsMax;
+//	if (pct <= 0.0f)
+//	{
+//		return;
+//	}
+//	if (pct > 1.0f) pct = 1.0f;
+//
+//	const float fillW = pct * ch_w;
+//
+//	// hostile colour
+//	aColor[0] = 1.0f;
+//	aColor[1] = 0.0f;
+//	aColor[2] = 1.0f;
+//	aColor[3] = 0.6f;
+//
+//	// greyed out
+//	cColor[0] = 0.25f;
+//	cColor[1] = 0.25f;
+//	cColor[2] = 0.25f;
+//	cColor[3] = 0.6f;
+//
+//	// draw background (black)
+//	CG_DrawRect(x, y, ch_w, ch_h, 1.0f, colorTable[CT_BLACK]);
+//
+//	// draw filled portion
+//	CG_FillRect(x + 1.0f, y + 1.0f, fillW - 2.0f, ch_h - 2.0f, aColor);
+//
+//	// draw remainder
+//	CG_FillRect(x + fillW, y + 1.0f, ch_w - fillW - 1.0f, ch_h - 2.0f, cColor);
+//}
+//
+//static void CG_DrawFatiguePointBar(const centity_t* cent, const float chX, const float chY, const float ch_w, const float ch_h)
+//{
+//	vec4_t aColor = { 0 };
+//	vec4_t cColor = { 0 };
+//	const float x = chX - ch_w / 2;
+//	const float y = chY - ch_h;
+//
+//	if (!cent)
+//	{
+//		return;
+//	}
+//
+//	// Don't draw for local player
+//	if (cent->currentState.number == cg.snap->ps.clientNum)
+//	{
+//		return;
+//	}
+//
+//	// require saber
+//	if (cent->currentState.weapon != WP_SABER)
+//	{
+//		return;
+//	}
+//
+//	if (PM_DeathCinAnim(cent->currentState.torsoAnim))
+//	{
+//		return;
+//	}
+//
+//	if (cent->currentState.NPC_class == CLASS_OBJECT)
+//	{
+//		return;
+//	}
+//
+//	// Prefer per-entity fatigue if available, fall back to local player's chain count if not.
+//	int fatigueVal = 0;
+//	int fatigueMax = MISHAPLEVEL_MAX;
+//#ifdef ENTITY_HAS_FATIGUE_FIELD
+//	// If your entity state contains a fatigue field, use it:
+//	// fatigueVal = cent->currentState.saberFatigueChainCount;
+//#else
+//	// default: use local player's value (keep previous behavior)
+//	fatigueVal = cg.snap->ps.saberFatigueChainCount;
+//#endif
+//
+//	float pct = (float)fatigueVal / (float)fatigueMax;
+//	if (pct < 0.0f) pct = 0.0f;
+//	if (pct > 1.0f) pct = 1.0f;
+//
+//	const float fillW = pct * ch_w;
+//
+//	// colours
+//	aColor[0] = 0.8f; aColor[1] = 0.8f; aColor[2] = 0.8f; aColor[3] = 0.8f;
+//	cColor[0] = 0.25f; cColor[1] = 0.25f; cColor[2] = 0.25f; cColor[3] = 0.6f;
+//
+//	// background
+//	CG_DrawRect(x, y - 8.0f, ch_w, ch_h, 1.0f, colorTable[CT_BLACK]);
+//
+//	// draw filled (fatigue shown as 'used' area)
+//	CG_FillRect(x + 1.0f, y + 1.0f - 8.0f, fillW - 2.0f, ch_h - 2.0f, cColor);
+//
+//	// draw remainder
+//	CG_FillRect(x + fillW, y + 1.0f - 8.0f, ch_w - fillW - 1.0f, ch_h - 2.0f, aColor);
+//}
+//
+//static void CG_DrawBlockPointBars(void)
+//{
+//	float chX = 0, chY = 0;
+//	vec3_t pos;
+//
+//	for (int i = 0; i < cg_numBlockPointBarEnts; i++)
+//	{
+//		const int entNum = cg_BlockPointBarEnts[i];
+//
+//		// validate ent index
+//		if (entNum < 0 || entNum >= MAX_GENTITIES)
+//		{
+//			continue;
+//		}
+//
+//		const centity_t* cent = &cg_entities[entNum];
+//		if (!cent)
+//		{
+//			continue;
+//		}
+//
+//		// copy world position
+//		VectorCopy(cent->lerpOrigin, pos);
+//
+//		// compute vertical offset:
+//		// prefer bounding box if present on client side
+//		float entTopZ = 40.0f; // default fallback (tweak if needed)
+//
+//		// prefer a per-entity radius if available (cent->radius is present in centity_t)
+//		if (cent->radius > 0.0f)
+//		{
+//			// radius is half-width; approximate height as ~2*radius
+//			entTopZ = cent->radius * 2.0f;
+//		}
+//
+//		pos[2] += entTopZ + BLOCKPOINT_BAR_HEIGHT + 12.0f;
+//
+//		// world -> screen
+//		if (CG_WorldCoordToScreenCoordFloat(pos, &chX, &chY))
+//		{
+//			// draw bars at screen coords
+//			CG_DrawBlockPointBar(cent, chX, chY, BLOCKPOINT_BAR_WIDTH, BLOCKPOINT_BAR_HEIGHT);
+//			CG_DrawFatiguePointBar(cent, chX, chY, BLOCKPOINT_BAR_WIDTH, BLOCKPOINT_BAR_HEIGHT);
+//		}
+//	}
+//}
+//
+//void CG_AddBlockPointBarEnt(const int entNum)
+//{
+//	if (cg_numBlockPointBarEnts >= MAX_BLOCKPOINT_BAR_ENTS)
+//	{
+//		return;
+//	}
+//
+//	// validate entNum
+//	if (entNum < 0 || entNum >= MAX_GENTITIES)
+//	{
+//		return;
+//	}
+//
+//	// distance to viewer: use cg.refdef.vieworg (client-side view origin)
+//	if (DistanceSquared(cg_entities[entNum].lerpOrigin, cg.refdef.vieworg) < BLOCKPOINT_BAR_RANGE * BLOCKPOINT_BAR_RANGE)
+//	{
+//		cg_BlockPointBarEnts[cg_numBlockPointBarEnts++] = entNum;
+//	}
+//}
+//
+//void CG_ClearBlockPointBarEnts(void)
+//{
+//	cg_numBlockPointBarEnts = 0;
+//	memset(cg_BlockPointBarEnts, 0, sizeof(cg_BlockPointBarEnts));
+//}
+//
+//#define MAX_HEALTH_BAR_ENTS 32
+//int cg_numHealthBarEnts = 0;
+//int cg_healthBarEnts[MAX_HEALTH_BAR_ENTS];
+//#define HEALTH_BAR_WIDTH 50
+//#define HEALTH_BAR_HEIGHT 5
+//
+//static void CG_DrawHealthBars(void)
+//{
+//	float chX = 0, chY = 0;
+//	vec3_t pos;
+//
+//	for (int i = 0; i < cg_numHealthBarEnts; i++)
+//	{
+//		const int entNum = cg_healthBarEnts[i];
+//
+//		if (entNum < 0 || entNum >= MAX_GENTITIES)
+//		{
+//			continue;
+//		}
+//
+//		const centity_t* cent = &cg_entities[entNum];
+//		if (!cent)
+//		{
+//			continue;
+//		}
+//
+//		VectorCopy(cent->lerpOrigin, pos);
+//
+//		float entTopZ = 40.0f; // default fallback (tweak if needed)
+//
+//		// prefer a per-entity radius if available (cent->radius is present in centity_t)
+//		if (cent->radius > 0.0f)
+//		{
+//			// radius is half-width; approximate height as ~2*radius
+//			entTopZ = cent->radius * 2.0f;
+//		}
+//
+//		pos[2] += entTopZ + HEALTH_BAR_HEIGHT + 8.0f;
+//
+//		if (CG_WorldCoordToScreenCoordFloat(pos, &chX, &chY))
+//		{
+//			CG_DrawHealthBar(cent, chX, chY, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT);
+//		}
+//	}
+//}
+//
+//void CG_AddHealthBarEnt(const int entNum)
+//{
+//	if (cg_numHealthBarEnts >= MAX_HEALTH_BAR_ENTS)
+//	{
+//		return;
+//	}
+//
+//	// validate entNum
+//	if (entNum < 0 || entNum >= MAX_GENTITIES)
+//	{
+//		return;
+//	}
+//
+//	const float range = 200.0f;
+//	if (DistanceSquared(cg_entities[entNum].lerpOrigin, cg.refdef.vieworg) < range * range)
+//	{
+//		cg_healthBarEnts[cg_numHealthBarEnts++] = entNum;
+//	}
+//}
+//
+//void CG_ClearHealthBarEnts(void)
+//{
+//	cg_numHealthBarEnts = 0;
+//	memset(cg_healthBarEnts, 0, sizeof(cg_healthBarEnts));
+//}
+
 /*
 =================
 CG_DrawCrosshair
@@ -9184,7 +9470,7 @@ static void CG_DrawCrosshairNames(void)
 						}
 						else if (cgs.clientinfo[idx].team == TEAM_BLUE)
 						{
-							CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_GREEN]);
+							CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_BLUE]);
 						}
 						else if (cgs.clientinfo[idx].team == TEAM_SPECTATOR)
 						{
@@ -9200,7 +9486,7 @@ static void CG_DrawCrosshairNames(void)
 						}
 						else
 						{
-							CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_RED]);
+							CG_DrawSmallStringColor(320 - w / 2, 170, sanitized, colorTable[CT_WHITE]);
 						}
 					}
 				}
