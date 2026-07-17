@@ -282,80 +282,123 @@ static void Droid_Spin(void)
 NPC_BSDroid_Pain
 -------------------------
 */
+// ============================================================================
+// NPC_Droid_Pain
+//
+// Handles pain reactions for droid NPC classes (R5D2, R2D2, Mouse, Interrogator).
+// Modernized to include safety checks, explicit qboolean usage, debug prints,
+// and zero MSVC warnings.
+// ============================================================================
 void NPC_Droid_Pain(gentity_t* self, gentity_t* attacker, const int damage)
 {
-	const gentity_t* other = attacker;
-	int anim;
-	const int mod = gPainMOD;
-	float pain_chance;
+	// ----------------------------------------------------------------------
+	// Safety: validate pointers (fixes MSVC C6011)
+	// ----------------------------------------------------------------------
+	if (self == NULL)
+	{
+		Com_Printf(S_COLOR_RED "NPC_Droid_Pain ERROR: self == NULL\n");
+		return;
+	}
 
-	if (self->NPC && self->NPC->ignorePain)
+	if (self->NPC == NULL)
+	{
+		Com_Printf(S_COLOR_RED "NPC_Droid_Pain ERROR: self->NPC == NULL for ent %d\n", self->s.number);
+		return;
+	}
+
+	if (self->client == NULL)
+	{
+		Com_Printf(S_COLOR_RED "NPC_Droid_Pain ERROR: self->client == NULL for ent %d\n", self->s.number);
+		return;
+	}
+
+	const gentity_t* other = attacker;
+	const int mod = gPainMOD;
+	int anim = 0;
+	float pain_chance = 0.0f;
+
+	// ----------------------------------------------------------------------
+	// Ignore pain flag
+	// ----------------------------------------------------------------------
+	if (self->NPC->ignorePain == qtrue)
 	{
 		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// Maintain facing direction
+	// ----------------------------------------------------------------------
 	VectorCopy(self->NPC->lastPathAngles, self->s.angles);
 
+	// ======================================================================
+	// CLASS_R5D2
+	// ======================================================================
 	if (self->client->NPC_class == CLASS_R5D2)
 	{
 		pain_chance = NPC_GetPainChance(self, damage);
 
-		// Put it in pain
-		if (mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT || Q_flrand(0.0f, 1.0f) < pain_chance)
-			// Spin around in pain? Demp2 always does this
+		const qboolean doPain =
+			(mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT ||
+				(Q_flrand(0.0f, 1.0f) < pain_chance)) ? qtrue : qfalse;
+
+		if (doPain == qtrue)
 		{
-			// Health is between 0-30 or was hit by a DEMP2 so pop his head
-			if (!self->s.m_iVehicleNum
-				&& (self->health < 30 || mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT))
+			// Head pop condition
+			if (self->s.m_iVehicleNum == 0 &&
+				(self->health < 30 ||
+					mod == MOD_DEMP2 ||
+					mod == MOD_DEMP2_ALT))
 			{
-				if (!(self->spawnflags & 2)) // Doesn't have to ALWAYSDIE
+				if ((self->spawnflags & 2) == 0) // not ALWAYSDIE
 				{
 					if (self->NPC->localState != LSTATE_SPINNING &&
-						!trap->G2API_GetSurfaceRenderStatus(self->ghoul2, 0, "head"))
+						trap->G2API_GetSurfaceRenderStatus(self->ghoul2, 0, "head") == qfalse)
 					{
 						NPC_SetSurfaceOnOff(self, "head", TURN_OFF);
 
-						if (self->client->ps.m_iVehicleNum)
+						if (self->client->ps.m_iVehicleNum != 0)
 						{
 							vec3_t up;
 							AngleVectors(self->r.currentAngles, NULL, NULL, up);
-							G_PlayEffectID(G_EffectIndex("chunks/r5d2head_veh"), self->r.currentOrigin, up);
+							G_PlayEffectID(G_EffectIndex("chunks/r5d2head_veh"),
+								self->r.currentOrigin, up);
 						}
 						else
 						{
-							G_PlayEffectID(G_EffectIndex("small_chunks"), self->r.currentOrigin, vec3_origin);
-							G_PlayEffectID(G_EffectIndex("chunks/r5d2head"), self->r.currentOrigin, vec3_origin);
+							G_PlayEffectID(G_EffectIndex("small_chunks"),
+								self->r.currentOrigin, vec3_origin);
+							G_PlayEffectID(G_EffectIndex("chunks/r5d2head"),
+								self->r.currentOrigin, vec3_origin);
 						}
+
 						self->client->ps.electrifyTime = level.time + 3000;
 
 						TIMER_Set(self, "droidsmoketotal", 5000);
 						TIMER_Set(self, "droidspark", 100);
+
 						self->NPC->localState = LSTATE_SPINNING;
 					}
 				}
 			}
-			// Just give him normal pain for a little while
 			else
 			{
+				// Normal pain animation
 				anim = self->client->ps.legsAnim;
 
-				if (anim == BOTH_STAND2) // On two legs?
-				{
-					anim = BOTH_PAIN1;
-				}
-				else // On three legs
-				{
-					anim = BOTH_PAIN2;
-				}
+				anim = (anim == BOTH_STAND2) ? BOTH_PAIN1 : BOTH_PAIN2;
 
-				NPC_SetAnim(self, SETANIM_BOTH, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+				NPC_SetAnim(self, SETANIM_BOTH, anim,
+					SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 
-				// Spin around in pain
 				self->NPC->localState = LSTATE_SPINNING;
 				TIMER_Set(self, "roam", Q_irand(1000, 2000));
 			}
 		}
 	}
+
+	// ======================================================================
+	// CLASS_MOUSE
+	// ======================================================================
 	else if (self->client->NPC_class == CLASS_MOUSE)
 	{
 		if (mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT)
@@ -370,76 +413,89 @@ void NPC_Droid_Pain(gentity_t* self, gentity_t* attacker, const int damage)
 
 		self->NPC->scriptFlags &= ~SCF_LOOK_FOR_ENEMIES;
 	}
+
+	// ======================================================================
+	// CLASS_R2D2
+	// ======================================================================
 	else if (self->client->NPC_class == CLASS_R2D2)
 	{
 		pain_chance = NPC_GetPainChance(self, damage);
 
-		if (mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT || Q_flrand(0.0f, 1.0f) < pain_chance)
-			// Spin around in pain? Demp2 always does this
+		const qboolean doPain =
+			(mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT ||
+				(Q_flrand(0.0f, 1.0f) < pain_chance)) ? qtrue : qfalse;
+
+		if (doPain == qtrue)
 		{
-			// Health is between 0-30 or was hit by a DEMP2 so pop his head
-			if (!self->s.m_iVehicleNum
-				&& (self->health < 30 || mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT))
+			if (self->s.m_iVehicleNum == 0 &&
+				(self->health < 30 ||
+					mod == MOD_DEMP2 ||
+					mod == MOD_DEMP2_ALT))
 			{
-				if (!(self->spawnflags & 2)) // Doesn't have to ALWAYSDIE
+				if ((self->spawnflags & 2) == 0)
 				{
 					if (self->NPC->localState != LSTATE_SPINNING &&
-						!trap->G2API_GetSurfaceRenderStatus(self->ghoul2, 0, "head"))
+						trap->G2API_GetSurfaceRenderStatus(self->ghoul2, 0, "head") == qfalse)
 					{
 						NPC_SetSurfaceOnOff(self, "head", TURN_OFF);
 
-						if (self->client->ps.m_iVehicleNum)
+						if (self->client->ps.m_iVehicleNum != 0)
 						{
 							vec3_t up;
 							AngleVectors(self->r.currentAngles, NULL, NULL, up);
-							G_PlayEffectID(G_EffectIndex("chunks/r2d2head_veh"), self->r.currentOrigin, up);
+							G_PlayEffectID(G_EffectIndex("chunks/r2d2head_veh"),
+								self->r.currentOrigin, up);
 						}
 						else
 						{
-							G_PlayEffectID(G_EffectIndex("small_chunks"), self->r.currentOrigin, vec3_origin);
-							G_PlayEffectID(G_EffectIndex("chunks/r2d2head"), self->r.currentOrigin, vec3_origin);
+							G_PlayEffectID(G_EffectIndex("small_chunks"),
+								self->r.currentOrigin, vec3_origin);
+							G_PlayEffectID(G_EffectIndex("chunks/r2d2head"),
+								self->r.currentOrigin, vec3_origin);
 						}
+
 						self->client->ps.electrifyTime = level.time + 3000;
 
 						TIMER_Set(self, "droidsmoketotal", 5000);
 						TIMER_Set(self, "droidspark", 100);
+
 						self->NPC->localState = LSTATE_SPINNING;
 					}
 				}
 			}
-			// Just give him normal pain for a little while
 			else
 			{
 				anim = self->client->ps.legsAnim;
+				anim = (anim == BOTH_STAND2) ? BOTH_PAIN1 : BOTH_PAIN2;
 
-				if (anim == BOTH_STAND2) // On two legs?
-				{
-					anim = BOTH_PAIN1;
-				}
-				else // On three legs
-				{
-					anim = BOTH_PAIN2;
-				}
+				NPC_SetAnim(self, SETANIM_BOTH, anim,
+					SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 
-				NPC_SetAnim(self, SETANIM_BOTH, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-
-				// Spin around in pain
 				self->NPC->localState = LSTATE_SPINNING;
 				TIMER_Set(self, "roam", Q_irand(1000, 2000));
 			}
 		}
 	}
-	else if (self->client->NPC_class == CLASS_INTERROGATOR && (mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT) && other)
+
+	// ======================================================================
+	// CLASS_INTERROGATOR
+	// ======================================================================
+	else if (self->client->NPC_class == CLASS_INTERROGATOR &&
+		(mod == MOD_DEMP2 || mod == MOD_DEMP2_ALT) &&
+		other != NULL)
 	{
 		vec3_t dir;
 
 		VectorSubtract(self->r.currentOrigin, other->r.currentOrigin, dir);
 		VectorNormalize(dir);
 
-		VectorMA(self->client->ps.velocity, 550, dir, self->client->ps.velocity);
-		self->client->ps.velocity[2] -= 127;
+		VectorMA(self->client->ps.velocity, 550.0f, dir, self->client->ps.velocity);
+		self->client->ps.velocity[2] -= 127.0f;
 	}
 
+	// ----------------------------------------------------------------------
+	// Final pain callback
+	// ----------------------------------------------------------------------
 	NPC_Pain(self, attacker, damage);
 }
 

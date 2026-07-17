@@ -1409,6 +1409,17 @@ void ItemUse_ATST(gentity_t* ent)
 	}
 }
 
+void ItemUse_Rancor(gentity_t* ent)
+{
+	gentity_t* rancor = NPC_SpawnType(ent, "rancor", NULL, qtrue);
+
+	if (rancor && rancor->client)
+	{
+		NPC_SetAnim(ent, SETANIM_TORSO, BOTH_INV_USE, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		G_Sound(ent, CHAN_BODY, G_SoundIndex("sound/chars/rancor/rancor_roar_02.mp3"));
+	}
+}
+
 void ItemUse_Decca(gentity_t* ent)
 {
 	gentity_t* decca = NPC_SpawnType(ent, "droideka_veh", NULL, qtrue);

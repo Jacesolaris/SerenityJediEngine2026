@@ -73,8 +73,8 @@ public:
 
 protected:
 	int m_id;
-	unsigned int m_timeStamp;
-	CBlock* m_block;
+	unsigned int m_timeStamp = 0;
+	CBlock* m_block = nullptr;
 };
 
 // CTaskGroup
@@ -186,15 +186,15 @@ protected:
 	// Variables
 
 	CSequencer* m_owner;
-	int m_ownerID;
+	int m_ownerID = 0;
 
-	CTaskGroup* m_curGroup;
+	CTaskGroup* m_curGroup = nullptr;
 
-	taskGroup_v m_taskGroups;
-	tasks_l m_tasks;
+	taskGroup_v m_taskGroups = {};
+	tasks_l m_tasks = {};
 
-	int m_GUID;
-	int m_count;
+	int m_GUID = 0;
+	int m_count = 0;
 
 	taskGroupName_m m_taskGroupNameMap;
 	taskGroupID_m m_taskGroupIDMap;

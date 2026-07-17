@@ -184,7 +184,7 @@ public:
 	~CWayNode() = default;
 	CVec3 mPoint = CVec3(0, 0, 0);
 	float mRadius = 0.0f;
-	NAV::EPointType mType;
+	NAV::EPointType mType = NAV::PT_NONE;
 	hstring mName; // TODO OPTIMIZATION: Remove This?
 	hstring mTargets[NAV::NUM_TARGETS]; // TODO OPTIMIZATION: Remove This
 	enum EWayNodeFlags
@@ -386,7 +386,7 @@ struct SPathPoint
 	float mReachedRadius = 0.0f;
 	float mDist = 0.0f;
 	float mETA = 0.0f;
-	NAV::TNodeHandle mNode;
+	NAV::TNodeHandle mNode = NAV::PT_NONE;
 };
 
 using TPath = ratl::vector_vs<SPathPoint, NAV::MAX_PATH_SIZE>;
@@ -1459,7 +1459,6 @@ bool NAV::TestEdge(const TNodeHandle NodeA, const TNodeHandle NodeB, const qbool
 	// At this point, CanGo reflects whether the edge is traversable at this size
 	return CanGo;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -4426,7 +4425,6 @@ bool STEER::GoTo(gentity_t* actor, gentity_t* target, const float reachedRadius,
 
 	return qtrue;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Master Function- GoTo

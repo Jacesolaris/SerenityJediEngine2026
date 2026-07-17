@@ -412,7 +412,7 @@ using itemDef_t = struct itemDef_s
 	int cvarFlags = 0; //	what type of action to take on cvarenables
 	sfxHandle_t focusSound = 0; //
 	int numColors = 0; // number of color ranges
-	colorRangeDef_t colorRanges[MAX_COLOR_RANGES];
+	colorRangeDef_t colorRanges[MAX_COLOR_RANGES] = {};
 	float special = 0; // used for feeder id's etc.. diff per type
 	int cursorPos = 0; // cursor position in characters
 	void* typeData = nullptr; // type specific data ptr's

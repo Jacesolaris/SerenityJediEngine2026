@@ -82,8 +82,8 @@ public:
 
 protected:
 	int m_id;
-	unsigned int m_timeStamp;
-	CBlock* m_block;
+	unsigned int m_timeStamp = 0;
+	CBlock* m_block = nullptr;
 };
 
 // CTaskGroup

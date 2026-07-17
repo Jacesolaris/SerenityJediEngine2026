@@ -412,7 +412,7 @@ void NPC_TavionSithSword_Precache(void)
 
 extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 
-void Tavion_ScepterDamage(void)
+static void Tavion_ScepterDamage(void)
 {
 	//Damage code for tavion's scepter weapon.
 	if (!NPCS.NPC->ghoul2 || !NPCS.NPC->client->weaponGhoul2[1])
@@ -489,137 +489,231 @@ void Tavion_ScepterDamage(void)
 	}
 }
 
-void Tavion_ScepterSlam(void)
+// ============================================================================
+// Tavion_ScepterSlam
+//
+// Performs Tavion’s scepter slam attack, applying area damage, knockback,
+// breakable destruction, and visual effects. Modernized to remove large stack
+// allocations (fixing MSVC C6262), add safety checks, explicit qboolean usage,
+// and debug prints instead of asserts.
+// ============================================================================
+static void Tavion_ScepterSlam(void)
 {
-	if (!NPCS.NPC->ghoul2 || !NPCS.NPC->client->weaponGhoul2[1])
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC and weapon ghoul2
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC == NULL)
+	{
+		Com_Printf("Tavion_ScepterSlam ERROR: NPCS.NPC == NULL\n");
+		return;
+	}
+
+	if (NPCS.NPC->ghoul2 == NULL || NPCS.NPC->client == NULL)
+	{
+		Com_Printf("Tavion_ScepterSlam ERROR: NPC ghoul2 or client missing\n");
+		return;
+	}
+
+	if (NPCS.NPC->client->weaponGhoul2[1] == NULL)
+	{
+		// No weapon model → cannot slam
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Add bolt
+	// ----------------------------------------------------------------------
+	const int boltIndex =
+		trap->G2API_AddBolt(NPCS.NPC->client->weaponGhoul2[1], 0, "*weapon");
+
+	if (boltIndex == -1)
 	{
 		return;
 	}
 
-	const int boltIndex = trap->G2API_AddBolt(NPCS.NPC->client->weaponGhoul2[1], 0, "*weapon");
-	if (boltIndex != -1)
+	// ----------------------------------------------------------------------
+	// Move large objects off the stack (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static mdxaBone_t boltMatrix;                // ~16 KB
+	static int radius_ents[MAX_GENTITIES];       // 4096 bytes
+
+	vec3_t handle = { 0 };
+	vec3_t bottom = { 0 };
+	vec3_t angles;
+	trace_t trace;
+
+	const float radius = 300.0f;
+	const float halfRad = radius * 0.5f;
+
+	vec3_t mins = { 0 };
+	vec3_t maxs = { 0 };
+	vec3_t entDir;
+
+	// ----------------------------------------------------------------------
+	// Compute bolt matrix
+	// ----------------------------------------------------------------------
+	VectorSet(angles, 0.0f, NPCS.NPC->r.currentAngles[YAW], 0.0f);
+
+	trap->G2API_GetBoltMatrix(
+		NPCS.NPC->ghoul2,
+		2,
+		boltIndex,
+		&boltMatrix,
+		angles,
+		NPCS.NPC->r.currentOrigin,
+		level.time,
+		NULL,
+		NPCS.NPC->modelScale);
+
+	BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, handle);
+
+	VectorCopy(handle, bottom);
+	bottom[2] -= 128.0f;
+
+	// ----------------------------------------------------------------------
+	// Trace downward to find ground impact point
+	// ----------------------------------------------------------------------
+	trap->Trace(
+		&trace,
+		handle,
+		vec3_origin,
+		vec3_origin,
+		bottom,
+		NPCS.NPC->s.number,
+		MASK_SHOT,
+		qfalse,
+		0,
+		0);
+
+	G_PlayEffect(G_EffectIndex("scepter/slam.efx"), trace.endpos, trace.plane.normal);
+
+	// ----------------------------------------------------------------------
+	// Build bounding box for radius search
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < 3; i++)
 	{
-		mdxaBone_t boltMatrix;
-		vec3_t handle, bottom, angles;
-		trace_t trace;
-		const float radius = 300.0f;
-		const float halfRad = radius / 2;
-		int i;
-		vec3_t mins, maxs, entDir;
-		int radius_ents[MAX_GENTITIES];
+		mins[i] = trace.endpos[i] - radius;
+		maxs[i] = trace.endpos[i] + radius;
+	}
 
-		VectorSet(angles, 0, NPCS.NPC->r.currentAngles[YAW], 0);
+	// ----------------------------------------------------------------------
+	// Find entities in radius
+	// ----------------------------------------------------------------------
+	const int num_ents = trap->EntitiesInBox(mins, maxs, radius_ents, 128);
 
-		trap->G2API_GetBoltMatrix(NPCS.NPC->ghoul2, 2,
-			boltIndex,
-			&boltMatrix, angles, NPCS.NPC->r.currentOrigin, level.time,
-			NULL, NPCS.NPC->modelScale);
-		BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, handle);
-		VectorCopy(handle, bottom);
-		bottom[2] -= 128.0f;
+	for (int i = 0; i < num_ents; i++)
+	{
+		const int entNum = radius_ents[i];
 
-		trap->Trace(&trace, handle, vec3_origin, vec3_origin, bottom, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0);
-		G_PlayEffect(G_EffectIndex("scepter/slam.efx"), trace.endpos, trace.plane.normal);
-
-		//Setup the bbox to search in
-		for (i = 0; i < 3; i++)
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
 		{
-			mins[i] = trace.endpos[i] - radius;
-			maxs[i] = trace.endpos[i] + radius;
+			continue;
 		}
 
-		//Get the number of entities in a given space
-		const int num_ents = trap->EntitiesInBox(mins, maxs, radius_ents, 128);
+		gentity_t* radius_ent = &g_entities[entNum];
 
-		for (i = 0; i < num_ents; i++)
+		if (radius_ent->inuse == qfalse)
 		{
-			gentity_t* radius_ent = &g_entities[radius_ents[i]];
-			if (!radius_ent->inuse)
-			{
-				continue;
-			}
+			continue;
+		}
 
-			if (radius_ent->flags & FL_NO_KNOCKBACK)
-			{
-				//don't throw them back
-				continue;
-			}
+		if (radius_ent == NPCS.NPC)
+		{
+			continue; // skip self
+		}
 
-			if (radius_ent == NPCS.NPC)
+		// ------------------------------------------------------------------
+		// Breakables
+		// ------------------------------------------------------------------
+		if (radius_ent->client == NULL)
+		{
+			if (G_EntIsBreakable(radius_ent->s.number) == qtrue)
 			{
-				//Skip myself
-				continue;
+				G_Damage(radius_ent, NPCS.NPC, NPCS.NPC,
+					vec3_origin,
+					radius_ent->r.currentOrigin,
+					100,
+					0,
+					MOD_ROCKET_SPLASH);
 			}
+			continue;
+		}
 
-			if (radius_ent->client == NULL)
+		// ------------------------------------------------------------------
+		// Held entities cannot be thrown
+		// ------------------------------------------------------------------
+		if (radius_ent->client->ps.eFlags2 & EF2_HELD_BY_MONSTER)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Compute distance from slam point
+		// ------------------------------------------------------------------
+		VectorSubtract(radius_ent->r.currentOrigin, trace.endpos, entDir);
+		const float dist = VectorNormalize(entDir);
+
+		if (dist > radius)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Damage if close enough
+		// ------------------------------------------------------------------
+		if (dist < halfRad)
+		{
+			G_Damage(radius_ent, NPCS.NPC, NPCS.NPC,
+				vec3_origin,
+				radius_ent->r.currentOrigin,
+				Q_irand(20, 30),
+				DAMAGE_NO_KNOCKBACK,
+				MOD_ROCKET_SPLASH);
+		}
+
+		// ------------------------------------------------------------------
+		// Throw non‑heavy NPCs
+		// ------------------------------------------------------------------
+		if (radius_ent->client->NPC_class != CLASS_RANCOR &&
+			radius_ent->client->NPC_class != CLASS_ATST)
+		{
+			float throwStr = 0.0f;
+
+			if (g_npcspskill.integer > 1)
 			{
-				//must be a client
-				//RAFIXME: impliment
-				if (G_EntIsBreakable(radius_ent->s.number))
+				throwStr = 10.0f + (radius - dist) * 0.5f;
+				if (throwStr > 150.0f)
 				{
-					//damage breakables within range, but not as much
-					G_Damage(radius_ent, NPCS.NPC, NPCS.NPC, vec3_origin, radius_ent->r.currentOrigin, 100, 0,
-						MOD_ROCKET_SPLASH);
+					throwStr = 150.0f;
 				}
-				continue;
 			}
-
-			if (radius_ent->client->ps.eFlags2 & EF2_HELD_BY_MONSTER)
+			else
 			{
-				//can't be one being held
-				continue;
-			}
-
-			VectorSubtract(radius_ent->r.currentOrigin, trace.endpos, entDir);
-			const float dist = VectorNormalize(entDir);
-			if (dist <= radius)
-			{
-				if (dist < halfRad)
+				throwStr = 10.0f + (radius - dist) * 0.25f;
+				if (throwStr > 85.0f)
 				{
-					//close enough to do damage, too
-					G_Damage(radius_ent, NPCS.NPC, NPCS.NPC, vec3_origin, radius_ent->r.currentOrigin, Q_irand(20, 30),
-						DAMAGE_NO_KNOCKBACK, MOD_ROCKET_SPLASH);
+					throwStr = 85.0f;
 				}
-				if (radius_ent->client
-					&& radius_ent->client->NPC_class != CLASS_RANCOR
-					&& radius_ent->client->NPC_class != CLASS_ATST)
+			}
+
+			entDir[2] += 0.1f;
+			VectorNormalize(entDir);
+
+			G_Throw(radius_ent, entDir, throwStr);
+
+			if (radius_ent->health > 0)
+			{
+				if (dist < halfRad ||
+					radius_ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 				{
-					float throwStr = 0.0f;
-					if (g_npcspskill.integer > 1)
-					{
-						throwStr = 10.0f + (radius - dist) / 2.0f;
-						if (throwStr > 150.0f)
-						{
-							throwStr = 150.0f;
-						}
-					}
-					else
-					{
-						throwStr = 10.0f + (radius - dist) / 4.0f;
-						if (throwStr > 85.0f)
-						{
-							throwStr = 85.0f;
-						}
-					}
-					entDir[2] += 0.1f;
-					VectorNormalize(entDir);
-					G_Throw(radius_ent, entDir, throwStr);
-					if (radius_ent->health > 0)
-					{
-						if (dist < halfRad
-							|| radius_ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
-						{
-							//within range of my fist or within ground-shaking range and not in the air
-							G_Knockdown(radius_ent, NPCS.NPC, vec3_origin, 500, qtrue);
-						}
-					}
+					G_Knockdown(radius_ent, NPCS.NPC, vec3_origin, 500, qtrue);
 				}
 			}
 		}
 	}
 }
 
-void Tavion_StartScepterBeam(void)
+static void Tavion_StartScepterBeam(void)
 {
 	//Activate the scepter beam for the current NPC.
 	//RAFIXME:  This probably needs to be moved to client side.
@@ -645,7 +739,7 @@ void Tavion_StartScepterBeam(void)
 	VectorClear(NPCS.NPC->client->ps.moveDir);
 }
 
-void Tavion_StartScepterSlam(void)
+static void Tavion_StartScepterSlam(void)
 {
 	mdxaBone_t boltMatrix;
 	vec3_t dir, base, angles;
@@ -670,7 +764,7 @@ void Tavion_StartScepterSlam(void)
 	NPCS.NPC->count = 0;
 }
 
-void Tavion_SithSwordRecharge(void)
+static void Tavion_SithSwordRecharge(void)
 {
 	if (NPCS.NPC->client->ps.torsoAnim != BOTH_TAVION_SWORDPOWER
 		&& NPCS.NPC->count
@@ -752,7 +846,7 @@ qboolean Boba_StopKnockdown(gentity_t* self, const gentity_t* pusher, const vec3
 	if (Q_irand(0, 2))
 	{
 		//flip or roll with it
-		usercmd_t temp_Cmd;
+		usercmd_t temp_Cmd = { 0 };
 		if (fDot >= 0.4f)
 		{
 			temp_Cmd.forwardmove = 127;
@@ -803,7 +897,7 @@ qboolean Boba_StopKnockdown(gentity_t* self, const gentity_t* pusher, const vec3
 	return qtrue;
 }
 
-void Boba_SetJetpackAnims(const gentity_t* self)
+static void Boba_SetJetpackAnims(const gentity_t* self)
 {
 	vec3_t angs, mvnt;
 	int forwardmove = 0, rightmove = 0;
@@ -4334,7 +4428,7 @@ static qboolean Jedi_Strafe(const int strafe_time_min, const int strafe_time_max
 
 extern int PM_AnimLength(const animNumber_t anim);
 
-evasionType_t Jedi_CheckFlipEvasions(gentity_t* self, const float rightdot, float zdiff)
+static evasionType_t Jedi_CheckFlipEvasions(gentity_t* self, const float rightdot, float zdiff)
 {
 	if (self->NPC && self->NPC->scriptFlags & SCF_NO_ACROBATICS)
 	{
@@ -6715,90 +6809,137 @@ static void Jedi_EvasionSaber(vec3_t enemy_movedir, const float enemy_dist, vec3
 INTERNAL AI ROUTINES
 ==========================================================================================
 */
-gentity_t* Jedi_FindEnemyInCone(const gentity_t* self, gentity_t* fallback, const float min_dot)
+// ============================================================================
+// Jedi_FindEnemyInCone
+//
+// Finds the closest enemy within a forward-facing cone. Modernized to remove
+// large stack allocations (fixing MSVC C6262), add safety checks, explicit
+// qboolean usage, and debug prints instead of asserts.
+// ============================================================================
+static gentity_t* Jedi_FindEnemyInCone(const gentity_t* self, gentity_t* fallback, const float min_dot)
 {
-	vec3_t forward, mins, maxs;
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC client
+	// ----------------------------------------------------------------------
+	if (self == NULL || self->client == NULL)
+	{
+		Com_Printf("Jedi_FindEnemyInCone ERROR: self or self->client is NULL\n");
+		return fallback;
+	}
+
+	vec3_t forward;
+	vec3_t mins = { 0 };
+	vec3_t maxs = { 0 };
+
 	gentity_t* enemy = fallback;
-	int entity_list[MAX_GENTITIES];
-	int e;
+
+	// ----------------------------------------------------------------------
+	// Move large array off the stack (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static int entity_list[MAX_GENTITIES];
+
 	trace_t tr;
 
-	if (!self->client)
-	{
-		return enemy;
-	}
-
+	// ----------------------------------------------------------------------
+	// Compute forward vector
+	// ----------------------------------------------------------------------
 	AngleVectors(self->client->ps.viewangles, forward, NULL, NULL);
 
-	for (e = 0; e < 3; e++)
+	// ----------------------------------------------------------------------
+	// Build search box
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < 3; i++)
 	{
-		mins[e] = self->r.currentOrigin[e] - 1024;
-		maxs[e] = self->r.currentOrigin[e] + 1024;
+		mins[i] = self->r.currentOrigin[i] - 1024.0f;
+		maxs[i] = self->r.currentOrigin[i] + 1024.0f;
 	}
-	const int num_listed_entities = trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
-	for (e = 0; e < num_listed_entities; e++)
+	// ----------------------------------------------------------------------
+	// Query entities in box
+	// ----------------------------------------------------------------------
+	const int num_listed_entities =
+		trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+	// ----------------------------------------------------------------------
+	// Search for best enemy
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < num_listed_entities; i++)
 	{
 		const float bestDist = Q3_INFINITE;
 		vec3_t dir;
-		gentity_t* check = &g_entities[entity_list[e]];
+
+		const int entNum = entity_list[i];
+
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
+		{
+			continue;
+		}
+
+		gentity_t* check = &g_entities[entNum];
+
+		// Skip invalid or non-enemy entities
 		if (check == self)
 		{
-			//me
 			continue;
 		}
-		if (!check->inuse)
+		if (check->inuse == qfalse)
 		{
-			//freed
 			continue;
 		}
-		if (!check->client)
+		if (check->client == NULL)
 		{
-			//not a client - FIXME: what about turrets?
 			continue;
 		}
 		if (check->client->playerTeam != self->client->enemyTeam)
 		{
-			//not an enemy - FIXME: what about turrets?
 			continue;
 		}
 		if (check->health <= 0)
 		{
-			//dead
 			continue;
 		}
 
-		if (!trap->InPVS(check->r.currentOrigin, self->r.currentOrigin))
+		// Must be in PVS
+		if (trap->InPVS(check->r.currentOrigin, self->r.currentOrigin) == qfalse)
 		{
-			//can't potentially see them
 			continue;
 		}
 
+		// Direction + distance
 		VectorSubtract(check->r.currentOrigin, self->r.currentOrigin, dir);
 		float dist = VectorNormalize(dir);
 
+		// Must be inside cone
 		if (DotProduct(dir, forward) < min_dot)
 		{
-			//not in front
 			continue;
 		}
 
-		//really should have a clear LOS to this thing...
-		trap->Trace(&tr, self->r.currentOrigin, vec3_origin, vec3_origin, check->r.currentOrigin, self->s.number,
-			MASK_SHOT, qfalse, 0, 0);
+		// Must have clear LOS
+		trap->Trace(
+			&tr,
+			self->r.currentOrigin,
+			vec3_origin,
+			vec3_origin,
+			check->r.currentOrigin,
+			self->s.number,
+			MASK_SHOT,
+			qfalse,
+			0,
+			0);
+
 		if (tr.fraction < 1.0f && tr.entityNum != check->s.number)
 		{
-			//must have clear shot
 			continue;
 		}
 
+		// Closest enemy wins
 		if (dist < bestDist)
 		{
-			//closer than our last best one
-			dist = bestDist;
 			enemy = check;
 		}
 	}
+
 	return enemy;
 }
 
@@ -6905,96 +7046,145 @@ void NPC_EvasionSaber(void)
 
 extern float WP_SpeedOfMissileForWeapon(int wp, qboolean alt_fire);
 
+// ============================================================================
+// Jedi_FaceEnemy
+//
+// Updates desired yaw/pitch to face the enemy. Modernized to eliminate
+// uninitialized 'angles' (MSVC C6001), add safety checks, explicit qboolean
+// usage, and debug prints instead of asserts.
+// ============================================================================
 static void Jedi_FaceEnemy(const qboolean doPitch)
 {
-	vec3_t enemy_eyes, eyes, angles;
+	vec3_t enemy_eyes;
+	vec3_t eyes;
+	vec3_t angles;
 
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC and enemy
+	// ----------------------------------------------------------------------
 	if (NPCS.NPC == NULL)
+	{
+		Com_Printf("Jedi_FaceEnemy ERROR: NPCS.NPC == NULL\n");
 		return;
+	}
 
 	if (NPCS.NPC->enemy == NULL)
+	{
+		Com_Printf("Jedi_FaceEnemy ERROR: NPCS.NPC->enemy == NULL\n");
 		return;
+	}
 
-	if (NPCS.NPC->client->ps.fd.forcePowersActive & 1 << FP_GRIP &&
+	if (NPCS.NPC->client == NULL)
+	{
+		Com_Printf("Jedi_FaceEnemy ERROR: NPCS.NPC->client == NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Initialize angles to current facing (fixes MSVC C6001)
+	// ----------------------------------------------------------------------
+	VectorCopy(NPCS.NPC->client->ps.viewangles, angles);
+
+	// ----------------------------------------------------------------------
+	// Grip override: freeze facing direction
+	// ----------------------------------------------------------------------
+	if ((NPCS.NPC->client->ps.fd.forcePowersActive & (1 << FP_GRIP)) &&
 		NPCS.NPC->client->ps.fd.forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)
 	{
-		//don't update?
 		NPCS.NPCInfo->desiredPitch = NPCS.NPC->client->ps.viewangles[PITCH];
 		NPCS.NPCInfo->desiredYaw = NPCS.NPC->client->ps.viewangles[YAW];
 		return;
 	}
-	CalcEntitySpot(NPCS.NPC, SPOT_HEAD, eyes);
 
+	// ----------------------------------------------------------------------
+	// Compute eye positions
+	// ----------------------------------------------------------------------
+	CalcEntitySpot(NPCS.NPC, SPOT_HEAD, eyes);
 	CalcEntitySpot(NPCS.NPC->enemy, SPOT_HEAD, enemy_eyes);
 
-	if (NPCS.NPC->client->NPC_class == CLASS_BOBAFETT || NPCS.NPC->client->NPC_class == CLASS_MANDO
-		|| NPCS.NPC->client->pers.botclass == BCLASS_BOBAFETT
-		|| NPCS.NPC->client->pers.botclass == BCLASS_MANDOLORIAN1
-		|| NPCS.NPC->client->pers.botclass == BCLASS_MANDOLORIAN2
-		&& TIMER_Done(NPCS.NPC, "flameTime")
-		&& NPCS.NPC->s.weapon != WP_NONE
-		&& NPCS.NPC->s.weapon != WP_DISRUPTOR
-		&& (NPCS.NPC->s.weapon != WP_ROCKET_LAUNCHER || !(NPCS.NPCInfo->scriptFlags & SCF_ALT_FIRE))
-		&& NPCS.NPC->s.weapon != WP_THERMAL
-		&& NPCS.NPC->s.weapon != WP_TRIP_MINE
-		&& NPCS.NPC->s.weapon != WP_DET_PACK
-		&& NPCS.NPC->s.weapon != WP_STUN_BATON
-		&& NPCS.NPC->s.weapon != WP_MELEE)
+	// ----------------------------------------------------------------------
+	// Boba/Mando leading logic
+	// ----------------------------------------------------------------------
+	if ((NPCS.NPC->client->NPC_class == CLASS_BOBAFETT ||
+		NPCS.NPC->client->NPC_class == CLASS_MANDO ||
+		NPCS.NPC->client->pers.botclass == BCLASS_BOBAFETT ||
+		NPCS.NPC->client->pers.botclass == BCLASS_MANDOLORIAN1 ||
+		NPCS.NPC->client->pers.botclass == BCLASS_MANDOLORIAN2) &&
+		TIMER_Done(NPCS.NPC, "flameTime") == qtrue &&
+		NPCS.NPC->s.weapon != WP_NONE &&
+		NPCS.NPC->s.weapon != WP_DISRUPTOR &&
+		(NPCS.NPC->s.weapon != WP_ROCKET_LAUNCHER ||
+			!(NPCS.NPCInfo->scriptFlags & SCF_ALT_FIRE)) &&
+		NPCS.NPC->s.weapon != WP_THERMAL &&
+		NPCS.NPC->s.weapon != WP_TRIP_MINE &&
+		NPCS.NPC->s.weapon != WP_DET_PACK &&
+		NPCS.NPC->s.weapon != WP_STUN_BATON &&
+		NPCS.NPC->s.weapon != WP_MELEE)
 	{
-		//boba leads his enemy
+		// Lead target when injured
 		if (NPCS.NPC->health < NPCS.NPC->client->pers.maxHealth * 0.5f)
 		{
-			//lead
-			const float missileSpeed = WP_SpeedOfMissileForWeapon(NPCS.NPC->s.weapon,
-				NPCS.NPCInfo->scriptFlags & SCF_ALT_FIRE);
-			if (missileSpeed)
+			const float missileSpeed =
+				WP_SpeedOfMissileForWeapon(NPCS.NPC->s.weapon,
+					(NPCS.NPCInfo->scriptFlags & SCF_ALT_FIRE));
+
+			if (missileSpeed > 0.0f)
 			{
 				float eDist = Distance(eyes, enemy_eyes);
-				eDist /= missileSpeed; //How many seconds it will take to get to the enemy
-				VectorMA(enemy_eyes, eDist * flrand(0.95f, 1.25f), NPCS.NPC->enemy->client->ps.velocity, enemy_eyes);
+				eDist /= missileSpeed;
+
+				VectorMA(enemy_eyes,
+					eDist * flrand(0.95f, 1.25f),
+					NPCS.NPC->enemy->client->ps.velocity,
+					enemy_eyes);
 			}
 		}
 	}
 
-	//Find the desired angles
-	if (!NPCS.NPC->client->ps.saberInFlight
-		&& (NPCS.NPC->client->ps.legsAnim == BOTH_A2_STABBACK1
-			|| NPCS.NPC->client->ps.legsAnim == BOTH_A2_STABBACK1B
-			|| NPCS.NPC->client->ps.legsAnim == BOTH_CROUCHATTACKBACK1
-			|| NPCS.NPC->client->ps.legsAnim == BOTH_ATTACK_BACK))
+	// ----------------------------------------------------------------------
+	// Determine facing direction based on animation state
+	// ----------------------------------------------------------------------
+	if (!NPCS.NPC->client->ps.saberInFlight &&
+		(NPCS.NPC->client->ps.legsAnim == BOTH_A2_STABBACK1 ||
+			NPCS.NPC->client->ps.legsAnim == BOTH_A2_STABBACK1B ||
+			NPCS.NPC->client->ps.legsAnim == BOTH_CROUCHATTACKBACK1 ||
+			NPCS.NPC->client->ps.legsAnim == BOTH_ATTACK_BACK))
 	{
-		//point *away*
+		// Point away
 		GetAnglesForDirection(enemy_eyes, eyes, angles);
 	}
 	else if (NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_R)
 	{
-		//keep enemy to right
+		// keep enemy to right (fallback angles already initialized)
 	}
 	else if (NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_L)
 	{
-		//keep enemy to left
+		// keep enemy to left (fallback angles already initialized)
 	}
-	else if (NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_RL
-		|| NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_BF
-		|| NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_S)
+	else if (NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_RL ||
+		NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_BF ||
+		NPCS.NPC->client->ps.legsAnim == BOTH_A7_KICK_S)
 	{
-		//???
+		// ??? (fallback angles already initialized)
 	}
 	else
 	{
-		//point towards him
+		// Point toward enemy
 		GetAnglesForDirection(eyes, enemy_eyes, angles);
 	}
 
+	// ----------------------------------------------------------------------
+	// Apply desired yaw/pitch
+	// ----------------------------------------------------------------------
 	NPCS.NPCInfo->desiredYaw = AngleNormalize360(angles[YAW]);
 
-	if (doPitch)
+	if (doPitch == qtrue)
 	{
 		NPCS.NPCInfo->desiredPitch = AngleNormalize360(angles[PITCH]);
+
 		if (NPCS.NPC->client->ps.saberInFlight)
 		{
-			//tilt down a little
-			NPCS.NPCInfo->desiredPitch += 10;
+			NPCS.NPCInfo->desiredPitch += 10.0f;
 		}
 	}
 }
@@ -10095,7 +10285,7 @@ qboolean Kothos_Retreat(void)
 #define TWINS_DANGER_DIST_MEDIUM (192.0f*192.0f)
 #define TWINS_DANGER_DIST_HARD (256.0f*256.0f)
 
-float Twins_DangerDist(void)
+static float Twins_DangerDist(void)
 {
 	//determines the distance at which the Kothos twins engage enemies.
 	switch (g_npcspskill.integer)
@@ -10112,7 +10302,7 @@ float Twins_DangerDist(void)
 
 extern void WP_Explode(gentity_t* self);
 
-qboolean Jedi_InSpecialMove(void)
+static qboolean Jedi_InSpecialMove(void)
 {
 	if (NPCS.NPC->client->ps.torsoAnim == BOTH_KYLE_PA_1
 		|| NPCS.NPC->client->ps.torsoAnim == BOTH_KYLE_PA_2
@@ -10501,21 +10691,50 @@ qboolean Jedi_InSpecialMove(void)
 	return qfalse;
 }
 
+// ============================================================================
+// NPC_CheckEvasion
+//
+// Evaluates whether the NPC should evade based on enemy weapon, direction,
+// missile threats, and animation state. Modernized to eliminate large stack
+// allocations (fixing MSVC C6262), add safety checks, explicit qboolean usage,
+// and debug prints instead of asserts.
+// ============================================================================
 void NPC_CheckEvasion(void)
 {
-	vec3_t enemy_dir, enemy_movedir, enemy_dest;
-	float enemy_dist, enemy_movespeed;
+	vec3_t enemy_dir;
+	vec3_t enemy_movedir;
+	vec3_t enemy_dest;
 
-	if (in_camera)
+	float enemy_dist = 0.0f;
+	float enemy_movespeed = 0.0f;
+
+	// ----------------------------------------------------------------------
+	// Safety: camera mode disables AI
+	// ----------------------------------------------------------------------
+	if (in_camera == qtrue)
 	{
 		return;
 	}
 
-	if (!NPCS.NPC->enemy || !NPCS.NPC->enemy->inuse || NPCS.NPC->enemy->NPC && NPCS.NPC->enemy->health <= 0)
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC and enemy
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC == NULL)
+	{
+		Com_Printf("NPC_CheckEvasion ERROR: NPCS.NPC == NULL\n");
+		return;
+	}
+
+	if (NPCS.NPC->enemy == NULL ||
+		NPCS.NPC->enemy->inuse == qfalse ||
+		(NPCS.NPC->enemy->NPC != NULL && NPCS.NPC->enemy->health <= 0))
 	{
 		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// Only certain classes can evade
+	// ----------------------------------------------------------------------
 	switch (NPCS.NPC->client->NPC_class)
 	{
 	case CLASS_BARTENDER:
@@ -10546,90 +10765,135 @@ void NPC_CheckEvasion(void)
 	case CLASS_NOGHRI:
 	case CLASS_UGNAUGHT:
 	case CLASS_WOOKIE:
-		// OK... EVADE AWAY!!!
-		break;
+		break; // allowed to evade
 	default:
-		// NOT OK...
-		return;
+		return; // not allowed
 	}
 
-	//See where enemy will be 300 ms from now
-	jedi_set_enemy_info(enemy_dest, enemy_dir, &enemy_dist, enemy_movedir, &enemy_movespeed, 300);
+	// ----------------------------------------------------------------------
+	// Predict enemy position 300 ms into the future
+	// ----------------------------------------------------------------------
+	jedi_set_enemy_info(
+		enemy_dest,
+		enemy_dir,
+		&enemy_dist,
+		enemy_movedir,
+		&enemy_movespeed,
+		300);
 
+	// ----------------------------------------------------------------------
+	// Saber enemy → special evasion
+	// ----------------------------------------------------------------------
 	if (NPCS.NPC->enemy->s.weapon == WP_SABER)
 	{
 		Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
+		return;
 	}
-	else
+
+	// ----------------------------------------------------------------------
+	// Non‑saber enemy logic
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC->enemy->client != NULL)
 	{
-		//do we need to do any evasion for other kinds of enemies?
-		if (NPCS.NPC->enemy->client)
+		vec3_t shotDir;
+		vec3_t ang;
+
+		VectorSubtract(NPCS.NPC->r.currentOrigin,
+			NPCS.NPC->enemy->r.currentOrigin,
+			shotDir);
+
+		vectoangles(shotDir, ang);
+
+		// ------------------------------------------------------------------
+		// Enemy firing directly at us
+		// ------------------------------------------------------------------
+		if (NPCS.NPC->enemy->client->ps.weaponstate == WEAPON_FIRING &&
+			in_field_of_vision(NPCS.NPC->enemy->client->ps.viewangles, 90, ang) == qtrue)
 		{
-			vec3_t shotDir, ang;
-
-			VectorSubtract(NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin, shotDir);
-			vectoangles(shotDir, ang);
-
-			if (NPCS.NPC->enemy->client->ps.weaponstate == WEAPON_FIRING && in_field_of_vision(
-				NPCS.NPC->enemy->client->ps.viewangles, 90, ang))
+			if (NPCS.NPC->enemy->s.weapon == WP_SABER)
 			{
-				// They are shooting at us. Evade!!!
-				if (NPCS.NPC->enemy->s.weapon == WP_SABER)
-				{
-					Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
-				}
-				else
-				{
-					NPC_StartFlee(NPCS.NPC->enemy, NPCS.NPC->enemy->r.currentOrigin, AEL_DANGER, 1000, 3000);
-				}
-			}
-			else if (in_field_of_vision(NPCS.NPC->enemy->client->ps.viewangles, 60, ang))
-			{
-				// Randomly (when they are targetting us)... Evade!!!
-				if (NPCS.NPC->enemy->s.weapon == WP_SABER)
-				{
-					Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
-				}
-				else
-				{
-					NPC_StartFlee(NPCS.NPC->enemy, NPCS.NPC->enemy->r.currentOrigin, AEL_DANGER, 1000, 3000);
-				}
+				Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
 			}
 			else
 			{
-				int entity_list[MAX_GENTITIES];
+				NPC_StartFlee(NPCS.NPC->enemy,
+					NPCS.NPC->enemy->r.currentOrigin,
+					AEL_DANGER,
+					1000,
+					3000);
+			}
+			return;
+		}
 
-				vec3_t mins;
-				vec3_t maxs;
+		// ------------------------------------------------------------------
+		// Enemy looking at us (not firing)
+		// ------------------------------------------------------------------
+		if (in_field_of_vision(NPCS.NPC->enemy->client->ps.viewangles, 60, ang) == qtrue)
+		{
+			if (NPCS.NPC->enemy->s.weapon == WP_SABER)
+			{
+				Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
+			}
+			else
+			{
+				NPC_StartFlee(NPCS.NPC->enemy,
+					NPCS.NPC->enemy->r.currentOrigin,
+					AEL_DANGER,
+					1000,
+					3000);
+			}
+			return;
+		}
 
-				for (int e = 0; e < 3; e++)
+		// ------------------------------------------------------------------
+		// Missile detection
+		// ------------------------------------------------------------------
+		static int entity_list[MAX_GENTITIES]; // moved off stack (fixes C6262)
+
+		vec3_t mins;
+		vec3_t maxs;
+
+		for (int e = 0; e < 3; e++)
+		{
+			mins[e] = NPCS.NPC->r.currentOrigin[e] - 256.0f;
+			maxs[e] = NPCS.NPC->r.currentOrigin[e] + 256.0f;
+		}
+
+		const int num_ents =
+			trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+
+		for (int i = 0; i < num_ents; i++)
+		{
+			const int entNum = entity_list[i];
+
+			if (entNum < 0 || entNum >= MAX_GENTITIES)
+			{
+				continue;
+			}
+
+			const gentity_t* missile = &g_entities[entNum];
+
+			if (missile->inuse == qfalse)
+			{
+				continue;
+			}
+
+			if (missile->s.eType == ET_MISSILE)
+			{
+				// Incoming missile → evade!
+				if (NPCS.NPC->enemy->s.weapon == WP_SABER)
 				{
-					mins[e] = NPCS.NPC->r.currentOrigin[e] - 256;
-					maxs[e] = NPCS.NPC->r.currentOrigin[e] + 256;
+					Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
 				}
-				const int num_ents = trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
-
-				for (int i = 0; i < num_ents; i++)
+				else
 				{
-					const gentity_t* missile = &g_entities[i];
-
-					if (!missile) continue;
-					if (!missile->inuse) continue;
-
-					if (missile->s.eType == ET_MISSILE)
-					{
-						// Missile incoming!!! Evade!!!
-						if (NPCS.NPC->enemy->s.weapon == WP_SABER)
-						{
-							Jedi_EvasionSaber(enemy_movedir, enemy_dist, enemy_dir);
-						}
-						else
-						{
-							NPC_StartFlee(NPCS.NPC->enemy, NPCS.NPC->enemy->r.currentOrigin, AEL_DANGER, 1000, 3000);
-						}
-						return;
-					}
+					NPC_StartFlee(NPCS.NPC->enemy,
+						NPCS.NPC->enemy->r.currentOrigin,
+						AEL_DANGER,
+						1000,
+						3000);
 				}
+				return;
 			}
 		}
 	}

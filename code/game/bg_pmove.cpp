@@ -1310,7 +1310,7 @@ static qboolean PM_CheckJump()
 		return qfalse;
 	}
 
-	if (pm->ps->communicatingflags & 1 << CF_DASHING || PM_Is_A_Dash_Anim(pm->ps->torsoAnim))
+	if ((pm->ps->communicatingflags & (1u << CF_DASHING)) != 0u || PM_Is_A_Dash_Anim(pm->ps->torsoAnim))
 	{
 		return qfalse;
 	}
@@ -9868,7 +9868,7 @@ static void PM_SwimFloatAnim()
 PM_Footsteps
 ===============
 */
-static void PM_Footsteps()
+static void PM_Footsteps(void)
 {
 	float bobmove;
 	int old;
@@ -9881,7 +9881,9 @@ static void PM_Footsteps()
 	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 
 	if (pm->gent == nullptr || pm->gent->client == nullptr)
+	{
 		return;
+	}
 
 	if (pm->ps->eFlags & EF_HELD_BY_WAMPA)
 	{
@@ -11726,6 +11728,7 @@ static void PM_BeginWeaponChange(const int weapon)
 {
 	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean is_sprinting = ((pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
 	if (pm->gent && pm->gent->client && pm->gent->client->pers.enterTime >= level.time - 500)
 	{
@@ -11758,7 +11761,7 @@ static void PM_BeginWeaponChange(const int weapon)
 		pm->ps->eFlags &= ~EF2_DUAL_WEAPONS;
 	}
 
-	if (pm->ps->weapon == WP_SABER && (is_holding_block_button || is_holding_block_button_and_attack))
+	if (pm->ps->weapon == WP_SABER && (is_holding_block_button || is_holding_block_button_and_attack || is_sprinting))
 	{
 		return;
 	}
@@ -11769,7 +11772,7 @@ static void PM_BeginWeaponChange(const int weapon)
 		PM_AddEvent(EV_CHANGE_WEAPON);
 	}
 
-	if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+	if ((pm->ps->communicatingflags & (1u << CF_AIMINGGUN)) != 0u)
 	{
 		pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
 		g_entities[pm->ps->clientNum].client->IsAiming = qfalse;

@@ -777,12 +777,12 @@ int CIcarus::IsRunning(const int icarus_id)
 	return false;
 }
 
-void CIcarus::Completed(const int icarus_id, const int task_id)
+void CIcarus::Completed(const int icarus_id, const int taskID)
 {
 	const CSequencer* sequencer = FindSequencer(icarus_id);
 	if (sequencer)
 	{
-		sequencer->GetTaskManager()->Completed(task_id);
+		sequencer->GetTaskManager()->Completed(taskID);
 	}
 }
 

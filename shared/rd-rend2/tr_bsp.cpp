@@ -2900,25 +2900,24 @@ static void R_LoadLightGridArray(world_t* worldData, lump_t* l) {
 R_LoadEntities
 ================
 */
-static void R_LoadEntities(world_t* worldData, lump_t* l) {
+static void R_LoadEntities(world_t* worldData, lump_t* l)
+{
 	const char* p;
 	char* token, * s;
 	char vertexRemapShaderText[] = "vertexremapshader";
 	char remapShaderText[] = "remapshader";
 	char keyname[MAX_TOKEN_CHARS];
 	char value[MAX_TOKEN_CHARS];
-	world_t* w;
+	world_t* w = worldData;
 
-	w = worldData;
 	w->lightGridSize[0] = 64;
 	w->lightGridSize[1] = 64;
 	w->lightGridSize[2] = 128;
 
-	tr.distanceCull = 6000;//DEFAULT_DISTANCE_CULL;
+	tr.distanceCull = 6000;
 
 	p = (char*)(fileBase + l->fileofs);
 
-	// store for reference by the cgame
 	w->entityString = (char*)Hunk_Alloc(l->filelen + 1, h_low);
 	strcpy(w->entityString, p);
 	w->entityParsePoint = w->entityString;
@@ -2926,71 +2925,98 @@ static void R_LoadEntities(world_t* worldData, lump_t* l) {
 #ifdef REND2_SP
 	COM_BeginParseSession();
 #endif
+
 	token = COM_ParseExt(&p, qtrue);
-	if (!*token || *token != '{') {
+	if (!*token || *token != '{')
+	{
 		return;
 	}
 
-	// only parse the world spawn
-	while (1) {
-		// parse key
+	while (1)
+	{
 		token = COM_ParseExt(&p, qtrue);
-
-		if (!*token || *token == '}') {
+		if (!*token || *token == '}')
+		{
 			break;
 		}
 		Q_strncpyz(keyname, token, sizeof(keyname));
 
-		// parse value
 		token = COM_ParseExt(&p, qtrue);
-
-		if (!*token || *token == '}') {
+		if (!*token || *token == '}')
+		{
 			break;
 		}
 		Q_strncpyz(value, token, sizeof(value));
 
-		// check for remapping of shaders for vertex lighting
+		// vertex shader remap
 		s = vertexRemapShaderText;
-		if (!Q_strncmp(keyname, s, strlen(s))) {
+		if (!Q_strncmp(keyname, s, strlen(s)))
+		{
 			s = strchr(value, ';');
-			if (!s) {
-				ri.Printf(PRINT_WARNING, "WARNING: no semi colon in vertexshaderremap '%s'\n", value);
+			if (!s)
+			{
+				ri.Printf(PRINT_WARNING,
+					"WARNING: no semi colon in vertexshaderremap '%s'\n",
+					value);
 				break;
 			}
 			*s++ = 0;
-			if (r_vertexLight->integer) {
+
+			if (r_vertexLight->integer)
+			{
 				R_RemapShader(value, s, "0");
 			}
 			continue;
 		}
-		// check for remapping of shaders
+
+		// shader remap
 		s = remapShaderText;
-		if (!Q_strncmp(keyname, s, strlen(s))) {
+		if (!Q_strncmp(keyname, s, strlen(s)))
+		{
 			s = strchr(value, ';');
-			if (!s) {
-				ri.Printf(PRINT_WARNING, "WARNING: no semi colon in shaderremap '%s'\n", value);
+			if (!s)
+			{
+				ri.Printf(PRINT_WARNING,
+					"WARNING: no semi colon in shaderremap '%s'\n",
+					value);
 				break;
 			}
 			*s++ = 0;
+
 			R_RemapShader(value, s, "0");
 			continue;
 		}
-		if (!Q_stricmp(keyname, "distanceCull")) {
-			sscanf(value, "%f", &tr.distanceCull);
-			continue;
-		}
-		// check for a different grid size
-		if (!Q_stricmp(keyname, "gridsize")) {
-			sscanf(value, "%f %f %f", &w->lightGridSize[0], &w->lightGridSize[1], &w->lightGridSize[2]);
+
+		// distanceCull
+		if (!Q_stricmp(keyname, "distanceCull"))
+		{
+			int unused = sscanf(value, "%f", &tr.distanceCull);
+			(void)unused;
 			continue;
 		}
 
-		// check for auto exposure
-		if (!Q_stricmp(keyname, "autoExposureMinMax")) {
-			sscanf(value, "%f %f", &tr.autoExposureMinMax[0], &tr.autoExposureMinMax[1]);
+		// gridsize
+		if (!Q_stricmp(keyname, "gridsize"))
+		{
+			int unused = sscanf(value, "%f %f %f",
+				&w->lightGridSize[0],
+				&w->lightGridSize[1],
+				&w->lightGridSize[2]);
+			(void)unused;
+			continue;
+		}
+
+		// auto exposure
+		if (!Q_stricmp(keyname, "autoExposureMinMax"))
+		{
+			int unused = sscanf(value, "%f %f",
+				&tr.autoExposureMinMax[0],
+				&tr.autoExposureMinMax[1]);
+			(void)unused;
 			continue;
 		}
 	}
+
 #ifdef REND2_SP
 	COM_EndParseSession();
 #endif
@@ -3173,67 +3199,79 @@ static void R_LoadEnvironmentJson(const char* baseName)
 
 static void R_LoadCubemapEntities(const char* cubemapEntityName)
 {
-	char spawnVarChars[2048];
-	int numSpawnVars;
+	char   spawnVarChars[2048];
+	int    numSpawnVars;
 	char* spawnVars[MAX_SPAWN_VARS][2];
-	int numCubemaps = 0;
+	int    numCubemaps = 0;
 
-	// count cubemaps
+	// Count cubemaps
 	numCubemaps = 0;
 	while (R_ParseSpawnVars(spawnVarChars, sizeof(spawnVarChars), &numSpawnVars, spawnVars))
 	{
-		int i;
-
-		for (i = 0; i < numSpawnVars; i++)
+		for (int i = 0; i < numSpawnVars; i++)
 		{
-			if (!Q_stricmp(spawnVars[i][0], "classname") && !Q_stricmp(spawnVars[i][1], cubemapEntityName))
+			if (!Q_stricmp(spawnVars[i][0], "classname") &&
+				!Q_stricmp(spawnVars[i][1], cubemapEntityName))
+			{
 				numCubemaps++;
+			}
 		}
 	}
 
 	if (!numCubemaps)
+	{
 		return;
+	}
 
 	tr.numCubemaps = numCubemaps;
 	tr.cubemaps = (cubemap_t*)Hunk_Alloc(tr.numCubemaps * sizeof(*tr.cubemaps), h_low);
 
 	numCubemaps = 0;
+
 	while (R_ParseSpawnVars(spawnVarChars, sizeof(spawnVarChars), &numSpawnVars, spawnVars))
 	{
-		int i;
-		char name[MAX_QPATH]{};
+		char     name[MAX_QPATH] = { 0 };
 		qboolean isCubemap = qfalse;
 		qboolean originSet = qfalse;
-		vec3_t origin{};
-		float parallaxRadius = 1000.0f;
+		vec3_t   origin = { 0, 0, 0 };
+		float    parallaxRadius = 1000.0f;
 
-		name[0] = '\0';
-		for (i = 0; i < numSpawnVars; i++)
+		for (int i = 0; i < numSpawnVars; i++)
 		{
-			if (!Q_stricmp(spawnVars[i][0], "classname") && !Q_stricmp(spawnVars[i][1], cubemapEntityName))
+			if (!Q_stricmp(spawnVars[i][0], "classname") &&
+				!Q_stricmp(spawnVars[i][1], cubemapEntityName))
+			{
 				isCubemap = qtrue;
+			}
 
 			if (!Q_stricmp(spawnVars[i][0], "name"))
+			{
 				Q_strncpyz(name, spawnVars[i][1], MAX_QPATH);
+			}
 
 			if (!Q_stricmp(spawnVars[i][0], "origin"))
 			{
-				sscanf(spawnVars[i][1], "%f %f %f", &origin[0], &origin[1], &origin[2]);
+				int unused = sscanf(spawnVars[i][1], "%f %f %f",
+					&origin[0], &origin[1], &origin[2]);
+				(void)unused;
 				originSet = qtrue;
 			}
 			else if (!Q_stricmp(spawnVars[i][0], "radius"))
 			{
-				sscanf(spawnVars[i][1], "%f", &parallaxRadius);
+				int unused = sscanf(spawnVars[i][1], "%f", &parallaxRadius);
+				(void)unused;
 			}
 		}
 
-		if (isCubemap && originSet)
+		if (isCubemap == qtrue && originSet == qtrue)
 		{
 			cubemap_t* cubemap = &tr.cubemaps[numCubemaps];
+
 			Q_strncpyz(cubemap->name, name, MAX_QPATH);
 			VectorCopy(origin, cubemap->origin);
 			cubemap->parallaxRadius = parallaxRadius;
-			cubemap->image = nullptr;
+			cubemap->image = NULL;
+
 			numCubemaps++;
 		}
 	}

@@ -406,11 +406,6 @@ static void CG_CalcIdealThirdPersonViewTarget(void)
 		// Short forward distance so we don't zoom into the back of the head
 		VectorMA(cameraFocusLoc, 48.0f, forward, cameraIdealTarget);
 
-		// Shoulder camera tuning (local variables — MP has no overrides)
-		/*localAngleOffset = 10.0f;
-		localPitchOffset = -2.0f;
-		localHorzOffset = -20.0f;*/
-
 		// Apply vertical offset AFTER aiming forward shift
 		cameraIdealTarget[2] += localVertOffset;
 
@@ -777,9 +772,13 @@ static void CG_OffsetThirdPersonView(void)
 	vec3_t diff;
 
 	float thirdPersonHorzOffset = cg_thirdPersonHorzOffset.value;
+	float thirdPersonAlpha = cg_thirdPersonAlpha.value;
 	float thirdPersonAngle = cg_thirdPersonAngle.value;
 	float thirdPersonPitchOffset = cg_thirdPersonPitchOffset.value;
 	float thirdPersonCameraDamp = cg_thirdPersonCameraDamp.value;
+	float thirdPersonVertOffset = cg_thirdPersonVertOffset.value;
+	float thirdPersonTargetDamp = cg_thirdPersonTargetDamp.value;
+	float thirdPersonRange = cg_thirdPersonRange.value;
 
 	if (cg.snap && cg.snap->ps.m_iVehicleNum)
 	{
@@ -830,7 +829,7 @@ static void CG_OffsetThirdPersonView(void)
 		g_AimingCinematicCamera.integer)
 	{
 		thirdPersonAngle = 0.0f;
-		thirdPersonPitchOffset = 0.0f;
+		thirdPersonPitchOffset = -10.0f;
 		thirdPersonHorzOffset = -10.0f;
 
 		cameraFocusAngles[YAW] += thirdPersonAngle;
@@ -2979,8 +2978,8 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 				}
 				if (Holding_Gun_And_Walking_And_Blocking())
 				{
-					mPitchOverride = 0.025f; //slow down the pitch for aiming guns
-					mYawOverride = 0.025f; //slow down the yaw  for aiming guns
+					mPitchOverride = 0.022f; //slow down the pitch for aiming guns
+					mYawOverride = 0.022f; //slow down the yaw  for aiming guns
 				}
 				if (Holding_Saber_And_Its_Turned_On())
 				{
@@ -2989,8 +2988,8 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 				}
 				if (Holding_Saber_And_Its_Turned_Off())
 				{
-					mPitchOverride = 0.06f; //slow down the pitch
-					mYawOverride = 0.06f; //slow down the yaw
+					mPitchOverride = 0.07f; //slow down the pitch
+					mYawOverride = 0.07f; //slow down the yaw
 				}
 			}
 

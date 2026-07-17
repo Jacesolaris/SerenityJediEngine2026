@@ -8540,7 +8540,7 @@ int CQuake3GameInterface::GetTag(const int entID, const char* name, const int lo
 	return false;
 }
 
-void CQuake3GameInterface::Set(const int task_id, const int entID, const char* type_name, const char* data)
+void CQuake3GameInterface::Set(const int taskID, const int entID, const char* type_name, const char* data)
 {
 	gentity_t* ent = &g_entities[entID];
 	float float_data;
@@ -8626,7 +8626,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		if (success == qfalse)
 		{
 			// Behaviour preserved: fallback to MOVE_NAV task
-			Q3_TaskIDSet(ent, TID_MOVE_NAV, task_id);
+			Q3_TaskIDSet(ent, TID_MOVE_NAV, taskID);
 			return;
 		}
 
@@ -8693,7 +8693,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 	case SET_NAVGOAL:
 		if (Q3_SetNavGoal(entID, data))
 		{
-			Q3_TaskIDSet(ent, TID_MOVE_NAV, task_id);
+			Q3_TaskIDSet(ent, TID_MOVE_NAV, taskID);
 			return; //Don't call it back
 		}
 		break;
@@ -8702,7 +8702,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		if (Q3_SetAnimUpper(entID, data))
 		{
 			Q3_TaskIDClear(&ent->taskID[TID_ANIM_BOTH]); //We only want to wait for the top
-			Q3_TaskIDSet(ent, TID_ANIM_UPPER, task_id);
+			Q3_TaskIDSet(ent, TID_ANIM_UPPER, taskID);
 			return; //Don't call it back
 		}
 		break;
@@ -8711,7 +8711,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		if (Q3_SetAnimLower(entID, data))
 		{
 			Q3_TaskIDClear(&ent->taskID[TID_ANIM_BOTH]); //We only want to wait for the bottom
-			Q3_TaskIDSet(ent, TID_ANIM_LOWER, task_id);
+			Q3_TaskIDSet(ent, TID_ANIM_LOWER, taskID);
 			return; //Don't call it back
 		}
 		break;
@@ -8721,7 +8721,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		int both = 0;
 		if (Q3_SetAnimUpper(entID, data))
 		{
-			Q3_TaskIDSet(ent, TID_ANIM_UPPER, task_id);
+			Q3_TaskIDSet(ent, TID_ANIM_UPPER, taskID);
 			both++;
 		}
 		else
@@ -8730,7 +8730,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		}
 		if (Q3_SetAnimLower(entID, data))
 		{
-			Q3_TaskIDSet(ent, TID_ANIM_LOWER, task_id);
+			Q3_TaskIDSet(ent, TID_ANIM_LOWER, taskID);
 			both++;
 		}
 		else
@@ -8739,7 +8739,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		}
 		if (both >= 2)
 		{
-			Q3_TaskIDSet(ent, TID_ANIM_BOTH, task_id);
+			Q3_TaskIDSet(ent, TID_ANIM_BOTH, taskID);
 		}
 		if (both)
 		{
@@ -8752,23 +8752,23 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		int_data = atoi(data);
 		Q3_SetAnimHoldTime(entID, int_data, qtrue);
 		Q3_TaskIDClear(&ent->taskID[TID_ANIM_BOTH]); //We only want to wait for the bottom
-		Q3_TaskIDSet(ent, TID_ANIM_LOWER, task_id);
+		Q3_TaskIDSet(ent, TID_ANIM_LOWER, taskID);
 		return; //Don't call it back
 
 	case SET_ANIM_HOLDTIME_UPPER:
 		int_data = atoi(data);
 		Q3_SetAnimHoldTime(entID, int_data, qfalse);
 		Q3_TaskIDClear(&ent->taskID[TID_ANIM_BOTH]); //We only want to wait for the top
-		Q3_TaskIDSet(ent, TID_ANIM_UPPER, task_id);
+		Q3_TaskIDSet(ent, TID_ANIM_UPPER, taskID);
 		return; //Don't call it back
 
 	case SET_ANIM_HOLDTIME_BOTH:
 		int_data = atoi(data);
 		Q3_SetAnimHoldTime(entID, int_data, qfalse);
 		Q3_SetAnimHoldTime(entID, int_data, qtrue);
-		Q3_TaskIDSet(ent, TID_ANIM_BOTH, task_id);
-		Q3_TaskIDSet(ent, TID_ANIM_UPPER, task_id);
-		Q3_TaskIDSet(ent, TID_ANIM_LOWER, task_id);
+		Q3_TaskIDSet(ent, TID_ANIM_BOTH, taskID);
+		Q3_TaskIDSet(ent, TID_ANIM_UPPER, taskID);
+		Q3_TaskIDSet(ent, TID_ANIM_LOWER, taskID);
 		return; //Don't call it back
 
 	case SET_PLAYER_TEAM:
@@ -8792,7 +8792,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 	case SET_BEHAVIOR_STATE:
 		if (!Q3_SetBState(entID, data))
 		{
-			Q3_TaskIDSet(ent, TID_BSTATE, task_id);
+			Q3_TaskIDSet(ent, TID_BSTATE, taskID);
 			return; //don't complete
 		}
 		break;
@@ -8804,7 +8804,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 	case SET_TEMP_BSTATE:
 		if (!Q3_SetTempBState(entID, data))
 		{
-			Q3_TaskIDSet(ent, TID_BSTATE, task_id);
+			Q3_TaskIDSet(ent, TID_BSTATE, taskID);
 			return; //don't complete
 		}
 		break;
@@ -8817,13 +8817,13 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		//FIXME: make these set tempBehavior to BS_FACE and await completion?  Or set lockedDesiredPitch/Yaw and aimTime?
 		float_data = atof(data);
 		Q3_SetDPitch(entID, float_data);
-		Q3_TaskIDSet(ent, TID_ANGLE_FACE, task_id);
+		Q3_TaskIDSet(ent, TID_ANGLE_FACE, taskID);
 		return;
 
 	case SET_DYAW:
 		float_data = atof(data);
 		Q3_SetDYaw(entID, float_data);
-		Q3_TaskIDSet(ent, TID_ANGLE_FACE, task_id);
+		Q3_TaskIDSet(ent, TID_ANGLE_FACE, taskID);
 		return;
 
 	case SET_EVENT:
@@ -8832,7 +8832,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 
 	case SET_VIEWTARGET:
 		Q3_SetViewTarget(entID, data);
-		Q3_TaskIDSet(ent, TID_ANGLE_FACE, task_id);
+		Q3_TaskIDSet(ent, TID_ANGLE_FACE, taskID);
 		return;
 
 	case SET_WATCHTARGET:
@@ -9036,7 +9036,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 	case SET_LOCATION:
 		if (!Q3_SetLocation(entID, data))
 		{
-			Q3_TaskIDSet(ent, TID_LOCATION, task_id);
+			Q3_TaskIDSet(ent, TID_LOCATION, taskID);
 			return;
 		}
 		break;
@@ -9273,7 +9273,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		{
 			if (!Q3_SetSolid(entID, qtrue))
 			{
-				Q3_TaskIDSet(ent, TID_RESIZE, task_id);
+				Q3_TaskIDSet(ent, TID_RESIZE, taskID);
 				return;
 			}
 		}
@@ -9435,7 +9435,7 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		int_data = atoi(data);
 		Q3_SetEndFrame(entID, int_data);
 
-		Q3_TaskIDSet(ent, TID_ANIM_BOTH, task_id);
+		Q3_TaskIDSet(ent, TID_ANIM_BOTH, taskID);
 		return;
 
 	case SET_ANIMFRAME:
@@ -10041,12 +10041,12 @@ void CQuake3GameInterface::Set(const int task_id, const int entID, const char* t
 		break;
 
 	default:
-		SetVar(task_id, entID, type_name, data);
+		SetVar(taskID, entID, type_name, data);
 		PrisonerObjCheck(type_name, data);
 		break;
 	}
 
-	IIcarusInterface::GetIcarus()->Completed(ent->m_iIcarusID, task_id);
+	IIcarusInterface::GetIcarus()->Completed(ent->m_iIcarusID, taskID);
 }
 
 void CQuake3GameInterface::PrisonerObjCheck(const char* name, const char* data)

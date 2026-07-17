@@ -160,6 +160,7 @@ qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self);
 void WP_thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* trace);
 qboolean WP_SaberCanBlockThrownSaber(gentity_t* self, vec3_t point, qboolean projectile);
 void G_Beskar_Attack_Bounce(const gentity_t* self, gentity_t* other);
+extern qboolean BG_SaberSprintAnim(int anim);
 
 qboolean saberCheckKnockdown_Thrown(gentity_t* saberent, gentity_t* saberOwner, const gentity_t* other);
 qboolean saberCheckKnockdown_Smashed(gentity_t* saberent, gentity_t* saberOwner, const gentity_t* other, int damage);
@@ -12741,6 +12742,8 @@ float manual_running_and_saberblocking(const gentity_t* defender)
 
 qboolean manual_meleeblocking(const gentity_t* defender) //Is this guy blocking or not?
 {
+	const qboolean is_sprinting = ((defender->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
+
 	if (defender->client->ps.weapon == WP_MELEE
 		&& (!(defender->client->buttons & BUTTON_WALKING))
 		&& defender->client->buttons & BUTTON_BLOCK
@@ -12751,6 +12754,7 @@ qboolean manual_meleeblocking(const gentity_t* defender) //Is this guy blocking 
 		&& !PM_InKnockDown(&defender->client->ps)
 		&& !PM_RunningAnim(defender->client->ps.legsAnim)
 		&& !PM_WalkingAnim(defender->client->ps.legsAnim)
+		&& !is_sprinting
 		&& !(defender->client->ps.pm_flags & PMF_DUCKED))
 	{
 		return qtrue;

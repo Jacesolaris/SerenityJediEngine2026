@@ -99,6 +99,7 @@ extern qboolean player_locked;
 extern char cinematicSkipScript[1024];
 extern qboolean skippingCutscene;
 extern qboolean inGameCinematic;
+extern qboolean IsSurrendering(const gentity_t* self);
 
 static void P_SetTwitchInfo(gclient_t* client)
 {
@@ -3950,8 +3951,16 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 {
 	const saberInfo_t* saber1 = BG_MySaber(ent->clientNum, 0);
 	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_sprinting = ((ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
 	if (ent->client->ps.saberLockTime >= level.time)
+	{
+		return;
+	}
+
+	// Cannot change from saber while holding block
+	if ((is_holding_block_button == qtrue || is_holding_block_button_and_attack == qtrue || is_sprinting == qtrue))
 	{
 		return;
 	}

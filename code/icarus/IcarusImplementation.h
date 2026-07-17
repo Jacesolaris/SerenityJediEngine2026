@@ -101,7 +101,7 @@ public:
 	int Update(int icarus_id) override;
 
 	int IsRunning(int icarus_id) override;
-	void Completed(int icarus_id, int task_id) override;
+	void Completed(int icarus_id, int taskID) override;
 	void Precache(char* buffer, long length) override;
 
 protected:

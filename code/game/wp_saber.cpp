@@ -266,6 +266,7 @@ extern qboolean PM_InSlowBounce(const playerState_t* ps);
 extern qboolean PM_InSlopeAnim(int anim);
 extern qboolean PM_BoltBlockingAnim(const int anim);
 extern qboolean PM_SaberDrawPutawayAnim(int anim);
+extern qboolean BG_SaberSprintAnim(int anim);
 
 qboolean g_saberNoEffects = qfalse;
 qboolean g_noClashFlare = qfalse;
@@ -11599,6 +11600,8 @@ float manual_running_and_saberblocking(const gentity_t* defender)
 
 qboolean manual_meleeblocking(const gentity_t* defender) //Is this guy blocking or not?
 {
+	const qboolean is_sprinting = ((defender->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
+
 	if (defender->client->ps.weapon == WP_MELEE
 		&& (!(defender->client->buttons & BUTTON_WALKING))
 		&& defender->client->buttons & BUTTON_BLOCK
@@ -11609,6 +11612,7 @@ qboolean manual_meleeblocking(const gentity_t* defender) //Is this guy blocking 
 		&& !PM_InKnockDown(&defender->client->ps)
 		&& !PM_RunningAnim(defender->client->ps.legsAnim)
 		&& !PM_WalkingAnim(defender->client->ps.legsAnim)
+		&& !is_sprinting
 		&& !(defender->client->ps.pm_flags & PMF_DUCKED))
 	{
 		return qtrue;

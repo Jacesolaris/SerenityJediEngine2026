@@ -69,30 +69,63 @@ void G_AddVoiceEvent(const gentity_t* self, const int event, const int speak_deb
 	self->NPC->blockedSpeechDebounceTime = level.time + (speak_debounce_time == 0 ? 5000 : speak_debounce_time);
 }
 
+// ============================================================================
+// NPC_PlayConfusionSound
+//
+// Plays confusion VO and resets awareness state. Modernized to eliminate
+// MSVC C6011 (NULL dereference), add safety checks, explicit qboolean usage,
+// and debug prints instead of asserts.
+// ============================================================================
 void NPC_PlayConfusionSound(gentity_t* self)
 {
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC, client, and NPC struct
+	// ----------------------------------------------------------------------
+	if (self == NULL)
+	{
+		Com_Printf("NPC_PlayConfusionSound ERROR: self == NULL\n");
+		return;
+	}
+
+	if (self->client == NULL)
+	{
+		Com_Printf("NPC_PlayConfusionSound ERROR: self->client == NULL for ent %d\n", self->s.number);
+		return;
+	}
+
+	if (self->NPC == NULL)
+	{
+		Com_Printf("NPC_PlayConfusionSound ERROR: self->NPC == NULL for ent %d\n", self->s.number);
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Confusion logic
+	// ----------------------------------------------------------------------
 	if (self->health > 0)
 	{
-		if (self->enemy || //was mad
-			!TIMER_Done(self, "enemyLastVisible") || //saw something suspicious
-			self->client->renderInfo.lookTarget == 0 //was looking at player
-			)
+		if (self->enemy != NULL ||                     // was mad
+			TIMER_Done(self, "enemyLastVisible") == qfalse || // saw something suspicious
+			self->client->renderInfo.lookTarget == 0)  // was looking at player
 		{
-			self->NPC->blockedSpeechDebounceTime = 0; //make sure we say this
+			self->NPC->blockedSpeechDebounceTime = 0;
 			G_AddVoiceEvent(self, Q_irand(EV_CONFUSE2, EV_CONFUSE3), 2000);
 		}
-		else if (self->NPC && self->NPC->investigateDebounceTime + self->NPC->pauseTime > level.time)
-			//was checking something out
+		else if (self->NPC->investigateDebounceTime + self->NPC->pauseTime > level.time)
 		{
-			self->NPC->blockedSpeechDebounceTime = 0; //make sure we say this
+			// was checking something out
+			self->NPC->blockedSpeechDebounceTime = 0;
 			G_AddVoiceEvent(self, Q_irand(EV_CONFUSE1, EV_CONFUSE3), 2000);
 		}
 	}
-	//reset him to be totally unaware again
+
+	// ----------------------------------------------------------------------
+	// Reset awareness
+	// ----------------------------------------------------------------------
 	TIMER_Set(self, "enemyLastVisible", 0);
 	self->NPC->tempBehavior = BS_DEFAULT;
 
-	G_ClearEnemy(self); //FIXME: or just self->enemy = NULL;?
+	G_ClearEnemy(self);
 
 	self->NPC->investigateCount = 0;
 }

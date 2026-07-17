@@ -213,7 +213,7 @@ enum
 	SPEECH_PUSHED
 };
 
-static void ST_Speech(const gentity_t* self, const int speech_type, const float fail_chance)
+void ST_Speech(const gentity_t* self, const int speech_type, const float fail_chance)
 {
 	if (Q_flrand(0.0f, 1.0f) < fail_chance)
 	{
@@ -869,95 +869,170 @@ qboolean NPC_CheckPlayerTeamStealth(void)
 
 extern float Q_flrand(float min, float max);
 
+// ============================================================================
+// NPC_CheckEnemiesInSpotlight
+//
+// Scans a small box around the NPC’s eye position for enemies in FOV and LOS.
+// Modernized to eliminate MSVC C6262 (large stack allocation), add safety
+// checks, explicit qboolean usage, and debug prints instead of asserts.
+// ============================================================================
 static qboolean NPC_CheckEnemiesInSpotlight(void)
 {
-	//racc = check for enemies in our immediate eyesight?
-	int entity_list[MAX_GENTITIES];
-	gentity_t* suspect = NULL;
-	int i;
-	vec3_t mins, maxs;
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC == NULL)
+	{
+		Com_Printf("NPC_CheckEnemiesInSpotlight ERROR: NPCS.NPC == NULL\n");
+		return qfalse;
+	}
 
-	for (i = 0; i < 3; i++)
+	if (NPCS.NPC->client == NULL)
+	{
+		Com_Printf("NPC_CheckEnemiesInSpotlight ERROR: NPCS.NPC->client == NULL\n");
+		return qfalse;
+	}
+
+	vec3_t mins = { 0, 0, 0 };
+	vec3_t maxs = { 0, 0, 0 };
+
+	// ----------------------------------------------------------------------
+	// Move large array off the stack (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static int entity_list[MAX_GENTITIES];
+
+	gentity_t* suspect = NULL;
+
+	// ----------------------------------------------------------------------
+	// Build search box around NPC eye position
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = NPCS.NPC->client->renderInfo.eyePoint[i] - NPCS.NPC->speed;
 		maxs[i] = NPCS.NPC->client->renderInfo.eyePoint[i] + NPCS.NPC->speed;
 	}
 
-	const int num_listed_entities = trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+	const int num_listed_entities =
+		trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
-	for (i = 0; i < num_listed_entities; i++)
+	// ----------------------------------------------------------------------
+	// Evaluate each entity
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < num_listed_entities; i++)
 	{
-		gentity_t* enemy = &g_entities[entity_list[i]];
+		const int entNum = entity_list[i];
 
-		if (!enemy->inuse)
-			continue;
-
-		if (enemy && enemy->client && NPC_ValidEnemy(enemy) && enemy->client->playerTeam == NPCS.NPC->client->enemyTeam)
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
 		{
-			//valid ent & client, valid enemy, on the target team
-			//check to see if they're in my FOV
-			if (InFOV3(enemy->r.currentOrigin, NPCS.NPC->client->renderInfo.eyePoint,
-				NPCS.NPC->client->renderInfo.eyeAngles, NPCS.NPCInfo->stats.hfov, NPCS.NPCInfo->stats.vfov))
+			continue;
+		}
+
+		gentity_t* enemy = &g_entities[entNum];
+
+		if (enemy->inuse == qfalse)
+		{
+			continue;
+		}
+
+		if (enemy->client == NULL)
+		{
+			continue;
+		}
+
+		if (NPC_ValidEnemy(enemy) == qfalse)
+		{
+			continue;
+		}
+
+		if (enemy->client->playerTeam != NPCS.NPC->client->enemyTeam)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Primary FOV cone
+		// ------------------------------------------------------------------
+		if (InFOV3(enemy->r.currentOrigin,
+			NPCS.NPC->client->renderInfo.eyePoint,
+			NPCS.NPC->client->renderInfo.eyeAngles,
+			NPCS.NPCInfo->stats.hfov,
+			NPCS.NPCInfo->stats.vfov))
+		{
+			const float distSq =
+				DistanceSquared(NPCS.NPC->client->renderInfo.eyePoint,
+					enemy->r.currentOrigin);
+
+			if (distSq - 256.0f <= NPCS.NPC->speed * NPCS.NPC->speed)
 			{
-				//in my cone
-				//check to see that they're close enough
-				if (DistanceSquared(NPCS.NPC->client->renderInfo.eyePoint, enemy->r.currentOrigin) - 256 <= NPCS.NPC->
-					speed * NPCS.NPC->speed)
+				if (G_ClearLOS4(NPCS.NPC, enemy) == qtrue)
 				{
-					//within range
-					//check to see if we have a clear trace to them
-					if (G_ClearLOS4(NPCS.NPC, enemy))
-					{
-						//clear LOS
-						G_SetEnemy(NPCS.NPC, enemy);
-						TIMER_Set(NPCS.NPC, "attackDelay", Q_irand(500, 1500));
-						return qtrue;
-					}
+					G_SetEnemy(NPCS.NPC, enemy);
+					TIMER_Set(NPCS.NPC, "attackDelay",
+						Q_irand(500, 1500));
+					return qtrue;
 				}
 			}
-			if (InFOV3(enemy->r.currentOrigin, NPCS.NPC->client->renderInfo.eyePoint,
-				NPCS.NPC->client->renderInfo.eyeAngles, 90, NPCS.NPCInfo->stats.vfov * 3))
+		}
+
+		// ------------------------------------------------------------------
+		// Suspicion cone (wide FOV)
+		// ------------------------------------------------------------------
+		if (InFOV3(enemy->r.currentOrigin,
+			NPCS.NPC->client->renderInfo.eyePoint,
+			NPCS.NPC->client->renderInfo.eyeAngles,
+			90.0f,
+			NPCS.NPCInfo->stats.vfov * 3.0f))
+		{
+			if (G_ClearLOS4(NPCS.NPC, enemy) == qtrue)
 			{
-				//one to look at if we don't get an enemy
-				if (G_ClearLOS4(NPCS.NPC, enemy))
+				if (suspect == NULL ||
+					DistanceSquared(NPCS.NPC->client->renderInfo.eyePoint,
+						enemy->r.currentOrigin) <
+					DistanceSquared(NPCS.NPC->client->renderInfo.eyePoint,
+						suspect->r.currentOrigin))
 				{
-					//clear LOS
-					if (suspect == NULL || DistanceSquared(NPCS.NPC->client->renderInfo.eyePoint,
-						enemy->r.currentOrigin) < DistanceSquared(
-							NPCS.NPC->client->renderInfo.eyePoint, suspect->r.currentOrigin))
-					{
-						//remember him
-						suspect = enemy;
-					}
+					suspect = enemy;
 				}
 			}
 		}
 	}
-	if (suspect && Q_flrand(0, NPCS.NPCInfo->stats.visrange * NPCS.NPCInfo->stats.visrange) > DistanceSquared(
-		NPCS.NPC->client->renderInfo.eyePoint, suspect->r.currentOrigin))
+
+	// ----------------------------------------------------------------------
+	// Suspicion logic
+	// ----------------------------------------------------------------------
+	if (suspect != NULL)
 	{
-		//hey!  who's that?
-		if (TIMER_Done(NPCS.NPC, "enemyLastVisible"))
+		const float visRangeSq =
+			NPCS.NPCInfo->stats.visrange * NPCS.NPCInfo->stats.visrange;
+
+		const float distSq =
+			DistanceSquared(NPCS.NPC->client->renderInfo.eyePoint,
+				suspect->r.currentOrigin);
+
+		if (Q_flrand(0.0f, visRangeSq) > distSq)
 		{
-			//If we haven't already, start the counter
-			const int lookTime = Q_irand(4500, 8500);
-			//NPCInfo->timeEnemyLastVisible = level.time + 2000;
-			TIMER_Set(NPCS.NPC, "enemyLastVisible", lookTime);
-			ST_Speech(NPCS.NPC, SPEECH_SIGHT, 0);
-			NPC_FacePosition(suspect->r.currentOrigin, qtrue);
-		}
-		else if (TIMER_Get(NPCS.NPC, "enemyLastVisible") <= level.time + 500
-			&& NPCS.NPCInfo->scriptFlags & SCF_LOOK_FOR_ENEMIES) //FIXME: Is this reliable?
-		{
-			if (!Q_irand(0, 2))
+			if (TIMER_Done(NPCS.NPC, "enemyLastVisible") == qtrue)
 			{
-				const int interrogateTime = Q_irand(2000, 4000);
-				ST_Speech(NPCS.NPC, SPEECH_SUSPICIOUS, 0);
-				TIMER_Set(NPCS.NPC, "interrogating", interrogateTime);
+				const int lookTime = Q_irand(4500, 8500);
+				TIMER_Set(NPCS.NPC, "enemyLastVisible", lookTime);
+
+				ST_Speech(NPCS.NPC, SPEECH_SIGHT, 0);
 				NPC_FacePosition(suspect->r.currentOrigin, qtrue);
 			}
+			else if (TIMER_Get(NPCS.NPC, "enemyLastVisible") <= level.time + 500 &&
+				(NPCS.NPCInfo->scriptFlags & SCF_LOOK_FOR_ENEMIES))
+			{
+				if (!Q_irand(0, 2))
+				{
+					const int interrogateTime = Q_irand(2000, 4000);
+					ST_Speech(NPCS.NPC, SPEECH_SUSPICIOUS, 0);
+					TIMER_Set(NPCS.NPC, "interrogating", interrogateTime);
+					NPC_FacePosition(suspect->r.currentOrigin, qtrue);
+				}
+			}
 		}
 	}
+
 	return qfalse;
 }
 

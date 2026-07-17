@@ -55,7 +55,7 @@ extern cvar_t* s_lip_threshold_2;
 extern cvar_t* s_lip_threshold_3;
 extern cvar_t* s_lip_threshold_4;
 
-short GetLittleShort(void)
+static short GetLittleShort(void)
 {
 	short val = *data_p;
 	val = static_cast<short>(val + (*(data_p + 1) << 8));
@@ -63,7 +63,7 @@ short GetLittleShort(void)
 	return val;
 }
 
-int GetLittleLong(void)
+static int GetLittleLong(void)
 {
 	int val = *data_p;
 	val = val + (*(data_p + 1) << 8);
@@ -73,7 +73,7 @@ int GetLittleLong(void)
 	return val;
 }
 
-void FindNextChunk(const char* name)
+static void FindNextChunk(const char* name)
 {
 	while (true)
 	{
@@ -99,13 +99,13 @@ void FindNextChunk(const char* name)
 	}
 }
 
-void FindChunk(const char* name)
+static void FindChunk(const char* name)
 {
 	last_chunk = iff_data;
 	FindNextChunk(name);
 }
 
-void DumpChunks(void)
+static void DumpChunks(void)
 {
 	char	str[5]{};
 
@@ -198,7 +198,7 @@ ResampleSfx
 resample / decimate to the current source rate
 ================
 */
-void ResampleSfx(sfx_t* sfx, int iInRate, int iInWidth, byte* p_data)
+static void ResampleSfx(sfx_t* sfx, int iInRate, int iInWidth, byte* p_data)
 {
 	int		iSample;
 
@@ -241,7 +241,7 @@ void ResampleSfx(sfx_t* sfx, int iInRate, int iInWidth, byte* p_data)
 
 //=============================================================================
 
-void S_LoadSound_Finalize(const wavinfo_t* info, sfx_t* sfx, byte* data)
+static void S_LoadSound_Finalize(const wavinfo_t* info, sfx_t* sfx, byte* data)
 {
 	sfx->eSoundCompressionMethod = ct_16;
 	sfx->iSoundLengthInSamples = info->samples;
@@ -250,7 +250,7 @@ void S_LoadSound_Finalize(const wavinfo_t* info, sfx_t* sfx, byte* data)
 
 // maybe I'm re-inventing the wheel, here, but I can't see any functions that already do this, so...
 //
-char* Filename_WithoutPath(const char* psFilename)
+static char* Filename_WithoutPath(const char* psFilename)
 {
 	static char sString[MAX_QPATH];	// !!
 	const char* p = strrchr(psFilename, '\\');
@@ -265,7 +265,7 @@ char* Filename_WithoutPath(const char* psFilename)
 
 // returns (eg) "\dir\name" for "\dir\name.bmp"
 //
-char* Filename_WithoutExt(const char* psFilename)
+static char* Filename_WithoutExt(const char* psFilename)
 {
 	static char sString[MAX_QPATH];	// !
 
@@ -289,160 +289,209 @@ qboolean qbForceRescan;
 qboolean qbForceStereo;
 std::string strErrors;
 
-void R_CheckMP3s(const char* psDir)
+// ============================================================================
+// R_CheckMP3s
+//
+// Recursively scans a directory for .mp3 files, validates them, updates ID3
+// tags with max volume and unpacked size, and reports errors. Modernized to
+// use safe string handling, explicit qboolean usage, debug prints instead of
+// asserts, and to avoid null-pointer and buffer issues.
+// ============================================================================
+static void R_CheckMP3s(const char* psDir)
 {
-	//	Com_Printf(va("Scanning Dir: %s\n",psDir));
-	Com_Printf(".");	// stops useful info scrolling off screen
+	// Basic progress indicator to avoid flooding the console
+	Com_Printf(".");
 
-	int		numSysFiles, i, numdirs;
+	int numSysFiles = 0;
+	int numdirs = 0;
 
+	// ----------------------------------------------------------------------
+	// List subdirectories
+	// ----------------------------------------------------------------------
 	char** dirFiles = FS_ListFiles(psDir, "/", &numdirs);
-	if (numdirs > 2)
+
+	if (dirFiles != nullptr && numdirs > 2)
 	{
-		for (i = 2; i < numdirs; i++)
+		for (int i = 2; i < numdirs; ++i)
 		{
-			char	sDirName[MAX_QPATH];
-			sprintf(sDirName, "%s\\%s", psDir, dirFiles[i]);
+			char sDirName[MAX_QPATH];
+
+			Com_sprintf(sDirName, sizeof(sDirName), "%s\\%s", psDir, dirFiles[i]);
 			R_CheckMP3s(sDirName);
 		}
 	}
 
+	// ----------------------------------------------------------------------
+	// List .mp3 files in this directory
+	// ----------------------------------------------------------------------
 	char** sysFiles = FS_ListFiles(psDir, ".mp3", &numSysFiles);
-	for (i = 0; i < numSysFiles; i++)
+
+	if (sysFiles != nullptr)
 	{
-		char	sFilename[MAX_QPATH];
-		sprintf(sFilename, "%s\\%s", psDir, sysFiles[i]);
-
-		Com_Printf("%sFound file: %s", !i ? "\n" : "", sFilename);
-
-		iFilesFound++;
-
-		// read it in...
-		//
-		byte* pbData = nullptr;
-		const int iSize = FS_ReadFile(sFilename, reinterpret_cast<void**>(&pbData));
-
-		if (pbData)
+		for (int i = 0; i < numSysFiles; ++i)
 		{
-			id3v1_1* pTAG;
+			char sFilename[MAX_QPATH];
 
-			// do NOT check 'qbForceRescan' here as an opt, because we need to actually fill in 'pTAG' if there is one...
-			//
-			const qboolean qbTagNeedsUpdating = /* qbForceRescan || */ !MP3_ReadSpecialTagInfo(pbData, iSize, &pTAG) ? qtrue : qfalse;
+			Com_sprintf(sFilename, sizeof(sFilename), "%s\\%s", psDir, sysFiles[i]);
 
-			if (pTAG == nullptr || qbTagNeedsUpdating || qbForceRescan)
+			Com_Printf("%sFound file: %s", (i == 0) ? "\n" : "", sFilename);
+
+			iFilesFound++;
+
+			// ------------------------------------------------------------------
+			// Read file into memory
+			// ------------------------------------------------------------------
+			byte* pbData = nullptr;
+			const int iSize = FS_ReadFile(sFilename, reinterpret_cast<void**>(&pbData));
+
+			if (pbData == nullptr || iSize <= 0)
+			{
+				Com_Printf("*********** Failed to read file \"%s\"!\n", sFilename);
+				iErrors++;
+				strErrors += va("Failed to read: \"%s\"\n", sFilename);
+				continue;
+			}
+
+			id3v1_1* pTAG = nullptr;
+
+			// Do NOT check qbForceRescan here as an opt, because we need to
+			// actually fill in pTAG if there is one.
+			const qboolean qbTagNeedsUpdating =
+				(MP3_ReadSpecialTagInfo(pbData, iSize, &pTAG) == qtrue) ? qfalse : qtrue;
+
+			if (pTAG == nullptr || qbTagNeedsUpdating == qtrue || qbForceRescan == qtrue)
 			{
 				Com_Printf(" ( Updating )\n");
 
-				// I need to scan this file to get the volume...
-				//
-				// For EF1 I used a temp sfx_t struct, but I can't do that now with this new alloc scheme,
-				//	I have to ask for it legally, so I'll keep re-using one, and restoring it's name after use.
-				//	(slightly dodgy, but works ok if no-one else changes stuff)
-				//
-				//sfx_t SFX = {0};
+				// ------------------------------------------------------------------
+				// Use a reserved sfx_t entry for MP3 processing
+				// ------------------------------------------------------------------
 				extern sfx_t* S_FindName(const char* name);
-				//
 				static sfx_t* pSFX = nullptr;
-				constexpr char sReservedSFXEntrynameForMP3[] = "reserved_for_mp3";	// ( strlen() < MAX_QPATH )
+				constexpr char sReservedSFXEntrynameForMP3[] = "reserved_for_mp3";
 
-				if (pSFX == nullptr)	// once only
+				if (pSFX == nullptr)
 				{
-					pSFX = S_FindName(sReservedSFXEntrynameForMP3);	// always returns, else ERR_FATAL
+					pSFX = S_FindName(sReservedSFXEntrynameForMP3);
+					if (pSFX == nullptr)
+					{
+						Com_Printf("*********** S_FindName failed for \"%s\"!\n", sReservedSFXEntrynameForMP3);
+						iErrors++;
+						strErrors += va("Failed to get reserved sfx entry for MP3\n");
+						FS_FreeFile(pbData);
+						continue;
+					}
 				}
 
-				if (MP3_IsValid(sFilename, pbData, iSize, qbForceStereo))
+				// ------------------------------------------------------------------
+				// Validate MP3 and process it
+				// ------------------------------------------------------------------
+				if (MP3_IsValid(sFilename, pbData, iSize, qbForceStereo) == qtrue)
 				{
 					wavinfo_t info{};
+					const int iRawp_CmdataSize =
+						MP3_GetUnpackedSize(sFilename, pbData, iSize, qtrue, qbForceStereo);
 
-					const int iRawp_CmdataSize = MP3_GetUnpackedSize(sFilename, pbData, iSize, qtrue, qbForceStereo);
-
-					if (iRawp_CmdataSize)	// should always be true, unless file is fucked, in which case, stop this conversion process
+					if (iRawp_CmdataSize > 0)
 					{
-						float fMaxVol = 128;	// any old default
-						int iActualUnpackedSize = iRawp_CmdataSize;	// default, override later if not doing music
+						float fMaxVol = 128.0f; // default
+						int   iActualUnpackedSize = iRawp_CmdataSize;
 
-						if (!qbForceStereo)	// no point for stereo files, which are for music and therefore no lip-sync
+						// No point for stereo files (music, no lip-sync)
+						if (qbForceStereo == qfalse)
 						{
-							const auto pbUnpackBuffer = static_cast<byte*>(Z_Malloc(iRawp_CmdataSize + 10, TAG_TEMP_WORKSPACE, qfalse));	// won't return if fails
+							byte* pbUnpackBuffer =
+								static_cast<byte*>(Z_Malloc(iRawp_CmdataSize + 10, TAG_TEMP_WORKSPACE, qfalse));
 
-							iActualUnpackedSize = MP3_UnpackRawPCM(sFilename, pbData, iSize, pbUnpackBuffer);
+							iActualUnpackedSize =
+								MP3_UnpackRawPCM(sFilename, pbData, iSize, pbUnpackBuffer);
+
 							if (iActualUnpackedSize != iRawp_CmdataSize)
 							{
-								Com_Error(ERR_DROP, "******* Whoah! MP3 %s unpacked to %d bytes, but size calc said %d!\n", sFilename, iActualUnpackedSize, iRawp_CmdataSize);
+								Com_Error(ERR_DROP,
+									"******* Whoah! MP3 %s unpacked to %d bytes, but size calc said %d!\n",
+									sFilename, iActualUnpackedSize, iRawp_CmdataSize);
 							}
 
-							// fake up a WAV structure so I can use the other post-load sound code such as volume calc for lip-synching
-							//
-							MP3_FakeUpWAVInfo(sFilename, pbData, iSize, iActualUnpackedSize,
-								// these params are all references...
-								info.format, info.rate, info.width, info.channels, info.samples, info.dataofs
-							);
+							// Fake up a WAV structure so we can use post-load sound code
+							MP3_FakeUpWAVInfo(
+								sFilename,
+								pbData,
+								iSize,
+								iActualUnpackedSize,
+								info.format,
+								info.rate,
+								info.width,
+								info.channels,
+								info.samples,
+								info.dataofs);
 
-							S_LoadSound_Finalize(&info, pSFX, pbUnpackBuffer);	// all this just for lipsynch. Oh well.
+							S_LoadSound_Finalize(&info, pSFX, pbUnpackBuffer);
 
 							fMaxVol = pSFX->fVolRange;
 
-							// free sfx->data...
-							//
-							{
+							// Free sfx->data by forcing this to be the oldest sound
 #ifndef INT_MIN
-#define INT_MIN     (-2147483647 - 1) /* minimum (signed) int value */
+#define INT_MIN     (-2147483647 - 1)
 #endif
-								//
-								pSFX->iLastTimeUsed = INT_MIN;		// force this to be oldest sound file, therefore disposable...
-								pSFX->bInMemory = qtrue;
-								SND_FreeOldestSound();		// ... and do the disposal
+							pSFX->iLastTimeUsed = INT_MIN;
+							pSFX->bInMemory = qtrue;
+							SND_FreeOldestSound();
 
-								// now set our temp SFX struct back to default name so nothing else accidentally uses it...
-								//
-								strcpy(pSFX->sSoundName, sReservedSFXEntrynameForMP3);
-								pSFX->bDefaultSound = qfalse;
-							}
+							// Restore reserved name so nothing else accidentally uses it
+							Q_strncpyz(pSFX->sSoundName,
+								sReservedSFXEntrynameForMP3,
+								sizeof(pSFX->sSoundName));
+							pSFX->bDefaultSound = qfalse;
 
-							//							Com_OPrintf("File: \"%s\"   MaxVol %f\n",sFilename,pSFX->fVolRange);
-
-														// other stuff...
-														//
 							Z_Free(pbUnpackBuffer);
 						}
 
-						// well, time to update the file now...
-						//
+						// ------------------------------------------------------------------
+						// Update file: write data and ID3 tag
+						// ------------------------------------------------------------------
 						const fileHandle_t f = FS_FOpenFileWrite(sFilename);
 						if (f)
 						{
-							// write the file back out, but omitting the tag if there was one...
-							//
-							const int iWritten = FS_Write(pbData, iSize - (pTAG ? sizeof * pTAG : 0), f);
+							const int iWritten =
+								FS_Write(pbData, iSize - (pTAG ? sizeof(*pTAG) : 0), f);
 
-							if (iWritten)
+							if (iWritten > 0)
 							{
-								// make up a new tag if we didn't find one in the original file...
-								//
 								id3v1_1 TAG{};
-								if (!pTAG)
+								if (pTAG == nullptr)
 								{
 									pTAG = &TAG;
-									memset(&TAG, 0, sizeof TAG);
-									strncpy(pTAG->id, "TAG", 3);
+									memset(&TAG, 0, sizeof(TAG));
+									Q_strncpyz(pTAG->id, "TAG", sizeof(pTAG->id));
 								}
 
-								strncpy(pTAG->title, Filename_WithoutPath(Filename_WithoutExt(sFilename)), sizeof pTAG->title);
-								strncpy(pTAG->artist, "Raven Software", sizeof pTAG->artist);
-								strncpy(pTAG->year, "2002", sizeof pTAG->year);
-								strncpy(pTAG->comment, va("%s %g", sKEY_MAXVOL, fMaxVol), sizeof pTAG->comment);
-								strncpy(pTAG->album, va("%s %d", sKEY_UNCOMP, iActualUnpackedSize), sizeof pTAG->album);
+								Q_strncpyz(pTAG->title,
+									Filename_WithoutPath(Filename_WithoutExt(sFilename)),
+									sizeof(pTAG->title));
+								Q_strncpyz(pTAG->artist,
+									"Raven Software",
+									sizeof(pTAG->artist));
+								Q_strncpyz(pTAG->year,
+									"2002",
+									sizeof(pTAG->year));
+								Q_strncpyz(pTAG->comment,
+									va("%s %g", sKEY_MAXVOL, fMaxVol),
+									sizeof(pTAG->comment));
+								Q_strncpyz(pTAG->album,
+									va("%s %d", sKEY_UNCOMP, iActualUnpackedSize),
+									sizeof(pTAG->album));
 
-								if (FS_Write(pTAG, sizeof * pTAG, f))	// NZ = success
+								const int tagWritten = FS_Write(pTAG, sizeof(*pTAG), f);
+								if (tagWritten > 0)
 								{
 									iFilesUpdated++;
 								}
 								else
 								{
-									Com_Printf("*********** Failed write to file \"%s\"!\n", sFilename);
+									Com_Printf("*********** Failed write tag to file \"%s\"!\n", sFilename);
 									iErrors++;
-									strErrors += va("Failed to write: \"%s\"\n", sFilename);
+									strErrors += va("Failed to write tag: \"%s\"\n", sFilename);
 								}
 							}
 							else
@@ -451,6 +500,7 @@ void R_CheckMP3s(const char* psDir)
 								iErrors++;
 								strErrors += va("Failed to write: \"%s\"\n", sFilename);
 							}
+
 							FS_FCloseFile(f);
 						}
 						else
@@ -480,8 +530,16 @@ void R_CheckMP3s(const char* psDir)
 			FS_FreeFile(pbData);
 		}
 	}
-	FS_FreeFileList(sysFiles);
-	FS_FreeFileList(dirFiles);
+
+	if (sysFiles != nullptr)
+	{
+		FS_FreeFileList(sysFiles);
+	}
+
+	if (dirFiles != nullptr)
+	{
+		FS_FreeFileList(dirFiles);
+	}
 }
 
 // this console-function is for development purposes, and makes sure that sound/*.mp3 /s have tags in them

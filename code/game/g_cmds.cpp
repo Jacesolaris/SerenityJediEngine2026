@@ -2336,8 +2336,16 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 static void G_SetsaberdownorAnim(gentity_t* ent)
 {
 	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_sprinting = ((ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
 	if (ent->client->ps.saberLockTime >= level.time)
+	{
+		return;
+	}
+
+	// Cannot change from saber while holding block
+	if ((is_holding_block_button == qtrue || is_holding_block_button_and_attack == qtrue || is_sprinting == qtrue))
 	{
 		return;
 	}

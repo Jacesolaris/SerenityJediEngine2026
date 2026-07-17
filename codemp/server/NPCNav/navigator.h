@@ -249,7 +249,7 @@ protected:
 	//rww - made failedEdges private as it doesn't seem to need to be public.
 	//And I'd rather shoot myself than have to devise a way of setting/accessing this
 	//array via trap calls.
-	failedEdge_t failedEdges[MAX_FAILED_EDGES];
+	failedEdge_t failedEdges[MAX_FAILED_EDGES] = {};
 
 	node_v m_nodes;
 	EdgeMultimap m_edgeLookupMap;

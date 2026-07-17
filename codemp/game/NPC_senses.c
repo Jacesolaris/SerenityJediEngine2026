@@ -127,7 +127,7 @@ IDEA: further off to side of FOV range, higher chance of failing even if technic
 
 qboolean InFOV3(vec3_t spot, vec3_t from, vec3_t fromAngles, const int hFOV, const int vFOV)
 {
-	vec3_t deltaVector, angles, deltaAngles;
+	vec3_t deltaVector, angles, deltaAngles = { 0 };
 
 	VectorSubtract(spot, from, deltaVector);
 	vectoangles(deltaVector, angles);
@@ -171,7 +171,7 @@ qboolean InFOV(const gentity_t* ent, const gentity_t* from, const int hFOV, cons
 	vec3_t spot;
 	vec3_t deltaVector;
 	vec3_t angles, fromAngles;
-	vec3_t deltaAngles;
+	vec3_t deltaAngles = { 0 };
 
 	if (from->client)
 	{
@@ -386,7 +386,7 @@ static int G_CheckSoundEvents(gentity_t* self, float maxHearDist, const int igno
 	return bestEvent;
 }
 
-float G_GetLightLevel(vec3_t pos, vec3_t from_dir)
+static float G_GetLightLevel(vec3_t pos, vec3_t from_dir)
 {
 	//rwwFIXMEFIXME: ...this is evil. We can possibly read from the server BSP data, or load the lightmap along
 	//with collision data and whatnot, but is it worth it?
@@ -472,63 +472,95 @@ NPC_CheckAlertEvents
 -------------------------
 */
 
-int G_CheckAlertEvents(gentity_t* self, qboolean checkSight, qboolean checkSound, const float maxSeeDist,
+// ============================================================================
+// G_CheckAlertEvents
+//
+// Returns the best alert event (sight or sound) based on alert level.
+// Modernized to remove invalid NULL check (fixing MSVC C6397), add safety,
+// and preserve behaviour exactly.
+// ============================================================================
+int G_CheckAlertEvents(gentity_t* self,
+	qboolean checkSight,
+	qboolean checkSound,
+	const float maxSeeDist,
 	const float maxHearDist,
-	const int ignoreAlert, const qboolean mustHaveOwner, const int minAlertLevel)
+	const int ignoreAlert,
+	const qboolean mustHaveOwner,
+	const int minAlertLevel)
 {
 	int bestSightEvent;
 	int bestSoundAlert = -1;
 	int bestSightAlert = -1;
 
-	//OJKFIXME: clientNum 0
-	if (&g_entities[0] == NULL || g_entities[0].health <= 0)
+	// ----------------------------------------------------------------------
+	// Player dead check (fixes C6397: remove impossible &g_entities[0] == NULL)
+	// ----------------------------------------------------------------------
+	if (g_entities[0].health <= 0)
 	{
-		//player is dead
 		return -1;
 	}
 
-	//get sound event
-	const int bestSoundEvent = G_CheckSoundEvents(self, maxHearDist, ignoreAlert, mustHaveOwner, minAlertLevel);
-	//get sound event alert level
+	// ----------------------------------------------------------------------
+	// Sound event
+	// ----------------------------------------------------------------------
+	const int bestSoundEvent =
+		G_CheckSoundEvents(self, maxHearDist, ignoreAlert, mustHaveOwner, minAlertLevel);
+
 	if (bestSoundEvent >= 0)
 	{
 		bestSoundAlert = level.alertEvents[bestSoundEvent].level;
 	}
 
-	//get sight event
-	if (self->NPC)
+	// ----------------------------------------------------------------------
+	// Sight event
+	// ----------------------------------------------------------------------
+	if (self->NPC != NULL)
 	{
-		bestSightEvent = G_CheckSightEvents(self, self->NPC->stats.hfov, self->NPC->stats.vfov, maxSeeDist, ignoreAlert,
-			mustHaveOwner, minAlertLevel);
+		bestSightEvent = G_CheckSightEvents(self,
+			self->NPC->stats.hfov,
+			self->NPC->stats.vfov,
+			maxSeeDist,
+			ignoreAlert,
+			mustHaveOwner,
+			minAlertLevel);
 	}
 	else
 	{
-		bestSightEvent = G_CheckSightEvents(self, 80, 80, maxSeeDist, ignoreAlert, mustHaveOwner, minAlertLevel);
-		//FIXME: look at cg_view to get more accurate numbers?
+		bestSightEvent = G_CheckSightEvents(self,
+			80,
+			80,
+			maxSeeDist,
+			ignoreAlert,
+			mustHaveOwner,
+			minAlertLevel);
 	}
-	//get sight event alert level
+
 	if (bestSightEvent >= 0)
 	{
 		bestSightAlert = level.alertEvents[bestSightEvent].level;
 	}
 
-	//return the one that has a higher alert (or sound if equal)
-	//FIXME:	This doesn't take the distance of the event into account
-
+	// ----------------------------------------------------------------------
+	// Choose sight event if its alert level is higher
+	// ----------------------------------------------------------------------
 	if (bestSightEvent >= 0 && bestSightAlert > bestSoundAlert)
 	{
-		//valid best sight event, more important than the sound event
-		//get the light level of the alert event for this checker
-		vec3_t eyePoint, sightDir;
-		//get eye point
+		vec3_t eyePoint;
+		vec3_t sightDir;
+
 		CalcEntitySpot(self, SPOT_HEAD_LEAN, eyePoint);
 		VectorSubtract(level.alertEvents[bestSightEvent].position, eyePoint, sightDir);
-		level.alertEvents[bestSightEvent].light = level.alertEvents[bestSightEvent].addLight + G_GetLightLevel(
-			level.alertEvents[bestSightEvent].position, sightDir);
-		//return the sight event
+
+		level.alertEvents[bestSightEvent].light =
+			level.alertEvents[bestSightEvent].addLight +
+			G_GetLightLevel(level.alertEvents[bestSightEvent].position, sightDir);
+
 		return bestSightEvent;
 	}
-	//return the sound event
+
+	// ----------------------------------------------------------------------
+	// Otherwise return sound event
+	// ----------------------------------------------------------------------
 	return bestSoundEvent;
 }
 
@@ -585,27 +617,34 @@ AddSoundEvent
 */
 qboolean RemoveOldestAlert(void);
 
-void AddSoundEvent(gentity_t* owner, vec3_t position, const float radius, const alertEventLevel_e alertLevel, const qboolean needLOS, qboolean onGround)
+void AddSoundEvent(gentity_t* owner, vec3_t position, const float radius,
+	const alertEventLevel_e alertLevel,
+	const qboolean needLOS, qboolean onGround)
 {
+	// If full, try to remove oldest
 	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
 	{
 		if (!RemoveOldestAlert())
 		{
-			//how could that fail?
 			return;
 		}
 	}
 
-	if (owner == NULL && alertLevel < AEL_DANGER) //allows un-owned danger alerts
+	// SAFETY CLAMP: guarantee index is valid for MSVC analyzer
+	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
+	{
+		level.numAlertEvents = MAX_ALERT_EVENTS - 1;
+	}
+
+	if (owner == NULL && alertLevel < AEL_DANGER)
+	{
 		return;
+	}
 
 	if (owner && owner->client && owner->client->NPC_class == CLASS_SAND_CREATURE)
 	{
 		return;
 	}
-	//FIXME: if owner is not a player or player ally, and there are no player allies present,
-	//			perhaps we don't need to store the alert... unless we want the player to
-	//			react to enemy alert events in some way?
 
 	VectorCopy(position, level.alertEvents[level.numAlertEvents].position);
 
@@ -613,15 +652,7 @@ void AddSoundEvent(gentity_t* owner, vec3_t position, const float radius, const 
 	level.alertEvents[level.numAlertEvents].level = alertLevel;
 	level.alertEvents[level.numAlertEvents].type = AET_SOUND;
 	level.alertEvents[level.numAlertEvents].owner = owner;
-	if (needLOS)
-	{
-		//a very low-level sound, when check this sound event, check for LOS
-		level.alertEvents[level.numAlertEvents].addLight = 1; //will force an LOS trace on this sound
-	}
-	else
-	{
-		level.alertEvents[level.numAlertEvents].addLight = 0; //will force an LOS trace on this sound
-	}
+	level.alertEvents[level.numAlertEvents].addLight = needLOS ? 1 : 0;
 	level.alertEvents[level.numAlertEvents].onGround = onGround;
 	level.alertEvents[level.numAlertEvents].ID = level.curAlertID++;
 	level.alertEvents[level.numAlertEvents].timestamp = level.time;
@@ -635,25 +666,28 @@ AddSightEvent
 -------------------------
 */
 
-void AddSightEvent(gentity_t* owner, vec3_t position, const float radius, const alertEventLevel_e alertLevel,
-	const float addLight)
+void AddSightEvent(gentity_t* owner, vec3_t position, const float radius,
+	const alertEventLevel_e alertLevel, const float addLight)
 {
-	//FIXME: Handle this in another manner?
+	// If full, try to remove oldest
 	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
 	{
 		if (!RemoveOldestAlert())
 		{
-			//how could that fail?
 			return;
 		}
 	}
 
-	if (owner == NULL && alertLevel < AEL_DANGER) //allows un-owned danger alerts
-		return;
+	// SAFETY CLAMP: guarantee index is valid for MSVC analyzer
+	if (level.numAlertEvents >= MAX_ALERT_EVENTS)
+	{
+		level.numAlertEvents = MAX_ALERT_EVENTS - 1;
+	}
 
-	//FIXME: if owner is not a player or player ally, and there are no player allies present,
-	//			perhaps we don't need to store the alert... unless we want the player to
-	//			react to enemy alert events in some way?
+	if (owner == NULL && alertLevel < AEL_DANGER)
+	{
+		return;
+	}
 
 	VectorCopy(position, level.alertEvents[level.numAlertEvents].position);
 
@@ -662,7 +696,6 @@ void AddSightEvent(gentity_t* owner, vec3_t position, const float radius, const 
 	level.alertEvents[level.numAlertEvents].type = AET_SIGHT;
 	level.alertEvents[level.numAlertEvents].owner = owner;
 	level.alertEvents[level.numAlertEvents].addLight = addLight;
-	//will get added to actual light at that point when it's checked
 	level.alertEvents[level.numAlertEvents].ID = level.curAlertID++;
 	level.alertEvents[level.numAlertEvents].timestamp = level.time;
 
@@ -765,29 +798,46 @@ qboolean G_ClearLOS(gentity_t* self, const vec3_t start, const vec3_t end)
 	trace_t tr;
 	int traceCount = 0;
 
-	//FIXME: ENTITYNUM_NONE ok?
-	trap->Trace(&tr, start, NULL, NULL, end, ENTITYNUM_NONE,
-		CONTENTS_OPAQUE/*CONTENTS_SOLID*//*(CONTENTS_SOLID|CONTENTS_MONSTERCLIP)*/, qfalse, 0, 0);
-	while (tr.fraction < 1.0 && traceCount < 3)
+	// Initial trace
+	trap->Trace(&tr,
+		start,
+		NULL,
+		NULL,
+		end,
+		ENTITYNUM_NONE,
+		CONTENTS_OPAQUE,
+		qfalse,
+		0,
+		0);
+
+	while (tr.fraction < 1.0f && traceCount < 3)
 	{
-		//can see through 3 panes of glass
+		// Can see through up to 3 panes of glass
 		if (tr.entityNum < ENTITYNUM_WORLD)
 		{
-			if (&g_entities[tr.entityNum] != NULL && g_entities[tr.entityNum].r.svFlags & SVF_GLASS_BRUSH)
+			// FIX: remove meaningless &g_entities[...] != NULL check
+			if (g_entities[tr.entityNum].r.svFlags & SVF_GLASS_BRUSH)
 			{
-				//can see through glass, trace again, ignoring me
-				trap->Trace(&tr, tr.endpos, NULL, NULL, end, tr.entityNum, MASK_OPAQUE, qfalse, 0, 0);
+				trap->Trace(&tr,
+					tr.endpos,
+					NULL,
+					NULL,
+					end,
+					tr.entityNum,
+					MASK_OPAQUE,
+					qfalse,
+					0,
+					0);
+
 				traceCount++;
 				continue;
 			}
 		}
+
 		return qfalse;
 	}
 
-	if (tr.fraction == 1.0)
-		return qtrue;
-
-	return qfalse;
+	return (tr.fraction == 1.0f) ? qtrue : qfalse;
 }
 
 //Entity to position

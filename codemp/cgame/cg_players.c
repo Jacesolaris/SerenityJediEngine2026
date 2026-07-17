@@ -3284,6 +3284,11 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 				resume_frame = qtrue;
 			}
 			lf->animationTorsoSpeed = anim_speed_mult;
+			//make smooth animations
+			if ((is_holding_block_button_and_attack || is_holding_block_button) && cent->currentState.saberMove == LS_READY)
+			{
+				blendTime *= 1.8f;
+			}
 		}
 		else
 		{

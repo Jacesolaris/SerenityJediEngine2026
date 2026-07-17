@@ -408,10 +408,10 @@ public:
 		gi.linkentity(ent);
 	}
 
-	gentity_t* mEnt;
-	bool mCenter;
+	gentity_t* mEnt = nullptr;
+	bool mCenter = false;
 	CVec3 mOriginOffset;
-	bool mSoundPlayed;
+	bool mSoundPlayed = false;
 
 	bool Active() const
 	{
@@ -485,8 +485,8 @@ public:
 
 	CRailTrack* mTrack;
 	CRailLane* mLane;
-	int mCols;
-	int mRows;
+	int mCols = 0;
+	int mRows = 0;
 };
 
 ratl::vector_vs<CRailMover, MAX_MOVERS> mRailMovers;

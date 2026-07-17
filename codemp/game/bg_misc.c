@@ -2537,9 +2537,7 @@ int BG_GetItemIndexByTag(const int tag, const int type)
 //yeah..
 qboolean BG_IsItemSelectable(const int item)
 {
-	if (//item == HI_HEALTHDISP ||
-		//item == HI_AMMODISP ||
-		item == HI_JETPACK ||
+	if (item == HI_JETPACK ||
 		item == HI_GRAPPLE)
 	{
 		return qfalse;

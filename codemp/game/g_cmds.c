@@ -3220,7 +3220,7 @@ Cmd_SetViewpos_f
 */
 static void Cmd_SetViewpos_f(gentity_t* ent)
 {
-	vec3_t origin, angles;
+	vec3_t origin = { 0 }, angles = { 0 };
 	char buffer[MAX_TOKEN_CHARS];
 
 	if (trap->Argc() != 5)
@@ -3272,10 +3272,10 @@ void G_LeaveVehicle(gentity_t* ent, const qboolean con_check)
 
 int G_ItemUsable(const playerState_t* ps, int forcedUse)
 {
-	vec3_t fwd, fwdorg, dest;
-	vec3_t yawonly;
-	vec3_t mins, maxs;
-	vec3_t trtest;
+	vec3_t fwd, fwdorg = { 0 }, dest;
+	vec3_t yawonly = { 0 };
+	vec3_t mins = { 0 }, maxs = { 0 };
+	vec3_t trtest = { 0 };
 	trace_t tr;
 
 	// fix: dead players shouldn't use items
@@ -3313,7 +3313,6 @@ int G_ItemUsable(const playerState_t* ps, int forcedUse)
 			G_AddEvent(&g_entities[ps->clientNum], EV_ITEMUSEFAIL, SEEKER_ALREADYDEPLOYED);
 			return 0;
 		}
-
 		return 1;
 	case HI_SHIELD:
 		mins[0] = -8;

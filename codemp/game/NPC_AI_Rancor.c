@@ -213,61 +213,116 @@ void Rancor_Move()
 
 //---------------------------------------------------------
 
+// ============================================================================
+// Rancor_DropVictim
+//
+// Releases the entity currently held by the Rancor. Modernized to eliminate
+// MSVC C6011 (NULL dereference), add safety checks, explicit qboolean usage,
+// and debug prints instead of asserts.
+// ============================================================================
 void Rancor_DropVictim(gentity_t* self)
 {
-	if (self->activator)
+	// ----------------------------------------------------------------------
+	// Safety: validate self
+	// ----------------------------------------------------------------------
+	if (self == NULL)
 	{
-		if (self->activator->client)
+		Com_Printf("Rancor_DropVictim ERROR: self == NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// If no activator, nothing to drop
+	// ----------------------------------------------------------------------
+	if (self->activator == NULL)
+	{
+		self->count = 0;
+		return;
+	}
+
+	gentity_t* act = self->activator;
+
+	// ----------------------------------------------------------------------
+	// Clear client-held flags if client exists
+	// ----------------------------------------------------------------------
+	if (act->client != NULL)
+	{
+		act->client->ps.eFlags2 &= ~EF2_HELD_BY_MONSTER;
+		act->client->ps.hasLookTarget = qfalse;
+		act->client->ps.lookTarget = ENTITYNUM_NONE;
+
+		act->client->ps.viewangles[ROLL] = 0;
+		SetClientViewAngle(act, act->client->ps.viewangles);
+
+		act->r.currentAngles[PITCH] = 0;
+		act->r.currentAngles[ROLL] = 0;
+		G_SetAngles(act, act->r.currentAngles);
+	}
+
+	// ----------------------------------------------------------------------
+	// Handle dead victim
+	// ----------------------------------------------------------------------
+	if (act->health <= 0)
+	{
+		// never free player
+		if (self->count == 1)
 		{
-			self->activator->client->ps.eFlags2 &= ~EF2_HELD_BY_MONSTER;
-			self->activator->client->ps.hasLookTarget = qfalse;
-			self->activator->client->ps.lookTarget = ENTITYNUM_NONE;
-			self->activator->client->ps.viewangles[ROLL] = 0;
-			SetClientViewAngle(self->activator, self->activator->client->ps.viewangles);
-			self->activator->r.currentAngles[PITCH] = self->activator->r.currentAngles[ROLL] = 0;
-			G_SetAngles(self->activator, self->activator->r.currentAngles);
-		}
-		if (self->activator->health <= 0)
-		{
-			//never free player
-			if (self->count == 1)
+			// in hand → drop normally
+			if (act->client != NULL)
 			{
-				//in my hand, just drop them
-				if (self->activator->client)
-				{
-					self->activator->client->ps.legsTimer = self->activator->client->ps.torsoTimer = 0;
-				}
-			}
-			else
-			{
-				if (self->activator->client)
-				{
-					self->activator->client->ps.eFlags |= EF_NODRAW; //so his corpse doesn't drop out of me...
-				}
+				act->client->ps.legsTimer = 0;
+				act->client->ps.torsoTimer = 0;
 			}
 		}
 		else
 		{
-			if (self->activator->NPC)
+			// corpse inside Rancor → hide it
+			if (act->client != NULL)
 			{
-				//start thinking again
-				self->activator->NPC->nextBStateThink = level.time;
+				act->client->ps.eFlags |= EF_NODRAW;
 			}
-			//clear their anim and let them fall
-			self->activator->client->ps.legsTimer = self->activator->client->ps.torsoTimer = 0;
 		}
-		if (self->enemy == self->activator)
-		{
-			self->enemy = NULL;
-		}
-		if (self->activator->s.number == 0)
-		{
-			//don't attack the player again for a bit
-			TIMER_Set(self, "attackDebounce", Q_irand(1000, 2000 + (2 - g_npcspskill.integer) * 2000));
-		}
-		self->activator = NULL;
 	}
-	self->count = 0; //drop him
+	else
+	{
+		// ------------------------------------------------------------------
+		// Living victim: resume thinking and clear anim timers
+		// ------------------------------------------------------------------
+		if (act->NPC != NULL)
+		{
+			act->NPC->nextBStateThink = level.time;
+		}
+
+		if (act->client != NULL)
+		{
+			act->client->ps.legsTimer = 0;
+			act->client->ps.torsoTimer = 0;
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Clear enemy pointer if it was the activator
+	// ----------------------------------------------------------------------
+	if (self->enemy == act)
+	{
+		self->enemy = NULL;
+	}
+
+	// ----------------------------------------------------------------------
+	// Player-specific cooldown
+	// ----------------------------------------------------------------------
+	if (act->s.number == 0)
+	{
+		TIMER_Set(self,
+			"attackDebounce",
+			Q_irand(1000, 2000 + (2 - g_npcspskill.integer) * 2000));
+	}
+
+	// ----------------------------------------------------------------------
+	// Final cleanup
+	// ----------------------------------------------------------------------
+	self->activator = NULL;
+	self->count = 0;
 }
 
 static void Rancor_Swing(const int boltIndex, const qboolean try_grab)
@@ -881,68 +936,138 @@ static void Rancor_Combat(void)
 NPC_Rancor_Pain
 -------------------------
 */
+// ============================================================================
+// NPC_Rancor_Pain
+//
+// Handles pain reactions for Rancor NPCs. Modernized to eliminate MSVC C6011
+// (NULL dereference), add safety checks, explicit qboolean usage, and debug
+// prints instead of asserts.
+// ============================================================================
 void NPC_Rancor_Pain(gentity_t* self, gentity_t* attacker, const int damage)
 {
+	// ----------------------------------------------------------------------
+	// Safety: validate pointers
+	// ----------------------------------------------------------------------
+	if (self == NULL)
+	{
+		Com_Printf("NPC_Rancor_Pain ERROR: self == NULL\n");
+		return;
+	}
+
+	if (self->NPC == NULL)
+	{
+		Com_Printf("NPC_Rancor_Pain ERROR: self->NPC == NULL for ent %d\n", self->s.number);
+		return;
+	}
+
+	if (self->client == NULL)
+	{
+		Com_Printf("NPC_Rancor_Pain ERROR: self->client == NULL for ent %d\n", self->s.number);
+		return;
+	}
+
 	qboolean hit_by_rancor = qfalse;
 
-	if (self->NPC && self->NPC->ignorePain)
+	// ----------------------------------------------------------------------
+	// Ignore pain flag
+	// ----------------------------------------------------------------------
+	if (self->NPC->ignorePain == qtrue)
 	{
 		return;
 	}
-	if (!TIMER_Done(self, "breathAttack"))
+
+	// ----------------------------------------------------------------------
+	// Breath attack cannot be interrupted
+	// ----------------------------------------------------------------------
+	if (TIMER_Done(self, "breathAttack") == qfalse)
 	{
-		//nothing interrupts breath attack
 		return;
 	}
 
 	TIMER_Remove(self, "confusionTime");
 
-	if (attacker && attacker->client && attacker->client->NPC_class == CLASS_RANCOR)
+	// ----------------------------------------------------------------------
+	// Check if attacker is another Rancor
+	// ----------------------------------------------------------------------
+	if (attacker != NULL &&
+		attacker->client != NULL &&
+		attacker->client->NPC_class == CLASS_RANCOR)
 	{
 		hit_by_rancor = qtrue;
 	}
-	if (attacker
-		&& attacker->inuse
-		&& attacker != self->enemy
-		&& !(attacker->flags & FL_NOTARGET))
+
+	// ----------------------------------------------------------------------
+	// Evaluate switching enemies
+	// ----------------------------------------------------------------------
+	if (attacker != NULL &&
+		attacker->inuse == qtrue &&
+		attacker != self->enemy &&
+		!(attacker->flags & FL_NOTARGET))
 	{
-		if (!self->count)
+		if (self->count == 0)
 		{
-			if (attacker->s.number < MAX_CLIENTS && !Q_irand(0, 3)
-				|| !self->enemy
-				|| self->enemy->health <= 0
-				|| self->enemy->client && self->enemy->client->NPC_class == CLASS_RANCOR
-				|| !Q_irand(0, 4) && DistanceSquared(attacker->r.currentOrigin, self->r.currentOrigin) <
-				DistanceSquared(self->enemy->r.currentOrigin, self->r.currentOrigin))
+			const qboolean attackerIsPlayer =
+				(attacker->s.number < MAX_CLIENTS) ? qtrue : qfalse;
+
+			const qboolean enemyDead =
+				(self->enemy == NULL || self->enemy->health <= 0) ? qtrue : qfalse;
+
+			const qboolean enemyIsRancor =
+				(self->enemy != NULL &&
+					self->enemy->client != NULL &&
+					self->enemy->client->NPC_class == CLASS_RANCOR) ? qtrue : qfalse;
+
+			const qboolean closerThanEnemy =
+				(self->enemy != NULL &&
+					DistanceSquared(attacker->r.currentOrigin, self->r.currentOrigin) <
+					DistanceSquared(self->enemy->r.currentOrigin, self->r.currentOrigin)) ? qtrue : qfalse;
+
+			if ((attackerIsPlayer && !Q_irand(0, 3)) ||
+				enemyDead == qtrue ||
+				enemyIsRancor == qtrue ||
+				(!Q_irand(0, 4) && closerThanEnemy == qtrue))
 			{
-				//if my enemy is dead (or attacked by player) and I'm not still holding/eating someone, turn on the attacker
-				//FIXME: if can't nav to my enemy, take this guy if I can nav to him
 				self->lastEnemy = self->enemy;
 				G_SetEnemy(self, attacker);
 
 				TIMER_Set(self, "lookForNewEnemy", Q_irand(5000, 15000));
-				if (hit_by_rancor)
+
+				if (hit_by_rancor == qtrue)
 				{
-					//stay mad at this Rancor for 2-5 secs before looking for attacker enemies
 					TIMER_Set(self, "rancorInfight", Q_irand(2000, 5000));
 				}
 			}
 		}
 	}
-	if ((hit_by_rancor || self->count == 1 && self->activator && !Q_irand(0, 4) || Q_irand(0, 200) < damage)
-		//hit by rancor, hit while holding live victim, or took a lot of damage
-		&& self->client->ps.legsAnim != BOTH_STAND1TO2
-		&& TIMER_Done(self, "takingPain"))
+
+	// ----------------------------------------------------------------------
+	// Determine whether to play pain animation
+	// ----------------------------------------------------------------------
+	const qboolean holdingLiveVictim =
+		(self->count == 1 && self->activator != NULL && !Q_irand(0, 4)) ? qtrue : qfalse;
+
+	const qboolean tookHeavyDamage =
+		(Q_irand(0, 200) < damage) ? qtrue : qfalse;
+
+	const qboolean canPain =
+		(hit_by_rancor == qtrue || holdingLiveVictim == qtrue || tookHeavyDamage == qtrue) ? qtrue : qfalse;
+
+	if (canPain == qtrue &&
+		self->client->ps.legsAnim != BOTH_STAND1TO2 &&
+		TIMER_Done(self, "takingPain") == qtrue)
 	{
-		if (!Rancor_CheckRoar(self))
+		if (Rancor_CheckRoar(self) == qfalse)
 		{
-			if (self->client->ps.legsAnim != BOTH_MELEE1
-				&& self->client->ps.legsAnim != BOTH_MELEE2
-				&& self->client->ps.legsAnim != BOTH_ATTACK2
-				&& self->client->ps.legsAnim != BOTH_ATTACK10
-				&& self->client->ps.legsAnim != BOTH_ATTACK11)
-			{//cant interrupt one of the big attack anims
-				if (self->health > 100 || hit_by_rancor)
+			// Cannot interrupt major attack animations
+			const int anim = self->client->ps.legsAnim;
+
+			if (anim != BOTH_MELEE1 &&
+				anim != BOTH_MELEE2 &&
+				anim != BOTH_ATTACK2 &&
+				anim != BOTH_ATTACK10 &&
+				anim != BOTH_ATTACK11)
+			{
+				if (self->health > 100 || hit_by_rancor == qtrue)
 				{
 					TIMER_Remove(self, "attacking");
 
@@ -950,18 +1075,21 @@ void NPC_Rancor_Pain(gentity_t* self, gentity_t* attacker, const int damage)
 
 					if (self->count == 1)
 					{
-						NPC_SetAnim(self, SETANIM_BOTH, BOTH_PAIN2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+						NPC_SetAnim(self, SETANIM_BOTH, BOTH_PAIN2,
+							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					}
 					else
 					{
-						NPC_SetAnim(self, SETANIM_BOTH, BOTH_PAIN1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+						NPC_SetAnim(self, SETANIM_BOTH, BOTH_PAIN1,
+							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					}
-					TIMER_Set(self, "takingPain", self->client->ps.legsTimer + Q_irand(0, 500 * (2 - g_npcspskill.integer)));
 
-					if (self->NPC)
-					{
-						self->NPC->localState = LSTATE_WAITING;
-					}
+					TIMER_Set(self,
+						"takingPain",
+						self->client->ps.legsTimer +
+						Q_irand(0, 500 * (2 - g_npcspskill.integer)));
+
+					self->NPC->localState = LSTATE_WAITING;
 				}
 			}
 		}

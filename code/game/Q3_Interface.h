@@ -962,7 +962,7 @@ public:
 	void Lerp2Pos(int taskID, int entID, vec3_t origin, vec3_t angles, float duration) OVERRIDE;
 	void Lerp2Angles(int taskID, int entID, vec3_t angles, float duration) OVERRIDE;
 	int GetTag(int entID, const char* name, int lookup, vec3_t info) OVERRIDE;
-	void Set(int task_id, int entID, const char* type_name, const char* data) OVERRIDE;
+	void Set(int taskID, int entID, const char* type_name, const char* data) OVERRIDE;
 	void Use(int entID, const char* name) OVERRIDE;
 	void Activate(int entID, const char* name) OVERRIDE;
 	void Deactivate(int entID, const char* name) OVERRIDE;

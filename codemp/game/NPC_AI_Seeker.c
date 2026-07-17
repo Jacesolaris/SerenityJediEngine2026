@@ -471,71 +471,135 @@ static void Seeker_Attack(void)
 }
 
 //------------------------------------
+// ============================================================================
+// Seeker_FindEnemy
+//
+// Finds the closest visible enemy within seeker radius. Modernized to eliminate
+// MSVC C6262 (large stack allocation), add safety checks, explicit qboolean
+// usage, and debug prints instead of asserts.
+// ============================================================================
 static void Seeker_FindEnemy(void)
 {
-	float bestDis = SEEKER_SEEK_RADIUS * SEEKER_SEEK_RADIUS + 1;
-	vec3_t mins, maxs;
-	int entity_list[MAX_GENTITIES];
-	gentity_t* best = NULL;
-	float closestDist = SEEKER_SEEK_RADIUS * SEEKER_SEEK_RADIUS + 1;
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC == NULL)
+	{
+		Com_Printf("Seeker_FindEnemy ERROR: NPCS.NPC == NULL\n");
+		return;
+	}
 
-	if (NPCS.NPC->activator && NPCS.NPC->activator->client->ps.weapon == WP_SABER && !NPCS.NPC->activator->client->ps.
-		saberHolstered)
+	if (NPCS.NPC->client == NULL)
+	{
+		Com_Printf("Seeker_FindEnemy ERROR: NPCS.NPC->client == NULL\n");
+		return;
+	}
+
+	float bestDis = SEEKER_SEEK_RADIUS * SEEKER_SEEK_RADIUS + 1.0f;
+	float closestDist = SEEKER_SEEK_RADIUS * SEEKER_SEEK_RADIUS + 1.0f;
+
+	vec3_t mins;
+	vec3_t maxs;
+
+	// ----------------------------------------------------------------------
+	// Move large array off the stack (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static int entity_list[MAX_GENTITIES];
+
+	gentity_t* best = NULL;
+
+	// ----------------------------------------------------------------------
+	// If owner is using an unsheathed saber → seeker shuts down
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC->activator != NULL &&
+		NPCS.NPC->activator->client != NULL &&
+		NPCS.NPC->activator->client->ps.weapon == WP_SABER &&
+		NPCS.NPC->activator->client->ps.saberHolstered == qfalse)
 	{
 		NPCS.NPC->enemy = NULL;
 		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// Build search box around seeker
+	// ----------------------------------------------------------------------
 	VectorSet(maxs, SEEKER_SEEK_RADIUS, SEEKER_SEEK_RADIUS, SEEKER_SEEK_RADIUS);
-	VectorScale(maxs, -1, mins);
-	//without this, the seekers are just scanning in terms of the world coordinates instead of around themselves, which is bad.
+	VectorScale(maxs, -1.0f, mins);
+
 	VectorAdd(maxs, NPCS.NPC->r.currentOrigin, maxs);
 	VectorAdd(mins, NPCS.NPC->r.currentOrigin, mins);
 
-	const int num_found = trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+	// ----------------------------------------------------------------------
+	// Query entities in box
+	// ----------------------------------------------------------------------
+	const int num_found =
+		trap->EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
+	// ----------------------------------------------------------------------
+	// Evaluate each entity
+	// ----------------------------------------------------------------------
 	for (int i = 0; i < num_found; i++)
 	{
-		gentity_t* ent = &g_entities[entity_list[i]];
+		const int entNum = entity_list[i];
 
-		if (ent->s.number == NPCS.NPC->s.number
-			|| !ent->client
-			|| ent->health <= 0
-			|| !ent->inuse)
+		if (entNum < 0 || entNum >= MAX_GENTITIES)
 		{
 			continue;
 		}
 
-		if (OnSameTeam(NPCS.NPC->activator, ent))
+		gentity_t* ent = &g_entities[entNum];
+
+		// Skip invalid targets
+		if (ent->s.number == NPCS.NPC->s.number ||
+			ent->client == NULL ||
+			ent->health <= 0 ||
+			ent->inuse == qfalse)
 		{
-			//our owner is on the same team as this entity, don't target them.
 			continue;
 		}
 
-		//dont attack our owner
+		// Skip teammates
+		if (OnSameTeam(NPCS.NPC->activator, ent) == qtrue)
+		{
+			continue;
+		}
+
+		// Skip owner
 		if (NPCS.NPC->activator == ent)
-			continue;
-
-		if (ent->s.NPC_class == CLASS_VEHICLE)
-			continue;
-
-		if (ent->client->playerTeam == NPCS.NPC->client->playerTeam || ent->client->playerTeam == NPCTEAM_NEUTRAL)
-			// don't attack same team or bots
 		{
 			continue;
 		}
 
-		const float dis = DistanceHorizontalSquared(NPCS.NPC->r.currentOrigin, ent->r.currentOrigin);
+		// Skip vehicles
+		if (ent->s.NPC_class == CLASS_VEHICLE)
+		{
+			continue;
+		}
+
+		// Skip same team or neutral
+		if (ent->client->playerTeam == NPCS.NPC->client->playerTeam ||
+			ent->client->playerTeam == NPCTEAM_NEUTRAL)
+		{
+			continue;
+		}
+
+		// Compute horizontal distance
+		const float dis =
+			DistanceHorizontalSquared(NPCS.NPC->r.currentOrigin,
+				ent->r.currentOrigin);
 
 		if (dis <= closestDist)
+		{
 			closestDist = dis;
+		}
 
-		// try to find the closest visible one
-		if (!NPC_ClearLOS4(ent))
+		// Must have LOS
+		if (NPC_ClearLOS4(ent) == qfalse)
 		{
 			continue;
 		}
 
+		// Track closest visible enemy
 		if (dis <= bestDis)
 		{
 			bestDis = dis;
@@ -543,31 +607,48 @@ static void Seeker_FindEnemy(void)
 		}
 	}
 
-	if (best)
+	// ----------------------------------------------------------------------
+	// Assign enemy if found
+	// ----------------------------------------------------------------------
+	if (best != NULL)
 	{
-		if (!NPCS.NPC->enemy)
+		if (NPCS.NPC->enemy == NULL)
 		{
-			// used to offset seekers around a circle so they don't occupy the same spot.  This is not a fool-proof method.
-			NPCS.NPC->random = Q_flrand(0.0f, 1.0f) * 6.3f; // roughly 2pi
+			NPCS.NPC->random = Q_flrand(0.0f, 1.0f) * 6.3f; // ~2π
 			NPCS.NPC->enemy = best;
 		}
 	}
-	//positive radius, check with los in mind
+
+	// ----------------------------------------------------------------------
+	// Fly sound debounce logic
+	// ----------------------------------------------------------------------
 	if (NPCS.NPC->radius > 0)
 	{
-		if (best && bestDis <= NPCS.NPC->radius)
-			NPCS.NPC->fly_sound_debounce_time = level.time + (int)floor(2500.0f * (bestDis / NPCS.NPC->radius)) + 500;
+		if (best != NULL && bestDis <= NPCS.NPC->radius)
+		{
+			NPCS.NPC->fly_sound_debounce_time =
+				level.time +
+				(int)floorf(2500.0f * (bestDis / NPCS.NPC->radius)) +
+				500;
+		}
 		else
+		{
 			NPCS.NPC->fly_sound_debounce_time = -1;
+		}
 	}
-	//negitive radius, check only closest without los
 	else if (NPCS.NPC->radius < 0)
 	{
 		if (closestDist <= -NPCS.NPC->radius)
-			NPCS.NPC->fly_sound_debounce_time = level.time + (int)floor(2500.0f * (closestDist / -NPCS.NPC->radius)) +
-			500;
+		{
+			NPCS.NPC->fly_sound_debounce_time =
+				level.time +
+				(int)floorf(2500.0f * (closestDist / -NPCS.NPC->radius)) +
+				500;
+		}
 		else
+		{
 			NPCS.NPC->fly_sound_debounce_time = -1;
+		}
 	}
 }
 
@@ -617,7 +698,7 @@ static void Seeker_FollowPlayer(void)
 	if (dis < min_dist_sqr)
 	{
 		vec3_t dir;
-		vec3_t pt;
+		vec3_t pt = { 0 };
 		// generally circle the player closely till we take an enemy..this is our target point
 		if (NPCS.NPC->client->NPC_class == CLASS_BOBAFETT)
 		{
@@ -798,7 +879,7 @@ static void Seeker_FollowOwner(void)
 	if (dis < min_dist_sqr)
 	{
 		vec3_t dir;
-		vec3_t pt;
+		vec3_t pt = { 0 };
 		// generally circle the player closely till we take an enemy..this is our target point
 		if (NPCS.NPC->client->NPC_class == CLASS_BOBAFETT)
 		{

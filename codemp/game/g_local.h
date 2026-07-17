@@ -1417,6 +1417,9 @@ void ItemUse_MedPack_Big(gentity_t* ent);
 void ItemUse_Decca(gentity_t* ent);
 void ItemUse_Swoop(gentity_t* ent);
 
+void ItemUse_ATST(gentity_t* ent);
+void ItemUse_Rancor(gentity_t* ent);
+
 void G_CheckTeamItems(void);
 void G_RunItem(gentity_t* ent);
 void RespawnItem(gentity_t* ent);

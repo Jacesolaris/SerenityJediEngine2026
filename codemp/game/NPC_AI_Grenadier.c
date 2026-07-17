@@ -401,18 +401,51 @@ static void Grenadier_CheckFireState(void)
 	}
 }
 
+// ============================================================================
+// Grenadier_EvaluateShot
+//
+// Determines whether the grenadier NPC should fire based on what the trace hit.
+// Modernized to remove invalid address checks, add safety, and eliminate MSVC
+// warning C6397.
+// ============================================================================
 static qboolean Grenadier_EvaluateShot(const int hit)
 {
-	if (!NPCS.NPC->enemy)
+	// ----------------------------------------------------------------------
+	// Safety: validate NPC and enemy pointers
+	// ----------------------------------------------------------------------
+	if (NPCS.NPC == NULL || NPCS.NPC->enemy == NULL)
 	{
+		Com_Printf("Grenadier_EvaluateShot: NPC or NPC->enemy is NULL\n");
 		return qfalse;
 	}
 
-	if (hit == NPCS.NPC->enemy->s.number || &g_entities[hit] != NULL && g_entities[hit].r.svFlags & SVF_GLASS_BRUSH)
+	// ----------------------------------------------------------------------
+	// Safety: validate hit index
+	// ----------------------------------------------------------------------
+	if (hit < 0 || hit >= MAX_GENTITIES)
 	{
-		//can hit enemy or will hit glass, so shoot anyway
+		Com_Printf("Grenadier_EvaluateShot: invalid entity index %d\n", hit);
+		return qfalse;
+	}
+
+	gentity_t* ent = &g_entities[hit];
+
+	// ----------------------------------------------------------------------
+	// If we hit the enemy directly → shoot
+	// ----------------------------------------------------------------------
+	if (hit == NPCS.NPC->enemy->s.number)
+	{
 		return qtrue;
 	}
+
+	// ----------------------------------------------------------------------
+	// If we hit glass → shoot
+	// ----------------------------------------------------------------------
+	if ((ent->r.svFlags & SVF_GLASS_BRUSH) != 0)
+	{
+		return qtrue;
+	}
+
 	return qfalse;
 }
 
