@@ -4126,7 +4126,7 @@ void STEER::DeActivate(gentity_t* actor, usercmd_t* ucmd)
 			}
 			else
 			{
-				ucmd->buttons &= ~BUTTON_WALKING;
+				ucmd->buttons &= ~(BUTTON_WALKING);
 			}
 
 			// Handle Fly Swim Movement

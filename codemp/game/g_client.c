@@ -5130,6 +5130,7 @@ static void G_AssignClassAndScaleFromModel(gentity_t* ent, const int clientNum, 
 			|| Class_Model(model, "darthvader/anh")
 			|| Class_Model(model, "darthvader/battle")
 			|| Class_Model(model, "vaderVM")
+			|| Class_Model(model, "vadervm/default")
 			|| Class_Model(model, "vader/")
 			|| Class_Model(model, "vader/main")
 			|| Class_Model(model, "vader/main2")

@@ -1484,6 +1484,15 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 					stateBits |= GLS_DEPTHMASK_TRUE;
 				}
 			}
+
+			if (backEnd.currentEntity == &backEnd.entityFlare)
+			{
+				// Disable depth test for flares, looks better and makes more sense
+				// slightly diverges from vanilla like that
+				stateBits |= GLS_DEPTHTEST_DISABLE;
+				// also remove all depth writes on flares
+				stateBits &= ~GLS_DEPTHMASK_TRUE;
+			}
 			if (backEnd.currentEntity->e.renderfx & RF_ALPHA_FADE)
 			{
 				if (backEnd.currentEntity->e.shaderRGBA[3] < 255)

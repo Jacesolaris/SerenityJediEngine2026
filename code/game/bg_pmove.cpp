@@ -165,6 +165,7 @@ extern cvar_t* g_stepSlideFix;
 extern cvar_t* g_noIgniteTwirl;
 extern void TurnBarrierOff(gentity_t* ent);
 extern cvar_t* g_HitTracking;
+extern void PM_RemoveGunnerAimFlag(qboolean removeFlag);
 
 int PM_BlockingPoseForsaber_anim_levelDual(void);
 int PM_BlockingPoseForsaber_anim_levelStaff(void);
@@ -2930,6 +2931,7 @@ static qboolean PM_IsGunner()
 	case WP_TRIP_MINE:
 	case WP_DET_PACK:
 	case WP_CONCUSSION:
+	case WP_MELEE:
 	case WP_STUN_BATON:
 	case WP_BRYAR_PISTOL:
 	case WP_TUSKEN_RIFLE:
@@ -3077,7 +3079,7 @@ static void PM_LadderMove()
 	}
 	else
 	{
-		if (PM_IsGunner())
+		if (PM_IsGunner() == qtrue)
 		{
 			G_SetWeapon(pm->gent, WP_MELEE);
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/change.wav");
@@ -9868,6 +9870,113 @@ static void PM_SwimFloatAnim()
 PM_Footsteps
 ===============
 */
+
+// ============================================================================
+// PM_HandleSprint
+//
+// Handles activation of sprint state for players and NPCs, respecting
+// botclass restrictions and active force powers. This helper only
+// *enables* sprint; disabling/clearing sprint flags is handled elsewhere.
+// ============================================================================
+static void PM_HandleSprint(qboolean is_wanting_sprint)
+{
+	// ----------------------------------------------------------------------
+	// Safety: validate pm and pm_entSelf before use
+	// ----------------------------------------------------------------------
+	if (pm == NULL || pm->ps == NULL)
+	{
+		Com_Printf("PM_HandleSprint ERROR: pm or pm->ps is NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// class restrictions: SBD and Jawa cannot sprint
+	// ----------------------------------------------------------------------
+	if (pm->gent->client->NPC_class == CLASS_SBD || pm->gent->client->NPC_class == CLASS_JAWA)
+	{
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Force powers override sprinting: Rage and Speed
+	// ----------------------------------------------------------------------
+	if ((pm->ps->forcePowersActive & (1 << FP_RAGE)) || (pm->ps->forcePowersActive & (1 << FP_SPEED)))
+	{
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Sprint activation
+	// ----------------------------------------------------------------------
+	if (is_wanting_sprint == qtrue)
+	{
+		if (PM_IsGunner() == qtrue)
+		{
+			if ((pm->ps->PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) == 0)
+			{
+				pm->ps->PlayerEffectFlags |= (1 << PEF_WEAPONSPRINTING);
+				g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
+				if (pm->ps->sprintFuel < 17)
+				{
+					pm->ps->sprintFuel -= 10;
+				}
+			}
+		}
+		else
+		{
+			if ((pm->ps->PlayerEffectFlags & (1 << PEF_SPRINTING)) == 0)
+			{
+				pm->ps->PlayerEffectFlags |= (1 << PEF_SPRINTING);
+				g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
+				if (pm->ps->sprintFuel < 17)
+				{
+					pm->ps->sprintFuel -= 10;
+				}
+			}
+		}
+		// cant sprint and aim at the same time
+		if ((pm->ps->communicatingflags & (1 << CF_AIMINGGUN)) != 0)
+		{
+			// Clear aiming gun flag
+			PM_RemoveGunnerAimFlag(qtrue);
+		}
+	}
+}
+
+// ============================================================================
+// PM_RemoveSprintFlag
+//
+// Clears all sprint-related flags (PEF_SPRINTING and PEF_WEAPONSPRINTING and CF_AIMINGGUN).
+// This helper is called whenever sprinting should stop.
+// ============================================================================
+static void PM_RemoveSprintFlag(qboolean removeFlag)
+{
+	// ----------------------------------------------------------------------
+	// Safety: validate pm and pm->ps
+	// ----------------------------------------------------------------------
+	if (pm == NULL || pm->ps == NULL)
+	{
+		Com_Printf("PM_RemoveSprintFlag ERROR: pm or pm->ps is NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Only remove sprint flags when explicitly requested
+	// ----------------------------------------------------------------------
+	if (removeFlag == qtrue)
+	{
+		// Check if any sprint flag is active
+		if (((pm->ps->PlayerEffectFlags & (1 << PEF_SPRINTING)) != 0) ||
+			((pm->ps->PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) != 0))
+		{
+			// Clear both sprint flags
+			pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
+			pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
+			g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
+		}
+	}
+}
+
 static void PM_Footsteps(void)
 {
 	float bobmove;
@@ -9879,6 +9988,7 @@ static void PM_Footsteps(void)
 
 	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean is_wanting_sprint = ((pm->cmd.forwardmove || pm->cmd.rightmove) && (pm->cmd.buttons & BUTTON_BLOCK) && ((!(pm->cmd.buttons & BUTTON_WALKING))) && (pm->ps->sprintFuel > 15)) ? qtrue : qfalse;
 
 	if (pm->gent == nullptr || pm->gent->client == nullptr)
 	{
@@ -9973,7 +10083,7 @@ static void PM_Footsteps(void)
 					}
 					else
 					{
-						if (PM_IsGunner())
+						if (PM_IsGunner() == qtrue)
 						{
 							G_SetWeapon(pm->gent, WP_MELEE);
 							G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/change.wav");
@@ -10460,14 +10570,6 @@ static void PM_Footsteps(void)
 				}
 			}
 		}
-
-		if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-			pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-		{
-			pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-			pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-			g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-		}
 		return;
 	}
 
@@ -10568,13 +10670,7 @@ static void PM_Footsteps(void)
 		}
 		// ducked characters never play footsteps
 
-		if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-			pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-		{
-			pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-			pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-			g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-		}
+		PM_RemoveSprintFlag(qtrue);
 	}
 	else if (pm->ps->pm_flags & PMF_BACKWARDS_RUN)
 	{
@@ -10681,13 +10777,7 @@ static void PM_Footsteps(void)
 			}
 		}
 
-		if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-			pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-		{
-			pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-			pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-			g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-		}
+		PM_RemoveSprintFlag(qtrue);
 	}
 	else
 	{
@@ -10723,273 +10813,146 @@ static void PM_Footsteps(void)
 				{
 					if (pm->ps->saberAnimLevel == SS_STAFF)
 					{
-						if (pm->ps->forcePowersActive & 1 << FP_SPEED)
+						if ((pm->ps->forcePowersActive & (1 << FP_SPEED)) != 0)
 						{
 							PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT, setAnimFlags);
 						}
 						else
 						{
-							if (is_holding_block_button && pm->ps->sprintFuel > 15) // staff sprint here
+							if (is_wanting_sprint) // staff sprint here
 							{
-								//This controls saber movement anims //JaceSolaris
 								PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN_STAFF, setAnimFlags);
 
-								if (!(pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING))
-								{
-									pm->ps->PlayerEffectFlags |= 1 << PEF_SPRINTING;
-									g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-									if (pm->ps->sprintFuel < 17) // single sprint here
-									{
-										pm->ps->sprintFuel -= 10;
-									}
-								}
+								PM_HandleSprint(qtrue);
 							}
 							else
 							{
 								PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN1, setAnimFlags);
 
-								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-									pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-								{
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-									g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-								}
+								PM_RemoveSprintFlag(qtrue);
 							}
 						}
 					}
 					else if (pm->ps->saberAnimLevel == SS_DUAL)
 					{
-						if (pm->ps->forcePowersActive & 1 << FP_SPEED)
+						if ((pm->ps->forcePowersActive & (1 << FP_SPEED)) != 0)
 						{
 							PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT, setAnimFlags);
 						}
 						else
 						{
-							if (is_holding_block_button && pm->ps->sprintFuel > 15) //dual sprint here
+							if (is_wanting_sprint) //dual sprint here
 							{
-								//This controls saber movement anims //JaceSolaris
-								PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN_DUAL, setAnimFlags);
-
-								if (!(pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING))
+								if (pm->ps->saber[0].type == SABER_GRIE)
 								{
-									pm->ps->PlayerEffectFlags |= 1 << PEF_SPRINTING;
-									g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-									if (pm->ps->sprintFuel < 17) // single sprint here
-									{
-										pm->ps->sprintFuel -= 10;
-									}
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
 								}
+								else if (pm->ps->saber[0].type == SABER_GRIE4)
+								{
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
+								}
+								else
+								{
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN_DUAL, setAnimFlags);
+								}
+
+								PM_HandleSprint(qtrue);
 							}
 							else
 							{
 								PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN1, setAnimFlags);
 
-								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-									pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-								{
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-									g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-								}
+								PM_RemoveSprintFlag(qtrue);
 							}
 						}
 					}
-					else
+					else if (pm->ps->saberAnimLevel == SS_FAST
+						|| pm->ps->saberAnimLevel == SS_MEDIUM
+						|| pm->ps->saberAnimLevel == SS_STRONG
+						|| pm->ps->saberAnimLevel == SS_DESANN
+						|| pm->ps->saberAnimLevel == SS_TAVION)
 					{
-						if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
+						if ((pm->ps->forcePowersActive & (1 << FP_SPEED)) != 0)
 						{
-							PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN2, setAnimFlags);
+							PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT, setAnimFlags);
 						}
 						else
 						{
-							if (pm->ps->forcePowersActive & 1 << FP_SPEED)
+							if (is_wanting_sprint)
 							{
-								PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT, setAnimFlags);
+								PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT_SABER, setAnimFlags);
+
+								PM_HandleSprint(qtrue);
 							}
 							else
 							{
-								if (is_holding_block_button && pm->ps->sprintFuel > 15) // single sprint here
+								if (pm->ps->saber[0].type == SABER_BACKHAND || pm->ps->saber[0].type == SABER_ASBACKHAND)
 								{
-									//This controls saber movement anims //JaceSolaris
-									if (pm->ps->saber[0].type == SABER_BACKHAND
-										|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
-									{
-										PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN_STAFF, setAnimFlags);
-									}
-									else if (pm->ps->saber[0].type == SABER_YODA) //saber yoda
-									{
-										PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN10, setAnimFlags);
-									}
-									else if (pm->ps->saber[0].type == SABER_GRIE) //saber kylo
-									{
-										PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
-									}
-									else if (pm->ps->saber[0].type == SABER_GRIE4) //saber kylo
-									{
-										PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
-									}
-									else
-									{
-										//This controls saber movement anims //JaceSolaris
-										PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT_SABER, setAnimFlags);
-									}
-
-									if (!(pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING))
-									{
-										pm->ps->PlayerEffectFlags |= 1 << PEF_SPRINTING;
-										g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-										if (pm->ps->sprintFuel < 17) // single sprint here
-										{
-											pm->ps->sprintFuel -= 10;
-										}
-									}
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN_STAFF, setAnimFlags);
+								}
+								else if (pm->ps->saber[0].type == SABER_YODA) //saber yoda
+								{
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN10, setAnimFlags);
+								}
+								else if (pm->ps->saber[0].type == SABER_GRIE) //saber kylo
+								{
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
+								}
+								else if (pm->ps->saber[0].type == SABER_GRIE4) //saber kylo
+								{
+									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
 								}
 								else
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN1, setAnimFlags);
-
-									if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-										pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-									{
-										pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-										pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-										g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-									}
 								}
+								PM_RemoveSprintFlag(qtrue);
 							}
 						}
 					}
-					//////////////////////////////// end saber running anims /////////////////////////////////
 				} // NON SABER WEAPONS RUNNING
 				else if (pm->ps->weapon == WP_BLASTER_PISTOL || pm->ps->weapon == WP_BRYAR_PISTOL)
 				{
-					if (!pm->ps->weaponTime) //not firing
+					if (is_wanting_sprint)
 					{
-						if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
+						if (!pm->ps->weaponTime) //not firing
 						{
-							if (pm->gent && pm->gent->client &&
-								(pm->gent->client->NPC_class == CLASS_REBORN ||
-									pm->gent->client->NPC_class == CLASS_BOBAFETT ||
-									pm->gent->client->NPC_class == CLASS_MANDO) &&
-								pm->ps->weapon == WP_BLASTER_PISTOL) //they do this themselves
-							{
-								//dual blaster pistols
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_MP, setAnimFlags);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_MP, setAnimFlags);
-							}
-
-							if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING)
-							{
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-							}
-							if (!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
-							{
-								pm->ps->PlayerEffectFlags |= 1 << PEF_WEAPONSPRINTING;
-								g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-								if (pm->ps->sprintFuel < 17) // single sprint here
-								{
-									pm->ps->sprintFuel -= 10;
-								}
-							}
+							PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT, setAnimFlags); // full sprint anim
 						}
 						else
 						{
-							if (pm->gent && pm->gent->client &&
-								(pm->gent->client->NPC_class == CLASS_REBORN ||
-									pm->gent->client->NPC_class == CLASS_BOBAFETT ||
-									pm->gent->client->NPC_class == CLASS_MANDO) &&
-								pm->ps->weapon == WP_BLASTER_PISTOL) //they do this themselves
-							{
-								//dual blaster pistols
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN2, setAnimFlags);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN5, setAnimFlags);
-							}
-							if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-								pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-							{
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-								g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-							}
+							PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN1, setAnimFlags);// sprinting and firing, so use legs anim
 						}
+
+						PM_HandleSprint(qtrue);
 					}
 					else
 					{
-						if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
+						if (!pm->ps->weaponTime) //not firing and not sprinting
 						{
-							if (pm->gent && pm->gent->client &&
-								(pm->gent->client->NPC_class == CLASS_REBORN ||
-									pm->gent->client->NPC_class == CLASS_BOBAFETT ||
-									pm->gent->client->NPC_class == CLASS_MANDO) &&
-								pm->ps->weapon == WP_BLASTER_PISTOL) //they do this themselves
-							{
-								//dual blaster pistols
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_MP, setAnimFlags);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_MP, setAnimFlags);
-							}
-
-							if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING)
-							{
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-							}
-							if (!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
-							{
-								pm->ps->PlayerEffectFlags |= 1 << PEF_WEAPONSPRINTING;
-								g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-								if (pm->ps->sprintFuel < 17) // single sprint here
-								{
-									pm->ps->sprintFuel -= 10;
-								}
-							}
+							PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN5, setAnimFlags); // run anim
 						}
 						else
 						{
-							if (pm->gent && pm->gent->client &&
-								(pm->gent->client->NPC_class == CLASS_REBORN ||
-									pm->gent->client->NPC_class == CLASS_BOBAFETT ||
-									pm->gent->client->NPC_class == CLASS_MANDO) &&
-								pm->ps->weapon == WP_BLASTER_PISTOL) //they do this themselves
-							{
-								//dual blaster pistols
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN2, setAnimFlags);
-							}
-							else
-							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN5, setAnimFlags);
-							}
-							if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-								pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-							{
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-								g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-							}
+							PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN1, setAnimFlags); // running and firing, so use legs anim
 						}
+
+						PM_RemoveSprintFlag(qtrue);
 					}
 				}
-				else if (pm->ps->weapon == WP_BOWCASTER ||
+				else if (pm->ps &&
+					pm->ps->weapon == WP_BOWCASTER ||
 					pm->ps->weapon == WP_FLECHETTE ||
 					pm->ps->weapon == WP_DISRUPTOR ||
 					pm->ps->weapon == WP_TUSKEN_RIFLE ||
 					pm->ps->weapon == WP_DEMP2 ||
 					pm->ps->weapon == WP_REPEATER ||
-					pm->ps->weapon == WP_BLASTER || pm->ps->weapon == WP_STUN_BATON)
+					pm->ps->weapon == WP_BLASTER ||
+					pm->ps->weapon == WP_CONCUSSION ||
+					pm->ps->weapon == WP_ROCKET_LAUNCHER ||
+					pm->ps->weapon == WP_STUN_BATON)
 				{
-					if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
-					{
-						PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3, setAnimFlags);
-					}
-					else if (!in_camera && pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_DROIDEKA)
+					if (!in_camera && pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_DROIDEKA)
 					{
 						if (pm->ps->legsAnim != BOTH_RUN1)
 						{
@@ -11012,71 +10975,31 @@ static void PM_Footsteps(void)
 					}
 					else
 					{
-						if (!pm->ps->weaponTime) //not firing
+						if (is_wanting_sprint)
 						{
-							if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
+							if (!pm->ps->weaponTime) //not firing
 							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3_MP, setAnimFlags);
-
-								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING)
-								{
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-								}
-								if (!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
-								{
-									pm->ps->PlayerEffectFlags |= 1 << PEF_WEAPONSPRINTING;
-									g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-									if (pm->ps->sprintFuel < 17) // single sprint here
-									{
-										pm->ps->sprintFuel -= 10;
-									}
-								}
+								PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN3_MP, setAnimFlags); // full sprint anim
 							}
 							else
 							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3, setAnimFlags);
-
-								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-									pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-								{
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-									g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-								}
+								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3, setAnimFlags);// sprinting and firing, so use legs anim
 							}
+
+							PM_HandleSprint(qtrue);
 						}
 						else
 						{
-							if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
+							if (!pm->ps->weaponTime) //not firing and not sprinting
 							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3_MP, setAnimFlags);
-
-								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING)
-								{
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-								}
-								if (!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
-								{
-									pm->ps->PlayerEffectFlags |= 1 << PEF_WEAPONSPRINTING;
-									g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-									if (pm->ps->sprintFuel < 17) // single sprint here
-									{
-										pm->ps->sprintFuel -= 10;
-									}
-								}
+								PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN3, setAnimFlags); // run anim
 							}
 							else
 							{
-								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3, setAnimFlags);
-
-								if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-									pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-								{
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-									pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-									g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-								}
+								PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3, setAnimFlags); // running and firing, so use legs anim
 							}
+
+							PM_RemoveSprintFlag(qtrue);
 						}
 					}
 				}
@@ -11086,69 +11009,13 @@ static void PM_Footsteps(void)
 				{
 					PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN6, setAnimFlags);
 
-					if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
+					if (is_wanting_sprint)
 					{
-						if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING)
-						{
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-						}
-						if (!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
-						{
-							pm->ps->PlayerEffectFlags |= 1 << PEF_WEAPONSPRINTING;
-							g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-							if (pm->ps->sprintFuel < 17) // single sprint here
-							{
-								pm->ps->sprintFuel -= 10;
-							}
-						}
+						PM_HandleSprint(qtrue);
 					}
 					else
 					{
-						if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-							pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-						{
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-							g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-						}
-					}
-				}
-				else if (pm->ps->weapon == WP_CONCUSSION || pm->ps->weapon == WP_ROCKET_LAUNCHER)
-				{
-					if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
-					{
-						PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN3, setAnimFlags);
-					}
-					else
-					{
-						PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN7, setAnimFlags);
-
-						if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
-						{
-							if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING)
-							{
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-							}
-							if (!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
-							{
-								pm->ps->PlayerEffectFlags |= 1 << PEF_WEAPONSPRINTING;
-								g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-								if (pm->ps->sprintFuel < 17) // single sprint here
-								{
-									pm->ps->sprintFuel -= 10;
-								}
-							}
-						}
-						else
-						{
-							if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-								pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-							{
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-								pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-								g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-							}
-						}
+						PM_RemoveSprintFlag(qtrue);
 					}
 				}
 				else if (pm->ps->weapon == WP_SBD_PISTOL)
@@ -11268,31 +11135,17 @@ static void PM_Footsteps(void)
 					&& (pm->ps->weapon == WP_MELEE || pm->ps->weapon == WP_NONE ||
 						pm->ps->weapon == WP_SABER && !pm->ps->SaberActive()))
 				{
-					if (pm->cmd.buttons & BUTTON_BLOCK && pm->ps->sprintFuel > 15)
+					if (is_wanting_sprint)
 					{
 						PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_SABER_MP, setAnimFlags);
 
-						if (!(pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING))
-						{
-							pm->ps->PlayerEffectFlags |= 1 << PEF_SPRINTING;
-							g_entities[pm->ps->clientNum].client->IsSprinting = qtrue;
-							if (pm->ps->sprintFuel < 17) // single sprint here
-							{
-								pm->ps->sprintFuel -= 10;
-							}
-						}
+						PM_HandleSprint(qtrue);
 					}
 					else
 					{
 						PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN1, setAnimFlags);
 
-						if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-							pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-						{
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-							g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-						}
+						PM_RemoveSprintFlag(qtrue);
 					}
 				}
 				footstep = qtrue;
@@ -11368,13 +11221,7 @@ static void PM_Footsteps(void)
 						{
 							PM_SetAnim(pm, SETANIM_LEGS, BOTH_WALK1, setAnimFlags);
 						}
-						if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-							pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-						{
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-							pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-							g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-						}
+						PM_RemoveSprintFlag(qtrue);
 					}
 					else
 					{
@@ -11457,13 +11304,8 @@ static void PM_Footsteps(void)
 					//10% chance of a small alert, mainly for the sand_creature
 					AddSoundEvent(pm->gent, pm->ps->origin, 16, AEL_MINOR, qtrue, qtrue);
 				}
-				if (pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
-					pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
-				{
-					pm->ps->PlayerEffectFlags &= ~(1 << PEF_SPRINTING);
-					pm->ps->PlayerEffectFlags &= ~(1 << PEF_WEAPONSPRINTING);
-					g_entities[pm->ps->clientNum].client->IsSprinting = qfalse;
-				}
+
+				PM_RemoveSprintFlag(qtrue);
 			}
 		}
 	}
@@ -11774,8 +11616,7 @@ static void PM_BeginWeaponChange(const int weapon)
 
 	if ((pm->ps->communicatingflags & (1u << CF_AIMINGGUN)) != 0u)
 	{
-		pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-		g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+		PM_RemoveGunnerAimFlag(qtrue);
 	}
 
 	pm->ps->weaponstate = WEAPON_DROPPING;
@@ -22576,7 +22417,7 @@ void PM_CheckGrab()
 	}
 	else
 	{
-		if (PM_IsGunner())
+		if (PM_IsGunner() == qtrue)
 		{
 			G_SetWeapon(pm->gent, WP_MELEE);
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/change.wav");

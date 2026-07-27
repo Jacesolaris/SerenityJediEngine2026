@@ -83,7 +83,7 @@ void WP_FireNoghriStick(gentity_t* ent);
 void WP_FireRepeater(gentity_t* ent, qboolean alt_fire);
 void rocketThink(gentity_t* ent);
 void WP_FireRocket(gentity_t* ent, qboolean alt_fire);
-void WP_FireStunBaton(gentity_t* ent, qboolean alt_fire);
+void WP_FireStunBaton(gentity_t* ent, const qboolean alt_fire);
 void thermalDetonatorExplode(gentity_t* ent);
 void thermal_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int mod, int d_flags,
 	int hit_loc);

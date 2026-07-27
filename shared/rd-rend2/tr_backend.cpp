@@ -2915,6 +2915,8 @@ static const void* RB_PostProcess(const void* data)
 	srcBox[2] = backEnd.viewParms.viewportWidth;
 	srcBox[3] = backEnd.viewParms.viewportHeight;
 
+	float exposure = r_cameraExposure->value + tr.overbrightBits;
+
 	if (srcFbo)
 	{
 		if (r_hdr->integer && (r_toneMap->integer || r_forceToneMap->integer))

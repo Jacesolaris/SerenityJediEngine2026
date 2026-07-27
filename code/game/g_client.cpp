@@ -2593,6 +2593,7 @@ extern qboolean JET_Flying(const gentity_t* self);
 extern void jet_fly_stop(gentity_t* self);
 extern void Boba_StopFlameThrower(const gentity_t* self);
 extern void Jetpack_Off(const gentity_t* ent);
+extern void PM_RemoveGunnerAimFlag(qboolean removeFlag);
 
 // ============================================================================
 // Allow model change to cancel buttons and stop jetpack and flamethrower
@@ -2607,8 +2608,7 @@ static void G_ForceSafeModelChangeState(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
-		ent->client->IsAiming = qfalse;
+		PM_RemoveGunnerAimFlag(qtrue);
 	}
 
 	// ----------------------------------------------------------------------

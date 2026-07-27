@@ -100,6 +100,7 @@ extern char cinematicSkipScript[1024];
 extern qboolean skippingCutscene;
 extern qboolean inGameCinematic;
 extern qboolean IsSurrendering(const gentity_t* self);
+extern void PM_RemoveGunnerAimFlag(qboolean removeFlag);
 
 static void P_SetTwitchInfo(gclient_t* client)
 {
@@ -4276,8 +4277,7 @@ void WP_ReloadGun(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
-		ent->client->IsAiming = qfalse;
+		PM_RemoveGunnerAimFlag(qtrue);
 	}
 
 	if (IsHoldingReloadableGun(ent))
@@ -4374,8 +4374,7 @@ void FireOverheatFail(gentity_t* ent)
 
 		if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 		{
-			ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
-			ent->client->IsAiming = qfalse;
+			PM_RemoveGunnerAimFlag(qtrue);
 		}
 	}
 }
@@ -4387,8 +4386,7 @@ void CancelReload(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
-		ent->client->IsAiming = qfalse;
+		PM_RemoveGunnerAimFlag(qtrue);
 	}
 }
 
@@ -4399,8 +4397,7 @@ void cancel_firing(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
-		ent->client->IsAiming = qfalse;
+		PM_RemoveGunnerAimFlag(qtrue);
 	}
 }
 ////////////////////// reload
@@ -5268,7 +5265,7 @@ static void ClientThink_real(gentity_t* ent)
 					}
 					else
 					{
-						ucmd->buttons &= ~BUTTON_WALKING;
+						ucmd->buttons &= ~(BUTTON_WALKING);
 					}
 
 					if (ent->NPC->currentSpeed > 0)
@@ -5358,43 +5355,21 @@ static void ClientThink_real(gentity_t* ent)
 		}
 		if ((client->ps.stats[STAT_HEALTH] <= 25 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
 			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 3) && client->ps.stats[STAT_MAX_HEALTH] < 100))
-		{
-			//move slower when low on health
+		{//move slower when low on health
 			client->ps.speed *= 0.85f;
 		}
 		else if ((client->ps.stats[STAT_HEALTH] <= 40 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
 			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 2) && client->ps.stats[STAT_MAX_HEALTH] < 100))
-		{
-			//move slower when low on health
+		{//move slower when low on health
 			client->ps.speed *= 0.90f;
 		}
 		else if (client->bodyGrabIndex != ENTITYNUM_NONE)
-		{
-			//can't go nearly as fast when dragging a body around
+		{//can't go nearly as fast when dragging a body around
 			client->ps.speed *= 0.3f;
 		}
-		else if (BG_SprintAnim(ent->client->ps.legsAnim))
-		{
-			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING)
-			{
-				if (!(ent->r.svFlags & SVF_BOT))
-				{
-					if (client->pers.botclass == BCLASS_VADER)
-					{
-						client->ps.speed *= 1.15f;
-					}
-					else if (client->pers.botclass == BCLASS_YODA)
-					{
-						client->ps.speed *= 1.60f;
-					}
-					else
-					{
-						client->ps.speed *= 1.50f;
-					}
-				}
-			}
-		}
-		else if (BG_SaberSprintAnim(ent->client->ps.legsAnim))
+		else if (BG_SaberSprintAnim(ent->client->ps.legsAnim) ||
+			BG_SprintAnim(ent->client->ps.legsAnim) ||
+			BG_WeaponSprintAnim(ent->client->ps.legsAnim))
 		{
 			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING)
 			{
@@ -5414,9 +5389,6 @@ static void ClientThink_real(gentity_t* ent)
 					}
 				}
 			}
-		}
-		else if (BG_WeaponSprintAnim(client->ps.legsAnim))
-		{
 			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
 			{
 				if (!(ent->r.svFlags & SVF_BOT))
@@ -5431,16 +5403,19 @@ static void ClientThink_real(gentity_t* ent)
 					}
 					else
 					{
-						client->ps.speed *= 1.30f;
+						client->ps.speed *= 1.50f;
 					}
 				}
 			}
 		}
-		else if (client->ps.weapon == WP_BRYAR_PISTOL ||
+		else if ((client->ps.weapon == WP_BRYAR_PISTOL ||
 			client->ps.weapon == WP_THERMAL ||
 			client->ps.weapon == WP_DET_PACK ||
-			client->ps.weapon == WP_TRIP_MINE)
+			client->ps.weapon == WP_TRIP_MINE) &&
+			((ent->client->ps.PlayerEffectFlags & (1 << PEF_SPRINTING)) == 0) &&
+			((ent->client->ps.PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) == 0))
 		{
+			// Not sprinting, using slow-move weapons → reduce speed
 			client->ps.speed *= 0.85f;
 		}
 
@@ -5741,7 +5716,7 @@ static void ClientThink_real(gentity_t* ent)
 					client->ps.ManualBlockingFlags |= 1 << HOLDINGBLOCKANDATTACK;
 					client->ps.ManualMBlockingTime = level.time;
 				}
-				ucmd->buttons &= ~BUTTON_ATTACK;
+				ucmd->buttons &= ~(BUTTON_ATTACK);
 
 				if (g_npcspskill.integer == 0) //easy blocking
 				{
@@ -6069,7 +6044,7 @@ static void ClientThink_real(gentity_t* ent)
 				}
 			}
 		}
-		else if (client->ps.weapon == WP_STUN_BATON && ucmd->buttons & BUTTON_ALT_ATTACK)
+		else if (client->ps.weapon == WP_STUN_BATON && ucmd->buttons & BUTTON_ALT_ATTACK && !(ucmd->buttons & BUTTON_BLOCK))
 		{
 			client->ps.grappletimeplayer = level.time;
 
@@ -6082,6 +6057,7 @@ static void ClientThink_real(gentity_t* ent)
 				if (!(client->ps.communicatingflags & 1 << CF_STUNNING))
 				{
 					client->ps.communicatingflags |= 1 << CF_STUNNING;
+					ucmd->buttons &= ~(BUTTON_BLOCK); // don't allow block to be held down while stunning
 				}
 			}
 			else
@@ -6469,8 +6445,8 @@ static void ClientThink_real(gentity_t* ent)
 		&& ent->client->ps.m_iVehicleNum)
 	{
 		//when in a vehicle, debounce the use...
-		ucmd->buttons &= ~BUTTON_USE;
-		ucmd->buttons &= ~BUTTON_BOTUSE;
+		ucmd->buttons &= ~(BUTTON_USE);
+		ucmd->buttons &= ~(BUTTON_BOTUSE);
 	}
 
 	//FIXME: need to do this before check to avoid walls and cliffs (or just cliffs?)
@@ -7195,7 +7171,7 @@ static void ClientThink_real(gentity_t* ent)
 			Weapon_HookFree(client->hook);
 		}
 	}
-	else if (ent->client->ps.weapon == WP_STUN_BATON && HoldingStun)
+	else if (ent->client->ps.weapon == WP_STUN_BATON && HoldingStun && !(ucmd->buttons & BUTTON_BLOCK))
 	{
 		if (ent->client->ps.pm_type != PM_DEAD && !ent->client->stunhasbeenfired)
 		{
@@ -7217,7 +7193,6 @@ static void ClientThink_real(gentity_t* ent)
 		else if (client->stun && (client->stunHeld == qfalse ||
 			!HoldingStun ||
 			ucmd->buttons & BUTTON_USE ||
-			ucmd->buttons & BUTTON_BLOCK ||
 			ent->client->ps.pm_type == PM_DEAD))
 		{
 			Weapon_StunFree(client->stun);

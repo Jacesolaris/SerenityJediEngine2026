@@ -7408,6 +7408,84 @@ static qboolean PM_IsPistoleer()
 	return qfalse;
 }
 
+static qboolean PM_CanAimGun()
+{
+	switch (pm->ps->weapon)
+	{
+	case WP_BLASTER_PISTOL:
+	case WP_BLASTER:
+	case WP_DISRUPTOR:
+	case WP_BOWCASTER:
+	case WP_REPEATER:
+	case WP_DEMP2:
+	case WP_FLECHETTE:
+	case WP_ROCKET_LAUNCHER:
+	case WP_THERMAL:
+	case WP_TRIP_MINE:
+	case WP_DET_PACK:
+	case WP_CONCUSSION:
+	case WP_BRYAR_PISTOL:
+	case WP_TUSKEN_RIFLE:
+	case WP_SBD_PISTOL:
+		return qtrue;
+	default:;
+	}
+	return qfalse;
+}
+
+static void PM_HandleGunnerAim(qboolean is_walking_and_blocking)
+{
+	// Only apply to gunner-type weapons
+	if (!PM_CanAimGun())
+	{
+		return;
+	}
+
+	if (is_walking_and_blocking)
+	{// If the player is walking and blocking, we want to apply any aim adjustments
+		if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
+		{
+			pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
+
+			if (pm->ps->clientNum >= 0 && pm->ps->clientNum < MAX_CLIENTS)
+			{
+				g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
+			}
+		}
+	}
+}
+
+// ============================================================================
+// PM_RemoveGunnerAimFlag
+//
+// Clears all gunner aim-related flags (CF_AIMINGGUN).
+// This helper is called whenever gunner aiming should stop.
+// ============================================================================
+void PM_RemoveGunnerAimFlag(qboolean removeFlag)
+{
+	// ----------------------------------------------------------------------
+	// Safety: validate pm and pm->ps
+	// ----------------------------------------------------------------------
+	if (pm == NULL || pm->ps == NULL)
+	{
+		Com_Printf("PM_RemoveGunnerAimFlag ERROR: pm or pm->ps is NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Only remove sprint flags when explicitly requested
+	// ----------------------------------------------------------------------
+	if (removeFlag == qtrue)
+	{
+		// Check if any gunner aim flag is active
+		if ((pm->ps->communicatingflags & (1 << CF_AIMINGGUN)) != 0)
+		{
+			// Clear aiming gun flag
+			pm->ps->communicatingflags &= ~(1 << CF_AIMINGGUN);
+			g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+		}
+	}
+}
 /*
 -------------------------
 PM_TorsoAnimation
@@ -7416,8 +7494,8 @@ PM_TorsoAnimation
 
 void PM_TorsoAnimation()
 {
-	//FIXME: Write a much smarter and more appropriate anim picking routine logic...
-	//	int	oldAnim;
+	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
+
 	if (PM_InKnockDown(pm->ps) || PM_InRoll(pm->ps))
 	{
 		//in knockdown
@@ -8377,21 +8455,13 @@ void PM_TorsoAnimation()
 
 								if (cg.renderingThirdPerson)
 								{
-									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									if (is_walking_and_blocking)
 									{
-										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-										{
-											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-										}
+										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
 									else
 									{
-										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-										{
-											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
-										}
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -8401,21 +8471,13 @@ void PM_TorsoAnimation()
 
 								if (cg.renderingThirdPerson)
 								{
-									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									if (is_walking_and_blocking)
 									{
-										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-										{
-											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-										}
+										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
 									else
 									{
-										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-										{
-											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
-										}
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -8433,21 +8495,13 @@ void PM_TorsoAnimation()
 
 									if (cg.renderingThirdPerson)
 									{
-										if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+										if (is_walking_and_blocking)
 										{
-											if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-											{
-												pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-												g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-											}
+											PM_HandleGunnerAim(is_walking_and_blocking);
 										}
 										else
 										{
-											if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-											{
-												pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-												g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
-											}
+											PM_RemoveGunnerAimFlag(qtrue);
 										}
 									}
 								}
@@ -8471,8 +8525,7 @@ void PM_TorsoAnimation()
 
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -8484,21 +8537,13 @@ void PM_TorsoAnimation()
 
 									if (cg.renderingThirdPerson)
 									{
-										if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+										if (is_walking_and_blocking)
 										{
-											if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-											{
-												pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-												g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-											}
+											PM_HandleGunnerAim(is_walking_and_blocking);
 										}
 										else
 										{
-											if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-											{
-												pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-												g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
-											}
+											PM_RemoveGunnerAimFlag(qtrue);
 										}
 									}
 								}
@@ -8522,8 +8567,7 @@ void PM_TorsoAnimation()
 
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -8537,20 +8581,15 @@ void PM_TorsoAnimation()
 
 							if (cg.renderingThirdPerson)
 							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								if (is_walking_and_blocking)
 								{
-									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-									{
-										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-									}
+									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -8559,16 +8598,12 @@ void PM_TorsoAnimation()
 						{
 							if (cg.renderingThirdPerson)
 							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								if (is_walking_and_blocking)
 								{
 									//running w/1-handed weapon uses full-body anim
 									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
 
-									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-									{
-										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-									}
+									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
@@ -8589,8 +8624,7 @@ void PM_TorsoAnimation()
 
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -8671,20 +8705,15 @@ void PM_TorsoAnimation()
 
 						if (cg.renderingThirdPerson)
 						{
-							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							if (is_walking_and_blocking)
 							{
-								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-								{
-									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-								}
+								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
 							else
 							{
 								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
 						}
@@ -8710,20 +8739,15 @@ void PM_TorsoAnimation()
 
 						if (cg.renderingThirdPerson)
 						{
-							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							if (is_walking_and_blocking)
 							{
-								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-								{
-									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-								}
+								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
 							else
 							{
 								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
 						}
@@ -8838,20 +8862,15 @@ void PM_TorsoAnimation()
 
 								if (cg.renderingThirdPerson)
 								{
-									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									if (is_walking_and_blocking)
 									{
-										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-										{
-											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-										}
+										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
 									else
 									{
 										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 										{
-											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+											PM_RemoveGunnerAimFlag(qtrue);
 										}
 									}
 								}
@@ -8862,20 +8881,15 @@ void PM_TorsoAnimation()
 								{ //third person
 									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD); // from shoulder
 
-									if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+									if (is_walking_and_blocking)
 									{
-										if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-										{
-											pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-										}
+										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
 									else
 									{
 										if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 										{
-											pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-											g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+											PM_RemoveGunnerAimFlag(qtrue);
 										}
 									}
 								}
@@ -8890,15 +8904,11 @@ void PM_TorsoAnimation()
 					{ // weapon is not busy, so set the idle anim
 						if (cg.renderingThirdPerson)
 						{
-							if ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK))
+							if (is_walking_and_blocking)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE4, SETANIM_FLAG_NORMAL);
 
-								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-								{
-									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-								}
+								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
 							else
 							{
@@ -8906,8 +8916,7 @@ void PM_TorsoAnimation()
 
 								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
 						}
@@ -9044,20 +9053,15 @@ void PM_TorsoAnimation()
 
 						if (PM_WalkingAnim(pm->ps->legsAnim) && cg.renderingThirdPerson)
 						{
-							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							if (is_walking_and_blocking)
 							{
-								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-								{
-									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-								}
+								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
 							else
 							{
 								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
 						}
@@ -9070,20 +9074,15 @@ void PM_TorsoAnimation()
 
 							if (cg.renderingThirdPerson)
 							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								if (is_walking_and_blocking)
 								{
-									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-									{
-										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-									}
+									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -9094,20 +9093,15 @@ void PM_TorsoAnimation()
 
 							if (cg.renderingThirdPerson)
 							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								if (is_walking_and_blocking)
 								{
-									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-									{
-										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-									}
+									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -9138,20 +9132,15 @@ void PM_TorsoAnimation()
 
 						if (PM_WalkingAnim(pm->ps->legsAnim) && cg.renderingThirdPerson)
 						{
-							if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+							if (is_walking_and_blocking)
 							{
-								if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-								{
-									pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-								}
+								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
 							else
 							{
 								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
 						}
@@ -9164,20 +9153,15 @@ void PM_TorsoAnimation()
 
 							if (cg.renderingThirdPerson)
 							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								if (is_walking_and_blocking)
 								{
-									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-									{
-										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-									}
+									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -9188,20 +9172,15 @@ void PM_TorsoAnimation()
 
 							if (cg.renderingThirdPerson)
 							{
-								if (pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK)
+								if (is_walking_and_blocking)
 								{
-									if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
-									{
-										pm->ps->communicatingflags |= (1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qtrue;
-									}
+									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
 									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 									{
-										pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-										g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+										PM_RemoveGunnerAimFlag(qtrue);
 									}
 								}
 							}
@@ -9254,8 +9233,7 @@ void PM_TorsoAnimation()
 
 								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
 								{
-									pm->ps->communicatingflags &= ~(1u << CF_AIMINGGUN);
-									g_entities[pm->ps->clientNum].client->IsAiming = qfalse;
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
 							else
