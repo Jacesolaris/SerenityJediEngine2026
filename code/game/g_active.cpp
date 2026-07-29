@@ -179,7 +179,6 @@ extern int IsPressingKickButton(const gentity_t* self);
 extern qboolean NPC_Should_Block(const gentity_t* npc);
 extern qboolean Manual_NPCSaberblocking(const gentity_t* defender);
 extern qboolean PM_PainAnim(int anim);
-extern void PM_RemoveGunnerAimFlag(qboolean removeFlag);
 
 static int G_FindLookItem(gentity_t* self)
 {
@@ -7326,6 +7325,42 @@ usually be a couple times for each server frame on fast clients.
 extern int G_FindLocalInterestPoint(gentity_t* self);
 extern float G_CanJumpToEnemyVeh(Vehicle_t* p_veh, const usercmd_t* pUmcd);
 
+
+
+// ============================================================================
+// G_RemoveGunnerAimFlagEnt
+//
+// Server-side version of gunner aim flag removal.
+// Called from g_active.c when reloading or other actions should stop aiming.
+// ============================================================================
+static void G_RemoveGunnerAimFlagEnt(gentity_t* ent, qboolean removeFlag)
+{
+	// ----------------------------------------------------------------------
+	// Safety: validate ent and ent->client
+	// ----------------------------------------------------------------------
+	if (ent == NULL || ent->client == NULL)
+	{
+		Com_Printf("PM_RemoveGunnerAimFlagENT ERROR: ent or ent->client is NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Only remove aiming flag when explicitly requested
+	// ----------------------------------------------------------------------
+	if (removeFlag == qtrue)
+	{
+		// Check if aiming flag is active
+		if ((ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN)) != 0)
+		{
+			// Clear aiming gun flag
+			ent->client->ps.communicatingflags &= ~(1u << CF_AIMINGGUN);
+
+			// Mirror server-side aiming state
+			ent->client->IsAiming = qfalse;
+		}
+	}
+}
+
 //// reload ////
 
 static int ReloadTime(const gentity_t* ent)
@@ -7432,7 +7467,7 @@ void WP_ReloadGun(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		PM_RemoveGunnerAimFlag(qtrue);
+		G_RemoveGunnerAimFlagEnt(ent, qtrue);
 	}
 
 	if (IsHoldingReloadableGun(ent))
@@ -7538,7 +7573,7 @@ void FireOverheatFail(gentity_t* ent)
 
 		if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 		{
-			PM_RemoveGunnerAimFlag(qtrue);
+			G_RemoveGunnerAimFlagEnt(ent, qtrue);
 		}
 	}
 }
@@ -7550,7 +7585,7 @@ void CancelReload(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		PM_RemoveGunnerAimFlag(qtrue);
+		G_RemoveGunnerAimFlagEnt(ent, qtrue);
 	}
 }
 
@@ -7561,7 +7596,7 @@ void cancel_firing(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		PM_RemoveGunnerAimFlag(qtrue);
+		G_RemoveGunnerAimFlagEnt(ent, qtrue);
 	}
 }
 

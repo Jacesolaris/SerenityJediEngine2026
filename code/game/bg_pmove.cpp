@@ -10911,7 +10911,8 @@ static void PM_Footsteps(void)
 						}
 					}
 				} // NON SABER WEAPONS RUNNING
-				else if (pm->ps->weapon == WP_BLASTER_PISTOL || pm->ps->weapon == WP_BRYAR_PISTOL)
+				else if (pm->ps &&
+					(pm->ps->weapon == WP_BLASTER_PISTOL || pm->ps->weapon == WP_BRYAR_PISTOL))
 				{
 					if (is_wanting_sprint)
 					{
@@ -10941,16 +10942,16 @@ static void PM_Footsteps(void)
 					}
 				}
 				else if (pm->ps &&
-					pm->ps->weapon == WP_BOWCASTER ||
-					pm->ps->weapon == WP_FLECHETTE ||
-					pm->ps->weapon == WP_DISRUPTOR ||
-					pm->ps->weapon == WP_TUSKEN_RIFLE ||
-					pm->ps->weapon == WP_DEMP2 ||
-					pm->ps->weapon == WP_REPEATER ||
-					pm->ps->weapon == WP_BLASTER ||
-					pm->ps->weapon == WP_CONCUSSION ||
-					pm->ps->weapon == WP_ROCKET_LAUNCHER ||
-					pm->ps->weapon == WP_STUN_BATON)
+					(pm->ps->weapon == WP_BOWCASTER ||
+						pm->ps->weapon == WP_FLECHETTE ||
+						pm->ps->weapon == WP_DISRUPTOR ||
+						pm->ps->weapon == WP_TUSKEN_RIFLE ||
+						pm->ps->weapon == WP_DEMP2 ||
+						pm->ps->weapon == WP_REPEATER ||
+						pm->ps->weapon == WP_BLASTER ||
+						pm->ps->weapon == WP_CONCUSSION ||
+						pm->ps->weapon == WP_ROCKET_LAUNCHER ||
+						pm->ps->weapon == WP_STUN_BATON))
 				{
 					if (!in_camera && pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_DROIDEKA)
 					{
@@ -11001,21 +11002,6 @@ static void PM_Footsteps(void)
 
 							PM_RemoveSprintFlag(qtrue);
 						}
-					}
-				}
-				else if (pm->ps->weapon == WP_THERMAL ||
-					pm->ps->weapon == WP_DET_PACK ||
-					pm->ps->weapon == WP_TRIP_MINE)
-				{
-					PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN6, setAnimFlags);
-
-					if (is_wanting_sprint)
-					{
-						PM_HandleSprint(qtrue);
-					}
-					else
-					{
-						PM_RemoveSprintFlag(qtrue);
 					}
 				}
 				else if (pm->ps->weapon == WP_SBD_PISTOL)
@@ -11128,32 +11114,50 @@ static void PM_Footsteps(void)
 						PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN2, SETANIM_FLAG_NORMAL);
 					}
 				}
-				else if (pm->gent && pm->gent->client
-					&& pm->gent->client->NPC_class != CLASS_WAMPA
-					&& pm->gent->client->NPC_class != CLASS_RANCOR
-					&& pm->gent->client->NPC_class != CLASS_DROIDEKA
-					&& (pm->ps->weapon == WP_MELEE || pm->ps->weapon == WP_NONE ||
+				else if (pm->gent &&
+					pm->gent->client &&
+					pm->gent->client->NPC_class != CLASS_WAMPA &&
+					pm->gent->client->NPC_class != CLASS_RANCOR &&
+					pm->gent->client->NPC_class != CLASS_DROIDEKA &&
+					(pm->ps->weapon == WP_MELEE ||
+						pm->ps->weapon == WP_NONE ||
+						pm->ps->weapon == WP_THERMAL ||
+						pm->ps->weapon == WP_DET_PACK ||
+						pm->ps->weapon == WP_TRIP_MINE ||
 						pm->ps->weapon == WP_SABER && !pm->ps->SaberActive()))
 				{
-					if (is_wanting_sprint)
+					if ((pm->ps->forcePowersActive & (1 << FP_SPEED)) != 0)
 					{
-						PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_SABER_MP, setAnimFlags);
-
-						PM_HandleSprint(qtrue);
+						PM_SetAnim(pm, SETANIM_BOTH, BOTH_SPRINT, setAnimFlags);
 					}
 					else
 					{
-						PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN1, setAnimFlags);
+						if (is_wanting_sprint)
+						{
+							PM_SetAnim(pm, SETANIM_LEGS, BOTH_SPRINT_SABER_MP, setAnimFlags);
 
-						PM_RemoveSprintFlag(qtrue);
+							PM_HandleSprint(qtrue);
+						}
+						else
+						{
+							PM_SetAnim(pm, SETANIM_LEGS, BOTH_RUN1, setAnimFlags);
+
+							PM_RemoveSprintFlag(qtrue);
+						}
 					}
 				}
 				footstep = qtrue;
 			}
 			else
 			{
+				if (((pm->ps->PlayerEffectFlags & (1 << PEF_SPRINTING)) != 0) ||
+					((pm->ps->PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) != 0))
+				{
+					PM_RemoveSprintFlag(qtrue);
+				}
 				//walking forward saber
 				bobmove = 0.3f; // walking bobs slow
+				
 				if (pm->ps->weapon == WP_SABER && pm->ps->SaberActive())
 				{
 					if (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer())
@@ -17949,7 +17953,7 @@ static void PM_WeaponLightsaber(void)
 			}
 			else
 			{
-				if (is_walking_and_blocking)
+				if (is_walking_and_blocking == qtrue)
 				{
 					if (pm->ps->saberAnimLevel == SS_DUAL)
 					{
@@ -18471,7 +18475,7 @@ static void PM_WeaponLightsaber(void)
 		else if (pm->ps->weaponTime > 0)
 		{
 			// Last attack is not yet complete.
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->saberAnimLevel == SS_DUAL)
 				{
@@ -18810,7 +18814,7 @@ static void PM_WeaponLightsaber(void)
 				}
 				else
 				{
-					if (is_walking_and_blocking)
+					if (is_walking_and_blocking == qtrue)
 					{
 						if (pm->ps->saberAnimLevel == SS_DUAL)
 						{

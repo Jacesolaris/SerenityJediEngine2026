@@ -5407,7 +5407,7 @@ void PM_WeaponLightsaber(void)
 			!PM_SaberInParry(pm->ps->saberMove) && !PM_SaberInKnockaway(pm->ps->saberMove) &&
 			!PM_SaberInBrokenParry(pm->ps->saberMove) && !PM_SaberInReflect(pm->ps->saberMove))
 		{
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{
@@ -5876,7 +5876,7 @@ weapChecks:
 			}
 			else
 			{
-				if (is_walking_and_blocking)
+				if (is_walking_and_blocking == qtrue)
 				{
 					if (pm->ps->saberAnimLevel == SS_DUAL)
 					{
@@ -6239,7 +6239,7 @@ weapChecks:
 		if (pm->ps->weaponTime > 0)
 		{	// Last attack is not yet complete.
 			// But it is if we're blocking!
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{
@@ -6582,7 +6582,7 @@ weapChecks:
 				}
 				else
 				{
-					if (is_walking_and_blocking)
+					if (is_walking_and_blocking == qtrue)
 					{
 						if (pm->ps->saberAnimLevel == SS_DUAL)
 						{
@@ -7196,7 +7196,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		if ((anim >= BOTH_STAND1 && anim <= BOTH_STAND4TOATTACK2) ||
 			(anim >= TORSO_DROPWEAP1 && anim <= TORSO_WEAPONIDLE10))
 		{
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{
@@ -7219,7 +7219,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 
 		if (pm->ps->pm_flags & PMF_DUCKED)
 		{
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{
@@ -7243,7 +7243,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		if (anim == BOTH_WALKBACK1 || anim == BOTH_WALKBACK2 ||
 			anim == BOTH_WALK1 || anim == BOTH_MENUIDLE1)
 		{
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{
@@ -7266,7 +7266,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 
 		if (PM_InSlopeAnim(anim))
 		{
-			if (is_walking_and_blocking)
+			if (is_walking_and_blocking == qtrue)
 			{
 				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 				{

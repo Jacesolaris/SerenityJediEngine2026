@@ -7420,9 +7420,6 @@ static qboolean PM_CanAimGun()
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
-	case WP_THERMAL:
-	case WP_TRIP_MINE:
-	case WP_DET_PACK:
 	case WP_CONCUSSION:
 	case WP_BRYAR_PISTOL:
 	case WP_TUSKEN_RIFLE:
@@ -7436,7 +7433,7 @@ static qboolean PM_CanAimGun()
 static void PM_HandleGunnerAim(qboolean is_walking_and_blocking)
 {
 	// Only apply to gunner-type weapons
-	if (!PM_CanAimGun())
+	if (PM_CanAimGun() == qfalse)
 	{
 		return;
 	}
@@ -8455,7 +8452,7 @@ void PM_TorsoAnimation()
 
 								if (cg.renderingThirdPerson)
 								{
-									if (is_walking_and_blocking)
+									if (is_walking_and_blocking == qtrue)
 									{
 										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
@@ -8471,7 +8468,7 @@ void PM_TorsoAnimation()
 
 								if (cg.renderingThirdPerson)
 								{
-									if (is_walking_and_blocking)
+									if (is_walking_and_blocking == qtrue)
 									{
 										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
@@ -8495,7 +8492,7 @@ void PM_TorsoAnimation()
 
 									if (cg.renderingThirdPerson)
 									{
-										if (is_walking_and_blocking)
+										if (is_walking_and_blocking == qtrue)
 										{
 											PM_HandleGunnerAim(is_walking_and_blocking);
 										}
@@ -8537,7 +8534,7 @@ void PM_TorsoAnimation()
 
 									if (cg.renderingThirdPerson)
 									{
-										if (is_walking_and_blocking)
+										if (is_walking_and_blocking == qtrue)
 										{
 											PM_HandleGunnerAim(is_walking_and_blocking);
 										}
@@ -8581,7 +8578,7 @@ void PM_TorsoAnimation()
 
 							if (cg.renderingThirdPerson)
 							{
-								if (is_walking_and_blocking)
+								if (is_walking_and_blocking == qtrue)
 								{
 									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
@@ -8598,7 +8595,7 @@ void PM_TorsoAnimation()
 						{
 							if (cg.renderingThirdPerson)
 							{
-								if (is_walking_and_blocking)
+								if (is_walking_and_blocking == qtrue)
 								{
 									//running w/1-handed weapon uses full-body anim
 									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY2, SETANIM_FLAG_NORMAL);
@@ -8705,7 +8702,7 @@ void PM_TorsoAnimation()
 
 						if (cg.renderingThirdPerson)
 						{
-							if (is_walking_and_blocking)
+							if (is_walking_and_blocking == qtrue)
 							{
 								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
@@ -8739,7 +8736,7 @@ void PM_TorsoAnimation()
 
 						if (cg.renderingThirdPerson)
 						{
-							if (is_walking_and_blocking)
+							if (is_walking_and_blocking == qtrue)
 							{
 								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
@@ -8862,7 +8859,7 @@ void PM_TorsoAnimation()
 
 								if (cg.renderingThirdPerson)
 								{
-									if (is_walking_and_blocking)
+									if (is_walking_and_blocking == qtrue)
 									{
 										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
@@ -8881,7 +8878,7 @@ void PM_TorsoAnimation()
 								{ //third person
 									PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD); // from shoulder
 
-									if (is_walking_and_blocking)
+									if (is_walking_and_blocking == qtrue)
 									{
 										PM_HandleGunnerAim(is_walking_and_blocking);
 									}
@@ -8904,7 +8901,7 @@ void PM_TorsoAnimation()
 					{ // weapon is not busy, so set the idle anim
 						if (cg.renderingThirdPerson)
 						{
-							if (is_walking_and_blocking)
+							if (is_walking_and_blocking == qtrue)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE4, SETANIM_FLAG_NORMAL);
 
@@ -9050,61 +9047,16 @@ void PM_TorsoAnimation()
 						|| PM_SwimmingAnim(pm->ps->legsAnim))
 					{//running w/1-handed weapon uses full-body anim
 						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-
-						if (PM_WalkingAnim(pm->ps->legsAnim) && cg.renderingThirdPerson)
-						{
-							if (is_walking_and_blocking)
-							{
-								PM_HandleGunnerAim(is_walking_and_blocking);
-							}
-							else
-							{
-								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-								{
-									PM_RemoveGunnerAimFlag(qtrue);
-								}
-							}
-						}
 					}
 					else
 					{
 						if (weaponBusy)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE10, SETANIM_FLAG_NORMAL);
-
-							if (cg.renderingThirdPerson)
-							{
-								if (is_walking_and_blocking)
-								{
-									PM_HandleGunnerAim(is_walking_and_blocking);
-								}
-								else
-								{
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
-								}
-							}
 						}
 						else
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
-
-							if (cg.renderingThirdPerson)
-							{
-								if (is_walking_and_blocking)
-								{
-									PM_HandleGunnerAim(is_walking_and_blocking);
-								}
-								else
-								{
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
-								}
-							}
 						}
 					}
 					break;
@@ -9129,61 +9081,16 @@ void PM_TorsoAnimation()
 						|| PM_SwimmingAnim(pm->ps->legsAnim))
 					{//running w/1-handed weapon uses full-body anim
 						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-
-						if (PM_WalkingAnim(pm->ps->legsAnim) && cg.renderingThirdPerson)
-						{
-							if (is_walking_and_blocking)
-							{
-								PM_HandleGunnerAim(is_walking_and_blocking);
-							}
-							else
-							{
-								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-								{
-									PM_RemoveGunnerAimFlag(qtrue);
-								}
-							}
-						}
 					}
 					else
 					{
 						if (weaponBusy)
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE3, SETANIM_FLAG_NORMAL);
-
-							if (cg.renderingThirdPerson)
-							{
-								if (is_walking_and_blocking)
-								{
-									PM_HandleGunnerAim(is_walking_and_blocking);
-								}
-								else
-								{
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
-								}
-							}
 						}
 						else
 						{
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
-
-							if (cg.renderingThirdPerson)
-							{
-								if (is_walking_and_blocking)
-								{
-									PM_HandleGunnerAim(is_walking_and_blocking);
-								}
-								else
-								{
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
-								}
-							}
 						}
 					}
 					break;

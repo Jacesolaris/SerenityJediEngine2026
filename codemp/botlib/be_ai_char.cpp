@@ -373,7 +373,7 @@ int BotFindCachedCharacter(char* charfile, const float skill)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-int BotLoadCachedCharacter(char* charfile, const float skill, const int reload)
+static int BotLoadCachedCharacter(char* charfile, const float skill, const int reload)
 {
 	int handle, cachedhandle, intskill;
 	bot_character_t* ch = nullptr;

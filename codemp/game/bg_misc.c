@@ -494,13 +494,13 @@ int WeaponAltAimAnim[WP_NUM_WEAPONS] =
 	BOTH_STAND6, //WP_MELEE,
 	BOTH_STAND2,  //WP_SABER, //(has its own handling)
 	TORSO_WEAPONREADY2, //WP_BRYAR_PISTOL,
-	TORSO_WEAPONREADY4, //WP_BLASTER,
+	TORSO_WEAPONREADY3, //WP_BLASTER,
 	TORSO_WEAPONREADY4, //WP_DISRUPTOR,
-	TORSO_WEAPONREADY4, //WP_BOWCASTER,
-	TORSO_WEAPONREADY4, //WP_REPEATER,
-	TORSO_WEAPONREADY4, //WP_DEMP2,
+	TORSO_WEAPONREADY3, //WP_BOWCASTER,
+	TORSO_WEAPONREADY3, //WP_REPEATER,
+	TORSO_WEAPONREADY3, //WP_DEMP2,
 	TORSO_WEAPONREADY4, //WP_FLECHETTE,
-	TORSO_WEAPONREADY4, //WP_ROCKET_LAUNCHER,
+	TORSO_WEAPONREADY3, //WP_ROCKET_LAUNCHER,
 	TORSO_WEAPONREADY10, //WP_THERMAL,
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
@@ -3970,7 +3970,6 @@ int BG_ModelCache(const char* modelName, const char* skin_name)
 #define MAX_POOL_SIZE   1048576    // 1 MB
 #endif
 
-
 // ============================================================================
 //  BG Memory Pool System
 //  Safe, modernized, behaviour-preserving version
@@ -4100,9 +4099,6 @@ qboolean BG_OutOfMemory(void)
 {
 	return (bg_poolSize >= bg_poolTail) ? qtrue : qfalse;
 }
-
-
-
 
 qboolean BG_IsWhiteSpace(const char c)
 {

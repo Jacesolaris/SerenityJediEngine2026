@@ -472,6 +472,16 @@ static qboolean PM_CanSetWeaponReadyAnim(void)
 	return qfalse;
 }
 
+static qboolean PM_CanSetWeaponAimingAnim(void)
+{
+	if (!pm->ps->weaponTime)
+	{
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
 qboolean BG_SabersOff(const playerState_t* ps)
 {
 	if (!ps->saberHolstered)
@@ -4919,75 +4929,35 @@ static qboolean PM_CheckJump(void)
 
 		if (pm->ps->weapon == WP_SABER)
 		{
-			if (saber1
-				&& saber1
-
-				->
-				saberFlags & SFL_NO_WALL_RUNS
-				)
+			if (saber1 && saber1->saberFlags & SFL_NO_WALL_RUNS)
 			{
 				allowWallRuns = qfalse;
 			}
-			if (saber2
-				&& saber2
-
-				->
-				saberFlags & SFL_NO_WALL_RUNS
-				)
+			if (saber2 && saber2->saberFlags & SFL_NO_WALL_RUNS)
 			{
 				allowWallRuns = qfalse;
 			}
-			if (saber1
-				&& saber1
-
-				->
-				saberFlags & SFL_NO_WALL_FLIPS
-				)
+			if (saber1 && saber1->saberFlags & SFL_NO_WALL_FLIPS)
 			{
 				allowWallFlips = qfalse;
 			}
-			if (saber2
-				&& saber2
-
-				->
-				saberFlags & SFL_NO_WALL_FLIPS
-				)
+			if (saber2 && saber2->saberFlags & SFL_NO_WALL_FLIPS)
 			{
 				allowWallFlips = qfalse;
 			}
-			if (saber1
-				&& saber1
-
-				->
-				saberFlags & SFL_NO_FLIPS
-				)
+			if (saber1 && saber1->saberFlags & SFL_NO_FLIPS)
 			{
 				allowFlips = qfalse;
 			}
-			if (saber2
-				&& saber2
-
-				->
-				saberFlags & SFL_NO_FLIPS
-				)
+			if (saber2 && saber2->saberFlags & SFL_NO_FLIPS)
 			{
 				allowFlips = qfalse;
 			}
-			if (saber1
-				&& saber1
-
-				->
-				saberFlags & SFL_NO_WALL_GRAB
-				)
+			if (saber1 && saber1->saberFlags & SFL_NO_WALL_GRAB)
 			{
 				allowWallGrabs = qfalse;
 			}
-			if (saber2
-				&& saber2
-
-				->
-				saberFlags & SFL_NO_WALL_GRAB
-				)
+			if (saber2 && saber2->saberFlags & SFL_NO_WALL_GRAB)
 			{
 				allowWallGrabs = qfalse;
 			}
@@ -7449,9 +7419,6 @@ static qboolean PM_CanAimGun(void)
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
-	case WP_THERMAL:
-	case WP_TRIP_MINE:
-	case WP_DET_PACK:
 	case WP_CONCUSSION:
 	case WP_BRYAR_OLD:
 		return qtrue;
@@ -7470,7 +7437,10 @@ static void PM_HandleGunnerAim(qboolean is_walking_and_blocking)
 
 	if (is_walking_and_blocking)
 	{// If the player is walking and blocking, we want to apply any aim adjustments
-		PM_StartTorsoAnim(PM_GetWeaponAimAnim());
+		if (PM_CanSetWeaponAimingAnim() == qtrue)
+		{
+			PM_StartTorsoAnim(PM_GetWeaponAimAnim());
+		}
 
 		if (!(pm->ps->communicatingflags & (1u << CF_AIMINGGUN)))
 		{
@@ -7729,7 +7699,10 @@ static void PM_CrashLand(void)
 			}
 			else
 			{ // set the weapon anims
-				if (is_walking_and_blocking == qtrue)
+				if (is_walking_and_blocking == qtrue && 
+					(pm->ps->weapon != WP_THERMAL &&
+					pm->ps->weapon != WP_TRIP_MINE &&
+					pm->ps->weapon != WP_DET_PACK))
 				{// If we're walking and blocking, we want to go into a aim walk stance
 					PM_HandleGunnerAim(is_walking_and_blocking);
 				}
@@ -7737,7 +7710,7 @@ static void PM_CrashLand(void)
 				{
 					PM_RemoveGunnerAimFlag(qtrue);
 
-					if (PM_CanSetWeaponReadyAnim())
+					if (PM_CanSetWeaponReadyAnim() == qtrue)
 					{
 						PM_StartTorsoAnim(PM_GetWeaponReadyAnim());
 					}
@@ -10214,7 +10187,7 @@ static void PM_Footsteps(void)
 			pm->ps->legsAnim == BOTH_BUTTON_HOLD ||
 			pm->ps->legsAnim == BOTH_BUTTON_RELEASE ||
 			pm->ps->legsAnim == BOTH_STAND1TO2 ||
-			pm->ps->legsAnim == BOTH_STAND2TO1)
+			pm->ps->legsAnim == BOTH_STAND2TO1 || is_wanting_sprint)
 		{
 			// legs are in a saber anim, and not spinning — override it
 			setAnimFlags |= SETANIM_FLAG_OVERRIDE;
@@ -10337,7 +10310,7 @@ static void PM_Footsteps(void)
 						{//not on a slope, so use the normal stance
 							if (pm->ps->weapon == WP_SABER)
 							{//saber is on, so use the idle stance
-								if (is_walking_and_blocking)
+								if (is_walking_and_blocking == qtrue)
 								{//walking and blocking
 									if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 									{
@@ -10719,6 +10692,102 @@ static void PM_Footsteps(void)
 						}
 					}
 				}
+				else if (pm->ps && (pm->ps->weapon == WP_BRYAR_PISTOL))
+				{
+					if (is_wanting_sprint)
+					{
+						if (!pm->ps->weaponTime) //not firing
+						{
+							PM_SetAnim(SETANIM_BOTH, BOTH_SPRINT, setAnimFlags); // full sprint anim
+						}
+						else
+						{
+							desiredAnim = BOTH_RUN1; // sprinting and firing, so use legs anim
+						}
+
+						PM_HandleSprint(qtrue);
+					}
+					else
+					{
+						if (!pm->ps->weaponTime) //not firing and not sprinting
+						{
+							PM_SetAnim(SETANIM_BOTH, BOTH_RUN5, setAnimFlags); // run anim
+						}
+						else
+						{
+							desiredAnim = BOTH_RUN1; // running and firing, so use legs anim
+						}
+
+						PM_RemoveSprintFlag(qtrue);
+					}
+				}
+				else if (pm->ps &&
+					(pm->ps->weapon == WP_BOWCASTER ||
+					pm->ps->weapon == WP_FLECHETTE ||
+					pm->ps->weapon == WP_DISRUPTOR ||
+					pm->ps->weapon == WP_DEMP2 ||
+					pm->ps->weapon == WP_REPEATER ||
+					pm->ps->weapon == WP_CONCUSSION ||
+					pm->ps->weapon == WP_ROCKET_LAUNCHER ||
+					pm->ps->weapon == WP_BLASTER))
+					{
+						if (is_wanting_sprint)
+						{
+							if (!pm->ps->weaponTime) //not firing
+							{
+								PM_SetAnim(SETANIM_BOTH, BOTH_RUN3_MP, setAnimFlags); // full sprint anim
+							}
+							else
+							{
+								desiredAnim = BOTH_RUN3; // sprinting and firing, so use legs anim
+							}
+
+							PM_HandleSprint(qtrue);
+						}
+						else
+						{
+							if (!pm->ps->weaponTime) //not firing and not sprinting
+							{
+								PM_SetAnim(SETANIM_BOTH, BOTH_RUN3, setAnimFlags); // run anim
+							}
+							else
+							{
+								desiredAnim = BOTH_RUN3; // running and firing, so use legs anim
+							}
+
+							PM_RemoveSprintFlag(qtrue);
+						}
+				}
+				else if (pm->ps &&
+					(pm->ps->weapon == WP_MELEE ||
+					pm->ps->weapon == WP_THERMAL ||
+					pm->ps->weapon == WP_DET_PACK ||
+					pm->ps->weapon == WP_TRIP_MINE))
+					{
+						if (is_wanting_sprint)
+						{
+							PM_SetAnim(SETANIM_BOTH, BOTH_SPRINT_SABER_MP, setAnimFlags);
+
+							PM_HandleSprint(qtrue);
+						}
+						else
+						{
+							if (pm_entSelf->s.NPC_class == CLASS_SBD || pm_entSelf->s.botclass == BCLASS_SBD)
+							{
+								desiredAnim = SBD_RUNING_WEAPON;
+							}
+							else if (pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA)
+							{
+								PM_SetAnim(SETANIM_BOTH, BOTH_RUN4, setAnimFlags);
+							}
+							else
+							{
+								PM_SetAnim(SETANIM_BOTH, BOTH_RUN1, setAnimFlags);
+							}
+
+							PM_RemoveSprintFlag(qtrue);
+						}
+				}
 				else if ((pm_entSelf &&
 					(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) && pm->ps->weapon == WP_STUN_BATON) ||
 					(pm->ps->weapon == WP_BRYAR_OLD || (pm_entSelf && pm_entSelf->s.botclass == BCLASS_SBD)) ||
@@ -10776,132 +10845,6 @@ static void PM_Footsteps(void)
 						}
 					}
 				}
-				else if (pm->ps->weapon == WP_BRYAR_PISTOL)
-				{
-					if (is_wanting_sprint)
-					{
-						if (!pm->ps->weaponTime) //not firing
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_SPRINT, setAnimFlags); // full sprint anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN1; // sprinting and firing, so use legs anim
-						}
-
-						PM_HandleSprint(qtrue);
-					}
-					else
-					{
-						if (!pm->ps->weaponTime) //not firing and not sprinting
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN5, setAnimFlags); // run anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN1; // running and firing, so use legs anim
-						}
-
-						PM_RemoveSprintFlag(qtrue);
-					}
-				}
-				else if (pm->ps &&
-					pm->ps->weapon == WP_BOWCASTER ||
-					pm->ps->weapon == WP_FLECHETTE ||
-					pm->ps->weapon == WP_DISRUPTOR ||
-					pm->ps->weapon == WP_DEMP2 ||
-					pm->ps->weapon == WP_REPEATER ||
-					pm->ps->weapon == WP_CONCUSSION ||
-					pm->ps->weapon == WP_ROCKET_LAUNCHER ||
-					pm->ps->weapon == WP_BLASTER)
-				{
-					if (is_wanting_sprint)
-					{
-						if (!pm->ps->weaponTime) //not firing
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN3_MP, setAnimFlags); // full sprint anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN3; // sprinting and firing, so use legs anim
-						}
-
-						PM_HandleSprint(qtrue);
-					}
-					else
-					{
-						if (!pm->ps->weaponTime) //not firing and not sprinting
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN3, setAnimFlags); // run anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN3; // running and firing, so use legs anim
-						}
-
-						PM_RemoveSprintFlag(qtrue);
-					}
-				}
-				else if (pm->ps->weapon == WP_CONCUSSION || pm->ps->weapon == WP_ROCKET_LAUNCHER)
-				{
-					if (is_wanting_sprint)
-					{
-						if (!pm->ps->weaponTime) //not firing
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN7, setAnimFlags); // full sprint anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN7; // sprinting and firing, so use legs anim
-						}
-
-						PM_HandleSprint(qtrue);
-					}
-					else
-					{
-						if (!pm->ps->weaponTime) //not firing and not sprinting
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN7, setAnimFlags); // run anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN7; // running and firing, so use legs anim
-						}
-
-						PM_RemoveSprintFlag(qtrue);
-					}
-				}
-				else if (pm->ps->weapon == WP_THERMAL ||
-					pm->ps->weapon == WP_DET_PACK ||
-					pm->ps->weapon == WP_TRIP_MINE)
-				{
-					if (is_wanting_sprint)
-					{
-						if (!pm->ps->weaponTime) //not firing
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN6, setAnimFlags); // full sprint anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN6; // sprinting and firing, so use legs anim
-						}
-
-						PM_HandleSprint(qtrue);
-					}
-					else
-					{
-						if (!pm->ps->weaponTime) //not firing and not sprinting
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN6, setAnimFlags); // run anim
-						}
-						else
-						{
-							desiredAnim = BOTH_RUN6; // running and firing, so use legs anim
-						}
-
-						PM_RemoveSprintFlag(qtrue);
-					}
-				}
 				else if (pm->ps && pm_entSelf
 					&& (pm_entSelf->s.botclass == BCLASS_WOOKIEMELEE || pm_entSelf->s.botclass == BCLASS_CHEWIE))
 				{
@@ -10948,32 +10891,6 @@ static void PM_Footsteps(void)
 					else
 					{
 						desiredAnim = BOTH_SPRINT;
-					}
-				}
-				else if (pm->ps->weapon == WP_MELEE)
-				{
-					if (is_wanting_sprint)
-					{
-						PM_SetAnim(SETANIM_BOTH, BOTH_SPRINT_SABER_MP, setAnimFlags);
-
-						PM_HandleSprint(qtrue);
-					}
-					else
-					{
-						if (pm_entSelf->s.NPC_class == CLASS_SBD || pm_entSelf->s.botclass == BCLASS_SBD)
-						{
-							desiredAnim = SBD_RUNING_WEAPON;
-						}
-						else if (pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA)
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN4, setAnimFlags);
-						}
-						else
-						{
-							PM_SetAnim(SETANIM_BOTH, BOTH_RUN1, setAnimFlags);
-						}
-
-						PM_RemoveSprintFlag(qtrue);
 					}
 				}
 				//////////////////////////////// end saber running anims /////////////////////////////////
@@ -11062,24 +10979,32 @@ static void PM_Footsteps(void)
 			}
 			else
 			{// walking forward
-				PM_RemoveSprintFlag(qtrue);
-
-				if (pm->ps->weapon == WP_MELEE)
+				if (((pm->ps->PlayerEffectFlags & (1 << PEF_SPRINTING)) != 0) ||
+					((pm->ps->PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) != 0))
 				{
-					if (pm_entSelf->s.botclass == BCLASS_SBD)
-					{
-						desiredAnim = SBD_WALK_NORMAL;
-					}
-					else
-					{
-						desiredAnim = BOTH_WALK1;
-					}
+					PM_RemoveSprintFlag(qtrue);
 				}
-				else if (pm->ps->weapon != WP_SABER)
-				{
-					// add gun walk animas somehow
 
-					if (pm->ps->weapon == WP_BRYAR_OLD || pm_entSelf->s.botclass == BCLASS_SBD)
+				if (pm->ps &&
+					(pm->ps->weapon != WP_SABER))
+				{// add gun walk animas somehow
+					if (pm->ps &&
+						(pm->ps->weapon == WP_MELEE ||
+							pm->ps->weapon == WP_THERMAL ||
+							pm->ps->weapon == WP_DET_PACK ||
+							pm->ps->weapon == WP_TRIP_MINE))
+					{
+						if (pm_entSelf->s.botclass == BCLASS_SBD)
+						{
+							desiredAnim = SBD_WALK_NORMAL;
+						}
+						else
+						{
+							desiredAnim = BOTH_WALK1;
+						}
+					}
+					else if (pm->ps &&
+						(pm->ps->weapon == WP_BRYAR_OLD || pm_entSelf->s.botclass == BCLASS_SBD))
 					{
 						if (!pm->ps->weaponTime) //not firing
 						{
@@ -11090,7 +11015,8 @@ static void PM_Footsteps(void)
 							desiredAnim = SBD_WALK_WEAPON;
 						}
 					}
-					else  if (pm->ps->weapon == WP_STUN_BATON)
+					else  if (pm->ps &&
+						(pm->ps->weapon == WP_STUN_BATON))
 					{
 						if (!pm->ps->weaponTime) //not firing
 						{
@@ -11114,50 +11040,45 @@ static void PM_Footsteps(void)
 							desiredAnim = BOTH_WALK1;
 						}
 					}
-					else if (pm->ps->weapon == WP_BRYAR_PISTOL)
+					else if (pm->ps &&
+						(pm->ps->weapon == WP_BRYAR_PISTOL))
 					{
-						if (pm->ps->eFlags & EF3_DUAL_WEAPONS)
+						if (!pm->ps->weaponTime) //not firing
 						{
-							if (!pm->ps->weaponTime) //not firing
+							if (is_walking_and_blocking == qtrue)
 							{
-								if (is_walking_and_blocking == qtrue)
+								if (pm->ps->eFlags & EF3_DUAL_WEAPONS)
 								{
 									desiredAnim = BOTH_WALK1;
-									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
-									PM_SetAnim(SETANIM_BOTH, BOTH_WALK1, SETANIM_FLAG_NORMAL);
-
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
+									desiredAnim = BOTH_WALK8;
 								}
+								PM_HandleGunnerAim(is_walking_and_blocking);
 							}
 							else
 							{
-								desiredAnim = BOTH_WALK1;
+								if (pm->ps->eFlags & EF3_DUAL_WEAPONS)
+								{
+									PM_SetAnim(SETANIM_BOTH, BOTH_WALK1, setAnimFlags);
+								}
+								else
+								{
+									PM_SetAnim(SETANIM_BOTH, BOTH_WALK8, setAnimFlags);
+								}
+
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									PM_RemoveGunnerAimFlag(qtrue);
+								}
 							}
 						}
 						else
 						{
-							if (!pm->ps->weaponTime) //not firing
+							if (pm->ps->eFlags & EF3_DUAL_WEAPONS)
 							{
-								if (is_walking_and_blocking == qtrue)
-								{
-									desiredAnim = BOTH_WALK8;
-									PM_HandleGunnerAim(is_walking_and_blocking);
-								}
-								else
-								{
-									PM_SetAnim(SETANIM_BOTH, BOTH_WALK8, SETANIM_FLAG_NORMAL);
-
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
-								}
+								desiredAnim = BOTH_WALK1;
 							}
 							else
 							{
@@ -11165,61 +11086,45 @@ static void PM_Footsteps(void)
 							}
 						}
 					}
-					else if (pm->ps && pm->ps->weapon == WP_BOWCASTER ||
-						pm->ps->weapon == WP_FLECHETTE ||
-						pm->ps->weapon == WP_DISRUPTOR ||
-						pm->ps->weapon == WP_DEMP2 ||
-						pm->ps->weapon == WP_REPEATER ||
-						pm->ps->weapon == WP_CONCUSSION ||
-						pm->ps->weapon == WP_ROCKET_LAUNCHER ||
-						pm->ps->weapon == WP_BLASTER)
+					else if (pm->ps &&
+						(pm->ps->weapon == WP_BOWCASTER ||
+							pm->ps->weapon == WP_FLECHETTE ||
+							pm->ps->weapon == WP_DISRUPTOR ||
+							pm->ps->weapon == WP_DEMP2 ||
+							pm->ps->weapon == WP_REPEATER ||
+							pm->ps->weapon == WP_CONCUSSION ||
+							pm->ps->weapon == WP_ROCKET_LAUNCHER ||
+							pm->ps->weapon == WP_BLASTER))
 					{
-						if (pm_entSelf->s.NPC_class == CLASS_ASSASSIN_DROID ||
-							pm_entSelf->s.botclass == BCLASS_ASSASSIN_DROID)
+						if (!pm->ps->weaponTime)  //not firing
 						{
-							desiredAnim = BOTH_WALK2;
-						}
-						else
-						{
-							if (!pm->ps->weaponTime)  //not firing
+							if (is_walking_and_blocking == qtrue)
 							{
-								if (is_walking_and_blocking == qtrue)
+								desiredAnim = BOTH_WALK2;
+								PM_HandleGunnerAim(is_walking_and_blocking);
+							}
+							else
+							{
+								if (pm_entSelf->s.NPC_class == CLASS_ASSASSIN_DROID ||
+									pm_entSelf->s.botclass == BCLASS_ASSASSIN_DROID)
 								{
 									desiredAnim = BOTH_WALK2;
-									PM_HandleGunnerAim(is_walking_and_blocking);
 								}
 								else
 								{
 									PM_SetAnim(SETANIM_BOTH, BOTH_WALK9, SETANIM_FLAG_NORMAL);
+								}
 
-									if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
-									{
-										PM_RemoveGunnerAimFlag(qtrue);
-									}
+								if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+								{
+									PM_RemoveGunnerAimFlag(qtrue);
 								}
 							}
-							else
-							{
-								desiredAnim = BOTH_WALK2;
-							}
-						}
-					}
-					else if (pm->ps->weapon == WP_THERMAL ||
-						pm->ps->weapon == WP_DET_PACK ||
-						pm->ps->weapon == WP_TRIP_MINE)
-					{
-						if (!pm->ps->weaponTime) //not firing
-						{
-							desiredAnim = BOTH_WALK1;
 						}
 						else
 						{
-							desiredAnim = BOTH_WALK1;
+							desiredAnim = BOTH_WALK2;
 						}
-					}
-					else
-					{
-						desiredAnim = BOTH_WALK1;
 					}
 				}
 				else if (pm->ps->weapon == WP_SABER && BG_SabersOff(pm->ps))
@@ -13522,29 +13427,22 @@ static void PM_Weapon(void)
 			pm->ps->weapon == WP_TRIP_MINE ||
 			pm->ps->weapon == WP_DET_PACK)
 		{// set the weapon anims
-			if (is_walking_and_blocking == qtrue)
-			{// If we're walking and blocking, we want to go into a aim walk stance
-				PM_HandleGunnerAim(is_walking_and_blocking);
+			if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+			{
+				PM_RemoveGunnerAimFlag(qtrue);
+			}
+			if (pm->ps->weapon == WP_THERMAL)
+			{
+				if (pm->ps->torsoAnim == WeaponAttackAnim[pm->ps->weapon] && pm->ps->weaponTime - 200 <= 0)
+				{
+					PM_StartTorsoAnim(WeaponReadyAnim[pm->ps->weapon]);
+				}
 			}
 			else
 			{
-				if (pm->ps->communicatingflags & (1u << CF_AIMINGGUN))
+				if (pm->ps->torsoAnim == WeaponAttackAnim[pm->ps->weapon] && pm->ps->weaponTime - 700 <= 0)
 				{
-					PM_RemoveGunnerAimFlag(qtrue);
-				}
-				if (pm->ps->weapon == WP_THERMAL)
-				{
-					if (pm->ps->torsoAnim == WeaponAttackAnim[pm->ps->weapon] && pm->ps->weaponTime - 200 <= 0)
-					{
-						PM_StartTorsoAnim(WeaponReadyAnim[pm->ps->weapon]);
-					}
-				}
-				else
-				{
-					if (pm->ps->torsoAnim == WeaponAttackAnim[pm->ps->weapon] && pm->ps->weaponTime - 700 <= 0)
-					{
-						PM_StartTorsoAnim(WeaponReadyAnim[pm->ps->weapon]);
-					}
+					PM_StartTorsoAnim(WeaponReadyAnim[pm->ps->weapon]);
 				}
 			}
 		}
@@ -13964,7 +13862,7 @@ static void PM_Weapon(void)
 		{ // set the weapon anims
 			if (pm->ps->weapon == WP_SABER)
 			{
-				if (is_walking_and_blocking)
+				if (is_walking_and_blocking == qtrue)
 				{
 					if (pm->ps->fd.saberAnimLevel == SS_DUAL)
 					{
@@ -14006,7 +13904,10 @@ static void PM_Weapon(void)
 					}
 					else
 					{ // set the weapon anims
-						if (is_walking_and_blocking == qtrue)
+						if (is_walking_and_blocking == qtrue &&
+							(pm->ps->weapon != WP_THERMAL &&
+								pm->ps->weapon != WP_TRIP_MINE &&
+								pm->ps->weapon != WP_DET_PACK))
 						{// If we're walking and blocking, we want to go into a aim walk stance
 							PM_HandleGunnerAim(is_walking_and_blocking);
 						}
@@ -14016,7 +13917,7 @@ static void PM_Weapon(void)
 							{
 								PM_RemoveGunnerAimFlag(qtrue);
 							}
-							if (PM_CanSetWeaponReadyAnim())
+							if (PM_CanSetWeaponReadyAnim() == qtrue)
 							{
 								PM_StartTorsoAnim(PM_GetWeaponReadyAnim());
 							}
@@ -14039,7 +13940,10 @@ static void PM_Weapon(void)
 		pm->ps->torsoAnim != TORSO_WEAPONIDLE3 &&
 		pm->ps->weapon != WP_EMPLACED_GUN)
 	{ // set the weapon anims
-		if (is_walking_and_blocking == qtrue)
+		if (is_walking_and_blocking == qtrue &&
+			(pm->ps->weapon != WP_THERMAL &&
+				pm->ps->weapon != WP_TRIP_MINE &&
+				pm->ps->weapon != WP_DET_PACK))
 		{// If we're walking and blocking, we want to go into a aim walk stance
 			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
@@ -14049,7 +13953,7 @@ static void PM_Weapon(void)
 			{
 				PM_RemoveGunnerAimFlag(qtrue);
 			}
-			if (PM_CanSetWeaponReadyAnim())
+			if (PM_CanSetWeaponReadyAnim() == qtrue)
 			{
 				PM_StartTorsoAnim(PM_GetWeaponReadyAnim());
 			}
@@ -14098,7 +14002,10 @@ static void PM_Weapon(void)
 		{
 			PM_StartTorsoAnim(BOTH_GUNSIT1);
 		} // set the weapon anims
-		else if (is_walking_and_blocking == qtrue)
+		else if (is_walking_and_blocking == qtrue &&
+			(pm->ps->weapon != WP_THERMAL &&
+				pm->ps->weapon != WP_TRIP_MINE &&
+				pm->ps->weapon != WP_DET_PACK))
 		{// If we're walking and blocking, we want to go into a aim walk stance
 			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
@@ -14108,7 +14015,7 @@ static void PM_Weapon(void)
 			{
 				PM_RemoveGunnerAimFlag(qtrue);
 			}
-			if (PM_CanSetWeaponReadyAnim())
+			if (PM_CanSetWeaponReadyAnim() == qtrue)
 			{
 				PM_StartTorsoAnim(PM_GetWeaponReadyAnim());
 			}
@@ -14168,7 +14075,10 @@ static void PM_Weapon(void)
 	{
 		pm->ps->weaponTime = 0;
 
-		if (is_walking_and_blocking == qtrue)
+		if (is_walking_and_blocking == qtrue &&
+			(pm->ps->weapon != WP_THERMAL &&
+				pm->ps->weapon != WP_TRIP_MINE &&
+				pm->ps->weapon != WP_DET_PACK))
 		{// If we're walking and blocking, we want to go into a aim walk stance
 			PM_HandleGunnerAim(is_walking_and_blocking);
 		}
@@ -14547,7 +14457,10 @@ static void PM_Weapon(void)
 	}
 	else
 	{// set the weapon anims
-		if (is_walking_and_blocking == qtrue)
+		if (is_walking_and_blocking == qtrue &&
+			(pm->ps->weapon != WP_THERMAL &&
+				pm->ps->weapon != WP_TRIP_MINE &&
+				pm->ps->weapon != WP_DET_PACK))
 		{// If we're walking and blocking, we want to go into a aim walk stance
 			PM_HandleGunnerAim(is_walking_and_blocking);
 		}

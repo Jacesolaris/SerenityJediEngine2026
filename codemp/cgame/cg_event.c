@@ -3664,7 +3664,7 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 					//h4q3ry
 					if (cent->currentState.eFlags & EF3_DUAL_WEAPONS)
 					{
-						CG_GetClientWeaponMuzzleBoltPointduals(cent->currentState.eventParm, cent->currentState.origin2,qtrue);
+						CG_GetClientWeaponMuzzleBoltPointduals(cent->currentState.eventParm, cent->currentState.origin2, qtrue);
 					}
 					else
 					{
@@ -3712,7 +3712,7 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 					//h4q3ry
 					if (cent->currentState.eFlags & EF3_DUAL_WEAPONS)
 					{
-						CG_GetClientWeaponMuzzleBoltPointduals(cent->currentState.eventParm, cent->currentState.origin2,qtrue);
+						CG_GetClientWeaponMuzzleBoltPointduals(cent->currentState.eventParm, cent->currentState.origin2, qtrue);
 					}
 					else
 					{
