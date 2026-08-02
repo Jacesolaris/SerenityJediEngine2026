@@ -10635,13 +10635,19 @@ static void PM_Footsteps(void)
 			qboolean rolled = qfalse;
 			if (PM_RunningAnim(pm->ps->legsAnim)
 				|| pm->ps->legsAnim == BOTH_FORCEHEAL_START
-				|| PM_CanRollFromSoulCal(pm->ps) || OVERRIDE_ROLL_CHECK)
+				|| PM_CanRollFromSoulCal(pm->ps))
 			{
 				//roll!
 				rolled = pm_try_roll();
 			}
 			else if (PM_CrouchAnim(pm->gent->client->ps.legsAnim) &&
-				(pm->cmd.buttons & BUTTON_DASH || OVERRIDE_ROLL_CHECK))
+				(pm->cmd.buttons & BUTTON_DASH))
+			{
+				//roll!
+				rolled = PM_TryRoll_SJE();
+			}
+
+			if (OVERRIDE_ROLL_CHECK)
 			{
 				//roll!
 				rolled = PM_TryRoll_SJE();
@@ -11157,7 +11163,7 @@ static void PM_Footsteps(void)
 				}
 				//walking forward saber
 				bobmove = 0.3f; // walking bobs slow
-				
+
 				if (pm->ps->weapon == WP_SABER && pm->ps->SaberActive())
 				{
 					if (pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer())
@@ -11609,6 +11615,11 @@ static void PM_BeginWeaponChange(const int weapon)
 
 	if (pm->ps->weapon == WP_SABER && (is_holding_block_button || is_holding_block_button_and_attack || is_sprinting))
 	{
+		return;
+	}
+
+	if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_SBD)
+	{ // SBD is stuck with 1 weapon
 		return;
 	}
 

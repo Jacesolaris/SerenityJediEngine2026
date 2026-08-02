@@ -7992,14 +7992,17 @@ spawn_done:
 					}
 
 					ClassAmmoSetup(ent);
-					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
-					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
-					client->skillLevel[SK_THERMAL] = FORCE_LEVEL_3;
-					client->skillLevel[SK_BOWCASTER] = FORCE_LEVEL_3;
-					client->skillLevel[SK_DETPACK] = FORCE_LEVEL_3;
-					client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
-					client->skillLevel[SK_DISRUPTOR] = FORCE_LEVEL_3;
-					client->skillLevel[SK_CRYOBAN] = FORCE_LEVEL_3;
+					if (client->botclass != BCLASS_JAWA) // JAWA DONT GET ANYTHING.
+					{
+						client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+						client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
+						client->skillLevel[SK_THERMAL] = FORCE_LEVEL_3;
+						client->skillLevel[SK_BOWCASTER] = FORCE_LEVEL_3;
+						client->skillLevel[SK_DETPACK] = FORCE_LEVEL_3;
+						client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
+						client->skillLevel[SK_DISRUPTOR] = FORCE_LEVEL_3;
+						client->skillLevel[SK_CRYOBAN] = FORCE_LEVEL_3;
+					}
 					/*if (client->skillLevel[SK_PISTOL] >= FORCE_LEVEL_3 && ent->client->ps.weapon == WP_BRYAR_PISTOL)
 					{
 						client->ps.eFlags |= EF3_DUAL_WEAPONS;

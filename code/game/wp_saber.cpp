@@ -18571,7 +18571,8 @@ int IsPressingDashButton(const gentity_t* self)
 		&& !self->client->hookhasbeenfired
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
-		&& (self->client->buttons & BUTTON_DASH))
+		&& (self->client->buttons & BUTTON_DASH)
+		&& (!(self->client->NPC_class == CLASS_SBD)))
 	{
 		return qtrue;
 	}

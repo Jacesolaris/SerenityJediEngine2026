@@ -4308,6 +4308,16 @@ void WP_ReloadGun(gentity_t* ent)
 		return;
 	}
 
+	if (ent->client->ps.weaponTime > 0 && ent->client->ps.weaponstate != WEAPON_READY)
+	{
+		// Weapon is busy, cannot reload at this moment
+		return;
+	}
+	if (ent->client->ps.weaponstate == WEAPON_CHARGING)
+	{
+		return;
+	}
+
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
 		G_RemoveGunnerAimFlagEnt(ent, qtrue);
@@ -5380,6 +5390,8 @@ static void ClientThink_real(gentity_t* ent)
 		// set speed
 		client->ps.speed = g_speed.value;
 
+		float sprintMul = 1.0f;
+
 		//Check for a siege class speed multiplier
 		if (level.gametype == GT_SIEGE &&
 			client->siegeClass != -1)
@@ -5400,47 +5412,43 @@ static void ClientThink_real(gentity_t* ent)
 		{//can't go nearly as fast when dragging a body around
 			client->ps.speed *= 0.3f;
 		}
-		else if (BG_SaberSprintAnim(ent->client->ps.legsAnim) ||
-			BG_SprintAnim(ent->client->ps.legsAnim) ||
-			BG_WeaponSprintAnim(ent->client->ps.legsAnim))
+
+		// ----------------------------------------------------------------------
+		// Sprint animation speed boosts
+		// ----------------------------------------------------------------------
+		else if (!(ent->client->ps.communicatingflags & (1 << CF_DASHING)) &&
+			(BG_SaberSprintAnim(ent->client->ps.legsAnim) == qtrue ||
+				BG_SprintAnim(ent->client->ps.legsAnim) == qtrue ||
+				BG_WeaponSprintAnim(ent->client->ps.legsAnim) == qtrue))
 		{
-			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING)
+			// Saber sprint
+			if ((ent->client->ps.PlayerEffectFlags & (1 << PEF_SPRINTING)) != 0)
 			{
 				if (!(ent->r.svFlags & SVF_BOT))
 				{
-					if (client->pers.botclass == BCLASS_VADER)
-					{
-						client->ps.speed *= 1.15f;
-					}
-					else if (client->pers.botclass == BCLASS_YODA)
-					{
-						client->ps.speed *= 1.65f;
-					}
-					else
-					{
-						client->ps.speed *= 1.60f;
-					}
+					if (client->NPC_class == CLASS_VADER) sprintMul *= 1.15f;
+					else if (client->NPC_class == CLASS_YODA) sprintMul *= 1.65f;
+					else sprintMul *= 1.60f;
 				}
 			}
-			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
+
+			// Weapon sprint
+			if ((ent->client->ps.PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) != 0)
 			{
 				if (!(ent->r.svFlags & SVF_BOT))
 				{
-					if (client->pers.botclass == BCLASS_VADER)
-					{
-						client->ps.speed *= 1.10f;
-					}
-					else if (client->pers.botclass == BCLASS_YODA)
-					{
-						client->ps.speed *= 1.60f;
-					}
-					else
-					{
-						client->ps.speed *= 1.50f;
-					}
+					if (client->NPC_class == CLASS_VADER) sprintMul *= 1.10f;
+					else if (client->NPC_class == CLASS_YODA) sprintMul *= 1.60f;
+					else sprintMul *= 1.50f;
 				}
 			}
+
+			client->ps.speed *= sprintMul;
 		}
+
+		// ----------------------------------------------------------------------
+		// Slow-move weapons when NOT sprinting
+		// ----------------------------------------------------------------------
 		else if ((client->ps.weapon == WP_BRYAR_PISTOL ||
 			client->ps.weapon == WP_THERMAL ||
 			client->ps.weapon == WP_DET_PACK ||
@@ -5448,7 +5456,6 @@ static void ClientThink_real(gentity_t* ent)
 			((ent->client->ps.PlayerEffectFlags & (1 << PEF_SPRINTING)) == 0) &&
 			((ent->client->ps.PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) == 0))
 		{
-			// Not sprinting, using slow-move weapons → reduce speed
 			client->ps.speed *= 0.85f;
 		}
 
@@ -7221,6 +7228,7 @@ static void ClientThink_real(gentity_t* ent)
 				ent->client->stunhasbeenfired = qtrue;
 				G_SoundOnEnt(ent, CHAN_ITEM, "sound/weapons/noghri/fire.mp3");
 				ent->client->stunDebounceTime = level.time + 0;
+				ucmd->buttons &= ~(BUTTON_BLOCK); // don't allow block to be held down while stunning
 			}
 		}
 		else if (client->stun && (client->stunHeld == qfalse ||

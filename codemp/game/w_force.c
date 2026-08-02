@@ -2348,6 +2348,7 @@ void ForceGrip(const gentity_t* self)
 		self->client->ps.fd.forceGripentity_num = ENTITYNUM_NONE;
 	}
 }
+
 int IsPressingDashButton(const gentity_t* self)
 {
 	if (PM_RunningAnim(self->client->ps.legsAnim)
@@ -2357,7 +2358,8 @@ int IsPressingDashButton(const gentity_t* self)
 		&& !self->client->hookhasbeenfired
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
-		&& (self->client->buttons & BUTTON_DASH))
+		&& (self->client->buttons & BUTTON_DASH)
+		&& (!(self->client->pers.botclass == BCLASS_SBD)))
 	{
 		return qtrue;
 	}

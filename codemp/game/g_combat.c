@@ -413,28 +413,64 @@ static void ScorePlum(const gentity_t* ent, vec3_t origin, const int score)
 ============
 AddScore
 
-Adds score to both the client and his team
+Adds score to both the client and his team.
+Prevents score from dropping below 0.
 ============
 */
-extern qboolean g_dontPenalizeTeam; //g_cmds.c
+extern qboolean g_dontPenalizeTeam; // g_cmds.c
+
 void AddScore(const gentity_t* ent, const int score)
 {
-	if (!ent->client)
+	// ----------------------------------------------------------------------
+	// Safety: validate entity and client
+	// ----------------------------------------------------------------------
+	if (ent == NULL || ent->client == NULL)
 	{
+		Com_Printf("AddScore ERROR: ent or ent->client is NULL\n");
 		return;
 	}
-	// no scoring during pre-match warmup
+
+	// ----------------------------------------------------------------------
+	// No scoring during warmup
+	// ----------------------------------------------------------------------
 	if (level.warmupTime)
 	{
 		return;
 	}
 
-	// show score plum
-	//ScorePlum(ent, origin, score);
-	//
-	ent->client->ps.persistant[PERS_SCORE] += score;
-	if (level.gametype == GT_TEAM && !g_dontPenalizeTeam)
-		level.teamScores[ent->client->ps.persistant[PERS_TEAM]] += score;
+	// ----------------------------------------------------------------------
+	// Apply score change, but clamp to minimum 0
+	// ----------------------------------------------------------------------
+	const int newScore = ent->client->ps.persistant[PERS_SCORE] + score;
+
+	if (newScore < 0)
+	{
+		// Prevent negative score
+		ent->client->ps.persistant[PERS_SCORE] = 0;
+	}
+	else
+	{
+		ent->client->ps.persistant[PERS_SCORE] = newScore;
+	}
+
+	// ----------------------------------------------------------------------
+	// Team score update (only in team games)
+	// ----------------------------------------------------------------------
+	if (level.gametype == GT_TEAM && g_dontPenalizeTeam == qfalse)
+	{
+		const int team = ent->client->ps.persistant[PERS_TEAM];
+		level.teamScores[team] += score;
+
+		// Optional: clamp team score too (if desired)
+		if (level.teamScores[team] < 0)
+		{
+			level.teamScores[team] = 0;
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Recalculate ranks
+	// ----------------------------------------------------------------------
 	CalculateRanks();
 }
 
@@ -3082,7 +3118,10 @@ void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker
 	}
 
 	//turn off flamethrower
-	self->client->flameTime = 0;
+	if (self->client)
+	{
+		self->client->flameTime = 0;
+	}
 	self->client->ps.PlayerEffectFlags &= ~(1 << PEF_FLAMING);
 	self->client->ps.userInt3 &= ~(1 << FLAG_WRISTBLASTER);
 

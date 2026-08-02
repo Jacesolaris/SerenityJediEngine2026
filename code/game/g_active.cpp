@@ -6844,61 +6844,66 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 		//Client sets ucmds and such for speed alterations
 		client->ps.speed = g_speed->value;
 
-		if (client->ps.heldClient < ENTITYNUM_WORLD)
+		float sprintMul = 1.0f;
+
+		// ----------------------------------------------------------------------
+		// Slow movement when holding another client
+		// ----------------------------------------------------------------------
+		if (client->ps.heldClient >= 0 && client->ps.heldClient < ENTITYNUM_WORLD)
 		{
 			client->ps.speed *= 0.3f;
 		}
+
+		// ----------------------------------------------------------------------
+		// Low-health movement penalties
+		// ----------------------------------------------------------------------
 		else if ((client->ps.stats[STAT_HEALTH] <= 25 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
-			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 3) && client->ps.stats[STAT_MAX_HEALTH] < 100))
-		{//move slower when low on health
+			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 3) &&
+				client->ps.stats[STAT_MAX_HEALTH] < 100))
+		{
 			client->ps.speed *= 0.85f;
 		}
 		else if ((client->ps.stats[STAT_HEALTH] <= 40 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
-			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 2) && client->ps.stats[STAT_MAX_HEALTH] < 100))
-		{//move slower when low on health
+			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 2) &&
+				client->ps.stats[STAT_MAX_HEALTH] < 100))
+		{
 			client->ps.speed *= 0.90f;
 		}
-		else if (BG_SaberSprintAnim(ent->client->ps.legsAnim) ||
-			BG_SprintAnim(ent->client->ps.legsAnim) ||
-			BG_WeaponSprintAnim(ent->client->ps.legsAnim))
+
+		// ----------------------------------------------------------------------
+		// Sprint animation speed boosts
+		// ----------------------------------------------------------------------
+		else if (!(ent->client->ps.communicatingflags & (1 << CF_DASHING)) &&
+			(BG_SaberSprintAnim(ent->client->ps.legsAnim) == qtrue ||
+				BG_SprintAnim(ent->client->ps.legsAnim) == qtrue ||
+				BG_WeaponSprintAnim(ent->client->ps.legsAnim) == qtrue))
 		{
-			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING)
+			if ((ent->client->ps.PlayerEffectFlags & (1 << PEF_SPRINTING)) != 0)
 			{
-				if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)))
+				if ((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))
 				{
-					if (client->NPC_class == CLASS_VADER)
-					{
-						client->ps.speed *= 1.15f;
-					}
-					else if (client->NPC_class == CLASS_YODA)
-					{
-						client->ps.speed *= 1.65f;
-					}
-					else
-					{
-						client->ps.speed *= 1.60f;
-					}
+					if (client->NPC_class == CLASS_VADER) sprintMul *= 1.15f;
+					else if (client->NPC_class == CLASS_YODA) sprintMul *= 1.65f;
+					else sprintMul *= 1.60f;
 				}
 			}
-			if (ent->client->ps.PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING)
+
+			if ((ent->client->ps.PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) != 0)
 			{
-				if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)))
+				if ((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))
 				{
-					if (client->NPC_class == CLASS_VADER)
-					{
-						client->ps.speed *= 1.10f;
-					}
-					else if (client->NPC_class == CLASS_YODA)
-					{
-						client->ps.speed *= 1.60f;
-					}
-					else
-					{
-						client->ps.speed *= 1.50f;
-					}
+					if (client->NPC_class == CLASS_VADER) sprintMul *= 1.10f;
+					else if (client->NPC_class == CLASS_YODA) sprintMul *= 1.60f;
+					else sprintMul *= 1.50f;
 				}
 			}
+
+			client->ps.speed *= sprintMul;
 		}
+
+		// ----------------------------------------------------------------------
+		// Slow-move weapons when NOT sprinting
+		// ----------------------------------------------------------------------
 		else if ((client->ps.weapon == WP_BRYAR_PISTOL ||
 			client->ps.weapon == WP_THERMAL ||
 			client->ps.weapon == WP_DET_PACK ||
@@ -6906,9 +6911,9 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 			((ent->client->ps.PlayerEffectFlags & (1 << PEF_SPRINTING)) == 0) &&
 			((ent->client->ps.PlayerEffectFlags & (1 << PEF_WEAPONSPRINTING)) == 0))
 		{
-			// Not sprinting, using slow-move weapons → reduce speed
 			client->ps.speed *= 0.85f;
 		}
+
 		else if (PM_SaberInAttack(client->ps.saberMove) && ucmd->forwardmove < 0)
 		{
 			//if running backwards while attacking, don't run as fast.
@@ -7324,8 +7329,6 @@ usually be a couple times for each server frame on fast clients.
 
 extern int G_FindLocalInterestPoint(gentity_t* self);
 extern float G_CanJumpToEnemyVeh(Vehicle_t* p_veh, const usercmd_t* pUmcd);
-
-
 
 // ============================================================================
 // G_RemoveGunnerAimFlagEnt
@@ -9061,6 +9064,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				ent->client->stunhasbeenfired = qtrue;
 				G_SoundOnEnt(ent, CHAN_ITEM, "sound/weapons/noghri/fire.mp3");
 				ent->client->stunDebounceTime = level.time + 0;
+				ucmd->buttons &= ~(BUTTON_BLOCK); // don't allow block to be held down while stunning
 			}
 		}
 		else if (client->stun && (client->stunHeld == qfalse ||
@@ -9076,7 +9080,6 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 		if (client->hook && (client->fireHeld == qfalse ||
 			!(ucmd->buttons & BUTTON_GRAPPLE) ||
 			ucmd->buttons & BUTTON_USE ||
-			ucmd->buttons & BUTTON_BLOCK ||
 			PM_RunningAnim(ent->client->ps.legsAnim) ||
 			PM_WalkingAnim(ent->client->ps.legsAnim) ||
 			ent->client->ps.pm_type == PM_DEAD))

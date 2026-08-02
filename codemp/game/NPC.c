@@ -1739,8 +1739,13 @@ static void NPC_RunBehavior(const npcteam_t team, const int b_state)
 			{
 				const Vehicle_t* pVehicle = NPCS.NPC->m_pVehicle;
 
-				if (!pVehicle->m_pPilot && pVehicle->m_iBoarding == 0)
+				if (pVehicle && !pVehicle->m_pPilot && pVehicle->m_iBoarding == 0)
 				{
+					if (!pVehicle)
+					{
+						// no vehicle attached to this NPC; nothing to do
+						return;
+					}
 					//racc - no pilot
 					if (pVehicle->m_pVehicleInfo->type == VH_ANIMAL)
 					{

@@ -88,29 +88,28 @@ constexpr auto ANGER_ALERT_SOUND_RADIUS = 256;
 
 void G_AngerAlert(const gentity_t* self)
 {
-    // SAFETY FIX: self may be NULL in edge cases (bad spawns, scripts)
-    if (self == NULL)
-    {
-        Com_Printf(S_COLOR_YELLOW "G_AngerAlert: NULL self\n");
-        return;
-    }
+	// SAFETY FIX: self may be NULL in edge cases (bad spawns, scripts)
+	if (self == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "G_AngerAlert: NULL self\n");
+		return;
+	}
 
-    if (self->NPC && (self->NPC->scriptFlags & SCF_NO_GROUPS))
-    {
-        // I'm not a team playa...
-        return;
-    }
+	if (self->NPC && (self->NPC->scriptFlags & SCF_NO_GROUPS))
+	{
+		// I'm not a team playa...
+		return;
+	}
 
-    if (!TIMER_Done(self, "interrogating"))
-    {
-        // I'm interrogating, don't wake everyone else up yet...
-        return;
-    }
+	if (!TIMER_Done(self, "interrogating"))
+	{
+		// I'm interrogating, don't wake everyone else up yet...
+		return;
+	}
 
-    // Alert nearby allies
-    G_AlertTeam(self, self->enemy, ANGER_ALERT_RADIUS, ANGER_ALERT_SOUND_RADIUS);
+	// Alert nearby allies
+	G_AlertTeam(self, self->enemy, ANGER_ALERT_RADIUS, ANGER_ALERT_SOUND_RADIUS);
 }
-
 
 /*
 -------------------------
@@ -178,7 +177,6 @@ qboolean G_TeamEnemy(const gentity_t* self)
 
 	return qfalse;
 }
-
 
 static qboolean G_CheckSaberAllyAttackDelay(const gentity_t* self, const gentity_t* enemy)
 {
@@ -671,7 +669,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		{
 			if (self->client->playerTeam == TEAM_PLAYER)
 			{
-				G_AimSet(self,Q_irand(self->NPC->stats.aim - 5 * g_spskill->integer,self->NPC->stats.aim - g_spskill->integer));
+				G_AimSet(self, Q_irand(self->NPC->stats.aim - 5 * g_spskill->integer, self->NPC->stats.aim - g_spskill->integer));
 			}
 			else
 			{
@@ -683,10 +681,10 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 					min_err = 5;
 					max_err = 10;
 				}
-				else if (self->client && 
+				else if (self->client &&
 					(self->client->NPC_class == CLASS_STORMTROOPER ||
 						self->client->NPC_class == CLASS_CLONETROOPER ||
-						self->client->NPC_class == CLASS_STORMCOMMANDO  ||
+						self->client->NPC_class == CLASS_STORMCOMMANDO ||
 						self->client->NPC_class == CLASS_SBD) &&
 					self->NPC->rank <= RANK_CREWMAN)
 				{
@@ -694,7 +692,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 					max_err = 9;
 				}
 
-				G_AimSet(self,Q_irand(self->NPC->stats.aim - max_err * (3 - g_spskill->integer),self->NPC->stats.aim - min_err * (3 - g_spskill->integer)));
+				G_AimSet(self, Q_irand(self->NPC->stats.aim - max_err * (3 - g_spskill->integer), self->NPC->stats.aim - min_err * (3 - g_spskill->integer)));
 			}
 		}
 
@@ -747,7 +745,6 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		return;
 	}
 
-	
 	if (event)
 	{
 		G_AddVoiceEvent(self, event, Q_irand(1000, 2000));
@@ -1348,7 +1345,6 @@ extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SpinningSaberAnim(int anim);
 extern qboolean PM_SpinningAnim(int anim);
-extern void WP_ReloadGun(gentity_t* ent);
 
 extern void BubbleShield_TurnOn();
 extern qboolean droideka_npc(const gentity_t* ent);
@@ -2305,7 +2301,6 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range,
 	return closestAlly;
 }
 
-
 gentity_t* NPC_CheckEnemy(const qboolean find_new, const qboolean too_far_ok, const qboolean set_enemy)
 {
 	qboolean forcefind_new = qfalse;
@@ -2624,7 +2619,6 @@ qboolean NPC_EvaluateShot(const int hit, qboolean glassOK)
 
 	return qfalse;
 }
-
 
 /*
 NPC_CheckAttack

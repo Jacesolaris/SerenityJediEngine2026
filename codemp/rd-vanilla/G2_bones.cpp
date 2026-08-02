@@ -75,10 +75,10 @@ int G2_Add_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName)
 {
 	int x;
 	mdxaSkel_t* skel;
-	boneInfo_t temp_bone;
+	boneInfo_t tempBone;
 
 	//rww - RAGDOLL_BEGIN
-	memset(&temp_bone, 0, sizeof temp_bone);
+	memset(&tempBone, 0, sizeof tempBone);
 	//rww - RAGDOLL_END
 
 	const mdxaSkelOffsets_t* offsets = reinterpret_cast<mdxaSkelOffsets_t*>(reinterpret_cast<byte*>(mod->mdxa) + sizeof(mdxaHeader_t));
@@ -135,9 +135,9 @@ int G2_Add_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName)
 	ri->Printf(PRINT_ALL, "New bone added for %s\n", boneName);
 #endif
 	// ok, we didn't find an existing bone of that name, or an empty slot. Lets add an entry
-	temp_bone.boneNumber = x;
-	temp_bone.flags = 0;
-	blist.push_back(temp_bone);
+	tempBone.boneNumber = x;
+	tempBone.flags = 0;
+	blist.push_back(tempBone);
 	return blist.size() - 1;
 }
 

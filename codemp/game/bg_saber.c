@@ -5845,6 +5845,7 @@ weapChecks:
 				case BOTH_RUN10:
 				case BOTH_SPRINT:
 				case BOTH_SPRINT_SABER:
+				case BOTH_SPRINT_SABER_MP:
 				case BOTH_RUN_STAFF:
 				case BOTH_RUN_DUAL:
 				case BOTH_RUNBACK1:
@@ -6542,6 +6543,7 @@ weapChecks:
 					case BOTH_VADERWALK2:
 					case BOTH_SPRINT:
 					case BOTH_SPRINT_SABER:
+					case BOTH_SPRINT_SABER_MP:
 					case BOTH_RUN1:
 					case BOTH_RUN2:
 					case BOTH_RUN3:

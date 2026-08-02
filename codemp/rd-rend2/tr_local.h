@@ -174,6 +174,7 @@ extern cvar_t* r_shadowCascadeZNear;
 extern cvar_t* r_shadowCascadeZFar;
 extern cvar_t* r_shadowCascadeZBias;
 extern cvar_t* r_ignoreDstAlpha;
+extern cvar_t* r_refractionChromaticAberration;
 
 extern cvar_t* r_ignoreGLErrors;
 extern cvar_t* r_logFile;
@@ -1360,6 +1361,7 @@ typedef enum
 	UNIFORM_COLOR,
 	UNIFORM_BASECOLOR,
 	UNIFORM_VERTCOLOR,
+	UNIFORM_CHROMATICABERRATIONDELTA,
 
 	UNIFORM_DLIGHTINFO,
 	UNIFORM_LIGHTFORWARD,

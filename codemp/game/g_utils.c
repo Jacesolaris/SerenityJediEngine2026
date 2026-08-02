@@ -973,7 +973,7 @@ static const char* DecodeEF(int ef)
 
 static const char* DecodeEF2(int ef2)
 {
-	static char buffer[512];
+	static char buffer[1024];
 	buffer[0] = '\0';
 
 #define ADD_FLAG(str) \
@@ -983,17 +983,20 @@ static const char* DecodeEF2(int ef2)
         Q_strcat(buffer, sizeof(buffer), (str)); \
     } while (0)
 
-	if (ef2 & EF2_HELD_BY_MONSTER) ADD_FLAG("HELD_BY_MONSTER");
-	if (ef2 & EF2_USE_ALT_ANIM)    ADD_FLAG("USE_ALT_ANIM");
-	if (ef2 & EF2_ALERTED)         ADD_FLAG("ALERTED");
-	if (ef2 & EF2_GENERIC_NPC_FLAG)ADD_FLAG("GENERIC_NPC_FLAG");
-	if (ef2 & EF2_FLYING)          ADD_FLAG("FLYING");
-	if (ef2 & EF2_HYPERSPACE)      ADD_FLAG("HYPERSPACE");
-	if (ef2 & EF2_BRACKET_ENTITY)  ADD_FLAG("BRACKET_ENTITY");
-	if (ef2 & EF2_SHIP_DEATH)      ADD_FLAG("SHIP_DEATH");
-	if (ef2 & EF2_NOT_USED_1)      ADD_FLAG("NOT_USED_1");
-	if (ef2 & EF2_BOWCASTERSCOPE)  ADD_FLAG("BOWCASTERSCOPE");
-	if (ef2 & EF2_PLAYERHIT)       ADD_FLAG("PLAYERHIT");
+	if (ef2 & EF2_HELD_BY_MONSTER)  ADD_FLAG("HELD_BY_MONSTER");
+	if (ef2 & EF2_USE_ALT_ANIM)     ADD_FLAG("USE_ALT_ANIM");
+	if (ef2 & EF2_ALERTED)          ADD_FLAG("ALERTED");
+	if (ef2 & EF2_GENERIC_NPC_FLAG) ADD_FLAG("GENERIC_NPC_FLAG");
+	if (ef2 & EF2_FLYING)           ADD_FLAG("FLYING");
+	if (ef2 & EF2_HYPERSPACE)       ADD_FLAG("HYPERSPACE");
+	if (ef2 & EF2_BRACKET_ENTITY)   ADD_FLAG("BRACKET_ENTITY");
+	if (ef2 & EF2_SHIP_DEATH)       ADD_FLAG("SHIP_DEATH");
+	if (ef2 & EF2_NOT_USED_1)       ADD_FLAG("NOT_USED_1");
+	if (ef2 & EF2_BOWCASTERSCOPE)   ADD_FLAG("BOWCASTERSCOPE");
+	if (ef2 & EF2_PLAYERHIT)        ADD_FLAG("PLAYERHIT");
+	if (ef2 & EF3_JETPACK_HOVER)    ADD_FLAG("JETPACK_HOVER");
+	if (ef2 & EF3_DUAL_WEAPONS)     ADD_FLAG("DUAL_WEAPONS");
+	if (ef2 & EF3_JETPACK_NO_MODEL) ADD_FLAG("JETPACK_NO_MODEL");
 
 #undef ADD_FLAG
 

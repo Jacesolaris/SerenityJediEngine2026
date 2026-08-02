@@ -2125,6 +2125,10 @@ void Weapon_AltStun_Fire(gentity_t* ent)
 	if (!ent->client->stunHeld && !ent->client->stun)
 	{
 		fire_stun(ent, muzzle, forward);
+		ent->client->ps.pm_flags &=
+			~(PMF_BLOCK_HELD |
+				PMF_KICK_HELD |
+				PMF_DASH_HELD);
 	}
 	ent->client->stunHeld = qtrue;
 }
