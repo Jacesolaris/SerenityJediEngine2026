@@ -422,6 +422,9 @@ typedef struct centity_s {
 	vec3_t			lerpOrigin;
 	vec3_t			lerpAngles;
 
+	vec3_t			predictionErrorOffset;
+	int				predictionErrorTime;
+
 #if 0
 	//add up bone offsets until next client frame before adding them in
 	qboolean		hasRagOffset;

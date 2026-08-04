@@ -25,41 +25,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "cm_patch.h"
 #include "qcommon/qcommon.h"
 
-/*
-
-This file does not reference any globals, and has these entry points:
-
-void CM_ClearLevelPatches( void );
-struct patchCollide_s	*CM_GeneratePatchCollide( int width, int height, const vec3_t *points );
-void CM_TraceThroughPatchCollide( traceWork_t *tw, const struct patchCollide_s *pc );
-qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchCollide_s *pc );
-void CM_DrawDebugSurface( void (*drawPoly)(int color, int numPoints, flaot *points) );
-
-Issues for collision against curved surfaces:
-
-Surface edges need to be handled differently than surface planes
-
-Plane expansion causes raw surfaces to expand past expanded bounding box
-
-Position test of a volume against a surface is tricky.
-
-Position test of a point against a surface is not well defined, because the surface has no volume.
-
-Tracing leading edge points instead of volumes?
-Position test by tracing corner to corner? (8*7 traces -- ouch)
-
-coplanar edges
-triangulated patches
-degenerate patches
-
-  endcaps
-  degenerate
-
-WARNING: this may misbehave with meshes that have rows or columns that only
-degenerate a few triangles.  Completely degenerate rows and columns are handled
-properly.
-*/
-
 int	c_totalPatchBlocks;
 int	c_totalPatchSurfaces;
 int	c_totalPatchEdges;
@@ -1509,7 +1474,8 @@ CM_PositionTestInPatchCollide
 Modifies tr->tr if any of the facets effect the trace
 ====================
 */
-qboolean CM_PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_s* pc) {
+qboolean CM_PositionTestInPatchCollide(traceWork_t* tw, const struct patchCollide_s* pc)
+{
 	int j;
 	float offset, t;
 	float plane[4];

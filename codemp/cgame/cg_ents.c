@@ -3705,6 +3705,10 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 {
 	qboolean go_away = qfalse;
 
+	// Save previous lerpOrigin for prediction error detection
+	vec3_t prevLerpOrigin;
+	VectorCopy(cent->lerpOrigin, prevLerpOrigin);
+
 	// if this player does not want to see extrapolated players
 	if (!cg_smoothClients.integer)
 	{
@@ -3820,6 +3824,36 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 		VectorAdd(cent->lerpOrigin, cent->lerpOriginOffset, cent->lerpOrigin);
 	}
 #endif
+
+	// Prediction error smoothing: for non-local entities, smoothly correct
+	// small (< 64 unit) position deltas instead of snapping.
+	if (cent->currentState.number != cg.clientNum && cent->currentState.number < MAX_CLIENTS)
+	{
+		vec3_t rawDelta;
+		VectorSubtract(cent->lerpOrigin, prevLerpOrigin, rawDelta);
+		float rawLen = VectorLength(rawDelta);
+		if (rawLen < 64.0f && rawLen > 0.1f)
+		{
+			// Store the delta as a prediction error to be decayed
+			VectorCopy(rawDelta, cent->predictionErrorOffset);
+			cent->predictionErrorTime = cg.time;
+		}
+		// Decay and apply existing offset
+		if (cent->predictionErrorTime > 0)
+		{
+			float decayFrac = (float)(cg.time - cent->predictionErrorTime) / 100.0f;
+			if (decayFrac >= 1.0f)
+			{
+				VectorClear(cent->predictionErrorOffset);
+				cent->predictionErrorTime = 0;
+			}
+			else
+			{
+				VectorScale(cent->predictionErrorOffset, 1.0f - decayFrac, cent->predictionErrorOffset);
+				VectorAdd(cent->lerpOrigin, cent->predictionErrorOffset, cent->lerpOrigin);
+			}
+		}
+	}
 
 	if (go_away)
 	{

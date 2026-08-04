@@ -604,8 +604,8 @@ static int CM_EdgePlaneNum(cGrid_t* grid, int gridPlanes[CM_MAX_GRID_SIZE][CM_MA
 CM_SetBorderInward
 ===================
 */
-static void CM_SetBorderInward(facet_t* facet, cGrid_t* grid, int gridPlanes[CM_MAX_GRID_SIZE][CM_MAX_GRID_SIZE][2],
-	int i, int j, int which) {
+static void CM_SetBorderInward(facet_t* facet, cGrid_t* grid, int gridPlanes[CM_MAX_GRID_SIZE][CM_MAX_GRID_SIZE][2],int i, int j, int which)
+{
 	float* points[4]{};
 	int		numPoints;
 
@@ -1683,7 +1683,7 @@ CM_PositionTestInPatchCollide
 Modifies tr->tr if any of the facets effect the trace
 ====================
 */
-qboolean CM_PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_s* pc)
+qboolean CM_PositionTestInPatchCollide(traceWork_t* tw, const struct patchCollide_s* pc)
 {
 	// FIX: move huge array off stack → static scratch buffer
 	static int cross[MAX_PATCH_PLANES];

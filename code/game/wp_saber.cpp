@@ -2635,14 +2635,16 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 				}
 
 				// Single-hit enforcement: skip if already damaged this swing
-				if (((victim->s.number < MAX_CLIENTS || G_ControlledByPlayer(victim)) || victim->NPC) &&
-					(ent->client->saberHitEntityBitMask & (1 << victim->s.number)))
+				if (ent->client->saberHitEntityBitMask & (1 << victim->s.number))
 				{
-					if (g_HitTracking->integer && (victim->NPC))
+					if (!PM_SaberInKata(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) && !PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)))
 					{
-						Com_Printf(S_COLOR_RED "Single-hit enforcement: skip if already damaged this swing\n");
+						if (g_HitTracking->integer && (victim->NPC))
+						{
+							Com_Printf(S_COLOR_RED "Single-hit enforcement: skip if already damaged this swing\n");
+						}
+						continue;
 					}
-					continue;
 				}
 
 				if (victim->e_DieFunc == dieF_maglock_die)
@@ -3241,7 +3243,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 						{
 							damage = ceil(totalDmg[i]);
 						}
-						if ((victim->s.number < MAX_CLIENTS || G_ControlledByPlayer(victim)) || victim->NPC)
+						if (!PM_SaberInKata(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) && !PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)))
 						{
 							if (g_HitTracking->integer && (victim->NPC))
 							{
@@ -7944,7 +7946,7 @@ void WP_SabersDamageTrace(gentity_t* ent, const qboolean no_effects)
 	}
 
 	// Reset hit tracking when a new swing begins
-	if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) || ent->NPC)
+	if (!PM_SaberInKata(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) && !PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)))
 	{
 		if (ent->client->ps.saberAttackSequence != ent->client->saberLastAttackSequence)
 		{

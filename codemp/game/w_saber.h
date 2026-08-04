@@ -110,6 +110,7 @@ extern float forcePushPullRadius[NUM_FORCE_POWER_LEVELS];
 
 #define SABER_ELASTIC_RATIO          .5
 
+#define SABER_KILLDAMAGE		     500
 #define SABER_MAXHITDAMAGE		     200
 #define SABER_KILHITDAMAGE           150
 #define SABER_HIGHITDAMAGE		     100

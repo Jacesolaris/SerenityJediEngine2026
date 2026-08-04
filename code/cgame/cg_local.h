@@ -192,6 +192,9 @@ struct centity_s
 	vec3_t lerpOrigin;
 	vec3_t lerpAngles;
 	vec3_t renderAngles;
+
+	vec3_t			predictionErrorOffset;
+	int				predictionErrorTime;
 	//for ET_PLAYERS, the actual angles it was rendered at- should be used by any getboltmatrix calls after CG_Player
 
 	float rotValue; //rotation increment for repeater effect

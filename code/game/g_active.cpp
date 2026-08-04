@@ -6847,6 +6847,15 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 		float sprintMul = 1.0f;
 
 		// ----------------------------------------------------------------------
+		// Safety: ensure ent->client is valid before accessing playerState
+		// ----------------------------------------------------------------------
+		if (ent == nullptr || ent->client == nullptr)
+		{
+			// Non-player entity → skip movement speed logic
+			return;
+		}
+
+		// ----------------------------------------------------------------------
 		// Slow movement when holding another client
 		// ----------------------------------------------------------------------
 		if (client->ps.heldClient >= 0 && client->ps.heldClient < ENTITYNUM_WORLD)
@@ -6914,9 +6923,11 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 			client->ps.speed *= 0.85f;
 		}
 
-		else if (PM_SaberInAttack(client->ps.saberMove) && ucmd->forwardmove < 0)
+		// ----------------------------------------------------------------------
+		// Saber backwards attack speed reduction
+		// ----------------------------------------------------------------------
+		else if (PM_SaberInAttack(client->ps.saberMove) == qtrue && ucmd->forwardmove < 0)
 		{
-			//if running backwards while attacking, don't run as fast.
 			switch (client->ps.saberAnimLevel)
 			{
 			case SS_TAVION:
@@ -6934,27 +6945,39 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 				break;
 			default:;
 			}
+
 			if (g_saberMoveSpeed->value != 1.0f)
 			{
 				client->ps.speed *= g_saberMoveSpeed->value;
 			}
 		}
-		else if (PM_LeapingSaberAnim(client->ps.legsAnim))
+
+		// ----------------------------------------------------------------------
+		// Leaping saber anim — no speed mod
+		// ----------------------------------------------------------------------
+		else if (PM_LeapingSaberAnim(client->ps.legsAnim) == qtrue)
 		{
-			//no mod on speed when leaping
-			//FIXME: maybe jump?
+			// no speed change
 		}
-		else if (PM_SpinningSaberAnim(client->ps.legsAnim))
+
+		// ----------------------------------------------------------------------
+		// Spinning saber anim
+		// ----------------------------------------------------------------------
+		else if (PM_SpinningSaberAnim(client->ps.legsAnim) == qtrue)
 		{
 			client->ps.speed *= 0.5f;
+
 			if (g_saberMoveSpeed->value != 1.0f)
 			{
 				client->ps.speed *= g_saberMoveSpeed->value;
 			}
 		}
-		else if (client->ps.weapon == WP_SABER && ucmd->buttons & BUTTON_ATTACK)
+
+		// ----------------------------------------------------------------------
+		// Saber attack while running
+		// ----------------------------------------------------------------------
+		else if (client->ps.weapon == WP_SABER && (ucmd->buttons & BUTTON_ATTACK))
 		{
-			//if attacking with saber while running, drop your speed
 			switch (client->ps.saberAnimLevel)
 			{
 			case SS_TAVION:
@@ -6972,15 +6995,16 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 				break;
 			default:;
 			}
+
 			if (g_saberMoveSpeed->value != 1.0f)
 			{
 				client->ps.speed *= g_saberMoveSpeed->value;
 			}
 		}
-		else if (client->ps.weapon == WP_SABER && client->ps.saberAnimLevel == FORCE_LEVEL_3 &&
-			PM_SaberInTransition(client->ps.saberMove))
+		else if (client->ps.weapon == WP_SABER &&
+			client->ps.saberAnimLevel == FORCE_LEVEL_3 &&
+			PM_SaberInTransition(client->ps.saberMove) == qtrue)
 		{
-			//Now, we want to even slow down in transitions for level 3 (since it has chains and stuff)
 			if (ucmd->forwardmove < 0)
 			{
 				client->ps.speed *= 0.4f;
@@ -6991,9 +7015,12 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 			}
 		}
 	}
-	if ((client->NPC_class == CLASS_ATST || client->NPC_class == CLASS_DROIDEKA) && (client->ps.legsAnim == BOTH_RUN1START || client->ps.legsAnim == BOTH_RUN1STOP))
+
+	// ATST / Droideka start/stop ramp-up hack
+	if ((client->NPC_class == CLASS_ATST || client->NPC_class == CLASS_DROIDEKA) &&
+		(client->ps.legsAnim == BOTH_RUN1START ||
+			client->ps.legsAnim == BOTH_RUN1STOP))
 	{
-		//HACK: when starting to move as atst, ramp up speed
 		if (client->ps.legsAnimTimer > 100)
 		{
 			client->ps.speed = 0;

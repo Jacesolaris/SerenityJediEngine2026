@@ -11582,7 +11582,10 @@ static void PM_BeginWeaponChange(const int weapon)
 	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 	const qboolean is_sprinting = ((pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
-	if (pm->gent && pm->gent->client && pm->gent->client->pers.enterTime >= level.time - 500)
+	gentity_t* gent = pm->gent;
+	gclient_t* gcl = gent ? gent->client : NULL;
+
+	if (gent && gent->client && gent->client->pers.enterTime >= level.time - 500)
 	{
 		//just entered map
 		if (weapon == WP_NONE && pm->ps->weapon != weapon)
@@ -11618,7 +11621,7 @@ static void PM_BeginWeaponChange(const int weapon)
 		return;
 	}
 
-	if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_SBD)
+	if (gent && gent->client && gent->client->NPC_class == CLASS_SBD)
 	{ // SBD is stuck with 1 weapon
 		return;
 	}
@@ -11637,9 +11640,9 @@ static void PM_BeginWeaponChange(const int weapon)
 	pm->ps->weaponstate = WEAPON_DROPPING;
 	pm->ps->weaponTime += 200;
 
-	if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
+	if (gent && gent->client && gent->client->NPC_class == CLASS_GALAKMECH)
 	{
-		if (pm->gent->alt_fire)
+		if (gent->alt_fire)
 		{
 			//FIXME: attack delay?
 			PM_SetAnim(pm, SETANIM_TORSO, TORSO_DROPWEAP3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -11652,9 +11655,11 @@ static void PM_BeginWeaponChange(const int weapon)
 	}
 	else
 	{
-		if (!(pm->ps->eFlags & EF_HELD_BY_WAMPA) && !G_IsRidingVehicle(pm->gent))
+		if (!(pm->ps->eFlags & EF_HELD_BY_WAMPA)
+			&& (!gent || !G_IsRidingVehicle(gent))
+			&& (!gcl || !PM_InLedgeMove(gcl->ps.torsoAnim)))
 		{
-			PM_SetAnim(pm, SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_HOLD);
+			PM_SetAnim(pm, SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 		}
 	}
 
@@ -11668,9 +11673,9 @@ static void PM_BeginWeaponChange(const int weapon)
 		}
 	}
 
-	if (pm->gent
-		&& pm->gent->client
-		&& (pm->gent->client->NPC_class == CLASS_ATST || pm->gent->client->NPC_class == CLASS_RANCOR || pm->gent->client->NPC_class == CLASS_DROIDEKA))
+	if (gent
+		&& gent->client
+		&& (gent->client->NPC_class == CLASS_ATST || gent->client->NPC_class == CLASS_RANCOR || gent->client->NPC_class == CLASS_DROIDEKA))
 	{
 		if (pm->ps->clientNum < MAX_CLIENTS)
 		{
@@ -11686,14 +11691,14 @@ static void PM_BeginWeaponChange(const int weapon)
 		if (pm->ps->weapon == WP_SABER)
 		{
 			//going to switch away from saber
-			if (pm->gent)
+			if (gent)
 			{
 				if (pm->ps->SaberActive())
 				{
-					G_SoundOnEnt(pm->gent, CHAN_WEAPON, "sound/weapons/saber/saberoffquick.mp3");
+					G_SoundOnEnt(gent, CHAN_WEAPON, "sound/weapons/saber/saberoffquick.mp3");
 				}
 			}
-			if (!G_IsRidingVehicle(pm->gent))
+			if (!G_IsRidingVehicle(gent))
 			{
 				if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
 				{
@@ -11701,7 +11706,7 @@ static void PM_BeginWeaponChange(const int weapon)
 				}
 				else
 				{
-					if (!g_noIgniteTwirl->integer && !IsSurrendering(pm->gent))
+					if (!g_noIgniteTwirl->integer && !IsSurrendering(gent))
 					{
 						if (PM_RunningAnim(pm->ps->legsAnim) ||
 							pm->ps->groundEntityNum == ENTITYNUM_NONE ||
@@ -20184,10 +20189,9 @@ static void PM_Weapon(void)
 			case WP_CONCUSSION:
 			case WP_ROCKET_LAUNCHER:
 			case WP_DISRUPTOR:
-
 				if (pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH)
 				{
-					if (pm->cmd.buttons & BUTTON_ALT_ATTACK)
+					if (pm->gent->alt_fire)
 					{
 						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 					}
@@ -20198,19 +20202,19 @@ static void PM_Weapon(void)
 				}
 				else
 				{
-					if (pm->cmd.buttons & BUTTON_ALT_ATTACK || pm->gent->client->NPC_class == CLASS_BATTLEDROID)
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
+					if (pm->gent->alt_fire || pm->gent->client->NPC_class == CLASS_BATTLEDROID)
+					{ //alt fire
+						PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK3, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);// from hip
 					}
 					else
-					{
+					{ //normal fire
 						if (cg.renderingThirdPerson)
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+						{ //third person
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD); // from shoulder
 						}
 						else
-						{
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+						{ // first person
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_ATTACK_FP, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD);
 						}
 					}
 				}

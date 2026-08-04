@@ -10931,7 +10931,7 @@ static void PM_Footsteps(void)
 					(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) ||
 					(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) && pm->ps->weapon == WP_STUN_BATON) ||
 					(pm->ps->weapon == WP_BRYAR_OLD ||
-					(pm_entSelf && pm_entSelf->s.botclass == BCLASS_SBD)) ||
+						(pm_entSelf && pm_entSelf->s.botclass == BCLASS_SBD)) ||
 					(pm->ps->weapon == WP_STUN_BATON) ||
 					(pm_entSelf->s.botclass == BCLASS_WOOKIEMELEE || pm_entSelf->s.botclass == BCLASS_CHEWIE) ||
 					((pm->ps->fd.forcePowersActive & (1 << FP_RAGE)) != 0))
@@ -10942,7 +10942,7 @@ static void PM_Footsteps(void)
 					{
 						if (pm_entSelf &&
 							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) ||
-							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) &&	pm->ps->weapon == WP_STUN_BATON)
+							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) && pm->ps->weapon == WP_STUN_BATON)
 						{
 							PM_SetAnim(SETANIM_BOTH, BOTH_RUN4, setAnimFlags);
 							bobmove = 0.2f;
@@ -10969,7 +10969,7 @@ static void PM_Footsteps(void)
 					{// firing → use legs anim only
 						if (pm_entSelf &&
 							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) ||
-							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) &&	pm->ps->weapon == WP_STUN_BATON)
+							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA) && pm->ps->weapon == WP_STUN_BATON)
 						{
 							desiredAnim = BOTH_RUN4;
 							bobmove = 0.2f;
@@ -11079,7 +11079,6 @@ static void PM_Footsteps(void)
 			}
 			else
 			{// walking forward
-
 				PM_RemoveSprintFlag(qtrue);
 
 				if (pm->ps &&
@@ -11728,7 +11727,10 @@ void PM_BeginWeaponChange(const int weapon)
 	pm->ps->weaponstate = WEAPON_DROPPING;
 	pm->ps->weaponTime += 200;
 
-	PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE);
+	if (!(PM_InLedgeMove(pm->ps->torsoAnim)))
+	{
+		PM_SetAnim(SETANIM_TORSO, TORSO_DROPWEAP1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+	}
 
 	// Clear any active rocket lock
 	BG_ClearRocketLock(pm->ps);

@@ -859,27 +859,6 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 			case WP_BLASTER:
 				NPCInfo->scriptFlags |= SCF_PILOT;
 				ST_ClearTimers(ent);
-				//if (ent->NPC->rank >= RANK_COMMANDER)
-				//{
-				//	//commanders use alt-fire
-				//	ent->NPC->scriptFlags |= SCF_ALT_FIRE;
-				//}
-				//if (ent->client->NPC_class == CLASS_IMPERIAL)
-				//{
-				//	ent->NPC->scriptFlags |= SCF_ALT_FIRE;
-				//}
-				//if (ent->client->NPC_class == CLASS_RODIAN)
-				//{
-				//	ent->NPC->scriptFlags |= SCF_ALT_FIRE;
-				//}
-				//if (!Q_stricmp("human_merc", ent->NPC_type))
-				//{
-				//	ent->NPC->scriptFlags |= SCF_ALT_FIRE;
-				//}
-				//if (!Q_stricmp("rodian2", ent->NPC_type))
-				//{
-				//	ent->NPC->scriptFlags |= SCF_ALT_FIRE;
-				//}
 				break;
 			}
 			if (ent->client->NPC_class == CLASS_DROIDEKA)
@@ -2617,7 +2596,14 @@ void SP_NPC_Galak(gentity_t* self)
 	}
 	else
 	{
-		self->NPC_type = "Galak";
+		if (com_outcast && com_outcast->integer == 7) //playing nina
+		{
+			self->NPC_type = "Galak2";
+		}
+		else
+		{
+			self->NPC_type = "Galak";
+		}
 	}
 
 	SP_NPC_spawner(self);
@@ -2638,7 +2624,14 @@ void SP_NPC_Desann(gentity_t* self)
 	}
 	else
 	{
-		self->NPC_type = "Desann2";
+		if (com_outcast && com_outcast->integer == 8) //playing veng
+		{
+			self->NPC_type = "Desann2_veng";
+		}
+		else
+		{
+			self->NPC_type = "Desann2";
+		}
 	}
 
 	SP_NPC_spawner(self);
@@ -2713,7 +2706,14 @@ SHY - Spawner is shy
 */
 void SP_NPC_Lannik_Racto(gentity_t* self)
 {
-	self->NPC_type = "lannik_racto";
+	if (com_outcast && com_outcast->integer == 7) //playing nina
+	{
+		self->NPC_type = "lannik_racto_nina";
+	}
+	else
+	{
+		self->NPC_type = "lannik_racto";
+	}
 
 	SP_NPC_spawner(self);
 }
@@ -2987,21 +2987,49 @@ void SP_NPC_Sith(gentity_t* self)
 		}
 		else if (self->spawnflags & 2)
 		{
-			self->NPC_type = "RebornFencer";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RebornFencer_nina";
+			}
+			else
+			{
+				self->NPC_type = "RebornFencer";
+			}
 		}
 		else if (self->spawnflags & 1)
 		{
-			self->NPC_type = "RebornForceUser";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RebornForceUser_nina";
+			}
+			else
+			{
+				self->NPC_type = "RebornForceUser";
+			}
 		}
 		else
 		{
 			if (!Q_irand(0, 2))
 			{
-				self->NPC_type = "RebornAcrobat";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "RebornAcrobat_nina";
+				}
+				else
+				{
+					self->NPC_type = "RebornAcrobat";
+				}
 			}
 			else if (Q_irand(0, 1))
 			{
-				self->NPC_type = "RebornBoss";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "RebornBoss_nina";
+				}
+				else
+				{
+					self->NPC_type = "RebornBoss";
+				}
 			}
 			else
 			{
@@ -3114,22 +3142,50 @@ void SP_NPC_Prisoner(gentity_t* self)
 		{
 			if (Q_irand(0, 1))
 			{
-				self->NPC_type = "elder";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "elder3";
+				}
+				else
+				{
+					self->NPC_type = "elder";
+				}
 			}
 			else
 			{
-				self->NPC_type = "elder2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "elder4";
+				}
+				else
+				{
+					self->NPC_type = "elder2";
+				}
 			}
 		}
 		else
 		{
 			if (Q_irand(0, 1))
 			{
-				self->NPC_type = "Prisoner";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Prisoner_nina";
+				}
+				else
+				{
+					self->NPC_type = "Prisoner";
+				}
 			}
 			else
 			{
-				self->NPC_type = "Prisoner2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Prisoner_nina2";
+				}
+				else
+				{
+					self->NPC_type = "Prisoner2";
+				}
 			}
 		}
 	}
@@ -3311,11 +3367,25 @@ void SP_NPC_Human_Merc(gentity_t* self)
 				{
 				case 0:
 				case 1:
-					self->NPC_type = "RebornAcrobat";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "RebornAcrobat_nina";
+					}
+					else
+					{
+						self->NPC_type = "RebornAcrobat";
+					}
 					break;
 				case 2:
 				case 3:
-					self->NPC_type = "RebornFencer";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "RebornFencer_nina";
+					}
+					else
+					{
+						self->NPC_type = "RebornFencer";
+					}
 					break;
 				case 4:
 				case 5:
@@ -3373,29 +3443,65 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 	{
 		if (self->spawnflags & 8)
 		{
-			//rocketer
-			self->NPC_type = "rockettrooper";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RocketTrooper_nina";
+			}
+			else
+			{
+				self->NPC_type = "RocketTrooper";
+			}
 		}
 		else if (self->spawnflags & 4)
 		{
-			//alt-officer
-			self->NPC_type = "stofficeralt";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				//alt-officer
+				self->NPC_type = "stofficeralt_nina";
+			}
+			else
+			{
+				//alt-officer
+				self->NPC_type = "stofficeralt";
+			}
 		}
 		else if (self->spawnflags & 2)
 		{
-			//commander
-			self->NPC_type = "stcommander";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				//commander
+				self->NPC_type = "STCommander_nina";
+			}
+			else
+			{
+				//commander
+				self->NPC_type = "STCommander";
+			}
 		}
 		else if (self->spawnflags & 1)
 		{
 			//officer
 			if (Q_irand(0, 1))
 			{
-				self->NPC_type = "stofficer";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "stofficer_nina";
+				}
+				else
+				{
+					self->NPC_type = "stofficer";
+				}
 			}
 			else
 			{
-				self->NPC_type = "stofficer2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "stofficer2_nina";
+				}
+				else
+				{
+					self->NPC_type = "stofficer2";
+				}
 			}
 		}
 		else
@@ -3405,11 +3511,25 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 			{
 				if (Q_irand(0, 1))
 				{
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 				}
 				else
 				{
-					self->NPC_type = "StormTrooper2";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper2_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper2";
+					}
 				}
 			}
 			else
@@ -3417,16 +3537,44 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 				switch (Q_irand(0, 7))
 				{
 				case 0:
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 					break;
 				case 1:
-					self->NPC_type = "StormTrooper2";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper2_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper2";
+					}
 					break;
 				case 2:
-					self->NPC_type = "StormTrooper_red";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_red_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper_red";
+					}
 					break;
 				case 3:
-					self->NPC_type = "StormTrooper_blue";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_blue_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper_blue";
+					}
 					break;
 				case 4:
 					self->NPC_type = "droideka2";
@@ -3439,7 +3587,14 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 					break;
 				case 7:
 				default: //just in case
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 					break;
 				}
 			}
@@ -3449,29 +3604,65 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 	{
 		if (self->spawnflags & 8)
 		{
-			//rocketer
-			self->NPC_type = "rockettrooper";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RocketTrooper_nina";
+			}
+			else
+			{
+				self->NPC_type = "RocketTrooper";
+			}
 		}
 		else if (self->spawnflags & 4)
 		{
-			//alt-officer
-			self->NPC_type = "stofficeralt";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				//alt-officer
+				self->NPC_type = "stofficeralt_nina";
+			}
+			else
+			{
+				//alt-officer
+				self->NPC_type = "stofficeralt";
+			}
 		}
 		else if (self->spawnflags & 2)
 		{
-			//commander
-			self->NPC_type = "stcommander";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				//commander
+				self->NPC_type = "STCommander_nina";
+			}
+			else
+			{
+				//commander
+				self->NPC_type = "STCommander";
+			}
 		}
 		else if (self->spawnflags & 1)
 		{
 			//officer
 			if (Q_irand(0, 1))
 			{
-				self->NPC_type = "stofficer";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "stofficer_nina";
+				}
+				else
+				{
+					self->NPC_type = "stofficer";
+				}
 			}
 			else
 			{
-				self->NPC_type = "stofficer2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "stofficer2_nina";
+				}
+				else
+				{
+					self->NPC_type = "stofficer2";
+				}
 			}
 		}
 		else
@@ -3482,16 +3673,44 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 				switch (Q_irand(0, 7))
 				{
 				case 0:
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 					break;
 				case 1:
-					self->NPC_type = "StormTrooper2";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper2_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper2";
+					}
 					break;
 				case 2:
-					self->NPC_type = "StormTrooper_red";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_red_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper_red";
+					}
 					break;
 				case 3:
-					self->NPC_type = "StormTrooper_blue";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_blue_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper_blue";
+					}
 					break;
 				case 4:
 					self->NPC_type = "Droideka_trooper";
@@ -3504,7 +3723,14 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 					break;
 				case 7:
 				default: //just in case
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 					break;
 				}
 			}
@@ -3513,16 +3739,44 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 				switch (Q_irand(0, 7))
 				{
 				case 0:
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 					break;
 				case 1:
-					self->NPC_type = "StormTrooper2";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper2_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper2";
+					}
 					break;
 				case 2:
-					self->NPC_type = "StormTrooper_red";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_red_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper_red";
+					}
 					break;
 				case 3:
-					self->NPC_type = "StormTrooper_blue";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_blue_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper_blue";
+					}
 					break;
 				case 4:
 					self->NPC_type = "droideka2";
@@ -3535,7 +3789,14 @@ void SP_NPC_Stormtrooper(gentity_t* self)
 					break;
 				case 7:
 				default: //just in case
-					self->NPC_type = "StormTrooper";
+					if (com_outcast && com_outcast->integer == 7) //playing nina
+					{
+						self->NPC_type = "StormTrooper_nina";
+					}
+					else
+					{
+						self->NPC_type = "StormTrooper";
+					}
 					break;
 				}
 			}
@@ -3643,15 +3904,36 @@ void SP_NPC_HazardTrooper(gentity_t* self)
 	{
 		if (self->spawnflags & 1)
 		{
-			self->NPC_type = "hazardtrooperofficer";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "hazardtrooperofficer_nina";
+			}
+			else
+			{
+				self->NPC_type = "hazardtrooperofficer";
+			}
 		}
 		else if (self->spawnflags & 2)
 		{
-			self->NPC_type = "hazardtrooperconcussion";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "hazardtrooperconcussion_nina";
+			}
+			else
+			{
+				self->NPC_type = "hazardtrooperconcussion";
+			}
 		}
 		else
 		{
-			self->NPC_type = "hazardtrooper";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "hazardtrooper_nina";
+			}
+			else
+			{
+				self->NPC_type = "hazardtrooper";
+			}
 		}
 	}
 
@@ -3766,11 +4048,18 @@ void SP_NPC_Rodian(gentity_t* self)
 		{
 			if (self->spawnflags & 1)
 			{
-				self->NPC_type = "rodian2";
+				self->NPC_type = "Rodian2";
 			}
 			else
 			{
-				self->NPC_type = "rodian";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Rodian_nina";
+				}
+				else
+				{
+					self->NPC_type = "Rodian";
+				}
 			}
 		}
 		else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
@@ -3819,10 +4108,24 @@ void SP_NPC_Weequay(gentity_t* self)
 				self->NPC_type = "Weequay";
 				break;
 			case 1:
-				self->NPC_type = "Weequay2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Weequay2_nina";
+				}
+				else
+				{
+					self->NPC_type = "Weequay2";
+				}
 				break;
 			case 2:
-				self->NPC_type = "Weequay3";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Weequay3_nina";
+				}
+				else
+				{
+					self->NPC_type = "Weequay3";
+				}
 				break;
 			case 3:
 				self->NPC_type = "Weequay4";
@@ -3841,10 +4144,24 @@ void SP_NPC_Weequay(gentity_t* self)
 				self->NPC_type = "Weequay";
 				break;
 			case 1:
-				self->NPC_type = "Weequay2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Weequay2_nina";
+				}
+				else
+				{
+					self->NPC_type = "Weequay2";
+				}
 				break;
 			case 2:
-				self->NPC_type = "Weequay3";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "Weequay3_nina";
+				}
+				else
+				{
+					self->NPC_type = "Weequay3";
+				}
 				break;
 			case 3:
 				self->NPC_type = "Weequay4";
@@ -3874,7 +4191,14 @@ void SP_NPC_Trandoshan(gentity_t* self)
 		}
 		else
 		{
-			self->NPC_type = "Trandoshan";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "Trandoshan_nina";
+			}
+			else
+			{
+				self->NPC_type = "Trandoshan";
+			}
 		}
 	}
 
@@ -4164,23 +4488,58 @@ void SP_NPC_Reborn(gentity_t* self)
 	{
 		if (self->spawnflags & 1)
 		{
-			self->NPC_type = "rebornforceuser";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RebornForceUser_nina";
+			}
+			else
+			{
+				self->NPC_type = "RebornForceUser";
+			}
 		}
 		else if (self->spawnflags & 2)
 		{
-			self->NPC_type = "rebornfencer";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RebornFencer_nina";
+			}
+			else
+			{
+				self->NPC_type = "RebornFencer";
+			}
 		}
 		else if (self->spawnflags & 4)
 		{
-			self->NPC_type = "rebornacrobat";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RebornAcrobat_nina";
+			}
+			else
+			{
+				self->NPC_type = "RebornAcrobat";
+			}
 		}
 		else if (self->spawnflags & 8)
 		{
-			self->NPC_type = "rebornboss";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "RebornBoss_nina";
+			}
+			else
+			{
+				self->NPC_type = "RebornBoss";
+			}
 		}
 		else
 		{
-			self->NPC_type = "reborn";
+			if (com_outcast && com_outcast->integer == 7) //playing nina
+			{
+				self->NPC_type = "reborn_nina";
+			}
+			else
+			{
+				self->NPC_type = "reborn";
+			}
 		}
 	}
 
@@ -4228,30 +4587,72 @@ void SP_NPC_Reborn_New(gentity_t* self)
 			//weaker guys
 			if (self->spawnflags & 1)
 			{
-				self->NPC_type = "reborn_dual2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "reborn_dual2_nina";
+				}
+				else
+				{
+					self->NPC_type = "reborn_dual2";
+				}
 			}
 			else if (self->spawnflags & 2)
 			{
-				self->NPC_type = "reborn_staff2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "reborn_staff2_nina";
+				}
+				else
+				{
+					self->NPC_type = "reborn_staff2";
+				}
 			}
 			else
 			{
-				self->NPC_type = "reborn_new2";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "reborn_new2_nina";
+				}
+				else
+				{
+					self->NPC_type = "reborn_new2";
+				}
 			}
 		}
 		else
 		{
 			if (self->spawnflags & 1)
 			{
-				self->NPC_type = "reborn_dual";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "reborn_dual_nina";
+				}
+				else
+				{
+					self->NPC_type = "reborn_dual";
+				}
 			}
 			else if (self->spawnflags & 2)
 			{
-				self->NPC_type = "reborn_staff";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "reborn_staff_nina";
+				}
+				else
+				{
+					self->NPC_type = "reborn_staff";
+				}
 			}
 			else
 			{
-				self->NPC_type = "reborn_new";
+				if (com_outcast && com_outcast->integer == 7) //playing nina
+				{
+					self->NPC_type = "reborn_new_nina";
+				}
+				else
+				{
+					self->NPC_type = "reborn_new";
+				}
 			}
 		}
 	}

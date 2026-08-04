@@ -5392,25 +5392,36 @@ static void ClientThink_real(gentity_t* ent)
 
 		float sprintMul = 1.0f;
 
+		// ----------------------------------------------------------------------
+		// Safety: ensure ent->client is valid before accessing playerState
+		// ----------------------------------------------------------------------
+		if (ent == NULL || ent->client == NULL)
+		{
+			// Non-player entity → skip movement speed logic
+			return;
+		}
+
 		//Check for a siege class speed multiplier
 		if (level.gametype == GT_SIEGE &&
 			client->siegeClass != -1)
 		{
 			client->ps.speed *= bgSiegeClasses[client->siegeClass].speed;
 		}
+
+		// ----------------------------------------------------------------------
+		// Low-health movement penalties
+		// ----------------------------------------------------------------------
 		if ((client->ps.stats[STAT_HEALTH] <= 25 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
-			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 3) && client->ps.stats[STAT_MAX_HEALTH] < 100))
-		{//move slower when low on health
+			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 3) &&
+				client->ps.stats[STAT_MAX_HEALTH] < 100))
+		{
 			client->ps.speed *= 0.85f;
 		}
 		else if ((client->ps.stats[STAT_HEALTH] <= 40 && client->ps.stats[STAT_MAX_HEALTH] >= 100) ||
-			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 2) && client->ps.stats[STAT_MAX_HEALTH] < 100))
-		{//move slower when low on health
+			(client->ps.stats[STAT_HEALTH] <= (client->ps.stats[STAT_MAX_HEALTH] / 2) &&
+				client->ps.stats[STAT_MAX_HEALTH] < 100))
+		{
 			client->ps.speed *= 0.90f;
-		}
-		else if (client->bodyGrabIndex != ENTITYNUM_NONE)
-		{//can't go nearly as fast when dragging a body around
-			client->ps.speed *= 0.3f;
 		}
 
 		// ----------------------------------------------------------------------
@@ -5459,8 +5470,77 @@ static void ClientThink_real(gentity_t* ent)
 			client->ps.speed *= 0.85f;
 		}
 
+		// ----------------------------------------------------------------------
+		// Saber backwards attack speed reduction
+		// ----------------------------------------------------------------------
+		else if (PM_SaberInAttack(client->ps.saberMove) == qtrue && ucmd->forwardmove < 0)
+		{
+			switch (client->ps.saberAnimLevel)
+			{
+			case SS_TAVION:
+			case SS_FAST:
+				client->ps.speed *= 0.85f;
+				break;
+			case SS_MEDIUM:
+			case SS_DUAL:
+			case SS_STAFF:
+				client->ps.speed *= 0.70f;
+				break;
+			case SS_DESANN:
+			case SS_STRONG:
+				client->ps.speed *= 0.55f;
+				break;
+			default:;
+			}
+		}
+
+		// ----------------------------------------------------------------------
+		// Spinning saber anim
+		// ----------------------------------------------------------------------
+		else if (PM_SpinningSaberAnim(client->ps.legsAnim) == qtrue)
+		{
+			client->ps.speed *= 0.5f;
+		}
+
+		// ----------------------------------------------------------------------
+		// Saber attack while running
+		// ----------------------------------------------------------------------
+		else if (client->ps.weapon == WP_SABER && (ucmd->buttons & BUTTON_ATTACK))
+		{
+			switch (client->ps.saberAnimLevel)
+			{
+			case SS_TAVION:
+			case SS_FAST:
+				client->ps.speed *= 0.80f;
+				break;
+			case SS_MEDIUM:
+			case SS_DUAL:
+			case SS_STAFF:
+				client->ps.speed *= 0.85f;
+				break;
+			case SS_DESANN:
+			case SS_STRONG:
+				client->ps.speed *= 0.70f;
+				break;
+			default:;
+			}
+		}
+		else if (client->ps.weapon == WP_SABER &&
+			client->ps.saberAnimLevel == FORCE_LEVEL_3 &&
+			PM_SaberInTransition(client->ps.saberMove) == qtrue)
+		{
+			if (ucmd->forwardmove < 0)
+			{
+				client->ps.speed *= 0.4f;
+			}
+			else
+			{
+				client->ps.speed *= 0.6f;
+			}
+		}
+
 		client->ps.basespeed = client->ps.speed;
-	}
+		}
 
 	if (!ent->NPC || !(ent->NPC->aiFlags & NPCAI_CUSTOM_GRAVITY))
 	{
