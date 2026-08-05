@@ -85,6 +85,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_Color",     GLSL_VEC4, 1 },
 	{ "u_BaseColor", GLSL_VEC4, 1 },
 	{ "u_VertColor", GLSL_VEC4, 1 },
+	{ "u_chromaticAberrationDelta", GLSL_FLOAT, 1 },
 
 	{ "u_DlightInfo",     GLSL_VEC4, 1 },
 	{ "u_LightForward",   GLSL_VEC3, 1 },
@@ -328,6 +329,7 @@ static size_t GLSL_GetShaderHeader(
 		va("#ifndef alphaGen_t\n"
 			"#define alphaGen_t\n"
 			"#define AGEN_LIGHTING_SPECULAR %i\n"
+			"#define AGEN_LIGHTING_SPECULAR_STATIC %i\n"
 			"#define AGEN_PORTAL %i\n"
 			"#endif\n",
 			AGEN_LIGHTING_SPECULAR,
@@ -961,6 +963,7 @@ static void GLSL_InitUniforms(shaderProgram_t* program)
 		}
 	}
 }
+
 
 static void GLSL_FinishGPUShader(shaderProgram_t* program)
 {
