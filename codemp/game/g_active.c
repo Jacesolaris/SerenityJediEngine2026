@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -81,13 +81,14 @@ extern qboolean PM_SaberInTransitionAny(int move);
 extern qboolean PM_SaberInMassiveBounce(int anim);
 extern qboolean PM_Saberinstab(int move);
 extern float manual_npc_saberblocking(const gentity_t* defender);
-extern float manual_npc_kick_absorbing(const gentity_t* defender);
+extern float Manual_NPCKickAbsorbing(const gentity_t* defender);
 extern qboolean PM_WalkingAnim(int anim);
 extern qboolean PM_RunningAnim(int anim);
 extern qboolean BG_IsAlreadyinTauntAnim(int anim);
 qboolean WP_SaberStyleValidForSaber(const saberInfo_t* saber1, const saberInfo_t* saber2, const int saberHolstered, const int saberAnimLevel);
 extern qboolean PM_SaberInBashedAnim(int anim);
-extern qboolean saberKnockOutOfHand(gentity_t* saberent, gentity_t* saber_owner, vec3_t velocity);
+extern qboolean WP_saberKnockOutOfHand(gentity_t* saberent, gentity_t* saber_owner, vec3_t velocity);
+extern qboolean WP_SaberDisarmed(gentity_t* saberent, gentity_t* saber_owner, vec3_t velocity);
 extern qboolean BG_SaberSprintAnim(int anim);
 extern qboolean BG_WeaponSprintAnim(int anim);
 extern void Sphereshield_On(gentity_t* self);
@@ -1330,7 +1331,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 		--------------------------------------------------------- */
 		if (!(ent->r.svFlags & SVF_BOT) &&
 			!PM_SaberInAttack(ent->client->ps.saberMove) &&
-			!((ent->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) &&
+			!((ent->client->ps.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) &&
 			!ent->client->poisonTime &&
 			!ent->client->stunTime &&
 			!ent->client->AmputateTime &&
@@ -1397,7 +1398,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			ent->client->ps.saberBlockingTime < level.time &&
 			ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
-			if (!(((client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)))
+			if (!(((client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0)))
 			{
 				if (client->ps.saberFatigueChainCount > MISHAPLEVEL_HUDFLASH)
 				{
@@ -1420,7 +1421,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			!PM_SaberInAttack(ent->client->ps.saberMove) &&
 			!PM_SaberInTransitionAny(ent->client->ps.saberMove) &&
 			!PM_InKnockDown(&ent->client->ps) &&
-			ent->client->ps.saberLockTime < level.time &&
+			ent->client->ps.saberLockTime < level.time && 
 			ent->client->ps.saberBlockingTime < level.time &&
 			ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
@@ -2892,7 +2893,7 @@ static void BotDelayedTauntReply(gentity_t* bot)
 void G_SetTauntAnim(gentity_t* ent, int taunt)
 {
 	const saberInfo_t* saber1 = BG_MySaber(ent->clientNum, 0);
-	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;//Normal Blocking
+	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;//Normal Blocking
 
 	// dead clients dont get to spam taunt
 	if (ent->client->ps.stats[STAT_HEALTH] <= 0)
@@ -3950,8 +3951,8 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 void G_SetsaberdownorAnim(gentity_t* ent)
 {
 	const saberInfo_t* saber1 = BG_MySaber(ent->clientNum, 0);
-	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
 	const qboolean is_sprinting = ((ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
 	if (ent->client->ps.saberLockTime >= level.time)
@@ -5735,18 +5736,18 @@ static void ClientThink_real(gentity_t* ent)
 	{
 		if (manual_running_and_saberblocking(ent))
 		{
-			if (!(((client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)))
+			if (!(((client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0)))
 			{
-				client->ps.ManualBlockingFlags |= 1 << HOLDINGBLOCK;
+				client->ps.ManualBlockingFlags |= 1 << MBF_HOLDINGBLOCK;
 				client->ps.userInt3 |= 1 << FLAG_BLOCKING;
 				client->ps.ManualBlockingTime = level.time; //Blocking time 1 on
 			}
 		}
 		else if (manual_saberblocking(ent))
 		{
-			if (!(((client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)))
+			if (!(((client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0)))
 			{
-				client->ps.ManualBlockingFlags |= 1 << HOLDINGBLOCK;
+				client->ps.ManualBlockingFlags |= 1 << MBF_HOLDINGBLOCK;
 				client->ps.userInt3 |= 1 << FLAG_BLOCKING;
 				client->ps.ManualBlockingTime = level.time; //Blocking time 1 on
 
@@ -5831,9 +5832,9 @@ static void ClientThink_real(gentity_t* ent)
 
 			if (ucmd->buttons & BUTTON_ATTACK)
 			{
-				if (!(client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK))
+				if (!(client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK))
 				{
-					client->ps.ManualBlockingFlags |= 1 << HOLDINGBLOCKANDATTACK;
+					client->ps.ManualBlockingFlags |= 1 << MBF_HOLDINGBLOCKANDATTACK;
 					client->ps.ManualMBlockingTime = level.time;
 				}
 				ucmd->buttons &= ~(BUTTON_ATTACK);
@@ -5846,18 +5847,18 @@ static void ClientThink_real(gentity_t* ent)
 						// They just pressed block. Mark the time...
 						client->ps.ManualblockStartTime = level.time;
 
-						if (!(client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING))
+						if (!(client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING))
 						{
-							client->ps.ManualBlockingFlags |= 1 << PERFECTBLOCKING; // activate the function
+							client->ps.ManualBlockingFlags |= 1 << MBF_PERFECTBLOCKING; // activate the function
 						}
 					}
 					else
 					{
-						if (client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING && level.time - client->ps.
+						if (client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING && level.time - client->ps.
 							ManualblockStartTime >= 500)
 						{
 							// Been holding block for too long....Turn off
-							client->ps.ManualBlockingFlags &= ~(1 << PERFECTBLOCKING);
+							client->ps.ManualBlockingFlags &= ~(1 << MBF_PERFECTBLOCKING);
 						}
 					}
 				}
@@ -5868,18 +5869,18 @@ static void ClientThink_real(gentity_t* ent)
 						// They just pressed block. Mark the time...
 						client->ps.ManualblockStartTime = level.time;
 
-						if (!(client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING))
+						if (!(client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING))
 						{
-							client->ps.ManualBlockingFlags |= 1 << PERFECTBLOCKING; // activate the function
+							client->ps.ManualBlockingFlags |= 1 << MBF_PERFECTBLOCKING; // activate the function
 						}
 					}
 					else
 					{
-						if (client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING && level.time - client->ps.
+						if (client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING && level.time - client->ps.
 							ManualblockStartTime >= 200)
 						{
 							// Been holding block for too long....Turn off
-							client->ps.ManualBlockingFlags &= ~(1 << PERFECTBLOCKING);
+							client->ps.ManualBlockingFlags &= ~(1 << MBF_PERFECTBLOCKING);
 						}
 					}
 				}
@@ -5890,18 +5891,18 @@ static void ClientThink_real(gentity_t* ent)
 						// They just pressed block. Mark the time...
 						client->ps.ManualblockStartTime = level.time;
 
-						if (!(client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING))
+						if (!(client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING))
 						{
-							client->ps.ManualBlockingFlags |= 1 << PERFECTBLOCKING; // activate the function
+							client->ps.ManualBlockingFlags |= 1 << MBF_PERFECTBLOCKING; // activate the function
 						}
 					}
 					else
 					{
-						if (client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING && level.time - client->ps.
+						if (client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING && level.time - client->ps.
 							ManualblockStartTime >= 80)
 						{
 							// Been holding block for too long....Turn off
-							client->ps.ManualBlockingFlags &= ~(1 << PERFECTBLOCKING);
+							client->ps.ManualBlockingFlags &= ~(1 << MBF_PERFECTBLOCKING);
 						}
 					}
 				}
@@ -5937,16 +5938,16 @@ static void ClientThink_real(gentity_t* ent)
 			{
 				// No longer pressed, but we still need to make sure they are not spamming.
 				client->ps.ManualblockStartTime = 0;
-				client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCKANDATTACK);
-				client->ps.ManualBlockingFlags &= ~(1 << PERFECTBLOCKING);
+				client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCKANDATTACK);
+				client->ps.ManualBlockingFlags &= ~(1 << MBF_PERFECTBLOCKING);
 				client->ps.ManualBlockingFlags &= ~(1 << MBF_ACCURATEMISSILEBLOCKING);
 			}
 		}
 		else
 		{
-			client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCK);
-			client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCKANDATTACK);
-			client->ps.ManualBlockingFlags &= ~(1 << PERFECTBLOCKING);
+			client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCK);
+			client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCKANDATTACK);
+			client->ps.ManualBlockingFlags &= ~(1 << MBF_PERFECTBLOCKING);
 			client->ps.ManualBlockingFlags &= ~(1 << MBF_ACCURATEMISSILEBLOCKING);
 			client->ps.userInt3 &= ~(1 << FLAG_BLOCKING);
 			client->ps.ManualBlockingTime = 0; //Blocking time 1 on
@@ -6028,7 +6029,7 @@ static void ClientThink_real(gentity_t* ent)
 		{
 			client->ps.ManualBlockingFlags &= ~(1 << MBF_NPCBLOCKING);
 		}
-		if (manual_npc_kick_absorbing(ent))
+		if (Manual_NPCKickAbsorbing(ent))
 		{
 			if (!(client->ps.ManualBlockingFlags & 1 << MBF_NPCKICKBLOCK))
 			{
@@ -6882,7 +6883,14 @@ static void ClientThink_real(gentity_t* ent)
 
 			if (clientLost && clientLost->inuse && clientLost->client)
 			{
-				saberKnockOutOfHand(&g_entities[clientLost->client->ps.saberEntityNum], clientLost, vec3_origin);
+				if (Q_irand(0, 3))
+				{// 75% chance
+					WP_saberKnockOutOfHand(&g_entities[clientLost->client->ps.saberEntityNum], clientLost, vec3_origin);
+				}
+				else
+				{
+					WP_SaberDisarmed(&g_entities[clientLost->client->ps.saberEntityNum], clientLost, vec3_origin);
+				}
 			}
 		}
 

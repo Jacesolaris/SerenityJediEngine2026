@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -3520,8 +3520,8 @@ void Cmd_ToggleSaber_f(gentity_t* ent)
 			{
 				G_Sound(ent, CHAN_AUTO, ent->client->saber[1].soundOff);
 			}
-			ent->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCK);
-			ent->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCKANDATTACK);
+			ent->client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCK);
+			ent->client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCKANDATTACK);
 
 			// Clear any lingering saber‑combat state
 			ent->client->ps.duelInProgress = qfalse;
@@ -3829,7 +3829,7 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 
 		if (!ent->client->ps.saberInFlight)
 		{
-			if (!(((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0)) && !PM_SaberInAttack(ent->client->ps.saberMove) && ent->client->ps.saberLockTime < level.time) // lets do a movement when changing styles // need better anims for this
+			if (!(((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0)) && !PM_SaberInAttack(ent->client->ps.saberMove) && ent->client->ps.saberLockTime < level.time) // lets do a movement when changing styles // need better anims for this
 			{
 				G_SetAnim(ent, &ent->client->pers.cmd, SETANIM_TORSO, BOTH_STAND2TO1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 
@@ -3963,8 +3963,8 @@ void Cmd_EngageDuel_f(gentity_t* ent)
 				{
 					G_Sound(ent, CHAN_AUTO, ent->client->saber[1].soundOff);
 				}
-				ent->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCK);
-				ent->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCKANDATTACK);
+				ent->client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCK);
+				ent->client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCKANDATTACK);
 				ent->client->ps.weaponTime = 400;
 				ent->client->ps.saberHolstered = 2;
 			}

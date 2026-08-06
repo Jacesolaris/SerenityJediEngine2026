@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -67,7 +67,7 @@ extern Vehicle_t* G_IsRidingVehicle(const gentity_t* pEnt);
 extern void G_StartRoll(gentity_t* ent, int anim);
 extern void WP_ForcePowerStart(gentity_t* self, forcePowers_t force_power, int override_amt);
 extern int killPlayerTimer;
-extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps);
 extern void NPC_TempLookTarget(const gentity_t* self, int lookEntNum, int minLookTime, int maxLookTime);
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
 extern qboolean PM_HasAnimation(const gentity_t* ent, int animation);
@@ -429,14 +429,14 @@ void ExplodeDeath(gentity_t* self)
 }
 
 void ExplodeDeath_Wait(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath,
-	int d_flags, int hit_loc)
+	int dflags, int hit_loc)
 {
 	self->e_DieFunc = dieF_NULL;
 	self->nextthink = level.time + Q_irand(100, 500);
 	self->e_ThinkFunc = thinkF_ExplodeDeath;
 }
 
-void ExplodeDeath(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath, int d_flags,
+void ExplodeDeath(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int meansOfDeath, int dflags,
 	int hit_loc)
 {
 	self->currentOrigin[2] += 16;
@@ -8538,7 +8538,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 					if (take > targ->health)
 					{
 						//damage is greated than target's health, only give experience for damage used to kill victim
-						if (BG_SaberInNonIdleDamageMove(&attacker->client->ps))
+						if (PM_SaberInNonIdleDamageMove(&attacker->client->ps))
 						{
 							//self is attacking
 							AddFatigueHurtBonusMax(attacker, targ, mod);
@@ -8546,7 +8546,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 					}
 					else
 					{
-						if (BG_SaberInNonIdleDamageMove(&attacker->client->ps))
+						if (PM_SaberInNonIdleDamageMove(&attacker->client->ps))
 						{
 							//self is attacking
 							AddFatigueHurtBonus(attacker, targ, mod);
@@ -8629,7 +8629,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 						if (take > targ->health)
 						{
 							//damage is greated than target's health, only give experience for damage used to kill victim
-							if (BG_SaberInNonIdleDamageMove(&attacker->client->ps))
+							if (PM_SaberInNonIdleDamageMove(&attacker->client->ps))
 							{
 								//self is attacking
 								AddFatigueHurtBonusMax(attacker, targ, mod);
@@ -8637,7 +8637,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 						}
 						else
 						{
-							if (BG_SaberInNonIdleDamageMove(&attacker->client->ps))
+							if (PM_SaberInNonIdleDamageMove(&attacker->client->ps))
 							{
 								//self is attacking
 								AddFatigueHurtBonus(attacker, targ, mod);
@@ -8910,7 +8910,7 @@ G_RadiusDamage
 	vec3_t v{};
 	vec3_t dir;
 
-	int d_flags = DAMAGE_RADIUS;
+	int dflags = DAMAGE_RADIUS;
 
 	if (radius < 1.0f)
 	{
@@ -8936,7 +8936,7 @@ G_RadiusDamage
 
 	if (mod == MOD_GAS)
 	{
-		d_flags |= DAMAGE_NO_KNOCKBACK;
+		dflags |= DAMAGE_NO_KNOCKBACK;
 	}
 
 	// ---------------------------------------------------------
@@ -9059,7 +9059,7 @@ G_RadiusDamage
 				ent->splashRadius = radius;
 			}
 
-			G_Damage(ent, nullptr, attacker, dir, origin, static_cast<int>(points), d_flags, mod);
+			G_Damage(ent, nullptr, attacker, dir, origin, static_cast<int>(points), dflags, mod);
 		}
 	}
 }

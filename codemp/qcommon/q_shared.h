@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -1444,8 +1444,11 @@ typedef struct playerState_s {
 	int     botPendingStyleTime;
 	int     holocronExpireTime;      // when the holocron should pop out
 	int     holocronGlobalCooldown;  // when the player can pick up another holocron
+	int     saberDisarmProtectTime;
+	int         npcKickBlockStartTime;
 	qboolean IsSprinting;
 	qboolean IsAiming;
+	int			saberRiposteTime;
 } playerState_t;
 
 typedef struct siegePers_s
@@ -2200,12 +2203,12 @@ typedef enum
 
 typedef enum
 {
-	HOLDINGBLOCK,
-	HOLDINGBLOCKANDATTACK,
+	MBF_HOLDINGBLOCK,
+	MBF_HOLDINGBLOCKANDATTACK,
 	MBF_QUICKPARRY,
 	MBF_LIGHTNINGBLOCKING,
 	MBF_NPCBLOCKING,
-	PERFECTBLOCKING,
+	MBF_PERFECTBLOCKING,
 	MBF_NPCKICKBLOCK,
 	MBF_MELEEBLOCK,
 	MBF_MELEEDODGE,

@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -2250,6 +2250,7 @@ public:
 	int      weaponfiredelaytime;
 	qboolean IsAiming;
 	int		saberAttackSequence;
+	int saberRiposteTime;
 
 #endif // !JK2_MODE
 
@@ -2515,6 +2516,7 @@ public:
 		saved_game.write<int32_t>(weaponfiredelaytime);
 		saved_game.write<int32_t>(IsAiming);
 		saved_game.write<int32_t>(saberAttackSequence);
+		saved_game.write<int32_t>(saberRiposteTime);
 #endif // !JK2_MODE
 	}
 
@@ -2780,6 +2782,7 @@ public:
 		saved_game.read<int32_t>(weaponfiredelaytime);
 		saved_game.read<int32_t>(IsAiming);
 		saved_game.read<int32_t>(saberAttackSequence);
+		saved_game.read<int32_t>(saberRiposteTime);
 #endif // !JK2_MODE
 	}
 }; // PlayerStateBase
@@ -3556,12 +3559,12 @@ using ForceReload_e = enum
 
 using ManualBlockingFlag_e = enum
 {
-	HOLDINGBLOCK,
-	HOLDINGBLOCKANDATTACK,
+	MBF_HOLDINGBLOCK,
+	MBF_HOLDINGBLOCKANDATTACK,
 	MBF_QUICKPARRY,
 	MBF_LIGHTNINGBLOCKING,
 	MBF_NPCBLOCKING,
-	PERFECTBLOCKING,
+	MBF_PERFECTBLOCKING,
 	MBF_NPCKICKBLOCK,
 	MBF_MELEEBLOCK,
 	MBF_MELEEDODGE,

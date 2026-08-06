@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -2167,7 +2167,7 @@ qboolean PM_SaberInSpecial(const int move)
 	return qfalse;
 }
 
-qboolean SaberAttacking(const gentity_t* self)
+qboolean WP_SaberAttacking(const gentity_t* self)
 {
 	if (PM_SaberInParry(self->client->ps.saberMove))
 	{
@@ -6671,7 +6671,7 @@ static bool TorsoAgainstWindTest(gentity_t* ent)
 					}
 					else
 					{
-						if (!((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) &&
+						if (!((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) &&
 							!(pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING) &&
 							!(pm->ps->PlayerEffectFlags & 1 << PEF_WEAPONSPRINTING))
 						{
@@ -6757,8 +6757,8 @@ static void PM_TorsoAnimLightsaber()
 	// WEAPON_READY
 	// *********************************************************
 
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (is_holding_block_button)) ? qtrue : qfalse;
 
 	if (pm->ps->forcePowersActive & 1 << FP_GRIP && pm->ps->forcePowerLevel[FP_GRIP] > FORCE_LEVEL_1)

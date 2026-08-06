@@ -1334,7 +1334,7 @@ extern qboolean PM_RestAnim(int anim);
 
 void G_SetTauntAnim(gentity_t* ent, const int taunt)
 {
-	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!ent || !ent->client)
@@ -2335,8 +2335,8 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 
 static void G_SetsaberdownorAnim(gentity_t* ent)
 {
-	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((ent->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
 	const qboolean is_sprinting = ((ent->client->ps.PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
 	if (ent->client->ps.saberLockTime >= level.time)

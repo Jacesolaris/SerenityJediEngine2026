@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -69,7 +69,7 @@ extern void g_atst_check_pain(gentity_t* self, gentity_t* other, int damage);
 qboolean PM_RunningAnim(int anim);
 void ThrowSaberToAttacker(gentity_t* self, const gentity_t* attacker);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
-extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);
 extern void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
 extern qboolean manual_saberblocking(const gentity_t* defender);
 extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
@@ -2706,7 +2706,7 @@ extern void Rancor_DropVictim(gentity_t* self);
 extern qboolean g_dontFrickinCheck;
 extern qboolean g_endPDuel;
 extern qboolean g_noPDuelCheck;
-extern void saberReactivate(gentity_t* saberent, gentity_t* saber_owner);
+extern void WP_saberReactivate(gentity_t* saberent, gentity_t* saber_owner);
 extern void WP_saberBackToOwner(gentity_t* saberent);
 void AddFatigueKillBonus(const gentity_t* attacker, const gentity_t* victim, const int means_of_death);
 extern void BubbleShield_TurnOff(gentity_t* self);
@@ -2912,7 +2912,7 @@ void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker
 	{
 		gentity_t* saberEnt = &g_entities[self->client->ps.saberEntityNum];
 		self->client->saberKnockedTime = 0;
-		saberReactivate(saberEnt, self);
+		WP_saberReactivate(saberEnt, self);
 		saberEnt->r.contents = CONTENTS_LIGHTSABER;
 		saberEnt->think = WP_saberBackToOwner;
 		saberEnt->nextthink = level.time;
@@ -7720,7 +7720,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 			if (take > targ->health)
 			{
 				//damage is greated than target's health, only give experience for damage used to kill victim
-				if (BG_SaberInNonIdleDamageMove(&attacker->client->ps, attacker->localAnimIndex))
+				if (PM_SaberInNonIdleDamageMove(&attacker->client->ps, attacker->localAnimIndex))
 				{
 					//self is attacking
 					AddFatigueHurtBonusMax(attacker, targ, mod);
@@ -7728,7 +7728,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 			}
 			else
 			{
-				if (BG_SaberInNonIdleDamageMove(&attacker->client->ps, attacker->localAnimIndex))
+				if (PM_SaberInNonIdleDamageMove(&attacker->client->ps, attacker->localAnimIndex))
 				{
 					//self is attacking
 					AddFatigueHurtBonus(attacker, targ, mod);

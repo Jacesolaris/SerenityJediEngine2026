@@ -83,7 +83,7 @@ BEGIN
 VALUE "Comments", "Contributors"
 VALUE "FileDescription", "Dedicated Server"
 VALUE "FileVersion", VERSION_STRING
-VALUE "InternalName", "JK MP Ded"
+VALUE "InternalName", "SJE MP Ded"
 VALUE "OriginalFilename", "SerenityJediEngine2026-DED.exe"
 VALUE "ProductName", "Dedicated Server"
 VALUE "ProductVersion", VERSION_STRING

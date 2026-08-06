@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -43,7 +43,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 //////////Defines////////////////
 extern qboolean PM_KickingAnim(int anim);
-extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps);
 extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern qboolean PM_SaberInKnockaway(int move);
 extern qboolean PM_SaberInBounce(int move);
@@ -156,7 +156,7 @@ qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker
 	// ------------------------------------------------------------
 	if (blocker->s.number < MAX_CLIENTS || G_ControlledByPlayer(blocker))
 	{
-		if (!((blocker->client->ps.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0))
+		if (!((blocker->client->ps.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0))
 			return qfalse;
 	}
 
@@ -173,7 +173,7 @@ qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker
 		return qfalse;
 
 	// Cannot parry while transitioning or bouncing
-	if (BG_SaberInNonIdleDamageMove(&blocker->client->ps)
+	if (PM_SaberInNonIdleDamageMove(&blocker->client->ps)
 		|| PM_SaberInBounce(blocker->client->ps.saberMove)
 		|| BG_InSlowBounce(&blocker->client->ps))
 		return qfalse;
@@ -481,7 +481,7 @@ void sab_beh_animate_slow_bounce_blocker(gentity_t* blocker)
 static qboolean sab_beh_attack_blocked(gentity_t* attacker, gentity_t* blocker, const int saberNum, const qboolean force_mishap)
 {
 	//if the attack is blocked -(Im the attacker)
-	const qboolean m_blocking = blocker->client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING ? qtrue : qfalse;
+	const qboolean m_blocking = blocker->client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING ? qtrue : qfalse;
 	//perfect Blocking (Timed Block)
 
 	if (attacker->client->ps.saberFatigueChainCount >= MISHAPLEVEL_MAX)
@@ -740,9 +740,9 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 {
 	//if the attack is blocked -(Im the attacker)
 	const qboolean accurate_parry = g_accurate_blocking(blocker, attacker, hit_loc); // Perfect Normal Blocking
-	const qboolean blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;	//Normal Blocking (just holding block button)
-	const qboolean m_blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING) != 0) ? qtrue : qfalse; //perfect Blocking (Timed Block)
-	const qboolean is_holding_block_button_and_attack = ((blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse; //Active Blocking (Holding Block button + Attack button)
+	const qboolean blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;	//Normal Blocking (just holding block button)
+	const qboolean m_blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING) != 0) ? qtrue : qfalse; //perfect Blocking (Timed Block)
+	const qboolean is_holding_block_button_and_attack = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse; //Active Blocking (Holding Block button + Attack button)
 	const qboolean npc_blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_NPCBLOCKING) != 0) ? qtrue : qfalse; //(Npc Blocking function)
 
 	const qboolean atkfake = ((attacker->client->ps.userInt3 & 1 << FLAG_ATTACKFAKE) != 0) ? qtrue : qfalse;
@@ -769,7 +769,7 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 			attacker->client->ps.saberEventFlags &= ~SEF_BLOCKED;
 		}
 	}
-	else if (BG_SaberInNonIdleDamageMove(&blocker->client->ps))
+	else if (PM_SaberInNonIdleDamageMove(&blocker->client->ps))
 	{
 		//and blocker is attacking
 		if (d_attackinfo->integer || g_DebugSaberCombat->integer)
@@ -949,9 +949,9 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 	}
 	//-(Im the blocker)
 	const qboolean accurate_parry = g_accurate_blocking(blocker, attacker, hit_loc); // Perfect Normal Blocking
-	const qboolean blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;	//Normal Blocking
-	const qboolean m_blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << PERFECTBLOCKING) != 0) ? qtrue : qfalse;	//perfect Blocking
-	const qboolean is_holding_block_button_and_attack = ((blocker->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;	//Active Blocking
+	const qboolean blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;	//Normal Blocking
+	const qboolean m_blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING) != 0) ? qtrue : qfalse;	//perfect Blocking
+	const qboolean is_holding_block_button_and_attack = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;	//Active Blocking
 	const qboolean npc_blocking = ((blocker->client->ps.ManualBlockingFlags & 1 << MBF_NPCBLOCKING) != 0) ? qtrue : qfalse;	//Active NPC Blocking
 
 	// ============================================================

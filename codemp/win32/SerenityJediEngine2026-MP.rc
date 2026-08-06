@@ -83,7 +83,7 @@ BEGIN
 VALUE "Comments", "Contributors"
 VALUE "FileDescription", "Multiplayer"
 VALUE "FileVersion", VERSION_STRING
-VALUE "InternalName", "JK MP"
+VALUE "InternalName", "SJE MP"
 VALUE "OriginalFilename", "SerenityJediEngine2026-MP.exe"
 VALUE "ProductName", "Multiplayer"
 VALUE "ProductVersion", VERSION_STRING

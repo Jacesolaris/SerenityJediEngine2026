@@ -30,7 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -809,8 +809,8 @@ int PM_IdlePoseForsaber_anim_level(void)
 
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
 
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse; //Holding Block and attack Buttons
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse; //Holding Block and attack Buttons
 
 	if (!pm->ps->saberEntityNum)
 	{
@@ -829,7 +829,7 @@ int PM_IdlePoseForsaber_anim_level(void)
 	}
 
 #ifdef _GAME
-	if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm_entSelf->s.eType == ET_NPC)
+	if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) || (pm_entSelf->s.eType == ET_NPC))
 	{
 		anim = PM_ReadyPoseForsaber_anim_levelBOT();
 	}
@@ -1745,7 +1745,7 @@ int PM_BlockingPoseForsaber_anim_levelSingle(void)
 {
 	int anim = PM_ReadyPoseForsaber_anim_level();
 
-	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;//Active Blocking
+	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK ? qtrue : qfalse;//Active Blocking
 
 	const signed char forwardmove = pm->cmd.forwardmove;
 	const signed char rightmove = pm->cmd.rightmove;
@@ -1768,7 +1768,7 @@ int PM_BlockingPoseForsaber_anim_levelSingle(void)
 	else
 	{
 #ifdef _GAME
-		if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm_entSelf->s.eType == ET_NPC)
+		if ((g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT) || (pm_entSelf->s.eType == ET_NPC))
 		{
 			anim = PM_ReadyPoseForsaber_anim_levelBOT();
 		}
@@ -1918,7 +1918,7 @@ int PM_BlockingPoseForsaber_anim_levelDual(void)
 {
 	//Sets your saber block position based on your current movement commands.
 	int anim = PM_ReadyPoseForsaber_anim_level();
-	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
 	//Active Blocking
 
 	const signed char forwardmove = pm->cmd.forwardmove;
@@ -2095,7 +2095,7 @@ int PM_BlockingPoseForsaber_anim_levelStaff(void)
 {
 	//Sets your saber block position based on your current movement commands.
 	int anim = PM_ReadyPoseForsaber_anim_level();
-	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = pm->ps->ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK ? qtrue : qfalse;
 	//Active Blocking
 
 	const signed char forwardmove = pm->cmd.forwardmove;
@@ -5816,7 +5816,7 @@ void PM_CheckGrab(void)
 	float lerpfwd = 0;
 	float lerpyaw = 0;
 	qboolean skip_Cmdtrace = qfalse;
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
 	if (pm->ps->groundEntityNum != ENTITYNUM_NONE && pm->ps->inAirAnim)
 	{
@@ -7576,7 +7576,7 @@ static void PM_CrashLand(void)
 	float    t;
 	float    a, b, c, den;
 	qboolean didRoll = qfalse;
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
 
 	const qboolean isBotWithSaber =
@@ -10200,7 +10200,7 @@ static void PM_Footsteps(void)
 	}
 
 	//Holding Block Button
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
 	const qboolean is_wanting_sprint = ((pm->cmd.forwardmove || pm->cmd.rightmove) && (pm->cmd.buttons & BUTTON_BLOCK) && ((!(pm->cmd.buttons & BUTTON_WALKING))) && (pm->ps->sprintFuel > 15)) ? qtrue : qfalse;
 
@@ -11016,64 +11016,15 @@ static void PM_Footsteps(void)
 				}
 				else
 				{
-					switch (pm->ps->fd.saberAnimLevel)
+#ifdef _GAME
+					if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm_entSelf->s.eType == ET_NPC)
 					{
-					case SS_STAFF:
-						if (pm->ps->saberHolstered > 1)
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else if (pm->ps->saberHolstered)
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						break;
-					case SS_DUAL:
-						if (pm->ps->saberHolstered > 1)
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else if (pm->ps->saberHolstered && (!pm->ps->saberInFlight || pm->ps->saberEntityNum))
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						break;
-					case SS_FAST:
-					case SS_MEDIUM:
-					case SS_STRONG:
-					case SS_DESANN:
-					case SS_TAVION:
-						if (pm->ps->saberHolstered > 1)
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else if (pm->ps->saberHolstered && (!pm->ps->saberInFlight || pm->ps->saberEntityNum))
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						break;
-					default:
-						if (pm->ps->saberHolstered)
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						else
-						{
-							desiredAnim = BOTH_WALKBACK1;
-						}
-						break;
+						desiredAnim = BOTH_WALKBACK1;
+					}
+					else
+#endif
+					{
+						desiredAnim = BOTH_WALKBACK1;
 					}
 				}
 			}
@@ -11637,8 +11588,8 @@ PM_BeginWeaponChange
 void PM_BeginWeaponChange(const int weapon)
 {
 	// Manual blocking state
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 	const qboolean is_sprinting = ((pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING) != 0) ? qtrue : qfalse;
 
 	// Invalid weapon index
@@ -11744,7 +11695,7 @@ PM_FinishWeaponChange
 void PM_FinishWeaponChange(void)
 {
 	const saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 0);
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
 	int weapon = pm->cmd.weapon;
 	if (weapon < WP_NONE || weapon >= WP_NUM_WEAPONS)
@@ -12074,7 +12025,7 @@ static qboolean PM_DoChargedWeapons(const qboolean vehicleRocketLock, const bgEn
 //---------------------------------------
 {
 	qboolean charging = qfalse, alt_fire = qfalse;
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
 
 	if (vehicleRocketLock)
@@ -13010,7 +12961,7 @@ static void PM_Weapon(void)
 	bgEntity_t* veh = NULL;
 	qboolean vehicleRocketLock = qfalse;
 
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 	const qboolean is_walking_and_blocking = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_BLOCK)) ? qtrue : qfalse;
 
 	// Prevent frozen players/bots from firing any weapon logic
@@ -14965,7 +14916,7 @@ qboolean G_OkayToLean(const playerState_t* ps, const usercmd_t* uscmd, const qbo
 			&& !ps->torsoTimer) //not in any held torso anim
 		&& !(uscmd->buttons & (BUTTON_ATTACK | BUTTON_ALT_ATTACK | BUTTON_FORCE_LIGHTNING | BUTTON_FORCEPOWER |
 			BUTTON_DASH | BUTTON_FORCE_DRAIN | BUTTON_FORCEGRIP)) //not trying to attack
-		&& !(ps->ManualBlockingFlags & 1 << HOLDINGBLOCK)
+		&& !(ps->ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK)
 		&& VectorCompare(ps->velocity, vec3_origin))
 	{
 		return qtrue;
@@ -16053,7 +16004,7 @@ qboolean PM_SaberInTransition(int move);
 static void BG_AdjustClientSpeed(playerState_t* ps, const usercmd_t* cmd, const int svTime)
 {
 	saberInfo_t* saber;
-	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((pm->ps->ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
 	if (ps->clientNum >= MAX_CLIENTS)
 	{

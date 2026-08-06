@@ -5703,7 +5703,7 @@ void SP_misc_model_beacon(gentity_t* ent)
 
 extern gentity_t* LaunchItem(gitem_t* item, vec3_t origin, vec3_t velocity);
 
-static void misc_model_cargo_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker, const int damage, const int mod, int d_flags, int hit_loc)
+static void misc_model_cargo_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker, const int damage, const int mod, int dflags, int hit_loc)
 {
 	vec3_t org, temp = { 0 };
 

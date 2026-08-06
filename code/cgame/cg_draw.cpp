@@ -455,11 +455,11 @@ static void CG_DrawJK2blockingMode(const centity_t* cent)
 
 	cgi_R_SetColor(colorTable[CT_WHITE]);
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK)
 	{
 		blockindex = OHB_JK2MBLOCKINGMODE;
 	}
-	else if (cg.predictedPlayerState.ManualBlockingFlags & 1 << HOLDINGBLOCK)
+	else if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK)
 	{
 		blockindex = OHB_JK2BLOCKINGMODE;
 	}
@@ -1079,7 +1079,7 @@ static void CG_DrawCusblockPoints(const int x, const int y, const float hud_rati
 	//	Outer block circular
 	//==========================================================================================================//
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		memcpy(calc_color, colorTable[CT_GREEN], sizeof(vec4_t));
@@ -1125,7 +1125,7 @@ static void CG_DrawCusblockPoints(const int x, const int y, const float hud_rati
 
 	cgi_R_SetColor(calc_color);
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		CG_DrawPic(x - 3.3 * hud_ratio, y + 3.5, 40 * hud_ratio, 40, cgs.media.HUDblockpointMB1);
@@ -1146,7 +1146,7 @@ static void CG_DrawCusblockPoints(const int x, const int y, const float hud_rati
 		block_percent = static_cast<float>(cg.snap->ps.blockPoints) / (static_cast<float>(BLOCK_POINTS_MAX) / 2);
 	}
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		memcpy(calc_color, colorTable[CT_GREEN], sizeof(vec4_t));
@@ -1162,7 +1162,7 @@ static void CG_DrawCusblockPoints(const int x, const int y, const float hud_rati
 
 	cgi_R_SetColor(calc_color);
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		CG_DrawPic(x - 3.3 * hud_ratio, y + 3.5, 40 * hud_ratio, 40, cgs.media.HUDblockpointMB2);
@@ -2043,7 +2043,7 @@ static void CG_DrawJK2blockPoints(const int x, const int y)
 	//	Outer block circular
 	//==========================================================================================================//
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		memcpy(calc_color, colorTable[CT_GREEN], sizeof(vec4_t));
@@ -2089,7 +2089,7 @@ static void CG_DrawJK2blockPoints(const int x, const int y)
 
 	cgi_R_SetColor(calc_color);
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		CG_DrawPic(x, y, 35, 35, cgs.media.HUDblockpointMB1);
@@ -2110,7 +2110,7 @@ static void CG_DrawJK2blockPoints(const int x, const int y)
 		block_percent = static_cast<float>(cg.snap->ps.blockPoints) / (static_cast<float>(BLOCK_POINTS_MAX) / 2);
 	}
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		memcpy(calc_color, colorTable[CT_GREEN], sizeof(vec4_t));
@@ -2126,7 +2126,7 @@ static void CG_DrawJK2blockPoints(const int x, const int y)
 
 	cgi_R_SetColor(calc_color);
 
-	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << PERFECTBLOCKING)
+	if (cg.predictedPlayerState.ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING)
 	{
 		//blockingflag is on
 		CG_DrawPic(x, y, 35, 35, cgs.media.HUDblockpointMB2);
@@ -4809,8 +4809,8 @@ static void CG_DrawCrosshair(vec3_t world_point)
 	qhandle_t hShader = 0;
 	float		chX, chY;
 
-	const qboolean holding_block = ((cg.predictedPlayerState.ManualBlockingFlags & (1 << HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
-	const qboolean holding_block_and_attack = ((cg.predictedPlayerState.ManualBlockingFlags & (1 << HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean holding_block = ((cg.predictedPlayerState.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean holding_block_and_attack = ((cg.predictedPlayerState.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 	const qboolean holding_sprint = ((cg.predictedPlayerState.PlayerEffectFlags & (1 << PEF_SPRINTING)) != 0) ? qtrue : qfalse;
 	const qboolean holding_block_button = ((cg.predictedPlayerState.pm_flags & PMF_BLOCK_HELD) != 0) ? qtrue : qfalse;
 	const qboolean holding_walking_button = ((cg.predictedPlayerState.pm_flags & PMF_WALKING_HELD) != 0) ? qtrue : qfalse;

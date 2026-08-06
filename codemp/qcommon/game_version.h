@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -40,10 +40,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define VERSION_MAJOR_RELEASE		26  // Build year
 #define VERSION_MINOR_RELEASE		08  // Build month
-#define VERSION_INTERNAL_BUILD		03  // Build number
+#define VERSION_INTERNAL_BUILD		04  // Build number
 
-#define VERSION_STRING				"Day-05,Month-08,Year-26,BuildNum-03" // build date
-#define VERSION_STRING_DOTTED		"Day-05,Month-08,Year-26,BuildNum-03" // build date
+#define VERSION_STRING				"Day-06,Month-08,Year-26,BuildNum-04" // build date
+#define VERSION_STRING_DOTTED		"Day-06,Month-08,Year-26,BuildNum-04" // build date
 #if defined(_DEBUG)
 #define	JK_VERSION		"(debug)SerenityJediEngine2026-MP: " VERSION_STRING_DOTTED
 #define JK_VERSION_OLD	"(debug)SJE-mp: " VERSION_STRING_DOTTED

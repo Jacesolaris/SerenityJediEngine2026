@@ -83,7 +83,7 @@ VALUE "CompanyName", "Activision Inc"
 VALUE "FileDescription", "Singleplayer"
 VALUE "FileVersion", VERSION_STRING
 VALUE "InternalName", "SJE SP"
-VALUE "LegalCopyright", "Copyright (C) 2022"
+VALUE "LegalCopyright", "Copyright (C) 2026"
 VALUE "OriginalFilename", "SerenityJediEngine2026-SP.exe"
 VALUE "ProductName", "Singleplayer"
 VALUE "ProductVersion", VERSION_STRING

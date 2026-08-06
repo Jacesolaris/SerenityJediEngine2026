@@ -86,7 +86,7 @@ extern qboolean NPC_IsMando(const gentity_t* self);
 extern qboolean NPC_IsOversized(const gentity_t* self);
 extern qboolean BG_SaberInPartialDamageMove(gentity_t* self);
 extern qboolean BG_SaberInTransitionDamageMove(const playerState_t* ps);
-extern qboolean BG_SaberInNonIdleDamageMove(const playerState_t* ps);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps);
 extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int color);
 
 //rww - generic function for applying a shader to the skin.
@@ -6398,7 +6398,7 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 
 				cgi_R_AddRefEntityToScene(ent);
 			}
-			else if (BG_SaberInNonIdleDamageMove(&cent->gent->client->ps)) //doing damage make red
+			else if (PM_SaberInNonIdleDamageMove(&cent->gent->client->ps)) //doing damage make red
 			{
 				if (BG_SaberInPartialDamageMove(cent->gent)) //turn of damage in the move turn green
 				{

@@ -3161,8 +3161,8 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 	int flags = BONE_ANIM_OVERRIDE_FREEZE;
 	const float old_speed = lf->animationSpeed;
 
-	const qboolean is_holding_block_button = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((cent->currentState.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((cent->currentState.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
 
 	if (cent->localAnimIndex > 0)
 	{
@@ -3696,8 +3696,8 @@ static void CG_PlayerAnimation(centity_t* cent, int* legs_old, int* legs, float*
 
 	const int clientNum = cent->currentState.clientNum;
 
-	const qboolean is_holding_block_button = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button_and_attack = ((cent->currentState.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((cent->currentState.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((cent->currentState.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
 
 	if (cg_noPlayerAnims.integer)
 	{

@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -1405,7 +1405,7 @@ void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt)
 
 void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt)
 {
-	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!is_holding_block_button)
@@ -3050,7 +3050,7 @@ static qboolean melee_block_lightning(gentity_t* attacker, gentity_t* defender)
 static qboolean saber_block_lightning(const gentity_t* attacker, const gentity_t* defender)
 {
 	//defender is attempting to block lightning.  Try to do it.
-	const qboolean is_holding_block_button_and_attack = defender->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK
+	const qboolean is_holding_block_button_and_attack = defender->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK
 		? qtrue
 		: qfalse; //Active Blocking
 	int fp_block_cost;
@@ -9046,8 +9046,8 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		using_force = qtrue;
 	}
 
-	const qboolean is_holding_block_button_and_attack = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
-	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((self->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!using_force
@@ -9259,7 +9259,7 @@ powersetcheck:
 
 void WP_BlockPointsUpdate(const gentity_t* self)
 {
-	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << HOLDINGBLOCK) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((self->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) ? qtrue : qfalse;
 	//Normal Blocking
 
 	if (!(self->r.svFlags & SVF_BOT))
@@ -9377,9 +9377,9 @@ qboolean Jedi_DrainReaction(gentity_t* self)
 			G_SetAnim(self, &self->client->pers.cmd, SETANIM_TORSO, BOTH_WIND, SETANIM_AFLAG_PACE, 0);
 		}
 
-		self->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCK);
-		self->client->ps.ManualBlockingFlags &= ~(1 << HOLDINGBLOCKANDATTACK);
-		self->client->ps.ManualBlockingFlags &= ~(1 << PERFECTBLOCKING);
+		self->client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCK);
+		self->client->ps.ManualBlockingFlags &= ~(1 << MBF_HOLDINGBLOCKANDATTACK);
+		self->client->ps.ManualBlockingFlags &= ~(1 << MBF_PERFECTBLOCKING);
 		self->client->ps.ManualBlockingFlags &= ~(1 << MBF_NPCBLOCKING);
 	}
 	return qfalse;

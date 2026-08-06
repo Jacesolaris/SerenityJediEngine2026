@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///													SERENITY JEDI ENGINE														///
 ///										          LIGHTSABER COMBAT SYSTEM													    ///
 ///																																///
-///						      System designed by Serenity and modded by JaceSolaris. (c) 2023 SJE   		                    ///
+///						      System designed by Serenity and modded by JaceSolaris. (c) 2026 SJE   		                    ///
 ///								    https://www.moddb.com/mods/serenityjediengine-20											///
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
@@ -483,9 +483,9 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 05/08/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 03------------------------------\n");
+	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
+	Com_Printf("---------------------Build date 06/08/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 04------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
