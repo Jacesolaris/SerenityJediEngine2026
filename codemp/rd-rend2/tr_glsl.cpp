@@ -63,6 +63,17 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ScreenImageMap", GLSL_INT, 1 },
 	{ "u_ScreenDepthMap", GLSL_INT, 1 },
 
+	{ "u_EdgeMap", GLSL_INT, 1 },
+	{ "u_AreaMap", GLSL_INT, 1 },
+	{ "u_SearchMap", GLSL_INT, 1 },
+	{ "u_BlendMap", GLSL_INT, 1 },
+	{ "u_VelocityMap", GLSL_INT, 1 },
+
+	{ "u_VolumetricLightMap", GLSL_INT, 1 },
+
+	{ "u_LightGridOrigin", GLSL_VEC3, 1 },
+	{ "u_LightGridCellInverseSize", GLSL_VEC3, 1 },
+
 	{ "u_ShadowMap",  GLSL_INT, 1 },
 	{ "u_ShadowMap2", GLSL_INT, 1 },
 
@@ -132,6 +143,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_EnvForce",				GLSL_VEC3, 1 },
 	{ "u_RandomOffset",			GLSL_VEC4, 1 },
 	{ "u_ChunkParticles",		GLSL_INT, 1 },
+	{ "u_BloomStrength",		GLSL_FLOAT, 1 },
 };
 
 static void GLSL_PrintProgramInfoLog(GLuint object, qboolean developerOnly)
@@ -333,17 +345,20 @@ static size_t GLSL_GetShaderHeader(
 			"#define AGEN_PORTAL %i\n"
 			"#endif\n",
 			AGEN_LIGHTING_SPECULAR,
+			AGEN_LIGHTING_SPECULAR_STATIC,
 			AGEN_PORTAL));
 
 	Q_strcat(dest, size,
-		va("#define ALPHA_TEST_GT0 %d\n"
-			"#define ALPHA_TEST_LT128 %d\n"
-			"#define ALPHA_TEST_GE128 %d\n"
-			"#define ALPHA_TEST_GE192 %d\n",
+		va("#define ALPHA_TEST_GT0 %i\n"
+			"#define ALPHA_TEST_LT128 %i\n"
+			"#define ALPHA_TEST_GE128 %i\n"
+			"#define ALPHA_TEST_GE192 %i\n"
+			"#define ALPHA_TEST_E255 %i\n",
 			ALPHA_TEST_GT0,
 			ALPHA_TEST_LT128,
 			ALPHA_TEST_GE128,
-			ALPHA_TEST_GE192));
+			ALPHA_TEST_GE192,
+			ALPHA_TEST_E255));
 
 	Q_strcat(dest, size,
 		va("#define MAX_G2_BONES %i\n",
@@ -1858,17 +1873,17 @@ static int GLSL_LoadGPUProgramTextureColor(
 	GLSL_LoadGPUProgramBasic(
 		builder,
 		scratchAlloc,
-		&tr.textureColorShader,
+		&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE],
 		"texturecolor",
 		fallback_texturecolorProgram);
 
-	GLSL_InitUniforms(&tr.textureColorShader);
+	GLSL_InitUniforms(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE]);
 
-	qglUseProgram(tr.textureColorShader.program);
-	GLSL_SetUniformInt(&tr.textureColorShader, UNIFORM_TEXTUREMAP, TB_DIFFUSEMAP);
+	qglUseProgram(tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE].program);
+	GLSL_SetUniformInt(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE], UNIFORM_TEXTUREMAP, TB_DIFFUSEMAP);
 	qglUseProgram(0);
 
-	GLSL_FinishGPUShader(&tr.textureColorShader);
+	GLSL_FinishGPUShader(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE]);
 
 	return 1;
 }
@@ -2403,7 +2418,7 @@ void GLSL_ShutdownGPUShaders(void)
 	for (i = 0; i < REFRACTIONDEF_COUNT; i++)
 		GLSL_DeleteGPUShader(&tr.refractionShader[i]);
 
-	GLSL_DeleteGPUShader(&tr.textureColorShader);
+	GLSL_DeleteGPUShader(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE]);
 
 	for (i = 0; i < FOGDEF_COUNT; i++)
 		GLSL_DeleteGPUShader(&tr.fogShader[i]);

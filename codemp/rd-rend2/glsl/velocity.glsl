@@ -1,23 +1,22 @@
 /*[Vertex]*/
 in vec3 attr_Position;
 in vec3 attr_Normal;
+in vec4 attr_Color;
+in vec2 attr_TexCoord0;
 
 #if defined(USE_VERTEX_ANIMATION)
 in vec3 attr_Position2;
 in vec3 attr_Normal2;
+#if defined(USE_PARALLAXMAP)
+in vec4 attr_Tangent2;
+#endif
 #elif defined(USE_SKELETAL_ANIMATION)
 in uvec4 attr_BoneIndexes;
 in vec4 attr_BoneWeights;
 #endif
 
-in vec4 attr_Color;
-in vec2 attr_TexCoord0;
-
-#if defined(USE_TCGEN)
-in vec2 attr_TexCoord1;
-in vec2 attr_TexCoord2;
-in vec2 attr_TexCoord3;
-in vec2 attr_TexCoord4;
+#if defined(USE_PARALLAXMAP)
+in vec4 attr_Tangent;
 #endif
 
 layout(std140) uniform Scene
@@ -53,7 +52,18 @@ layout(std140) uniform Entity
 	float u_VertexLerp;
 };
 
-#if defined(USE_DEFORM_VERTEXES) || defined(USE_RGBAGEN)
+layout(std140) uniform PreviousEntity
+{
+	mat4 u_PreviousModelMatrix;
+	vec4 u_PreviousLocalLightOrigin;
+	vec3 u_PreviousAmbientLight;
+	float u_PreviousEntityTime;
+	vec3 u_PreviousDirectedLight;
+	float u_PreviousFXVolumetricBase;
+	vec3 u_PreviousModelLightDir;
+	float u_PreviousVertexLerp;
+};
+
 layout(std140) uniform ShaderInstance
 {
 	vec4 u_DeformParams0;
@@ -63,14 +73,26 @@ layout(std140) uniform ShaderInstance
 	int u_DeformType;
 	int u_DeformFunc;
 };
-#endif
 
 #if defined(USE_SKELETAL_ANIMATION)
 layout(std140) uniform Bones
 {
 	mat3x4 u_BoneMatrices[MAX_G2_BONES];
 };
+
+layout(std140) uniform PreviousBones
+{
+	mat3x4 u_PreviousBoneMatrices[MAX_G2_BONES];
+};
 #endif
+
+layout(std140) uniform TemporalInfo
+{
+	mat4 u_previousViewProjectionMatrix;
+	vec2 u_currentJitter;
+	vec2 u_previousJitter;
+	float u_previousFrameTime;
+};
 
 uniform vec4 u_DiffuseTexMatrix;
 uniform vec4 u_DiffuseTexOffTurb;
@@ -93,10 +115,16 @@ uniform int u_AlphaGen;
 uniform vec4 u_Disintegration; // origin, threshhold
 #endif
 
-out vec2 var_DiffuseTex;
+out vec4 var_Position;
+out vec4 var_prevPosition;
+
 out vec4 var_Color;
-#if defined(USE_FOG)
-out vec3 var_WSPosition;
+
+#if defined(USE_ALPHA_TEST)
+out vec2 var_TexCoords;
+#if defined(USE_PARALLAXMAP)
+out vec3 var_TangentViewDir;
+#endif
 #endif
 
 #if defined(USE_DEFORM_VERTEXES)
@@ -133,23 +161,6 @@ float CalculateDeformScale( in int func, in float time, in float phase, in float
 
 vec3 DeformPosition(const vec3 pos, const vec3 normal, const vec2 st)
 {
-#if defined(USE_RGBAGEN)
-	if (u_ColorGen == CGEN_DISINTEGRATION_2)
-	{
-		vec3 delta = u_Disintegration.xyz - pos;
-		float sqrDistance = dot(delta, delta);
-		vec3 normalScale = vec3(-0.01);
-		if ( sqrDistance < u_Disintegration.w )
-		{
-			normalScale = vec3(2.0, 2.0, 0.5);
-		}
-		else if ( sqrDistance < u_Disintegration.w + 50 )
-		{
-			normalScale = vec3(1.0, 1.0, 0.0);
-		}
-		return pos + normal * normalScale;
-	}
-#endif
 	switch ( u_DeformType )
 	{
 		default:
@@ -217,87 +228,24 @@ vec3 DeformPosition(const vec3 pos, const vec3 normal, const vec2 st)
 
 			return pos - lightPos * dot( pos, ground ) + groundDist;
 		}
-		//case DEFORM_DISINTEGRATION:
-		//{
-		//}
 	}
-}
-
-vec3 DeformNormal( const in vec3 position, const in vec3 normal )
-{
-	if ( u_DeformType != DEFORM_NORMALS )
-	{
-		return normal;
-	}
-
-	float amplitude = u_DeformParams0.y;
-	float frequency = u_DeformParams0.w;
-
-	vec3 outNormal = normal;
-	const float scale = 0.98;
-	
-	outNormal.x += amplitude * GetNoiseValue(
-		position.x * scale,
-		position.y * scale,
-		position.z * scale,
-		(u_entityTime + u_frameTime + u_Time) * frequency );
-
-	outNormal.y += amplitude * GetNoiseValue(
-		100.0 * position.x * scale,
-		position.y * scale,
-		position.z * scale,
-		(u_entityTime + u_frameTime + u_Time) * frequency );
-
-	outNormal.z += amplitude * GetNoiseValue(
-		200.0 * position.x * scale,
-		position.y * scale,
-		position.z * scale,
-		(u_entityTime + u_frameTime + u_Time) * frequency );
-
-	return outNormal;
 }
 #endif
 
 #if defined(USE_TCGEN)
-vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
+vec2 GenTexCoords(int TCGen, vec3 position, vec3 TCGenVector0, vec3 TCGenVector1)
 {
 	vec2 tex = attr_TexCoord0.st;
 
 	switch (TCGen)
 	{
-		case TCGEN_LIGHTMAP:
-			tex = attr_TexCoord1;
-		break;
-
-		case TCGEN_LIGHTMAP1:
-			tex = attr_TexCoord2;
-		break;
-
-		case TCGEN_LIGHTMAP2:
-			tex = attr_TexCoord3;
-		break;
-
-		case TCGEN_LIGHTMAP3:
-			tex = attr_TexCoord4;
-		break;
-
-		case TCGEN_ENVIRONMENT_MAPPED:
-		{
-			vec3 localOrigin = (inverse(u_ModelMatrix) * vec4(u_ViewOrigin, 1.0)).xyz;
-			vec3 viewer = normalize(localOrigin - position);
-			vec2 ref = reflect(viewer, normal).yz;
-			tex.s = ref.x * -0.5 + 0.5;
-			tex.t = ref.y *  0.5 + 0.5;
-		}
-		break;
-
 		case TCGEN_VECTOR:
 		{
 			tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));
 		}
 		break;
 	}
-	
+
 	return tex;
 }
 #endif
@@ -312,25 +260,19 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 	st2.y = st.x * texMatrix.y + (st.y * texMatrix.w + offTurb.y);
 
 	vec2 offsetPos = vec2(position.x + position.z, position.y);
-	
+
 	vec2 texOffset = sin(offsetPos * (2.0 * M_PI / 1024.0) + vec2(phase));
-	
-	return st2 + texOffset * amplitude;	
+
+	return st2 + texOffset * amplitude;
 }
 #endif
 
 #if defined(USE_RGBAGEN)
-vec4 CalcColor(vec3 position, vec3 normal)
+vec4 CalcColor(vec3 position)
 {
 	vec4 color = u_VertColor * attr_Color + u_BaseColor;
-	
-	if (u_ColorGen == CGEN_LIGHTING_DIFFUSE)
-	{
-		float incoming = clamp(dot(normal, u_ModelLightDir), 0.0, 1.0);
 
-		color.rgb = clamp(u_DirectedLight * incoming + u_AmbientLight, 0.0, 1.0);
-	}
-	else if (u_ColorGen == CGEN_DISINTEGRATION_1)
+	if (u_ColorGen == CGEN_DISINTEGRATION_1)
 	{
 		vec3 delta = u_Disintegration.xyz - position;
 		float sqrDistance = dot(delta, delta);
@@ -366,36 +308,18 @@ vec4 CalcColor(vec3 position, vec3 normal)
 	vec3 localOrigin = (inverse(u_ModelMatrix) * vec4(u_ViewOrigin, 1.0)).xyz;
 	vec3 viewer = localOrigin - position;
 
-	if (u_AlphaGen == AGEN_LIGHTING_SPECULAR)
-	{
-		vec3 lightDir = normalize(vec3(-960.0, 1980.0, 96.0) - position);
-		vec3 reflected = -reflect(lightDir, normal);
-
-		color.a = clamp(dot(reflected, normalize(viewer)), 0.0, 1.0);
-		color.a *= color.a;
-		color.a *= color.a;
-	}
-	else if (u_AlphaGen == AGEN_LIGHTING_SPECULAR_STATIC)
-	{
-		vec3 reflected = -reflect(u_ModelLightDir, normal);
-
-		color.a = clamp(dot(reflected, normalize(viewer)), 0.0, 1.0);
-		color.a *= color.a;
-		color.a *= color.a;
-	}
-	else if (u_AlphaGen == AGEN_PORTAL)
+	if (u_AlphaGen == AGEN_PORTAL)
 	{
 		color.a = clamp(length(viewer) / u_PortalRange, 0.0, 1.0);
 	}
-	
+
 	return color;
 }
 #endif
 
 #if defined(USE_SKELETAL_ANIMATION)
-mat4x3 GetBoneMatrix(uint index)
+mat4x3 GetBoneMatrix(mat3x4 bone)
 {
-	mat3x4 bone = u_BoneMatrices[index];
 	return mat4x3(
 		bone[0].x, bone[1].x, bone[2].x,
 		bone[0].y, bone[1].y, bone[2].y,
@@ -407,196 +331,238 @@ mat4x3 GetBoneMatrix(uint index)
 void main()
 {
 #if defined(USE_VERTEX_ANIMATION)
-	vec3 position  = mix(attr_Position, attr_Position2, u_VertexLerp);
-	vec3 normal    = mix(attr_Normal,   attr_Normal2,   u_VertexLerp);
-	normal = normalize(normal - vec3(0.5));
+	vec3 position = mix(attr_Position, attr_Position2, u_VertexLerp);
+	vec3 prevPosition = position;
 #elif defined(USE_SKELETAL_ANIMATION)
 	mat4x3 influence =
-		GetBoneMatrix(attr_BoneIndexes[0]) * attr_BoneWeights[0] +
-        GetBoneMatrix(attr_BoneIndexes[1]) * attr_BoneWeights[1] +
-        GetBoneMatrix(attr_BoneIndexes[2]) * attr_BoneWeights[2] +
-        GetBoneMatrix(attr_BoneIndexes[3]) * attr_BoneWeights[3];
-
+		GetBoneMatrix(u_BoneMatrices[attr_BoneIndexes[0]]) * attr_BoneWeights[0] +
+        GetBoneMatrix(u_BoneMatrices[attr_BoneIndexes[1]]) * attr_BoneWeights[1] +
+        GetBoneMatrix(u_BoneMatrices[attr_BoneIndexes[2]]) * attr_BoneWeights[2] +
+        GetBoneMatrix(u_BoneMatrices[attr_BoneIndexes[3]]) * attr_BoneWeights[3];
     vec3 position = influence * vec4(attr_Position, 1.0);
-    vec3 normal = normalize(influence * vec4(attr_Normal - vec3(0.5), 0.0));
+	mat4x3 prevInfluence =
+		GetBoneMatrix(u_PreviousBoneMatrices[attr_BoneIndexes[0]]) * attr_BoneWeights[0] +
+        GetBoneMatrix(u_PreviousBoneMatrices[attr_BoneIndexes[1]]) * attr_BoneWeights[1] +
+        GetBoneMatrix(u_PreviousBoneMatrices[attr_BoneIndexes[2]]) * attr_BoneWeights[2] +
+        GetBoneMatrix(u_PreviousBoneMatrices[attr_BoneIndexes[3]]) * attr_BoneWeights[3];
+	vec3 prevPosition = prevInfluence * vec4(attr_Position, 1.0);
 #else
-	vec3 position  = attr_Position;
-	vec3 normal    = attr_Normal * 2.0 - vec3(1.0);
+	vec3 position = attr_Position;
+	vec3 prevPosition = position;
+#endif
+
+#if defined(USE_DEFORM_VERTEXES) || (defined(USE_PARALLAXMAP) && defined(USE_ALPHA_TEST))
+	#if defined(USE_VERTEX_ANIMATION)
+		vec3 normal = mix(attr_Normal, attr_Normal2, u_VertexLerp);
+		normal = normalize(normal - vec3(0.5));
+		vec3 prevNormal = normal;
+	#elif defined(USE_SKELETAL_ANIMATION)
+		vec3 normal = normalize(influence * vec4(attr_Normal - vec3(0.5), 0.0));
+		vec3 prevNormal = normalize(prevInfluence * vec4(attr_Normal - vec3(0.5), 0.0));
+	#else
+		vec3 normal   = attr_Normal * 2.0 - vec3(1.0);
+		vec3 prevNormal = normal;
+	#endif
+#endif
+
+#if defined(USE_PARALLAXMAP) && defined(USE_ALPHA_TEST)
+	#if defined(USE_VERTEX_ANIMATION)
+		vec3 tangent = mix(attr_Tangent.xyz, attr_Tangent2.xyz, u_VertexLerp);
+		tangent = normalize(tangent - vec3(0.5));
+	#elif defined(USE_SKELETAL_ANIMATION)
+		vec3 tangent = normalize(influence * vec4(attr_Tangent.xyz - vec3(0.5), 0.0));
+	#else
+		vec3 tangent = attr_Tangent.xyz * 2.0 - vec3(1.0);
+	#endif
 #endif
 
 #if defined(USE_DEFORM_VERTEXES)
 	position = DeformPosition(position, normal, attr_TexCoord0.st);
-	normal = DeformNormal( position, normal );
+	prevPosition = DeformPosition(prevPosition, prevNormal, attr_TexCoord0.st);
 #endif
 
 	vec4 wsPosition = u_ModelMatrix * vec4(position, 1.0);
 	gl_Position = u_viewProjectionMatrix * wsPosition;
 
+	var_Position = gl_Position;
+	var_prevPosition = u_previousViewProjectionMatrix * u_PreviousModelMatrix * vec4(prevPosition, 1.0);
+
+#if defined(USE_ALPHA_TEST)
 #if defined(USE_TCGEN)
-	vec2 tex = GenTexCoords(u_TCGen0, position.xyz, normal, u_TCGen0Vector0, u_TCGen0Vector1);
+	vec2 tex = GenTexCoords(u_TCGen0, position.xyz, u_TCGen0Vector0, u_TCGen0Vector1);
 #else
 	vec2 tex = attr_TexCoord0.st;
 #endif
 
 #if defined(USE_TCMOD)
-	var_DiffuseTex = ModTexCoords(tex, position, u_DiffuseTexMatrix, u_DiffuseTexOffTurb);
+	var_TexCoords = ModTexCoords(tex, position, u_DiffuseTexMatrix, u_DiffuseTexOffTurb);
 #else
-    var_DiffuseTex = tex;
+    var_TexCoords = attr_TexCoord0;
 #endif
-
-	if ( u_FXVolumetricBase >= 0.0 )
-	{
-		vec3 viewForward = u_ViewForward.xyz;
-		float d = clamp(dot(normalize(viewForward), normalize(normal)), 0.0, 1.0);
-		d = d * d;
-		d = d * d;
-
-		var_Color = vec4(u_FXVolumetricBase * (1.0 - d));
-	}
-	else
-	{
+#endif
+	
 #if defined(USE_RGBAGEN)
-		var_Color = CalcColor(position.xyz, normal);
+	var_Color = CalcColor(position.xyz);
 #else
-		var_Color = u_VertColor * attr_Color + u_BaseColor;
+	var_Color = u_VertColor * attr_Color + u_BaseColor;
 #endif
-	}
 
-#if defined(USE_FOG)
-	var_WSPosition = wsPosition.xyz;
+#if defined(USE_ALPHA_TEST) && defined(USE_PARALLAXMAP)
+	vec3 viewDir = u_ViewOrigin.xyz - wsPosition.xyz;
+	normal = normalize(mat3(u_ModelMatrix) * normal);
+	tangent = normalize(mat3(u_ModelMatrix) * tangent);
+	vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
+	mat3 TBN = mat3(tangent, bitangent, normal);
+	var_TangentViewDir = viewDir * TBN;
 #endif
 }
 
-
 /*[Fragment]*/
-struct Fog
-{
-	vec4 plane;
-	vec4 color;
-	float depthToOpaque;
-	bool hasPlane;
-};
-
-layout(std140) uniform Fogs
-{
-	int u_NumFogs;
-	Fog u_Fogs[MAX_GPU_FOGS];
-};
-
-uniform vec4 u_FogColorMask;
-
-layout(std140) uniform Camera
-{
-	mat4 u_viewProjectionMatrix;
-	vec4 u_ViewInfo;
-	vec3 u_ViewOrigin;
-	vec3 u_ViewForward;
-	vec3 u_ViewLeft;
-	vec3 u_ViewUp;
-};
-
-layout(std140) uniform Entity
-{
-	mat4 u_ModelMatrix;
-	vec4 u_LocalLightOrigin;
-	vec3 u_AmbientLight;
-	float u_entityTime;
-	vec3 u_DirectedLight;
-	float u_FXVolumetricBase;
-	vec3 u_ModelLightDir;
-	float u_VertexLerp;
-};
-
-uniform sampler2D u_DiffuseMap;
 #if defined(USE_ALPHA_TEST)
 uniform int u_AlphaTestType;
+uniform sampler2D u_DiffuseMap;
+#if defined(USE_PARALLAXMAP)
+uniform sampler2D u_NormalMap;
+uniform vec4 u_NormalScale;
+uniform float u_ParallaxBias;
 #endif
-uniform int u_FogIndex;
+#endif
 
-in vec2 var_DiffuseTex;
+layout(std140) uniform TemporalInfo
+{
+	mat4 u_previousViewProjectionMatrix;
+	vec2 u_currentJitter;
+	vec2 u_previousJitter;
+	float u_previousFrameTime;
+};
+
+in vec4 var_Position;
+in vec4 var_prevPosition;
+
 in vec4 var_Color;
-#if defined(USE_FOG)
-in vec3 var_WSPosition;
+
+#if defined(USE_ALPHA_TEST)
+in vec2 var_TexCoords;
+#if defined(USE_PARALLAXMAP)
+in vec3 var_TangentViewDir;
+#endif
 #endif
 
 out vec4 out_Color;
-out vec4 out_Glow;
 
-
-#if defined(USE_FOG)
-float CalcFog(in vec3 viewOrigin, in vec3 position, in Fog fog)
+#if defined(USE_ALPHA_TEST) && defined(USE_PARALLAXMAP)
+float RayIntersectDisplaceMap(in vec2 inDp, in vec2 ds, in sampler2D normalMap, in float parallaxBias)
 {
-	bool inFog = dot(viewOrigin, fog.plane.xyz) - fog.plane.w >= 0.0 || !fog.hasPlane;
+	const int linearSearchSteps = 16;
+	const int binarySearchSteps = 8;
 
-	// line: x = o + tv
-	// plane: (x . n) + d = 0
-	// intersects: dot(o + tv, n) + d = 0
-	//             dot(o + tv, n) = -d
-	//             dot(o, n) + t*dot(n, v) = -d
-	//             t = -(d + dot(o, n)) / dot(n, v)
-	vec3 V = position - viewOrigin;
+	vec2 dp = inDp - parallaxBias * ds;
 
-	// fogPlane is inverted in tr_bsp for some reason.
-	float t = -(fog.plane.w + dot(viewOrigin, -fog.plane.xyz)) / dot(V, -fog.plane.xyz);
-	
-	bool intersects = (t > 0.0 && t < 0.995);
-	if (inFog == intersects)
-		return 0.0;
+	// current size of search window
+	float size = 1.0 / float(linearSearchSteps);
 
-	float distToVertexFromViewOrigin = length(V);
-	float distToIntersectionFromViewOrigin = t * distToVertexFromViewOrigin;
+	// current depth position
+	float depth = 0.0;
 
-	float distOutsideFog = max(distToVertexFromViewOrigin - distToIntersectionFromViewOrigin, 0.0);
-	float distThroughFog = mix(distOutsideFog, distToVertexFromViewOrigin, inFog);
+	// best match found (starts with last position 1.0)
+	float bestDepth = 1.0;
 
-	float z = fog.depthToOpaque * distThroughFog;
-	return 1.0 - clamp(exp(-(z * z)), 0.0, 1.0);
+	vec2 dx = dFdx(inDp);
+	vec2 dy = dFdy(inDp);
+
+	// search front to back for first point inside object
+	for(int i = 0; i < linearSearchSteps - 1; ++i)
+	{
+		depth += size;
+
+		// height is flipped before uploaded to the gpu
+		float t = textureGrad(normalMap, dp + ds * depth, dx, dy).r;
+
+		if(depth >= t)
+		{
+			bestDepth = depth;	// store best depth
+			break;
+		}
+	}
+
+	depth = bestDepth;
+
+	// recurse around first point (depth) for closest match
+	for(int i = 0; i < binarySearchSteps; ++i)
+	{
+		size *= 0.5;
+
+		// height is flipped before uploaded to the gpu
+		float t = textureGrad(normalMap, dp + ds * depth, dx, dy).r;
+
+		if(depth >= t)
+		{
+			bestDepth = depth;
+			depth -= 2.0 * size;
+		}
+
+		depth += size;
+	}
+
+	float beforeDepth = textureGrad(normalMap,  dp + ds * (depth-size), dx, dy).r - depth + size;
+	float afterDepth  = textureGrad(normalMap, dp + ds * depth, dx, dy).r - depth;
+	float deltaDepth = beforeDepth - afterDepth;
+	float weight = mix(0.0, beforeDepth / deltaDepth , deltaDepth > 0);
+	bestDepth += weight*size;
+
+	return bestDepth - parallaxBias;
+}
+
+vec2 GetParallaxOffset(in vec2 texCoords, in vec3 tangentDir)
+{
+	ivec2 normalSize = textureSize(u_NormalMap, 0);
+	vec3 nonSquareScale = mix(vec3(normalSize.y / normalSize.x, 1.0, 1.0), vec3(1.0, normalSize.x / normalSize.y, 1.0), float(normalSize.y <= normalSize.x));
+	vec3 offsetDir = normalize(tangentDir * nonSquareScale);
+	offsetDir.xy *= -u_NormalScale.a / offsetDir.z;
+	return offsetDir.xy * RayIntersectDisplaceMap(texCoords, offsetDir.xy, u_NormalMap, u_ParallaxBias);
 }
 #endif
 
 void main()
 {
-	vec4 color  = texture(u_DiffuseMap, var_DiffuseTex);
-	color.a *= var_Color.a;
 #if defined(USE_ALPHA_TEST)
+	vec2 texCoords = var_TexCoords.xy;
+#if defined(USE_PARALLAXMAP)
+	texCoords += GetParallaxOffset(texCoords, var_TangentViewDir.xyz);
+#endif
+	float alpha = texture(u_DiffuseMap, texCoords).a * var_Color.a;
 	if (u_AlphaTestType == ALPHA_TEST_GT0)
 	{
-		if (color.a == 0.0)
+		if (alpha == 0.0)
 			discard;
 	}
 	else if (u_AlphaTestType == ALPHA_TEST_LT128)
 	{
-		if (color.a >= 0.5)
+		if (alpha >= 0.5)
 			discard;
 	}
 	else if (u_AlphaTestType == ALPHA_TEST_GE128)
 	{
-		if (color.a < 0.5)
+		if (alpha < 0.5)
 			discard;
 	}
 	else if (u_AlphaTestType == ALPHA_TEST_GE192)
 	{
-		if (color.a < 0.75)
+		if (alpha < 0.75)
 			discard;
 	}
 	else if (u_AlphaTestType == ALPHA_TEST_E255)
 	{
-		if (color.a < 1.00)
+		if (alpha < 1.00)
 			discard;
 	}
 #endif
+	vec2 currentPos = (var_Position.xy / var_Position.w) * 0.5 + 0.5;
+	vec2 prevPos = (var_prevPosition.xy / var_prevPosition.w) * 0.5 + 0.5;
+	vec2 motionVector = currentPos - prevPos;
 
-#if defined(USE_FOG)
-	Fog fog = u_Fogs[u_FogIndex];
-	float fogFactor = CalcFog(u_ViewOrigin, var_WSPosition, fog);
-	color *= vec4(1.0) - u_FogColorMask * fogFactor;
-#endif
+	motionVector -= u_currentJitter / r_FBufScale.xy;
+	motionVector -= u_previousJitter / r_FBufScale.xy;
 
-	out_Color = vec4(color.rgb * var_Color.rgb, color.a);
-
-#if defined(USE_GLOW_BUFFER)
-	out_Glow = out_Color;
-#else
-	out_Glow = vec4(0.0);
-#endif
+	out_Color = vec4(motionVector, 0.0, 1.0);
 }

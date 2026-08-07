@@ -9187,6 +9187,11 @@ static void CG_DrawCrosshairNames(void)
 		return;
 	}
 
+	if (cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING))
+	{
+		return;
+	}
+
 	// Feature disabled
 	if (cg_drawCrosshairNames.integer == 0)
 	{
@@ -10707,7 +10712,7 @@ static void CG_ChatBox_ArrayInsert(chatBoxItem_t** array, const int ins_point, c
 }
 
 //go through all the chat strings and draw them if they are not yet expired
-static QINLINE void CG_ChatBox_DrawStrings(void)
+static void CG_ChatBox_DrawStrings(void)
 {
 	chatBoxItem_t* draw_these[MAX_CHATBOX_ITEMS];
 	int num_to_draw = 0;

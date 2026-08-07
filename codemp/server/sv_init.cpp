@@ -1001,7 +1001,7 @@ void SV_Init(void)
 	sv_rconPassword = Cvar_Get("rconPassword", "", CVAR_TEMP);
 	sv_privatePassword = Cvar_Get("sv_privatePassword", "", CVAR_TEMP);
 	sv_snapsMin = Cvar_Get("sv_snapsMin", "10", CVAR_ARCHIVE); // 1 <=> sv_snapsMax
-	sv_snapsMax = Cvar_Get("sv_snapsMax", "40", CVAR_ARCHIVE); // sv_snapsMin <=> sv_fps
+	sv_snapsMax = Cvar_Get("sv_snapsMax", "50", CVAR_ARCHIVE); // sv_snapsMin <=> sv_fps
 	sv_snapsPolicy = Cvar_Get("sv_snapsPolicy", "1", CVAR_ARCHIVE,
 		"Determines which policy of enforcement is used for client's \"snaps\" cvar");
 	Cvar_CheckRange(sv_snapsPolicy, 0, 2, qtrue);

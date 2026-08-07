@@ -883,6 +883,7 @@ enum AlphaTestType
 	ALPHA_TEST_LT128,
 	ALPHA_TEST_GE128,
 	ALPHA_TEST_GE192,
+	ALPHA_TEST_E255,
 };
 
 // any change in the LIGHTMAP_* defines here MUST be reflected in
@@ -1176,6 +1177,15 @@ enum
 
 enum
 {
+	TEXCOLORDEF_USE_VERTICES = 0x0000,
+	TEXCOLORDEF_SCREEN_TRIANGLE = 0x0001,
+
+	TEXCOLORDEF_ALL = 0x0001,
+	TEXCOLORDEF_COUNT = TEXCOLORDEF_ALL + 1,
+};
+
+enum
+{
 	GENERICDEF_USE_DEFORM_VERTEXES = 0x0001,
 	GENERICDEF_USE_TCGEN_AND_TCMOD = 0x0002,
 	GENERICDEF_USE_FOG = 0x0004,
@@ -1207,6 +1217,23 @@ enum
 #endif // REND2_SP
 
 	FOGDEF_COUNT = FOGDEF_ALL + 1,
+};
+
+enum
+{
+	VELOCITYDEF_USE_DEFORM_VERTEXES = 0x0001,
+	VELOCITYDEF_USE_SKELETAL_ANIMATION = 0x0002,
+	VELOCITYDEF_USE_TCGEN_AND_TCMOD = 0x0004,
+	VELOCITYDEF_USE_RGBAGEN = 0x0008,
+	VELOCITYDEF_USE_PARALLAXMAP = 0x0010,
+	//VELOCITYDEF_USE_ALPHA_TEST		= 0x0004,
+#ifdef REND2_SP_MD3
+	VELOCITYDEF_USE_VERTEX_ANIMATION = 0x0004,
+	VELOCITYDEF_ALL = 0x0007,
+#else
+	VELOCITYDEF_ALL = 0x001F,
+#endif // REND2_SP
+	VELOCITYDEF_COUNT = VELOCITYDEF_ALL + 1,
 };
 
 enum
@@ -1355,6 +1382,17 @@ typedef enum
 	UNIFORM_SCREENIMAGEMAP,
 	UNIFORM_SCREENDEPTHMAP,
 
+	UNIFORM_EDGEMAP,
+	UNIFORM_AREAMAP,
+	UNIFORM_SEARCHMAP,
+	UNIFORM_BLENDMAP,
+	UNIFORM_VELOCITYMAP,
+
+	UNIFORM_VOLUMETRICLIGHTMAP,
+
+	UNIFORM_LIGHTGRIDORIGIN,
+	UNIFORM_LIGHTGRIDCELLINVERSESIZE,
+
 	UNIFORM_SHADOWMAP,
 	UNIFORM_SHADOWMAP2,
 
@@ -1424,6 +1462,8 @@ typedef enum
 	UNIFORM_ENVFORCE,
 	UNIFORM_RANDOMOFFSET,
 	UNIFORM_CHUNK_PARTICLES,
+
+	UNIFORM_BLOOMSTRENGTH,
 
 	UNIFORM_COUNT
 } uniform_t;
@@ -2435,6 +2475,9 @@ typedef struct trGlobals_s {
 	image_t* renderImage;
 	image_t* glowImage;
 	image_t* glowImageScaled[6];
+	image_t* velocityImage;
+	image_t* temporalResolveImage;
+	image_t* historyImage;
 	image_t* sunRaysImage;
 	image_t* renderDepthImage;
 	image_t* pshadowArrayImage;
@@ -2453,10 +2496,17 @@ typedef struct trGlobals_s {
 	image_t* envBrdfImage;
 	image_t* textureDepthImage;
 	image_t* weatherDepthImage;
+	image_t* smaaSearchImage;
+	image_t* smaaAreaImage;
+	image_t* smaaEdgeImage;
+	image_t* smaaBlendImage;
+	image_t* smaaResolveImage;
 
 	FBO_t* renderFbo;
+	FBO_t* depthVelocityFbo;
 	FBO_t* glowFboScaled[6];
 	FBO_t* msaaResolveFbo;
+	FBO_t* msaaResolveVelocityFbo;
 	FBO_t* sunRaysFbo;
 	FBO_t* depthFbo;
 	FBO_t* pshadowFbos[MAX_DRAWN_PSHADOWS];
@@ -2472,6 +2522,11 @@ typedef struct trGlobals_s {
 	FBO_t* renderCubeFbo[6];
 	FBO_t* filterCubeFbo;
 	FBO_t* weatherDepthFbo;
+	FBO_t* smaaEdgeFbo;
+	FBO_t* smaaBlendFbo;
+	FBO_t* smaaResolveFbo;
+	FBO_t* temporalResolveFbo;
+	FBO_t* historyFbo;
 
 	shader_t* defaultShader;
 	shader_t* shadowShader;
@@ -2507,8 +2562,9 @@ typedef struct trGlobals_s {
 	shaderProgram_t splashScreenShader;
 	shaderProgram_t genericShader[GENERICDEF_COUNT];
 	shaderProgram_t refractionShader[REFRACTIONDEF_COUNT];
-	shaderProgram_t textureColorShader;
+	shaderProgram_t textureColorShader[TEXCOLORDEF_COUNT];
 	shaderProgram_t fogShader[FOGDEF_COUNT];
+	shaderProgram_t velocityShader[VELOCITYDEF_COUNT];
 	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
 	shaderProgram_t pshadowShader;
 	shaderProgram_t volumeShadowShader;
@@ -2517,6 +2573,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t tonemapShader[2];
 	shaderProgram_t calclevels4xShader[2];
 	shaderProgram_t ssaoShader;
+	shaderProgram_t highpassShader;
 	shaderProgram_t depthBlurShader[2];
 	shaderProgram_t testcubeShader;
 	shaderProgram_t prefilterEnvMapShader;
@@ -2527,6 +2584,10 @@ typedef struct trGlobals_s {
 	shaderProgram_t spriteShader[SSDEF_COUNT];
 	shaderProgram_t weatherUpdateShader;
 	shaderProgram_t weatherShader;
+	shaderProgram_t smaaEdgeShader;
+	shaderProgram_t smaaBlendShader;
+	shaderProgram_t smaaResolveShader;
+	shaderProgram_t smaaTemporalResolveShader;
 
 	GLuint staticUbo;
 	GLuint spriteUbos[MAX_SUB_BSP + 1];
@@ -2739,6 +2800,9 @@ extern	cvar_t* r_anaglyphMode;
 extern  cvar_t* r_mergeMultidraws;
 extern  cvar_t* r_mergeLeafSurfaces;
 
+extern cvar_t* r_smaa;
+extern cvar_t* r_smaa_quality;
+
 extern	cvar_t* r_externalGLSL;
 
 extern  cvar_t* r_hdr;
@@ -2815,6 +2879,7 @@ extern cvar_t* r_dynamicGlowIntensity;
 extern cvar_t* r_dynamicGlowSoft;
 extern cvar_t* r_dynamicGlowWidth;
 extern cvar_t* r_dynamicGlowHeight;
+extern cvar_t* r_dynamicGlowBloom;
 
 extern cvar_t* r_debugContext;
 extern cvar_t* r_debugWeather;

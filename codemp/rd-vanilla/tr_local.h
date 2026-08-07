@@ -1171,6 +1171,7 @@ extern cvar_t* r_DynamicGlowIntensity;
 extern cvar_t* r_DynamicGlowSoft;
 extern cvar_t* r_DynamicGlowWidth;
 extern cvar_t* r_DynamicGlowHeight;
+extern cvar_t* r_dynamicGlowBloom;
 
 extern	cvar_t* r_nobind;						// turns off binding to appropriate textures
 extern	cvar_t* r_singleShader;				// make most world faces use default shader

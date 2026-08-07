@@ -112,6 +112,9 @@ cvar_t* r_arb_buffer_storage;
 cvar_t* r_mergeMultidraws;
 cvar_t* r_mergeLeafSurfaces;
 
+cvar_t* r_smaa;
+cvar_t* r_smaa_quality;
+
 cvar_t* r_cameraExposure;
 
 cvar_t* r_externalGLSL;
@@ -267,6 +270,7 @@ cvar_t* r_dynamicGlowIntensity;
 cvar_t* r_dynamicGlowSoft;
 cvar_t* r_dynamicGlowWidth;
 cvar_t* r_dynamicGlowHeight;
+cvar_t* r_dynamicGlowBloom;
 
 cvar_t* r_debugContext;
 cvar_t* r_debugWeather;
@@ -1491,6 +1495,8 @@ static void R_Register(void)
 	r_dynamicGlowSoft = ri->Cvar_Get("r_dynamicGlowSoft", "1", CVAR_ARCHIVE, "");
 	r_dynamicGlowWidth = ri->Cvar_Get("r_dynamicGlowWidth", "320", CVAR_ARCHIVE | CVAR_LATCH, "");
 	r_dynamicGlowHeight = ri->Cvar_Get("r_dynamicGlowHeight", "240", CVAR_ARCHIVE | CVAR_LATCH, "");
+	r_dynamicGlowBloom = ri->Cvar_Get("r_dynamicGlowBloom", "0.0", CVAR_ARCHIVE, "");
+	ri->Cvar_CheckRange(r_dynamicGlowBloom, 0.f, 2.f, qfalse);
 
 	r_debugContext = ri->Cvar_Get("r_debugContext", "0", CVAR_LATCH, "");
 	r_debugWeather = ri->Cvar_Get("r_debugWeather", "0", CVAR_ARCHIVE, "");
@@ -1604,6 +1610,9 @@ static void R_Register(void)
 	r_anaglyphMode = ri->Cvar_Get("r_anaglyphMode", "0", CVAR_ARCHIVE, "");
 	r_mergeMultidraws = ri->Cvar_Get("r_mergeMultidraws", "1", CVAR_ARCHIVE, "");
 	r_mergeLeafSurfaces = ri->Cvar_Get("r_mergeLeafSurfaces", "1", CVAR_ARCHIVE, "");
+
+	r_smaa = ri->Cvar_Get("r_smaa", "0", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable SMAA");
+	r_smaa_quality = ri->Cvar_Get("r_smaa_quality", "2", CVAR_ARCHIVE | CVAR_LATCH, "0: LOW | 1: MEDIUM | 2: HIGH | 3: ULTRA");
 
 	//
 	// temporary variables that can change at any time

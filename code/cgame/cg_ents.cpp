@@ -1955,10 +1955,6 @@ extern char* vtos(const vec3_t v);
 #if 1
 void CG_CalcEntityLerpPositions(centity_t* cent)
 {
-	// Save previous lerpOrigin for prediction error detection
-	vec3_t prevLerpOrigin;
-	VectorCopy(cent->lerpOrigin, prevLerpOrigin);
-
 	if (cent->gent && cent->gent->client && cent->gent->client->NPC_class == CLASS_VEHICLE && cent->nextState)
 	{
 		const float f = cg.frameInterpolation;
@@ -2052,37 +2048,7 @@ void CG_CalcEntityLerpPositions(centity_t* cent)
 		EvaluateTrajectory(pos_data, cg.time, cent->lerpOrigin);
 	}
 
-	// Prediction error smoothing: for non-local entities, smoothly correct
-	// small (< 64 unit) position deltas instead of snapping.
-	if (cent->currentState.number != cg.snap->ps.clientNum && cent->currentState.number < MAX_CLIENTS)
-	{
-		vec3_t rawDelta;
-		VectorSubtract(cent->lerpOrigin, prevLerpOrigin, rawDelta);
-		float rawLen = VectorLength(rawDelta);
-		if (rawLen < 64.0f && rawLen > 0.1f)
-		{
-			// Store the delta as a prediction error to be decayed
-			VectorCopy(rawDelta, cent->predictionErrorOffset);
-			cent->predictionErrorTime = cg.time;
-		}
-		// Decay and apply existing offset
-		if (cent->predictionErrorTime > 0)
-		{
-			float decayFrac = (float)(cg.time - cent->predictionErrorTime) / 100.0f;
-			if (decayFrac >= 1.0f)
-			{
-				VectorClear(cent->predictionErrorOffset);
-				cent->predictionErrorTime = 0;
-			}
-			else
-			{
-				VectorScale(cent->predictionErrorOffset, 1.0f - decayFrac, cent->predictionErrorOffset);
-				VectorAdd(cent->lerpOrigin, cent->predictionErrorOffset, cent->lerpOrigin);
-			}
-		}
-	}
-
-	// FIXME: this will stomp an apos trType of TR_INTERPOLATE!!
+	// this will stomp an apos trType of TR_INTERPOLATE!!
 	EvaluateTrajectory(&cent->currentState.apos, cg.time, cent->lerpAngles);
 
 	// adjust for riding a mover

@@ -28,7 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../game/ghoul2_shared.h"
 #include <qcommon\q_shared.h>
 
-constexpr auto MAX_DLIGHTS = 32; // can't be increased, because bit flags are used on surfaces;
+#define	MAX_DLIGHTS		32			// can't be increased, because bit flags are used on surfaces
 constexpr auto REFENTITYNUM_BITS = 11; // can't be increased without changing drawsurf bit packing;
 #define	REFENTITYNUM_MASK	((1<<REFENTITYNUM_BITS) - 1)
 // the last N-bit number (2^REFENTITYNUM_BITS - 1) is reserved for the special world refentity,

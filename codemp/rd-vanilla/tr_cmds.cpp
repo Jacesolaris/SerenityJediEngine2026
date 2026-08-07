@@ -140,7 +140,7 @@ static void* R_GetCommandBufferReserved(unsigned int bytes, const int reservedBy
 	bytes = PAD(bytes, sizeof(void*));
 
 	// always leave room for the end of list command
-	if (cmdList->used + bytes + sizeof(int) + reservedBytes > MAX_RENDER_COMMANDS) {
+	if (cmdList->used + static_cast<unsigned long long>(bytes) + sizeof(int) + reservedBytes > MAX_RENDER_COMMANDS) {
 		if (bytes > MAX_RENDER_COMMANDS - (int)sizeof(int)) {
 			Com_Error(ERR_FATAL, "R_GetCommandBuffer: bad size %i", bytes);
 		}
