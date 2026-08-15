@@ -233,7 +233,9 @@ void RB_AddDlightFlares(void) {
 		else
 			j = 0;
 
-		RB_AddFlare((void*)l, j, l->origin, l->color, NULL);
+		vec3_t normal;
+		VectorCopy(backEnd.viewParms.ori.axis[0], normal);
+		RB_AddFlare(nullptr, j, l->origin, l->color, normal);
 	}
 }
 
@@ -428,8 +430,7 @@ void RB_RenderFlares(void) {
 		f->drawIntensity = 0;
 		if (f->frameSceneNum == backEnd.viewParms.frameSceneNum
 			&& f->inPortal == backEnd.viewParms.isPortal) {
-			RB_TestFlare(f);
-			if (f->drawIntensity) {
+			if (true) { // draw all flares, testing happens in shaders
 				draw = qtrue;
 			}
 			else {
@@ -450,8 +451,7 @@ void RB_RenderFlares(void) {
 
 	for (f = r_activeFlares; f; f = f->next) {
 		if (f->frameSceneNum == backEnd.viewParms.frameSceneNum
-			&& f->inPortal == backEnd.viewParms.isPortal
-			&& f->drawIntensity) {
+			&& f->inPortal == backEnd.viewParms.isPortal) {
 			RB_RenderFlare(f);
 		}
 	}

@@ -59,7 +59,7 @@ int gLevelFlags = 0;
 static char* GetFlagStr(const int flags)
 {
 	// Permanent allocation — safe because caller keeps the string
-	char* flagstr = BG_Alloc(128);
+	char* flagstr = BG_Alloc(256);
 	int i = 0;
 
 	if (flags == 0)
@@ -146,7 +146,6 @@ static char* GetFlagStr(const int flags)
 
 	return flagstr;
 }
-
 
 void G_TestLine(vec3_t start, vec3_t end, const int color, const int time)
 {

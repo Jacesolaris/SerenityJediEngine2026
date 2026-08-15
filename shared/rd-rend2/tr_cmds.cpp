@@ -536,6 +536,7 @@ void RE_BeginFrame(const stereoFrame_t stereoFrame) {
 		return;
 	}
 
+	backEndData->previousFrame = backEndData->currentFrame;
 	int frameNumber = backEndData->realFrameNumber;
 	gpuFrame_t* thisFrame = &backEndData->frames[frameNumber % MAX_FRAMES];
 	backEndData->currentFrame = thisFrame;
@@ -557,7 +558,10 @@ void RE_BeginFrame(const stereoFrame_t stereoFrame) {
 					qglDeleteSync(sync);
 					thisFrame->sync = NULL;
 
-					thisFrame->uboWriteOffset = 0;
+					for (byte i = 0; i < MAX_SCENES; i++)
+					{
+						thisFrame->uboWriteOffset[i] = 0;
+					}
 
 					thisFrame->dynamicIboCommitOffset = 0;
 					thisFrame->dynamicIboWriteOffset = 0;
@@ -565,6 +569,10 @@ void RE_BeginFrame(const stereoFrame_t stereoFrame) {
 					thisFrame->dynamicVboCommitOffset = 0;
 					thisFrame->dynamicVboWriteOffset = 0;
 
+#ifdef _G2_GORE
+					thisFrame->goreVBOCurrentIndex = 0;
+					thisFrame->goreIBOCurrentIndex = 0;
+#endif // _G2_GORE
 					backEndData->perFrameMemory->Reset();
 
 					ri.Error(ERR_DROP, "OpenGL: Failed to wait for fence. Context lost. (0x%x)\n", qglGetError());
@@ -580,15 +588,28 @@ void RE_BeginFrame(const stereoFrame_t stereoFrame) {
 			R_SaveScreenshot(&thisFrame->screenshotReadback);
 
 		// Resets resources
-		qglBindBuffer(GL_UNIFORM_BUFFER, thisFrame->ubo);
-		glState.currentGlobalUBO = thisFrame->ubo;
-		thisFrame->uboWriteOffset = 0;
+		for (byte i = 0; i < MAX_SCENES; i++)
+		{
+			if (backEndData->cachePreviousFrameUbos)
+				thisFrame->ubo[i] = backEndData->frameUbos[(frameNumber % (MAX_FRAMES + 1) * (MAX_FRAMES + 1)) + i];
+
+			qglBindBuffer(GL_UNIFORM_BUFFER, thisFrame->ubo[i]);
+			glState.currentGlobalUBO = thisFrame->ubo[i];
+			thisFrame->uboWriteOffset[i] = 0;
+		}
+
+		thisFrame->numCachedGhoulUboOffsets = 0;
+		thisFrame->numCachedModelUboOffsets = 0;
 
 		thisFrame->dynamicIboCommitOffset = 0;
 		thisFrame->dynamicIboWriteOffset = 0;
 
 		thisFrame->dynamicVboCommitOffset = 0;
 		thisFrame->dynamicVboWriteOffset = 0;
+#ifdef _G2_GORE
+		thisFrame->goreVBOCurrentIndex = backEndData->previousFrame->goreVBOCurrentIndex;
+		thisFrame->goreIBOCurrentIndex = backEndData->previousFrame->goreIBOCurrentIndex;
+#endif
 
 		backEndData->perFrameMemory->Reset();
 	}

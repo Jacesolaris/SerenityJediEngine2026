@@ -45,7 +45,7 @@ gclient_t g_clients[MAX_CLIENTS];
 qboolean gDuelExit = qfalse;
 
 void G_InitGame(int levelTime, int randomSeed, int restart);
-void G_RunFrame(int levelTime);
+void G_RunFrame(const int levelTime);
 void G_ShutdownGame(int restart);
 void CheckExitRules(void);
 void G_ROFF_NotetrackCallback(gentity_t* cent, const char* notetrack);

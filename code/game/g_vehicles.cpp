@@ -479,7 +479,7 @@ void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 
 		pEnt->client->ps.stats[STAT_WEAPONS] |= (1 << WP_ATST_MAIN | 1 << WP_ATST_SIDE);
 
-		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] =	ammoData[weaponData[WP_ATST_MAIN].ammoIndex].max;
+		pEnt->client->ps.ammo[weaponData[WP_ATST_MAIN].ammoIndex] = ammoData[weaponData[WP_ATST_MAIN].ammoIndex].max;
 
 		pEnt->client->ps.ammo[weaponData[WP_ATST_SIDE].ammoIndex] = ammoData[weaponData[WP_ATST_SIDE].ammoIndex].max;
 
@@ -504,7 +504,6 @@ void G_DriveATST(gentity_t* pEnt, gentity_t* atst)
 		pEnt->client->ps.viewheight = 120;
 	}
 }
-
 
 //#endif //_JK2MP
 
@@ -2170,7 +2169,7 @@ static bool UpdateRider(Vehicle_t* p_veh, bgEntity_t* pRider, usercmd_t* pUmcd)
 	}
 
 	return true;
-}
+	}
 
 // Attachs all the riders of this vehicle to their appropriate tag (*driver, *pass1, *pass2, whatever...).
 static void AttachRiders(Vehicle_t * p_veh)

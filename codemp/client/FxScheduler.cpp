@@ -339,7 +339,6 @@ int CFxScheduler::RegisterEffect(const char* path, bool bHasCorrectPath)
 	return ParseEffect(sfile, parser.GetBaseParseGroup());
 }
 
-
 //------------------------------------------------------
 // ParseEffect
 //	Starts at ground zero, using each group header to

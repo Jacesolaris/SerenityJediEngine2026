@@ -91,119 +91,118 @@ static void WP_DEMP2_MainFire(gentity_t* ent)
 //--------------------------------------------------
 void DEMP2_AltRadiusDamage(gentity_t* ent)
 {
-    // SAFETY: ent may be NULL in edge cases
-    if (ent == NULL)
-    {
-        Com_Printf(S_COLOR_YELLOW "DEMP2_AltRadiusDamage: NULL ent\n");
-        return;
-    }
+	// SAFETY: ent may be NULL in edge cases
+	if (ent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "DEMP2_AltRadiusDamage: NULL ent\n");
+		return;
+	}
 
-    float frac = (level.time - ent->fx_time) / 1300.0f;
+	float frac = (level.time - ent->fx_time) / 1300.0f;
 
-    // Allocate entity list on heap instead of stack (fixes C6262)
-    gentity_t** entity_list = (gentity_t**)G_Alloc(sizeof(gentity_t*) * MAX_GENTITIES);
-    if (entity_list == NULL)
-    {
-        Com_Printf(S_COLOR_YELLOW "DEMP2_AltRadiusDamage: Failed to allocate entity_list\n");
-        return;
-    }
+	// Allocate entity list on heap instead of stack (fixes C6262)
+	gentity_t** entity_list = (gentity_t**)G_Alloc(sizeof(gentity_t*) * MAX_GENTITIES);
+	if (entity_list == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "DEMP2_AltRadiusDamage: Failed to allocate entity_list\n");
+		return;
+	}
 
-    vec3_t mins = {0}, maxs = {0};
-    vec3_t v, dir;
+	vec3_t mins = { 0 }, maxs = { 0 };
+	vec3_t v, dir;
 
-    frac *= frac * frac;
+	frac *= frac * frac;
 
-    const float radius = frac * 200.0f;
+	const float radius = frac * 200.0f;
 
-    for (int i = 0; i < 3; i++)
-    {
-        mins[i] = ent->currentOrigin[i] - radius;
-        maxs[i] = ent->currentOrigin[i] + radius;
-    }
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = ent->currentOrigin[i] - radius;
+		maxs[i] = ent->currentOrigin[i] + radius;
+	}
 
-    const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
+	const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entity_list, MAX_GENTITIES);
 
-    for (int e = 0; e < num_listed_entities; e++)
-    {
-        gentity_t* gent = entity_list[e];
+	for (int e = 0; e < num_listed_entities; e++)
+	{
+		gentity_t* gent = entity_list[e];
 
-        if (gent == NULL || gent->takedamage == qfalse || gent->contents == 0)
-        {
-            continue;
-        }
+		if (gent == NULL || gent->takedamage == qfalse || gent->contents == 0)
+		{
+			continue;
+		}
 
-        // Distance from bounding box edge
-        for (int i = 0; i < 3; i++)
-        {
-            if (ent->currentOrigin[i] < gent->absmin[i])
-            {
-                v[i] = gent->absmin[i] - ent->currentOrigin[i];
-            }
-            else if (ent->currentOrigin[i] > gent->absmax[i])
-            {
-                v[i] = ent->currentOrigin[i] - gent->absmax[i];
-            }
-            else
-            {
-                v[i] = 0.0f;
-            }
-        }
+		// Distance from bounding box edge
+		for (int i = 0; i < 3; i++)
+		{
+			if (ent->currentOrigin[i] < gent->absmin[i])
+			{
+				v[i] = gent->absmin[i] - ent->currentOrigin[i];
+			}
+			else if (ent->currentOrigin[i] > gent->absmax[i])
+			{
+				v[i] = ent->currentOrigin[i] - gent->absmax[i];
+			}
+			else
+			{
+				v[i] = 0.0f;
+			}
+		}
 
-        // Ellipsoid vertical compression
-        v[2] *= 0.5f;
+		// Ellipsoid vertical compression
+		v[2] *= 0.5f;
 
-        const float dist = VectorLength(v);
+		const float dist = VectorLength(v);
 
-        if (dist >= radius)
-        {
-            continue;
-        }
+		if (dist >= radius)
+		{
+			continue;
+		}
 
-        if (dist < ent->radius)
-        {
-            continue;
-        }
+		if (dist < ent->radius)
+		{
+			continue;
+		}
 
-        VectorCopy(gent->currentOrigin, v);
-        VectorSubtract(v, ent->currentOrigin, dir);
+		VectorCopy(gent->currentOrigin, v);
+		VectorSubtract(v, ent->currentOrigin, dir);
 
-        dir[2] += 12.0f;
+		dir[2] += 12.0f;
 
-        G_Damage(
-            gent,
-            ent,
-            ent->owner,
-            dir,
-            ent->currentOrigin,
-            weaponData[WP_DEMP2].altDamage,
-            DAMAGE_DEATH_KNOCKBACK,
-            ent->splashMethodOfDeath
-        );
+		G_Damage(
+			gent,
+			ent,
+			ent->owner,
+			dir,
+			ent->currentOrigin,
+			weaponData[WP_DEMP2].altDamage,
+			DAMAGE_DEATH_KNOCKBACK,
+			ent->splashMethodOfDeath
+		);
 
-        if (gent->takedamage == qtrue && gent->client != NULL)
-        {
-            gent->s.powerups |= (1 << PW_SHOCKED);
-            gent->client->ps.powerups[PW_SHOCKED] = level.time + 2000;
+		if (gent->takedamage == qtrue && gent->client != NULL)
+		{
+			gent->s.powerups |= (1 << PW_SHOCKED);
+			gent->client->ps.powerups[PW_SHOCKED] = level.time + 2000;
 
-            Saboteur_Decloak(gent, Q_irand(3000, 10000));
+			Saboteur_Decloak(gent, Q_irand(3000, 10000));
 
-            if (gent->client->ps.powerups[PW_CLOAKED])
-            {
-                player_Decloak(gent);
-                gent->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
-            }
-        }
-    }
+			if (gent->client->ps.powerups[PW_CLOAKED])
+			{
+				player_Decloak(gent);
+				gent->client->cloakToggleTime = level.time + Q_irand(3000, 10000);
+			}
+		}
+	}
 
-    // Update shockwave radius
-    ent->radius = radius;
+	// Update shockwave radius
+	ent->radius = radius;
 
-    if (frac < 1.0f)
-    {
-        ent->nextthink = level.time + 50;
-    }
+	if (frac < 1.0f)
+	{
+		ent->nextthink = level.time + 50;
+	}
 }
-
 
 //---------------------------------------------------------
 void DEMP2_AltDetonate(gentity_t* ent)

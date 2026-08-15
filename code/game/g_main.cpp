@@ -276,7 +276,7 @@ extern char* G_GetLocationForEnt(const gentity_t* ent);
 extern void CP_FindCombatPointWaypoints();
 extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 
-void G_RunFrame(int levelTime);
+void G_RunFrame(const int levelTime);
 void ClearNPCGlobals();
 extern void AI_UpdateGroups();
 

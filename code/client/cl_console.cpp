@@ -294,7 +294,6 @@ void Con_CheckResize(void)
 	con.display = con.current;
 }
 
-
 /*
 ==================
 Cmd_CompleteTxtName
@@ -492,7 +491,6 @@ void CL_ConsolePrint(char* txt)
 		con.times[con.current % NUM_CON_TIMES] = cls.realtime;
 	}
 }
-
 
 /*
 ==============================================================================

@@ -148,7 +148,6 @@ gotnewcl:
 	newcl->gamestateMessageNum = -1;
 }
 
-
 /*
 =====================
 SV_DropClient
@@ -238,7 +237,6 @@ void SV_SendClientGameState(client_t* client)
 	/* free temporary buffer */
 	Z_Free(msgBuffer);
 }
-
 
 /*
 ==================

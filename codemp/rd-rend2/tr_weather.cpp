@@ -23,6 +23,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <cmath>
 
+// Cached to save test tume
+int CurrentWeatherBrushIndex;
+
 extern cvar_t* r_weather;
 
 namespace
@@ -90,11 +93,11 @@ namespace
 		ws.lastVBO = R_CreateVBO(
 			nullptr,
 			sizeof(rainVertex_t) * rainVertices.size(),
-			VBO_USAGE_XFB);
+			VBO_USAGE_XFB, "Weather_ping");
 		ws.vbo = R_CreateVBO(
 			(byte*)rainVertices.data(),
 			sizeof(rainVertex_t) * rainVertices.size(),
-			VBO_USAGE_XFB);
+			VBO_USAGE_XFB, "Weather_pong");
 		ws.vboLastUpdateFrame = 0;
 
 		ws.attribsTemplate[0].index = ATTR_INDEX_POSITION;
@@ -440,9 +443,10 @@ namespace
 
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
 
-		const GLuint currentFrameUbo = backEndData->currentFrame->ubo;
+		const byte currentFrameScene = backEndData->currentFrame->currentScene;
+		const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 		const UniformBlockBinding uniformBlockBindings[] = {
-			{ currentFrameUbo, tr.sceneUboOffset, UNIFORM_BLOCK_SCENE }
+			{ currentFrameUbo, (size_t)tr.sceneUboOffset, UNIFORM_BLOCK_SCENE }
 		};
 		DrawItemSetUniformBlockBindings(
 			item, uniformBlockBindings, frameAllocator);
@@ -1314,9 +1318,10 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 		{
 			for (int x = -1; x <= 1; ++x, ++currentIndex)
 			{
-				const GLuint currentFrameUbo = backEndData->currentFrame->ubo;
+				const byte currentFrameScene = backEndData->currentFrame->currentScene;
+				const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 				const UniformBlockBinding uniformBlockBindings[] = {
-					{ currentFrameUbo, tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA }
+					{ currentFrameUbo, (size_t)tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA }
 				};
 				DrawItemSetUniformBlockBindings(
 					item, uniformBlockBindings, frameAllocator);
@@ -1327,7 +1332,6 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 					UNIFORM_ZONEOFFSET,
 					(centerZoneOffsetX + x) * CHUNK_EXTENDS,
 					(centerZoneOffsetY + y) * CHUNK_EXTENDS);
-				uniformDataWriter.SetUniformFloat(UNIFORM_TIME, backEnd.refdef.frameTime);
 				uniformDataWriter.SetUniformVec4(UNIFORM_COLOR, weatherObject->color);
 				uniformDataWriter.SetUniformVec4(UNIFORM_VIEWINFO, viewInfo);
 				uniformDataWriter.SetUniformMatrix4x4(UNIFORM_SHADOWMVP, tr.weatherSystem->weatherMVP);
@@ -1350,4 +1354,124 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 			}
 		}
 	}
+}
+
+static bool IsInsideBrush(const weatherBrushes_t* Brush, const vec3_t pos)
+{
+	// RBSP brushes actually store their bounding box in the first 6 planes! Nice
+	const vec3_t mins = {
+		-Brush->planes[0][3],
+		-Brush->planes[2][3],
+		-Brush->planes[4][3],
+	};
+	const vec3_t maxs = {
+		Brush->planes[1][3],
+		Brush->planes[3][3],
+		Brush->planes[5][3],
+	};
+
+	return (pos[0] > mins[0] && pos[1] > mins[1] && pos[2] > mins[2]
+		&& pos[0] < maxs[0] && pos[1] < maxs[1] && pos[2] < maxs[2]);
+}
+
+bool R_IsOutside(vec3_t pos)
+{
+	if (!tr.weatherSystem)
+	{
+		return false;
+	}
+
+	// check cashed brush first
+	if (CurrentWeatherBrushIndex >= 0 && CurrentWeatherBrushIndex < tr.weatherSystem->numWeatherBrushes)
+	{
+		if (IsInsideBrush(&tr.weatherSystem->weatherBrushes[CurrentWeatherBrushIndex], pos))
+		{
+			return (tr.weatherSystem->weatherBrushType == WEATHER_BRUSHES_OUTSIDE);
+		}
+	}
+
+	// check all weather brushes
+	for (int i = 0; i < tr.weatherSystem->numWeatherBrushes; i++)
+	{
+		const weatherBrushes_t* WeatherBrush = &tr.weatherSystem->weatherBrushes[i];
+
+		if (IsInsideBrush(WeatherBrush, pos))
+		{
+			CurrentWeatherBrushIndex = i;
+			return (tr.weatherSystem->weatherBrushType == WEATHER_BRUSHES_OUTSIDE);
+		}
+	}
+
+	CurrentWeatherBrushIndex = -1;
+	return (tr.weatherSystem->weatherBrushType != WEATHER_BRUSHES_OUTSIDE);
+}
+
+bool R_IsShaking(vec3_t pos)
+{
+	return (tr.weatherSystem
+		&& tr.weatherSystem->shaking
+		&& R_IsOutside(pos));
+}
+
+bool R_GetWindVector(vec3_t windVector, vec3_t atPoint)
+{
+	// @TODO: need to process "Windzone" command
+
+	if (!tr.weatherSystem)
+	{
+		return false;
+	}
+
+	VectorCopy(tr.weatherSystem->windDirection, windVector);
+	VectorNormalize(windVector);
+	// everything is processed in RB_SurfaceWeather, no need to add something here
+	return (VectorLength(windVector) > 0.0f);
+}
+
+bool R_GetWindGusting(vec3_t atPoint)
+{
+	if (!tr.weatherSystem)
+		return false;
+
+	float windSpeed = VectorLength(tr.weatherSystem->windDirection);
+	return (windSpeed > 1.0f);
+}
+
+float R_IsOutsideCausingPain(vec3_t pos)
+{
+	return (R_IsOutside(pos) && tr.weatherSystem->pain);
+}
+
+float R_GetChanceOfSaberFizz()
+{
+	float	chance = 0.0f;
+	int		numWater = 0;
+	if (tr.weatherSystem->weatherSlots[WEATHER_RAIN].active)
+	{
+		chance += (tr.weatherSystem->weatherSlots[WEATHER_RAIN].gravity / 20.0f);
+		numWater++;
+	}
+	if (tr.weatherSystem->weatherSlots[WEATHER_SNOW].active)
+	{
+		chance += (tr.weatherSystem->weatherSlots[WEATHER_SNOW].gravity / 20.0f);
+		numWater++;
+	}
+	if (numWater)
+	{
+		return (chance / numWater);
+	}
+	return 0.0f;
+}
+
+bool R_IsRaining()
+{
+	if (!tr.weatherSystem)
+		return false;
+
+	return tr.weatherSystem->weatherSlots[WEATHER_RAIN].active;
+}
+
+bool R_IsPuffing()
+{
+	return false;
 }

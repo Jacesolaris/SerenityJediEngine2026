@@ -1421,7 +1421,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			!PM_SaberInAttack(ent->client->ps.saberMove) &&
 			!PM_SaberInTransitionAny(ent->client->ps.saberMove) &&
 			!PM_InKnockDown(&ent->client->ps) &&
-			ent->client->ps.saberLockTime < level.time && 
+			ent->client->ps.saberLockTime < level.time &&
 			ent->client->ps.saberBlockingTime < level.time &&
 			ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
 		{
@@ -5541,7 +5541,7 @@ static void ClientThink_real(gentity_t* ent)
 		}
 
 		client->ps.basespeed = client->ps.speed;
-		}
+	}
 
 	if (!ent->NPC || !(ent->NPC->aiFlags & NPCAI_CUSTOM_GRAVITY))
 	{

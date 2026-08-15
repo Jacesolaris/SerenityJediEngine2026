@@ -1186,7 +1186,6 @@ void Rancor_Attack(const float distance, const qboolean do_charge, const qboolea
 	TIMER_Done2(NPC, "attacking", qtrue);
 }
 
-
 //----------------------------------
 static void Rancor_Combat()
 {
@@ -1440,7 +1439,6 @@ void NPC_Rancor_Pain(gentity_t* self, gentity_t* inflictor, gentity_t* other,
 		}
 	}
 }
-
 
 static void Rancor_CheckDropVictim()
 {

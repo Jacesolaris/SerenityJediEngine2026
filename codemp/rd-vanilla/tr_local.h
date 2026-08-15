@@ -545,12 +545,12 @@ using trRefdef_t = struct trRefdef_s {
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
-using skinSurface_t = struct skinSurface_s {
+typedef struct {
 	char		name[MAX_QPATH];
 	shader_t* shader;
-};
+} skinSurface_t;
 
-using fog_t = struct fog_s {
+typedef struct fog_s {
 	int			originalBrushNumber;
 	vec3_t		bounds[2];
 
@@ -561,9 +561,9 @@ using fog_t = struct fog_s {
 	// for clipping distance in fog when outside
 	qboolean	hasSurface;
 	float		surface[4];
-};
+} fog_t;
 
-using viewParms_t = struct viewParms_s {
+typedef struct viewParms_s {
 	orientationr_t	ori;				// Can't use "or" as it is a reserved word with gcc DREWS 2/2/2002
 	orientationr_t	world;
 	vec3_t		pvsOrigin;			// may be different than or.origin for portals
@@ -578,7 +578,7 @@ using viewParms_t = struct viewParms_s {
 	cplane_t	frustum[4];
 	vec3_t		visBounds[2];
 	float		zFar;
-};
+} viewParms_t;
 
 /*
 ==============================================================================

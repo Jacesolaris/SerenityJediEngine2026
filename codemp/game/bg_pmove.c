@@ -4404,6 +4404,11 @@ int ForceFallBrakeRate[NUM_FORCE_POWER_LEVELS] =
 
 static qboolean PM_CanForceFall()
 {
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
 	return !BG_InRoll(pm->ps, pm->ps->legsAnim) // not rolling
 		&& !PM_InKnockDown(pm->ps) // not knocked down
 		&& !BG_InDeathAnim(pm->ps->legsAnim) // not dead
@@ -15847,6 +15852,11 @@ static void PM_AdjustAttackStates(pmove_t* pmove)
 
 static void PM_CmdForRoll(playerState_t* ps, const int anim, usercmd_t* p_Cmd)
 {
+	if (!pm || !pm->ps)
+	{
+		return;
+	}
+
 #ifdef _GAME
 	if (ps->userInt3 & 1 << FLAG_DODGEROLL)
 	{

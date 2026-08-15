@@ -508,7 +508,6 @@ static qboolean G_MoverPush(gentity_t* pusher, vec3_t move, vec3_t amove, gentit
 	return qtrue;
 }
 
-
 /*
 =================
 G_MoverTeam
@@ -1325,7 +1324,6 @@ void Think_SpawnNewDoorTrigger(gentity_t* ent)
 	// Sync mover team state
 	MatchTeam(ent, ent->moverState, level.time);
 }
-
 
 void Think_MatchTeam(gentity_t* ent)
 {

@@ -3763,7 +3763,7 @@ static void Jedi_CombatDistance(const int enemy_dist)
 	else if (NPCS.NPC->enemy->client
 		&& NPCS.NPC->enemy->s.weapon == WP_SABER
 		&& NPCS.NPC->enemy->client->ps.saberLockTime > level.time
-		&& NPCS.NPC->client->ps.saberLockTime < level.time) 
+		&& NPCS.NPC->client->ps.saberLockTime < level.time)
 	{
 		//enemy is in a saberLock and we are not
 		if (enemy_dist < 64)

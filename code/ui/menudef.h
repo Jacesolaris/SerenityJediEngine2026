@@ -158,3 +158,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define UI_PREVIEWCINEMATIC		254
 #define UI_STARTMAPCINEMATIC	255
 #define UI_MAPS_SELECTION		256
+
+// Pazaak defines
+#define UI_PAZAAK_BCARD			257
+#define UI_PAZAAK_BHAND			258
+#define UI_PAZAAK_NAMES			259
+#define UI_PAZAAK_POINTS		260
+#define UI_PAZAAK_DLGTEXT		261
+#define UI_PAZAAK_TIMEOUT		262
+#define UI_PAZAAK_SELCARD		263
+#define UI_PAZAAK_SELSD			264
+#define UI_PAZAAK_WAITING		265

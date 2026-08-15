@@ -1014,7 +1014,7 @@ static void G2_GorePolys(const mdxmSurface_t* surface, CTraceSurface& TS, const 
 		}
 		goreSurface->numIndexes = newNumTris * 3;
 
-		RB_UpdateGoreVBO(goreSurface);
+		RB_UpdateGoreVertexData(backEndData->currentFrame, goreSurface, true);
 	}
 }
 #else

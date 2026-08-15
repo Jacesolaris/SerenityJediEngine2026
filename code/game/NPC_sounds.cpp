@@ -135,7 +135,6 @@ void NPC_PlayConfusionSound(gentity_t* self)
 	self->NPC->investigateCount = 0;
 }
 
-
 void NPC_AngerSound()
 {
 	if (NPCInfo->investigateSoundDebounceTime)

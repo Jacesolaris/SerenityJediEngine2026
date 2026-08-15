@@ -876,7 +876,6 @@ static void Window_Paint(windowDef_t* w, const float fadeAmount, const float fad
 	}
 }
 
-
 static void Item_SetScreenCoords(itemDef_t* item, float x, float y)
 {
 	if (item == NULL)
@@ -8290,7 +8289,6 @@ static qboolean ItemParse_flag(itemDef_t* item, const int handle)
 
 	return qtrue;
 }
-
 
 /*
 ===============

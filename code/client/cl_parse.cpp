@@ -229,7 +229,6 @@ static void CL_ParsePacketEntities(msg_t* msg, const clSnapshot_t* oldframe, clS
 	}
 }
 
-
 /*
 ================
 CL_ParseSnapshot

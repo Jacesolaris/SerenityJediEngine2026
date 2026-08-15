@@ -32,6 +32,7 @@ set(SPRend2Files
 	"${SharedDir}/rd-rend2/tr_cache.h"
 	"${SharedDir}/rd-rend2/tr_cmds.cpp"
 	"${SharedDir}/rd-rend2/tr_curve.cpp"
+	"${SharedDir}/rd-rend2/tr_debug.cpp"
 	"${SharedDir}/rd-rend2/tr_decals.cpp"
 	"${SPDir}/rd-rend2/tr_draw.cpp"
 	"${SharedDir}/rd-rend2/tr_extensions.cpp"
@@ -177,7 +178,7 @@ function(add_sp_renderer_project ProjectName Label EngineName InstallDir Compone
 	set_target_properties(${ProjectName} PROPERTIES COMPILE_DEFINITIONS "${SPRend2Defines}")
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2026_VISIBILITY_FLAGS})
+	set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
 
 	set_target_properties(${ProjectName} PROPERTIES INCLUDE_DIRECTORIES "${SPRend2IncludeDirectories}")
 	set_target_properties(${ProjectName} PROPERTIES PROJECT_LABEL ${Label})

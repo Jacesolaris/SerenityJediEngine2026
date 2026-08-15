@@ -82,7 +82,6 @@ static void CG_FreeLocalEntity(localEntity_t* le)
 	cg_freeLocalEntities = le;
 }
 
-
 /*
 ===================
 CG_AllocLocalEntity
@@ -137,7 +136,6 @@ localEntity_t* CG_AllocLocalEntity()
 
 	return le;
 }
-
 
 /*
 ====================================================================================

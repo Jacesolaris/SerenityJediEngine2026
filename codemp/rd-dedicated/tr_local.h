@@ -556,43 +556,40 @@ using trRefdef_t = struct trRefdef_s
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
-using skinSurface_t = struct skinSurface_s
-{
-	char name[MAX_QPATH];
+typedef struct {
+	char		name[MAX_QPATH];
 	shader_t* shader;
-};
+} skinSurface_t;
 
-using fog_t = struct fog_s
-{
-	int originalBrushNumber;
-	vec3_t bounds[2];
+typedef struct fog_s {
+	int			originalBrushNumber;
+	vec3_t		bounds[2];
 
-	unsigned colorInt; // in packed byte format
-	float tcScale; // texture coordinate vector scales
-	fogParms_t parms;
+	unsigned	colorInt;				// in packed byte format
+	float		tcScale;				// texture coordinate vector scales
+	fogParms_t	parms;
 
 	// for clipping distance in fog when outside
-	qboolean hasSurface;
-	float surface[4];
-};
+	qboolean	hasSurface;
+	float		surface[4];
+} fog_t;
 
-using viewParms_t = struct viewParms_s
-{
-	orientationr_t ori; // Can't use "or" as it is a reserved word with gcc DREWS 2/2/2002
-	orientationr_t world;
-	vec3_t pvsOrigin; // may be different than or.origin for portals
-	qboolean isPortal; // true if this view is through a portal
-	qboolean isMirror; // the portal is a mirror, invert the face culling
-	int frameSceneNum; // copied from tr.frameSceneNum
-	int frameCount; // copied from tr.frameCount
-	cplane_t portalPlane; // clip anything behind this if mirroring
-	int viewportX, viewportY, viewportWidth, viewportHeight;
-	float fovX, fovY;
-	float projectionMatrix[16];
-	cplane_t frustum[4];
-	vec3_t visBounds[2];
-	float zFar;
-};
+typedef struct viewParms_s {
+	orientationr_t	ori;				// Can't use "or" as it is a reserved word with gcc DREWS 2/2/2002
+	orientationr_t	world;
+	vec3_t		pvsOrigin;			// may be different than or.origin for portals
+	qboolean	isPortal;			// true if this view is through a portal
+	qboolean	isMirror;			// the portal is a mirror, invert the face culling
+	int			frameSceneNum;		// copied from tr.frameSceneNum
+	int			frameCount;			// copied from tr.frameCount
+	cplane_t	portalPlane;		// clip anything behind this if mirroring
+	int			viewportX, viewportY, viewportWidth, viewportHeight;
+	float		fovX, fovY;
+	float		projectionMatrix[16];
+	cplane_t	frustum[4];
+	vec3_t		visBounds[2];
+	float		zFar;
+} viewParms_t;
 
 /*
 ==============================================================================

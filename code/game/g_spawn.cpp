@@ -145,7 +145,6 @@ qboolean G_SpawnVector(const char* key, const char* defaultString, float* out)
 	return present;
 }
 
-
 qboolean G_SpawnVector4(const char* key, const char* defaultString, float* out)
 {
 	char* s = NULL;
@@ -181,7 +180,6 @@ qboolean G_SpawnVector4(const char* key, const char* defaultString, float* out)
 
 	return present;
 }
-
 
 static qboolean G_SpawnFlag(const char* key, const int flag, int* out)
 {
@@ -247,7 +245,6 @@ qboolean G_SpawnAngleHack(const char* key, const char* defaultString, float* out
 
 	return present;
 }
-
 
 stringID_table_t flagTable[] =
 {

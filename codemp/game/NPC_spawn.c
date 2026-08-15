@@ -1243,7 +1243,6 @@ static qboolean NPC_SpotWouldTelefrag(const gentity_t* npc)
 	return qfalse;
 }
 
-
 extern qboolean G_ValidSaberStyle(const gentity_t* ent, int saber_style);
 extern qboolean WP_SaberCanTurnOffSomeBlades(const saberInfo_t* saber);
 //--------------------------------------------------------------

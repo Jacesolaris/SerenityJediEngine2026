@@ -574,7 +574,6 @@ static void Cvar_Sort(void)
 	}
 }
 
-
 /*
 ============
 Cvar_Print

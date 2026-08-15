@@ -3410,7 +3410,6 @@ static qboolean ItemParse_flag(itemDef_t* item)
 	return qtrue;
 }
 
-
 /*
 ===============
 ItemParse_style
@@ -6813,7 +6812,6 @@ static void Item_ListBox_Paint(itemDef_t* item)
 	}
 }
 
-
 /*
 =================
 BindingIDFromName
@@ -8865,7 +8863,6 @@ void Item_Text_AutoWrapped_Paint(itemDef_t* item)
 	item->textRect = item->window.rect;
 }
 
-
 /*
 =================
 Rect_ContainsPoint
@@ -9423,7 +9420,6 @@ static qboolean IsVisible(const int flags)
 
 	return (isVisible == qtrue && isFadingOut == qfalse) ? qtrue : qfalse;
 }
-
 
 /*
 =================

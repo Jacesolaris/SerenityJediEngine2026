@@ -3585,7 +3585,6 @@ void NPC_LoadParms(void)
 	}
 }
 
-
 extern void npc_shadow_trooper_precache(void);
 extern void NPC_Gonk_Precache(void);
 extern void NPC_Mouse_Precache(void);

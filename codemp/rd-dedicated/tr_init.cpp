@@ -348,7 +348,6 @@ void R_Register()
 	r_dynamicGlowBloom = ri->Cvar_Get("r_dynamicGlowBloom", "0.0", CVAR_ARCHIVE, "");
 	ri->Cvar_CheckRange(r_dynamicGlowBloom, 0.f, 2.f, qfalse);
 
-
 	r_picmip = ri->Cvar_Get("r_picmip", "1", CVAR_ARCHIVE | CVAR_LATCH, "");
 	ri->Cvar_CheckRange(r_picmip, 0, 16, qtrue);
 	r_colorMipLevels = ri->Cvar_Get("r_colorMipLevels", "0", CVAR_LATCH, "");

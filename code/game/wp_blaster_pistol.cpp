@@ -47,7 +47,7 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 	}
 
 	vec3_t start;
-	int damage = (alt_fire == qfalse)? weaponData[WP_BLASTER_PISTOL].damage: weaponData[WP_BLASTER_PISTOL].altDamage;
+	int damage = (alt_fire == qfalse) ? weaponData[WP_BLASTER_PISTOL].damage : weaponData[WP_BLASTER_PISTOL].altDamage;
 
 	// Starting point of the shot
 	VectorCopy(muzzle, start);
@@ -66,7 +66,7 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 		vec3_t angs;
 		vectoangles(forward_vec, angs);
 
-		const qboolean is_player_or_controlled =((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue))	? qtrue : qfalse;
+		const qboolean is_player_or_controlled = ((ent->s.number < MAX_CLIENTS) || (G_ControlledByPlayer(ent) == qtrue)) ? qtrue : qfalse;
 
 		if (alt_fire == qtrue)
 		{
@@ -206,7 +206,6 @@ void WP_FireBryarPistol(gentity_t* ent, const qboolean alt_fire)
 		ent->count = (ent->count != 0) ? 0 : 1;
 	}
 }
-
 
 //---------------------------------------------------------
 void WP_FireBryarPistolDuals(gentity_t* ent, const qboolean alt_fire, const qboolean second_pistol)
@@ -376,7 +375,6 @@ void WP_FireBryarPistolDuals(gentity_t* ent, const qboolean alt_fire, const qboo
 		ent->count = (ent->count != 0) ? 0 : 1;
 	}
 }
-
 
 //---------------
 //	sbdBlaster
@@ -548,7 +546,6 @@ void WP_FireBryarsbdPistol(gentity_t* ent, const qboolean alt_fire)
 	WP_FireBryarsbdMissile(ent, muzzle, dir, alt_fire);
 }
 
-
 //---------------------------------------------------------
 void WP_FireJawaPistol(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
@@ -711,7 +708,6 @@ void WP_FireJawaPistol(gentity_t* ent, const qboolean alt_fire)
 		ent->count = (ent->count != 0) ? 0 : 1;
 	}
 }
-
 
 //---------------------------------------------------------
 void WP_FireBryarPistolold(gentity_t* ent, const qboolean alt_fire)

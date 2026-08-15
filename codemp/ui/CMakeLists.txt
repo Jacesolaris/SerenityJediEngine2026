@@ -67,6 +67,7 @@ source_group("common/safe" FILES ${MPUICommonSafeFiles})
 set(MPUIFiles ${MPUIFiles} ${MPUICommonSafeFiles})
 
 set(MPUIUIFiles
+	"${MPDir}/ui/ui_pazaak.cpp"
 	"${MPDir}/ui/ui_atoms.c"
 	"${MPDir}/ui/ui_cvar.c"
 	"${MPDir}/ui/ui_force.c"
@@ -75,6 +76,7 @@ set(MPUIUIFiles
 	"${MPDir}/ui/ui_saber.c"
 	"${MPDir}/ui/ui_shared.c"
 	"${MPDir}/ui/ui_syscalls.c"
+	"${MPDir}/ui/ui_pazaak.h"
 	"${MPDir}/ui/keycodes.h"
 	"${MPDir}/ui/menudef.h"
 	"${MPDir}/ui/ui_force.h"
@@ -135,7 +137,7 @@ endif()
 set_target_properties(${MPUI} PROPERTIES COMPILE_DEFINITIONS "${MPUIDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPUI} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2026_VISIBILITY_FLAGS})
+set_property(TARGET ${MPUI} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
 
 set_target_properties(${MPUI} PROPERTIES INCLUDE_DIRECTORIES "${MPUIIncludeDirectories}")
 set_target_properties(${MPUI} PROPERTIES PROJECT_LABEL "MP UI Library")

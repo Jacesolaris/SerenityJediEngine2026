@@ -341,6 +341,18 @@ void GL_State(const uint32_t stateBits)
 		}
 	}
 
+	if (diff & GLS_DEPTH_CLAMP)
+	{
+		if (stateBits & GLS_DEPTH_CLAMP)
+		{
+			qglEnable(GL_DEPTH_CLAMP);
+		}
+		else
+		{
+			qglDisable(GL_DEPTH_CLAMP);
+		}
+	}
+
 	//
 	// fill/line mode
 	//
@@ -634,6 +646,7 @@ static void RB_BeginDrawingView(void) {
 
 	// we will only draw a sun if there was sky rendered in this view
 	backEnd.skyRenderedThisView = qfalse;
+	backEnd.skyNumber = 1;
 
 	// clip to the plane of the portal
 	if (backEnd.viewParms.isPortal) {
@@ -1260,6 +1273,7 @@ static void RB_SubmitDrawSurfsForDepthFill(
 				RB_BeginSurface(shader, 0, 0);
 				oldBoneCache = ((CRenderableSurface*)drawSurf->surface)->boneCache;
 				tr.animationBoneUboOffset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
+				tr.previousAnimationBoneUboOffset = RB_GetPreviousBoneUboOffset((CRenderableSurface*)drawSurf->surface);
 			}
 		}
 
@@ -1344,8 +1358,10 @@ static void RB_SubmitDrawSurfs(
 			{
 				RB_EndSurface();
 				RB_BeginSurface(shader, fogNum, cubemapIndex);
+				tess.dlightBits = dlighted;
 				oldBoneCache = ((CRenderableSurface*)drawSurf->surface)->boneCache;
 				tr.animationBoneUboOffset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
+				tr.previousAnimationBoneUboOffset = RB_GetPreviousBoneUboOffset((CRenderableSurface*)drawSurf->surface);
 			}
 		}
 
@@ -1460,11 +1476,52 @@ static void RB_RenderDrawSurfList(drawSurf_t* drawSurfs, const int numDrawSurfs)
 
 	if (backEnd.depthFill)
 	{
+		R_PushDebugGroup(AL_STAGE, "Depthpass");
 		RB_SubmitDrawSurfsForDepthFill(drawSurfs, numDrawSurfs, originalTime);
 	}
 	else
 	{
+		R_PushDebugGroup(AL_STAGE, "Mainpass");
 		RB_SubmitDrawSurfs(drawSurfs, numDrawSurfs, originalTime);
+
+		// TODO: Find a better place to add the fog cap surface
+		if (r_volumetricFog->integer
+			&& !(backEnd.viewParms.flags & VPF_DEPTHSHADOW)
+			&& !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL)
+			&& !(backEnd.viewParms.isSkyPortal)
+			&& tr.world->globalFog
+			&& backEnd.framePostProcessed == qfalse
+			)
+		{
+			RB_EndSurface();
+
+			backEnd.currentEntity = &tr.worldEntity;
+			RB_BeginSurface(tr.volumetricFogCapShader, tr.world->globalFogIndex, 0);
+			vec3_t origin, left, up;
+			vec4_t color;
+			VectorCopy4(tr.world->globalFog->color, color);
+
+			float depthToRenderTo = tr.world->globalFog->parms.depthForOpaque;
+
+			const float ymax = depthToRenderTo * tanf(backEnd.viewParms.fovY * M_PI / 360.0f);
+			const float xmax = depthToRenderTo * tanf(backEnd.viewParms.fovX * M_PI / 360.0f);
+
+			VectorNormalize(backEnd.viewParms.ori.axis[0]);
+			VectorNormalize(backEnd.viewParms.ori.axis[1]);
+			VectorNormalize(backEnd.viewParms.ori.axis[2]);
+
+			VectorScale(backEnd.viewParms.ori.axis[1], xmax, left);
+			VectorScale(backEnd.viewParms.ori.axis[2], ymax, up);
+
+			VectorMA(
+				backEnd.viewParms.ori.origin,
+				depthToRenderTo,
+				backEnd.viewParms.ori.axis[0],
+				origin);
+
+			RB_AddQuadStamp(origin, left, up, colorWhite);
+			RB_EndSurface();
+		}
 	}
 
 	// Do the drawing and release memory
@@ -2084,16 +2141,9 @@ static void RB_RenderDepthOnly(drawSurf_t* drawSurfs, int numDrawSurfs)
 	{
 		// need the depth in a texture we can do GL_LINEAR sampling on, so
 		// copy it to an HDR image
-		vec4i_t srcBox{};
-		VectorSet4(srcBox, 0, tr.renderDepthImage->height, tr.renderDepthImage->width, -tr.renderDepthImage->height);
-		FBO_BlitFromTexture(
-			tr.renderDepthImage,
-			srcBox,
-			nullptr,
-			tr.hdrDepthFbo,
-			nullptr,
-			nullptr,
-			nullptr, 0);
+		FBO_t* oldFbo = glState.currentFBO;
+		FBO_FastBlitFromTexture(tr.renderDepthImage, tr.hdrDepthFbo, NULL, NULL, 0);
+		FBO_Bind(oldFbo);
 	}
 }
 
@@ -2210,31 +2260,31 @@ static void RB_UpdateCameraConstants(gpuFrame_t* frame)
 	}
 }
 
-//static void RB_UpdateTemporalConstants(gpuFrame_t* frame, gpuFrame_t* previousFrame)
-//{
-//	if (tr.depthVelocityFbo == nullptr || !frame || !previousFrame)
-//	{
-//		tr.temporalInfoUboOffset = -1;
-//		return;
-//	}
-//
-//	TemporalBlock tempBlock = {};
-//	memcpy(tempBlock.previousViewProjectionMatrix, previousFrame->viewProjectionMatrix, sizeof(matrix_t));
-//	tempBlock.previousTime = previousFrame->time;
-//
-//	if (r_smaa->integer == 2)
-//	{
-//		const vec2_t jitterPos[2] =
-//		{
-//			{0.25f, -.25f},
-//			{-.25f, 0.25f}
-//		};
-//		VectorCopy2(jitterPos[backEndData->realFrameNumber % 2], tempBlock.currentJitter);
-//		VectorCopy2(jitterPos[(backEndData->realFrameNumber + 1) % 2], tempBlock.previousJitter);
-//	}
-//	tr.temporalInfoUboOffset = RB_AppendConstantsData(
-//		frame, &tempBlock, sizeof(tempBlock));
-//}
+static void RB_UpdateTemporalConstants(gpuFrame_t* frame, gpuFrame_t* previousFrame)
+{
+	if (tr.depthVelocityFbo == nullptr || !frame || !previousFrame)
+	{
+		tr.temporalInfoUboOffset = -1;
+		return;
+	}
+
+	TemporalBlock tempBlock = {};
+	memcpy(tempBlock.previousViewProjectionMatrix, previousFrame->viewProjectionMatrix, sizeof(matrix_t));
+	tempBlock.previousTime = previousFrame->time;
+
+	if (r_smaa->integer == 2)
+	{
+		const vec2_t jitterPos[2] =
+		{
+			{0.25f, -.25f},
+			{-.25f, 0.25f}
+		};
+		VectorCopy2(jitterPos[backEndData->realFrameNumber % 2], tempBlock.currentJitter);
+		VectorCopy2(jitterPos[(backEndData->realFrameNumber + 1) % 2], tempBlock.previousJitter);
+	}
+	tr.temporalInfoUboOffset = RB_AppendConstantsData(
+		frame, &tempBlock, sizeof(tempBlock));
+}
 
 static void RB_UpdateSceneConstants(gpuFrame_t* frame, const trRefdef_t* refdef)
 {
@@ -2507,9 +2557,31 @@ static void RB_UpdateEntityConstants(
 	gpuFrame_t* frame, const trRefdef_t* refdef)
 {
 	memset(tr.entityUboOffsets, 0, sizeof(tr.entityUboOffsets));
+	memset(tr.previousEntityUboOffsets, 0, sizeof(tr.previousEntityUboOffsets));
+
+	trRefEntity_t* ent = &tr.worldEntity;
+	R_SetupEntityLighting(refdef, ent);
+
+	EntityBlock worldEntityBlock = {};
+	RB_UpdateEntityLightConstants(worldEntityBlock, ent);
+	RB_UpdateEntityMatrixConstants(worldEntityBlock, ent);
+	RB_UpdateEntityModelConstants(worldEntityBlock, ent);
+
+	tr.entityUboOffsets[REFENTITYNUM_WORLD] = RB_AppendConstantsData(
+		frame, &worldEntityBlock, sizeof(worldEntityBlock));
+
 	for (int i = 0; i < refdef->num_entities; i++)
 	{
-		trRefEntity_t* ent = &refdef->entities[i];
+		ent = &refdef->entities[i];
+
+		if (ent->e.reType != RT_MODEL
+			&& ent->e.shaderTime == -worldEntityBlock.entityTime
+			&& !(ent->e.renderfx & RF_VOLUMETRIC))
+		{
+			tr.entityUboOffsets[i] = tr.entityUboOffsets[REFENTITYNUM_WORLD];
+			tr.previousEntityUboOffsets[i] = -1;
+			continue;
+		}
 
 		R_SetupEntityLighting(refdef, ent);
 
@@ -2518,18 +2590,94 @@ static void RB_UpdateEntityConstants(
 		RB_UpdateEntityMatrixConstants(entityBlock, ent);
 		RB_UpdateEntityModelConstants(entityBlock, ent);
 
-		tr.entityUboOffsets[i] = RB_AppendConstantsData(
-			frame, &entityBlock, sizeof(entityBlock));
+		if (entityBlock == worldEntityBlock)
+			tr.entityUboOffsets[i] = tr.entityUboOffsets[REFENTITYNUM_WORLD];
+		else
+			tr.entityUboOffsets[i] = RB_AppendConstantsData(
+				frame, &entityBlock, sizeof(entityBlock));
+		tr.previousEntityUboOffsets[i] = -1;
+
+		if (!backEndData->cachePreviousFrameUbos)
+			continue;
+
+		// We only want to track models as these might have different model matrices across frames
+		if (ent->e.reType != RT_MODEL)
+			continue;
+
+		model_t* model = R_GetModelByHandle(ent->e.hModel);
+		if (!model)
+			continue;
+
+		if (frame->numCachedModelUboOffsets >= MAX_REFENTITIES)
+		{
+			ri->Printf(PRINT_DEVELOPER, "Too many models to cache, skipping now.\n");
+		}
+		else
+		{
+			frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].type = model->type;
+			frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].hModel = ent->e.hModel;
+			if ((model->type == MOD_MDXM || model->type == MOD_BAD) && ent->e.ghoul2)
+				frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].ghoulPointer = ent->e.ghoul2;
+			else
+				frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].ghoulPointer = nullptr;
+
+			VectorCopy(ent->e.origin, frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].origin);
+			VectorClear(frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].velocity);
+			frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets].modelUboOffset = tr.entityUboOffsets[i];
+			frame->numCachedModelUboOffsets++;
+		}
+
+		if (!backEndData->previousFrame)
+			continue;
+
+		float shortestDistance = 9999999.0f;
+		int foundCache = -1;
+		for (int j = 0; j < backEndData->previousFrame->numCachedModelUboOffsets; j++)
+		{
+			modelUboCache_t* currentCache = &backEndData->previousFrame->cachedModelUboOffsets[j];
+			if (currentCache->type != model->type)
+				continue;
+
+			// ghoul2 models have a unique pointer, so no need to guess later
+			if ((model->type == MOD_MDXM || model->type == MOD_BAD) && currentCache->ghoulPointer == ent->e.ghoul2)
+			{
+				shortestDistance = 0;
+				foundCache = j;
+				break;
+			}
+			if (currentCache->hModel != ent->e.hModel)
+				continue;
+
+			// shortest path, model hasn't moved between frames
+			if (VectorCompare(currentCache->origin, ent->e.origin))
+			{
+				foundCache = j;
+				shortestDistance = 0.f;
+				break;
+			}
+
+			// use the predicted position for matching models
+			vec3_t predictedOrigin;
+			VectorAdd(currentCache->origin, currentCache->velocity, predictedOrigin);
+			float sqrDist = DistanceSquared(predictedOrigin, ent->e.origin);
+			if (sqrDist < shortestDistance)
+			{
+				foundCache = j;
+				shortestDistance = sqrDist;
+			}
+		}
+
+		if (foundCache == -1)
+			continue;
+
+		if (frame->numCachedModelUboOffsets <= MAX_REFENTITIES)
+			VectorSubtract(
+				ent->e.origin,
+				backEndData->previousFrame->cachedModelUboOffsets[foundCache].origin,
+				frame->cachedModelUboOffsets[frame->numCachedModelUboOffsets - 1].velocity);
+
+		tr.previousEntityUboOffsets[i] = backEndData->previousFrame->cachedModelUboOffsets[foundCache].modelUboOffset;
 	}
-
-	const trRefEntity_t* ent = &tr.worldEntity;
-	EntityBlock entityBlock = {};
-	RB_UpdateEntityLightConstants(entityBlock, ent);
-	RB_UpdateEntityMatrixConstants(entityBlock, ent);
-	RB_UpdateEntityModelConstants(entityBlock, ent);
-
-	tr.entityUboOffsets[REFENTITYNUM_WORLD] = RB_AppendConstantsData(
-		frame, &entityBlock, sizeof(entityBlock));
 
 	RB_UpdateSkyEntityConstants(frame, refdef);
 }
@@ -2569,7 +2717,7 @@ void RB_UpdateConstants(const trRefdef_t* refdef)
 
 	RB_UpdateCameraConstants(frame);
 	RB_UpdateSceneConstants(frame, refdef);
-	//RB_UpdateTemporalConstants(frame, backEndData->previousFrame);
+	RB_UpdateTemporalConstants(frame, backEndData->previousFrame);
 	RB_UpdateLightsConstants(frame, refdef);
 	RB_UpdateFogsConstants(frame);
 	RB_UpdateGhoul2Constants(frame, refdef);
@@ -2787,6 +2935,8 @@ static const void* RB_SwapBuffers(const void* data)
 
 	GLimp_LogComment("***************** RB_SwapBuffers *****************\n\n\n");
 
+	R_PushDebugGroup(AL_NONE, "Done with frame");
+
 	ri->WIN_Present(&window);
 
 	return (const void*)(cmd + 1);
@@ -2984,16 +3134,7 @@ static const void* RB_PostProcess(const void* data)
 		FBO_BlitFromTexture(tr.weatherDepthImage, NULL, NULL, NULL, nullptr, NULL, NULL, 0);
 	}
 
-	if (0)
-	{
-		vec4i_t dstBox{};
-		VectorSet4(dstBox, 256, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.renderDepthImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
-		VectorSet4(dstBox, 512, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.screenShadowImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
-	}
-
-	if (0 && r_ssao->integer)
+	if (r_ssao->integer == 2)
 	{
 		vec4i_t dstBox{};
 		VectorSet4(dstBox, 0, glConfig.vidHeight, 512, -512);

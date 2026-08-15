@@ -1442,7 +1442,6 @@ qboolean NPC_CheckLookTarget(const gentity_t* self)
 	return qfalse;
 }
 
-
 /*
 -------------------------
 NPC_CheckCharmed

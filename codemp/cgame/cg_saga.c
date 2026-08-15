@@ -153,7 +153,6 @@ static void CG_PrecacheSiegeObjectiveAssetsForTeam(const int myTeam)
 	}
 }
 
-
 static void CG_PrecachePlayersForSiegeTeam(const int team)
 {
 	int i = 0;
@@ -489,7 +488,6 @@ failure:
 	siege_valid = qfalse;
 }
 
-
 static char QINLINE* CG_SiegeObjectiveBuffer(const int team, const int objective)
 {
 	char teamstr[1024];
@@ -675,8 +673,8 @@ void CG_SiegeRoundOver(centity_t* ent, const int won)
 
 	if (BG_SiegeGetValueGroup(siege_info, teamstr, cgParseObjectives))
 	{
-		char soundstr[1024] = {0};
-		char appstring[1024] = {0};
+		char soundstr[1024] = { 0 };
+		char appstring[1024] = { 0 };
 		int success;
 		if (won == myTeam)
 		{
@@ -776,7 +774,7 @@ static int CG_SiegeGetObjectiveFinal(const int team, const int objective)
 void CG_SiegeBriefingDisplay(const int team, const int dontshow)
 {
 	char teamstr[64];
-	char properValue[1024] = {0};
+	char properValue[1024] = { 0 };
 	int i = 1;
 	int useTeam = team;
 
@@ -1061,13 +1059,12 @@ void CG_SiegeObjectiveCompleted(centity_t* ent, const int won, const int objecti
 	}
 }
 
-
 siegeExtended_t cg_siegeExtendedData[MAX_CLIENTS];
 
 //parse a single extended siege data entry
 static void CG_ParseSiegeExtendedDataEntry(const char* conStr)
 {
-	char s[MAX_STRING_CHARS] = {0};
+	char s[MAX_STRING_CHARS] = { 0 };
 	char* str = (char*)conStr;
 	int argParses = 0;
 	int clNum = -1, health = 1, maxhealth = 1, ammo = 1;

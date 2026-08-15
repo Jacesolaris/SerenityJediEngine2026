@@ -13,10 +13,6 @@ in vec4 attr_BoneWeights;
 in vec4 attr_Color;
 in vec2 attr_TexCoord0;
 
-#if defined(USE_TCGEN)
-in vec2 attr_TexCoord1;
-#endif
-
 layout(std140) uniform Scene
 {
 	vec4 u_PrimaryLightOrigin;
@@ -196,7 +192,7 @@ vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 
 	vec3 outNormal = normal;
 	const float scale = 0.98;
-	
+
 	outNormal.x += amplitude * GetNoiseValue(
 		position.x * scale,
 		position.y * scale,
@@ -224,11 +220,7 @@ vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3
 {
 	vec2 tex = attr_TexCoord0.st;
 
-	if (TCGen >= TCGEN_LIGHTMAP && TCGen <= TCGEN_LIGHTMAP3)
-	{
-		tex = attr_TexCoord1.st;
-	}
-	else if (TCGen == TCGEN_ENVIRONMENT_MAPPED)
+	if (TCGen == TCGEN_ENVIRONMENT_MAPPED)
 	{
 		vec3 viewer = normalize(u_ViewOrigin - position);
 		vec2 ref = reflect(viewer, normal).yz;
@@ -253,7 +245,7 @@ vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3
 	{
 		tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));
 	}
-	
+
 	return tex;
 }
 #endif
@@ -268,10 +260,10 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 	st2.y = st.x * texMatrix.y + (st.y * texMatrix.w + offTurb.y);
 
 	vec2 offsetPos = vec2(position.x + position.z, position.y);
-	
+
 	vec2 texOffset = sin(offsetPos * (2.0 * M_PI / 1024.0) + vec2(phase));
-	
-	return st2 + texOffset * amplitude;	
+
+	return st2 + texOffset * amplitude;
 }
 #endif
 
@@ -279,7 +271,7 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 vec4 CalcColor(vec3 position, vec3 normal)
 {
 	vec4 color = u_VertColor * attr_Color + u_BaseColor;
-	
+
 	if (u_ColorGen == CGEN_LIGHTING_DIFFUSE)
 	{
 		float incoming = clamp(dot(normal, u_ModelLightDir), 0.0, 1.0);
@@ -310,7 +302,7 @@ vec4 CalcColor(vec3 position, vec3 normal)
 	{
 		color.a = clamp(length(viewer) / u_PortalRange, 0.0, 1.0);
 	}
-	
+
 	return color;
 }
 #endif
@@ -327,9 +319,7 @@ mat4x3 GetBoneMatrix(uint index)
 }
 #endif
 
-const float etaR = 1.0 / 1.35;
-const float etaG = 1.0 / 1.20;
-const float etaB = 1.0 / 1.05;
+const float etaG = 1.0 / 1.30;
 
 void main()
 {
@@ -391,7 +381,7 @@ void main()
 	}
 
 	vec3 ws_Normal		= normalize(mat3(u_ModelMatrix) * normal);
-	vec3 ws_ViewDir		= (u_ViewForward + u_ViewLeft * -gl_Position.x) + u_ViewUp * gl_Position.y;
+	vec3 ws_ViewDir		= normalize((u_ViewForward + u_ViewLeft * -gl_Position.x) + u_ViewUp * gl_Position.y);
 
 	#if defined(USE_TCMOD)
 	float distance = u_Color.a * clamp(1.0 - distance(tex, var_DiffuseTex), 0.0, 1.0);
@@ -488,11 +478,11 @@ vec3 FilmicTonemap(vec3 x)
 	const float TS  = 0.20; // Toe Strength
 	const float TAN = 0.01; // Toe Angle Numerator
 	const float TAD = 0.30; // Toe Angle Denominator
-	
+
 	vec3 SSxx = SS * x * x;
 	vec3 LSx = LS * x;
 	vec3 LALSx = LSx * LA;
-	
+
 	return ((SSxx + LALSx + TS * TAN) / (SSxx + LSx + TS * TAD)) - TAN / TAD;
 }
 
@@ -509,7 +499,7 @@ void main()
 	color.a = var_Color.a;
 	color.rgb *= var_Color.rgb;
 	color.rgb *= u_Color.rgb;
-	
+
 #if defined(USE_ALPHA_TEST)
 	if (u_AlphaTestType == ALPHA_TEST_GT0)
 	{
@@ -542,7 +532,7 @@ void main()
 	vec3 minAvgMax = texture(u_LevelsMap, texG).rgb;
 	vec3 logMinAvgMaxLum = clamp(minAvgMax * 20.0 - 10.0, -u_AutoExposureMinMax.y, -u_AutoExposureMinMax.x);
 	float avgLum = exp2(logMinAvgMaxLum.y);
-	
+
 	color.rgb *= u_ToneMinAvgMaxLinear.y / avgLum;
 	color.rgb = max(vec3(0.0), color.rgb - vec3(u_ToneMinAvgMaxLinear.x));
 

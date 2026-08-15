@@ -48,10 +48,12 @@ typedef unsigned int glIndex_t;
 // 14 bits
 // can't be increased without changing bit packing for drawsurfs
 // see QSORT_SHADERNUM_SHIFT
+
+#define MAX_FRAMES (2)
 #define SHADERNUM_BITS	14
 #define MAX_SHADERS		(1<<SHADERNUM_BITS)
 
-#define	MAX_FBOS      256
+#define	MAX_FBOS      512
 #define MAX_VISCOUNTS 5
 #define MAX_VBOS      4096
 #define MAX_IBOS      4096
@@ -116,6 +118,11 @@ extern cvar_t* r_facePlaneCull;
 extern cvar_t* r_showcluster;
 extern cvar_t* r_nocurves;
 
+extern cvar_t* r_volumetricFog;
+extern cvar_t* r_volumetricFogDefaultScale;
+extern cvar_t* r_volumetricFogSamples;
+extern cvar_t* r_volumetricFogScale;
+
 extern cvar_t* r_allowExtensions;
 
 extern cvar_t* r_ext_compressed_textures;
@@ -130,6 +137,9 @@ extern cvar_t* r_ext_texture_float;
 extern cvar_t* r_arb_half_float_pixel;
 extern cvar_t* r_ext_framebuffer_multisample;
 extern cvar_t* r_arb_seamless_cube_map;
+
+extern cvar_t* r_smaa;
+extern cvar_t* r_smaa_quality;
 
 extern cvar_t* r_cameraExposure;
 
@@ -296,6 +306,16 @@ End Cvars
 
 typedef enum
 {
+	AL_NONE,
+	AL_SCENE,
+	AL_VIEW,
+	AL_STAGE
+} annotationLayer_t;
+
+void R_PushDebugGroup(annotationLayer_t layer, const char* name);
+
+typedef enum
+{
 	IMGTYPE_COLORALPHA, // for color, lightmap, diffuse, and specular
 	IMGTYPE_NORMAL,
 	IMGTYPE_NORMALHEIGHT,
@@ -446,6 +466,7 @@ typedef struct VBO_s
 	uint32_t		offsets[ATTR_INDEX_MAX];
 	uint32_t		strides[ATTR_INDEX_MAX];
 	uint32_t		sizes[ATTR_INDEX_MAX];
+	uint32_t		stepRates[ATTR_INDEX_MAX];
 } VBO_t;
 
 typedef struct IBO_s
@@ -590,6 +611,8 @@ typedef enum {
 	TCGEN_LIGHTMAP3,
 	TCGEN_TEXTURE,
 	TCGEN_ENVIRONMENT_MAPPED,
+	TCGEN_ENVIRONMENT_MAPPED_SP,
+	TCGEN_ENVIRONMENT_MAPPED_SP_FP,
 	TCGEN_FOG,
 	TCGEN_VECTOR			// S and T from world coordinates
 } texCoordGen_t;
@@ -762,6 +785,19 @@ struct EntityBlock
 	float fxVolumetricBase;
 	vec3_t modelLightDir;
 	float vertexLerp;
+	bool operator == (const EntityBlock& other) const
+	{
+		return (
+			Matrix16Compare(this->modelMatrix, other.modelMatrix) == qtrue &&
+			VectorCompare4(this->lightOrigin, other.lightOrigin) == qtrue &&
+			VectorCompare(this->ambientLight, other.ambientLight) == qtrue &&
+			this->entityTime == other.entityTime &&
+			VectorCompare(this->directedLight, other.directedLight) == qtrue &&
+			this->fxVolumetricBase == other.fxVolumetricBase &&
+			VectorCompare(this->modelLightDir, other.modelLightDir) == qtrue &&
+			this->vertexLerp == other.vertexLerp
+			);
+	}
 };
 
 struct ShaderInstanceBlock
@@ -777,6 +813,15 @@ struct ShaderInstanceBlock
 struct SkeletonBoneMatricesBlock
 {
 	mat3x4_t matrices[MAX_G2_BONES];
+};
+
+struct TemporalBlock
+{
+	matrix_t previousViewProjectionMatrix;
+	vec2_t currentJitter;
+	vec2_t previousJitter;
+	float previousTime;
+	float pad0[3];
 };
 
 struct surfaceSprite_t
@@ -800,7 +845,7 @@ struct surfaceSprite_t
 	vec2_t fxGrow;
 	surfaceSpriteOrientation_t facing;
 
-	int spriteUboOffset;
+	size_t spriteUboOffset;
 };
 
 #define	MAX_IMAGE_ANIMATIONS	(32)
@@ -938,6 +983,12 @@ typedef struct {
 	vec3_t	color;
 	float	depthForOpaque;
 } fogParms_t;
+
+typedef enum {
+	DEPTHPREPASS_ALPHATESTED,
+	DEPTHPREPASS_SIMPLE,
+	DEPTHPREPASS_SKIP
+} depthPrepass_t;
 
 typedef struct shader_s {
 	char		name[MAX_QPATH];		// game path, including extension
@@ -1099,6 +1150,10 @@ enum
 
 	GLS_POLYGON_OFFSET_FILL = (1 << 28),
 
+	GLS_COLORMASK_BUF1 = (1 << 29),
+
+	GLS_DEPTH_CLAMP = (1 << 30),
+
 	GLS_DEFAULT = GLS_DEPTHMASK_TRUE
 };
 
@@ -1162,6 +1217,15 @@ enum
 
 enum
 {
+	TEXCOLORDEF_USE_VERTICES = 0x0000,
+	TEXCOLORDEF_SCREEN_TRIANGLE = 0x0001,
+
+	TEXCOLORDEF_ALL = 0x0001,
+	TEXCOLORDEF_COUNT = TEXCOLORDEF_ALL + 1,
+};
+
+enum
+{
 	GENERICDEF_USE_DEFORM_VERTEXES = 0x0001,
 	GENERICDEF_USE_TCGEN_AND_TCMOD = 0x0002,
 	GENERICDEF_USE_FOG = 0x0004,
@@ -1169,23 +1233,15 @@ enum
 	GENERICDEF_USE_SKELETAL_ANIMATION = 0x0010,
 	GENERICDEF_USE_GLOW_BUFFER = 0x0020,
 	GENERICDEF_USE_ALPHA_TEST = 0x0040,
+	GENERICDEF_USE_FLARE_TEST = 0x0080,
 #ifdef REND2_SP
-	GENERICDEF_USE_VERTEX_ANIMATION = 0x0080,
-	GENERICDEF_ALL = 0x00FF,
+	GENERICDEF_USE_VERTEX_ANIMATION = 0x0100,
+	GENERICDEF_ALL = 0x01FF,
 #else
 	GENERICDEF_ALL = 0x007F,
 #endif // REND2_SP
 
 	GENERICDEF_COUNT = GENERICDEF_ALL + 1,
-};
-
-enum
-{
-	TEXCOLORDEF_USE_VERTICES = 0x0000,
-	TEXCOLORDEF_SCREEN_TRIANGLE = 0x0001,
-
-	TEXCOLORDEF_ALL = 0x0001,
-	TEXCOLORDEF_COUNT = TEXCOLORDEF_ALL + 1,
 };
 
 enum
@@ -1277,8 +1333,9 @@ enum
 	SSDEF_FOG_MODULATE = 0x20,
 	SSDEF_ADDITIVE = 0x40,
 	SSDEF_FLATTENED = 0x80,
+	SSDEF_VELOCITY = 0x100,
 
-	SSDEF_ALL = 0xFF,
+	SSDEF_ALL = 0x1FF,
 	SSDEF_COUNT = SSDEF_ALL + 1
 };
 
@@ -1300,8 +1357,11 @@ enum uniformBlock_t
 	UNIFORM_BLOCK_LIGHTS,
 	UNIFORM_BLOCK_FOGS,
 	UNIFORM_BLOCK_ENTITY,
+	UNIFORM_BLOCK_PREVIOUS_ENTITY,
 	UNIFORM_BLOCK_SHADER_INSTANCE,
 	UNIFORM_BLOCK_BONES,
+	UNIFORM_BLOCK_PREVIOUS_BONES,
+	UNIFORM_BLOCK_TEMPORAL_INFO,
 	UNIFORM_BLOCK_SURFACESPRITE,
 	UNIFORM_BLOCK_COUNT
 };
@@ -1531,6 +1591,8 @@ typedef struct {
 
 	float       autoExposureMinMax[2];
 	float       toneMinAvgMaxLinear[3];
+	bool		doLAGoggles;
+	bool		doFullbright;
 } trRefdef_t;
 
 //=================================================================================
@@ -1752,6 +1814,9 @@ typedef struct srfG2GoreSurface_s
 	// BSP VBO offsets
 	int             firstVert;
 	int             firstIndex;
+
+	// VBO cache info
+	bool			cachedInFrame[MAX_FRAMES];
 } srfG2GoreSurface_t;
 #endif
 
@@ -2027,6 +2092,8 @@ typedef struct {
 	word* lightGridArray;
 	int			numGridArrayElements;
 
+	image_t* volumetricLightMaps[MAXLIGHTMAPS];
+
 	int			skyboxportal;
 	int			numClusters;
 	int			clusterBytes;
@@ -2184,15 +2251,20 @@ void		R_ModelInit(void);
 
 model_t* R_GetModelByHandle(const qhandle_t index);
 int	R_LerpTag(orientation_t* tag, const qhandle_t handle, const int startFrame, const int endFrame, const float frac, const char* tagName);
+
 void R_ModelBounds(const qhandle_t handle, vec3_t mins, vec3_t maxs);
 
 void R_model_list_f(void);
 
 //====================================================
-constexpr auto MAX_SKINS = 1024;
 
-constexpr auto MAX_DRAWSURFS = 0x10000;
+#define	MAX_DRAWIMAGES			2048
+#define	MAX_SKINS				1024
+
+#define	MAX_DRAWSURFS			0x10000
 #define	DRAWSURF_MASK			(MAX_DRAWSURFS-1)
+
+#define MAX_INSTANCES			256
 
 extern	int gl_filter_min, gl_filter_max;
 
@@ -2314,6 +2386,8 @@ typedef struct {
 	qboolean timerQuery;
 
 	qboolean floatLightmap;
+
+	qboolean annotateResources;
 } glRefConfig_t;
 
 enum
@@ -2344,7 +2418,7 @@ typedef struct {
 
 	int     c_staticVboDraws;
 	int     c_dynamicVboDraws;
-	int		c_dynamicVboTotalSize;
+	size_t	c_dynamicVboTotalSize;
 
 	int     c_multidraws;
 	int     c_multidrawsMerged;
@@ -2376,6 +2450,7 @@ typedef struct {
 	backEndCounters_t	pc;
 	trRefEntity_t* currentEntity;
 	qboolean	skyRenderedThisView;	// flag for drawing sun
+	uint32_t	skyNumber;
 
 	qboolean	projection2D;	// if qtrue, drawstretchpic doesn't need to change modes
 	float		color2D[4];
@@ -2436,6 +2511,7 @@ typedef struct trGlobals_s {
 	image_t* dlightImage;	// inverse-quare highlight for projective adding
 	image_t* flareImage;
 	image_t* whiteImage;			// full of 0xff
+	image_t* whiteImage3D;
 	image_t* identityLightImage;	// full of tr.identityLightByte
 
 	image_t* renderImage;
@@ -2504,6 +2580,8 @@ typedef struct trGlobals_s {
 	shader_t* sunShader;
 	shader_t* sunFlareShader;
 
+	shader_t* volumetricFogCapShader;
+
 	int						numLightmaps;
 	int						lightmapSize;
 	image_t** lightmaps;
@@ -2558,25 +2636,25 @@ typedef struct trGlobals_s {
 	GLuint staticUbo;
 	GLuint spriteUbos[MAX_SUB_BSP + 1];
 	GLuint shaderInstanceUbo;
-	int shaderInstanceUboWriteOffset;
-	int entity2DUboOffset;
-	int camera2DUboOffset;
-	int entityFlareUboOffset;
-	int cameraFlareUboOffset;
-	int defaultLightsUboOffset;
-	int defaultSceneUboOffset;
-	int defaultFogsUboOffset;
-	int defaultShaderInstanceUboOffset;
+	size_t shaderInstanceUboWriteOffset;
+	size_t entity2DUboOffset;
+	size_t camera2DUboOffset;
+	size_t entityFlareUboOffset;
+	size_t defaultLightsUboOffset;
+	size_t defaultSceneUboOffset;
+	size_t defaultFogsUboOffset;
+	size_t defaultShaderInstanceUboOffset;
 
-	int cameraUboOffsets[3 + MAX_DLIGHTS * 6 + 3 + MAX_DRAWN_PSHADOWS];
-	int sceneUboOffset;
+	long cameraUboOffsets[3 + MAX_DLIGHTS * 6 + 3 + MAX_DRAWN_PSHADOWS];
+	long sceneUboOffset;
 	long temporalInfoUboOffset;
-	int lightsUboOffset;
-	int fogsUboOffset;
-	int skyEntityUboOffset;
-	int entityUboOffsets[REFENTITYNUM_WORLD + 1];
+	long lightsUboOffset;
+	long fogsUboOffset;
+	long skyEntityUboOffset;
+	long entityUboOffsets[REFENTITYNUM_WORLD + 1];
 	long previousEntityUboOffsets[REFENTITYNUM_WORLD + 1];
-	int animationBoneUboOffset;
+	long animationBoneUboOffset;
+	long previousAnimationBoneUboOffset;
 
 	// -----------------------------------------
 
@@ -3235,8 +3313,8 @@ uint32_t R_VboPackNormal(vec3_t v);
 void R_VboUnpackTangent(vec4_t v, uint32_t b);
 void R_VboUnpackNormal(vec3_t v, uint32_t b);
 
-VBO_t* R_CreateVBO(byte* vertexes, int vertexesSize, vboUsage_t usage);
-IBO_t* R_CreateIBO(byte* indexes, int indexesSize, vboUsage_t usage);
+VBO_t* R_CreateVBO(byte* vertexes, size_t vertexesSize, vboUsage_t usage, const char* debugName);
+IBO_t* R_CreateIBO(byte* indexes, size_t indexesSize, vboUsage_t usage, const char* debugName);
 
 void            R_BindVBO(VBO_t* vbo);
 void            R_BindNullVBO(void);
@@ -3250,18 +3328,18 @@ void            R_VBOList_f(void);
 
 void            RB_UpdateVBOs(unsigned int attribBits);
 #ifdef _G2_GORE
-void			RB_UpdateGoreVBO(srfG2GoreSurface_t* goreSurface);
+void			RB_UpdateGoreVertexData(struct gpuFrame_t* currentFrame, srfG2GoreSurface_t* goreSurface, bool updateFirstVertAndIndex);
 #endif
 void			RB_CommitInternalBufferData();
 
 void			RB_BindUniformBlock(GLuint ubo, uniformBlock_t block, int offset);
-int				RB_BindAndUpdateFrameUniformBlock(uniformBlock_t block, void* data);
+size_t			RB_BindAndUpdateFrameUniformBlock(uniformBlock_t block, void* data);
 void			RB_AddShaderToShaderInstanceUBO(shader_t* shader);
-int				RB_AddShaderInstanceBlock(void* data);
+size_t			RB_AddShaderInstanceBlock(void* data);
 void			RB_UpdateConstants(const trRefdef_t* refdef);
 void			RB_BeginConstantsUpdate(struct gpuFrame_t* frame);
 void			RB_EndConstantsUpdate(const struct gpuFrame_t* frame);
-int				RB_AppendConstantsData(struct gpuFrame_t* frame, const void* data, size_t dataSize);
+size_t			RB_AppendConstantsData(struct gpuFrame_t* frame, const void* data, size_t dataSize);
 void			CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties* properties);
 void			CalculateVertexArraysFromVBO(uint32_t attributes, const VBO_t* vbo, VertexArraysProperties* properties);
 
@@ -3326,7 +3404,7 @@ void RE_AddLightToScene(const vec3_t org, const float intensity, const float r, 
 void RE_AddAdditiveLightToScene(const vec3_t org, const float intensity, const float r, const float g, const float b);
 void RE_BeginScene(const refdef_t* fd);
 void RE_RenderScene(const refdef_t* fd);
-void RE_EndScene(void);
+void RE_EndScene();
 
 /*
 =============================================================
@@ -3467,11 +3545,11 @@ public:
 	}
 };
 
-
 void R_AddGhoulSurfaces(trRefEntity_t* ent, int entityNum);
 void RB_SurfaceGhoul(CRenderableSurface* surf);
 void RB_TransformBones(const trRefEntity_t* ent, const trRefdef_t* refdef, int currentFrameNum, gpuFrame_t* frame);
 int RB_GetBoneUboOffset(CRenderableSurface* surf);
+int RB_GetPreviousBoneUboOffset(CRenderableSurface* surf);
 void RB_SetBoneUboOffset(CRenderableSurface* surf, int offset, int currentFrameNum);
 void RB_FillBoneBlock(CRenderableSurface* surf, mat3x4_t* outMatrices);
 /*
@@ -3681,17 +3759,36 @@ struct screenshotReadback_t
 	char filename[MAX_QPATH];
 };
 
+struct ghoul2UboCache_t
+{
+	void* ghoulPointer;
+	qhandle_t model;
+	int boltIndex;
+	int boneUboOffset;
+};
+
+struct modelUboCache_t
+{
+	modtype_t type;
+	qhandle_t hModel;
+	void* ghoulPointer;
+	vec3_t    origin;
+	vec3_t    velocity;
+	int       modelUboOffset;
+};
+
 constexpr auto MAX_GPU_TIMERS = (512);
 constexpr auto MAX_SCENES = (3);
 
 struct gpuFrame_t
 {
 	GLsync sync;
-	GLuint ubo;
-	size_t uboWriteOffset;
-	size_t uboSize;
-	size_t uboMapBase;
-	void* uboMemory;
+	byte   currentScene;
+	GLuint ubo[MAX_SCENES];
+	size_t uboWriteOffset[MAX_SCENES];
+	size_t uboSize[MAX_SCENES];
+	size_t uboMapBase[MAX_SCENES];
+	void* uboMemory[MAX_SCENES];
 
 	screenshotReadback_t screenshotReadback;
 
@@ -3705,8 +3802,26 @@ struct gpuFrame_t
 	size_t dynamicIboWriteOffset;
 	size_t dynamicIboCommitOffset;
 
+#ifdef _G2_GORE
+	VBO_t* goreVBO;
+	void* goreVBOMemory;
+	int						goreVBOCurrentIndex;
+	IBO_t* goreIBO;
+	void* goreIBOMemory;
+	int						goreIBOCurrentIndex;
+#endif
+
 	int numTimers;
 	int numTimedBlocks;
+
+	int numCachedGhoulUboOffsets;
+	ghoul2UboCache_t cachedGhoulUboOffsets[MAX_GENTITIES];
+
+	int numCachedModelUboOffsets;
+	modelUboCache_t cachedModelUboOffsets[MAX_REFENTITIES];
+
+	matrix_t viewProjectionMatrix;
+	float    time;
 
 	gpuTimer_t timers[MAX_GPU_TIMERS];
 	gpuTimedBlock_t timedBlocks[MAX_GPU_TIMERS / 2]; // Each block will need 2 timer queries.
@@ -3714,7 +3829,6 @@ struct gpuFrame_t
 
 // all of the information needed by the back end must be
 // contained in a backEndData_t.
-#define MAX_FRAMES (2)
 #define PER_FRAME_MEMORY_BYTES (32 * 1024 * 1024)
 class Allocator;
 struct Pass;
@@ -3722,8 +3836,13 @@ typedef struct backEndData_s {
 	unsigned realFrameNumber;
 	gpuFrame_t frames[MAX_FRAMES];
 	gpuFrame_t* currentFrame;
+	gpuFrame_t* previousFrame;
 	Allocator* perFrameMemory;
 	Pass* currentPass;
+
+	bool cachePreviousFrameUbos;
+	uint32_t numFrameUbos;
+	GLuint* frameUbos;
 
 	drawSurf_t	drawSurfs[MAX_DRAWSURFS];
 	dlight_t	dlights[MAX_DLIGHTS];
@@ -3812,7 +3931,7 @@ struct SamplerBinding
 struct UniformBlockBinding
 {
 	GLuint ubo;
-	int offset;
+	size_t offset;
 	uniformBlock_t block;
 };
 
@@ -3971,6 +4090,7 @@ void RB_FillDrawCommand(
 );
 
 uint32_t RB_CreateSortKey(const DrawItem& item, int stage, int layer);
+uint32_t RB_CreateSkySortKey(const DrawItem& item, int stage, int skyNumber, int layer);
 void RB_AddDrawItem(Pass* pass, uint32_t sortKey, const DrawItem& drawItem);
 DepthRange RB_GetDepthRange(const trRefEntity_t* re, const shader_t* shader);
 

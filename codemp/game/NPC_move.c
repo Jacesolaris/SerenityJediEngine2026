@@ -1377,7 +1377,6 @@ static qboolean SJE_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd,
 	return qtrue;
 }
 
-
 void G_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t dir)
 {
 	vec3_t forward, right;

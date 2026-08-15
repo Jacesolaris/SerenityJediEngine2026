@@ -31,6 +31,7 @@ set(MPRend2Files
 	"${MPDir}/rd-rend2/tr_cache.h"
 	"${MPDir}/rd-rend2/tr_cmds.cpp"
 	"${MPDir}/rd-rend2/tr_curve.cpp"
+	"${MPDir}/rd-rend2/tr_debug.cpp"
 	"${MPDir}/rd-rend2/tr_decals.cpp"
 	"${MPDir}/rd-rend2/tr_extensions.cpp"
 	"${MPDir}/rd-rend2/tr_extramath.cpp"
@@ -176,7 +177,7 @@ endif()
 set_target_properties(${MPRend2} PROPERTIES COMPILE_DEFINITIONS "${SharedDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPRend2} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2026_VISIBILITY_FLAGS})
+set_property(TARGET ${MPRend2} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
 set_target_properties(${MPRend2} PROPERTIES INCLUDE_DIRECTORIES "${MPRend2IncludeDirectories}")
 set_target_properties(${MPRend2} PROPERTIES PROJECT_LABEL "MP Rend2 Renderer")
 target_link_libraries(${MPRend2} ${MPRend2Libraries})
@@ -213,7 +214,7 @@ add_custom_command(
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	COMMAND
-		${CMAKE_BINARY_DIR}/SerenityJediEngine2026_glsl_MP
+		${CMAKE_BINARY_DIR}/SerenityJediEngine2026-glsl-MP
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 			${MPRend2GLSLFiles}

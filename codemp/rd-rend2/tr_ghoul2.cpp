@@ -410,6 +410,7 @@ public:
 	// GPU Data
 	mat3x4_t boneMatrices[MAX_G2_BONES];
 	int      uboOffset;
+	int		 uboPreviousOffset;
 	int	     uboGPUFrame;
 
 	CBoneCache(const model_t* amod, const mdxaHeader_t* aheader)
@@ -425,6 +426,7 @@ public:
 		, mUnsquash(false)
 		, mSmoothFactor(0.0f)
 		, uboOffset(-1)
+		, uboPreviousOffset(-1)
 		, uboGPUFrame(-1)
 	{
 		assert(amod);
@@ -3441,6 +3443,14 @@ int RB_GetBoneUboOffset(CRenderableSurface* surf)
 		return -1;
 }
 
+int RB_GetPreviousBoneUboOffset(CRenderableSurface* surf)
+{
+	if (surf->boneCache)
+		return surf->boneCache->uboPreviousOffset;
+	else
+		return -1;
+}
+
 void RB_SetBoneUboOffset(CRenderableSurface* surf, int offset, int currentFrameNum)
 {
 	surf->boneCache->uboOffset = offset;
@@ -3464,18 +3474,25 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		return;
 	}
 
-	int numIndexes = surface->numIndexes;
-	int numVertexes = surface->numVertexes;
-	int minIndex = surface->minIndex;
-	int maxIndex = surface->maxIndex;
-	int indexOffset = surface->indexOffset;
+	uint32_t numIndexes = surface->numIndexes;
+	uint32_t numVertexes = surface->numVertexes;
+	uint32_t minIndex = surface->minIndex;
+	uint32_t maxIndex = surface->maxIndex;
+	uint32_t indexOffset = surface->indexOffset;
 
 #ifdef _G2_GORE
 	if (surf->alternateTex)
 	{
-		R_BindVBO(tr.goreVBO);
-		R_BindIBO(tr.goreIBO);
-		tess.externalIBO = tr.goreIBO;
+		if (!surf->alternateTex->cachedInFrame[backEndData->realFrameNumber % MAX_FRAMES])
+		{
+			RB_UpdateGoreVertexData(backEndData->currentFrame, surf->alternateTex, false);
+		}
+		else
+		{
+			R_BindVBO(backEndData->currentFrame->goreVBO);
+			R_BindIBO(backEndData->currentFrame->goreIBO);
+		}
+		tess.externalIBO = backEndData->currentFrame->goreIBO;
 
 		numIndexes = surf->alternateTex->numIndexes;
 		numVertexes = surf->alternateTex->numVerts;
@@ -3483,7 +3500,7 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		maxIndex = surf->alternateTex->firstVert + surf->alternateTex->numVerts;
 		indexOffset = surf->alternateTex->firstIndex;
 
-#ifdef REND2_SP_MAYBE
+#ifdef REND2_SP_GORE
 		// UNTESTED CODE
 		if (surf->scale > 1.0f)
 		{
@@ -3517,8 +3534,6 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 				tess.svars.colors[tess.firstIndex][3] = lFade;
 			}
 		}
-		tess.scale = false;
-		tess.fade = false;
 #endif
 	}
 	else {
@@ -4373,8 +4388,8 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		{
 			modelName = mdxm->name;
 		}
-		VBO_t* vbo = R_CreateVBO(data, dataSize, VBO_USAGE_STATIC);
-		IBO_t* ibo = R_CreateIBO((byte*)indices, sizeof(glIndex_t) * numTriangles * 3, VBO_USAGE_STATIC);
+		VBO_t* vbo = R_CreateVBO(data, dataSize, VBO_USAGE_STATIC, mod_name);
+		IBO_t* ibo = R_CreateIBO((byte*)indices, sizeof(glIndex_t) * numTriangles * 3, VBO_USAGE_STATIC, mod_name);
 
 		ri->Hunk_FreeTempMemory(data);
 		ri->Hunk_FreeTempMemory(tangentsf);

@@ -4347,7 +4347,6 @@ static void png_do_expand_palette(const png_row_infop row_info, const png_bytep 
 	}
 }
 
-
 /* If the bit depth < 8, it is expanded to 8.  Also, if the already
  * expanded transparency value is supplied, an alpha channel is built.
  */

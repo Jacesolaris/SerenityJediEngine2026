@@ -869,7 +869,6 @@ sfx_t* S_FindName(const char* name)
 	return sfx;
 }
 
-
 /*
 =================
 S_DefaultSound
@@ -4959,7 +4958,6 @@ static qboolean S_UpdateBackgroundTrack_Actual(MusicInfo_t* pMusicInfo, const qb
 
 	return qfalse;
 }
-
 
 // used to be just for dynamic, but now even non-dynamic music has to know whether it should be silent or not...
 //

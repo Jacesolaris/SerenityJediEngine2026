@@ -797,7 +797,6 @@ void trigger_push_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 	}
 }
 
-
 constexpr auto PUSH_CONSTANT = 2;
 
 /*
@@ -1369,7 +1368,6 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 	}
 }
 
-
 void SP_trigger_hurt(gentity_t* self)
 {
 	char* s;
@@ -1577,7 +1575,6 @@ void shipboundary_think(gentity_t* ent)
 		i++;
 	}
 }
-
 
 /*QUAKED trigger_shipboundary (.5 .5 .5) ?
 causes vehicle to turn toward target and travel in that direction for a set time when hit.

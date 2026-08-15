@@ -2671,7 +2671,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 				}
 
 				// Startup wind-up interrupt: if victim is in early attack frames, bypass armor
-				if (victim->client && 
+				if (victim->client &&
 					!perfectParry &&
 					PM_SaberInAttack(victim->client->ps.saberMove) &&
 					victim->client->ps.weaponstate == WEAPON_FIRING)
@@ -2686,7 +2686,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 				if (ent->client->saberHitEntityBitMask & (1 << victim->s.number))
 				{
 					if (!PM_SaberInKata(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) &&
-						!PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) && 
+						!PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) &&
 						ent->client->ps.saberLockTime < level.time)
 					{// If we already hit this entity, and we're not in a kata or kill move, don't hit again
 						if (g_HitTracking->integer && (victim->NPC))

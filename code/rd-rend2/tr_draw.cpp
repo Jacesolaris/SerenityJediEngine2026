@@ -287,7 +287,7 @@ static void RE_Blit(const float fX0, const float fY0, const float fX1, const flo
 	vec4_t vcolor = { 0.0f, 0.0f, 0.0f, 1.0f };
 	GLSL_SetUniformVec4(shaderProgram, UNIFORM_BASECOLOR, color);
 	GLSL_SetUniformVec4(shaderProgram, UNIFORM_VERTCOLOR, vcolor);
-	GLSL_SetUniformInt(shaderProgram, UNIFORM_ALPHA_TEST_TYPE, ALPHA_TEST_LT128);
+	GLSL_SetUniformInt(shaderProgram, UNIFORM_ALPHA_TEST_TYPE, atest ? ALPHA_TEST_LT128 : ALPHA_TEST_NONE);
 
 	vec4_t quadVerts[4] = {
 		{fX0, fY0, 0.f},

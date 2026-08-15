@@ -194,7 +194,6 @@ static void Seeker_MaintainHeight()
 	}
 }
 
-
 //------------------------------------
 void Seeker_Strafe()
 {
@@ -481,8 +480,6 @@ static void Seeker_FindEnemy()
 		NPC->enemy = best;
 	}
 }
-
-
 
 //------------------------------------
 static void Seeker_FollowPlayer()

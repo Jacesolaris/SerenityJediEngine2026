@@ -99,6 +99,8 @@ struct weatherSystem_t
 	int activeWindObjects = 0;
 	int numWeatherBrushes = 0;
 	bool frozen;
+	bool shaking;
+	float pain = 0.0f;
 
 	srfWeather_t weatherSurface;
 

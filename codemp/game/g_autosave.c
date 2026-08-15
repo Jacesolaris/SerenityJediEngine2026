@@ -253,7 +253,6 @@ void Load_Autosaves(void)
 	Com_Printf("^5Done.\n");
 }
 
-
 void Save_Autosaves(void)
 {
 	//save the autosaves

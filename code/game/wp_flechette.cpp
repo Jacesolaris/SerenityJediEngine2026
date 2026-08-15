@@ -156,7 +156,6 @@ static void WP_FlechetteMainFire(gentity_t* ent)
 	}
 }
 
-
 //---------------------------------------------------------
 void prox_mine_think(gentity_t* ent)
 //---------------------------------------------------------

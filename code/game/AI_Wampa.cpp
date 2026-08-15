@@ -634,7 +634,6 @@ void Wampa_DropVictim(gentity_t* self)
 	self->count = 0;
 }
 
-
 qboolean Wampa_CheckDropVictim(gentity_t* self, const qboolean exclude_me)
 {
 	if (!self

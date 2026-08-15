@@ -681,7 +681,6 @@ static void Sniper_FaceEnemy()
 	NPC_UpdateAngles(qtrue, qtrue);
 }
 
-
 static void Sniper_UpdateEnemyPos()
 {
 	for (int i = MAX_ENEMY_POS_LAG - ENEMY_POS_LAG_INTERVAL; i >= 0; i -= ENEMY_POS_LAG_INTERVAL)

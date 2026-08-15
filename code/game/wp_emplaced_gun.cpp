@@ -66,61 +66,61 @@ void WP_FireTurboLaserMissile(gentity_t* ent, vec3_t start, vec3_t dir)
 void WP_EmplacedFire(gentity_t* ent)
 //---------------------------------------------------------
 {
-    // SAFETY: ent or ent->client may be NULL in edge cases
-    if (ent == NULL)
-    {
-        Com_Printf(S_COLOR_YELLOW "WP_EmplacedFire: NULL ent\n");
-        return;
-    }
+	// SAFETY: ent or ent->client may be NULL in edge cases
+	if (ent == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_EmplacedFire: NULL ent\n");
+		return;
+	}
 
-    const float damage = weaponData[WP_EMPLACED_GUN].damage *
-        ((ent->NPC != NULL) ? 0.1f : 1.0f);
+	const float damage = weaponData[WP_EMPLACED_GUN].damage *
+		((ent->NPC != NULL) ? 0.1f : 1.0f);
 
-    const float vel = EMPLACED_VEL *
-        ((ent->NPC != NULL) ? 0.4f : 1.0f);
+	const float vel = EMPLACED_VEL *
+		((ent->NPC != NULL) ? 0.4f : 1.0f);
 
-    WP_MissileTargetHint(ent, muzzle, forward_vec);
+	WP_MissileTargetHint(ent, muzzle, forward_vec);
 
-    gentity_t* missile = CreateMissile(muzzle, forward_vec, vel, 10000, ent);
+	gentity_t* missile = CreateMissile(muzzle, forward_vec, vel, 10000, ent);
 
-    if (missile == NULL)
-    {
-        Com_Printf(S_COLOR_YELLOW "WP_EmplacedFire: CreateMissile returned NULL\n");
-        return;
-    }
+	if (missile == NULL)
+	{
+		Com_Printf(S_COLOR_YELLOW "WP_EmplacedFire: CreateMissile returned NULL\n");
+		return;
+	}
 
-    missile->classname = "emplaced_proj";
-    missile->s.weapon = WP_EMPLACED_GUN;
+	missile->classname = "emplaced_proj";
+	missile->s.weapon = WP_EMPLACED_GUN;
 
-    missile->damage = damage;
-    missile->dflags = DAMAGE_DEATH_KNOCKBACK | DAMAGE_HEAVY_WEAP_CLASS;
-    missile->methodOfDeath = MOD_EMPLACED;
-    missile->clipmask = MASK_SHOT;
+	missile->damage = damage;
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK | DAMAGE_HEAVY_WEAP_CLASS;
+	missile->methodOfDeath = MOD_EMPLACED;
+	missile->clipmask = MASK_SHOT;
 
-    // Determine real owner (avoid hitting the gun object)
-    const qboolean has_client =
-        ((ent->client != NULL) ? qtrue : qfalse);
+	// Determine real owner (avoid hitting the gun object)
+	const qboolean has_client =
+		((ent->client != NULL) ? qtrue : qfalse);
 
-    if (has_client == qtrue &&
-        !(ent->client->ps.eFlags & EF_LOCKED_TO_WEAPON))
-    {
-        missile->owner = ent;
-    }
-    else
-    {
-        missile->owner = ent->owner;
-    }
+	if (has_client == qtrue &&
+		!(ent->client->ps.eFlags & EF_LOCKED_TO_WEAPON))
+	{
+		missile->owner = ent;
+	}
+	else
+	{
+		missile->owner = ent->owner;
+	}
 
-    // SAFETY: missile->owner may be NULL
-    if (missile->owner != NULL &&
-        missile->owner->e_UseFunc == useF_eweb_use)
-    {
-        missile->alt_fire = qtrue;
-    }
+	// SAFETY: missile->owner may be NULL
+	if (missile->owner != NULL &&
+		missile->owner->e_UseFunc == useF_eweb_use)
+	{
+		missile->alt_fire = qtrue;
+	}
 
-    VectorSet(missile->maxs, EMPLACED_SIZE, EMPLACED_SIZE, EMPLACED_SIZE);
-    VectorScale(missile->maxs, -1, missile->mins);
+	VectorSet(missile->maxs, EMPLACED_SIZE, EMPLACED_SIZE, EMPLACED_SIZE);
+	VectorScale(missile->maxs, -1, missile->mins);
 
-    // Alternate muzzle FX toggle
-    ent->fxID = ~ent->fxID;
+	// Alternate muzzle FX toggle
+	ent->fxID = ~ent->fxID;
 }

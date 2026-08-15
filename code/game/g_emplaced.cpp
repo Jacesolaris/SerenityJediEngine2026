@@ -697,7 +697,6 @@ void emplaced_gun_use(gentity_t* self, const gentity_t* other, gentity_t* activa
 	}
 }
 
-
 //----------------------------------------------------------
 void emplaced_gun_pain(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, const vec3_t point, int damage,
 	int mod, int hit_loc)
@@ -1140,7 +1139,6 @@ void ExitEmplacedWeapon(gentity_t* ent)
 		ent->owner = nullptr;
 	}
 }
-
 
 void RunEmplacedWeapon(gentity_t* ent, usercmd_t** ucmd)
 {

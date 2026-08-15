@@ -529,7 +529,6 @@ gentity_t* WP_FireThermalDetonator(gentity_t* ent, const qboolean alt_fire)
 	return bolt;
 }
 
-
 //---------------------------------------------------------
 gentity_t* WP_DropThermal(gentity_t* ent)
 //---------------------------------------------------------

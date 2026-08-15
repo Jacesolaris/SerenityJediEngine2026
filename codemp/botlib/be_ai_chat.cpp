@@ -1233,7 +1233,6 @@ static bot_matchpiece_t* BotLoadMatchPieces(source_t* source, char* endtoken)
 					matchpiece->firststring = matchstring;
 
 				lastmatchstring = matchstring;
-
 			} while (PC_CheckTokenString(source, "|"));
 
 			if (!emptystring)

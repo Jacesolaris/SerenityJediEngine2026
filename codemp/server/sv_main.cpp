@@ -232,7 +232,6 @@ void QDECL SV_SendServerCommand(client_t* cl, const char* fmt, ...)
 	free(message);
 }
 
-
 /*
 ==============================================================================
 
@@ -653,7 +652,6 @@ static void SVC_Status(const netadr_t from)
 	// Send the assembled status response
 	NET_OutOfBandPrint(NS_SERVER, from, "statusResponse\n%s\n%s", infostring, status);
 }
-
 
 /*
 ================

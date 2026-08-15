@@ -177,6 +177,11 @@ static void CG_TransitionSnapshot(void)
 	// Execute any server string commands before transitioning entities
 	CG_ExecuteNewServerCommands(cg.nextSnap->serverCommandSequence);
 
+	// if we had a map_restart, set everthing with initial
+	if (!cg.snap)
+	{
+	}
+
 	// Clear the currentValid flag for all entities in the existing snapshot
 	for (i = 0; i < cg.snap->numEntities; i++)
 	{
@@ -188,11 +193,7 @@ static void CG_TransitionSnapshot(void)
 	snapshot_t* oldFrame = cg.snap;
 	cg.snap = cg.nextSnap;
 
-	BG_PlayerStateToEntityState(
-		&cg.snap->ps,
-		&cg_entities[cg.snap->ps.clientNum].currentState,
-		qfalse
-	);
+	BG_PlayerStateToEntityState(&cg.snap->ps,&cg_entities[cg.snap->ps.clientNum].currentState,qfalse);
 
 	cg_entities[cg.snap->ps.clientNum].interpolate = qfalse;
 

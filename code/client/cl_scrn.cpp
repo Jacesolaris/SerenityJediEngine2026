@@ -249,7 +249,6 @@ static void SCR_DrawBigStringExt(const int x, const int y, const char* string,
 	re.SetColor(NULL);
 }
 
-
 void SCR_DrawBigString(const int x, const int y, const char* s, const float alpha, const qboolean noColorEscape)
 {
 	float color[4]{};
@@ -316,7 +315,6 @@ void SCR_DrawSmallStringExt(const int x, const int y, const char* string,
 
 	re.SetColor(NULL);
 }
-
 
 /*
 ** SCR_Strlen -- skips color escape codes

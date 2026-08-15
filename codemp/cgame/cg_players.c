@@ -14711,14 +14711,12 @@ int FindGender(const char* model_path, const centity_t* cent)
 //exe.
 void CG_CreateNPCClient(clientInfo_t** ci)
 {
-	//trap->TrueMalloc((void **)ci, sizeof(clientInfo_t));
 	*ci = (clientInfo_t*)BG_Alloc(sizeof(clientInfo_t));
 }
 
 void CG_DestroyNPCClient(clientInfo_t** ci)
 {
 	memset(*ci, 0, sizeof(clientInfo_t));
-	//trap->TrueFree((void **)ci);
 }
 
 static void CG_ForceElectrocution(centity_t* cent, const vec3_t origin, vec3_t temp_angles, const qhandle_t shader,

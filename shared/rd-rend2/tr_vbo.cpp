@@ -81,7 +81,7 @@ static GLenum GetGLBufferUsage(vboUsage_t usage)
 R_CreateVBO
 ============
 */
-VBO_t* R_CreateVBO(byte* vertexes, int vertexesSize, vboUsage_t usage)
+VBO_t* R_CreateVBO(byte* vertexes, size_t vertexesSize, vboUsage_t usage, const char* debugName)
 {
 	VBO_t* vbo;
 
@@ -100,6 +100,7 @@ VBO_t* R_CreateVBO(byte* vertexes, int vertexesSize, vboUsage_t usage)
 	tr.numVBOs++;
 
 	qglBindBuffer(GL_ARRAY_BUFFER, vbo->vertexesVBO);
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_BUFFER, vbo->vertexesVBO, -1, va("%s_VBO", debugName));
 	if (glRefConfig.immutableBuffers)
 	{
 		GLbitfield creationFlags = 0;
@@ -130,7 +131,7 @@ VBO_t* R_CreateVBO(byte* vertexes, int vertexesSize, vboUsage_t usage)
 R_CreateIBO
 ============
 */
-IBO_t* R_CreateIBO(byte* indexes, int indexesSize, vboUsage_t usage)
+IBO_t* R_CreateIBO(byte* indexes, size_t indexesSize, vboUsage_t usage, const char* debugName)
 {
 	IBO_t* ibo;
 
@@ -147,6 +148,7 @@ IBO_t* R_CreateIBO(byte* indexes, int indexesSize, vboUsage_t usage)
 	tr.numIBOs++;
 
 	qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo->indexesVBO);
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_BUFFER, ibo->indexesVBO, -1, va("%s_IBO", debugName));
 	if (glRefConfig.immutableBuffers)
 	{
 		GLbitfield creationFlags = 0;
@@ -199,8 +201,6 @@ void R_BindVBO(VBO_t* vbo)
 		glState.vertexAttribsInterpolation = 0;
 		glState.vertexAttribsOldFrame = 0;
 		glState.vertexAttribsNewFrame = 0;
-		glState.vertexAttribsTexCoordOffset[0] = 0;
-		glState.vertexAttribsTexCoordOffset[1] = 1;
 		glState.vertexAnimation = qfalse;
 		glState.skeletalAnimation = qfalse;
 
@@ -692,34 +692,66 @@ void RB_UpdateVBOs(unsigned int attribBits)
 }
 
 #ifdef _G2_GORE
-void RB_UpdateGoreVBO(srfG2GoreSurface_t* goreSurface)
+void RB_UpdateGoreVertexData(gpuFrame_t* currentFrame, srfG2GoreSurface_t* goreSurface, bool updateFirstVertAndIndex)
 {
-	goreSurface->firstVert = tr.goreVBOCurrentIndex;
-	goreSurface->firstIndex = tr.goreIBOCurrentIndex;
+	if (updateFirstVertAndIndex)
+	{
+		goreSurface->firstVert = currentFrame->goreVBOCurrentIndex;
+		goreSurface->firstIndex = currentFrame->goreIBOCurrentIndex;
 
-	if (tr.goreVBOCurrentIndex + goreSurface->numVerts >= (MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_VERTS * MAX_FRAMES))
-		tr.goreVBOCurrentIndex = 0;
+		if (currentFrame->goreVBOCurrentIndex + goreSurface->numVerts >= (MAX_GORE_RECORDS * MAX_GORE_VERTS))
+			currentFrame->goreVBOCurrentIndex = 0;
+	}
 
-	R_BindVBO(tr.goreVBO);
-	qglBufferSubData(
-		GL_ARRAY_BUFFER,
-		sizeof(g2GoreVert_t) * tr.goreVBOCurrentIndex,
-		sizeof(g2GoreVert_t) * goreSurface->numVerts,
-		goreSurface->verts
-	);
-	tr.goreVBOCurrentIndex += goreSurface->numVerts;
+	R_BindVBO(currentFrame->goreVBO);
 
-	if (tr.goreIBOCurrentIndex + goreSurface->numVerts >= (MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_INDECIES * MAX_FRAMES))
-		tr.goreIBOCurrentIndex = 0;
+	if (glRefConfig.immutableBuffers)
+	{
+		void* writePtr = (byte*)currentFrame->goreVBOMemory + sizeof(g2GoreVert_t) * goreSurface->firstVert;
+		memcpy(writePtr, (byte*)goreSurface->verts, sizeof(g2GoreVert_t) * goreSurface->numVerts);
+	}
+	else
+	{
+		qglBufferSubData(
+			GL_ARRAY_BUFFER,
+			sizeof(g2GoreVert_t) * goreSurface->firstVert,
+			sizeof(g2GoreVert_t) * goreSurface->numVerts,
+			goreSurface->verts
+		);
+	}
 
-	R_BindIBO(tr.goreIBO);
-	qglBufferSubData(
-		GL_ELEMENT_ARRAY_BUFFER,
-		sizeof(glIndex_t) * tr.goreIBOCurrentIndex,
-		sizeof(glIndex_t) * goreSurface->numIndexes,
-		goreSurface->indexes
-	);
-	tr.goreIBOCurrentIndex += goreSurface->numIndexes;
+	if (updateFirstVertAndIndex)
+	{
+		currentFrame->goreVBOCurrentIndex += goreSurface->numVerts;
+
+		if (currentFrame->goreIBOCurrentIndex + goreSurface->numIndexes >= (MAX_GORE_RECORDS * MAX_GORE_INDECIES))
+			currentFrame->goreIBOCurrentIndex = 0;
+	}
+
+	R_BindIBO(currentFrame->goreIBO);
+
+	if (glRefConfig.immutableBuffers)
+	{
+		void* writePtr = (byte*)currentFrame->goreIBOMemory + sizeof(glIndex_t) * goreSurface->firstIndex;
+		memcpy(writePtr, goreSurface->indexes, sizeof(glIndex_t) * goreSurface->numIndexes);
+	}
+	else
+	{
+		qglBufferSubData(
+			GL_ELEMENT_ARRAY_BUFFER,
+			sizeof(glIndex_t) * goreSurface->firstIndex,
+			sizeof(glIndex_t) * goreSurface->numIndexes,
+			goreSurface->indexes
+		);
+	}
+
+	if (updateFirstVertAndIndex)
+	{
+		currentFrame->goreIBOCurrentIndex += goreSurface->numIndexes;
+	}
+
+	if (!updateFirstVertAndIndex)
+		goreSurface->cachedInFrame[backEndData->realFrameNumber % MAX_FRAMES] = true;
 }
 #endif
 
@@ -752,25 +784,26 @@ void RB_BindUniformBlock(GLuint ubo, uniformBlock_t block, int offset)
 	}
 }
 
-int RB_BindAndUpdateFrameUniformBlock(uniformBlock_t block, void* data)
+size_t RB_BindAndUpdateFrameUniformBlock(uniformBlock_t block, void* data)
 {
 	const uniformBlockInfo_t* blockInfo = uniformBlocksInfo + block;
 	gpuFrame_t* thisFrame = backEndData->currentFrame;
-	const int offset = thisFrame->uboWriteOffset;
+	const byte currentFrameScene = thisFrame->currentScene;
+	const size_t offset = thisFrame->uboWriteOffset[currentFrameScene];
 
-	RB_BindUniformBlock(thisFrame->ubo, block, offset);
+	RB_BindUniformBlock(thisFrame->ubo[currentFrameScene], block, offset);
 
 	qglBufferSubData(GL_UNIFORM_BUFFER,
-		thisFrame->uboWriteOffset, blockInfo->size, data);
+		thisFrame->uboWriteOffset[currentFrameScene], blockInfo->size, data);
 
 	const int alignment = glRefConfig.uniformBufferOffsetAlignment - 1;
 	const size_t alignedBlockSize = (blockInfo->size + alignment) & ~alignment;
-	thisFrame->uboWriteOffset += alignedBlockSize;
+	thisFrame->uboWriteOffset[currentFrameScene] += alignedBlockSize;
 
 	return offset;
 }
 
-int RB_AddShaderInstanceBlock(void* data)
+size_t RB_AddShaderInstanceBlock(void* data)
 {
 	if (glState.currentGlobalUBO != tr.shaderInstanceUbo)
 	{
@@ -791,10 +824,11 @@ int RB_AddShaderInstanceBlock(void* data)
 
 void RB_BeginConstantsUpdate(gpuFrame_t* frame)
 {
-	if (glState.currentGlobalUBO != frame->ubo)
+	const byte currentFrameScene = frame->currentScene;
+	if (glState.currentGlobalUBO != frame->ubo[currentFrameScene])
 	{
-		qglBindBuffer(GL_UNIFORM_BUFFER, frame->ubo);
-		glState.currentGlobalUBO = frame->ubo;
+		qglBindBuffer(GL_UNIFORM_BUFFER, frame->ubo[currentFrameScene]);
+		glState.currentGlobalUBO = frame->ubo[currentFrameScene];
 	}
 
 	const GLbitfield mapFlags =
@@ -802,35 +836,37 @@ void RB_BeginConstantsUpdate(gpuFrame_t* frame)
 		GL_MAP_UNSYNCHRONIZED_BIT |
 		GL_MAP_FLUSH_EXPLICIT_BIT;
 
-	frame->uboMapBase = frame->uboWriteOffset;
-	frame->uboMemory = qglMapBufferRange(
+	frame->uboMapBase[currentFrameScene] = frame->uboWriteOffset[currentFrameScene];
+	frame->uboMemory[currentFrameScene] = qglMapBufferRange(
 		GL_UNIFORM_BUFFER,
-		frame->uboWriteOffset,
-		frame->uboSize - frame->uboWriteOffset,
+		frame->uboWriteOffset[currentFrameScene],
+		frame->uboSize[currentFrameScene] - frame->uboWriteOffset[currentFrameScene],
 		mapFlags);
 }
 
-int RB_AppendConstantsData(
+size_t RB_AppendConstantsData(
 	gpuFrame_t* frame, const void* data, size_t dataSize)
 {
-	const size_t writeOffset = frame->uboWriteOffset;
-	const size_t relativeOffset = writeOffset - frame->uboMapBase;
+	const byte currentFrameScene = frame->currentScene;
+	const size_t writeOffset = frame->uboWriteOffset[currentFrameScene];
+	const size_t relativeOffset = writeOffset - frame->uboMapBase[currentFrameScene];
 
-	memcpy((char*)frame->uboMemory + relativeOffset, data, dataSize);
+	memcpy((char*)frame->uboMemory[currentFrameScene] + relativeOffset, data, dataSize);
 
 	const int alignment = glRefConfig.uniformBufferOffsetAlignment - 1;
 	const size_t alignedBlockSize = (dataSize + alignment) & ~alignment;
 
-	frame->uboWriteOffset += alignedBlockSize;
-	assert(frame->uboWriteOffset > 0);
+	frame->uboWriteOffset[currentFrameScene] += alignedBlockSize;
+	assert(frame->uboWriteOffset[currentFrameScene] > 0);
 	return writeOffset;
 }
 
 void RB_EndConstantsUpdate(const gpuFrame_t* frame)
 {
+	const byte currentFrameScene = frame->currentScene;
 	qglFlushMappedBufferRange(
 		GL_UNIFORM_BUFFER,
-		frame->uboMapBase,
-		frame->uboWriteOffset - frame->uboMapBase);
+		frame->uboMapBase[currentFrameScene],
+		frame->uboWriteOffset[currentFrameScene] - frame->uboMapBase[currentFrameScene]);
 	qglUnmapBuffer(GL_UNIFORM_BUFFER);
 }

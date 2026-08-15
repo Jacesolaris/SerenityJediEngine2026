@@ -457,18 +457,18 @@ using shader_t = struct shader_s {
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
-using skinSurface_t = struct {
+typedef struct {
 	char		name[MAX_QPATH];
 	shader_t* shader;
-};
+} skinSurface_t;
 
-using skin_t = struct skin_s {
+typedef struct skin_s {
 	char		name[MAX_QPATH];		// game path, including extension
 	int			numSurfaces;
 	skinSurface_t* surfaces[128];
-};
+} skin_t;
 
-using fog_t = struct {
+typedef struct {
 	int			originalBrushNumber;
 	vec3_t		bounds[2];
 
@@ -479,9 +479,9 @@ using fog_t = struct {
 	// for clipping distance in fog when outside
 	qboolean	hasSurface;
 	float		surface[4];
-};
+} fog_t;
 
-using viewParms_t = struct {
+typedef struct {
 	orientationr_t	ori;
 	orientationr_t	world;
 	vec3_t		pvsOrigin;			// may be different than or.origin for portals
@@ -496,7 +496,7 @@ using viewParms_t = struct {
 	cplane_t	frustum[5];
 	vec3_t		visBounds[2];
 	float		zFar;
-};
+} viewParms_t;
 
 /*
 ==============================================================================
@@ -1564,7 +1564,6 @@ public:
 #endif
 	}
 };
-
 
 void R_AddGhoulSurfaces(trRefEntity_t* ent);
 void RB_SurfaceGhoul(CRenderableSurface* surf);

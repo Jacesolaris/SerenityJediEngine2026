@@ -574,7 +574,6 @@ static qboolean turret_find_enemies(gentity_t* self)
 	return found;
 }
 
-
 //-----------------------------------------------------
 void turret_base_think(gentity_t* self)
 //-----------------------------------------------------
@@ -1606,7 +1605,6 @@ static qboolean pas_find_enemies(gentity_t* self)
 
 	return found;
 }
-
 
 //---------------------------------
 static void pas_adjust_enemy(gentity_t* ent)

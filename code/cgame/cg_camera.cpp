@@ -187,7 +187,6 @@ void CGCam_Disable()
 	VectorCopy(g_entities[0].client->ps.viewangles, cg.refdefViewAngles);
 }
 
-
 /*
 -------------------------
 CGCam_SetPosition

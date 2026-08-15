@@ -5025,7 +5025,6 @@ static qboolean S_UpdateBackgroundTrack_Actual(MusicInfo_t* pMusicInfo,
 	return qfalse;
 }
 
-
 // used to be just for dynamic, but now even non-dynamic music has to know whether it should be silent or not...
 //
 static const char* S_Music_GetRequestedState(void)

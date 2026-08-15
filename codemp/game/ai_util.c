@@ -647,7 +647,7 @@ void BotUtilizePersonality(bot_state_t* bs)
 		buf[len] = '\0';
 		len++;
 	}
-	
+
 	char* readbuf = B_TempAlloc(BOT_READBUF_SIZE);
 	char* group = B_TempAlloc(BOT_GROUPBUF_SIZE);
 

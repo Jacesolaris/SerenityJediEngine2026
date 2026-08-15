@@ -1378,7 +1378,6 @@ qboolean NPC_FacePosition(vec3_t position, const qboolean do_pitch)
 	return facing;
 }
 
-
 /*
 -------------------------
 NPC_FaceEntity

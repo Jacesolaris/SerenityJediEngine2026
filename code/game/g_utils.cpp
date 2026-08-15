@@ -615,7 +615,6 @@ int G_RadiusList(vec3_t origin, float radius, const gentity_t* ignore,
 	return ent_count;
 }
 
-
 /*
 =============
 G_PickTarget
@@ -1420,7 +1419,6 @@ void g_kill_box(gentity_t* ent)
 	}
 }
 
-
 //==============================================================================
 
 /*
@@ -1969,7 +1967,6 @@ static qboolean CanUseInfrontOfPartOfLevel(const gentity_t* ent) // originally f
 
 	return qfalse;
 }
-
 
 constexpr auto USE_DISTANCE = 64.0f;
 extern qboolean eweb_can_be_used(const gentity_t* self, const gentity_t* other, const gentity_t* activator);

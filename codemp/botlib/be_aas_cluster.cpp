@@ -986,8 +986,6 @@ static int AAS_CheckAreaForPossiblePortals(const int areanum)
 	return numareas;
 }
 
-
-
 //end of the function AAS_CheckAreaForPossiblePortals
 //===========================================================================
 //

@@ -2392,17 +2392,16 @@ static void RB_SurfaceVBOMDVMesh(srfVBOMDVMesh_t* surface)
 	}
 
 	//FIXME: Implement GPU vertex interpolation instead!
-	if (backEnd.currentEntity->e.oldframe != 0 || backEnd.currentEntity->e.frame != 0)
+	if (backEnd.currentEntity->e.oldframe != 0 ||
+		backEnd.currentEntity->e.frame != 0 ||
+		ShaderRequiresCPUDeforms(tess.shader)
+		)
 	{
 		RB_SurfaceMesh(surface->mdvSurface);
 		return;
 	}
 
-	R_BindVBO(surface->vbo);
-	R_BindIBO(surface->ibo);
-
-	tess.useInternalVBO = qfalse;
-	tess.externalIBO = surface->ibo;
+	RB_CheckVBOandIBO(surface->vbo, surface->ibo);
 
 	// tess.dlightBits is already set in the renderloop
 
@@ -2549,13 +2548,27 @@ static void RB_SurfaceSprites(srfSprites_t* surf)
 	SamplerBindingsWriter samplerBindingsWriter;
 	samplerBindingsWriter.AddAnimatedImage(&firstStage->bundle[0], TB_COLORMAP);
 
-	const GLuint currentFrameUbo = backEndData->currentFrame->ubo;
+	if (surf->fogIndex != -1 && r_volumetricFog->integer)
+	{
+		if (tr.world && tr.world->lightGridData)
+		{
+			samplerBindingsWriter.AddStaticImage(tr.world->volumetricLightMaps[0], 2);
+		}
+		else
+		{
+			samplerBindingsWriter.AddStaticImage(tr.whiteImage3D, 2);
+		}
+	}
+
+	const byte currentFrameScene = backEndData->currentFrame->currentScene;
+	const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 	const GLuint currentSpriteUbo = shader->spriteUbo;
 	const UniformBlockBinding uniformBlockBindings[] = {
 		{ currentSpriteUbo, ss->spriteUboOffset, UNIFORM_BLOCK_SURFACESPRITE },
-		{ currentFrameUbo, tr.sceneUboOffset, UNIFORM_BLOCK_SCENE },
-		{ currentFrameUbo, tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA },
-		{ currentFrameUbo, tr.fogsUboOffset, UNIFORM_BLOCK_FOGS }
+		{ currentFrameUbo, (size_t)tr.sceneUboOffset, UNIFORM_BLOCK_SCENE },
+		{ currentFrameUbo, (size_t)tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA },
+		{ currentFrameUbo, (size_t)tr.fogsUboOffset, UNIFORM_BLOCK_FOGS },
+		{ currentFrameUbo, (size_t)tr.temporalInfoUboOffset, UNIFORM_BLOCK_TEMPORAL_INFO }
 	};
 
 	uint32_t numBindings;

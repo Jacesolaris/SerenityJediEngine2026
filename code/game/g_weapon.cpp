@@ -637,7 +637,6 @@ void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoin
 	AddLeanOfs(ent, muzzlePoint);
 }
 
-
 // Muzzle point table...
 vec3_t WP_muzzlePoint[WP_NUM_WEAPONS] =
 {

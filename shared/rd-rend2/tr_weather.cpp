@@ -93,11 +93,11 @@ namespace
 		ws.lastVBO = R_CreateVBO(
 			nullptr,
 			sizeof(rainVertex_t) * rainVertices.size(),
-			VBO_USAGE_XFB);
+			VBO_USAGE_XFB, "Weather_ping");
 		ws.vbo = R_CreateVBO(
 			(byte*)rainVertices.data(),
 			sizeof(rainVertex_t) * rainVertices.size(),
-			VBO_USAGE_XFB);
+			VBO_USAGE_XFB, "Weather_pong");
 		ws.vboLastUpdateFrame = 0;
 
 		ws.attribsTemplate[0].index = ATTR_INDEX_POSITION;
@@ -443,9 +443,10 @@ namespace
 
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
 
-		const GLuint currentFrameUbo = backEndData->currentFrame->ubo;
+		const byte currentFrameScene = backEndData->currentFrame->currentScene;
+		const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 		const UniformBlockBinding uniformBlockBindings[] = {
-			{ currentFrameUbo, tr.sceneUboOffset, UNIFORM_BLOCK_SCENE }
+			{ currentFrameUbo, (size_t)tr.sceneUboOffset, UNIFORM_BLOCK_SCENE }
 		};
 		DrawItemSetUniformBlockBindings(
 			item, uniformBlockBindings, frameAllocator);
@@ -1338,9 +1339,10 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 		{
 			for (int x = -1; x <= 1; ++x, ++currentIndex)
 			{
-				const GLuint currentFrameUbo = backEndData->currentFrame->ubo;
+				const byte currentFrameScene = backEndData->currentFrame->currentScene;
+				const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 				const UniformBlockBinding uniformBlockBindings[] = {
-					{ currentFrameUbo, tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA }
+					{ currentFrameUbo, (size_t)tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA }
 				};
 				DrawItemSetUniformBlockBindings(
 					item, uniformBlockBindings, frameAllocator);
@@ -1351,7 +1353,6 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 					UNIFORM_ZONEOFFSET,
 					(centerZoneOffsetX + x) * CHUNK_EXTENDS,
 					(centerZoneOffsetY + y) * CHUNK_EXTENDS);
-				uniformDataWriter.SetUniformFloat(UNIFORM_TIME, backEnd.refdef.frameTime);
 				uniformDataWriter.SetUniformVec4(UNIFORM_COLOR, weatherObject->color);
 				uniformDataWriter.SetUniformVec4(UNIFORM_VIEWINFO, viewInfo);
 				uniformDataWriter.SetUniformMatrix4x4(UNIFORM_SHADOWMVP, tr.weatherSystem->weatherMVP);

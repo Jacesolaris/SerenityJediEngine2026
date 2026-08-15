@@ -2059,6 +2059,11 @@ int G_AnimateOldKnockBack(const int move)
 
 qboolean PM_InRollIgnoreTimer(const playerState_t* ps)
 {
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
 	switch (ps->legsAnim)
 	{
 	case BOTH_ROLL_F:
@@ -2083,6 +2088,10 @@ qboolean PM_InRollIgnoreTimer(const playerState_t* ps)
 
 qboolean PM_InRoll(const playerState_t* ps)
 {
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
 	if (ps->legsTimer && PM_InRollIgnoreTimer(ps))
 	{
 		return qtrue;
@@ -3066,6 +3075,11 @@ qboolean PM_Dyinganim(const playerState_t* ps)
 
 qboolean PM_InKnockDown(const playerState_t* ps)
 {
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
 	switch (ps->legsAnim)
 	{
 	case BOTH_KNOCKDOWN1:

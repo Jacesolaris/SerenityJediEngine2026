@@ -296,12 +296,14 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 
 	# UI files
 	set(SPEngineUIFiles
+		"${SPDir}/ui/ui_pazaak.cpp"
 		"${SPDir}/ui/ui_atoms.cpp"
 		"${SPDir}/ui/ui_connect.cpp"
 		"${SPDir}/ui/ui_main.cpp"
 		"${SPDir}/ui/ui_saber.cpp"
 		"${SPDir}/ui/ui_shared.cpp"
 		"${SPDir}/ui/ui_syscalls.cpp"
+		"${SPDir}/ui/ui_pazaak.h"
 		"${SPDir}/ui/gameinfo.h"
 		"${SPDir}/ui/menudef.h"
 		"${SPDir}/ui/ui_local.h"
@@ -429,7 +431,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		set_target_properties(${ProjectName} PROPERTIES COMPILE_DEFINITIONS "${SPEngineDefines}")
 
 		# Hide symbols not explicitly marked public.
-		set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SerenityJediEngine2026_VISIBILITY_FLAGS})
+		set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
 
 		set_target_properties(${ProjectName} PROPERTIES INCLUDE_DIRECTORIES "${SPEngineIncludeDirectories}")
 		set_target_properties(${ProjectName} PROPERTIES PROJECT_LABEL ${Label})

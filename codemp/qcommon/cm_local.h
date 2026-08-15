@@ -200,7 +200,7 @@ using traceWork_t = struct traceWork_s
 	vec3pair_t bounds = { { 0, 0, 0 }, { 0, 0, 0 } }; // enclosing box of start and end surrounding by size
 	vec3pair_t localBounds = { { 0, 0, 0 }, { 0, 0, 0 } }; // enclosing box of start and end surrounding by size for a segment
 
-	float baseEnterFrac = 0 ; // global enter fraction (before processing subsections of the brush)
+	float baseEnterFrac = 0; // global enter fraction (before processing subsections of the brush)
 	float baseLeaveFrac = 0; // global leave fraction (before processing subsections of the brush)
 	float enterFrac = 0; // fraction where the ray enters the brush
 	float leaveFrac = 0; // fraction where the ray leaves the brush

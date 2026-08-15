@@ -111,7 +111,6 @@ void G_AngerAlert(const gentity_t* self)
 	G_AlertTeam(self, self->enemy, ANGER_ALERT_RADIUS, ANGER_ALERT_SOUND_RADIUS);
 }
 
-
 /*
 -------------------------
 G_TeamEnemy
@@ -182,7 +181,6 @@ qboolean G_TeamEnemy(const gentity_t* self)
 
 	return qfalse;
 }
-
 
 static qboolean G_CheckSaberAllyAttackDelay(const gentity_t* self, const gentity_t* enemy)
 {
@@ -771,7 +769,6 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 	self->enemy = enemy;
 }
 
-
 void ChangeWeapon(const gentity_t* ent, int new_weapon)
 {
 	if (!ent || !ent->client || !ent->NPC)
@@ -1240,7 +1237,6 @@ void WeaponThink(void)
 	// Execute firing logic
 	ShootThink();
 }
-
 
 /*
 HaveWeapon
@@ -2096,7 +2092,6 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range,
 	return closestAlly;
 }
 
-
 gentity_t* NPC_CheckEnemy(const qboolean find_new, const qboolean too_far_ok, const qboolean set_enemy)
 {
 	qboolean forcefindNew = qfalse;
@@ -2464,7 +2459,6 @@ qboolean NPC_EvaluateShot(const int hit, qboolean glassOK)
 
 	return qfalse;
 }
-
 
 /*
 NPC_CheckAttack

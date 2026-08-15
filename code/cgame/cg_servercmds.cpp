@@ -247,7 +247,7 @@ The string has been tokenized and can be retrieved with
 Cmd_Argc() / Cmd_Argv()
 =================
 */
-static void CG_ServerCommand()
+static void CG_ServerCommand(void)
 {
 	const char* cmd = CG_Argv(0);
 

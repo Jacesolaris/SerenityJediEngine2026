@@ -279,7 +279,6 @@ static void WP_RemoveOldTraps(const gentity_t* ent)
 	}
 }
 
-
 //---------------------------------------------------------
 void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------

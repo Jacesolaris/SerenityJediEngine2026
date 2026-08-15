@@ -451,12 +451,13 @@ static void DrawSkySide(struct image_s* image, const int mins[2], const int maxs
 	uniformDataWriter.SetUniformVec4(
 		UNIFORM_DIFFUSETEXOFFTURB, 0.0f, 0.0f, 0.0f, 0.0f);
 
-	samplerBindingsWriter.AddStaticImage(image, TB_DIFFUSEMAP);
+	samplerBindingsWriter.AddStaticImage(image, TB_DIFFUSEMAP);;
 
-	const GLuint currentFrameUbo = backEndData->currentFrame->ubo;
+	const byte currentFrameScene = backEndData->currentFrame->currentScene;
+	const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 	const UniformBlockBinding uniformBlockBindings[] = {
-		{ currentFrameUbo, tr.skyEntityUboOffset, UNIFORM_BLOCK_ENTITY },
-		{ currentFrameUbo, tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA }
+		{ currentFrameUbo, (size_t)tr.skyEntityUboOffset, UNIFORM_BLOCK_ENTITY },
+		{ currentFrameUbo, (size_t)tr.cameraUboOffsets[tr.viewParms.currentViewParm], UNIFORM_BLOCK_CAMERA }
 	};
 
 	DrawItem item = {};
@@ -477,7 +478,7 @@ static void DrawSkySide(struct image_s* image, const int mins[2], const int maxs
 	RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, &tess);
 	item.draw.params.indexed.numIndices -= tess.firstIndex;
 
-	uint32_t key = RB_CreateSortKey(item, 0, SS_ENVIRONMENT);
+	uint32_t key = RB_CreateSkySortKey(item, 0, backEnd.skyNumber, SS_ENVIRONMENT);
 	RB_AddDrawItem(backEndData->currentPass, key, item);
 
 	RB_CommitInternalBufferData();

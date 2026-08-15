@@ -807,7 +807,6 @@ void AddSoundEvent(gentity_t* owner, vec3_t position, const float radius,
 	level.numAlertEvents++;
 }
 
-
 /*
 -------------------------
 AddSightEvent
@@ -853,7 +852,6 @@ void AddSightEvent(gentity_t* owner, vec3_t position, const float radius,
 
 	level.numAlertEvents++;
 }
-
 
 /*
 -------------------------
@@ -977,7 +975,6 @@ qboolean G_ClearLOS(gentity_t* self, const vec3_t start, const vec3_t end)
 
 	return (tr.fraction == 1.0f) ? qtrue : qfalse;
 }
-
 
 // ======================================================
 // Entity → Position

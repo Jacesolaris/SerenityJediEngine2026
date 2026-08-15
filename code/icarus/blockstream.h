@@ -239,5 +239,4 @@ protected:
 	static const float s_IBI_VERSION;
 };
 
-
 #endif	//__INTERPRETED_BLOCK_STREAM__
