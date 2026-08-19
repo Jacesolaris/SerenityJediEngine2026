@@ -1056,8 +1056,10 @@ struct glconfigExt_t
 {
 	glconfig_t* glConfig;
 
+	qboolean textureFilterAnisotropicAvailable;
 	qboolean doGammaCorrectionWithShaders;
 	qboolean doStencilShadowsInOneDrawcall;
+
 	const char* originalExtensionString;
 };
 
@@ -1485,7 +1487,7 @@ WORLD MAP
 
 void R_AddBrushModelSurfaces(trRefEntity_t* ent);
 void R_AddWorldSurfaces(void);
-qboolean R_inPVS(const vec3_t p1, const vec3_t p2, const byte* mask);
+qboolean R_inPVS(const vec3_t p1, const vec3_t p2, byte* mask);
 
 /*
 ============================================================

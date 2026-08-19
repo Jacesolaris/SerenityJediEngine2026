@@ -830,8 +830,7 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 
 	case EV_LIGHTNING_STRIKE:
 		DEBUGNAME("EV_LIGHTNING_STRIKE");
-		FX_LightningStrike(cg_entities[cent->currentState.otherentityNum].gent->client->renderInfo.handLPoint,
-			cg_entities[cent->currentState.otherentityNum2].lerpOrigin);
+		FX_LightningStrike(cg_entities[cent->currentState.otherentityNum].gent->client->renderInfo.handLPoint, cg_entities[cent->currentState.otherentityNum2].lerpOrigin);
 		break;
 
 	case EV_LIGHTNING_BOLT:

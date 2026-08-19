@@ -33,17 +33,8 @@ static	texModInfo_t	texMods[MAX_SHADER_STAGES][TR_MAX_TEXMODS];
 
 // Hash value (generated using the generateHashValueForText function) for the original
 // retail JK2/JKA shader for gfx/2d/wedge.
-#ifdef JK2_MODE
-#define RETAIL_ROCKET_WEDGE_SHADER_HASH (1193966)
-#else
 #define RETAIL_ROCKET_WEDGE_SHADER_HASH (1217042)
-#endif
-
-#ifndef JK2_MODE
-// Hash value (generated using the generateHashValueForText function) for the original
-// retail JKA shader for gfx/menus/radar/arrow_w.
 #define RETAIL_ARROW_W_SHADER_HASH (1650186)
-#endif
 
 #define FILE_HASH_SIZE		1024
 static	shader_t* hashTable[FILE_HASH_SIZE];
@@ -3105,19 +3096,15 @@ static void ComputeVertexAttribs(void)
 	}
 }
 
-static void CollapseStagesToLightall(shaderStage_t* stage, shaderStage_t* lightmap,
-	qboolean useLightVector, qboolean useLightVertex, qboolean tcgen)
+static void CollapseStagesToLightall(shaderStage_t* stage, shaderStage_t* lightmap, qboolean useLightVector, qboolean useLightVertex, qboolean tcgen)
 {
 	int defs = 0;
-
-	//ri.Printf(PRINT_ALL, "shader %s has diffuse %s", shader.name, stage->bundle[0].image[0]->imgName);
 
 	// reuse diffuse, mark others inactive
 	stage->type = ST_GLSL;
 
 	if (lightmap)
 	{
-		//ri.Printf(PRINT_ALL, ", lightmap");
 		stage->bundle[TB_LIGHTMAP] = lightmap->bundle[0];
 		defs |= LIGHTDEF_USE_LIGHTMAP;
 	}
@@ -3132,7 +3119,6 @@ static void CollapseStagesToLightall(shaderStage_t* stage, shaderStage_t* lightm
 
 	if (r_deluxeMapping->integer && tr.worldDeluxeMapping && lightmap)
 	{
-		//ri.Printf(PRINT_ALL, ", deluxemap");
 		stage->bundle[TB_DELUXEMAP] = lightmap->bundle[TB_DELUXEMAP];
 	}
 
@@ -3142,28 +3128,23 @@ static void CollapseStagesToLightall(shaderStage_t* stage, shaderStage_t* lightm
 		if (stage->bundle[TB_NORMALMAP].image[0])
 		{
 			if (stage->bundle[TB_NORMALMAP].image[0]->type == IMGTYPE_NORMALHEIGHT &&
-				r_parallaxMapping->integer &&
 				defs & LIGHTDEF_LIGHTTYPE_MASK)
+			{
 				defs |= LIGHTDEF_USE_PARALLAXMAP;
-			//ri.Printf(PRINT_ALL, ", normalmap %s", stage->bundle[TB_NORMALMAP].image[0]->imgName);
+			}
 		}
 		else if ((lightmap || useLightVector || useLightVertex) && (diffuseImg = stage->bundle[TB_DIFFUSEMAP].image[0]) != NULL)
 		{
 			char normalName[MAX_QPATH];
 			image_t* normalImg;
 			int normalFlags = (diffuseImg->flags & ~(IMGFLAG_GENNORMALMAP | IMGFLAG_SRGB)) | IMGFLAG_NOLIGHTSCALE;
-			qboolean parallax = qfalse;
 			// try a normalheight image first
 			COM_StripExtension(diffuseImg->imgName, normalName, sizeof(normalName));
 			Q_strcat(normalName, sizeof(normalName), "_nh");
 
 			normalImg = R_FindImageFile(normalName, IMGTYPE_NORMALHEIGHT, normalFlags);
 
-			if (normalImg)
-			{
-				parallax = qtrue;
-			}
-			else
+			if (!normalImg)
 			{
 				// try a normal image ("_n" suffix)
 				normalName[strlen(normalName) - 1] = '\0';
@@ -3176,7 +3157,7 @@ static void CollapseStagesToLightall(shaderStage_t* stage, shaderStage_t* lightm
 				stage->bundle[TB_NORMALMAP].numImageAnimations = 0;
 				stage->bundle[TB_NORMALMAP].image[0] = normalImg;
 
-				if (parallax && r_parallaxMapping->integer)
+				if (normalImg->type == IMGTYPE_NORMALHEIGHT)
 					defs |= LIGHTDEF_USE_PARALLAXMAP;
 
 				VectorSet4(stage->normalScale, r_baseNormalX->value, r_baseNormalY->value, 1.0f, r_baseParallax->value);
@@ -3247,16 +3228,8 @@ static void CollapseStagesToLightall(shaderStage_t* stage, shaderStage_t* lightm
 		defs |= LIGHTDEF_USE_TCGEN_AND_TCMOD;
 	}
 
-	if (stage->glow)
-		defs |= LIGHTDEF_USE_GLOW_BUFFER;
-
 	if (stage->cloth)
 		defs |= LIGHTDEF_USE_CLOTH_BRDF;
-
-	if (stage->alphaTestType != ALPHA_TEST_NONE)
-		defs |= LIGHTDEF_USE_ALPHA_TEST;
-
-	//ri.Printf(PRINT_ALL, ".\n");
 
 	stage->glslShaderGroup = tr.lightallShader;
 	stage->glslShaderIndex = defs;

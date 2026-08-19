@@ -493,7 +493,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_fov, "cg_fov", "80", CVAR_ARCHIVE},
 	{&cg_fovAspectAdjust, "cg_fovAspectAdjust", "1", CVAR_ARCHIVE},
 	{&cg_stereoSeparation, "cg_stereoSeparation", "0.4", CVAR_ARCHIVE},
-	{&cg_shadows, "cg_shadows", "3", CVAR_ARCHIVE},
+	{&cg_shadows, "cg_shadows", "2", CVAR_ARCHIVE},
 	{&cg_renderToTextureFX, "cg_renderToTextureFX", "1", CVAR_ARCHIVE},
 	{&cg_shadowCullDistance, "r_shadowRange", "1000", CVAR_ARCHIVE},
 	{&cg_footsteps, "cg_footsteps", "3", CVAR_ARCHIVE},
@@ -510,7 +510,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_drawCrosshair, "cg_drawCrosshair", "2", CVAR_ARCHIVE},
 	{&cg_dynamicCrosshair, "cg_dynamicCrosshair", "1", CVAR_ARCHIVE},
 	{&cg_adaptiveCrosshair, "cg_adaptiveCrosshair", "1", CVAR_ARCHIVE},
-	{&cg_drawCrosshairNames, "cg_drawCrosshairNames", "0", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART},
+	{&cg_drawCrosshairNames, "cg_drawCrosshairNames", "1", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART},
 	{&cg_DrawCrosshairItem, "cg_DrawCrosshairItem", "1", CVAR_ARCHIVE},
 	// NOTE : I also create this in UI_Init()
 	{&cg_crosshairIdentifyTarget, "cg_crosshairIdentifyTarget", "1", CVAR_ARCHIVE},
@@ -643,7 +643,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_truemoveroll, "cg_truemoveroll", "0", CVAR_ARCHIVE},
 	{&cg_truesaberonly, "cg_truesaberonly", "0", CVAR_ARCHIVE},
 	{&cg_trueeyeposition, "cg_trueeyeposition", "0.0", 0},
-	{&cg_trueinvertsaber, "cg_trueinvertsaber", "2", CVAR_ARCHIVE},
+	{&cg_trueinvertsaber, "cg_trueinvertsaber", "0", CVAR_ARCHIVE},
 	{&cg_truefov, "cg_truefov", "90", CVAR_ARCHIVE},
 	{&cg_truebobbing, "cg_truebobbing", "1", CVAR_ARCHIVE},
 
@@ -657,7 +657,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_gunMomentumInterval, "cg_gunMomentumInterval", "75", CVAR_ARCHIVE},
 
 	{&cg_jumpSounds, "cg_jumpSounds", "1", CVAR_ARCHIVE},
-	{&cg_rollSounds, "cg_rollSounds", "2", CVAR_ARCHIVE},
+	{&cg_rollSounds, "cg_rollSounds", "1", CVAR_ARCHIVE},
 
 	{&cg_missionstatusscreen, "cg_missionstatusscreen", "1", CVAR_ARCHIVE},
 

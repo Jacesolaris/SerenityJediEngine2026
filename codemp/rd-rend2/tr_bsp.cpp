@@ -104,22 +104,19 @@ R_ColorShiftLightingBytes
 
 ===============
 */
-static	void R_ColorShiftLightingBytes(byte in[4], byte out[4]) {
-	int		shift, r, g, b;
-
+static	void R_ColorShiftLightingBytes(byte in[4], byte out[4]) 
+{
 	// shift the color data based on overbright range
-	shift = Q_max(0, r_mapOverBrightBits->integer - tr.overbrightBits);
+	const int shift = Q_max(0, r_mapOverBrightBits->integer - tr.overbrightBits);
 
 	// shift the data based on overbright range
-	r = in[0] << shift;
-	g = in[1] << shift;
-	b = in[2] << shift;
+	int r = in[0] << shift;
+	int g = in[1] << shift;
+	int b = in[2] << shift;
 
 	// normalize by color instead of saturating to white
 	if ((r | g | b) > 255) {
-		int		max;
-
-		max = r > g ? r : g;
+		int max = r > g ? r : g;
 		max = max > b ? max : b;
 		r = r * 255 / max;
 		g = g * 255 / max;
@@ -2987,6 +2984,12 @@ static void R_LoadEntities(world_t* worldData, lump_t* l) {
 			sscanf(value, "%f %f", &tr.autoExposureMinMax[0], &tr.autoExposureMinMax[1]);
 			continue;
 		}
+
+		// check for volumetric fog scale
+		if (!Q_stricmp(keyname, "volumetricFogScale")) {
+			sscanf(value, "%f", &tr.volumetricFogScale);
+			continue;
+		}
 	}
 }
 
@@ -4350,6 +4353,8 @@ void RE_LoadWorldMap(const char* name)
 	tr.toneMinAvgMaxLevel[0] = -8.0f;
 	tr.toneMinAvgMaxLevel[1] = -2.0f;
 	tr.toneMinAvgMaxLevel[2] = 0.0f;
+
+	tr.volumetricFogScale = r_volumetricFogDefaultScale->value;
 
 	world_t* world = R_LoadBSP(name);
 	if (world == nullptr)

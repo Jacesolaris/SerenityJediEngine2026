@@ -843,8 +843,10 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 {
 	vec3_t result;
 	sharedEntity_t* ent = nullptr;
-	trajectory_t* originTrajectory, * angleTrajectory;
-	float* origin, * angle;
+	trajectory_t* originTrajectory = nullptr;
+	trajectory_t* angleTrajectory = nullptr;
+	float* origin = nullptr;
+	float* angle = nullptr;
 
 	if (svs.time < roff_ent->mNextROFFTime)
 	{
@@ -852,16 +854,23 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 		return qtrue;
 	}
 
-	if (roff_ent->mIsClient)
+	if (roff_ent->mIsClient == qtrue)
 	{
 #ifndef DEDICATED
-		vec3_t originTemp, angleTemp;
+		vec3_t originTemp;
+		vec3_t angleTemp;
+
 		originTrajectory = CGVM_GetOriginTrajectory(roff_ent->mEntID);
 		angleTrajectory = CGVM_GetAngleTrajectory(roff_ent->mEntID);
+
 		CGVM_GetOrigin(roff_ent->mEntID, originTemp);
 		origin = originTemp;
+
 		CGVM_GetAngles(roff_ent->mEntID, angleTemp);
 		angle = angleTemp;
+#else
+		// Dedicated server has no client-side CGVM; ignore client ROFF safely
+		return qfalse;
 #endif
 	}
 	else
@@ -879,6 +888,18 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 		angleTrajectory = &ent->s.apos;
 		origin = ent->r.currentOrigin;
 		angle = ent->r.currentAngles;
+	}
+
+	// ----------------------------------------------------------------------
+	// Safety: ensure trajectories and bases are valid before use
+	// ----------------------------------------------------------------------
+	if (originTrajectory == nullptr ||
+		angleTrajectory == nullptr ||
+		origin == nullptr ||
+		angle == nullptr)
+	{
+		Com_Printf("CROFFSystem::ApplyROFF WARNING: invalid ROFF trajectories or bases\n");
+		return qfalse;
 	}
 
 	if (roff_ent->mROFFFrame >= roff->mROFFEntries)
@@ -908,12 +929,20 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 		VectorCopy(roff->mMoveRotateList[roff_ent->mROFFFrame].mOriginOffset, result);
 	}
 
-	// Set up our origin interpolation
+	// ----------------------------------------------------------------------
+	// Set up origin interpolation
+	// ----------------------------------------------------------------------
 	SetLerp(originTrajectory, TR_LINEAR, origin, result, svs.time, roff->mLerp);
 
-	// Set up our angle interpolation
-	SetLerp(angleTrajectory, TR_LINEAR, angle,
-		roff->mMoveRotateList[roff_ent->mROFFFrame].mRotateOffset, svs.time, roff->mLerp);
+	// ----------------------------------------------------------------------
+	// Set up angle interpolation
+	// ----------------------------------------------------------------------
+	SetLerp(angleTrajectory,
+		TR_LINEAR,
+		angle,
+		roff->mMoveRotateList[roff_ent->mROFFFrame].mRotateOffset,
+		svs.time,
+		roff->mLerp);
 
 	if (roff->mMoveRotateList[roff_ent->mROFFFrame].mStartNote >= 0)
 	{
@@ -923,13 +952,17 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 		}
 	}
 
-	// Advance ROFF frames and lock to a 10hz cycle
+	// ----------------------------------------------------------------------
+	// Advance ROFF frame and schedule next update
+	// ----------------------------------------------------------------------
 	roff_ent->mROFFFrame++;
 	roff_ent->mNextROFFTime = svs.time + roff->mFrameTime;
 
-	//rww - npcs need to know when they're getting roff'd
-	if (!roff_ent->mIsClient)
+	// NPCs need to know when they're being ROFFed
+	if (roff_ent->mIsClient == qfalse && ent != nullptr)
+	{
 		ent->next_roff_time = roff_ent->mNextROFFTime;
+	}
 
 	return qtrue;
 }
@@ -994,8 +1027,10 @@ void CROFFSystem::ProcessNote(const SROFFEntity* roff_ent, const char* note)
 //---------------------------------------------------------------------------
 qboolean CROFFSystem::ClearLerp(const SROFFEntity* roff_ent)
 {
-	trajectory_t* originTrajectory, * angleTrajectory;
-	float* origin, * angle;
+	trajectory_t* originTrajectory = nullptr;
+	trajectory_t* angleTrajectory = nullptr;
+	float* origin = nullptr;
+	float* angle = nullptr;
 
 	if (roff_ent->mIsClient)
 	{
@@ -1024,6 +1059,18 @@ qboolean CROFFSystem::ClearLerp(const SROFFEntity* roff_ent)
 		angleTrajectory = &ent->s.apos;
 		origin = ent->r.currentOrigin;
 		angle = ent->r.currentAngles;
+	}
+
+	// ----------------------------------------------------------------------
+	// Safety: ensure trajectories and bases are valid before use
+	// ----------------------------------------------------------------------
+	if (originTrajectory == nullptr ||
+		angleTrajectory == nullptr ||
+		origin == nullptr ||
+		angle == nullptr)
+	{
+		Com_Printf("CROFFSystem::ApplyROFF WARNING: invalid ROFF trajectories or bases\n");
+		return qfalse;
 	}
 
 	SetLerp(originTrajectory, TR_STATIONARY, origin, nullptr, svs.time, ROFF_SAMPLE_RATE);

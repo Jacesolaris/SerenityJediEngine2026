@@ -54,7 +54,7 @@ extern const char* UI_TeamName(int team);
 
 qboolean gTouchedForce = qfalse;
 
-void Menu_ShowItemByName(menuDef_t* menu, const char* p, qboolean bShow);
+void Menu_ShowItemByName(menuDef_t* menu, const char* p, const qboolean bShow);
 
 qboolean uiForcePowersDisabled[NUM_FORCE_POWERS] =
 {

@@ -281,18 +281,66 @@ static void G2_FindRecursiveSurface(const model_t* currentModel, int surfaceNum,
 
 qboolean G2_SetRootSurface(CGhoul2Info_v& ghoul2, const int modelIndex, const char* surfaceName)
 {
-	uint32_t			flags;
-	assert(modelIndex >= 0 && modelIndex < ghoul2.size());
-	assert(ghoul2[modelIndex].currentModel);
-	assert(ghoul2[modelIndex].currentModel->mdxm);
-	// first find if we already have this surface in the list
-	const int surf = G2_IsSurfaceLegal(ghoul2[modelIndex].currentModel, surfaceName, &flags);
+	uint32_t flags = 0;
+
+	// ----------------------------------------------------------------------
+	// Safety: validate model index
+	// ----------------------------------------------------------------------
+	if (modelIndex < 0 || modelIndex >= static_cast<int>(ghoul2.size()))
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: invalid modelIndex %d (size %d)\n",
+			modelIndex,
+			static_cast<int>(ghoul2.size())
+		);
+		return qfalse;
+	}
+
+	// ----------------------------------------------------------------------
+	// Safety: validate model and mdxm pointer
+	// ----------------------------------------------------------------------
+	if (ghoul2[modelIndex].currentModel == nullptr)
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: currentModel is NULL for modelIndex %d\n",
+			modelIndex
+		);
+		return qfalse;
+	}
+
+	if (ghoul2[modelIndex].currentModel->mdxm == nullptr)
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: mdxm is NULL for modelIndex %d\n",
+			modelIndex
+		);
+		return qfalse;
+	}
+
+	// ----------------------------------------------------------------------
+	// Find legal surface and set as root if found
+	// ----------------------------------------------------------------------
+	const int surf = G2_IsSurfaceLegal(
+		ghoul2[modelIndex].currentModel,
+		surfaceName,
+		&flags
+	);
+
 	if (surf != -1)
 	{
 		ghoul2[modelIndex].mSurfaceRoot = surf;
 		return qtrue;
 	}
-	assert(0);
+
+	// ----------------------------------------------------------------------
+	// Surface not found: log instead of assert
+	// ----------------------------------------------------------------------
+	Com_Printf(
+		"G2_SetRootSurface WARNING: surface '%s' not found on modelIndex %d\n",
+		surfaceName,
+		modelIndex
+	);
+
 	return qfalse;
 }
 

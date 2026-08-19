@@ -313,20 +313,14 @@ void G2_List_Model_Surfaces(const char* fileName)
 }
 
 // list all bones associated with a model
-void G2_List_Model_Bones(const char* fileName, int frame)
+void G2_List_Model_Bones(const char* fileName)
 {
 	const model_t* mod_m = R_GetModelByHandle(RE_RegisterModel(fileName));
 	const model_t* mod_a = R_GetModelByHandle(mod_m->mdxm->animIndex);
-	// 	mdxaFrame_t		*aframe=0;
-	//	int				frameSize;
 	mdxaHeader_t* header = mod_a->mdxa;
 
 	// figure out where the offset list is
 	const mdxaSkelOffsets_t* offsets = reinterpret_cast<mdxaSkelOffsets_t*>(reinterpret_cast<byte*>(header) + sizeof(mdxaHeader_t));
-
-	//    frameSize = (int)( &((mdxaFrame_t *)0)->boneIndexes[ header->numBones ] );
-
-	//	aframe = (mdxaFrame_t *)((byte *)header + header->ofsFrames + (frame * frameSize));
 		// walk each bone and list it's name
 	for (int x = 0; x < mod_a->mdxa->numBones; x++)
 	{

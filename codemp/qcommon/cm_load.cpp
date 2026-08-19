@@ -142,7 +142,7 @@ static void CMod_LoadShaders(const lump_t* l, clipMap_t& cm)
 	{
 		Com_Error(ERR_DROP, "Map with no shaders");
 	}
-	cm.shaders = static_cast<CCMShader*>(Hunk_Alloc((1 + count) * sizeof * cm.shaders, h_high));
+	cm.shaders = static_cast<CCMShader*>(Hunk_Alloc((1 + static_cast<unsigned long long>(count)) * sizeof * cm.shaders, h_high));
 	cm.numShaders = count;
 
 	CCMShader* out = cm.shaders;
@@ -266,7 +266,7 @@ CM_BoundBrush
 
 =================
 */
-void CM_BoundBrush(cbrush_t* b)
+static void CM_BoundBrush(cbrush_t* b)
 {
 	b->bounds[0][0] = -b->sides[0].plane->dist;
 	b->bounds[1][0] = b->sides[1].plane->dist;
@@ -284,7 +284,7 @@ CMod_LoadBrushes
 
 =================
 */
-void CMod_LoadBrushes(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadBrushes(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dbrush_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -349,7 +349,7 @@ static void CMod_LoadLeafs(const lump_t* l, clipMap_t& cm)
 	}
 
 	cm.areas = static_cast<cArea_t*>(Hunk_Alloc(cm.numAreas * sizeof * cm.areas, h_high));
-	cm.areaPortals = static_cast<int*>(Hunk_Alloc(cm.numAreas * cm.numAreas * sizeof * cm.areaPortals, h_high));
+	cm.areaPortals = static_cast<int*>(Hunk_Alloc(static_cast<unsigned long long>(cm.numAreas) * cm.numAreas * sizeof * cm.areaPortals, h_high));
 }
 
 /*
@@ -399,7 +399,7 @@ static void CMod_LoadLeafBrushes(const lump_t* l, clipMap_t& cm)
 		Com_Error(ERR_DROP, "CMod_LoadLeafBrushes: funny lump size");
 	const int count = l->filelen / sizeof * in;
 
-	cm.leafbrushes = static_cast<int*>(Hunk_Alloc((count + BOX_BRUSHES) * sizeof * cm.leafbrushes, h_high));
+	cm.leafbrushes = static_cast<int*>(Hunk_Alloc((static_cast<unsigned long long>(count) + BOX_BRUSHES) * sizeof * cm.leafbrushes, h_high));
 	cm.numLeafBrushes = count;
 
 	int* out = cm.leafbrushes;
@@ -520,7 +520,7 @@ static void CMod_LoadVisibility(const lump_t* l, clipMap_t& cm)
 	cm.visibility = static_cast<unsigned char*>(Hunk_Alloc(len, h_high));
 	cm.numClusters = LittleLong reinterpret_cast<int*>(buf)[0];
 	cm.clusterBytes = LittleLong reinterpret_cast<int*>(buf)[1];
-	Com_Memcpy(cm.visibility, buf + VIS_HEADER, len - VIS_HEADER);
+	Com_Memcpy(cm.visibility, buf + VIS_HEADER, static_cast<size_t>(len) - VIS_HEADER);
 }
 
 //==================================================================
@@ -1074,13 +1074,7 @@ int CM_FindSubBSP(const int modelIndex)
 	return -1;
 }
 
-void CM_GetWorldBounds(vec3_t mins, vec3_t maxs)
-{
-	VectorCopy(cmg.cmodels[0].mins, mins);
-	VectorCopy(cmg.cmodels[0].maxs, maxs);
-}
-
-int CM_ModelContents_Actual(const clipHandle_t model, clipMap_t* cm)
+static int CM_ModelContents_Actual(const clipHandle_t model, clipMap_t* cm)
 {
 	int contents = 0;
 	int i;

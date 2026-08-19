@@ -944,6 +944,14 @@ SamplerBindingsWriter& SamplerBindingsWriter::AddAnimatedImage(textureBundle_t* 
 {
 	int index;
 
+	if ((r_fullbright->integer
+		|| tr.refdef.doLAGoggles
+		|| tr.refdef.doFullbright)
+		&& bundle->isLightmap)
+	{
+		return AddStaticImage(tr.whiteImage, unit);
+	}
+
 	if (bundle->isVideoMap)
 	{
 		SamplerBinding* binding = &scratch[count];
@@ -2357,8 +2365,36 @@ static void RB_UpdateFogsConstants(gpuFrame_t* frame)
 
 		VectorCopy4(fog->surface, fogData->plane);
 		VectorCopy4(fog->color, fogData->color);
-		fogData->depthToOpaque = sqrtf(-logf(1.0f / 255.0f)) / fog->parms.depthForOpaque;
+		if (r_volumetricFog->integer)
+		{
+			fogData->depthToOpaque = (-logf(1.5f / 255.0f)) / fog->parms.depthForOpaque * tr.volumetricFogScale * r_volumetricFogScale->value;
+		}
+		else
+		{
+			fogData->depthToOpaque = sqrtf(-logf(1.0f / 255.0f)) / fog->parms.depthForOpaque;
+		}
+
 		fogData->hasPlane = fog->hasSurface;
+	}
+	if (tr.refdef.doLAGoggles && fogsBlock.numFogs + 1 <= MAX_GPU_FOGS)
+	{
+		FogsBlock::Fog* fogData = fogsBlock.fogs + fogsBlock.numFogs;
+
+		vec4_t color = {
+			0.75f,
+			0.42f + Q_flrand(0.0f, 1.0f) * 0.025f,
+			0.07f,
+			1.0f
+		};
+		const float depthForOpaque = (
+			r_volumetricFog->integer ?
+			(-logf(1.0f / 255.0f)) / 700.f :
+			sqrtf(-logf(1.0f / 255.0f)) / 700.f);
+
+		VectorCopy4(color, fogData->color);
+		fogData->depthToOpaque = depthForOpaque;
+		fogData->hasPlane = 0;
+		fogsBlock.numFogs++;
 	}
 
 	tr.fogsUboOffset = RB_AppendConstantsData(
@@ -2975,7 +3011,7 @@ static const void* RB_PostProcess(const void* data)
 
 		if (r_dynamicGlow->integer)
 		{
-			FBO_FastBlitIndexed(tr.renderFbo, tr.msaaResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			FBO_FastBlitIndexed(tr.renderFbo, tr.msaaResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		}
 	}
 
@@ -3052,7 +3088,7 @@ static const void* RB_PostProcess(const void* data)
 		GL_SetViewportAndScissor(0, 0, tr.smaaBlendFbo->width, tr.smaaBlendFbo->height);
 		qglClearBufferfv(GL_COLOR, 0, colorBlack);
 		GLSL_BindProgram(&tr.smaaBlendShader);
-		vec4_t subsamplesIndices;
+		vec4_t subsamplesIndices{};
 		if (r_smaa->integer == 1 || r_smaa->integer == 3)
 			VectorSet4(subsamplesIndices, 0.f, 0.f, 0.f, 0.f);
 		else if (r_smaa->integer == 2)
@@ -3101,7 +3137,30 @@ static const void* RB_PostProcess(const void* data)
 			autoExposure = (qboolean)(r_autoExposure->integer || r_forceAutoExposure->integer);
 			RB_ToneMap(srcFbo, srcBox, NULL, dstBox, autoExposure);
 		}
-		else if (r_cameraExposure->value == 0.0f)
+		else if (r_smaa->integer == 1)
+		{
+			FBO_Bind(NULL);
+			GL_SetViewportAndScissor(0, 0, srcFbo->width, srcFbo->height);
+			GLSL_BindProgram(&tr.smaaResolveShader);
+			GL_BindToTMU(tr.renderImage, 0);
+			GL_BindToTMU(tr.smaaBlendImage, 1);
+			GL_BindToTMU(tr.velocityImage, 2);
+			if (exposure == 0.0f)
+			{
+				GLSL_SetUniformVec4(&tr.smaaResolveShader, UNIFORM_COLOR, colorWhite);
+			}
+			else
+			{
+				vec4_t color{};
+				color[0] =
+					color[1] =
+					color[2] = pow(2, exposure);
+				color[3] = 1.0f;
+				GLSL_SetUniformVec4(&tr.smaaResolveShader, UNIFORM_COLOR, color);
+			}
+			qglDrawArrays(GL_TRIANGLES, 0, 3);
+		}
+		else if (exposure == 0.0f)
 		{
 			FBO_FastBlit(srcFbo, srcBox, NULL, dstBox, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		}
@@ -3111,14 +3170,14 @@ static const void* RB_PostProcess(const void* data)
 
 			color[0] =
 				color[1] =
-				color[2] = pow(2, r_cameraExposure->value); //exp2(r_cameraExposure->value);
+				color[2] = pow(2, exposure);
 			color[3] = 1.0f;
 
-			FBO_Blit(srcFbo, srcBox, NULL, NULL, dstBox, NULL, color, 0);
+			FBO_FastBlitFromTexture(srcFbo->colorImage[0], NULL, dstBox, color, 0);
 		}
 
 		// Copy depth buffer to the backbuffer for depth culling refractive surfaces
-		FBO_FastBlit(tr.renderFbo, srcBox, NULL, dstBox, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+		FBO_FastBlit(srcFbo, srcBox, NULL, dstBox, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 	}
 
 	if (r_drawSunRays->integer)
@@ -3156,7 +3215,7 @@ static const void* RB_PostProcess(const void* data)
 	if (r_cubeMapping->integer && tr.numCubemaps)
 	{
 		vec4i_t dstBox;
-		int cubemapIndex = R_CubemapForPoint(backEnd.viewParms.ori->origin);
+		int cubemapIndex = R_CubemapForPoint(backEnd.viewParms.ori.origin);
 
 		if (cubemapIndex)
 		{
@@ -3171,7 +3230,11 @@ static const void* RB_PostProcess(const void* data)
 	{
 		// Composite the glow/bloom texture
 		int blendFunc = 0;
-		vec4_t color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		vec4_t color{};
+		color[0] =
+			color[1] =
+			color[2] = pow(2, exposure);
+		color[3] = 1.0f;
 
 		if (r_dynamicGlow->integer == 2)
 		{
@@ -3189,7 +3252,7 @@ static const void* RB_PostProcess(const void* data)
 			color[0] = color[1] = color[2] = r_dynamicGlowIntensity->value;
 		}
 
-		FBO_BlitFromTexture(tr.glowFboScaled[0]->colorImage[0], NULL, NULL, NULL, NULL, NULL, color, blendFunc);
+		FBO_FastBlitFromTexture(tr.glowFboScaled[0]->colorImage[0], NULL, dstBox, color, blendFunc);
 	}
 
 	backEnd.framePostProcessed = qtrue;

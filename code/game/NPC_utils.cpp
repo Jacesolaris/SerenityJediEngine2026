@@ -52,6 +52,7 @@ extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce
 extern void ViewHeightFix(const gentity_t* ent);
 extern void AddLeanOfs(const gentity_t* ent, vec3_t point);
 extern void SubtractLeanOfs(const gentity_t* ent, vec3_t point);
+extern cvar_t* com_outcast;
 
 void CalcEntitySpot(const gentity_t* ent, const spot_t spot, vec3_t point)
 {
@@ -1169,60 +1170,79 @@ NPC_FindEnemy
 */
 static qboolean NPC_FindEnemy(const qboolean check_alerts = qfalse)
 {
-	gentity_t* newenemy = NPC_PickEnemyExt(check_alerts);
+	// 0. Exclusion: STOfficer + STOfficerAlt with flechette must NOT auto-acquire player
+	qboolean isOfficerType = qfalse;
+	qboolean isOfficerWithFlechette = qfalse;
 
-	//We're ignoring all enemies for now
+	if (Q_stricmp(NPC->NPC_type, "STOfficer") == 0 ||
+		Q_stricmp(NPC->NPC_type, "STOfficerAlt") == 0)
+	{
+		isOfficerType = qtrue;
+	}
+
+	if (isOfficerType && NPC->client->ps.weapon == WP_FLECHETTE)
+	{
+		isOfficerWithFlechette = qtrue;
+	}
+
+	if (com_outcast && com_outcast->integer == 0)
+	{
+		// 1. Force acquisition of the player if visible (except excluded officers)
+		if (!isOfficerWithFlechette)
+		{
+			gentity_t* player = &g_entities[0];
+			if (NPC_CheckVisibility(player, CHECK_FOV) >= VIS_FOV)
+			{
+				G_SetEnemy(NPC, player);
+				return qtrue;
+			}
+		}
+	}
+
+	// 2. Ignore enemies if flagged
 	if (NPC->svFlags & SVF_IGNORE_ENEMIES)
 	{
 		G_ClearEnemy(NPC);
 		return qfalse;
 	}
 
-	//we can't pick up any enemies for now
+	// 3. Confusion disables enemy acquisition
 	if (NPCInfo->confusionTime > level.time)
 	{
 		G_ClearEnemy(NPC);
 		return qfalse;
 	}
 
-	if (NPCInfo->insanityTime > level.time)
-	{
-		G_ClearEnemy(NPC);
-		return qfalse;
-	}
+	// 4. Keep locked enemy if valid
+	if ((NPC->svFlags & SVF_LOCKEDENEMY) && NPC_ValidEnemy(NPC->enemy))
+		return qtrue;
 
-	//Don't want a new enemy
-	if (NPC_ValidEnemy(NPC->enemy) && NPC->svFlags & SVF_LOCKEDENEMY)
+	// 5. Player-distance priority (except monsters)
+	if (NPC->client->NPC_class != CLASS_RANCOR &&
+		NPC->client->NPC_class != CLASS_WAMPA &&
+		NPC->client->NPC_class != CLASS_SAND_CREATURE &&
+		NPC_CheckPlayerDistance())
 	{
 		return qtrue;
 	}
 
-	//See if the player is closer than our current enemy
-	if (NPC->client->NPC_class != CLASS_RANCOR
-		&& NPC->client->NPC_class != CLASS_WAMPA
-		&& NPC->client->NPC_class != CLASS_SAND_CREATURE
-		&& NPC_CheckPlayerDistance())
-	{
-		//rancors, wampas & sand creatures don't care if player is closer, they always go with closest
-		return qtrue;
-	}
-
-	//Otherwise, turn off the flag
+	// 6. Unlock enemy if we reach this point
 	NPC->svFlags &= ~SVF_LOCKEDENEMY;
 
-	//If we've gotten here alright, then our target it still valid
+	// 7. Keep current enemy if still valid
 	if (NPC_ValidEnemy(NPC->enemy))
+		return qtrue;
+
+	// 8. Try to pick a new enemy
+	gentity_t* newEnemy = NPC_PickEnemyExt(check_alerts);
+
+	if (NPC_ValidEnemy(newEnemy))
 	{
+		G_SetEnemy(NPC, newEnemy);
 		return qtrue;
 	}
 
-	//if we found one, take it as the enemy
-	if (NPC_ValidEnemy(newenemy))
-	{
-		G_SetEnemy(NPC, newenemy);
-		return qtrue;
-	}
-
+	// 9. No valid enemy found
 	G_ClearEnemy(NPC);
 	return qfalse;
 }

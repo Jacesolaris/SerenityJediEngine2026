@@ -128,7 +128,7 @@ static MaterialReplace replaceMaterials[] =
 CMod_LoadShaders
 =================
 */
-void CMod_LoadShaders(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadShaders(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dshader_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -141,7 +141,7 @@ void CMod_LoadShaders(const lump_t* l, clipMap_t& cm)
 	{
 		Com_Error(ERR_DROP, "Map with no shaders");
 	}
-	cm.shaders = static_cast<CCMShader*>(Z_Malloc((1 + count) * sizeof * cm.shaders, TAG_BSP, qtrue));
+	cm.shaders = static_cast<CCMShader*>(Z_Malloc((1 + static_cast<unsigned long long>(count)) * sizeof * cm.shaders, TAG_BSP, qtrue));
 	//+1 for the BOX_SIDES to point at
 	cm.numShaders = count;
 
@@ -166,7 +166,7 @@ void CMod_LoadShaders(const lump_t* l, clipMap_t& cm)
 CMod_LoadSubmodels
 =================
 */
-void CMod_LoadSubmodels(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadSubmodels(const lump_t* l, clipMap_t& cm)
 {
 	int j;
 
@@ -235,7 +235,7 @@ CMod_LoadNodes
 
 =================
 */
-void CMod_LoadNodes(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadNodes(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dnode_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -266,7 +266,7 @@ CM_BoundBrush
 
 =================
 */
-void CM_BoundBrush(cbrush_t* b)
+static void CM_BoundBrush(cbrush_t* b)
 {
 	b->bounds[0][0] = -b->sides[0].plane->dist;
 	b->bounds[1][0] = b->sides[1].plane->dist;
@@ -284,7 +284,7 @@ CMod_LoadBrushes
 
 =================
 */
-void CMod_LoadBrushes(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadBrushes(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dbrush_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -293,7 +293,7 @@ void CMod_LoadBrushes(const lump_t* l, clipMap_t& cm)
 	}
 	const int count = l->filelen / sizeof * in;
 
-	cm.brushes = static_cast<cbrush_t*>(Z_Malloc((BOX_BRUSHES + count) * sizeof * cm.brushes, TAG_BSP, qfalse));
+	cm.brushes = static_cast<cbrush_t*>(Z_Malloc((BOX_BRUSHES + static_cast<unsigned long long>(count)) * sizeof * cm.brushes, TAG_BSP, qfalse));
 	cm.numBrushes = count;
 
 	cbrush_t* out = cm.brushes;
@@ -327,7 +327,7 @@ void CMod_LoadBrushes(const lump_t* l, clipMap_t& cm)
 CMod_LoadLeafs
 =================
 */
-void CMod_LoadLeafs(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadLeafs(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dleaf_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -337,7 +337,7 @@ void CMod_LoadLeafs(const lump_t* l, clipMap_t& cm)
 	if (count < 1)
 		Com_Error(ERR_DROP, "Map with no leafs");
 
-	cm.leafs = static_cast<cLeaf_t*>(Z_Malloc((BOX_LEAFS + count) * sizeof * cm.leafs, TAG_BSP, qfalse));
+	cm.leafs = static_cast<cLeaf_t*>(Z_Malloc((BOX_LEAFS + static_cast<unsigned long long>(count)) * sizeof * cm.leafs, TAG_BSP, qfalse));
 	cm.numLeafs = count;
 	cLeaf_t* out = cm.leafs;
 
@@ -357,7 +357,7 @@ void CMod_LoadLeafs(const lump_t* l, clipMap_t& cm)
 	}
 
 	cm.areas = static_cast<cArea_t*>(Z_Malloc(cm.numAreas * sizeof * cm.areas, TAG_BSP, qtrue));
-	cm.areaPortals = static_cast<int*>(Z_Malloc(cm.numAreas * cm.numAreas * sizeof * cm.areaPortals, TAG_BSP, qtrue));
+	cm.areaPortals = static_cast<int*>(Z_Malloc(static_cast<unsigned long long>(cm.numAreas) * cm.numAreas * sizeof * cm.areaPortals, TAG_BSP, qtrue));
 }
 
 /*
@@ -365,7 +365,7 @@ void CMod_LoadLeafs(const lump_t* l, clipMap_t& cm)
 CMod_LoadPlanes
 =================
 */
-void CMod_LoadPlanes(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadPlanes(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dplane_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -374,7 +374,7 @@ void CMod_LoadPlanes(const lump_t* l, clipMap_t& cm)
 
 	if (count < 1)
 		Com_Error(ERR_DROP, "Map with no planes");
-	cm.planes = static_cast<cplane_s*>(Z_Malloc((BOX_PLANES + count) * sizeof * cm.planes, TAG_BSP, qfalse));
+	cm.planes = static_cast<cplane_s*>(Z_Malloc((BOX_PLANES + static_cast<unsigned long long>(count)) * sizeof * cm.planes, TAG_BSP, qfalse));
 	cm.numPlanes = count;
 
 	cplane_t* out = cm.planes;
@@ -400,14 +400,14 @@ void CMod_LoadPlanes(const lump_t* l, clipMap_t& cm)
 CMod_LoadLeafBrushes
 =================
 */
-void CMod_LoadLeafBrushes(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadLeafBrushes(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<int*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
 		Com_Error(ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	const int count = l->filelen / sizeof * in;
 
-	cm.leafbrushes = static_cast<int*>(Z_Malloc((BOX_BRUSHES + count) * sizeof * cm.leafbrushes, TAG_BSP, qfalse));
+	cm.leafbrushes = static_cast<int*>(Z_Malloc((BOX_BRUSHES + static_cast<unsigned long long>(count)) * sizeof * cm.leafbrushes, TAG_BSP, qfalse));
 	cm.numLeafBrushes = count;
 
 	int* out = cm.leafbrushes;
@@ -423,7 +423,7 @@ void CMod_LoadLeafBrushes(const lump_t* l, clipMap_t& cm)
 CMod_LoadLeafSurfaces
 =================
 */
-void CMod_LoadLeafSurfaces(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadLeafSurfaces(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<int*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -446,7 +446,7 @@ void CMod_LoadLeafSurfaces(const lump_t* l, clipMap_t& cm)
 CMod_LoadBrushSides
 =================
 */
-void CMod_LoadBrushSides(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadBrushSides(const lump_t* l, clipMap_t& cm)
 {
 	auto in = reinterpret_cast<dbrushside_t*>(cmod_base + l->fileofs);
 	if (l->filelen % sizeof * in)
@@ -455,7 +455,7 @@ void CMod_LoadBrushSides(const lump_t* l, clipMap_t& cm)
 	}
 	const int count = l->filelen / sizeof * in;
 
-	cm.brushsides = static_cast<cbrushside_t*>(Z_Malloc((BOX_SIDES + count) * sizeof * cm.brushsides, TAG_BSP, qfalse));
+	cm.brushsides = static_cast<cbrushside_t*>(Z_Malloc((BOX_SIDES + static_cast<unsigned long long>(count)) * sizeof * cm.brushsides, TAG_BSP, qfalse));
 	cm.numBrushSides = count;
 
 	cbrushside_t* out = cm.brushsides;
@@ -478,7 +478,7 @@ void CMod_LoadBrushSides(const lump_t* l, clipMap_t& cm)
 CMod_LoadEntityString
 =================
 */
-void CMod_LoadEntityString(const lump_t* l, clipMap_t& cm, const char* name)
+static void CMod_LoadEntityString(const lump_t* l, clipMap_t& cm, const char* name)
 {
 	fileHandle_t h;
 	char ent_name[MAX_QPATH];
@@ -513,7 +513,7 @@ CMod_LoadVisibility
 */
 constexpr auto VIS_HEADER = 8;
 
-void CMod_LoadVisibility(const lump_t* l, clipMap_t& cm)
+static void CMod_LoadVisibility(const lump_t* l, clipMap_t& cm)
 {
 	const int len = l->filelen;
 	if (!len)
@@ -529,7 +529,7 @@ void CMod_LoadVisibility(const lump_t* l, clipMap_t& cm)
 	cm.visibility = static_cast<unsigned char*>(Z_Malloc(len, TAG_BSP, qtrue));
 	cm.numClusters = LittleLong reinterpret_cast<int*>(buf)[0];
 	cm.clusterBytes = LittleLong reinterpret_cast<int*>(buf)[1];
-	memcpy(cm.visibility, buf + VIS_HEADER, len - VIS_HEADER);
+	memcpy(cm.visibility, buf + VIS_HEADER, static_cast<size_t>(len) - VIS_HEADER);
 }
 
 //==================================================================
@@ -541,7 +541,7 @@ CMod_LoadPatches
 */
 constexpr auto MAX_PATCH_VERTS = 1024;
 
-void CMod_LoadPatches(const lump_t* surfs, const lump_t* verts, clipMap_t& cm)
+static void CMod_LoadPatches(const lump_t* surfs, const lump_t* verts, clipMap_t& cm)
 {
 	int count;
 	cPatch_t* patch;
@@ -607,7 +607,7 @@ CM_FreeMap
 Free any loaded map and all submodels
 ==================
 */
-void CM_FreeMap(void) {
+static void CM_FreeMap(void) {
 	memset(&cm, 0, sizeof(cm));
 	Hunk_ClearHigh();
 	CM_ClearLevelPatches();
@@ -710,7 +710,7 @@ static void CM_LoadMap_Actual(const char* name, const qboolean clientload, int* 
 		//traces in the same exact order ever time you load the map)
 		cm.checkcount++; // = 0;
 		memset(cm.areas, 0, cm.numAreas * sizeof * cm.areas);
-		memset(cm.areaPortals, 0, cm.numAreas * cm.numAreas * sizeof * cm.areaPortals);
+		memset(cm.areaPortals, 0, static_cast<unsigned long long>(cm.numAreas) * cm.numAreas * sizeof * cm.areaPortals);
 	}
 	else
 	{
@@ -1158,13 +1158,7 @@ int CM_FindSubBSP(const int modelIndex)
 	return -1;
 }
 
-void CM_GetWorldBounds(vec3_t mins, vec3_t maxs)
-{
-	VectorCopy(cmg.cmodels[0].mins, mins);
-	VectorCopy(cmg.cmodels[0].maxs, maxs);
-}
-
-int CM_ModelContents_Actual(const clipHandle_t model, clipMap_t* cm)
+static int CM_ModelContents_Actual(const clipHandle_t model, clipMap_t* cm)
 {
 	if (!cm)
 	{
@@ -1210,7 +1204,6 @@ CM_WritePortalState
 Writes the portal state to a savegame file
 ===================
 */
-//
 
 void CM_WritePortalState()
 {

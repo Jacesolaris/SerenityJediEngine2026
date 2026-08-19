@@ -244,7 +244,7 @@ extern void maglock_link(gentity_t* self);
 extern void WP_flechette_alt_blow(gentity_t* ent);
 extern void WP_prox_mine_think(gentity_t* ent);
 extern void camera_aim(gentity_t* self);
-extern void fx_explosion_trail_link(gentity_t* self);
+extern void fx_explosion_trail_link(gentity_t* ent);
 extern void fx_explosion_trail_think(gentity_t* ent);
 extern void fx_target_beam_link(gentity_t* self);
 extern void fx_target_beam_think(gentity_t* self);

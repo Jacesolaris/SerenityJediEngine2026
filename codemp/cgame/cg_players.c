@@ -11828,57 +11828,57 @@ This is the MP version — cleaned and corrected with no behaviour changes.
 void CG_AddGhoul2Mark(const int shader, const float size,
 	vec3_t start, vec3_t end, const int entnum,
 	vec3_t entposition, const float entangle,
-	void* ghoul2, vec3_t scale, const int life_time)
+	void* ghoul2, vec3_t scale, const int lifeTime)
 {
-	SSkinGoreData gore_skin;
+	SSkinGoreData goreSkin;
 
 	assert(ghoul2);
 
-	memset(&gore_skin, 0, sizeof(gore_skin));
+	memset(&goreSkin, 0, sizeof(goreSkin));
 
 	// Too many marks already?
 	if (trap->G2API_GetNumGoreMarks(ghoul2, 0) >= cg_ghoul2Marks.integer)
 		return;
 
 	// Basic gore parameters
-	gore_skin.growDuration = -1;     // default expand time
-	gore_skin.goreScaleStartFraction = 1.0f;   // default start scale
-	gore_skin.frontFaces = qtrue;
-	gore_skin.backFaces = qtrue;
-	gore_skin.lifeTime = life_time;
-	gore_skin.baseModelOnly = qfalse;
+	goreSkin.growDuration = -1;     // default expand time
+	goreSkin.goreScaleStartFraction = 1.0f;   // default start scale
+	goreSkin.frontFaces = qtrue;
+	goreSkin.backFaces = qtrue;
+	goreSkin.lifeTime = lifeTime;
+	goreSkin.baseModelOnly = qfalse;
 
-	gore_skin.currentTime = cg.time;
-	gore_skin.entNum = entnum;
-	gore_skin.SSize = size;
-	gore_skin.TSize = size;
-	gore_skin.theta = flrand(0.0f, 6.28f);
-	gore_skin.shader = shader;
+	goreSkin.currentTime = cg.time;
+	goreSkin.entNum = entnum;
+	goreSkin.SSize = size;
+	goreSkin.TSize = size;
+	goreSkin.theta = flrand(0.0f, 6.28f);
+	goreSkin.shader = shader;
 
 	// Scale safety
 	if (!scale[0] && !scale[1] && !scale[2])
 	{
-		VectorSet(gore_skin.scale, 1.0f, 1.0f, 1.0f);
+		VectorSet(goreSkin.scale, 1.0f, 1.0f, 1.0f);
 	}
 	else
 	{
-		VectorCopy(scale, gore_skin.scale);
+		VectorCopy(scale, goreSkin.scale);
 	}
 
 	// Hit location
-	VectorCopy(start, gore_skin.hitLocation);
+	VectorCopy(start, goreSkin.hitLocation);
 
 	// Ray direction (must be normalized)
-	VectorSubtract(end, start, gore_skin.rayDirection);
-	if (VectorNormalize(gore_skin.rayDirection) < 0.1f)
+	VectorSubtract(end, start, goreSkin.rayDirection);
+	if (VectorNormalize(goreSkin.rayDirection) < 0.1f)
 		return;
 
 	// Entity transform
-	VectorCopy(entposition, gore_skin.position);
-	gore_skin.angles[YAW] = entangle;
+	VectorCopy(entposition, goreSkin.position);
+	goreSkin.angles[YAW] = entangle;
 
 	// Submit to Ghoul2
-	trap->G2API_AddSkinGore(ghoul2, &gore_skin);
+	trap->G2API_AddSkinGore(ghoul2, &goreSkin);
 }
 
 /*

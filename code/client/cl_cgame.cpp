@@ -56,7 +56,7 @@ extern sfxHandle_t AS_GetBModelSound(const char* name, int stage);
 extern void AS_AddPrecacheEntry(const char* name);
 extern menuDef_t* Menus_FindByName(const char* p);
 
-extern qboolean R_inPVS(const vec3_t p1, const vec3_t p2);
+extern qboolean R_inPVS(const vec3_t p1, const vec3_t p2, byte* mask);
 
 void UI_SetActiveMenu(const char* menuname, const char* menuID);
 
@@ -1043,7 +1043,7 @@ intptr_t CL_CgameSystemCalls(intptr_t* args)
 		return 0;
 
 	case CG_R_INPVS:
-		return re.R_inPVS(static_cast<float*>(VMA(1)), static_cast<float*>(VMA(2)));
+		return re.inPVS((float*)VMA(1), (float*)VMA(2), (byte*)VMA(3));
 
 	case CG_R_GETLIGHTING:
 		return re.GetLighting(static_cast<const float*>(VMA(1)), static_cast<float*>(VMA(2)),

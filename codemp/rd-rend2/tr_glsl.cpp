@@ -1358,9 +1358,6 @@ static bool GLSL_IsValidPermutationForFog(int shaderCaps)
 
 static bool GLSL_IsValidPermutationForLight(int lightType, int shaderCaps)
 {
-	if ((shaderCaps & LIGHTDEF_USE_PARALLAXMAP) && !r_parallaxMapping->integer)
-		return false;
-
 	if (!lightType && (shaderCaps & LIGHTDEF_USE_PARALLAXMAP))
 		return false;
 

@@ -1676,7 +1676,7 @@ static void R_Register(void)
 	r_drawBuffer = ri->Cvar_Get("r_drawBuffer", "GL_BACK", CVAR_CHEAT, "");
 	r_lockpvs = ri->Cvar_Get("r_lockpvs", "0", CVAR_CHEAT, "");
 	r_noportals = ri->Cvar_Get("r_noportals", "0", CVAR_CHEAT, "");
-	r_shadows = ri->Cvar_Get("cg_shadows", "1", 0, "");
+	r_shadows = ri->Cvar_Get("cg_shadows", "2", 0, "");
 
 	r_marksOnTriangleMeshes = ri->Cvar_Get("r_marksOnTriangleMeshes", "0", CVAR_ARCHIVE, "");
 
@@ -2030,6 +2030,23 @@ static void R_ShutdownBackEndFrameData()
 	}
 }
 
+static bool r_cacheGPUShaders = false;
+
+void R_ClearTr(void)
+{
+	if (r_cacheGPUShaders)
+	{
+		// clear all but GPU shaders in tr
+		Com_Memset(&tr, 0, (byte*)&tr.splashScreenShader - (byte*)&tr);
+		Com_Memset(&tr.staticUbo, 0, sizeof(tr) - ((byte*)&tr.staticUbo - (byte*)&tr));
+	}
+	else
+		// clear all of tr
+		Com_Memset(&tr, 0, sizeof(tr));
+}
+
+static bool r_inited = false;
+
 /*
 ===============
 R_Init
@@ -2040,10 +2057,10 @@ void R_Init(void)
 	byte* ptr;
 	int i;
 
-	ri->Printf(PRINT_ALL, "----- Loading Rend2 renderer -----\n");
+	ri->Printf(PRINT_ALL, "-----Loading MP Quality Mode-----\n");
 
 	// clear all our internal state
-	Com_Memset(&tr, 0, sizeof(tr));
+	R_ClearTr();
 	Com_Memset(&backEnd, 0, sizeof(backEnd));
 	Com_Memset(&tess, 0, sizeof(tess));
 
@@ -2075,7 +2092,6 @@ void R_Init(void)
 	}
 
 	R_InitFogTable();
-
 	R_ImageLoader_Init();
 	R_NoiseInit();
 	R_Register();
@@ -2110,31 +2126,19 @@ void R_Init(void)
 	}
 
 	R_InitImagesPool();
-
 	InitOpenGL();
-
 	R_InitGPUBuffers();
-
 	R_InitStaticConstants();
 	R_InitBackEndFrameData();
 	R_InitImages();
-
 	FBO_Init();
-
 	GLSL_LoadGPUShaders();
-
 	R_InitShaders(qfalse);
-
 	R_InitSkins();
-
 	R_InitFonts();
-
 	R_ModelInit();
-
 	R_InitDecals();
-
 	R_InitQueries();
-
 	R_InitWeatherSystem();
 
 #if defined(_DEBUG)
@@ -2153,7 +2157,7 @@ void R_Init(void)
 		ri->Cvar_Set("com_rend2", "1");
 	}
 
-	ri->Printf(PRINT_ALL, "----- Rend2 renderer loaded -----\n");
+	ri->Printf(PRINT_ALL, "-----MP Quality Mode loaded-----\n");
 }
 
 /*

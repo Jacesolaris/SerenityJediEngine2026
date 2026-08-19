@@ -3595,8 +3595,7 @@ void CG_PlayerLockedWeaponSpeech(const int jumping)
 							!Q_stricmp(player->model, "kyleJK2") ||
 							!Q_stricmp(player->model, "Kyledf") ||
 							!Q_stricmp(player->model, "Kyle_MOD") ||
-							!Q_stricmp(player->model, "df2_kyle") &&
-							cg_com_outcast.integer == 1)
+							!Q_stricmp(player->model, "df2_kyle") && cg_com_outcast.integer == 1)
 						{ // Kyle
 							G_SoundOnEnt(player, CHAN_VOICE, va("sound/chars/kyle/09kyk015.wav"));
 						}

@@ -95,7 +95,8 @@ R_ColorShiftLightingBytes
 
 ===============
 */
-void R_ColorShiftLightingBytes(byte in[4], byte out[4]) {
+void R_ColorShiftLightingBytes(byte in[4], byte out[4]) 
+{
 	// shift the color data based on overbright range
 	const int shift = Q_max(0, r_mapOverBrightBits->integer - tr.overbrightBits);
 
@@ -125,7 +126,8 @@ R_ColorShiftLightingBytes
 
 ===============
 */
-static void R_ColorShiftLightingBytes(byte in[3]) {
+static void R_ColorShiftLightingBytes(byte in[3]) 
+{
 	// shift the color data based on overbright range
 	const int shift = Q_max(0, r_mapOverBrightBits->integer - tr.overbrightBits);
 

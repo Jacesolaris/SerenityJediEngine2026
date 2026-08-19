@@ -2115,7 +2115,7 @@ void G2API_ListBones(CGhoul2Info* ghlInfo, const int frame)
 {
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		G2_List_Model_Bones(ghlInfo->mFileName, frame);
+		G2_List_Model_Bones(ghlInfo->mFileName);
 	}
 }
 

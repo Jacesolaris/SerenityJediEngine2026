@@ -2132,16 +2132,11 @@ delay - after spawned or triggered, how many seconds to wait to spawn the NPC
 */
 extern qboolean spawning; // the G_Spawn*() functions are valid  (only turned on during one function)
 extern void NPC_PrecacheByClassName(const char*);
+extern void NPC_PrecacheAnimationCFG(const char* NPC_type);
 
 void SP_NPC_spawner(gentity_t* self)
 {
-	extern void NPC_PrecacheAnimationCFG(const char* NPC_type);
 	float fDelay;
-
-	/*if (!self->fullName || !self->fullName[0])
-	{
-		self->fullName = "Humanoid Lifeform";
-	}*/
 
 	if (!self->count)
 	{

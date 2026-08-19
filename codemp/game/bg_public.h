@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-15,Month-08,Year-26,BuildNum-06" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-19,Month-08,Year-26,BuildNum-08" // build date
 
 #define	STEPSIZE		18
 
@@ -2060,9 +2060,9 @@ float BG_SI_Length(const saberInfo_t* saber);
 float BG_SI_LengthMax(const saberInfo_t* saber);
 void BG_SI_ActivateTrail(saberInfo_t* saber, float duration);
 void BG_SI_DeactivateTrail(saberInfo_t* saber, float duration);
-extern void BG_AttachToRancor(void* ghoul2, float ranc_yaw, vec3_t ranc_origin, int time, qhandle_t* modelList, vec3_t model_scale, qboolean in_mouth, vec3_t out_origin, vec3_t out_angles, matrix3_t out_axis);
+extern void BG_AttachToRancor(void* ghoul2, float ranc_yaw, vec3_t ranc_origin, int time, qhandle_t* modelList, vec3_t modelScale, qboolean in_mouth, vec3_t out_origin, vec3_t out_angles, matrix3_t out_axis);
 void BG_ClearRocketLock(playerState_t* ps);
-extern void BG_AttachToSandCreature(void* ghoul2, float ranc_yaw, vec3_t ranc_origin, int time, qhandle_t* modelList, vec3_t model_scale, vec3_t out_origin, vec3_t out_angles, vec3_t out_axis[3]);
+extern void BG_AttachToSandCreature(void* ghoul2, float ranc_yaw, vec3_t ranc_origin, int time, qhandle_t* modelList, vec3_t modelScale, vec3_t out_origin, vec3_t out_angles, vec3_t out_axis[3]);
 
 extern int WeaponIdleAnim[WP_NUM_WEAPONS];
 

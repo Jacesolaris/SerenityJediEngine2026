@@ -733,13 +733,17 @@ static void SV_Status_f()
 	Com_Printf("name    : %s^7\n", cl->name);
 	Com_Printf("score   : %i\n", cl->gentity->client->persistant[PERS_SCORE]);
 	Com_Printf("version : %s %s %i\n", STATUS_OS, VERSION_STRING_DOTTED, PROTOCOL_VERSION);
-#ifdef JK2_MODE
-	Com_Printf("game    : Jedi Outcast %s\n", FS_GetCurrentGameDir());
-#else
-	Com_Printf("game    : Jedi Academy %s\n", FS_GetCurrentGameDir());
-#endif
+
+	if (com_outcast && com_outcast->integer == 1)
+	{
+		Com_Printf("game    : Jedi Outcast %s\n", FS_GetCurrentGameDir());
+	}
+	else
+	{
+		Com_Printf("game    : Jedi Academy %s\n", FS_GetCurrentGameDir());
+	}
 	Com_Printf("map     : %s at %s\n", sv_mapname->string, ivtos(cl->gentity->client->origin));
-}
+	}
 
 /*
 ===========

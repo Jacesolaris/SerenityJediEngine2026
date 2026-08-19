@@ -24,8 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 void RB_ToneMap(FBO_t* hdrFbo, vec4i_t hdrBox, FBO_t* ldrFbo, vec4i_t ldrBox, int autoExposure)
 {
-	vec4i_t srcBox, dstBox;
-	vec4_t color;
+	vec4i_t srcBox{}, dstBox{};
+	vec4_t color{};
 	static int lastFrameCount = 0;
 
 	if (autoExposure)
@@ -77,7 +77,7 @@ void RB_ToneMap(FBO_t* hdrFbo, vec4i_t hdrBox, FBO_t* ldrFbo, vec4i_t ldrBox, in
 	// tonemap
 	color[0] =
 		color[1] =
-		color[2] = powf(2.0f, r_cameraExposure->value); //exp2(r_cameraExposure->value);
+		color[2] = powf(2.0f, r_cameraExposure->value + tr.overbrightBits); //exp2(r_cameraExposure->value);
 	color[3] = 1.0f;
 
 	if (autoExposure)
@@ -87,7 +87,20 @@ void RB_ToneMap(FBO_t* hdrFbo, vec4i_t hdrBox, FBO_t* ldrFbo, vec4i_t ldrBox, in
 
 	bool srgbTransform = tr.hdrLighting == qtrue;
 	shaderProgram_t* shader = srgbTransform ? &tr.tonemapShader[1] : &tr.tonemapShader[0];
-	FBO_Blit(hdrFbo, hdrBox, NULL, ldrFbo, ldrBox, shader, color, 0);
+
+	if (r_smaa->integer == 1)
+		GL_BindToTMU(tr.smaaBlendImage, 2);
+
+	FBO_Bind(NULL);
+	GL_SetViewportAndScissor(ldrBox[0], ldrBox[1], ldrBox[2], ldrBox[3]);
+	GL_Cull(CT_TWO_SIDED);
+	GL_State(GLS_DEPTHTEST_DISABLE);
+	GLSL_BindProgram(shader);
+	GL_BindToTMU(hdrFbo->colorImage[0], TB_COLORMAP);
+	GLSL_SetUniformVec4(shader, UNIFORM_COLOR, color);
+	GLSL_SetUniformVec2(shader, UNIFORM_AUTOEXPOSUREMINMAX, tr.refdef.autoExposureMinMax);
+	GLSL_SetUniformVec3(shader, UNIFORM_TONEMINAVGMAXLINEAR, tr.refdef.toneMinAvgMaxLinear);
+	RB_InstantTriangle();
 }
 
 /*

@@ -101,9 +101,9 @@ void CG_AddGhoul2Mark(
 	vec3_t entposition,
 	const float entangle,
 	CGhoul2Info_v& ghoul2,
-	vec3_t model_scale,
-	const int life_time,
-	const int first_model,
+	vec3_t modelScale,
+	const int lifeTime,
+	const int firstModel,
 	const vec3_t uaxis)   // <-- FIXED
 {
 	if (!cg_g2Marks.integer)
@@ -111,64 +111,64 @@ void CG_AddGhoul2Mark(
 		return;
 	}
 
-	static SSkinGoreData gore_skin = {};
+	static SSkinGoreData goreSkin = {};
 
-	gore_skin.growDuration = -1;
-	gore_skin.goreScaleStartFraction = 1.0;
-	gore_skin.frontFaces = true;
-	gore_skin.backFaces = false;
-	gore_skin.lifeTime = life_time;
-	gore_skin.firstModel = first_model;
-	gore_skin.currentTime = cg.time;
-	gore_skin.entNum = entnum;
-	gore_skin.SSize = size;
-	gore_skin.TSize = size;
-	gore_skin.shader = type;
-	gore_skin.theta = flrand(0.0f, 6.28f);
+	goreSkin.growDuration = -1;
+	goreSkin.goreScaleStartFraction = 1.0;
+	goreSkin.frontFaces = true;
+	goreSkin.backFaces = false;
+	goreSkin.lifeTime = lifeTime;
+	goreSkin.firstModel = firstModel;
+	goreSkin.currentTime = cg.time;
+	goreSkin.entNum = entnum;
+	goreSkin.SSize = size;
+	goreSkin.TSize = size;
+	goreSkin.shader = type;
+	goreSkin.theta = flrand(0.0f, 6.28f);
 
 	// -----------------------------
 	// FIXED: uaxis is now a pointer
 	// -----------------------------
 	if (uaxis != nullptr)
 	{
-		gore_skin.backFaces = true;
-		gore_skin.SSize = 6;
-		gore_skin.TSize = 3;
-		gore_skin.depthStart = -10;
-		gore_skin.depthEnd = 15;
-		gore_skin.useTheta = false;
+		goreSkin.backFaces = true;
+		goreSkin.SSize = 6;
+		goreSkin.TSize = 3;
+		goreSkin.depthStart = -10;
+		goreSkin.depthEnd = 15;
+		goreSkin.useTheta = false;
 
-		VectorCopy(uaxis, gore_skin.uaxis);
+		VectorCopy(uaxis, goreSkin.uaxis);
 
-		if (VectorNormalize(gore_skin.uaxis) < 0.001f)
+		if (VectorNormalize(goreSkin.uaxis) < 0.001f)
 		{
 			return;
 		}
 	}
 	else
 	{
-		gore_skin.depthStart = -48;
-		gore_skin.depthEnd = 48;
-		gore_skin.useTheta = true;
+		goreSkin.depthStart = -48;
+		goreSkin.depthEnd = 48;
+		goreSkin.useTheta = true;
 	}
 
-	VectorCopy(model_scale, gore_skin.scale);
+	VectorCopy(modelScale, goreSkin.scale);
 
 	if (VectorCompare(hitdirection, vec3_origin))
 	{
-		VectorSubtract(entposition, hitloc, gore_skin.rayDirection);
-		VectorNormalize(gore_skin.rayDirection);
+		VectorSubtract(entposition, hitloc, goreSkin.rayDirection);
+		VectorNormalize(goreSkin.rayDirection);
 	}
 	else
 	{
-		VectorCopy(hitdirection, gore_skin.rayDirection);
+		VectorCopy(hitdirection, goreSkin.rayDirection);
 	}
 
-	VectorCopy(hitloc, gore_skin.hitLocation);
-	VectorCopy(entposition, gore_skin.position);
-	gore_skin.angles[YAW] = entangle;
+	VectorCopy(hitloc, goreSkin.hitLocation);
+	VectorCopy(entposition, goreSkin.position);
+	goreSkin.angles[YAW] = entangle;
 
-	gi.G2API_AddSkinGore(ghoul2, gore_skin);
+	gi.G2API_AddSkinGore(ghoul2, goreSkin);
 }
 
 qboolean CG_RegisterClientModelname(clientInfo_t* ci, const char* headModelName, const char* headSkinName,
@@ -7262,7 +7262,7 @@ void CG_SaberDoWeaponHitMarks(
 	// ----------------------------------------------------------------------
 	// Burn mark with glow
 	// ----------------------------------------------------------------------
-	int life_time =
+	int lifeTime =
 		(1.01f - (static_cast<float>(hit_ent->health) / hit_ent->max_health)) *
 		static_cast<float>(Q_irand(8000, 15000));
 
@@ -7282,7 +7282,7 @@ void CG_SaberDoWeaponHitMarks(
 		if (client->ps.saber[saberNum].g2MarksShader2[0])
 		{
 			mark_shader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2MarksShader2);
-			life_time = Q_irand(20000, 30000);
+			lifeTime = Q_irand(20000, 30000);
 		}
 	}
 	else
@@ -7290,7 +7290,7 @@ void CG_SaberDoWeaponHitMarks(
 		if (client->ps.saber[saberNum].g2MarksShader[0])
 		{
 			mark_shader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2MarksShader);
-			life_time = Q_irand(20000, 30000);
+			lifeTime = Q_irand(20000, 30000);
 		}
 	}
 
@@ -7299,7 +7299,7 @@ void CG_SaberDoWeaponHitMarks(
 	// ----------------------------------------------------------------------
 	if (mark_shader)
 	{
-		life_time = static_cast<int>(ceilf(static_cast<float>(life_time) * size_time_scale));
+		lifeTime = static_cast<int>(ceilf(static_cast<float>(lifeTime) * size_time_scale));
 		size = Q_flrand(2.0f, 3.0f) * size_time_scale;
 
 		CG_AddGhoul2Mark(
@@ -7312,7 +7312,7 @@ void CG_SaberDoWeaponHitMarks(
 			hit_ent->client->renderInfo.legsYaw,
 			hit_ent->ghoul2,
 			hit_ent->s.modelScale,
-			life_time,
+			lifeTime,
 			0,
 			use_uaxis ? uaxis : nullptr);
 	}
@@ -7326,7 +7326,7 @@ void CG_SaberDoWeaponHitMarks(
 		{
 			weapon_mark_shader =
 				cgi_R_RegisterShader(client->ps.saber[saberNum].g2WeaponMarkShader2);
-			life_time = Q_irand(7000, 12000);
+			lifeTime = Q_irand(7000, 12000);
 		}
 	}
 	else
@@ -7335,7 +7335,7 @@ void CG_SaberDoWeaponHitMarks(
 		{
 			weapon_mark_shader =
 				cgi_R_RegisterShader(client->ps.saber[saberNum].g2WeaponMarkShader);
-			life_time = Q_irand(7000, 12000);
+			lifeTime = Q_irand(7000, 12000);
 		}
 	}
 
@@ -7380,7 +7380,7 @@ void CG_SaberDoWeaponHitMarks(
 	vec3_t back_dir;
 	VectorScale(hit_dir, -1, back_dir);
 
-	life_time = static_cast<int>(ceilf(static_cast<float>(life_time) * size_time_scale));
+	lifeTime = static_cast<int>(ceilf(static_cast<float>(lifeTime) * size_time_scale));
 	size = Q_flrand(1.0f, 3.0f) * size_time_scale;
 
 	if (splatter_on_cent->gent->ghoul2.size() > saberNum + 1)
@@ -7395,7 +7395,7 @@ void CG_SaberDoWeaponHitMarks(
 			yaw_angle,
 			splatter_on_cent->gent->ghoul2,
 			splatter_on_cent->currentState.modelScale,
-			life_time,
+			lifeTime,
 			saberNum + 1,
 			use_uaxis ? uaxis : nullptr);
 	}

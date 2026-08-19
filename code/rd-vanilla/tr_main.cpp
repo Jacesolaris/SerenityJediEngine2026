@@ -138,9 +138,10 @@ int R_CullLocalPointAndRadius(const vec3_t pt, const float radius)
 */
 int R_CullPointAndRadius(const vec3_t pt, const float radius)
 {
+	int		i;
 	float dist;
 	cplane_t* frust;
-	qboolean might_be_clipped = qfalse;
+	qboolean mightBeClipped = qfalse;
 
 	if (r_nocull->integer == 1)
 	{
@@ -148,46 +149,48 @@ int R_CullPointAndRadius(const vec3_t pt, const float radius)
 	}
 
 	// check against frustum planes
-#ifdef JK2_MODE
-	// They used 4 frustrum planes in JK2, and 5 in JKA
-	for (i = 0; i < 4; i++)
+	if (com_outcast && com_outcast->integer == 1)
 	{
-		frust = &tr.viewParms.frustum[i];
+		for (i = 0; i < 4; i++)
+		{
+			frust = &tr.viewParms.frustum[i];
 
-		dist = DotProduct(pt, frust->normal) - frust->dist;
-		if (dist < -radius)
-		{
-			return CULL_OUT;
-		}
-		else if (dist <= radius)
-		{
-			might_be_clipped = qtrue;
+			dist = DotProduct(pt, frust->normal) - frust->dist;
+			if (dist < -radius)
+			{
+				return CULL_OUT;
+			}
+			else if (dist <= radius)
+			{
+				mightBeClipped = qtrue;
+			}
 		}
 	}
-#else
-	for (auto& i : tr.viewParms.frustum)
+	else
 	{
-		frust = &i;
+		for (auto& i : tr.viewParms.frustum)
+		{
+			frust = &i;
 
-		dist = DotProduct(pt, frust->normal) - frust->dist;
-		if (dist < -radius)
-		{
-			return CULL_OUT;
-		}
-		if (dist <= radius)
-		{
-			might_be_clipped = qtrue;
+			dist = DotProduct(pt, frust->normal) - frust->dist;
+			if (dist < -radius)
+			{
+				return CULL_OUT;
+			}
+			if (dist <= radius)
+			{
+				mightBeClipped = qtrue;
+			}
 		}
 	}
-#endif
 
-	if (might_be_clipped)
+	if (mightBeClipped)
 	{
 		return CULL_CLIP;
 	}
 
 	return CULL_IN; // completely inside frustum
-}
+	}
 
 /*
 =================

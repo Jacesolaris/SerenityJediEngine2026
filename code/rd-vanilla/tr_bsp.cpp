@@ -100,7 +100,8 @@ R_ColorShiftLightingBytes
 
 ===============
 */
-void R_ColorShiftLightingBytes(byte in[4], byte out[4]) {
+void R_ColorShiftLightingBytes(byte in[4], byte out[4])
+{
 	// shift the color data based on overbright range
 	const int shift = Q_max(0, r_mapOverBrightBits->integer - tr.overbrightBits);
 
@@ -130,7 +131,8 @@ R_ColorShiftLightingBytes
 
 ===============
 */
-static void R_ColorShiftLightingBytes(byte in[3]) {
+static void R_ColorShiftLightingBytes(byte in[3])
+{
 	// shift the color data based on overbright range
 	const int shift = Q_max(0, r_mapOverBrightBits->integer - tr.overbrightBits);
 
@@ -316,12 +318,6 @@ static shader_t* ShaderForShaderNum(int shaderNum, const int* lightmapNum, const
 		styles = vertex_styles;
 	}
 
-	/*	if ( r_fullbright->integer )
-		{
-			lightmapNum = lightmapsFullBright;
-			styles = vertexStyles;
-		}
-	*/
 	shader_t* shader = R_FindShader(dsh->shader, lightmapNum, styles, qtrue);
 
 	// if the shader had errors, just use default shader

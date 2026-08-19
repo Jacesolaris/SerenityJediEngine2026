@@ -920,39 +920,39 @@ void fx_explosion_trail_use(gentity_t* self, gentity_t* other, gentity_t* activa
 }
 
 //----------------------------------------------------------
-void fx_explosion_trail_link(gentity_t* self)
+void fx_explosion_trail_link(gentity_t* ent)
 {
 	vec3_t dir;
 
 	// we ony activate when used
-	self->e_UseFunc = useF_fx_explosion_trail_use;
+	ent->e_UseFunc = useF_fx_explosion_trail_use;
 
-	if (self->target)
+	if (ent->target)
 	{
 		gentity_t* target = nullptr;
 		// try to use the target to override the orientation
-		target = G_Find(target, FOFS(targetname), self->target);
+		target = G_Find(target, FOFS(targetname), ent->target);
 
 		if (!target)
 		{
-			gi.Printf(S_COLOR_RED"ERROR: fx_explosion_trail %s could not find target %s\n", self->targetname,
-				self->target);
-			G_FreeEntity(self);
+			gi.Printf(S_COLOR_RED"ERROR: fx_explosion_trail %s could not find target %s\n", ent->targetname,
+				ent->target);
+			G_FreeEntity(ent);
 			return;
 		}
 
 		// Our target is valid so lets use that
-		VectorSubtract(target->s.origin, self->s.origin, dir);
+		VectorSubtract(target->s.origin, ent->s.origin, dir);
 		VectorNormalize(dir);
 	}
 	else
 	{
 		// we are assuming that we have angles, but there are no checks to verify this
-		AngleVectors(self->s.angles, dir, nullptr, nullptr);
+		AngleVectors(ent->s.angles, dir, nullptr, nullptr);
 	}
 
 	// NOTE: this really isn't an angle, but rather an orientation vector
-	G_SetAngles(self, dir);
+	G_SetAngles(ent, dir);
 }
 
 /*QUAKED fx_explosion_trail (0 0 1) (-8 -8 -8) (8 8 8) GRAVITY

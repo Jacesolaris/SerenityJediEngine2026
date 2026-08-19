@@ -832,7 +832,6 @@ static void NPC_BSSniper_Attack()
 	Sniper_UpdateEnemyPos();
 	//can we see our target?
 	if (NPC_ClearLOS(NPC->enemy))
-		//|| (NPCInfo->stats.aim >= 5 && gi.inPVS( NPC->client->renderInfo.eyePoint, NPC->enemy->currentOrigin )) )
 	{
 		NPCInfo->enemyLastSeenTime = level.time;
 		VectorCopy(NPC->enemy->currentOrigin, NPCInfo->enemyLastSeenLocation);

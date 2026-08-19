@@ -1876,7 +1876,7 @@ void G2API_ListBones(CGhoul2Info* ghlInfo, const int frame)
 {
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		G2_List_Model_Bones(ghlInfo->mFileName, frame);
+		G2_List_Model_Bones(ghlInfo->mFileName);
 	}
 }
 
@@ -2227,7 +2227,6 @@ void G2API_AddSkinGore(CGhoul2Info_v& ghoul2, SSkinGoreData& gore)
 	}
 
 	// make sure we have transformed the whole skeletons for each model
-	//G2_ConstructGhoulSkeleton(ghoul2, gore.currentTime, NULL, true, gore.angles, gore.position, gore.scale, false);
 	G2_ConstructGhoulSkeleton(ghoul2, gore.currentTime, true, gore.scale);
 
 	// pre generate the world matrix - used to transform the incoming ray

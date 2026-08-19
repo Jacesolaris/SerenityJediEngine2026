@@ -416,7 +416,7 @@ static void NPC_ST_StoreMovementSpeech(const int speech, const float chance)
 	NPCS.NPCInfo->movementSpeechChance = chance;
 }
 
-extern qboolean PM_InOnGroundAnim(const int anim);
+extern qboolean PM_InOnGroundAnims(const int anim);
 
 static qboolean Melee_CanDoGrab(void)
 {
@@ -432,7 +432,7 @@ static qboolean Melee_CanDoGrab(void)
 					&& NPCS.NPC->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE)
 				{
 					//me and enemy are on ground
-					if (!PM_InOnGroundAnim(NPCS.NPC->enemy->client->ps.legsAnim))
+					if (!PM_InOnGroundAnims(NPCS.NPC->enemy->client->ps.legsAnim))
 					{
 						if ((NPCS.NPC->client->ps.weaponTime <= 200 || NPCS.NPC->client->ps.torsoAnim == BOTH_KYLE_GRAB)
 							&& !NPCS.NPC->client->ps.saberInFlight)

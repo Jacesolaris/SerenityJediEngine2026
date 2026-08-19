@@ -681,11 +681,7 @@ constexpr auto MAX_CHARSKINS = 256; // character skins;
 Ghoul2 Insert End
 */
 
-#ifdef JK2_MODE
-#define MAX_CONFIGSTRINGS (1024)
-#else
-#define	MAX_CONFIGSTRINGS	2048//1024 //rww - I had to up this for terrains
-#endif // JK2_MODE
+#define	MAX_CONFIGSTRINGS	2048
 
 // these are the only configstrings that the system reserves, all the
 // other ones are strictly for servergame to clientgame communication
@@ -706,30 +702,19 @@ constexpr auto CS_AMBIENT_SET = 5; // ambient set information for the player;
 
 constexpr auto CS_MODELS = 10;
 
-#ifndef JK2_MODE
-#define	CS_SKYBOXORG		(CS_MODELS+MAX_MODELS)		//rww - skybox info
-#endif // !JK2_MODE
+#define	CS_SKYBOXORG		(CS_MODELS+MAX_MODELS)
 
-#ifdef JK2_MODE
-#define CS_SOUNDS (CS_MODELS + MAX_MODELS)
-#else
 #define	CS_SOUNDS			(CS_SKYBOXORG+1)
-#endif // JK2_MODE
 
 #define	CS_PLAYERS			(CS_SOUNDS+MAX_SOUNDS)
 
 #define	CS_LIGHT_STYLES		(CS_PLAYERS+MAX_CLIENTS)
 
-#ifndef JK2_MODE
 #define CS_TERRAINS			(CS_LIGHT_STYLES + (MAX_LIGHT_STYLES*3))
-#define CS_BSP_MODELS		(CS_TERRAINS + MAX_TERRAINS)
-#endif // !JK2_MODE
 
-#ifdef JK2_MODE
-#define CS_EFFECTS (CS_LIGHT_STYLES + (MAX_LIGHT_STYLES * 3))
-#else
-#define CS_EFFECTS			(CS_BSP_MODELS + MAX_SUB_BSP)//(CS_LIGHT_STYLES + (MAX_LIGHT_STYLES*3))
-#endif // JK2_MODE
+#define CS_BSP_MODELS		(CS_TERRAINS + MAX_TERRAINS)
+
+#define CS_EFFECTS			(CS_BSP_MODELS + MAX_SUB_BSP)
 
 /*
 Ghoul2 Insert Start

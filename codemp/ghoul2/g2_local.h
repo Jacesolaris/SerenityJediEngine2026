@@ -247,7 +247,7 @@ qboolean G2_Get_Bone_Anim_Index(boneInfo_v& blist, const int index, const int cu
 
 // misc functions G2_misc.cpp
 void G2_List_Model_Surfaces(const char* fileName);
-void G2_List_Model_Bones(const char* fileName, int frame);
+void G2_List_Model_Bones(const char* fileName);
 qboolean G2_GetAnimFileName(const char* fileName, char** filename);
 
 #ifdef _G2_GORE

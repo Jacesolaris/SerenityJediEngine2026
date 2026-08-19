@@ -450,7 +450,7 @@ void R_Register()
 	r_offsetUnits = ri->Cvar_Get("r_offsetunits", "-2", CVAR_CHEAT, "");
 	r_lockpvs = ri->Cvar_Get("r_lockpvs", "0", CVAR_CHEAT, "");
 	r_noportals = ri->Cvar_Get("r_noportals", "0", CVAR_CHEAT, "");
-	r_shadows = ri->Cvar_Get("cg_shadows", "3", CVAR_NONE, "");
+	r_shadows = ri->Cvar_Get("cg_shadows", "2", CVAR_NONE, "");
 	r_shadowRange = ri->Cvar_Get("r_shadowRange", "1000", CVAR_NONE, "");
 	r_maxpolys = ri->Cvar_Get("r_maxpolys", XSTRING(DEFAULT_MAX_POLYS), CVAR_NONE, "");
 	r_maxpolyverts = ri->Cvar_Get("r_maxpolyverts", XSTRING(DEFAULT_MAX_POLYVERTS), CVAR_NONE, "");
@@ -495,16 +495,14 @@ void R_Register()
 R_Init
 ===============
 */
-extern void R_InitWorldEffects(); //tr_WorldEffects.cpp
+extern void R_InitWorldEffects();
 void R_Init()
 {
-	Com_Printf("----- Loading Dedicated renderer-----\n");
+	Com_Printf("-----Loading MP Dedicated renderer-----\n");
 
 	// clear all our internal state
 	memset(&tr, 0, sizeof tr);
 	memset(&backEnd, 0, sizeof backEnd);
-
-	//	Swap_Init();
 
 	//
 	// init function tables
@@ -545,7 +543,7 @@ void R_Init()
 
 	R_ModelInit();
 
-	Com_Printf("----- Dedicated renderer loaded -----\n");
+	Com_Printf("-----MP Dedicated renderer loaded-----\n");
 }
 
 /*

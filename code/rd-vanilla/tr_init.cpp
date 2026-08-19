@@ -1630,7 +1630,7 @@ static void R_Register()
 	r_primitives = ri.Cvar_Get("r_primitives", "0", CVAR_ARCHIVE_ND);
 	ri.Cvar_CheckRange(r_primitives, MIN_PRIMITIVES, MAX_PRIMITIVES, qtrue);
 
-	r_ambientScale = ri.Cvar_Get("r_ambientScale", "0.5", CVAR_CHEAT);
+	r_ambientScale = ri.Cvar_Get("r_ambientScale", "0.6", CVAR_CHEAT);
 	r_directedScale = ri.Cvar_Get("r_directedScale", "1", CVAR_CHEAT);
 
 	//
@@ -1644,11 +1644,7 @@ static void R_Register()
 
 	r_nocurves = ri.Cvar_Get("r_nocurves", "0", CVAR_CHEAT);
 	r_drawworld = ri.Cvar_Get("r_drawworld", "1", CVAR_CHEAT);
-#ifdef JK2_MODE
 	r_drawfog = ri.Cvar_Get("r_drawfog", "3", 0);
-#else
-	r_drawfog = ri.Cvar_Get("r_drawfog", "3", 0);
-#endif
 	r_lightmap = ri.Cvar_Get("r_lightmap", "0", CVAR_CHEAT);
 	r_portalOnly = ri.Cvar_Get("r_portalOnly", "0", CVAR_CHEAT);
 
@@ -1675,7 +1671,7 @@ static void R_Register()
 	r_offsetUnits = ri.Cvar_Get("r_offsetunits", "-2", CVAR_CHEAT);
 	r_lockpvs = ri.Cvar_Get("r_lockpvs", "0", CVAR_CHEAT);
 	r_noportals = ri.Cvar_Get("r_noportals", "0", CVAR_CHEAT);
-	r_shadows = ri.Cvar_Get("cg_shadows", "3", 0);
+	r_shadows = ri.Cvar_Get("cg_shadows", "2", 0);
 	r_shadowRange = ri.Cvar_Get("r_shadowRange", "1000", CVAR_ARCHIVE_ND);
 
 	/*
@@ -1758,7 +1754,7 @@ void R_Init()
 
 	ShaderEntryPtrs_Clear();
 
-	ri.Printf(PRINT_ALL, "----- Loading Vanilla renderer-----\n");
+	ri.Printf(PRINT_ALL, "-----Loading SP Perfermormance Mode-----\n");
 
 	// clear all our internal state
 	memset(&tr, 0, sizeof tr);
@@ -1798,7 +1794,6 @@ void R_Init()
 		}
 	}
 	R_InitFogTable();
-
 	R_ImageLoader_Init();
 	R_NoiseInit();
 	R_Register();
@@ -1812,7 +1807,6 @@ void R_Init()
 		RE_SetLightStyle(i, ba->i);
 	}
 	InitOpenGL();
-
 	R_InitImages();
 	R_InitShaders(qfalse);
 	R_InitSkins();
@@ -1832,7 +1826,7 @@ void R_Init()
 	{
 		ri.Cvar_Set("com_rend2", "0");
 	}
-	ri.Printf(PRINT_ALL, "----- Vanilla renderer loaded-----\n");
+	ri.Printf(PRINT_ALL, "-----SP Perfermormance Mode loaded-----\n");
 }
 
 /*
@@ -2010,7 +2004,7 @@ GetRefAPI
 */
 extern void R_LoadImage(const char* shortname, byte** pic, int* width, int* height);
 extern void RE_WorldEffectCommand(const char* command);
-extern qboolean R_inPVS(const vec3_t p1, const vec3_t p2);
+extern qboolean R_inPVS(const vec3_t p1, const vec3_t p2, byte* mask);
 extern void RE_GetModelBounds(const refEntity_t* ref_ent, vec3_t bounds1, vec3_t bounds2);
 extern void G2API_AnimateG2Models(CGhoul2Info_v& ghoul2, const int acurrent_time, CRagDollUpdateParams* params);
 extern qboolean G2API_GetRagBonePos(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t pos, vec3_t entAngles, vec3_t entPos, vec3_t entScale);
@@ -2129,7 +2123,7 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(const int api_version, const re
 
 	re.R_InitWorldEffects = R_InitWorldEffects;
 	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearStuffToStopGhoul2CrashingThings;
-	re.R_inPVS = R_inPVS;
+	re.inPVS = R_inPVS;
 
 	re.tr_distortionAlpha = get_tr_distortionAlpha;
 	re.tr_distortionStretch = get_tr_distortionStretch;

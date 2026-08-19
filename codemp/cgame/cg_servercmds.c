@@ -280,7 +280,7 @@ void CG_SetConfigValues(void)
 
 	if (str && str[0])
 	{
-		char buf[64];
+		char buf[64] = { 0 };
 		int c = 0;
 		int i = 0;
 
@@ -386,7 +386,7 @@ static const char* GetCustomSoundForType(const int setType, const int index)
 	}
 }
 
-void SetCustomSoundForType(clientInfo_t* ci, const int setType, const int index, const sfxHandle_t sfx)
+static void SetCustomSoundForType(clientInfo_t* ci, const int setType, const int index, const sfxHandle_t sfx)
 {
 	switch (setType)
 	{
@@ -467,7 +467,7 @@ static void CG_RegisterCustomSounds(clientInfo_t* ci, const int setType, const c
 
 			if (p)
 			{
-				char testNumber[2];
+				char testNumber[2] = { 0 };
 				p--;
 
 				//before we destroy it.. we want to see if this is actually a number.
@@ -492,8 +492,8 @@ static void CG_RegisterCustomSounds(clientInfo_t* ci, const int setType, const c
 
 void CG_PrecacheNPCSounds(const char* str)
 {
-	char sEnd[MAX_QPATH];
-	char pEnd[MAX_QPATH];
+	char sEnd[MAX_QPATH] = { 0 };
+	char pEnd[MAX_QPATH] = { 0 };
 	int i = 0;
 	int j = 0;
 
@@ -558,7 +558,7 @@ void CG_HandleNPCSounds(const centity_t* cent)
 
 		if (s && s[0])
 		{
-			char sEnd[MAX_QPATH];
+			char sEnd[MAX_QPATH] = { 0 };
 			int i = 2;
 			int j = 0;
 
@@ -587,7 +587,7 @@ void CG_HandleNPCSounds(const centity_t* cent)
 
 		if (s && s[0])
 		{
-			char sEnd[MAX_QPATH];
+			char sEnd[MAX_QPATH] = { 0 };
 			int i = 2;
 			int j = 0;
 
@@ -616,7 +616,7 @@ void CG_HandleNPCSounds(const centity_t* cent)
 
 		if (s && s[0])
 		{
-			char sEnd[MAX_QPATH];
+			char sEnd[MAX_QPATH] = { 0 };
 			int i = 2;
 			int j = 0;
 
@@ -645,7 +645,7 @@ void CG_HandleNPCSounds(const centity_t* cent)
 
 		if (s && s[0])
 		{
-			char sEnd[MAX_QPATH];
+			char sEnd[MAX_QPATH] = { 0 };
 			int i = 2;
 			int j = 0;
 
@@ -674,7 +674,7 @@ void CG_HandleNPCSounds(const centity_t* cent)
 
 		if (s && s[0])
 		{
-			char sEnd[MAX_QPATH];
+			char sEnd[MAX_QPATH] = { 0 };
 			int i = 2;
 			int j = 0;
 
@@ -701,9 +701,9 @@ int CG_HandleAppendedSkin(const char* modelName);
 void CG_CacheG2AnimInfo(const char* modelName);
 
 // nmckenzie: DUEL_HEALTH - fixme - we could really clean this up immensely with some helper functions.
-void SetDuelistHealthsFromConfigString(const char* str)
+static void SetDuelistHealthsFromConfigString(const char* str)
 {
-	char buf[64];
+	char buf[64] = { 0 };
 	int c = 0;
 	int i = 0;
 
@@ -806,7 +806,7 @@ static void CG_ConfigStringModified(void)
 	}
 	else if (num == CS_CLIENT_DUELISTS)
 	{
-		char buf[64];
+		char buf[64] = { 0 };
 		int c = 0;
 		int i = 0;
 
@@ -1082,7 +1082,7 @@ void CG_KillCEntityG2(const int entNum)
 	cent->localAnimIndex = 0;
 }
 
-void CG_KillCEntityInstances(void)
+static void CG_KillCEntityInstances(void)
 {
 	int i = 0;
 
@@ -1147,7 +1147,6 @@ static void CG_MapRestart(void)
 	}
 
 	trap->R_ClearDecals();
-	//FIXME: trap->FX_Reset?
 
 	CG_InitLocalEntities();
 	CG_InitMarkPolys();
@@ -1197,7 +1196,7 @@ static void CG_RemoveChatEscapeChar(char* text)
 
 #define MAX_STRINGED_SV_STRING 1024	// this is an quake-engine limit, not a StringEd limit
 
-void CG_CheckSVStringEdRef(char* buf, const char* str)
+static void CG_CheckSVStringEdRef(char* buf, const char* str)
 {
 	//I don't really like doing this. But it utilizes the system that was already in place.
 	int i = 0;
@@ -1232,7 +1231,7 @@ void CG_CheckSVStringEdRef(char* buf, const char* str)
 				if (str[i + 2] == '@' && i + 3 < strLen)
 				{
 					//@@@ should mean to insert a StringEd reference here, so insert it into buf at the current place
-					char stringRef[MAX_STRINGED_SV_STRING];
+					char stringRef[MAX_STRINGED_SV_STRING] = { 0 };
 					int r = 0;
 
 					while (i < strLen && str[i] == '@')
@@ -1800,7 +1799,7 @@ static void CG_ServerCommand(void)
 		return;
 	}
 
-	const serverCommand_t* command = (serverCommand_t*)Q_LinearSearch(cmd, commands, num_commands, sizeof commands[0],svcmdcmp);
+	const serverCommand_t* command = (serverCommand_t*)Q_LinearSearch(cmd, commands, num_commands, sizeof commands[0], svcmdcmp);
 
 	if (command)
 	{

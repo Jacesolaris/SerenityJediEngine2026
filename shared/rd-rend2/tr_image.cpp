@@ -3162,7 +3162,7 @@ static void R_CreateEnvBrdfLUT(void)
 	if (!r_cubeMapping->integer)
 		return;
 
-	uint16_t data[LUT_WIDTH][LUT_HEIGHT][3];
+	uint16_t data[LUT_WIDTH][LUT_HEIGHT][3]{};
 
 	unsigned const numSamples = 1024;
 

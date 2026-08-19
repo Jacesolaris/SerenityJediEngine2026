@@ -513,11 +513,8 @@ static void UI_Set2DRatio()
 static cvarTable_t cvarTable[] =
 {
 	{&ui_menuFiles, "ui_menuFiles", "ui/menus.txt", nullptr, CVAR_ARCHIVE},
-#ifdef JK2_MODE
-	{ &ui_hudFiles,				"cg_hudFiles",			"ui/jk2hud.txt", nullptr, CVAR_ARCHIVE },
-#else
+
 	{&ui_hudFiles, "cg_hudFiles", "ui/sje-hud.txt", nullptr, CVAR_ARCHIVE},
-#endif
 
 	{&ui_char_anim, "ui_char_anim", "BOTH_MENUIDLE1", nullptr, 0},
 
@@ -870,12 +867,7 @@ static const char* UI_FeederItemText(const float feederID, const int index, cons
 	}
 	else if (feederID == FEEDER_LANGUAGES)
 	{
-#ifdef JK2_MODE
-		// FIXME
-		return nullptr;
-#else
 		return SE_GetLanguageName(index);
-#endif
 	}
 	else if (feederID == FEEDER_PLAYER_SKIN_HEAD)
 	{
@@ -999,20 +991,55 @@ static int CreateNextSaveName(char* fileName)
 	// Loop through all the save games and look for the first open name
 	for (int i = 0; i < MAX_SAVELOADFILES; i++)
 	{
-#ifdef JK2_MODE
-		Com_sprintf(fileName, MAX_SAVELOADNAME, "jkii%02d", i);
-#else
-		Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_%02d", i);
-#endif
+		if (com_outcast && com_outcast->integer == 0) //playing academy
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Academy_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 1) //playing outcast
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Outcast_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 2) //playing creative
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Creative_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 3) //playing yav
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Yav_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 4) //playing darkforces
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Darkforces_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 5) //playing kotor
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Kotor_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 6) //playing survival
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Survival_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 7) //playing nina
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Nina_%02d", i);
+		}
+		else if (com_outcast && com_outcast->integer == 8) //playing veng
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_Veng_%02d", i);
+		}
+		else
+		{
+			Com_sprintf(fileName, MAX_SAVELOADNAME, "jedi_%02d", i);
+		}
 
 		if (!ui.SG_GetSaveGameComment(fileName, nullptr, nullptr))
 		{
 			return qtrue;
 		}
-	}
+		}
 
 	return qfalse;
-}
+	}
 
 /*
 ===============
@@ -1214,9 +1241,6 @@ static qboolean UI_RunMenuScript(const char** args)
 		else if (Q_stricmp(name, "startgame") == 0)
 		{
 			Menus_CloseAll();
-#ifdef JK2_MODE
-			ui.Cmd_ExecuteText(EXEC_APPEND, "map kejim_post\n");
-#else
 			if (Cvar_VariableIntegerValue("com_demo"))
 			{
 				ui.Cmd_ExecuteText(EXEC_APPEND, "map demo\n");
@@ -1225,8 +1249,7 @@ static qboolean UI_RunMenuScript(const char** args)
 			{
 				ui.Cmd_ExecuteText(EXEC_APPEND, "map yavin1\n");
 			}
-#endif
-		}
+			}
 		else if (Q_stricmp(name, "startoutcast") == 0)
 		{
 			Menus_CloseAll();
@@ -1826,11 +1849,7 @@ static qboolean UI_RunMenuScript(const char** args)
 		}
 		else if (Q_stricmp(name, "load_quick") == 0)
 		{
-#ifdef JK2_MODE
-			ui.Cmd_ExecuteText(EXEC_APPEND, "load quik\n");
-#else
 			ui.Cmd_ExecuteText(EXEC_APPEND, "load quick\n");
-#endif
 		}
 		else if (Q_stricmp(name, "load_auto") == 0)
 		{
@@ -1861,10 +1880,10 @@ static qboolean UI_RunMenuScript(const char** args)
 		{
 			Com_Printf("unknown UI script %s\n", name);
 		}
-	}
+		}
 
 	return qtrue;
-}
+	}
 
 /*
 =================
@@ -3487,8 +3506,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 15/08/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 06------------------------------\n");
+	Com_Printf("---------------------Build date 19/08/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 08------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -4300,11 +4319,7 @@ static void UI_DrawKeyBindStatus(rectDef_t* rect, float scale, vec4_t color, int
 {
 	if (Display_KeyBindPending())
 	{
-#ifdef JK2_MODE
-		Text_Paint(rect->x, rect->y, scale, color, ui.SP_GetStringTextString("MENUS_WAITINGFORKEY"), 0, textStyle, iFontIndex);
-#else
 		Text_Paint(rect->x, rect->y, scale, color, SE_GetString("MENUS_WAITINGFORKEY"), 0, textStyle, iFontIndex);
-#endif
 	}
 	else
 	{
@@ -4533,11 +4548,7 @@ int UI_OwnerDrawWidth(const int ownerDraw, const float scale)
 	case UI_KEYBINDSTATUS:
 		if (Display_KeyBindPending())
 		{
-#ifdef JK2_MODE
-			s = ui.SP_GetStringTextString("MENUS_WAITINGFORKEY");
-#else
 			s = SE_GetString("MENUS_WAITINGFORKEY");
-#endif
 		}
 		else
 		{

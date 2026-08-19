@@ -235,6 +235,3 @@ void CM_TraceThroughPatchCollide(traceWork_t* tw, trace_t& trace, const struct p
 qboolean CM_PositionTestInPatchCollide(traceWork_t* tw, const struct patchCollide_s* pc);
 void CM_ClearLevelPatches(void);
 void CM_ClearLevelPatches(void);
-
-// cm_load.cpp
-void CM_GetWorldBounds(vec3_t mins, vec3_t maxs);

@@ -43,11 +43,7 @@ SavedGameJustLoaded_e e_saved_game_just_loaded = eNO;
 
 char sLastSaveFileLoaded[MAX_QPATH] = { 0 };
 
-#ifdef JK2_MODE
-#define iSG_MAp_Cmd_SIZE (MAX_TOKEN_CHARS)
-#else
 #define iSG_MAp_Cmd_SIZE (MAX_QPATH)
-#endif // JK2_MODE
 
 static char* SG_GetSaveGameMapName(const char* ps_pathless_base_name);
 
@@ -89,11 +85,8 @@ static const char* GetString_FailedToOpenSaveGame(const char* ps_filename, qbool
 
 	strcpy(s_temp, S_COLOR_RED);
 
-#ifdef JK2_MODE
-	const char* ps_reference = bOpen ? "MENUS3_FAILED_TO_OPEN_SAVEGAME" : "MENUS3_FAILED_TO_CREATE_SAVEGAME";
-#else
 	const char* ps_reference = b_open ? "MENUS_FAILED_TO_OPEN_SAVEGAME" : "MENUS3_FAILED_TO_CREATE_SAVEGAME";
-#endif
+
 	Q_strncpyz(s_temp + strlen(s_temp), va(SE_GetString(ps_reference), ps_filename), sizeof s_temp);
 	strcat(s_temp, "\n");
 	return s_temp;
@@ -160,11 +153,7 @@ qboolean SV_TryLoadTransition(const char* mapname)
 		//couldn't load a savegame
 		return qfalse;
 	}
-#ifdef JK2_MODE
-	Com_Printf(S_COLOR_CYAN "Done.\n");
-#else
 	Com_Printf(S_COLOR_CYAN "%s.\n", SE_GetString("MENUS_DONE"));
-#endif
 
 	return qtrue;
 }
@@ -246,11 +235,7 @@ void SV_LoadGame_f()
 		}
 		//default will continue to load auto
 	}
-#ifdef JK2_MODE
-	Com_Printf(S_COLOR_CYAN "Loading game \"%s\"...\n", psFilename);
-#else
 	Com_Printf(S_COLOR_CYAN "%s\n", va(SE_GetString("MENUS_LOADING_MAPNAME"), ps_filename));
-#endif
 
 	gbAlreadyDoingLoad = qtrue;
 	if (!SG_ReadSavegame(ps_filename))
@@ -260,11 +245,7 @@ void SV_LoadGame_f()
 	}
 	else
 	{
-#ifdef JK2_MODE
-		Com_Printf(S_COLOR_CYAN "Done.\n");
-#else
 		Com_Printf(S_COLOR_CYAN "%s.\n", SE_GetString("MENUS_DONE"));
-#endif
 	}
 }
 
@@ -299,22 +280,14 @@ void SV_SaveGame_f()
 
 	if (svs.clients[0].frames[svs.clients[0].netchan.outgoingSequence & PACKET_MASK].ps.stats[STAT_HEALTH] <= 0)
 	{
-#ifdef JK2_MODE
-		Com_Printf(S_COLOR_RED "\nCan't savegame while dead!\n");
-#else
 		Com_Printf(S_COLOR_RED "\n%s\n", SE_GetString("SP_INGAME_CANT_SAVE_DEAD"));
-#endif
 		return;
 	}
 
 	const gentity_t* svent = SV_GentityNum(0);
 	if (svent->client->stats[STAT_HEALTH] <= 0)
 	{
-#ifdef JK2_MODE
-		Com_Printf(S_COLOR_RED "\nCan't savegame while dead!\n");
-#else
 		Com_Printf(S_COLOR_RED "\n%s\n", SE_GetString("SP_INGAME_CANT_SAVE_DEAD"));
-#endif
 		return;
 	}
 
@@ -353,27 +326,15 @@ void SV_SaveGame_f()
 	}
 #endif
 
-#ifdef JK2_MODE
-	Com_Printf(S_COLOR_CYAN "Saving game \"%s\"...\n", filename);
-#else
 	Com_Printf(S_COLOR_CYAN "%s \"%s\"...\n", SE_GetString("CON_TEXT_SAVING_GAME"), filename);
-#endif
 
 	if (SG_WriteSavegame(filename, qfalse))
 	{
-#ifdef JK2_MODE
-		Com_Printf(S_COLOR_CYAN "Done.\n");
-#else
 		Com_Printf(S_COLOR_CYAN "%s.\n", SE_GetString("MENUS_DONE"));
-#endif
 	}
 	else
 	{
-#ifdef JK2_MODE
-		Com_Printf(S_COLOR_RED "Failed.\n");
-#else
 		Com_Printf(S_COLOR_RED "%s.\n", SE_GetString("MENUS_FAILED_TO_OPEN_SAVEGAME"));
-#endif
 	}
 }
 
@@ -510,11 +471,7 @@ static void SG_WriteCvars()
 	//
 	for (var = cvar_vars; var; var = var->next)
 	{
-#ifdef JK2_MODE
-		if (!(var->flags & (CVAR_SAVEGAME | CVAR_USERINFO)))
-#else
 		if (!(var->flags & CVAR_SAVEGAME))
-#endif
 		{
 			continue;
 		}
@@ -531,11 +488,7 @@ static void SG_WriteCvars()
 	//
 	for (var = cvar_vars; var; var = var->next)
 	{
-#ifdef JK2_MODE
-		if (!(var->flags & (CVAR_SAVEGAME | CVAR_USERINFO)))
-#else
 		if (!(var->flags & CVAR_SAVEGAME))
-#endif
 		{
 			continue;
 		}
@@ -1138,11 +1091,7 @@ qboolean SG_WriteSavegame(const char* psPathlessBaseName, qboolean qbAutosave)
 	const char* psServerInfo = sv.configstrings[CS_SERVERINFO];
 	const char* psMapName = Info_ValueForKey(psServerInfo, "mapname");
 	//JLF
-#ifdef JK2_MODE
-	if (!strcmp("quik", psPathlessBaseName))
-#else
 	if (strcmp("quick", psPathlessBaseName) == 0)
-#endif
 	{
 		SG_StoreSaveGameComment(va("--> %s <--", psMapName));
 	}

@@ -2683,6 +2683,8 @@ typedef struct trGlobals_s {
 	vec3_t					sunLight;			// from the sky shader for this level
 	vec3_t					sunDirection;
 
+	float					volumetricFogScale;
+
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
 
@@ -2750,6 +2752,10 @@ typedef struct trGlobals_s {
 struct glconfigExt_t
 {
 	glconfig_t* glConfig;
+
+	qboolean textureFilterAnisotropicAvailable;
+	qboolean doGammaCorrectionWithShaders;
+	qboolean doStencilShadowsInOneDrawcall;
 
 	const char* originalExtensionString;
 };
@@ -3218,7 +3224,7 @@ void R_AddBrushModelSurfaces(trRefEntity_t* ent, int entityNum);
 void R_AddWorldSurfaces(viewParms_t* viewParms, trRefdef_t* refdef);
 void R_MarkLeaves(void);
 void R_RecursiveWorldNode(mnode_t* node, int planeBits, int dlightBits, int pshadowBits);
-qboolean R_inPVS(const vec3_t p1, const vec3_t p2, const byte* mask);
+qboolean R_inPVS(const vec3_t p1, const vec3_t p2, byte* mask);
 
 /*
 ============================================================

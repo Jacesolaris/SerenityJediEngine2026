@@ -67,7 +67,6 @@ source_group("common/safe" FILES ${MPUICommonSafeFiles})
 set(MPUIFiles ${MPUIFiles} ${MPUICommonSafeFiles})
 
 set(MPUIUIFiles
-	"${MPDir}/ui/ui_pazaak.cpp"
 	"${MPDir}/ui/ui_atoms.c"
 	"${MPDir}/ui/ui_cvar.c"
 	"${MPDir}/ui/ui_force.c"
@@ -76,7 +75,6 @@ set(MPUIUIFiles
 	"${MPDir}/ui/ui_saber.c"
 	"${MPDir}/ui/ui_shared.c"
 	"${MPDir}/ui/ui_syscalls.c"
-	"${MPDir}/ui/ui_pazaak.h"
 	"${MPDir}/ui/keycodes.h"
 	"${MPDir}/ui/menudef.h"
 	"${MPDir}/ui/ui_force.h"

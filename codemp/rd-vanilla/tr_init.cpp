@@ -1692,7 +1692,7 @@ static void R_Register()
 	r_offsetUnits = ri->Cvar_Get("r_offsetunits", "-2", CVAR_CHEAT, "");
 	r_lockpvs = ri->Cvar_Get("r_lockpvs", "0", CVAR_CHEAT, "");
 	r_noportals = ri->Cvar_Get("r_noportals", "0", CVAR_CHEAT, "");
-	r_shadows = ri->Cvar_Get("cg_shadows", "3", CVAR_NONE, "");
+	r_shadows = ri->Cvar_Get("cg_shadows", "2", CVAR_NONE, "");
 	r_shadowRange = ri->Cvar_Get("r_shadowRange", "1000", CVAR_NONE, "");
 	r_marksOnTriangleMeshes = ri->Cvar_Get("r_marksOnTriangleMeshes", "0", CVAR_ARCHIVE_ND, "");
 	r_aspectCorrectFonts = ri->Cvar_Get("r_aspectCorrectFonts", "0", CVAR_ARCHIVE, "");
@@ -1753,7 +1753,7 @@ void R_Init()
 	int i;
 	byte* ptr;
 
-	ri->Printf(PRINT_ALL, "----- Loading Vanilla renderer-----\n");
+	ri->Printf(PRINT_ALL, "-----Loading MP Performance Mode-----\n");
 
 	// clear all our internal state
 	memset(&tr, 0, sizeof tr);
@@ -1794,7 +1794,6 @@ void R_Init()
 		}
 	}
 	R_InitFogTable();
-
 	R_ImageLoader_Init();
 	R_NoiseInit();
 	R_Register();
@@ -1814,18 +1813,14 @@ void R_Init()
 	{
 		RE_SetLightStyle(i, -1);
 	}
-	InitOpenGL();
 
+	InitOpenGL();
 	R_InitImages();
 	R_InitShaders(qfalse);
 	R_InitSkins();
-
 	R_InitFonts();
-
 	R_ModelInit();
-	//	re.G2VertSpaceServer = &IHeapAllocator_singleton;
 	R_InitDecals();
-
 	R_InitWorldEffects();
 
 #if defined(_DEBUG)
@@ -1842,7 +1837,7 @@ void R_Init()
 	{
 		ri->Cvar_Set("com_rend2", "0");
 	}
-	ri->Printf(PRINT_ALL, "----- Vanilla renderer loaded-----\n");
+	ri->Printf(PRINT_ALL, "-----MP Performance Mode loaded-----\n");
 }
 
 /*

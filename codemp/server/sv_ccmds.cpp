@@ -1742,60 +1742,93 @@ extern void SV_CreateClientGameStateMessage(client_t* client, msg_t* msg);
 void SV_RecordDemo(client_t* cl, char* demoName)
 {
 	char name[MAX_OSPATH];
-	byte bufData[MAX_MSGLEN];
 	msg_t msg;
 	int len;
 
-	if (cl->demo.demorecording)
+	// ----------------------------------------------------------------------
+	// Prevent duplicate recording
+	// ----------------------------------------------------------------------
+	if (cl->demo.demorecording == qtrue)
 	{
 		Com_Printf("Already recording.\n");
 		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// Only active clients can be recorded
+	// ----------------------------------------------------------------------
 	if (cl->state != CS_ACTIVE)
 	{
 		Com_Printf("Client is not active.\n");
 		return;
 	}
 
-	// open the demo file
-	Q_strncpyz(cl->demo.demoName, demoName, sizeof cl->demo.demoName);
-	Com_sprintf(name, sizeof name, "demos/%s.dm_%d", cl->demo.demoName, PROTOCOL_VERSION);
+	// ----------------------------------------------------------------------
+	// Open demo file
+	// ----------------------------------------------------------------------
+	Q_strncpyz(cl->demo.demoName, demoName, sizeof(cl->demo.demoName));
+	Com_sprintf(name, sizeof(name), "demos/%s.dm_%d", cl->demo.demoName, PROTOCOL_VERSION);
 	Com_Printf("recording to %s.\n", name);
+
 	cl->demo.demofile = FS_FOpenFileWrite(name);
-	if (!cl->demo.demofile)
+	if (cl->demo.demofile == 0)
 	{
 		Com_Printf("ERROR: couldn't open.\n");
 		return;
 	}
+
 	cl->demo.demorecording = qtrue;
 
-	// don't start saving messages until a non-delta compressed message is received
+	// ----------------------------------------------------------------------
+	// Wait for first non-delta message before saving
+	// ----------------------------------------------------------------------
 	cl->demo.demowaiting = qtrue;
 
-	cl->demo.isBot = cl->netchan.remoteAddress.type == NA_BOT ? qtrue : qfalse;
+	cl->demo.isBot = (cl->netchan.remoteAddress.type == NA_BOT) ? qtrue : qfalse;
 	cl->demo.botReliableAcknowledge = cl->reliableSent;
 
-	// write out the gamestate message
-	MSG_Init(&msg, bufData, sizeof bufData);
+	// ----------------------------------------------------------------------
+	// Allocate large message buffer on heap to avoid C6262
+	// ----------------------------------------------------------------------
+	byte* bufData = static_cast<byte*>(malloc(MAX_MSGLEN));
+	if (bufData == nullptr)
+	{
+		Com_Printf("SV_RecordDemo ERROR: malloc failed for %d bytes\n", MAX_MSGLEN);
+		cl->demo.demorecording = qfalse;
+		FS_FCloseFile(cl->demo.demofile);
+		cl->demo.demofile = 0;
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Write out the gamestate message
+	// ----------------------------------------------------------------------
+	MSG_Init(&msg, bufData, MAX_MSGLEN);
 
 	// NOTE, MRE: all server->client messages now acknowledge
 	const int tmp = cl->reliableSent;
 	SV_CreateClientGameStateMessage(cl, &msg);
 	cl->reliableSent = tmp;
 
-	// finished writing the client packet
+	// Finished writing the client packet
 	MSG_WriteByte(&msg, svc_EOF);
 
-	// write it to the demo file
-	len = LittleLong cl->netchan.outgoingSequence - 1;
+	// ----------------------------------------------------------------------
+	// Write header and message to demo file
+	// ----------------------------------------------------------------------
+	len = LittleLong(cl->netchan.outgoingSequence - 1);
 	FS_Write(&len, 4, cl->demo.demofile);
 
-	len = LittleLong msg.cursize;
+	len = LittleLong(msg.cursize);
 	FS_Write(&len, 4, cl->demo.demofile);
 	FS_Write(msg.data, msg.cursize, cl->demo.demofile);
 
-	// the rest of the demo file will be copied from net messages
+	// ----------------------------------------------------------------------
+	// Cleanup
+	// ----------------------------------------------------------------------
+	free(bufData);
+
+	// The rest of the demo file will be copied from net messages
 }
 
 void SV_AutoRecordDemo(client_t* cl)
@@ -1927,60 +1960,120 @@ static int SV_FindLeafFolders(const char* baseFolder, char* result, const int ma
 // starts demo recording on all active clients
 void SV_BeginAutoRecordDemos()
 {
-	if (sv_autoDemo->integer)
+	if (sv_autoDemo->integer == 0)
 	{
-		for (client_t* client = svs.clients; client - svs.clients < sv_maxclients->integer; client++)
-		{
-			if (client->state == CS_ACTIVE && !client->demo.demorecording)
-			{
-				if (client->netchan.remoteAddress.type != NA_BOT || sv_autoDemoBots->integer)
-				{
-					SV_AutoRecordDemo(client);
-				}
-			}
-		}
-		if (sv_autoDemoMaxMaps->integer > 0 && sv.demosPruned == qfalse)
-		{
-			char autorecordDirList[500 * MAX_OSPATH];
-			const int autorecordDirListCount = SV_FindLeafFolders("demos/autorecord", autorecordDirList, 500,
-				MAX_OSPATH);
+		return;
+	}
 
-			qsort(autorecordDirList, autorecordDirListCount, MAX_OSPATH, SV_DemoFolderTimeComparator);
-			for (int i = sv_autoDemoMaxMaps->integer; i < autorecordDirListCount; i++)
+	// ----------------------------------------------------------------------
+	// Auto-start demo recording for active clients
+	// ----------------------------------------------------------------------
+	for (client_t* client = svs.clients;
+		client - svs.clients < sv_maxclients->integer;
+		client++)
+	{
+		if (client->state == CS_ACTIVE &&
+			client->demo.demorecording == qfalse)
+		{
+			// Bots only recorded if sv_autoDemoBots is enabled
+			if (client->netchan.remoteAddress.type != NA_BOT ||
+				sv_autoDemoBots->integer != 0)
 			{
-				char* folder = &autorecordDirList[i * MAX_OSPATH];
-				FS_HomeRmdir(folder, qtrue);
-				// if this folder was the last thing in its parent folder (and its parent isn't the root folder),
-				// also delete the parent.
-				for (;;)
-				{
-					char tmpFileList[5 * MAX_OSPATH];
-					char* slash = strrchr(folder, '/');
-					if (slash == nullptr)
-					{
-						break;
-					}
-					slash[0] = '\0';
-					if (strcmp(folder, "demos/autorecord") == 0)
-					{
-						break;
-					}
-					const int numFiles = FS_GetFileList(folder, "", tmpFileList, sizeof tmpFileList);
-					const int numFolders = FS_GetFileList(folder, "/", tmpFileList, sizeof tmpFileList);
-					// numFolders will include . and ..
-					if (numFiles == 0 && numFolders == 2)
-					{
-						// dangling empty folder, delete
-						FS_HomeRmdir(folder, qfalse);
-					}
-					else
-					{
-						break;
-					}
-				}
+				SV_AutoRecordDemo(client);
 			}
-			sv.demosPruned = qtrue;
 		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Auto-prune old autorecord folders
+	// ----------------------------------------------------------------------
+	if (sv_autoDemoMaxMaps->integer > 0 &&
+		sv.demosPruned == qfalse)
+	{
+		// Allocate large directory list on heap (avoid C6262)
+		const int maxFolders = 500;
+		const int folderSize = MAX_OSPATH;
+
+		char* autorecordDirList =
+			static_cast<char*>(malloc(maxFolders * folderSize));
+
+		if (autorecordDirList == nullptr)
+		{
+			Com_Printf("SV_BeginAutoRecordDemos WARNING: malloc failed for autorecordDirList\n");
+			return;
+		}
+
+		const int autorecordDirListCount =
+			SV_FindLeafFolders("demos/autorecord",
+				autorecordDirList,
+				maxFolders,
+				folderSize);
+
+		// Sort folders by timestamp
+		qsort(autorecordDirList,
+			autorecordDirListCount,
+			folderSize,
+			SV_DemoFolderTimeComparator);
+
+		// Prune excess folders
+		for (int i = sv_autoDemoMaxMaps->integer;
+			i < autorecordDirListCount;
+			i++)
+		{
+			char* folder = &autorecordDirList[i * folderSize];
+			FS_HomeRmdir(folder, qtrue);
+
+			// ------------------------------------------------------------------
+			// Remove empty parent folders
+			// ------------------------------------------------------------------
+			for (;;)
+			{
+				char* slash = strrchr(folder, '/');
+				if (slash == nullptr)
+				{
+					break;
+				}
+
+				slash[0] = '\0';
+
+				if (strcmp(folder, "demos/autorecord") == 0)
+				{
+					break;
+				}
+
+				// Allocate tmp list on heap (avoid C6262)
+				char* tmpFileList =
+					static_cast<char*>(malloc(5 * folderSize));
+
+				if (tmpFileList == nullptr)
+				{
+					Com_Printf("SV_BeginAutoRecordDemos WARNING: malloc failed for tmpFileList\n");
+					break;
+				}
+
+				const int numFiles =
+					FS_GetFileList(folder, "", tmpFileList, 5 * folderSize);
+
+				const int numFolders =
+					FS_GetFileList(folder, "/", tmpFileList, 5 * folderSize);
+
+				// numFolders includes "." and ".."
+				if (numFiles == 0 && numFolders == 2)
+				{
+					FS_HomeRmdir(folder, qfalse);
+				}
+				else
+				{
+					free(tmpFileList);
+					break;
+				}
+
+				free(tmpFileList);
+			}
+		}
+
+		free(autorecordDirList);
+		sv.demosPruned = qtrue;
 	}
 }
 

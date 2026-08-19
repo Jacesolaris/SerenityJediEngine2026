@@ -392,17 +392,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define UI_FORCE_RANK_FLECHETTE		320
 #define UI_FORCE_RANK_BLASTERRATEOFFIRE 321
 
-// Pazaak defines
-#define UI__PAZAAK_BCARD			322
-#define UI__PAZAAK_BHAND			323
-#define UI__PAZAAK_NAMES			324
-#define UI__PAZAAK_POINTS		325
-#define UI__PAZAAK_DLGTEXT		326
-#define UI__PAZAAK_TIMEOUT		327
-#define UI__PAZAAK_SELCARD		328
-#define UI__PAZAAK_SELSD			329
-#define UI__PAZAAK_WAITING		330
-
 #define VOICECHAT_GETFLAG			"getflag"				// command someone to get the flag
 #define VOICECHAT_OFFENSE			"offense"				// command someone to go on offense
 #define VOICECHAT_DEFEND			"defend"				// command someone to go on defense

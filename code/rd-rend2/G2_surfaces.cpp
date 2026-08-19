@@ -445,33 +445,88 @@ static void G2_RemoveRedundantGeneratedSurfaces(surfaceInfo_v& slist, int* activ
 
 qboolean G2_SetRootSurface(CGhoul2Info_v& ghoul2, const int modelIndex, const char* surfaceName)
 {
-	int					surf;
-	uint32_t			flags;
+	int surf = -1;
+	uint32_t flags = 0;
 
-	assert(modelIndex >= 0 && modelIndex < ghoul2.size());
-	assert(ghoul2[modelIndex].currentModel && ghoul2[modelIndex].animModel);
+	// ----------------------------------------------------------------------
+	// Safety: validate modelIndex
+	// ----------------------------------------------------------------------
+	if (modelIndex < 0 || modelIndex >= static_cast<int>(ghoul2.size()))
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: invalid modelIndex %d (size %d)\n",
+			modelIndex,
+			static_cast<int>(ghoul2.size())
+		);
+		return qfalse;
+	}
+
+	// ----------------------------------------------------------------------
+	// Safety: validate model pointers
+	// ----------------------------------------------------------------------
+	if (ghoul2[modelIndex].currentModel == nullptr ||
+		ghoul2[modelIndex].animModel == nullptr)
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: NULL model pointer(s) for modelIndex %d\n",
+			modelIndex
+		);
+		return qfalse;
+	}
 
 	model_t* mod_m = (model_t*)ghoul2[modelIndex].currentModel;
 	model_t* mod_a = (model_t*)ghoul2[modelIndex].animModel;
+
+	if (mod_m->data.glm == nullptr ||
+		mod_m->data.glm->header == nullptr)
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: NULL mdxm header for modelIndex %d\n",
+			modelIndex
+		);
+		return qfalse;
+	}
+
+	if (mod_a->data.gla == nullptr)
+	{
+		Com_Printf(
+			"G2_SetRootSurface WARNING: NULL mdxa header for modelIndex %d\n",
+			modelIndex
+		);
+		return qfalse;
+	}
+
 	mdxmHeader_t* mdxm = mod_m->data.glm->header;
 	mdxaHeader_t* mdxa = mod_a->data.gla;
 
-	// did we find a ghoul 2 model or not?
-	if (!mdxm)
+	// ----------------------------------------------------------------------
+	// If no mdxm, this is not a valid Ghoul2 model
+	// ----------------------------------------------------------------------
+	if (mdxm == nullptr)
 	{
 		return qfalse;
 	}
 
-	// first find if we already have this surface in the list
+	// ----------------------------------------------------------------------
+	// Find legal surface
+	// ----------------------------------------------------------------------
 	surf = G2_IsSurfaceLegal(mod_m, surfaceName, &flags);
+
 	if (surf != -1)
 	{
-		// set the root surface
 		ghoul2[modelIndex].mSurfaceRoot = surf;
-
 		return qtrue;
 	}
-	assert(0);
+
+	// ----------------------------------------------------------------------
+	// Surface not found — replace assert(0) with debug warning
+	// ----------------------------------------------------------------------
+	Com_Printf(
+		"G2_SetRootSurface WARNING: surface '%s' not found on modelIndex %d\n",
+		surfaceName,
+		modelIndex
+	);
+
 	return qfalse;
 }
 

@@ -477,7 +477,7 @@ int UI_ParseAnimationFile(const char* filename, animation_t* animset, qboolean i
 }
 
 //menuDef_t *Menus_FindByName(const char *p);
-void Menu_ShowItemByName(menuDef_t* menu, const char* p, qboolean bShow);
+void Menu_ShowItemByName(menuDef_t* menu, const char* p, const qboolean bShow);
 
 void UpdateForceUsed();
 

@@ -528,61 +528,103 @@ the wrong gamestate.
 void SV_SendClientGameState(client_t* client)
 {
 	msg_t msg;
-	byte msgBuffer[MAX_MSGLEN];
 
-	MSG_Init(&msg, msgBuffer, sizeof msgBuffer);
-
-	// MW - my attempt to fix illegible server message errors caused by
-	// packet fragmentation of initial snapshot.
-	while (client->state && client->netchan.unsentFragments)
+	// ----------------------------------------------------------------------
+	// Allocate large message buffer on heap to avoid MSVC C6262
+	// ----------------------------------------------------------------------
+	byte* msgBuffer = static_cast<byte*>(malloc(MAX_MSGLEN));
+	if (msgBuffer == nullptr)
 	{
-		// send additional message fragments if the last message
-		// was too large to send at once
+		Com_Printf("SV_SendClientGameState ERROR: malloc failed for %d bytes\n", MAX_MSGLEN);
+		return;
+	}
 
-		Com_Printf("[ISM]SV_SendClientGameState() [2] for %s, writing out old fragments\n", client->name);
+	MSG_Init(&msg, msgBuffer, MAX_MSGLEN);
+
+	// ----------------------------------------------------------------------
+	// Fix illegible server message errors caused by packet fragmentation
+	// ----------------------------------------------------------------------
+	while (client->state != 0 && client->netchan.unsentFragments != 0)
+	{
+		Com_Printf("[ISM]SV_SendClientGameState() [2] for %s, writing out old fragments\n",
+			client->name);
+
 		SV_Netchan_TransmitNextFragment(&client->netchan);
 	}
 
 	Com_DPrintf("SV_SendClientGameState() for %s\n", client->name);
 	Com_DPrintf("Going from CS_CONNECTED to CS_PRIMED for %s\n", client->name);
+
 	if (client->state == CS_CONNECTED)
+	{
 		client->state = CS_PRIMED;
+	}
+
 	client->pureAuthentic = 0;
 	client->gotCP = qfalse;
 
-	// when we receive the first packet from the client, we will
-	// notice that it is from a different serverid and that the
-	// gamestate message was not just sent, forcing a retransmit
+	// ----------------------------------------------------------------------
+	// Mark gamestate message number for retransmit logic
+	// ----------------------------------------------------------------------
 	client->gamestateMessageNum = client->netchan.outgoingSequence;
 
+	// ----------------------------------------------------------------------
+	// Build the gamestate message
+	// ----------------------------------------------------------------------
 	SV_CreateClientGameStateMessage(client, &msg);
 
-	// deliver this to the client
+	// ----------------------------------------------------------------------
+	// Deliver message to client
+	// ----------------------------------------------------------------------
 	SV_SendMessageToClient(&msg, client);
+
+	// ----------------------------------------------------------------------
+	// Cleanup heap buffer
+	// ----------------------------------------------------------------------
+	free(msgBuffer);
 }
 
 void SV_SendClientMapChange(client_t* client)
 {
 	msg_t msg;
-	byte msgBuffer[MAX_MSGLEN];
 
-	MSG_Init(&msg, msgBuffer, sizeof msgBuffer);
+	// ----------------------------------------------------------------------
+	// Allocate large message buffer on heap to avoid MSVC C6262
+	// ----------------------------------------------------------------------
+	byte* msgBuffer = static_cast<byte*>(malloc(MAX_MSGLEN));
+	if (msgBuffer == nullptr)
+	{
+		Com_Printf("SV_SendClientMapChange ERROR: malloc failed for %d bytes\n", MAX_MSGLEN);
+		return;
+	}
 
+	MSG_Init(&msg, msgBuffer, MAX_MSGLEN);
+
+	// ----------------------------------------------------------------------
 	// NOTE, MRE: all server->client messages now acknowledge
-	// let the client know which reliable clientCommands we have received
+	// Let the client know which reliable clientCommands we have received
+	// ----------------------------------------------------------------------
 	MSG_WriteLong(&msg, client->lastClientCommand);
 
-	// send any server commands waiting to be sent first.
-	// we have to do this cause we send the client->reliableSequence
-	// with a gamestate and it sets the clc.serverCommandSequence at
-	// the client side
+	// ----------------------------------------------------------------------
+	// Send any pending reliable server commands first
+	// ----------------------------------------------------------------------
 	SV_UpdateServerCommandsToClient(client, &msg);
 
-	// send the gamestate
+	// ----------------------------------------------------------------------
+	// Send the mapchange opcode
+	// ----------------------------------------------------------------------
 	MSG_WriteByte(&msg, svc_mapchange);
 
-	// deliver this to the client
+	// ----------------------------------------------------------------------
+	// Deliver message to client
+	// ----------------------------------------------------------------------
 	SV_SendMessageToClient(&msg, client);
+
+	// ----------------------------------------------------------------------
+	// Cleanup heap buffer
+	// ----------------------------------------------------------------------
+	free(msgBuffer);
 }
 
 /*

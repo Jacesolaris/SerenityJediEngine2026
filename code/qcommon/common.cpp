@@ -1171,7 +1171,6 @@ void Com_Init(char* commandLine)
 		com_homepath = Cvar_Get("com_homepath", "", CVAR_INIT);
 
 		FS_InitFilesystem(); //uses z_malloc
-		//re.R_InitWorldEffects();   // this doesn't do much but I want to be sure certain variables are intialized.
 
 		Com_ExecuteCfg();
 

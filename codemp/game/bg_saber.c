@@ -61,7 +61,6 @@ extern qboolean PM_BoltBlockingAnim(int anim);
 extern qboolean PM_SaberInSpecial(int move);
 saberMoveName_t PM_SaberLungeAttackMove(qboolean noSpecials);
 extern qboolean ValidAnimFileIndex(int index);
-extern qboolean PM_InOnGroundAnims(const playerState_t* ps);
 extern qboolean PM_LockedAnim(int anim);
 extern qboolean PM_SaberInReturn(int move);
 qboolean PM_WalkingAnim(int anim);

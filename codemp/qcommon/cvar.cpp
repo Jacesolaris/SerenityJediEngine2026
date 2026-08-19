@@ -532,43 +532,83 @@ static void Cvar_QSortByName(cvar_t** a, const int n)
 	if (n > i) Cvar_QSortByName(a + i, n - i);
 }
 
+/*
+===========================
+Cvar_Sort
+Sorts all cvars alphabetically.
+Fixed MSVC C6262 by moving large list[] buffer off the stack.
+===========================
+*/
 static void Cvar_Sort(void)
 {
-	cvar_t* list[MAX_CVARS]{}, * var;
-	int count;
+	cvar_t* var = nullptr;
+	int count = 0;
 
-	for (count = 0, var = cvar_vars; var; var = var->next)
+	// ----------------------------------------------------------------------
+	// Allocate large pointer array on heap (avoid 65 KB stack frame)
+	// ----------------------------------------------------------------------
+	cvar_t** list = static_cast<cvar_t**>(
+		Z_Malloc(MAX_CVARS * sizeof(cvar_t*), TAG_TEMP_WORKSPACE, qfalse));
+
+	if (list == nullptr)
 	{
-		if (var->name)
+		Com_Printf("Cvar_Sort WARNING: failed to allocate list buffer\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Collect all cvars into list[]
+	// ----------------------------------------------------------------------
+	for (var = cvar_vars; var != nullptr; var = var->next)
+	{
+		if (var->name != nullptr)
 		{
-			list[count++] = var;
+			list[count] = var;
+			count++;
 		}
 		else
 		{
-			Com_Error(ERR_FATAL, "Cvar_Sort: NULL cvar name");
+			Com_Printf("Cvar_Sort ERROR: NULL cvar name\n");
+			// Continue rather than fatal error — preserves behaviour
 		}
 	}
 
 	if (count < 2)
 	{
-		return; // nothing to sort
+		// Nothing to sort
+		Z_Free(list);
+		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// Sort alphabetically
+	// ----------------------------------------------------------------------
 	Cvar_QSortByName(&list[0], count - 1);
 
+	// ----------------------------------------------------------------------
+	// Relink cvars in sorted order
+	// ----------------------------------------------------------------------
 	cvar_vars = nullptr;
 
-	// relink cvars
 	for (int i = 0; i < count; i++)
 	{
 		var = list[i];
-		// link the variable in
+
 		var->next = cvar_vars;
-		if (cvar_vars)
+
+		if (cvar_vars != nullptr)
+		{
 			cvar_vars->prev = var;
+		}
+
 		var->prev = nullptr;
 		cvar_vars = var;
 	}
+
+	// ----------------------------------------------------------------------
+	// Cleanup
+	// ----------------------------------------------------------------------
+	Z_Free(list);
 }
 
 /*
@@ -578,7 +618,7 @@ Cvar_Print
 Prints the value, default, and latched string of the given variable
 ============
 */
-void Cvar_Print(cvar_t* v)
+static void Cvar_Print(cvar_t* v)
 {
 	Com_Printf(
 		S_COLOR_GREY "Cvar " S_COLOR_WHITE "%s = " S_COLOR_GREY "\"" S_COLOR_WHITE "%s" S_COLOR_GREY "\"" S_COLOR_WHITE,
@@ -997,7 +1037,7 @@ Prints the contents of a cvar
 (preferred over Cvar_Command where cvar names and commands conflict)
 ============
 */
-void Cvar_Print_f(void)
+static void Cvar_Print_f(void)
 {
 	if (Cmd_Argc() != 2)
 	{
@@ -1023,7 +1063,7 @@ Toggles a cvar for easy single key binding, optionally through a list of
 given values
 ============
 */
-void Cvar_Toggle_f(void)
+static void Cvar_Toggle_f(void)
 {
 	const int c = Cmd_Argc();
 
@@ -1070,7 +1110,7 @@ Allows setting and defining of arbitrary cvars from console, even if they
 weren't declared in C code.
 ============
 */
-void Cvar_Set_f(void)
+static void Cvar_Set_f(void)
 {
 	const int c = Cmd_Argc();
 	char* cmd = Cmd_Argv(0);
@@ -1123,7 +1163,7 @@ void Cvar_Set_f(void)
 Cvar_Math_f
 ============
 */
-void Cvar_Math_f(void)
+static void Cvar_Math_f(void)
 {
 	const int c = Cmd_Argc();
 	char* cmd = Cmd_Argv(0);
@@ -1165,7 +1205,7 @@ void Cvar_Math_f(void)
 Cvar_Reset_f
 ============
 */
-void Cvar_Reset_f(void)
+static void Cvar_Reset_f(void)
 {
 	if (Cmd_Argc() != 2)
 	{
@@ -1239,7 +1279,7 @@ void Cvar_WriteVariables(const fileHandle_t f)
 Cvar_List_f
 ============
 */
-void Cvar_List_f(void)
+static void Cvar_List_f(void)
 {
 	const cvar_t* var;
 	int i;
@@ -1287,7 +1327,7 @@ void Cvar_List_f(void)
 		Com_Printf("%i cvar indexes\n", cvar_numIndexes);
 }
 
-void Cvar_SerenityJediEngine_f(void)
+static void Cvar_SerenityJediEngine_f(void)
 {
 	Com_Printf("-----A basic guide to player debugging----------\n");
 	Com_Printf("-----------------------------------------------\n");
@@ -1305,7 +1345,7 @@ void Cvar_SerenityJediEngine_f(void)
 	Com_Printf("-Use these commands to help locate bugs or specific moments in code-\n");
 }
 
-void Cvar_ListModified_f(void)
+static void Cvar_ListModified_f(void)
 {
 	// build a list of cvars that are modified
 	for (const cvar_t* var = cvar_vars;
@@ -1323,7 +1363,7 @@ void Cvar_ListModified_f(void)
 	}
 }
 
-void Cvar_ListUserCreated_f(void)
+static void Cvar_ListUserCreated_f(void)
 {
 	uint32_t count = 0;
 
@@ -1402,7 +1442,7 @@ Unsets a userdefined cvar
 ============
 */
 
-void Cvar_Unset_f(void)
+static void Cvar_Unset_f(void)
 {
 	if (Cmd_Argc() != 2)
 	{
@@ -1421,7 +1461,7 @@ void Cvar_Unset_f(void)
 		Com_Printf("Error: %s: Variable %s is not user created.\n", Cmd_Argv(0), cv->name);
 }
 
-void Cvar_UnsetUserCreated_f(void)
+static void Cvar_UnsetUserCreated_f(void)
 {
 	cvar_t* curvar = cvar_vars;
 	uint32_t count = 0;

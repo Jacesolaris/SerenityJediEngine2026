@@ -570,7 +570,7 @@ typedef struct cgameImport_s {
 	void			(*R_GetLightStyle)						(int style, color4ub_t color);
 	void			(*R_GetRealRes)							(int* w, int* h);
 	qboolean(*R_InitializeWireframeAutomap)			(void);
-	qboolean(*R_InPVS)								(const vec3_t p1, const vec3_t p2, const byte* mask);
+	qboolean(*R_InPVS)								(const vec3_t p1, const vec3_t p2, byte* mask);
 	qboolean(*R_Language_IsAsian)					(void);
 	qboolean(*R_Language_UsesSpaces)				(void);
 	int				(*R_LerpTag)							(orientation_t* tag, qhandle_t model, int startFrame, int endFrame, float frac, const char* tagName);

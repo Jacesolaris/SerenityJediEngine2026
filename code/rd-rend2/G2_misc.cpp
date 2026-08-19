@@ -313,24 +313,18 @@ void G2_List_Model_Surfaces(const char* fileName)
 }
 
 // list all bones associated with a model
-void G2_List_Model_Bones(const char* fileName, int frame)
+void G2_List_Model_Bones(const char* fileName)
 {
 	int				x, i;
 	mdxaSkel_t* skel;
 	mdxaSkelOffsets_t* offsets;
 	model_t* mod_m = R_GetModelByHandle(RE_RegisterModel(fileName));
 	model_t* mod_a = R_GetModelByHandle(mod_m->data.glm->header->animIndex);
-	// 	mdxaFrame_t		*aframe=0;
-	//	int				frameSize;
 	mdxaHeader_t* header = mod_a->data.gla;
 
 	// figure out where the offset list is
 	offsets = (mdxaSkelOffsets_t*)((byte*)header + sizeof(mdxaHeader_t));
-
-	//    frameSize = (size_t)( &((mdxaFrame_t *)0)->boneIndexes[ header->numBones ] );
-
-	//	aframe = (mdxaFrame_t *)((byte *)header + header->ofsFrames + (frame * frameSize));
-		// walk each bone and list it's name
+	// walk each bone and list it's name
 	for (x = 0; x < header->numBones; x++)
 	{
 		skel = (mdxaSkel_t*)((byte*)header + sizeof(mdxaHeader_t) + offsets->offsets[x]);
@@ -797,10 +791,10 @@ static inline qboolean G2_SegmentTriangleTest(const vec3_t start, const vec3_t e
 #ifdef _G2_GORE
 struct SVertexTemp
 {
-	int flags;
-	int touch;
-	int newindex;
-	float tex[2];
+	int flags = 0;
+	int touch = 0;
+	int newindex = 0;
+	float tex[2] = { 0.0f, 0.0f };
 	SVertexTemp()
 	{
 		touch = 0;
@@ -1864,8 +1858,7 @@ void G2_LoadGhoul2Model(CGhoul2Info_v& ghoul2, const char* buffer)
 	{
 #endif // JK2_MODE
 
-		saved_game.read<int32_t>(
-			model_count);
+		saved_game.read<int32_t>(model_count);
 
 #ifdef JK2_MODE
 	}

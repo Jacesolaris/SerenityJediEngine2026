@@ -1349,7 +1349,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 		if (stage->bundle[0].tcGen != TCGEN_TEXTURE || (stage->bundle[0].numTexMods))
 			index |= REFRACTIONDEF_USE_TCGEN_AND_TCMOD;
 
-		if (!useAlphaTestGE192)
+		/*if (!useAlphaTestGE192)
 		{
 			if (stage->alphaTestType != ALPHA_TEST_NONE)
 				index |= REFRACTIONDEF_USE_TCGEN_AND_TCMOD | REFRACTIONDEF_USE_ALPHA_TEST;
@@ -1357,7 +1357,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 		else
 		{
 			index |= REFRACTIONDEF_USE_ALPHA_TEST;
-		}
+		}*/
 
 		if (tr.hdrLighting == qtrue)
 			index |= REFRACTIONDEF_USE_SRGB_TRANSFORM;
@@ -1367,86 +1367,119 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 
 	if (backEnd.depthFill)
 	{
-		if (glslShaderGroup == tr.lightallShader)
+		if (tr.depthVelocityFbo != nullptr && glState.currentFBO == tr.depthVelocityFbo)
 		{
 			index = 0;
-
-			if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
+			if (glState.skeletalAnimation)
+				index |= VELOCITYDEF_USE_SKELETAL_ANIMATION;
+			if (tess.shader->numDeforms && !ShaderRequiresCPUDeforms(tess.shader))
+				index |= VELOCITYDEF_USE_DEFORM_VERTEXES;
+			if (stage->bundle[0].tcGen != TCGEN_TEXTURE || (stage->bundle[0].numTexMods))
+				index |= VELOCITYDEF_USE_TCGEN_AND_TCMOD;
+			if (backEnd.currentEntity->e.renderfx & (RF_DISINTEGRATE1 | RF_DISINTEGRATE2))
+				index |= VELOCITYDEF_USE_RGBAGEN;
+			if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE2)
+				index |= VELOCITYDEF_USE_DEFORM_VERTEXES;
+			if (r_parallaxMapping->integer &&
+				glslShaderGroup == tr.lightallShader &&
+				stage->glslShaderIndex & LIGHTDEF_USE_PARALLAXMAP &&
+				stage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK && // TODO: remove light requirement
+				!(backEnd.viewParms.flags & VPF_DEPTHSHADOW)) // Don't use expensive parallax shaders in shadows
+				index |= VELOCITYDEF_USE_PARALLAXMAP;
+			result = &tr.velocityShader[index];
+		}
+		else
+			if (glslShaderGroup == tr.lightallShader)
 			{
+				index = 0;
+
+				if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
+				{
+#ifdef REND2_SP_MD3
+					if (glState.vertexAnimation)
+					{
+						index |= LIGHTDEF_USE_VERTEX_ANIMATION;
+					}
+					else
+#endif // REND2_SP
+						if (glState.skeletalAnimation)
+						{
+							index |= LIGHTDEF_USE_SKELETAL_ANIMATION;
+						}
+				}
+
+				/*if ( !useAlphaTestGE192 )
+				{
+					if (stage->alphaTestType != ALPHA_TEST_NONE)
+						index |= LIGHTDEF_USE_ALPHA_TEST;
+				}
+				else
+				{
+					index |= LIGHTDEF_USE_ALPHA_TEST;
+				}*/
+
+				if (stage->bundle[0].tcGen != TCGEN_TEXTURE || (stage->bundle[0].numTexMods))
+					index |= LIGHTDEF_USE_TCGEN_AND_TCMOD;
+
+				// TODO: remove light vertex def and fix parallax usage on unlit stages like glow stages
+				if (r_parallaxMapping->integer &&
+					stage->glslShaderIndex & LIGHTDEF_USE_PARALLAXMAP &&
+					stage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK && // TODO: remove light requirement
+					!(backEnd.viewParms.flags & VPF_DEPTHSHADOW)) // Don't use expensive parallax shaders in shadows
+					index |= LIGHTDEF_USE_PARALLAXMAP | LIGHTDEF_USE_LIGHT_VERTEX;
+
+				result = &stage->glslShaderGroup[index];
+				backEnd.pc.c_lightallDraws++;
+			}
+			else
+			{
+				index = 0;
+
+				if (tess.shader->numDeforms && !ShaderRequiresCPUDeforms(tess.shader))
+				{
+					index |= GENERICDEF_USE_DEFORM_VERTEXES;
+				}
 #ifdef REND2_SP_MD3
 				if (glState.vertexAnimation)
 				{
-					index |= LIGHTDEF_USE_VERTEX_ANIMATION;
+					index |= GENERICDEF_USE_VERTEX_ANIMATION;
 				}
 				else
 #endif // REND2_SP
 					if (glState.skeletalAnimation)
 					{
-						index |= LIGHTDEF_USE_SKELETAL_ANIMATION;
+						index |= GENERICDEF_USE_SKELETAL_ANIMATION;
 					}
-			}
 
-			if (!useAlphaTestGE192)
-			{
-				if (stage->alphaTestType != ALPHA_TEST_NONE)
-					index |= LIGHTDEF_USE_ALPHA_TEST;
-			}
-			else
-			{
-				index |= LIGHTDEF_USE_ALPHA_TEST;
-			}
-
-			// TODO: remove light vertex def and fix parallax usage on unlit stages like glow stages
-			if (stage->glslShaderIndex & LIGHTDEF_USE_PARALLAXMAP &&
-				stage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK)
-				index |= LIGHTDEF_USE_PARALLAXMAP | LIGHTDEF_USE_LIGHT_VERTEX;
-
-			result = &stage->glslShaderGroup[index];
-			backEnd.pc.c_lightallDraws++;
-		}
-		else
-		{
-			index = 0;
-
-			if (tess.shader->numDeforms && !ShaderRequiresCPUDeforms(tess.shader))
-			{
-				index |= GENERICDEF_USE_DEFORM_VERTEXES;
-			}
-#ifdef REND2_SP_MD3
-			if (glState.vertexAnimation)
-			{
-				index |= GENERICDEF_USE_VERTEX_ANIMATION;
-			}
-			else
-#endif // REND2_SP
-				if (glState.skeletalAnimation)
+				/*if ( !useAlphaTestGE192 )
 				{
-					index |= GENERICDEF_USE_SKELETAL_ANIMATION;
+					if (stage->alphaTestType != ALPHA_TEST_NONE)
+						index |= GENERICDEF_USE_TCGEN_AND_TCMOD | GENERICDEF_USE_ALPHA_TEST;
 				}
+				else
+				{
+					index |= GENERICDEF_USE_ALPHA_TEST;
+				}*/
 
-			if (!useAlphaTestGE192)
-			{
-				if (stage->alphaTestType != ALPHA_TEST_NONE)
-					index |= GENERICDEF_USE_TCGEN_AND_TCMOD | GENERICDEF_USE_ALPHA_TEST;
+				if (backEnd.currentEntity->e.renderfx & (RF_DISINTEGRATE1 | RF_DISINTEGRATE2))
+					index |= GENERICDEF_USE_RGBAGEN;
+
+				if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE2)
+					index |= GENERICDEF_USE_DEFORM_VERTEXES;
+
+				result = &tr.genericShader[index];
+				backEnd.pc.c_genericDraws++;
 			}
-			else
-			{
-				index |= GENERICDEF_USE_ALPHA_TEST;
-			}
-
-			if (backEnd.currentEntity->e.renderfx & (RF_DISINTEGRATE1 | RF_DISINTEGRATE2))
-				index |= GENERICDEF_USE_RGBAGEN;
-
-			if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE2)
-				index |= GENERICDEF_USE_DEFORM_VERTEXES;
-
-			result = &tr.genericShader[index];
-			backEnd.pc.c_genericDraws++;
-		}
 	}
 	else if (stage->glslShaderGroup == tr.lightallShader)
 	{
 		index = stage->glslShaderIndex;
+
+		if (!r_parallaxMapping->integer &&
+			stage->glslShaderIndex & LIGHTDEF_USE_PARALLAXMAP)
+		{
+			index &= ~LIGHTDEF_USE_PARALLAXMAP;
+		}
 
 		if (r_lightmap->integer && (index & LIGHTDEF_USE_LIGHTMAP) && !(index & LIGHTDEF_USE_LIGHT_VERTEX))
 		{
@@ -1468,7 +1501,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 				}
 			}
 
-			if (!useAlphaTestGE192)
+			/*if ( !useAlphaTestGE192 )
 			{
 				if (stage->alphaTestType != ALPHA_TEST_NONE)
 					index |= LIGHTDEF_USE_TCGEN_AND_TCMOD | LIGHTDEF_USE_ALPHA_TEST;
@@ -1476,7 +1509,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 			else
 			{
 				index |= LIGHTDEF_USE_ALPHA_TEST;
-			}
+			}*/
 		}
 
 		result = &stage->glslShaderGroup[index];
@@ -1772,7 +1805,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 		if (backEnd.currentEntity == &backEnd.entityFlare)
 		{
 			samplerBindingsWriter.AddStaticImage(tr.renderDepthImage, TB_SHADOWMAP);
-			vec4_t center;
+			vec4_t center{};
 			VectorAdd(center, tess.xyz[0], center);
 			VectorAdd(center, tess.xyz[1], center);
 			VectorAdd(center, tess.xyz[2], center);

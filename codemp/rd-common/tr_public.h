@@ -123,7 +123,7 @@ using refexport_t = struct refexport_s
 
 	void (*RemapShader)(const char* oldShader, const char* newShader, const char* offsetTime);
 	qboolean(*GetEntityToken)(char* buffer, int size);
-	qboolean(*inPVS)(const vec3_t p1, const vec3_t p2, const byte* mask);
+	qboolean(*inPVS)(const vec3_t p1, const vec3_t p2, byte* mask);
 
 	void (*GetLightStyle)(int style, color4ub_t color);
 	void (*SetLightStyle)(int style, int color);

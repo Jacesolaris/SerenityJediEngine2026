@@ -1060,21 +1060,18 @@ void SP_object_cargo_barrel1(gentity_t* ent)
 {
 	if (ent->spawnflags & 8)
 	{
-		ent->fullName = "Powderkeg Barrel";
+		ent->fullName = "Wood Cargo Barrel";
 		ent->s.modelindex = G_ModelIndex("/models/mapobjects/cargo/barrel_wood2.md3");
-		//		ent->sounds = G_SoundIndex("sound/weapons/explosions/explode3.wav");
 	}
 	else if (ent->spawnflags & 2)
 	{
-		ent->fullName = "Klingon Cargo Barrel";
+		ent->fullName = "scavenger Cargo Barrel";
 		ent->s.modelindex = G_ModelIndex("/models/mapobjects/scavenger/k_barrel.md3");
-		//		ent->sounds = G_SoundIndex("sound/weapons/explosions/explode4.wav");
 	}
 	else
 	{
-		ent->fullName = "Federation Cargo Barrel";
+		ent->fullName = "cargo Cargo Barrel";
 		ent->s.modelindex = G_ModelIndex(va("/models/mapobjects/cargo/barrel%i.md3", Q_irand(0, 2)));
-		//		ent->sounds = G_SoundIndex("sound/weapons/explosions/explode1.wav");
 	}
 
 	ent->contents = CONTENTS_SOLID | CONTENTS_OPAQUE;
