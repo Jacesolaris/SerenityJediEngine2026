@@ -344,7 +344,7 @@ qboolean G2_SetRootSurface(CGhoul2Info_v& ghoul2, const int modelIndex, const ch
 	return qfalse;
 }
 
-extern int G2_DecideTraceLod(const CGhoul2Info& ghoul2, int useLod);
+extern int G2_DecideTraceLod(CGhoul2Info& ghoul2, int useLod);
 int G2_AddSurface(CGhoul2Info* ghoul2, const int surfaceNumber, const int polyNumber, const float BarycentricI, const float BarycentricJ, int lod)
 {
 	lod = G2_DecideTraceLod(*ghoul2, lod);
@@ -383,7 +383,7 @@ qboolean G2_RemoveSurface(surfaceInfo_v& slist, const int index)
 	return qfalse;
 }
 
-int G2_GetParentSurface(const CGhoul2Info* ghlInfo, const int index)
+int G2_GetParentSurface(CGhoul2Info* ghlInfo, const int index)
 {
 	assert(ghlInfo->currentModel);
 	assert(ghlInfo->currentModel->mdxm);
@@ -396,14 +396,14 @@ int G2_GetParentSurface(const CGhoul2Info* ghlInfo, const int index)
 	return surfInfo->parentIndex;
 }
 
-int G2_GetSurfaceIndex(const CGhoul2Info* ghlInfo, const char* surfaceName)
+int G2_GetSurfaceIndex(CGhoul2Info* ghlInfo, const char* surfaceName)
 {
 	uint32_t			flags;
 	assert(ghlInfo->currentModel);
 	return G2_IsSurfaceLegal(ghlInfo->currentModel, surfaceName, &flags);
 }
 
-int G2_IsSurfaceRendered(const CGhoul2Info* ghlInfo, const char* surfaceName, const surfaceInfo_v& slist)
+int G2_IsSurfaceRendered(CGhoul2Info* ghlInfo, const char* surfaceName, surfaceInfo_v& slist)
 {
 	uint32_t				flags = 0u;//, surfFlags = 0;
 	int						surfIndex = 0;

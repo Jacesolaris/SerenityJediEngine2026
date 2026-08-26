@@ -1351,6 +1351,7 @@ typedef struct level_locals_s
 	qboolean is_outcast_mp_map;
 	qboolean is_duel_mp_map;
 	qboolean is_no_Dlight_map;
+	qboolean NoCubeMapping_Maps;
 
 	// used by Entity System to save and load spawnstring of entities
 	char* sje_spawn_strings[ENTITYNUM_MAX_NORMAL][128];

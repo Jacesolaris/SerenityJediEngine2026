@@ -80,6 +80,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define RF_FORCE_ENT_ALPHA	0x800000 // override shader alpha settings
 
+#define RF_MORELIGHT		0x1000000	// allways have some light (viewmodel, some items) | SP version which is different from MP
+
 // refdef flags
 #define RDF_NOWORLDMODEL	1		// used for player configuration screen
 #define RDF_HYPERSPACE		4		// teleportation effect
@@ -128,6 +130,10 @@ typedef enum
 	RT_CLOUDS,
 	RT_LIGHTNING,
 	RT_ENT_CHAIN,
+
+	RT_MAX_MP_REF_ENTITY_TYPE,
+
+	RT_MAX_SP_REF_ENTITY_TYPE,
 
 	RT_MAX_REF_ENTITY_TYPE
 } refEntityType_t;

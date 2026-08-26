@@ -1036,7 +1036,7 @@ qboolean G2API_SetAnimIndex(CGhoul2Info* ghlInfo, const int index)
 	return qfalse;
 }
 
-qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int astartFrame, const int aendFrame, const int flags, const float animSpeed, const int current_Time, const float setFrame, const int blendTime)
+qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int astartFrame, const int aendFrame, const int flags, const float animSpeed, const int currentTime, const float setFrame, const int blendTime)
 {
 	//rww - RAGDOLL_BEGIN
 	if (ghlInfo && ghlInfo->mFlags & GHOUL2_RAG_STARTED)
@@ -1072,7 +1072,7 @@ qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int
 		if (index >= 0 && index < static_cast<int>(ghlInfo->mBlist.size()))
 		{
 			G2ERROR(ghlInfo->mBlist[index].boneNumber >= 0, va("Bone Index is not Active (%s)", ghlInfo->mFileName));
-			const int a_currentTime = G2API_GetTime(current_Time);
+			const int a_currentTime = G2API_GetTime(currentTime);
 #if 0
 			/*
 			if ( ge->ValidateAnimRange( startFrame, endFrame, animSpeed ) == -1 )
@@ -1090,7 +1090,7 @@ qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int
 	return ret;
 }
 
-qboolean G2API_SetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int startFrame, const int endFrame, const int flags, const float animSpeed, const int current_Time, const float setFrame, const int blendTime)
+qboolean G2API_SetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int startFrame, const int endFrame, const int flags, const float animSpeed, const int currentTime, const float setFrame, const int blendTime)
 {
 	//rww - RAGDOLL_BEGIN
 	if (ghlInfo && ghlInfo->mFlags & GHOUL2_RAG_STARTED)
@@ -1122,7 +1122,7 @@ qboolean G2API_SetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int
 			*const_cast<float*>(&setFrame) = 0.0f;
 		}
 		ghlInfo->mSkelFrameNum = 0;
-		const int a_currentTime = G2API_GetTime(current_Time);
+		const int a_currentTime = G2API_GetTime(currentTime);
 		ret = G2_Set_Bone_Anim(ghlInfo, ghlInfo->mBlist, boneName, startFrame, endFrame, flags, animSpeed, a_currentTime, setFrame, blendTime);
 		G2ANIM(ghlInfo, "G2API_SetBoneAnim");
 	}
@@ -1130,42 +1130,43 @@ qboolean G2API_SetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int
 	return ret;
 }
 
-qboolean G2API_GetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int current_Time, float* currentFrame, int* startFrame, int* endFrame, int* flags, float* animSpeed, qhandle_t* modelList)
+qboolean G2API_GetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int AcurrentTime, float* currentFrame,
+	int* startFrame, int* endFrame, int* flags, float* animSpeed, int*)
 {
 	qboolean ret = qfalse;
 	G2ERROR(boneName, "NULL boneName");
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(current_Time);
-		ret = G2_Get_Bone_Anim(ghlInfo, ghlInfo->mBlist, boneName, currentTime, currentFrame, startFrame, endFrame, flags, animSpeed);
+		int currentTime = G2API_GetTime(AcurrentTime);
+		ret = G2_Get_Bone_Anim(ghlInfo, ghlInfo->mBlist, boneName, currentTime, currentFrame,
+			startFrame, endFrame, flags, animSpeed);
 	}
 	G2WARNING(ret, "G2API_GetBoneAnim Failed");
 	return ret;
 }
 
-qboolean G2API_GetBoneAnimIndex(CGhoul2Info* ghlInfo, const int iBoneIndex, const int current_Time, float* currentFrame, int* startFrame, int* endFrame, int* flags, float* animSpeed, qhandle_t* modelList)
+qboolean G2API_GetBoneAnimIndex(CGhoul2Info* ghlInfo, const int iBoneIndex, const int AcurrentTime, float* currentFrame,
+	int* startFrame, int* endFrame, int* flags, float* animSpeed, int*)
 {
 	qboolean ret = qfalse;
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(current_Time);
-		G2NOTE(iBoneIndex >= 0 && iBoneIndex < (int)ghlInfo->mBlist.size(),
-			va("Bad Bone Index (%d:%s)", iBoneIndex, ghlInfo->mFileName));
-		if (iBoneIndex >= 0 && iBoneIndex < static_cast<int>(ghlInfo->mBlist.size()))
+		int currentTime = G2API_GetTime(AcurrentTime);
+		G2NOTE(iBoneIndex >= 0 && iBoneIndex < (int)ghlInfo->mBlist.size(), va("Bad Bone Index (%d:%s)", iBoneIndex, ghlInfo->mFileName));
+		if (iBoneIndex >= 0 && iBoneIndex < (int)ghlInfo->mBlist.size())
 		{
-			G2NOTE(ghlInfo->mBlist[iBoneIndex].flags & (BONE_ANIM_OVERRIDE_LOOP | BONE_ANIM_OVERRIDE),
-				"GetBoneAnim on non-animating bone.");
-			if (ghlInfo->mBlist[iBoneIndex].flags & (BONE_ANIM_OVERRIDE_LOOP | BONE_ANIM_OVERRIDE))
+			G2NOTE(ghlInfo->mBlist[iBoneIndex].flags & (BONE_ANIM_OVERRIDE_LOOP | BONE_ANIM_OVERRIDE), "GetBoneAnim on non-animating bone.");
+			if ((ghlInfo->mBlist[iBoneIndex].flags & (BONE_ANIM_OVERRIDE_LOOP | BONE_ANIM_OVERRIDE)))
 			{
 				int sf, ef;
-				ret = G2_Get_Bone_Anim_Index(ghlInfo->mBlist, // boneInfo_v &blist,
-					iBoneIndex, // const int index,
-					currentTime, // const int currentTime,
-					currentFrame, // float *currentFrame,
-					&sf, // int *startFrame,
-					&ef, // int *endFrame,
-					flags, // int *flags,
-					animSpeed, // float *retAnimSpeed,
+				ret = G2_Get_Bone_Anim_Index(ghlInfo->mBlist,// boneInfo_v &blist,
+					iBoneIndex,		// const int index,
+					currentTime,	// const int currentTime,
+					currentFrame,	// float *currentFrame,
+					&sf,		// int *startFrame,
+					&ef,		// int *endFrame,
+					flags,			// int *flags,
+					animSpeed,		// float *retAnimSpeed,
 					ghlInfo->aHeader->numFrames
 				);
 				G2ERROR(sf >= 0, "returning startframe<0");
@@ -1191,11 +1192,11 @@ qboolean G2API_GetBoneAnimIndex(CGhoul2Info* ghlInfo, const int iBoneIndex, cons
 	}
 	if (!ret)
 	{
-		if (endFrame)    *endFrame = 1;
-		if (startFrame)  *startFrame = 0;
-		if (flags)       *flags = 0;
-		if (currentFrame)*currentFrame = 0.0f;
-		if (animSpeed)   *animSpeed = 1.0f;
+		*endFrame = 1;
+		*startFrame = 0;
+		*flags = 0;
+		*currentFrame = 0.0f;
+		*animSpeed = 1.0f;
 	}
 	G2NOTE(ret, "G2API_GetBoneAnimIndex Failed");
 	return ret;
@@ -1232,13 +1233,13 @@ qboolean G2API_GetAnimRangeIndex(CGhoul2Info* ghlInfo, const int boneIndex, int*
 	return ret;
 }
 
-qboolean G2API_PauseBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int current_Time)
+qboolean G2API_PauseBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int AcurrentTime)
 {
 	qboolean ret = qfalse;
 	G2ERROR(boneName, "NULL boneName");
 	if (boneName && G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(current_Time);
+		int currentTime = G2API_GetTime(AcurrentTime);
 		ret = G2_Pause_Bone_Anim(ghlInfo, ghlInfo->mBlist, boneName, currentTime);
 		G2ANIM(ghlInfo, "G2API_PauseBoneAnim");
 	}
@@ -1246,14 +1247,14 @@ qboolean G2API_PauseBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const i
 	return ret;
 }
 
-qboolean G2API_PauseBoneAnimIndex(CGhoul2Info* ghlInfo, const int boneIndex, const int current_Time)
+qboolean G2API_PauseBoneAnimIndex(CGhoul2Info* ghlInfo, const int boneIndex, const int AcurrentTime)
 {
 	qboolean ret = qfalse;
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(current_Time);
+		int currentTime = G2API_GetTime(AcurrentTime);
 		G2ERROR(boneIndex >= 0 && boneIndex < (int)ghlInfo->mBlist.size(), "Bad Bone Index");
-		if (boneIndex >= 0 && boneIndex < static_cast<int>(ghlInfo->mBlist.size()))
+		if (boneIndex >= 0 && boneIndex < (int)ghlInfo->mBlist.size())
 		{
 			ret = G2_Pause_Bone_Anim_Index(ghlInfo->mBlist, boneIndex, currentTime, ghlInfo->aHeader->numFrames);
 			G2ANIM(ghlInfo, "G2API_PauseBoneAnimIndex");
@@ -1282,7 +1283,7 @@ qboolean G2API_StopBoneAnimIndex(CGhoul2Info* ghlInfo, const int index)
 	if (G2_SetupModelPointers(ghlInfo))
 	{
 		G2ERROR(index >= 0 && index < (int)ghlInfo->mBlist.size(), "Bad Bone Index");
-		if (index >= 0 && index < static_cast<int>(ghlInfo->mBlist.size()))
+		if (index >= 0 && index < (int)ghlInfo->mBlist.size())
 		{
 			ret = G2_Stop_Bone_Anim_Index(ghlInfo->mBlist, index);
 			G2ANIM(ghlInfo, "G2API_StopBoneAnimIndex");
@@ -1305,7 +1306,9 @@ qboolean G2API_StopBoneAnim(CGhoul2Info* ghlInfo, const char* boneName)
 	return ret;
 }
 
-static qboolean G2API_SetBoneAnglesOffsetIndex(CGhoul2Info* ghlInfo, const int index, const vec3_t angles, const int flags, const Eorientations yaw, const Eorientations pitch, const Eorientations roll, qhandle_t* modelList, const int blendTime, const int acurrent_time, const vec3_t offset)
+static qboolean G2API_SetBoneAnglesOffsetIndex(CGhoul2Info* ghlInfo, const int index, const vec3_t angles, const int flags,
+	const Eorientations yaw, const Eorientations pitch, const Eorientations roll,
+	qhandle_t*, int blendTime, int AcurrentTime, const vec3_t offset)
 {
 	//rww - RAGDOLL_BEGIN
 	if (ghlInfo && ghlInfo->mFlags & GHOUL2_RAG_STARTED)
@@ -1317,25 +1320,29 @@ static qboolean G2API_SetBoneAnglesOffsetIndex(CGhoul2Info* ghlInfo, const int i
 	qboolean ret = qfalse;
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(acurrent_time);
+		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache
 		ghlInfo->mSkelFrameNum = 0;
 		G2ERROR(index >= 0 && index < (int)ghlInfo->mBlist.size(), "G2API_SetBoneAnglesIndex:Invalid bone index");
-		if (index >= 0 && index < static_cast<int>(ghlInfo->mBlist.size()))
+		if (index >= 0 && index < (int)ghlInfo->mBlist.size())
 		{
-			ret = G2_Set_Bone_Angles_Index(ghlInfo, ghlInfo->mBlist, index, angles, flags, yaw, pitch, roll, blendTime, currentTime, offset);
+			ret = G2_Set_Bone_Angles_Index(ghlInfo, ghlInfo->mBlist, index, angles, flags, yaw, pitch, roll, blendTime, currentTime);
 		}
 	}
 	G2WARNING(ret, "G2API_SetBoneAnglesIndex Failed");
 	return ret;
 }
 
-qboolean G2API_SetBoneAnglesIndex(CGhoul2Info* ghlInfo, const int index, const vec3_t angles, const int flags, const Eorientations yaw, const Eorientations pitch, const Eorientations roll, qhandle_t* modelList, const int blendTime, const int acurrent_time)
+qboolean G2API_SetBoneAnglesIndex(CGhoul2Info* ghlInfo, const int index, const vec3_t angles, const int flags,
+	const Eorientations yaw, const Eorientations pitch, const Eorientations roll,
+	qhandle_t*, int blendTime, int AcurrentTime)
 {
-	return G2API_SetBoneAnglesOffsetIndex(ghlInfo, index, angles, flags, yaw, pitch, roll, nullptr, blendTime, acurrent_time, nullptr);
+	return G2API_SetBoneAnglesOffsetIndex(ghlInfo, index, angles, flags, yaw, pitch, roll, 0, blendTime, AcurrentTime, nullptr);
 }
 
-qboolean G2API_SetBoneAnglesOffset(CGhoul2Info* ghlInfo, const char* boneName, const vec3_t angles, const int flags, const Eorientations up, const Eorientations left, const Eorientations forward, qhandle_t* modelList, const int blendTime, const int acurrent_time, const vec3_t offset)
+qboolean G2API_SetBoneAnglesOffset(CGhoul2Info* ghlInfo, const char* boneName, const vec3_t angles, const int flags,
+	const Eorientations up, const Eorientations left, const Eorientations forward,
+	qhandle_t*, int blendTime, int AcurrentTime, const vec3_t offset)
 {
 	//rww - RAGDOLL_BEGIN
 	if (ghlInfo && ghlInfo->mFlags & GHOUL2_RAG_STARTED)
@@ -1348,30 +1355,33 @@ qboolean G2API_SetBoneAnglesOffset(CGhoul2Info* ghlInfo, const char* boneName, c
 	G2ERROR(boneName, "NULL boneName");
 	if (boneName && G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(acurrent_time);
+		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache
 		ghlInfo->mSkelFrameNum = 0;
-		ret = G2_Set_Bone_Angles(ghlInfo, ghlInfo->mBlist, boneName, angles, flags, up, left, forward, blendTime, currentTime, offset);
+		ret = G2_Set_Bone_Angles(ghlInfo, ghlInfo->mBlist, boneName, angles, flags, up, left, forward, blendTime, currentTime);
 	}
 	G2WARNING(ret, "G2API_SetBoneAngles Failed");
 	return ret;
 }
 
-qboolean G2API_SetBoneAngles(CGhoul2Info* ghlInfo, const char* boneName, const vec3_t angles, const int flags, const Eorientations up, const Eorientations left, const Eorientations forward, qhandle_t* modelList, const int blendTime, const int currentTime)
+qboolean G2API_SetBoneAngles(CGhoul2Info* ghlInfo, const char* boneName, const vec3_t angles, const int flags,
+	const Eorientations up, const Eorientations left, const Eorientations forward,
+	qhandle_t*, int blendTime, int AcurrentTime)
 {
-	return G2API_SetBoneAnglesOffset(ghlInfo, boneName, angles, flags, up, left, forward, nullptr, blendTime, currentTime, nullptr);
+	return G2API_SetBoneAnglesOffset(ghlInfo, boneName, angles, flags, up, left, forward, 0, blendTime, AcurrentTime, nullptr);
 }
 
-qboolean G2API_SetBoneAnglesMatrixIndex(CGhoul2Info* ghlInfo, const int index, const mdxaBone_t& matrix, const int flags, qhandle_t* modelList, const int blendTime, const int current_Time)
+qboolean G2API_SetBoneAnglesMatrixIndex(CGhoul2Info* ghlInfo, const int index, const mdxaBone_t& matrix,
+	const int flags, qhandle_t*, int blendTime, int AcurrentTime)
 {
 	qboolean ret = qfalse;
 	if (G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(current_Time);
+		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache
 		ghlInfo->mSkelFrameNum = 0;
 		G2ERROR(index >= 0 && index < (int)ghlInfo->mBlist.size(), "Bad Bone Index");
-		if (index >= 0 && index < static_cast<int>(ghlInfo->mBlist.size()))
+		if (index >= 0 && index < (int)ghlInfo->mBlist.size())
 		{
 			ret = G2_Set_Bone_Angles_Matrix_Index(ghlInfo->mBlist, index, matrix, flags, blendTime, currentTime);
 		}
@@ -1380,13 +1390,14 @@ qboolean G2API_SetBoneAnglesMatrixIndex(CGhoul2Info* ghlInfo, const int index, c
 	return ret;
 }
 
-qboolean G2API_SetBoneAnglesMatrix(CGhoul2Info* ghlInfo, const char* boneName, const mdxaBone_t& matrix, const int flags, qhandle_t* modelList, const int blendTime, const int current_Time)
+qboolean G2API_SetBoneAnglesMatrix(CGhoul2Info* ghlInfo, const char* boneName, const mdxaBone_t& matrix,
+	const int flags, qhandle_t* modelList, int blendTime, int AcurrentTime)
 {
 	qboolean ret = qfalse;
 	G2ERROR(boneName, "NULL boneName");
 	if (boneName && G2_SetupModelPointers(ghlInfo))
 	{
-		const int currentTime = G2API_GetTime(current_Time);
+		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache
 		ghlInfo->mSkelFrameNum = 0;
 		ret = G2_Set_Bone_Angles_Matrix(ghlInfo, ghlInfo->mBlist, boneName, matrix, flags, blendTime, currentTime);
@@ -1459,9 +1470,9 @@ extern int ragSSCount;
 extern int ragTraceCount;
 #endif
 
-void G2API_AnimateG2Models(CGhoul2Info_v& ghoul2, const int acurrent_time, CRagDollUpdateParams* params)
+void G2API_AnimateG2Models(CGhoul2Info_v& ghoul2, const int AcurrentTime, CRagDollUpdateParams* params)
 {
-	const int currentTime = G2API_GetTime(acurrent_time);
+	const int currentTime = G2API_GetTime(AcurrentTime);
 
 #ifdef _DEBUG
 	ragTraceTime = 0;
@@ -2216,7 +2227,7 @@ void G2API_ClearSkinGore(CGhoul2Info_v& ghoul2)
 	}
 }
 
-extern int G2_DecideTraceLod(const CGhoul2Info& ghoul2, const int useLod);
+extern int G2_DecideTraceLod(CGhoul2Info& ghoul2, int useLod);
 
 void G2API_AddSkinGore(CGhoul2Info_v& ghoul2, SSkinGoreData& gore)
 {
@@ -2270,7 +2281,6 @@ void G2API_AddSkinGore(CGhoul2Info_v& ghoul2, SSkinGoreData& gore)
 #endif
 
 extern model_t* R_GetAnimModelByHandle(const CGhoul2Info* ghlInfo, qhandle_t index);
-
 bool G2_TestModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is properly set up
 {
 	G2ERROR(ghlInfo, "NULL ghlInfo");
@@ -2329,14 +2339,15 @@ bool G2_TestModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is 
 	return ghlInfo->mValid;
 }
 
-bool G2_SetupModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is properly set up
+qboolean G2_SetupModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is properly set up
 {
 	G2ERROR(ghlInfo, "NULL ghlInfo");
 	if (!ghlInfo)
 	{
-		return false;
+		return qfalse;
 	}
 	ghlInfo->mValid = false;
+	//	G2WARNING(ghlInfo->mModelindex != -1,"Setup request on non-used info slot?");
 	if (ghlInfo->mModelindex != -1)
 	{
 		G2ERROR(ghlInfo->mFileName[0], "empty ghlInfo->mFileName");
@@ -2358,8 +2369,7 @@ bool G2_SetupModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is
 				ghlInfo->currentModelSize = ghlInfo->currentModel->mdxm->ofsEnd;
 				G2ERROR(ghlInfo->currentModelSize, va("Zero sized Model? (glm) %s", ghlInfo->mFileName));
 
-				ghlInfo->animModel = R_GetAnimModelByHandle(
-					ghlInfo, ghlInfo->currentModel->mdxm->animIndex + ghlInfo->animModelIndexOffset);
+				ghlInfo->animModel = R_GetModelByHandle(ghlInfo->currentModel->mdxm->animIndex + ghlInfo->animModelIndexOffset);
 				G2ERROR(ghlInfo->animModel, va("NULL Model (gla) %s", ghlInfo->mFileName));
 				if (ghlInfo->animModel)
 				{
@@ -2367,8 +2377,7 @@ bool G2_SetupModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is
 					G2ERROR(ghlInfo->aHeader, va("Model has no mdxa (gla) %s", ghlInfo->mFileName));
 					if (!ghlInfo->aHeader)
 					{
-						Com_Error(ERR_DROP, "Ghoul2 (set up model poiinters)Model has no mdxa (gla) %s",
-							ghlInfo->mFileName);
+						Com_Error(ERR_DROP, "Ghoul2 Model has no mdxa (gla) %s", ghlInfo->mFileName);
 					}
 					if (ghlInfo->currentAnimModelSize)
 					{
@@ -2386,22 +2395,23 @@ bool G2_SetupModelPointers(CGhoul2Info* ghlInfo) // returns true if the model is
 	}
 	if (!ghlInfo->mValid)
 	{
-		ghlInfo->currentModel = nullptr;
+		ghlInfo->currentModel = 0;
 		ghlInfo->currentModelSize = 0;
-		ghlInfo->animModel = nullptr;
+		ghlInfo->animModel = 0;
 		ghlInfo->currentAnimModelSize = 0;
-		ghlInfo->aHeader = nullptr;
+		ghlInfo->aHeader = 0;
 	}
-	return ghlInfo->mValid;
+	return (qboolean)ghlInfo->mValid;
 }
 
-bool G2_SetupModelPointers(CGhoul2Info_v& ghoul2) // returns true if any model is properly set up
+qboolean G2_SetupModelPointers(CGhoul2Info_v& ghoul2) // returns true if any model is properly set up
 {
-	bool ret = false;
-	for (int i = 0; i < ghoul2.size(); i++)
+	qboolean ret = qfalse;
+	int i;
+	for (i = 0; i < ghoul2.size(); i++)
 	{
-		const bool r = G2_SetupModelPointers(&ghoul2[i]);
-		ret = ret || r;
+		qboolean r = G2_SetupModelPointers(&ghoul2[i]);
+		ret = (qboolean)(ret || r);
 	}
 	return ret;
 }

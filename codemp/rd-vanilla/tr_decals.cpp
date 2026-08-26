@@ -69,11 +69,13 @@ void R_InitDecals() {
 	RE_ClearDecals();
 }
 
-static void RE_FreeDecal(const int type, const int index) {
+static void RE_FreeDecal(const int type, const int index)
+{
 	if (!re_decalPolys[type][index].time)
 		return;
 
-	if (type == DECALPOLY_TYPE_NORMAL) {
+	if (type == DECALPOLY_TYPE_NORMAL)
+	{
 		decalPoly_t* fade = RE_AllocDecal(DECALPOLY_TYPE_FADE);
 
 		memcpy(fade, &re_decalPolys[type][index], sizeof(decalPoly_t));

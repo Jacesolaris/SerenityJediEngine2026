@@ -615,32 +615,95 @@ char* G2_GetBoneNameFromSkel(const CGhoul2Info& ghoul2, const int boneNum)
 	return skel->name;
 }
 
-void G2_RagGetBoneBasePoseMatrixLow(const CGhoul2Info& ghoul2, const int boneNum, const mdxaBone_t& boneMatrix, mdxaBone_t& retMatrix, vec3_t scale)
+void G2_RagGetBoneBasePoseMatrixLow(
+	const CGhoul2Info& ghoul2,
+	const int boneNum,
+	const mdxaBone_t& boneMatrix,
+	mdxaBone_t& retMatrix,
+	vec3_t scale)
 {
-	assert(ghoul2.mBoneCache);
-	const CBoneCache& boneCache = *ghoul2.mBoneCache;
-	assert(boneCache.mod);
-	assert(boneNum >= 0 && boneNum < boneCache.header->numBones);
+	// ----------------------------------------------------------------------
+	// Safety: validate bone cache
+	// ----------------------------------------------------------------------
+	if (ghoul2.mBoneCache == nullptr)
+	{
+		Com_Printf("G2_RagGetBoneBasePoseMatrixLow WARNING: mBoneCache is NULL\n");
+		return;
+	}
 
-	const mdxaSkelOffsets_t* offsets = reinterpret_cast<mdxaSkelOffsets_t*>((byte*)boneCache.header + sizeof(
-		mdxaHeader_t));
-	const auto skel = reinterpret_cast<mdxaSkel_t*>((byte*)boneCache.header + sizeof(mdxaHeader_t) + offsets->offsets[
-		boneNum]);
+	const CBoneCache& boneCache = *ghoul2.mBoneCache;
+
+	if (boneCache.mod == nullptr)
+	{
+		Com_Printf("G2_RagGetBoneBasePoseMatrixLow WARNING: boneCache.mod is NULL\n");
+		return;
+	}
+
+	if (boneCache.header == nullptr)
+	{
+		Com_Printf("G2_RagGetBoneBasePoseMatrixLow WARNING: boneCache.header is NULL\n");
+		return;
+	}
+
+	if (boneNum < 0 || boneNum >= boneCache.header->numBones)
+	{
+		Com_Printf(
+			"G2_RagGetBoneBasePoseMatrixLow WARNING: boneNum %d out of range (numBones %d)\n",
+			boneNum,
+			boneCache.header->numBones
+		);
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Compute skeleton pointer safely
+	// ----------------------------------------------------------------------
+	const mdxaSkelOffsets_t* offsets =
+		reinterpret_cast<const mdxaSkelOffsets_t*>(
+			reinterpret_cast<const byte*>(boneCache.header) + sizeof(mdxaHeader_t));
+
+	if (offsets == nullptr)
+	{
+		Com_Printf("G2_RagGetBoneBasePoseMatrixLow WARNING: offsets is NULL\n");
+		return;
+	}
+
+	const mdxaSkel_t* skel =
+		reinterpret_cast<const mdxaSkel_t*>(
+			reinterpret_cast<const byte*>(boneCache.header)
+			+ sizeof(mdxaHeader_t)
+			+ offsets->offsets[boneNum]);
+
+	if (skel == nullptr)
+	{
+		Com_Printf("G2_RagGetBoneBasePoseMatrixLow WARNING: skel is NULL\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Multiply boneMatrix with BasePoseMat
+	// ----------------------------------------------------------------------
 	Multiply_3x4Matrix(&retMatrix, &boneMatrix, &skel->BasePoseMat);
 
-	if (scale[0])
+	// ----------------------------------------------------------------------
+	// Apply scale to translation components
+	// ----------------------------------------------------------------------
+	if (scale[0] != 0.0f)
 	{
 		retMatrix.matrix[0][3] *= scale[0];
 	}
-	if (scale[1])
+	if (scale[1] != 0.0f)
 	{
 		retMatrix.matrix[1][3] *= scale[1];
 	}
-	if (scale[2])
+	if (scale[2] != 0.0f)
 	{
 		retMatrix.matrix[2][3] *= scale[2];
 	}
 
+	// ----------------------------------------------------------------------
+	// Normalize the basis vectors
+	// ----------------------------------------------------------------------
 	VectorNormalize(reinterpret_cast<float*>(&retMatrix.matrix[0]));
 	VectorNormalize(reinterpret_cast<float*>(&retMatrix.matrix[1]));
 	VectorNormalize(reinterpret_cast<float*>(&retMatrix.matrix[2]));
@@ -3909,274 +3972,6 @@ int OldToNewRemapTable[72] = {
 	52 // Bone71:   "face_always_":			Parent: "cranium"  (index 17)
 };
 
-/*
-
-Bone   0:   "model_root":
-			Parent: ""  (index -1)
-			#Kids:  1
-			Child 0: (index 1), name "pelvis"
-
-Bone   1:   "pelvis":
-			Parent: "model_root"  (index 0)
-			#Kids:  4
-			Child 0: (index 2), name "Motion"
-			Child 1: (index 3), name "lfemurYZ"
-			Child 2: (index 7), name "rfemurYZ"
-			Child 3: (index 11), name "lower_lumbar"
-
-Bone   2:   "Motion":
-			Parent: "pelvis"  (index 1)
-			#Kids:  0
-
-Bone   3:   "lfemurYZ":
-			Parent: "pelvis"  (index 1)
-			#Kids:  3
-			Child 0: (index 4), name "lfemurX"
-			Child 1: (index 5), name "ltibia"
-			Child 2: (index 49), name "ltail"
-
-Bone   4:   "lfemurX":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  0
-
-Bone   5:   "ltibia":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  1
-			Child 0: (index 6), name "ltalus"
-
-Bone   6:   "ltalus":
-			Parent: "ltibia"  (index 5)
-			#Kids:  0
-
-Bone   7:   "rfemurYZ":
-			Parent: "pelvis"  (index 1)
-			#Kids:  3
-			Child 0: (index 8), name "rfemurX"
-			Child 1: (index 9), name "rtibia"
-			Child 2: (index 50), name "rtail"
-
-Bone   8:   "rfemurX":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  0
-
-Bone   9:   "rtibia":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  1
-			Child 0: (index 10), name "rtalus"
-
-Bone  10:   "rtalus":
-			Parent: "rtibia"  (index 9)
-			#Kids:  0
-
-Bone  11:   "lower_lumbar":
-			Parent: "pelvis"  (index 1)
-			#Kids:  1
-			Child 0: (index 12), name "upper_lumbar"
-
-Bone  12:   "upper_lumbar":
-			Parent: "lower_lumbar"  (index 11)
-			#Kids:  1
-			Child 0: (index 13), name "thoracic"
-
-Bone  13:   "thoracic":
-			Parent: "upper_lumbar"  (index 12)
-			#Kids:  5
-			Child 0: (index 14), name "cervical"
-			Child 1: (index 24), name "rclavical"
-			Child 2: (index 25), name "rhumerus"
-			Child 3: (index 37), name "lclavical"
-			Child 4: (index 38), name "lhumerus"
-
-Bone  14:   "cervical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  1
-			Child 0: (index 15), name "cranium"
-
-Bone  15:   "cranium":
-			Parent: "cervical"  (index 14)
-			#Kids:  1
-			Child 0: (index 52), name "face_always_"
-
-Bone  16:   "ceyebrow":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  17:   "jaw":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  18:   "lblip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  19:   "leye":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  20:   "rblip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  21:   "ltlip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  22:   "rtlip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  23:   "reye":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  24:   "rclavical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  0
-
-Bone  25:   "rhumerus":
-			Parent: "thoracic"  (index 13)
-			#Kids:  2
-			Child 0: (index 26), name "rhumerusX"
-			Child 1: (index 27), name "rradius"
-
-Bone  26:   "rhumerusX":
-			Parent: "rhumerus"  (index 25)
-			#Kids:  0
-
-Bone  27:   "rradius":
-			Parent: "rhumerus"  (index 25)
-			#Kids:  9
-			Child 0: (index 28), name "rradiusX"
-			Child 1: (index 29), name "rhand"
-			Child 2: (index 30), name "r_d1_j1"
-			Child 3: (index 31), name "r_d1_j2"
-			Child 4: (index 32), name "r_d2_j1"
-			Child 5: (index 33), name "r_d2_j2"
-			Child 6: (index 34), name "r_d4_j1"
-			Child 7: (index 35), name "r_d4_j2"
-			Child 8: (index 36), name "rhang_tag_bone"
-
-Bone  28:   "rradiusX":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  29:   "rhand":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  30:   "r_d1_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  31:   "r_d1_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  32:   "r_d2_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  33:   "r_d2_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  34:   "r_d4_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  35:   "r_d4_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  36:   "rhang_tag_bone":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  37:   "lclavical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  0
-
-Bone  38:   "lhumerus":
-			Parent: "thoracic"  (index 13)
-			#Kids:  2
-			Child 0: (index 39), name "lhumerusX"
-			Child 1: (index 40), name "lradius"
-
-Bone  39:   "lhumerusX":
-			Parent: "lhumerus"  (index 38)
-			#Kids:  0
-
-Bone  40:   "lradius":
-			Parent: "lhumerus"  (index 38)
-			#Kids:  9
-			Child 0: (index 41), name "lradiusX"
-			Child 1: (index 42), name "lhand"
-			Child 2: (index 43), name "l_d4_j1"
-			Child 3: (index 44), name "l_d4_j2"
-			Child 4: (index 45), name "l_d2_j1"
-			Child 5: (index 46), name "l_d2_j2"
-			Child 6: (index 47), name "l_d1_j1"
-			Child 7: (index 48), name "l_d1_j2"
-			Child 8: (index 51), name "lhang_tag_bone"
-
-Bone  41:   "lradiusX":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  42:   "lhand":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  43:   "l_d4_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  44:   "l_d4_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  45:   "l_d2_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  46:   "l_d2_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  47:   "l_d1_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  48:   "l_d1_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  49:   "ltail":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  0
-
-Bone  50:   "rtail":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  0
-
-Bone  51:   "lhang_tag_bone":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  52:   "face_always_":
-			Parent: "cranium"  (index 15)
-			#Kids:  8
-			Child 0: (index 16), name "ceyebrow"
-			Child 1: (index 17), name "jaw"
-			Child 2: (index 18), name "lblip2"
-			Child 3: (index 19), name "leye"
-			Child 4: (index 20), name "rblip2"
-			Child 5: (index 21), name "ltlip2"
-			Child 6: (index 22), name "rtlip2"
-			Child 7: (index 23), name "reye"
-
-*/
-
 qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& bAlreadyCached)
 {
 	int i, j;
@@ -4201,8 +3996,8 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -4212,8 +4007,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 	if (version != MDXM_VERSION)
 	{
-		ri->Printf(PRINT_ALL, S_COLOR_YELLOW "R_LoadMDXM: %s has wrong version (%i should be %i)\n",
-			mod_name, version, MDXM_VERSION);
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXM: %s has wrong version (%i should be %i)\n", mod_name, version, MDXM_VERSION);
 		return qfalse;
 	}
 
@@ -4221,10 +4015,12 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	mod->dataSize += size;
 
 	qboolean bAlreadyFound = qfalse;
-	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterModels_Malloc(
-		size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
+	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
 
-	assert(bAlreadyCached == bAlreadyFound);
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXM: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
@@ -4246,8 +4042,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 	if (!mdxm->animIndex)
 	{
-		ri->Printf(PRINT_ALL, S_COLOR_YELLOW "R_LoadMDXM: missing animation file %s for mesh %s\n", mdxm->animName,
-			mdxm->name);
+		Com_Printf(S_COLOR_YELLOW  "R_LoadMDXM: missing animation file %s for mesh %s\n", mdxm->animName, mdxm->name);
 		return qfalse;
 	}
 
@@ -4264,7 +4059,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		isAnOldModelFile = true;
 	}
 
-	surfInfo = (mdxmSurfHierarchy_t*)((byte*)mdxm + mdxm->ofsSurfHierarchy);
+	surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsSurfHierarchy);
 #ifdef Q3_BIG_ENDIAN
 	surfIndexes = (mdxmHierarchyOffsets_t*)((byte*)mdxm + sizeof(mdxmHeader_t));
 #endif
@@ -4307,19 +4102,18 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #endif
 
 		// find the next surface
-		surfInfo = (mdxmSurfHierarchy_t*)((byte*)surfInfo + (size_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->
-			childIndexes[surfInfo->numChildren]);
+		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (size_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->childIndexes[surfInfo->numChildren]);
 	}
 
 	// swap all the LOD's	(we need to do the middle part of this even for intel, because of shader reg and err-check)
-	lod = (mdxmLOD_t*)((byte*)mdxm + mdxm->ofsLODs);
+	lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsLODs);
 	for (int l = 0; l < mdxm->numLODs; l++)
 	{
 		int triCount = 0;
 
 		LL(lod->ofsEnd);
 		// swap all the surfaces
-		surf = (mdxmSurface_t*)((byte*)lod + sizeof(mdxmLOD_t) + mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t));
+		surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(lod) + sizeof(mdxmLOD_t) + (mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t)));
 		for (i = 0; i < mdxm->numSurfaces; i++)
 		{
 			LL(surf->thisSurfaceIndex);
@@ -4394,7 +4188,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 			if (isAnOldModelFile)
 			{
-				auto boneRef = (int*)((byte*)surf + surf->ofsBoneReferences);
+				auto boneRef = reinterpret_cast<int*>(reinterpret_cast<byte*>(surf) + surf->ofsBoneReferences);
 				for (j = 0; j < surf->numBoneReferences; j++)
 				{
 					assert(boneRef[j] >= 0 && boneRef[j] < 72);
@@ -4409,10 +4203,10 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 				}
 			}
 			// find the next surface
-			surf = (mdxmSurface_t*)((byte*)surf + surf->ofsEnd);
+			surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(surf) + surf->ofsEnd);
 		}
 		// find the next LOD
-		lod = (mdxmLOD_t*)((byte*)lod + lod->ofsEnd);
+		lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(lod) + lod->ofsEnd);
 	}
 	return qtrue;
 }
@@ -4646,8 +4440,8 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -4682,7 +4476,10 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #endif
 		mod_name, &bAlreadyFound, TAG_MODEL_GLA));
 
-	assert(bAlreadyCached == bAlreadyFound); // I should probably eliminate 'bAlreadyFound', but wtf?
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXA: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{

@@ -2191,64 +2191,59 @@ static void CG_RegisterGraphics()
 		{
 			if (g_entities[i].client)
 			{
-				//if(!g_entities[i].client->clientInfo.infoValid)
-				//We presume this
+				CG_LoadingString(va("client %s", g_entities[i].client->clientInfo.name));
+				CG_RegisterClientModels(i);
+				if (i != 0)
 				{
-					CG_LoadingString(va("client %s", g_entities[i].client->clientInfo.name));
-					CG_RegisterClientModels(i);
-					if (i != 0)
+					//Client weapons already precached
+					CG_RegisterWeapon(g_entities[i].client->ps.weapon);
+					if (g_entities[i].client->ps.saber[0].g2MarksShader[0])
 					{
-						//Client weapons already precached
-						CG_RegisterWeapon(g_entities[i].client->ps.weapon);
-						if (g_entities[i].client->ps.saber[0].g2MarksShader[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2MarksShader);
-						}
-						if (g_entities[i].client->ps.saber[0].g2MarksShader2[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2MarksShader2);
-						}
-						if (g_entities[i].client->ps.saber[0].g2WeaponMarkShader[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2WeaponMarkShader);
-						}
-						if (g_entities[i].client->ps.saber[0].g2WeaponMarkShader2[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2WeaponMarkShader2);
-						}
-						if (g_entities[i].client->ps.saber[1].g2MarksShader[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2MarksShader);
-						}
-						if (g_entities[i].client->ps.saber[1].g2MarksShader2[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2MarksShader2);
-						}
-						if (g_entities[i].client->ps.saber[1].g2WeaponMarkShader[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2WeaponMarkShader);
-						}
-						if (g_entities[i].client->ps.saber[1].g2WeaponMarkShader2[0])
-						{
-							cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2WeaponMarkShader2);
-						}
-						// Custom saber glow, blade & dlight color code
-						if (g_entities[i].client->ps.saber[0].glowshader[0])
-						{
-							cgs.media.customSaberGlowShader = cgi_R_RegisterShader(
-								g_entities[i].client->ps.saber[0].glowshader);
-						}
-						if (g_entities[i].client->ps.saber[0].bladeshader[0])
-						{
-							cgs.media.customSaberCoreShader = cgi_R_RegisterShader(
-								g_entities[i].client->ps.saber[0].bladeshader);
-						}
-						CG_RegisterNPCCustomSounds(&g_entities[i].client->clientInfo);
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2MarksShader);
 					}
+					if (g_entities[i].client->ps.saber[0].g2MarksShader2[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2MarksShader2);
+					}
+					if (g_entities[i].client->ps.saber[0].g2WeaponMarkShader[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2WeaponMarkShader);
+					}
+					if (g_entities[i].client->ps.saber[0].g2WeaponMarkShader2[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[0].g2WeaponMarkShader2);
+					}
+					if (g_entities[i].client->ps.saber[1].g2MarksShader[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2MarksShader);
+					}
+					if (g_entities[i].client->ps.saber[1].g2MarksShader2[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2MarksShader2);
+					}
+					if (g_entities[i].client->ps.saber[1].g2WeaponMarkShader[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2WeaponMarkShader);
+					}
+					if (g_entities[i].client->ps.saber[1].g2WeaponMarkShader2[0])
+					{
+						cgi_R_RegisterShader(g_entities[i].client->ps.saber[1].g2WeaponMarkShader2);
+					}
+					// Custom saber glow, blade & dlight color code
+					if (g_entities[i].client->ps.saber[0].glowshader[0])
+					{
+						cgs.media.customSaberGlowShader = cgi_R_RegisterShader(
+							g_entities[i].client->ps.saber[0].glowshader);
+					}
+					if (g_entities[i].client->ps.saber[0].bladeshader[0])
+					{
+						cgs.media.customSaberCoreShader = cgi_R_RegisterShader(
+							g_entities[i].client->ps.saber[0].bladeshader);
+					}
+					CG_RegisterNPCCustomSounds(&g_entities[i].client->clientInfo);
 				}
 			}
-			else if (g_entities[i].svFlags & SVF_NPC_PRECACHE && g_entities[i].NPC_type && g_entities[i].NPC_type[
-				0])
+			else if (g_entities[i].svFlags & SVF_NPC_PRECACHE && g_entities[i].NPC_type && g_entities[i].NPC_type[0])
 			{
 				//Precache the NPC_type
 				CG_LoadingString(va("NPC %s", g_entities[i].NPC_type));

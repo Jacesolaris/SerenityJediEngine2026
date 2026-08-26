@@ -3811,18 +3811,15 @@ static void CreateExternalShaders(void) {
 R_InitShaders
 ==================
 */
-void R_InitShaders(const qboolean server)
+void R_InitShaders(void)
 {
 	ri.Printf(PRINT_ALL, "Initializing Shaders\n");
 
-	memset(sh_hashTable, 0, sizeof sh_hashTable);
+	memset(sh_hashTable, 0, sizeof(sh_hashTable));
 
-	if (!server)
-	{
-		CreateInternalShaders();
+	CreateInternalShaders();
 
-		ScanAndLoadShaderFiles();
+	ScanAndLoadShaderFiles();
 
-		CreateExternalShaders();
-	}
+	CreateExternalShaders();
 }

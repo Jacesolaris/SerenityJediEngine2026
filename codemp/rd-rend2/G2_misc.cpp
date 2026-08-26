@@ -285,7 +285,7 @@ void G2_List_Model_Bones(const char* fileName)
 
 	// figure out where the offset list is
 	offsets = (mdxaSkelOffsets_t*)((byte*)header + sizeof(mdxaHeader_t));
-		// walk each bone and list it's name
+	// walk each bone and list it's name
 	for (x = 0; x < header->numBones; x++)
 	{
 		skel = (mdxaSkel_t*)((byte*)header + sizeof(mdxaHeader_t) + offsets->offsets[x]);
@@ -339,7 +339,7 @@ qboolean G2_GetAnimFileName(const char* fileName, char** filename)
 //
 /////////////////////////////////////////////////////////////////////
 
-int G2_DecideTraceLod(const CGhoul2Info& ghoul2, const int useLod)
+int G2_DecideTraceLod(CGhoul2Info& ghoul2, int useLod)
 {
 	int returnLod = useLod;
 
@@ -1004,7 +1004,7 @@ static void G2_GorePolys(const mdxmSurface_t* surface, CTraceSurface& TS, const 
 		goreSurface->indexes = (glIndex_t*)Z_Malloc(sizeof(glIndex_t) * newNumTris * 3, TAG_GHOUL2_GORE, qtrue);
 		for (j = 0; j < newNumTris * 3; j++)
 		{
-			goreSurface->indexes[j] = GoreIndecies[j] + tr.goreVBOCurrentIndex;
+			goreSurface->indexes[j] = GoreIndecies[j] + backEndData->currentFrame->goreVBOCurrentIndex;
 		}
 		goreSurface->numIndexes = newNumTris * 3;
 

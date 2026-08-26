@@ -301,6 +301,8 @@ typedef enum cgameImportLegacy_e {
 	CG_R_DRAWROTATEPIC,
 	CG_R_DRAWROTATEPIC2,
 	CG_R_SETRANGEFOG,
+	CG_R_LA_GOGGLES,
+	CG_R_SCISSOR,
 	CG_R_SETREFRACTIONPROP,
 	CG_R_REMAP_SHADER,
 	CG_R_GET_LIGHT_STYLE,
@@ -588,10 +590,14 @@ typedef struct cgameImport_s {
 	void			(*R_SetColor)							(const float* rgba);	// NULL = 1,1,1,1
 	void			(*R_SetLightStyle)						(int style, int color);
 	void			(*R_SetRangedFog)						(float range);
+	void			(*R_LAGoggles)						   (void);
+	void			(*R_Scissor)						(float x, float y, float w, float h);
 	void			(*R_SetRefractionProperties)			(float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate);
 	void			(*RE_WorldEffectCommand)					(const char* cmd);
 	void			(*RE_InitRendererTerrain)				(const char* info);
 	void			(*WE_AddWeatherZone)					(vec3_t mins, vec3_t maxs);
+	//float			(*WE_IsOutsideCausingPain)				(vec3_t pos);
+	//bool            (*WE_IsOutside)                         (vec3_t pos);
 
 	// client
 	void			(*GetCurrentSnapshotNumber)				(int* snapshotNumber, int* serverTime);

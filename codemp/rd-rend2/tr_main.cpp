@@ -1806,7 +1806,7 @@ void R_AddDrawSurf(surfaceType_t* surface, int entityNum, const shader_t* shader
 	surf->surface = surface;
 
 	if (tr.viewParms.flags & VPF_DEPTHSHADOW &&
-		drawShader->useSimpleDepthShader == qtrue)
+		drawShader->depthPrepass == DEPTHPREPASS_SIMPLE)
 	{
 		surf->sort = R_CreateSortKey(entityNum, tr.defaultShader->sortedIndex, 0, 0);
 		surf->dlightBits = 0;
@@ -2021,7 +2021,9 @@ void R_GenerateDrawSurfs(viewParms_t* viewParms, trRefdef_t* refdef) {
 
 	R_AddPolygonSurfaces(refdef);
 
-	if (tr.viewParms.viewParmType > VPT_POINT_SHADOWS && tr.world)
+	if (tr.viewParms.viewParmType > VPT_POINT_SHADOWS &&
+		tr.world &&
+		backEndData->currentFrame->currentScene == 0)
 	{
 		R_AddWeatherSurfaces();
 	}
@@ -3034,6 +3036,18 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 
 		tr.viewParms.currentViewParm = tr.numCachedViewParms;
 		tr.viewParms.viewParmType = VPT_MAIN;
+
+		if (r_smaa->integer == 2)
+		{
+			const vec2_t jitterPos[2] =
+			{
+				{-.25f, 0.25f},
+				{0.25f, -.25f},
+			};
+			tr.viewParms.projectionMatrix[2] = 2.0 * jitterPos[backEndData->realFrameNumber % 2][0] / glConfig.vidWidth;
+			tr.viewParms.projectionMatrix[6] = 2.0 * jitterPos[backEndData->realFrameNumber % 2][1] / glConfig.vidHeight;
+		}
+
 		Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &tr.viewParms, sizeof(viewParms_t));
 		tr.numCachedViewParms++;
 	}

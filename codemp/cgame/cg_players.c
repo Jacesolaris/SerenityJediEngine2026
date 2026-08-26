@@ -2590,7 +2590,7 @@ static void CG_PlayerFootsteps(centity_t* cent, const footstepType_t foot_step_t
 		&& cent->currentState.NPC_class != CLASS_SWAMP)
 	{
 		mdxaBone_t boltMatrix;
-		vec3_t temp_angles = { 0 }, side_origin;
+		vec3_t temp_angles = { 0 }, sideOrigin;
 		int foot_bolt;
 
 		temp_angles[PITCH] = 0;
@@ -2617,9 +2617,9 @@ static void CG_PlayerFootsteps(centity_t* cent, const footstepType_t foot_step_t
 		//FIXME: get yaw orientation of the foot and use on decal
 		trap->G2API_GetBoltMatrix(cent->ghoul2, 0, foot_bolt, &boltMatrix, temp_angles, cent->lerpOrigin,
 			cg.time, cgs.game_models, cent->modelScale);
-		BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, side_origin);
-		side_origin[2] += 15; //fudge up a bit for coplanar
-		player_foot_step(side_origin, cent->pe.legs.yawAngle, 6, cent, foot_step_type);
+		BG_GiveMeVectorFromMatrix(&boltMatrix, ORIGIN, sideOrigin);
+		sideOrigin[2] += 15; //fudge up a bit for coplanar
+		player_foot_step(sideOrigin, cent->pe.legs.yawAngle, 6, cent, foot_step_type);
 	}
 }
 
@@ -5270,18 +5270,6 @@ static void CG_PlayerSprites(const centity_t* cent)
 	{
 		CG_PlayerFloatSprite(cent, cgs.media.balloonShader);
 	}
-
-	/*if (cent->currentState.eFlags & EF_AWARD_IMPRESSIVE)
-	{
-		CG_PlayerFloatSprite(cent, cgs.media.medalImpressive);
-		return;
-	}*/
-
-	/*if (cent->currentState.eFlags & EF_AWARD_EXCELLENT)
-	{
-		CG_PlayerFloatSprite(cent, cgs.media.medalExcellent);
-		return;
-	}*/
 }
 
 /*
@@ -5295,7 +5283,7 @@ Returns the Z component of the surface being shadowed
 */
 #define	SHADOW_DISTANCE		128
 
-static qboolean CG_PlayerShadow(const centity_t* cent, float* shadowPlane)
+static qboolean CG_PlayerShadow(centity_t* const cent, float* const shadowPlane)
 {
 	vec3_t end;
 	const vec3_t maxs = { 15, 15, 2 };
@@ -11993,7 +11981,7 @@ static void CG_SaberCompWork(vec3_t start, vec3_t end, centity_t* owner,
 								trEnt->lerpAngles[YAW],
 								trEnt->ghoul2,
 								trEnt->modelScale,
-								Q_irand(8000, 15000));
+								Q_irand(20000, 30000));
 
 							// Splashback mark on the attacker’s weapon
 							if (weaponMarkShader)
@@ -12010,7 +11998,7 @@ static void CG_SaberCompWork(vec3_t start, vec3_t end, centity_t* owner,
 									owner->lerpAngles[YAW],
 									owner->ghoul2,
 									owner->modelScale,
-									Q_irand(8000, 15000));
+									Q_irand(20000, 30000));
 							}
 
 							// Blood sparks + hit sound
@@ -19597,7 +19585,7 @@ stillDoSaber:
 		legs.shaderRGBA[0] = 255;
 		legs.shaderRGBA[1] = 255;
 		legs.shaderRGBA[2] = 0;
-		legs.renderfx |= RF_MINLIGHT;
+		legs.renderfx |= RF_MORELIGHT;
 	}
 
 	if (cent->currentState.eFlags & EF_DISINTEGRATION)

@@ -906,7 +906,7 @@ model_t* R_GetModelByHandle(const qhandle_t index);
 int R_LerpTag(orientation_t* tag, const qhandle_t handle, const int startFrame, const int endFrame, const float frac, const char* tagName);
 void R_ModelBounds(const qhandle_t handle, vec3_t mins, vec3_t maxs);
 
-void R_model_list_f(void);
+void R_Modellist_f(void);
 
 //====================================================
 constexpr auto MAX_LIGHTMAPS = 256;
@@ -1393,7 +1393,7 @@ qboolean R_GetEntityToken(char* buffer, int size);
 
 model_t* R_AllocModel(void);
 
-void R_Init();
+void R_Init(void);
 
 image_t* R_FindImageFile(const char* name, qboolean mipmap, qboolean allow_picmip, qboolean allow_tc,
 	int gl_wrap_clamp_mode);

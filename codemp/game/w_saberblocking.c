@@ -64,7 +64,7 @@ extern void PM_AddBlockFatigue(playerState_t* ps, int fatigue);
 extern saberMoveName_t pm_block_the_attack(int move);
 extern int g_block_the_attack(int move);
 extern saberMoveName_t PM_SaberBounceForAttack(int move);
-extern void G_Stagger(gentity_t* hit_ent);
+extern void G_Stagger(gentity_t* hitEnt);
 extern void g_fatigue_bp_knockaway(gentity_t* blocker);
 extern qboolean PM_SuperBreakLoseAnim(int anim);
 extern qboolean WP_ButterFingers(gentity_t* saberent, gentity_t* saber_owner, const gentity_t* other, const trace_t* tr);

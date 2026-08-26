@@ -397,14 +397,14 @@ void g_fatigue_bp_knockaway(gentity_t* blocker)
 	G_PlayReaction(blocker, &REACT_KNOCKAWAY, qfalse, qfalse);
 }
 
-void G_Stagger(gentity_t* hit_ent)
+void G_Stagger(gentity_t* hitEnt)
 {
-	G_PlayReaction(hit_ent, &REACT_STAGGER_HIT, qtrue, qtrue);
+	G_PlayReaction(hitEnt, &REACT_STAGGER_HIT, qtrue, qtrue);
 }
 
-static void G_Stumble(gentity_t* hit_ent)
+static void G_Stumble(gentity_t* hitEnt)
 {
-	G_PlayReaction(hit_ent, &REACT_STUMBLE, qfalse, qfalse);
+	G_PlayReaction(hitEnt, &REACT_STUMBLE, qfalse, qfalse);
 }
 
 void bg_reduce_blaster_mishap_level_advanced(playerState_t* ps)
@@ -6347,9 +6347,7 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 				}
 				else
 				{
-					dmg = g_saberdebug.integer ?
-						SABER_DEBUGTDAMAGE :
-						SABER_NORHITDAMAGE;
+					dmg = g_saberdebug.integer ?SABER_DEBUGTDAMAGE : SABER_NORHITDAMAGE;
 				}
 			}
 		}
@@ -6371,9 +6369,7 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 			}
 			else
 			{
-				dmg = g_saberdebug.integer ?
-					SABER_DEBUGTDAMAGE :
-					SABER_MINHITDAMAGE;
+				dmg = g_saberdebug.integer ?SABER_DEBUGTDAMAGE :SABER_MINHITDAMAGE;
 			}
 		}
 	}
@@ -6387,7 +6383,8 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 	else if ((self_is_holding_block_button ||
 		self_active_blocking ||
 		self_m_blocking ||
-		self->client->ps.saberManualBlockingTime > level.time) &&
+		self->client->ps.saberManualBlockingTime > level.time) && 
+		!PM_SaberInSpecialAttack(self->client->ps.torsoAnim) &&
 		!(self->r.svFlags & SVF_BOT))
 	{
 		dmg = SABER_NO_DAMAGE;
@@ -6721,9 +6718,7 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 
 		if (victim->client &&
 			!(dflags & DAMAGE_NO_DAMAGE) &&
-			(PM_SaberInParry(victim->client->ps.saberMove) ||
-				PM_SaberInReflect(victim->client->ps.saberMove) ||
-				PM_SaberInKnockaway(victim->client->ps.saberMove)))
+			(self_m_blocking == qtrue))
 		{
 			perfectParry = qtrue;
 		}
@@ -9039,7 +9034,7 @@ void thrownSaberBallistics(gentity_t* saberEnt, const gentity_t* saber_own, qboo
 
 void WP_thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* trace)
 {
-	gentity_t* hit_ent = other;
+	gentity_t* hitEnt = other;
 	gentity_t* saber_own = &g_entities[saberent->r.ownerNum];
 
 	if (other && other->s.number == saberent->r.ownerNum)
@@ -9080,11 +9075,11 @@ void WP_thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* t
 		g_entities[other->r.ownerNum].client &&
 		g_entities[other->r.ownerNum].inuse)
 	{
-		hit_ent = &g_entities[other->r.ownerNum];
+		hitEnt = &g_entities[other->r.ownerNum];
 	}
 
 	//we'll skip the dist check, since we don't really care about that (we just hit it physically)
-	WP_CheckThrownSaberDamaged(saberent, &g_entities[saberent->r.ownerNum], hit_ent, 256, 0, qtrue);
+	WP_CheckThrownSaberDamaged(saberent, &g_entities[saberent->r.ownerNum], hitEnt, 256, 0, qtrue);
 	VectorCopy(saberent->r.currentOrigin, saberent->s.pos.trBase);
 	VectorCopy(saberent->r.currentAngles, saberent->s.apos.trBase);
 
@@ -9536,133 +9531,133 @@ extern void G_GetBoltPosition(gentity_t* self, int boltIndex, vec3_t pos, int mo
 
 extern qboolean BG_InKnockDown(int anim);
 
-static void WP_HolsterSaberAndPlayOffSounds(gentity_t* hit_ent)
+static void WP_HolsterSaberAndPlayOffSounds(gentity_t* hitEnt)
 {
-	if (!hit_ent || !hit_ent->client)
+	if (!hitEnt || !hitEnt->client)
 	{
 		return;
 	}
 
-	if (!hit_ent->client->ps.saberHolstered)
+	if (!hitEnt->client->ps.saberHolstered)
 	{
-		if (hit_ent->client->saber[0].soundOff)
+		if (hitEnt->client->saber[0].soundOff)
 		{
-			G_Sound(hit_ent, CHAN_WEAPON, hit_ent->client->saber[0].soundOff);
+			G_Sound(hitEnt, CHAN_WEAPON, hitEnt->client->saber[0].soundOff);
 		}
-		if (hit_ent->client->saber[1].soundOff)
+		if (hitEnt->client->saber[1].soundOff)
 		{
-			G_Sound(hit_ent, CHAN_WEAPON, hit_ent->client->saber[1].soundOff);
+			G_Sound(hitEnt, CHAN_WEAPON, hitEnt->client->saber[1].soundOff);
 		}
-		hit_ent->client->ps.saberHolstered = 2;
+		hitEnt->client->ps.saberHolstered = 2;
 	}
 }
 
 extern qboolean PM_KnockDownAnim(int anim);
-static void WP_KnockdownAndDrain(gentity_t* hit_ent, gentity_t* pusher, int knockAnimMin, int knockAnimMax, qboolean addFatigueBonus, qboolean useAbsorbDrain)
+static void WP_KnockdownAndDrain(gentity_t* hitEnt, gentity_t* pusher, int knockAnimMin, int knockAnimMax, qboolean addFatigueBonus, qboolean useAbsorbDrain)
 {
-	const qboolean isBot = (qboolean)((hit_ent->r.svFlags & SVF_BOT) != 0);
+	const qboolean isBot = (qboolean)((hitEnt->r.svFlags & SVF_BOT) != 0);
 
-	if (!hit_ent || !hit_ent->client)
+	if (!hitEnt || !hitEnt->client)
 	{
 		return;
 	}
 
-	G_SetAnim(hit_ent, &hit_ent->client->pers.cmd, SETANIM_BOTH, (knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	G_SetAnim(hitEnt, &hitEnt->client->pers.cmd, SETANIM_BOTH, (knockAnimMin == knockAnimMax) ? knockAnimMin : Q_irand(knockAnimMin, knockAnimMax), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 
 	if (useAbsorbDrain)
 	{
-		WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
+		WP_BlockPointsDrain(hitEnt, FATIGUE_BP_ABSORB);
 	}
 	else
 	{
-		WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
+		WP_BlockPointsDrain(hitEnt, FATIGUE_BLOCKPOINTDRAIN);
 	}
 
 	if (addFatigueBonus && pusher)
 	{
-		AddFatigueMeleeBonus(pusher, hit_ent);
+		AddFatigueMeleeBonus(pusher, hitEnt);
 	}
 
-	G_Sound(hit_ent, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+	G_Sound(hitEnt, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 
-	WP_HolsterSaberAndPlayOffSounds(hit_ent);
+	WP_HolsterSaberAndPlayOffSounds(hitEnt);
 
 	if (isBot)
 	{
-		hit_ent->client->ps.legsTimer += NPC_KNOCKDOWN_HOLD_EXTRA_TIME;
-		hit_ent->client->ps.torsoTimer += NPC_KNOCKDOWN_HOLD_EXTRA_TIME;
+		hitEnt->client->ps.legsTimer += NPC_KNOCKDOWN_HOLD_EXTRA_TIME;
+		hitEnt->client->ps.torsoTimer += NPC_KNOCKDOWN_HOLD_EXTRA_TIME;
 	}
 	else
 	{
 		//player holds extra long so you have more time to decide to do the quick getup
-		if (PM_KnockDownAnim(hit_ent->client->ps.legsAnim))
+		if (PM_KnockDownAnim(hitEnt->client->ps.legsAnim))
 		{
-			hit_ent->client->ps.legsTimer += PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME;
-			hit_ent->client->ps.torsoTimer += PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME;
+			hitEnt->client->ps.legsTimer += PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME;
+			hitEnt->client->ps.torsoTimer += PLAYER_KNOCKDOWN_HOLD_EXTRA_TIME;
 		}
 	}
 }
 
-static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push_dir)
+static qboolean WP_AbsorbKick(gentity_t* hitEnt, gentity_t* pusher, vec3_t push_dir)
 {
-	if (!hit_ent || !hit_ent->client || !pusher || !pusher->client)
+	if (!hitEnt || !hitEnt->client || !pusher || !pusher->client)
 	{
 		return qfalse;
 	}
 
-	const qboolean is_holding_block_button_and_attack = ((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button_and_attack = ((hitEnt->client->ps.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCKANDATTACK)) != 0) ? qtrue : qfalse;
 
-	const qboolean is_holding_block_button = ((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean is_holding_block_button = ((hitEnt->client->ps.ManualBlockingFlags & (1 << MBF_HOLDINGBLOCK)) != 0) ? qtrue : qfalse;
 
-	const qboolean npc_blocking = ((hit_ent->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0) ? qtrue : qfalse;
+	const qboolean npc_blocking = ((hitEnt->client->ps.ManualBlockingFlags & (1 << MBF_NPCKICKBLOCK)) != 0) ? qtrue : qfalse;
 
-	const qboolean isPlayer = (qboolean)((hit_ent->r.svFlags & SVF_BOT) == 0);
+	const qboolean isPlayer = (qboolean)((hitEnt->r.svFlags & SVF_BOT) == 0);
 
-	const qboolean isBot = (qboolean)((hit_ent->r.svFlags & SVF_BOT) != 0);
+	const qboolean isBot = (qboolean)((hitEnt->r.svFlags & SVF_BOT) != 0);
 
 	// ============================================================
 	// 1. Player absorb (manual block)
 	// ============================================================
-	if (PlayerCanAbsorbKick(hit_ent, push_dir) &&
+	if (PlayerCanAbsorbKick(hitEnt, push_dir) &&
 		(is_holding_block_button || is_holding_block_button_and_attack) &&
 		isPlayer)
 	{
-		if (hit_ent->client->ps.fd.blockPoints > 50)
+		if (hitEnt->client->ps.fd.blockPoints > 50)
 		{
-			G_Stagger(hit_ent);
+			G_Stagger(hitEnt);
 		}
 		else
 		{
-			G_Stumble(hit_ent);
+			G_Stumble(hitEnt);
 		}
 
-		WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
-		G_Sound(hit_ent, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		WP_BlockPointsDrain(hitEnt, FATIGUE_BP_ABSORB);
+		G_Sound(hitEnt, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 		return qtrue;
 	}
 
 	// ============================================================
 	// 2. Bot / NPC absorb
 	// ============================================================
-	if (BotCanAbsorbKick(hit_ent, push_dir) && npc_blocking && isBot)
+	if (BotCanAbsorbKick(hitEnt, push_dir) && npc_blocking && isBot)
 	{
-		if (hit_ent->client->ps.fd.blockPoints > 50 && hit_ent->client->ps.fd.forcePower > 50)
+		if (hitEnt->client->ps.fd.blockPoints > 50 && hitEnt->client->ps.fd.forcePower > 50)
 		{
-			G_Stagger(hit_ent);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
-			WP_DeactivateSaber(hit_ent);
+			G_Stagger(hitEnt);
+			WP_BlockPointsDrain(hitEnt, FATIGUE_BP_ABSORB);
+			WP_DeactivateSaber(hitEnt);
 		}
 		else
 		{
-			G_SetAnim(hit_ent, &hit_ent->client->pers.cmd,
+			G_SetAnim(hitEnt, &hitEnt->client->pers.cmd,
 				SETANIM_BOTH,
 				Q_irand(BOTH_FLIP_BACK1, BOTH_FLIP_BACK2),
 				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD,
 				0);
-			WP_BlockPointsDrain(hit_ent, FATIGUE_BP_ABSORB);
+			WP_BlockPointsDrain(hitEnt, FATIGUE_BP_ABSORB);
 		}
 
-		G_Sound(hit_ent, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
+		G_Sound(hitEnt, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/punch%d", Q_irand(1, 4))));
 		return qtrue;
 	}
 
@@ -9685,8 +9680,8 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 		pusher->client->ps.torsoAnim == MELEE_STANCE_BL ||
 		pusher->client->ps.torsoAnim == MELEE_STANCE_B)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9694,8 +9689,8 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 	if (pusher->client->ps.torsoAnim == BOTH_WOOKIE_SLAP ||
 		pusher->client->ps.torsoAnim == BOTH_TUSKENLUNGE1)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNLEFT, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNLEFT, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9706,18 +9701,18 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK2 ||
 		pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 
 		if (pusher->client->ps.legsAnim == BOTH_A7_KICK_F2)
 		{
-			G_Sound(hit_ent, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/swing%d", Q_irand(1, 4))));
+			G_Sound(hitEnt, CHAN_BODY, G_SoundIndex(va("sound/weapons/melee/swing%d", Q_irand(1, 4))));
 		}
 		else if (pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK1 ||
 			pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK2 ||
 			pusher->client->ps.torsoAnim == BOTH_TUSKENATTACK3)
 		{
-			G_Sound(hit_ent, CHAN_BODY, G_SoundIndex("sound/movers/objects/saber_slam"));
+			G_Sound(hitEnt, CHAN_BODY, G_SoundIndex("sound/movers/objects/saber_slam"));
 		}
 
 		return qtrue;
@@ -9726,23 +9721,23 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 	// Roundhouse
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN5, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN5, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
 	// Backkick variants
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B2)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN5, BOTH_KNOCKDOWN5, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN5, BOTH_KNOCKDOWN5, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_B3)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN4, BOTH_KNOCKDOWN4, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN4, BOTH_KNOCKDOWN4, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9750,8 +9745,8 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 	if (pusher->client->ps.legsAnim == BOTH_A7_KICK_R ||
 		pusher->client->ps.legsAnim == BOTH_A7_KICK_L)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN2, BOTH_KNOCKDOWN2, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN2, BOTH_KNOCKDOWN2, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9759,8 +9754,8 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 	if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_R ||
 		pusher->client->ps.torsoAnim == BOTH_SMACK_R)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNRIGHT, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_SLAPDOWNRIGHT, BOTH_SLAPDOWNRIGHT, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
@@ -9768,34 +9763,34 @@ static qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push
 	if (pusher->client->ps.torsoAnim == BOTH_A7_SLAP_L ||
 		pusher->client->ps.torsoAnim == BOTH_SMACK_L)
 	{
-		WP_KnockdownAndDrain(hit_ent, pusher, BOTH_SLAPDOWNLEFT, BOTH_SLAPDOWNLEFT, qtrue, qfalse);
-		G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+		WP_KnockdownAndDrain(hitEnt, pusher, BOTH_SLAPDOWNLEFT, BOTH_SLAPDOWNLEFT, qtrue, qfalse);
+		G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 		return qtrue;
 	}
 
 	// Hilt bash
 	if (pusher->client->ps.torsoAnim == BOTH_A7_HILT)
 	{
-		G_SetAnim(hit_ent, &hit_ent->client->pers.cmd,
+		G_SetAnim(hitEnt, &hitEnt->client->pers.cmd,
 			SETANIM_BOTH,
 			BOTH_BASHED1,
 			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD,
 			0);
 
-		WP_BlockPointsDrain(hit_ent, FATIGUE_BLOCKPOINTDRAIN);
-		AddFatigueMeleeBonus(pusher, hit_ent);
-		G_Sound(hit_ent, CHAN_BODY, G_SoundIndex("sound/movers/objects/saber_slam"));
+		WP_BlockPointsDrain(hitEnt, FATIGUE_BLOCKPOINTDRAIN);
+		AddFatigueMeleeBonus(pusher, hitEnt);
+		G_Sound(hitEnt, CHAN_BODY, G_SoundIndex("sound/movers/objects/saber_slam"));
 
 		return qtrue;
 	}
 
 	// Default: generic knockdown
-	WP_KnockdownAndDrain(hit_ent, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qfalse, qtrue);
-	G_Knockdown(hit_ent, pusher, push_dir, 2, qtrue);
+	WP_KnockdownAndDrain(hitEnt, pusher, BOTH_KNOCKDOWN1, BOTH_KNOCKDOWN2, qfalse, qtrue);
+	G_Knockdown(hitEnt, pusher, push_dir, 2, qtrue);
 	return qtrue;
 }
 
-extern void G_ThrownDeathAnimForDeathAnim(gentity_t* hit_ent, vec3_t impactPoint);
+extern void G_ThrownDeathAnimForDeathAnim(gentity_t* hitEnt, vec3_t impactPoint);
 
 extern void G_Kick_Throw(gentity_t* targ, const vec3_t new_dir, float push);
 
@@ -9807,7 +9802,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 	const vec3_t kick_maxs = { 4, 4, 4 };
 	const vec3_t kick_mins = { -2, -2, -2 };
 	trace_t trace;
-	gentity_t* hit_ent = NULL;
+	gentity_t* hitEnt = NULL;
 
 	if (kick_end && !VectorCompare(kick_end, vec3_origin))
 	{
@@ -9849,53 +9844,53 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 		ent->client->jediKickIndex = trace.entityNum;
 		ent->client->jediKickTime = level.time + ent->client->ps.legsTimer;
 
-		hit_ent = &g_entities[trace.entityNum];
+		hitEnt = &g_entities[trace.entityNum];
 
-		if (hit_ent->inuse)
+		if (hitEnt->inuse)
 		{
 			//we hit an entity
-			if (hit_ent->client)
+			if (hitEnt->client)
 			{
-				if (!(hit_ent->client->ps.pm_flags & PMF_TIME_KNOCKBACK)
-					&& TIMER_Done(hit_ent, "kickedDebounce") && G_CanBeEnemy(ent, hit_ent))
+				if (!(hitEnt->client->ps.pm_flags & PMF_TIME_KNOCKBACK)
+					&& TIMER_Done(hitEnt, "kickedDebounce") && G_CanBeEnemy(ent, hitEnt))
 				{
-					if (PM_InKnockDown(&hit_ent->client->ps) && !PM_InGetUp(&hit_ent->client->ps))
+					if (PM_InKnockDown(&hitEnt->client->ps) && !PM_InGetUp(&hitEnt->client->ps))
 					{
 						//don't hit people who are knocked down or being knocked down (okay to hit people getting up, though)
 						return NULL;
 					}
-					if (PM_InRoll(&hit_ent->client->ps))
+					if (PM_InRoll(&hitEnt->client->ps))
 					{
 						//can't hit people who are rolling
 						return NULL;
 					}
-					if (PM_Dyinganim(&hit_ent->client->ps))
+					if (PM_Dyinganim(&hitEnt->client->ps))
 					{
 						//don't hit people who are in a death anim
 						return NULL;
 					}
 					//don't hit same ent more than once per kick
-					if (hit_ent->takedamage)
+					if (hitEnt->takedamage)
 					{
 						//hurt it
-						if (!in_camera && WP_AbsorbKick(hit_ent, ent, kick_dir))
+						if (!in_camera && WP_AbsorbKick(hitEnt, ent, kick_dir))
 						{
 							//but the lucky devil absorbed it by backflipping
 							//toss them back a bit and make sure that the kicker gets the kill if the player falls off a cliff or something.
-							if (hit_ent->client)
+							if (hitEnt->client)
 							{
-								hit_ent->client->ps.otherKiller = ent->s.number;
-								hit_ent->client->ps.otherKillerDebounceTime = level.time + 10000;
-								hit_ent->client->ps.otherKillerTime = level.time + 10000;
-								hit_ent->client->otherKillerMOD = MOD_MELEE;
-								hit_ent->client->otherKillerVehWeapon = 0;
-								hit_ent->client->otherKillerWeaponType = WP_NONE;
-								hit_ent->client->ps.saberMove = LS_READY;
+								hitEnt->client->ps.otherKiller = ent->s.number;
+								hitEnt->client->ps.otherKillerDebounceTime = level.time + 10000;
+								hitEnt->client->ps.otherKillerTime = level.time + 10000;
+								hitEnt->client->otherKillerMOD = MOD_MELEE;
+								hitEnt->client->otherKillerVehWeapon = 0;
+								hitEnt->client->otherKillerWeaponType = WP_NONE;
+								hitEnt->client->ps.saberMove = LS_READY;
 							}
-							G_Kick_Throw(hit_ent, kick_dir, 70);
-							return hit_ent;
+							G_Kick_Throw(hitEnt, kick_dir, 70);
+							return hitEnt;
 						}
-						G_Damage(hit_ent, ent, ent, kick_dir, trace.endpos, kick_damage * 0.2f, DAMAGE_NO_KNOCKBACK,
+						G_Damage(hitEnt, ent, ent, kick_dir, trace.endpos, kick_damage * 0.2f, DAMAGE_NO_KNOCKBACK,
 							MOD_MELEE);
 					}
 					//do kick hit sound and impact effect
@@ -9916,7 +9911,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 						}
 						TIMER_Set(ent, "kickSoundDebounce", 1000);
 					}
-					TIMER_Set(hit_ent, "kickedDebounce", 500);
+					TIMER_Set(hitEnt, "kickedDebounce", 500);
 
 					if (ent->client->ps.torsoAnim == BOTH_A7_HILT ||
 						ent->client->ps.torsoAnim == BOTH_SMACK_L ||
@@ -9925,43 +9920,43 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 						ent->client->ps.torsoAnim == BOTH_A7_SLAP_L)
 					{
 						//hit in head
-						if (hit_ent->health > 0)
+						if (hitEnt->health > 0)
 						{
 							//knock down
 							if (kick_push >= 150.0f && !Q_irand(0, 1))
 							{
 								//knock them down
-								if (!(hit_ent->flags & FL_NO_KNOCKBACK))
+								if (!(hitEnt->flags & FL_NO_KNOCKBACK))
 								{
-									G_Kick_Throw(hit_ent, kick_dir, 80);
+									G_Kick_Throw(hitEnt, kick_dir, 80);
 								}
-								G_Knockdown(hit_ent, ent, kick_dir, 80, qtrue);
+								G_Knockdown(hitEnt, ent, kick_dir, 80, qtrue);
 							}
 							else
 							{
 								//force them to play a pain anim
-								if (hit_ent->s.number < MAX_CLIENTS)
+								if (hitEnt->s.number < MAX_CLIENTS)
 								{
-									NPC_SetPainEvent(hit_ent);
+									NPC_SetPainEvent(hitEnt);
 								}
 								else
 								{
-									NPC_SetPainEvent(hit_ent);
-									//GEntity_PainFunc(hit_ent, ent, ent, hit_ent->r.currentOrigin, 0, MOD_MELEE);
+									NPC_SetPainEvent(hitEnt);
+									//GEntity_PainFunc(hitEnt, ent, ent, hitEnt->r.currentOrigin, 0, MOD_MELEE);
 								}
 							}
 							//just so we don't hit him again...
-							hit_ent->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
-							hit_ent->client->ps.pm_time = 100;
+							hitEnt->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
+							hitEnt->client->ps.pm_time = 100;
 						}
 						else
 						{
-							if (!(hit_ent->flags & FL_NO_KNOCKBACK))
+							if (!(hitEnt->flags & FL_NO_KNOCKBACK))
 							{
-								G_Kick_Throw(hit_ent, kick_dir, 80);
+								G_Kick_Throw(hitEnt, kick_dir, 80);
 							}
 							//see if we should play a better looking death on them
-							G_ThrownDeathAnimForDeathAnim(hit_ent, trace.endpos);
+							G_ThrownDeathAnimForDeathAnim(hitEnt, trace.endpos);
 						}
 					}
 					else if (ent->client->ps.legsAnim == BOTH_GETUP_BROLL_B
@@ -9969,95 +9964,95 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 						|| ent->client->ps.legsAnim == BOTH_GETUP_FROLL_B
 						|| ent->client->ps.legsAnim == BOTH_GETUP_FROLL_F)
 					{
-						if (hit_ent->health > 0)
+						if (hitEnt->health > 0)
 						{
 							//knock down
-							if (hit_ent->client->ps.groundEntityNum == ENTITYNUM_NONE)
+							if (hitEnt->client->ps.groundEntityNum == ENTITYNUM_NONE)
 							{
 								//he's in the air?  Send him flying back
-								if (!(hit_ent->flags & FL_NO_KNOCKBACK))
+								if (!(hitEnt->flags & FL_NO_KNOCKBACK))
 								{
-									G_Kick_Throw(hit_ent, kick_dir, 80);
+									G_Kick_Throw(hitEnt, kick_dir, 80);
 								}
 							}
 							else
 							{
 								//just so we don't hit him again...
-								hit_ent->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
-								hit_ent->client->ps.pm_time = 100;
+								hitEnt->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
+								hitEnt->client->ps.pm_time = 100;
 							}
 							//knock them down
-							G_Knockdown(hit_ent, ent, kick_dir, 80, qtrue);
+							G_Knockdown(hitEnt, ent, kick_dir, 80, qtrue);
 						}
 						else
 						{
-							if (!(hit_ent->flags & FL_NO_KNOCKBACK))
+							if (!(hitEnt->flags & FL_NO_KNOCKBACK))
 							{
-								G_Kick_Throw(hit_ent, kick_dir, 80);
+								G_Kick_Throw(hitEnt, kick_dir, 80);
 							}
 							//see if we should play a better looking death on them
-							G_ThrownDeathAnimForDeathAnim(hit_ent, trace.endpos);
+							G_ThrownDeathAnimForDeathAnim(hitEnt, trace.endpos);
 						}
 					}
-					else if (hit_ent->health <= 0)
+					else if (hitEnt->health <= 0)
 					{
 						//we kicked a dead guy
-						if (!(hit_ent->flags & FL_NO_KNOCKBACK))
+						if (!(hitEnt->flags & FL_NO_KNOCKBACK))
 						{
-							G_Kick_Throw(hit_ent, kick_dir, kick_push * 2);
+							G_Kick_Throw(hitEnt, kick_dir, kick_push * 2);
 						}
-						G_ThrownDeathAnimForDeathAnim(hit_ent, trace.endpos);
+						G_ThrownDeathAnimForDeathAnim(hitEnt, trace.endpos);
 					}
 					else
 					{
-						if (!(hit_ent->flags & FL_NO_KNOCKBACK))
+						if (!(hitEnt->flags & FL_NO_KNOCKBACK))
 						{
-							G_Kick_Throw(hit_ent, kick_dir, 80);
+							G_Kick_Throw(hitEnt, kick_dir, 80);
 						}
-						if ((hit_ent->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
-							hit_ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
-							&& !((hit_ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
+						if ((hitEnt->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
+							hitEnt->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+							&& !((hitEnt->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
 						{
 							//knockdown
-							if (hit_ent->client->ps.fd.saberAnimLevel == SS_STAFF)
+							if (hitEnt->client->ps.fd.saberAnimLevel == SS_STAFF)
 							{
-								sab_beh_animate_slow_bounce_blocker(hit_ent);
+								sab_beh_animate_slow_bounce_blocker(hitEnt);
 							}
 							else
 							{
 								if (kick_push >= 150.0f && !Q_irand(0, 2))
 								{
-									G_Knockdown(hit_ent, ent, kick_dir, 90, qtrue);
+									G_Knockdown(hitEnt, ent, kick_dir, 90, qtrue);
 								}
 								else
 								{
-									G_Knockdown(hit_ent, ent, kick_dir, 80, qtrue);
+									G_Knockdown(hitEnt, ent, kick_dir, 80, qtrue);
 								}
 							}
 						}
 						else if (ent->client->ps.fd.saberAnimLevel == SS_DESANN
-							&& (hit_ent->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
-								hit_ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
-							&& !((hit_ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
+							&& (hitEnt->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
+								hitEnt->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+							&& !((hitEnt->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
 						{
 							//knockdown
 							if (kick_push >= 150.0f && !Q_irand(0, 2))
 							{
-								G_Knockdown(hit_ent, ent, kick_dir, 90, qtrue);
+								G_Knockdown(hitEnt, ent, kick_dir, 90, qtrue);
 							}
 							else
 							{
-								G_Knockdown(hit_ent, ent, kick_dir, 80, qtrue);
+								G_Knockdown(hitEnt, ent, kick_dir, 80, qtrue);
 							}
 						}
 						else if (kick_push >= 150.0f && !Q_irand(0, 2))
 						{
-							G_Knockdown(hit_ent, ent, kick_dir, 90, qtrue);
+							G_Knockdown(hitEnt, ent, kick_dir, 90, qtrue);
 						}
 						else
 						{
 							//stumble
-							AnimateStun(hit_ent, ent, trace.endpos);
+							AnimateStun(hitEnt, ent, trace.endpos);
 						}
 					}
 				}
@@ -10084,7 +10079,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 			}
 		}
 	}
-	return hit_ent;
+	return hitEnt;
 }
 
 static void G_PunchSomeMofos(gentity_t* ent)

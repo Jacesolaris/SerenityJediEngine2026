@@ -74,13 +74,14 @@ extern vmCvar_t cg_SFXSabersCoreSizeCSM;
 extern vmCvar_t cg_SaberInnonblockableAttackWarning;
 extern vmCvar_t cg_IsSaberDoingAttackDamage;
 extern vmCvar_t cg_DebugSaberCombat;
+extern vmCvar_t cg_com_outcast;
+extern vmCvar_t cg_com_rend2;
 
 extern void CheckCameraLocation(vec3_t oldeye_origin);
 extern qboolean PM_RunningAnim(int anim);
 extern qboolean PM_WalkingAnim(int anim);
 extern qboolean PM_WindAnim(int anim);
 extern qboolean PM_StandingAtReadyAnim(int anim);
-extern vmCvar_t cg_com_outcast;
 extern qboolean pm_saber_innonblockable_attack(int anim);
 extern qboolean NPC_IsMando(const gentity_t* self);
 extern qboolean NPC_IsOversized(const gentity_t* self);
@@ -161,6 +162,71 @@ void CG_AddGhoul2Mark(
 	}
 	else
 	{
+		VectorCopy(hitdirection, goreSkin.rayDirection);
+	}
+
+	VectorCopy(hitloc, goreSkin.hitLocation);
+	VectorCopy(entposition, goreSkin.position);
+	goreSkin.angles[YAW] = entangle;
+
+	gi.G2API_AddSkinGore(ghoul2, goreSkin);
+}
+
+void CG_AddGhoul2Mark_rend2(int type, float size, vec3_t hitloc, vec3_t hitdirection,
+	int entnum, vec3_t entposition, float entangle, CGhoul2Info_v& ghoul2, vec3_t modelScale, int lifeTime, int firstModel, vec3_t uaxis)
+{
+	if (!cg_g2Marks.integer)
+	{//don't want these
+		return;
+	}
+
+	static SSkinGoreData goreSkin;
+
+	memset(&goreSkin, 0, sizeof(goreSkin));
+
+	goreSkin.growDuration = -1; // do not grow
+	goreSkin.goreScaleStartFraction = 1.0; // default start scale
+	goreSkin.frontFaces = true; // yes front
+	goreSkin.backFaces = false; // no back
+	goreSkin.lifeTime = lifeTime;
+	goreSkin.firstModel = firstModel;
+
+	goreSkin.currentTime = cg.time;
+	goreSkin.entNum = entnum;
+	goreSkin.SSize = size;
+	goreSkin.TSize = size;
+	goreSkin.shader = type;
+	goreSkin.theta = flrand(0.0f, 6.28f);
+
+	if (uaxis)
+	{
+		goreSkin.backFaces = true;
+		goreSkin.SSize = 6;
+		goreSkin.TSize = 3;
+		goreSkin.depthStart = -10;	//arbitrary depths, just limiting marks to near hit loc
+		goreSkin.depthEnd = 15;
+		goreSkin.useTheta = false;
+		VectorCopy(uaxis, goreSkin.uaxis);
+		if (VectorNormalize(goreSkin.uaxis) < 0.001f)
+		{//too short to make a mark
+			return;
+		}
+	}
+	else
+	{
+		goreSkin.depthStart = -1000;
+		goreSkin.depthEnd = 1000;
+		goreSkin.useTheta = true;
+	}
+	VectorCopy(modelScale, goreSkin.scale);
+
+	if (VectorCompare(hitdirection, vec3_origin))
+	{//wtf, no dir?  Make one up
+		VectorSubtract(entposition, hitloc, goreSkin.rayDirection);
+		VectorNormalize(goreSkin.rayDirection);
+	}
+	else
+	{//use passed in value
 		VectorCopy(hitdirection, goreSkin.rayDirection);
 	}
 
@@ -3879,12 +3945,11 @@ static void CG_PlayerPowerups(const centity_t* cent)
 
 constexpr auto SHADOW_DISTANCE = 128;
 
-static qboolean player_shadow(const vec3_t origin, const float orientation, float* const shadowPlane,
-	const float radius)
+static qboolean player_shadow(const vec3_t origin, const float orientation, float* const shadowPlane, const float radius, qhandle_t markShader)
 {
 	vec3_t end;
-	constexpr vec3_t maxs = { 15, 15, 2 };
-	constexpr vec3_t mins = { -15, -15, 0 };
+	constexpr vec3_t maxs = { 14, 14, 2 };
+	constexpr vec3_t mins = { -14, -14, 0 };
 	trace_t trace;
 
 	// send a trace down from the player to the ground
@@ -3901,19 +3966,16 @@ static qboolean player_shadow(const vec3_t origin, const float orientation, floa
 
 	*shadowPlane = trace.endpos[2] + 1;
 
-	if (cg_shadows.integer != 1)
+	// no mark for stencil or projection shadows
+	if (cg_shadows.integer == 1)
 	{
-		// no mark for stencil or projection shadows
-		return qtrue;
+		// fade the shadow out with height
+		const float alpha = 1.0 - trace.fraction;
+
+		// add the mark as a temporary, so it goes directly to the renderer
+		// without taking a spot in the cg_marks array
+		CG_ImpactMark(cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, orientation, 1, 1, 1, alpha, qfalse, radius, qtrue);
 	}
-
-	// fade the shadow out with height
-	const float alpha = 1.0 - trace.fraction;
-
-	// add the mark as a temporary, so it goes directly to the renderer
-	// without taking a spot in the cg_marks array
-	CG_ImpactMark(cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, orientation, 1, 1, 1, alpha, qfalse,
-		radius, qtrue);
 
 	return qtrue;
 }
@@ -3927,7 +3989,7 @@ Returns the Z component of the surface being shadowed
   should it return a full plane instead of a Z?
 ===============
 */
-static qboolean CG_PlayerShadow(const centity_t* cent, float* shadowPlane)
+static qboolean CG_PlayerShadow(centity_t* const cent, float* const shadowPlane)
 {
 	*shadowPlane = 0;
 
@@ -3948,7 +4010,7 @@ static qboolean CG_PlayerShadow(const centity_t* cent, float* shadowPlane)
 		return qfalse;
 	}
 
-	vec3_t root_origin;
+	vec3_t rootOrigin;
 	vec3_t temp_angles{};
 	temp_angles[PITCH] = 0;
 	temp_angles[YAW] = cent->pe.legs.yawAngle;
@@ -3961,14 +4023,14 @@ static qboolean CG_PlayerShadow(const centity_t* cent, float* shadowPlane)
 		gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->rootBone,
 			&boltMatrix, temp_angles, cent->lerpOrigin,
 			cg.time, cgs.model_draw, cent->currentState.modelScale);
-		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, root_origin);
+		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, rootOrigin);
 	}
 	else
 	{
-		VectorCopy(cent->lerpOrigin, root_origin);
+		VectorCopy(cent->lerpOrigin, rootOrigin);
 	}
 
-	if (DistanceSquared(cg.refdef.vieworg, root_origin) > cg_shadowCullDistance.value * cg_shadowCullDistance.value)
+	if (DistanceSquared(cg.refdef.vieworg, rootOrigin) > cg_shadowCullDistance.value * cg_shadowCullDistance.value)
 	{
 		// Shadow is too far away, don't do any traces, don't do any marks...blah
 		return qfalse;
@@ -3977,32 +4039,33 @@ static qboolean CG_PlayerShadow(const centity_t* cent, float* shadowPlane)
 	if (cent->gent->client->NPC_class == CLASS_ATST)
 	{
 		mdxaBone_t boltMatrix;
-		vec3_t side_origin;
+		vec3_t sideOrigin;
 
 		gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->footLBolt,
 			&boltMatrix, temp_angles, cent->lerpOrigin,
 			cg.time, cgs.model_draw, cent->currentState.modelScale);
-		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, side_origin);
-		side_origin[2] += 30; //fudge up a bit for coplaner
-		qboolean b_shadowed = player_shadow(side_origin, 0, shadowPlane, 28);
+		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, sideOrigin);
+		sideOrigin[2] += 30; //fudge up a bit for coplaner
+		qboolean bShadowed = player_shadow(sideOrigin, 0, shadowPlane, 28, cgs.media.shadowMarkShader);
 
 		gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->footRBolt,
 			&boltMatrix, temp_angles, cent->lerpOrigin, cg.time,
 			cgs.model_draw, cent->currentState.modelScale);
-		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, side_origin);
-		side_origin[2] += 30; //fudge up a bit for coplaner
-		b_shadowed = static_cast<qboolean>(player_shadow(side_origin, 0, shadowPlane, 28) ||
-			b_shadowed);
+		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, sideOrigin);
+		sideOrigin[2] += 30; //fudge up a bit for coplaner
+		bShadowed = static_cast<qboolean>(player_shadow(sideOrigin, 0, shadowPlane, 28, cgs.media.shadowMarkShader) ||	bShadowed);
 
-		b_shadowed = static_cast<qboolean>(player_shadow(root_origin, cent->pe.legs.yawAngle, shadowPlane, 64) ||
-			b_shadowed);
-		return b_shadowed;
+		bShadowed = static_cast<qboolean>(player_shadow(rootOrigin, cent->pe.legs.yawAngle, shadowPlane, 64, cgs.media.shadowMarkShader) ||	bShadowed);
+		return bShadowed;
 	}
-	if (cent->gent->client->NPC_class == CLASS_RANCOR)
+	else if (cent->gent->client->NPC_class == CLASS_RANCOR)
 	{
-		return player_shadow(root_origin, cent->pe.legs.yawAngle, shadowPlane, 64);
+		return player_shadow(rootOrigin, cent->pe.legs.yawAngle, shadowPlane, 64, cgs.media.shadowMarkShader);
 	}
-	return player_shadow(root_origin, cent->pe.legs.yawAngle, shadowPlane, 24);
+	else
+	{
+		return player_shadow(rootOrigin, cent->pe.legs.yawAngle, shadowPlane, 24, cgs.media.shadowMarkShader);
+	}
 }
 
 void CG_LandingEffect(vec3_t origin, vec3_t normal, const int material)
@@ -4368,7 +4431,7 @@ static void CG_PlayerFootsteps(const centity_t* cent, const footstepType_t foot_
 		&& cent->gent->client->NPC_class != CLASS_SWAMP)
 	{
 		mdxaBone_t boltMatrix;
-		vec3_t temp_angles{}, side_origin, foot_down_dir;
+		vec3_t temp_angles{}, sideOrigin, foot_down_dir;
 
 		temp_angles[PITCH] = 0;
 		temp_angles[YAW] = cent->pe.legs.yawAngle;
@@ -4385,10 +4448,10 @@ static void CG_PlayerFootsteps(const centity_t* cent, const footstepType_t foot_
 		gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, foot_bolt,
 			&boltMatrix, temp_angles, cent->lerpOrigin,
 			cg.time, cgs.model_draw, cent->currentState.modelScale);
-		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, side_origin);
+		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, sideOrigin);
 		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, NEGATIVE_Y, foot_down_dir);
-		VectorMA(side_origin, -8.0f, foot_down_dir, side_origin); //was [2] += 15;	//fudge up a bit for coplanar
-		player_foot_step(side_origin, foot_down_dir, cent->pe.legs.yawAngle, 6, cent, foot_step_type);
+		VectorMA(sideOrigin, -8.0f, foot_down_dir, sideOrigin); //was [2] += 15;	//fudge up a bit for coplanar
+		player_foot_step(sideOrigin, foot_down_dir, cent->pe.legs.yawAngle, 6, cent, foot_step_type);
 	}
 }
 
@@ -4481,7 +4544,7 @@ static void CG_PlayerSplash(const centity_t* cent)
 			if (cl->NPC_class == CLASS_ATST)
 			{
 				mdxaBone_t boltMatrix;
-				vec3_t temp_angles{}, side_origin;
+				vec3_t temp_angles{}, sideOrigin;
 
 				temp_angles[PITCH] = 0;
 				temp_angles[YAW] = cent->pe.legs.yawAngle;
@@ -4490,17 +4553,17 @@ static void CG_PlayerSplash(const centity_t* cent)
 				gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->footLBolt,
 					&boltMatrix, temp_angles, cent->lerpOrigin,
 					cg.time, cgs.model_draw, cent->currentState.modelScale);
-				gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, side_origin);
-				side_origin[2] += 22; //fudge up a bit for coplaner
-				player_splash(side_origin, cl->ps.velocity, 42, cent->gent->maxs[2]);
+				gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, sideOrigin);
+				sideOrigin[2] += 22; //fudge up a bit for coplaner
+				player_splash(sideOrigin, cl->ps.velocity, 42, cent->gent->maxs[2]);
 
 				gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->footRBolt,
 					&boltMatrix, temp_angles, cent->lerpOrigin, cg.time,
 					cgs.model_draw, cent->currentState.modelScale);
-				gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, side_origin);
-				side_origin[2] += 22; //fudge up a bit for coplaner
+				gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, sideOrigin);
+				sideOrigin[2] += 22; //fudge up a bit for coplaner
 
-				player_splash(side_origin, cl->ps.velocity, 42, cent->gent->maxs[2]);
+				player_splash(sideOrigin, cl->ps.velocity, 42, cent->gent->maxs[2]);
 			}
 			else
 			{
@@ -5553,7 +5616,7 @@ void CG_AddForceSightShell(refEntity_t* ent, const centity_t* cent)
 	ent->customShader = cgs.media.sightShell;
 	ent->renderfx &= ~RF_RGB_TINT;
 	// See through walls.
-	ent->renderfx |= RF_MINLIGHT | RF_NODEPTH;
+	ent->renderfx |= (RF_MORELIGHT | RF_NODEPTH);
 
 	if (cent->currentState.eFlags & EF_FORCE_VISIBLE
 		|| cent->currentState.eType == ET_PLAYER && cent->gent && cent->gent->message)
@@ -6009,11 +6072,10 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 	else if (powerups & 1 << PW_CLOAKED)
 	{
 		//fully cloaked
-		if (cg.snap->ps.forcePowersActive & 1 << FP_SEE
+		if ((cg.snap->ps.forcePowersActive & (1 << FP_SEE))
 			&& cg.snap->ps.clientNum != cent->currentState.number
 			&& CG_PlayerCanSeeCent(cent))
-		{
-			//just draw him
+		{//just draw him
 			cgi_R_AddRefEntityToScene(ent);
 		}
 		else
@@ -7219,22 +7281,13 @@ static void CG_StopWeaponSounds(centity_t* cent)
 
 //--------------- SABER STUFF --------
 
-void CG_SaberDoWeaponHitMarks(
-	const gclient_t* client,
-	const gentity_t* saber_ent,
-	gentity_t* hit_ent,
-	const int saberNum,
-	const int bladeNum,
-	vec3_t hit_pos,
-	vec3_t hit_dir,
-	vec3_t uaxis,
-	const float size_time_scale)
+void CG_SaberDoWeaponHitMarks(const gclient_t* client, const gentity_t* saber_ent, gentity_t* hitEnt, const int saberNum, const int bladeNum, vec3_t hit_pos, vec3_t hit_dir, vec3_t uaxis, const float sizeTimeScale)
 {
 	if (!client ||
-		size_time_scale <= 0.0f ||
-		!hit_ent ||
-		!hit_ent->client ||
-		!hit_ent->ghoul2.size())
+		sizeTimeScale <= 0.0f ||
+		!hitEnt ||
+		!hitEnt->client ||
+		!hitEnt->ghoul2.size())
 	{
 		return;
 	}
@@ -7263,7 +7316,7 @@ void CG_SaberDoWeaponHitMarks(
 	// Burn mark with glow
 	// ----------------------------------------------------------------------
 	int lifeTime =
-		(1.01f - (static_cast<float>(hit_ent->health) / hit_ent->max_health)) *
+		(1.01f - (static_cast<float>(hitEnt->health) / hitEnt->max_health)) *
 		static_cast<float>(Q_irand(8000, 15000));
 
 	float size = 0.0f;
@@ -7299,19 +7352,19 @@ void CG_SaberDoWeaponHitMarks(
 	// ----------------------------------------------------------------------
 	if (mark_shader)
 	{
-		lifeTime = static_cast<int>(ceilf(static_cast<float>(lifeTime) * size_time_scale));
-		size = Q_flrand(2.0f, 3.0f) * size_time_scale;
+		lifeTime = static_cast<int>(ceilf(static_cast<float>(lifeTime) * sizeTimeScale));
+		size = Q_flrand(2.0f, 3.0f) * sizeTimeScale;
 
 		CG_AddGhoul2Mark(
 			mark_shader,
 			size,
 			hit_pos,
 			hit_dir,
-			hit_ent->s.number,
-			hit_ent->client->ps.origin,
-			hit_ent->client->renderInfo.legsYaw,
-			hit_ent->ghoul2,
-			hit_ent->s.modelScale,
+			hitEnt->s.number,
+			hitEnt->client->ps.origin,
+			hitEnt->client->renderInfo.legsYaw,
+			hitEnt->ghoul2,
+			hitEnt->s.modelScale,
 			lifeTime,
 			0,
 			use_uaxis ? uaxis : nullptr);
@@ -7380,8 +7433,8 @@ void CG_SaberDoWeaponHitMarks(
 	vec3_t back_dir;
 	VectorScale(hit_dir, -1, back_dir);
 
-	lifeTime = static_cast<int>(ceilf(static_cast<float>(lifeTime) * size_time_scale));
-	size = Q_flrand(1.0f, 3.0f) * size_time_scale;
+	lifeTime = static_cast<int>(ceilf(static_cast<float>(lifeTime) * sizeTimeScale));
+	size = Q_flrand(1.0f, 3.0f) * sizeTimeScale;
 
 	if (splatter_on_cent->gent->ghoul2.size() > saberNum + 1)
 	{
@@ -7398,6 +7451,89 @@ void CG_SaberDoWeaponHitMarks(
 			lifeTime,
 			saberNum + 1,
 			use_uaxis ? uaxis : nullptr);
+	}
+}
+
+void CG_SaberDoWeaponHitMarks_Rend2(gclient_t* client, gentity_t* saberEnt, gentity_t* hitEnt, int saberNum, int bladeNum, vec3_t hitPos, vec3_t hitDir, vec3_t uaxis, vec3_t splashBackDir, float sizeTimeScale)
+{
+	if (client
+		&& sizeTimeScale > 0.0f
+		&& hitEnt
+		&& hitEnt->client
+		&& hitEnt->ghoul2.size())
+	{//burn mark with glow
+		int lifeTime = (1.01 - (float)(hitEnt->health) / hitEnt->max_health) * (float)Q_irand(5000, 10000);
+		float size = 0.0f;
+		int weaponMarkShader = 0, markShader = cgs.media.bdecal_saberglowmark;
+
+		//First: do mark decal on hitEnt
+		if (WP_SaberBladeUseSecondBladeStyle(&client->ps.saber[saberNum], bladeNum))
+		{
+			if (client->ps.saber[saberNum].g2MarksShader2[0])
+			{//we have a shader to use instead of the standard mark shader
+				markShader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2MarksShader2);
+				lifeTime = Q_irand(20000, 30000);//last longer if overridden
+			}
+		}
+		else
+		{
+			if (client->ps.saber[saberNum].g2MarksShader[0])
+			{//we have a shader to use instead of the standard mark shader
+				markShader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2MarksShader);
+				lifeTime = Q_irand(20000, 30000);//last longer if overridden
+			}
+		}
+
+		if (markShader)
+		{
+			lifeTime = ceil((float)lifeTime * sizeTimeScale);
+			size = Q_flrand(2.0f, 3.0f) * sizeTimeScale;
+			CG_AddGhoul2Mark_rend2(markShader, size, hitPos, hitDir, hitEnt->s.number,
+				hitEnt->client->ps.origin, hitEnt->client->renderInfo.legsYaw, hitEnt->ghoul2, hitEnt->s.modelScale,
+				lifeTime, 0, uaxis);
+		}
+
+		//now do weaponMarkShader - splashback decal on weapon
+		if (WP_SaberBladeUseSecondBladeStyle(&client->ps.saber[saberNum], bladeNum))
+		{
+			if (client->ps.saber[saberNum].g2WeaponMarkShader2[0])
+			{//we have a shader to use instead of the standard mark shader
+				weaponMarkShader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2WeaponMarkShader2);
+				lifeTime = Q_irand(7000, 12000);//last longer if overridden
+			}
+		}
+		else
+		{
+			if (client->ps.saber[saberNum].g2WeaponMarkShader[0])
+			{//we have a shader to use instead of the standard mark shader
+				weaponMarkShader = cgi_R_RegisterShader(client->ps.saber[saberNum].g2WeaponMarkShader);
+				lifeTime = Q_irand(7000, 12000);//last longer if overridden
+			}
+		}
+
+		if (weaponMarkShader)
+		{
+			centity_t* splatterOnCent = (saberEnt && client->ps.saberInFlight ? &cg_entities[saberEnt->s.number] : &cg_entities[client->ps.clientNum]);
+			float yawAngle = 0;
+			vec3_t backDir;
+			VectorScale(hitDir, -1, backDir);
+			if (!splatterOnCent->gent->client)
+			{
+				yawAngle = splatterOnCent->lerpAngles[YAW];
+			}
+			else
+			{
+				yawAngle = splatterOnCent->gent->client->renderInfo.legsYaw;
+			}
+			lifeTime = ceil((float)lifeTime * sizeTimeScale);
+			size = Q_flrand(1.0f, 3.0f) * sizeTimeScale;
+			if (splatterOnCent->gent->ghoul2.size() > saberNum + 1)
+			{
+				CG_AddGhoul2Mark_rend2(weaponMarkShader, size, hitPos, backDir, splatterOnCent->currentState.number,
+					splatterOnCent->lerpOrigin, yawAngle, splatterOnCent->gent->ghoul2, splatterOnCent->currentState.modelScale,
+					lifeTime, saberNum + 1, uaxis);
+			}
+		}
 	}
 }
 
@@ -12831,14 +12967,20 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 							else if (!i)
 							{
 								//can put marks on G2 clients (but only on base to tip trace)
-								gentity_t* hit_ent = &g_entities[trace.entityNum];
-								vec3_t uaxis, splash_back_dir;
+								gentity_t* hitEnt = &g_entities[trace.entityNum];
+								vec3_t uaxis, splashBackDir;
 								VectorSubtract(client->ps.saber[saberNum].blade[bladeNum].trail.oldPos[i],
 									trace.endpos, uaxis);
-								VectorScale(axis[0], -1, splash_back_dir);
+								VectorScale(axis[0], -1, splashBackDir);
 
-								CG_SaberDoWeaponHitMarks(client, scent != nullptr ? scent->gent : nullptr, hit_ent,
-									saberNum, bladeNum, trace.endpos, axis[0], uaxis, 0.25f);
+								if (cg_com_rend2.integer == 0) //rend2 is off
+								{
+									CG_SaberDoWeaponHitMarks(client, scent != nullptr ? scent->gent : nullptr, hitEnt, saberNum, bladeNum, trace.endpos, axis[0], uaxis, 0.25f);
+								}
+								else
+								{
+									CG_SaberDoWeaponHitMarks_Rend2(client, (scent != NULL ? scent->gent : NULL), hitEnt, saberNum, bladeNum, trace.endpos, axis[0], uaxis, splashBackDir, 0.25f);
+								}
 							}
 						}
 						else
@@ -14403,7 +14545,7 @@ void CG_Player(centity_t* cent)
 		return;
 	}
 
-	if (cent->currentState.vehicleModel != 0)
+	if (cent->currentState.vehicleModel != 0) // vehicle
 	{//Using an alternate (md3 for now) model
 		refEntity_t			ent;
 		vec3_t				tempAngles = { 0, 0, 0 }, velocity = { 0, 0, 0 };
@@ -14435,7 +14577,7 @@ void CG_Player(centity_t* cent)
 		ent.renderfx |= RF_LIGHTING_ORIGIN;			// use the same origin for all
 		if (cent->gent->NPC && cent->gent->NPC->scriptFlags & SCF_MORELIGHT)
 		{
-			ent.renderfx |= RF_MINLIGHT;			//bigger than normal min light
+			ent.renderfx |= RF_MORELIGHT;			//bigger than normal min light
 		}
 
 		VectorCopy(cent->lerpOrigin, ent.origin);
@@ -14557,13 +14699,13 @@ void CG_Player(centity_t* cent)
 			//ghost!
 			ent.renderfx = RF_THIRD_PERSON; // only draw in mirrors
 		}
-		else if (cg_shadows.integer == 2 && ent.renderfx & RF_THIRD_PERSON)
+		else if (cg_shadows.integer == 2 && (ent.renderfx & RF_THIRD_PERSON))
 		{
 			//show stencil shadow in first person now because we can -rww
 			ent.renderfx |= RF_SHADOW_ONLY;
 		}
 
-		if (cg_shadows.integer == 2 || cg_shadows.integer == 3 && shadow)
+		if ((cg_shadows.integer == 2) || (cg_shadows.integer == 3 && shadow))
 		{
 			ent.renderfx |= RF_SHADOW_PLANE;
 		}
@@ -14571,7 +14713,7 @@ void CG_Player(centity_t* cent)
 		ent.renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 		if (cent->gent->NPC && cent->gent->NPC->scriptFlags & SCF_MORELIGHT)
 		{
-			ent.renderfx |= RF_MINLIGHT; //bigger than normal min light
+			ent.renderfx |= RF_MORELIGHT; //bigger than normal min light
 		}
 
 		CG_RegisterWeapon(cent->currentState.weapon);
@@ -16360,14 +16502,14 @@ void CG_Player(centity_t* cent)
 			}
 		}
 
-		if (cg_shadows.integer == 2 || cg_shadows.integer == 3 && shadow)
+		if ((cg_shadows.integer == 2) || (cg_shadows.integer == 3 && shadow))
 		{
 			renderfx |= RF_SHADOW_PLANE;
 		}
 		renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 		if (cent->gent->NPC && cent->gent->NPC->scriptFlags & SCF_MORELIGHT)
 		{
-			renderfx |= RF_MINLIGHT; //bigger than normal min light
+			renderfx |= RF_MORELIGHT; //bigger than normal min light
 		}
 
 		if (cent->gent && cent->gent->client)

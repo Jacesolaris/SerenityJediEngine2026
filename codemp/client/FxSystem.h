@@ -45,8 +45,8 @@ public:
 	float mRealTime;
 	refdef_t* refdef;
 #ifdef _DEBUG
-	int mMainRefs;
-	int mMiniRefs;
+	int mMainRefs = 0;
+	int mMiniRefs = 0;
 #endif
 
 public:

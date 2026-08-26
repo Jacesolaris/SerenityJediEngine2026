@@ -245,5 +245,7 @@ XCVAR_DEF(g_sabermustreturn, "1", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_SaberBounceOnWalls, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_noIgniteTwirl, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_HitTracking, "0", NULL, CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(r_cubeMapping, "1", NULL, CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(r_cubeMappingBounces, "2", NULL, CVAR_ARCHIVE, qtrue)
 
 #undef XCVAR_DEF

@@ -528,7 +528,8 @@ If running in stereo, RE_BeginFrame will be called twice
 for each RE_EndFrame
 ====================
 */
-void RE_BeginFrame(const stereoFrame_t stereoFrame) {
+void RE_BeginFrame(stereoFrame_t stereoFrame)
+{
 	drawBufferCommand_t* cmd = NULL;
 	colorMaskCommand_t* colcmd = NULL;
 
@@ -807,6 +808,7 @@ void R_NewFrameSync()
 
 	assert(!currentFrame->sync);
 	currentFrame->sync = qglFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	currentFrame->currentScene = 0;
 
 	backEndData->realFrameNumber++;
 	backEnd.framePostProcessed = qfalse;

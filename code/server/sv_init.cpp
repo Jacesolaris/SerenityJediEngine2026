@@ -256,11 +256,6 @@ void SV_SpawnServer(const char* server, const ForceReload_e eForceReload, const 
 	// allocations begin!
 	Cvar_Defrag();
 
-	/*
-			This is useful for debugging memory fragmentation.  Please don't
-		   remove it.
-	*/
-
 	// init client structures and svs.numSnapshotEntities
 	// This is moved down quite a bit, but should be safe. And keeps
 	// svs.clients right at the beginning of memory

@@ -7133,22 +7133,22 @@ static void PM_WalkMove(void)
 		accelerate = pm_accelerate;
 
 		// Wind Affects Acceleration
-		//===================================================
-		/*if (wishspeed > 0.0f && pm->gent && !pml.walking)
-		{
-			if (gi.WE_GetWindGusting(pm->gent->currentOrigin))
-			{
-				vec3_t	windDir;
-				if (gi.WE_GetWindVector(windDir, pm->gent->currentOrigin))
-				{
-					if (gi.WE_IsOutside(pm->gent->currentOrigin))
-					{
-						VectorScale(windDir, -1.0f, windDir);
-						accelerate *= (1.0f - (DotProduct(wishdir, windDir) * 0.55f));
-					}
-				}
-			}
-		}*/
+		////===================================================
+		//if (wishspeed > 0.0f && pm->gent && !pml.walking)
+		//{
+		//	if (gi.WE_GetWindGusting(pm->gent->currentOrigin))
+		//	{
+		//		vec3_t	windDir;
+		//		if (gi.WE_GetWindVector(windDir, pm->gent->currentOrigin))
+		//		{
+		//			if (gi.WE_IsOutside(pm->gent->currentOrigin))
+		//			{
+		//				VectorScale(windDir, -1.0f, windDir);
+		//				accelerate *= (1.0f - (DotProduct(wishdir, windDir) * 0.55f));
+		//			}
+		//		}
+		//	}
+		//}
 	}
 
 	PM_Accelerate(wishdir, wishspeed, accelerate);
@@ -7384,7 +7384,7 @@ static int PM_FootstepForSurface(void)
 
 extern qboolean PM_CanRollFromSoulCal(const playerState_t* ps);
 
-static int pm_try_roll(void)
+static int PM_TryRoll(void)
 {
 	trace_t trace;
 	int anim = -1;
@@ -7844,7 +7844,7 @@ static void PM_CrashLand(void)
 		pm->ps->forceHandExtend == HANDEXTEND_NONE)
 	{
 		// Bots auto‑roll on hard landings to absorb damage
-		int rollAnim = pm_try_roll();
+		int rollAnim = PM_TryRoll();
 
 		if (PM_InRollComplete(pm->ps, pm->ps->legsAnim) == qtrue)
 		{
@@ -7891,7 +7891,7 @@ static void PM_CrashLand(void)
 			BG_InRoll(pm->ps, pm->ps->legsAnim) == qfalse &&
 			pm->ps->forceHandExtend == HANDEXTEND_NONE)
 		{
-			int anim = pm_try_roll();
+			int anim = PM_TryRoll();
 
 			if (PM_InRollComplete(pm->ps, pm->ps->legsAnim) == qtrue)
 			{
@@ -10422,7 +10422,7 @@ static void PM_Footsteps(void)
 				|| pm->cmd.buttons & BUTTON_DASH) && !BG_InRoll(pm->ps, pm->ps->legsAnim))
 			{
 				//roll!
-				rolled = pm_try_roll();
+				rolled = PM_TryRoll();
 			}
 
 			if (!rolled)

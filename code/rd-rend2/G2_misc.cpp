@@ -378,7 +378,7 @@ qboolean G2_GetAnimFileName(const char* fileName, char** filename)
 //
 /////////////////////////////////////////////////////////////////////
 
-int G2_DecideTraceLod(const CGhoul2Info& ghoul2, const int useLod)
+int G2_DecideTraceLod(CGhoul2Info& ghoul2, int useLod)
 {
 	int returnLod = useLod;
 
@@ -791,10 +791,10 @@ static inline qboolean G2_SegmentTriangleTest(const vec3_t start, const vec3_t e
 #ifdef _G2_GORE
 struct SVertexTemp
 {
-	int flags = 0;
-	int touch = 0;
-	int newindex = 0;
-	float tex[2] = { 0.0f, 0.0f };
+	int flags;
+	int touch;
+	int newindex;
+	float tex[2];
 	SVertexTemp()
 	{
 		touch = 0;
@@ -1099,7 +1099,7 @@ static void G2_GorePolys(const mdxmSurface_t* surface, CTraceSurface& TS, const 
 		goreSurface->indexes = (glIndex_t*)R_Malloc(sizeof(glIndex_t) * newNumTris * 3, TAG_GHOUL2_GORE, qtrue);
 		for (j = 0; j < newNumTris * 3; j++)
 		{
-			goreSurface->indexes[j] = GoreIndecies[j] + tr.goreVBOCurrentIndex;
+			goreSurface->indexes[j] = GoreIndecies[j] + backEndData->currentFrame->goreVBOCurrentIndex;
 		}
 		goreSurface->numIndexes = newNumTris * 3;
 

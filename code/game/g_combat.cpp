@@ -8079,8 +8079,8 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 					G_PlayEffect("world/acid_fizz", test_trace.G2CollisionMap[0].mCollisionPosition);
 				}
 
-				float chance_of_fizz = gi.WE_GetChanceOfSaberFizz();
-				TIMER_Set(targ, "AcidPainDebounce", 200 + 10000.0f * Q_flrand(0.0f, 1.0f) * chance_of_fizz);
+				float chanceOfFizz = gi.WE_GetChanceOfSaberFizz();
+				TIMER_Set(targ, "AcidPainDebounce", 200 + 10000.0f * Q_flrand(0.0f, 1.0f) * chanceOfFizz);
 				hit_loc = HL_CHEST;
 			}
 		}

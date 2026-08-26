@@ -38,7 +38,7 @@ struct CachedFile
 
 	ShaderCache		shaderCache;
 
-	char			path[MAX_QPATH];
+	char			path[MAX_QPATH] = "";
 
 	CachedFile();
 };

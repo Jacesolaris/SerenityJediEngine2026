@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_image.c
 #include "tr_local.h"
 #include "glext.h"
+#include "tr_smaa.h"
 
 static byte			 s_intensitytable[256];
 static unsigned char s_gammatable[256];
@@ -1351,18 +1352,15 @@ static void R_MipMap2(byte* in, const int inWidth, const int inheight)
 	ri->Hunk_FreeTempMemory(temp);
 }
 
-static void R_MipMapsRGB(byte* in, int inWidth, int inheight)
+static void R_MipMapsRGB(byte* in, int inWidth, int inHeight)
 {
 	int			i, j, k;
 	int			outWidth, outHeight;
 	byte* temp;
 
-	if (r_simpleMipMaps->integer)
-		return;
-
 	outWidth = inWidth >> 1;
-	outHeight = inheight >> 1;
-	temp = (byte*)ri->Hunk_AllocateTempMemory(outWidth * outHeight * 4);
+	outHeight = inHeight >> 1;
+	temp = (byte*)Hunk_AllocateTempMemory(outWidth * outHeight * 4);
 
 	for (i = 0; i < outHeight; i++) {
 		byte* outbyte = temp + (i * outWidth) * 4;
@@ -1392,7 +1390,7 @@ static void R_MipMapsRGB(byte* in, int inWidth, int inheight)
 	}
 
 	Com_Memcpy(in, temp, outWidth * outHeight * 4);
-	ri->Hunk_FreeTempMemory(temp);
+	Hunk_FreeTempMemory(temp);
 }
 
 /*
@@ -1403,16 +1401,12 @@ Operates in place, quartering the size of the texture
 ================
 */
 static void R_MipMap(byte* in, int width, int height) {
-	if (!r_simpleMipMaps->integer)
-		R_MipMap2(in, width, height);
+	R_MipMap2(in, width, height);
 }
 
 static void R_MipMapLuminanceAlpha(const byte* in, byte* out, int width, int height)
 {
 	int  i, j, row;
-
-	if (r_simpleMipMaps->integer)
-		return;
 
 	if (width == 1 && height == 1) {
 		return;
@@ -1450,9 +1444,6 @@ static void R_MipMapNormalHeight(const byte* in, byte* out, int width, int heigh
 	int sx = swizzle ? 3 : 0;
 	int sa = swizzle ? 0 : 3;
 
-	if (r_simpleMipMaps->integer)
-		return;
-
 	if (width == 1 && height == 1) {
 		return;
 	}
@@ -1463,7 +1454,7 @@ static void R_MipMapNormalHeight(const byte* in, byte* out, int width, int heigh
 
 	for (i = 0; i < height; i++, in += row) {
 		for (j = 0; j < width; j++, out += 4, in += 8) {
-			vec3_t v{};
+			vec3_t v;
 
 			v[0] = OffsetByteToFloat(in[sx]);
 			v[1] = OffsetByteToFloat(in[1]);
@@ -1482,11 +1473,6 @@ static void R_MipMapNormalHeight(const byte* in, byte* out, int width, int heigh
 			v[2] += OffsetByteToFloat(in[row + 6]);
 
 			VectorNormalizeFast(v);
-
-			//v[0] *= 0.25f;
-			//v[1] *= 0.25f;
-			//v[2] = 1.0f - v[0] * v[0] - v[1] * v[1];
-			//v[2] = sqrt(MAX(v[2], 0.0f));
 
 			out[sx] = FloatToOffsetByte(v[0]);
 			out[1] = FloatToOffsetByte(v[1]);
@@ -2561,6 +2547,64 @@ static image_t* R_Create2DImageArray(const char* name, byte* pic, int width, int
 	return image;
 }
 
+image_t* R_CreateImage3D(const char* name, byte* data, int width, int height, int depth, int internalFormat)
+{
+	image_t* image;
+	long hash;
+
+	if (strlen(name) >= MAX_QPATH) {
+		ri->Error(ERR_DROP, "R_CreateImage3D: \"%s\" is too long", name);
+	}
+
+	image = R_AllocImage();
+	qglGenTextures(1, &image->texnum);
+
+	int dataFormat = GL_RGBA;
+	int dataType = GL_UNSIGNED_BYTE;
+	if (internalFormat == GL_RGB16F)
+	{
+		dataFormat = GL_RGBA;
+		dataType = GL_HALF_FLOAT;
+	}
+
+	image->type = IMGTYPE_COLORALPHA;
+	image->flags = IMGFLAG_3D;
+
+	Q_strncpyz(image->imgName, name, sizeof(image->imgName));
+
+	image->width = width;
+	image->height = height;
+	image->layers = depth;
+
+	GL_Bind(image);
+	if (ShouldUseImmutableTextures(image->flags, internalFormat))
+	{
+		qglTexStorage3D(GL_TEXTURE_3D, 1, internalFormat, width, height, depth);
+		if (data)
+			qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, dataFormat, dataType, data);
+	}
+	else
+	{
+		qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, dataFormat, dataType, data);
+	}
+
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	hash = generateHashValue(name);
+	image->next = hashTable[hash];
+	hashTable[hash] = image;
+
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_TEXTURE, image->texnum, -1, image->imgName);
+	qglBindTexture(GL_TEXTURE_3D, 0);
+	GL_SelectTexture(0);
+
+	return image;
+}
+
 void R_UpdateSubImage(image_t* image, byte* pic, int x, int y, int width, int height)
 {
 	byte* scaledBuffer = NULL;
@@ -2589,7 +2633,7 @@ void R_UpdateSubImage(image_t* image, byte* pic, int x, int y, int width, int he
 
 	RawImage_ScaleToPower2(&pic, &width, &height, &scaled_width, &scaled_height, image->type, image->flags, &resampledBuffer);
 
-	scaledBuffer = (byte*)ri->Hunk_AllocateTempMemory(sizeof(unsigned) * scaled_width * scaled_height);
+	scaledBuffer = (byte*)Hunk_AllocateTempMemory(sizeof(unsigned) * scaled_width * scaled_height);
 
 	GL_SelectTexture(image->TMU);
 	GL_Bind(image);
@@ -2609,7 +2653,7 @@ void R_UpdateSubImage(image_t* image, byte* pic, int x, int y, int width, int he
 		}
 		Com_Memcpy(scaledBuffer, data, width * height * 4);
 	}
-	else if (!r_simpleMipMaps->integer)
+	else
 	{
 		// use the normal mip-mapping function to go down from here
 		while (width > scaled_width || height > scaled_height) {
@@ -2635,10 +2679,6 @@ void R_UpdateSubImage(image_t* image, byte* pic, int x, int y, int width, int he
 		}
 		Com_Memcpy(scaledBuffer, data, width * height * 4);
 	}
-	else if (!r_simpleMipMaps->integer)
-	{
-		qglGenerateMipmap(GL_TEXTURE_2D);
-	}
 
 	if (!(image->flags & IMGFLAG_NOLIGHTSCALE))
 		R_LightScaleTexture(scaledBuffer, scaled_width, scaled_height, (qboolean)(!(image->flags & IMGFLAG_MIPMAP)));
@@ -2654,9 +2694,9 @@ done:
 	GL_CheckErrors();
 
 	if (scaledBuffer != 0)
-		ri->Hunk_FreeTempMemory(scaledBuffer);
+		Hunk_FreeTempMemory(scaledBuffer);
 	if (resampledBuffer != 0)
-		ri->Hunk_FreeTempMemory(resampledBuffer);
+		Hunk_FreeTempMemory(resampledBuffer);
 }
 
 static image_t* R_GetLoadedImage(const char* name, int flags)
@@ -3304,6 +3344,27 @@ static void R_CreateDefaultImage(void)
 		IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP, GL_RGBA8);
 }
 
+static void R_CreateSMAAImages(void) {
+	if (!r_smaa->integer)
+		return;
+
+	tr.smaaAreaImage = R_CreateImage(
+		"*smaaAreaTex", (byte*)areaTexBytes, AREATEX_WIDTH, AREATEX_HEIGHT,
+		IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RG8);
+	tr.smaaSearchImage = R_CreateImage(
+		"*smaaSearchTex", (byte*)searchTexBytes, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT,
+		IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_R8);
+
+	int width = glConfig.vidWidth;
+	int height = glConfig.vidHeight;
+
+	tr.smaaEdgeImage = R_CreateImage(
+		"smaaEdgeTex", NULL, width, height, IMGTYPE_COLORALPHA,
+		IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RG8);
+	tr.smaaBlendImage = R_CreateImage(
+		"smaaBlendTex", NULL, width, height, IMGTYPE_COLORALPHA,
+		IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
+}
 /*
 ==================
 R_CreateBuiltinImages
@@ -3320,6 +3381,13 @@ static void R_CreateBuiltinImages(void) {
 	tr.whiteImage = R_CreateImage(
 		"*white", (byte*)data, 8, 8, IMGTYPE_COLORALPHA, IMGFLAG_NONE,
 		GL_RGBA8);
+
+	if (r_volumetricFog->integer)
+	{
+		tr.whiteImage3D = R_CreateImage3D(
+			"*white3D", (byte*)data, 8, 8, 1, GL_RGBA8
+		);
+	}
 
 	if (r_dlightMode->integer >= 2)
 	{
@@ -3360,6 +3428,7 @@ static void R_CreateBuiltinImages(void) {
 	R_CreateDlightImage();
 	R_CreateFogImage();
 	R_CreateEnvBrdfLUT();
+	R_CreateSMAAImages();
 
 	int width = glConfig.vidWidth;
 	int height = glConfig.vidHeight;
@@ -3403,6 +3472,36 @@ static void R_CreateBuiltinImages(void) {
 		"*texturedepth", NULL, PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE,
 		IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
 		GL_DEPTH_COMPONENT24);
+
+	bool needVelocityBuffer = (
+		r_smaa->integer == 2
+		// || r_smaa->integer == 4
+		// || r_ssr->integer
+		// || r_motionBlur->integer
+		// || r_taa->integer
+		);
+	if (needVelocityBuffer)
+	{
+		tr.velocityImage = R_CreateImage(
+			"*velocity", NULL, width, height,
+			IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+			GL_RG16F);
+	}
+	if (r_smaa->integer == 2)
+	{
+		tr.smaaResolveImage = R_CreateImage(
+			"*smaaResolve", NULL, width, height,
+			IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+			hdrFormat);
+		tr.temporalResolveImage = R_CreateImage(
+			"*temporalResolve", NULL, width, height,
+			IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+			hdrFormat);
+		tr.historyImage = R_CreateImage(
+			"*history", NULL, width, height,
+			IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+			hdrFormat);
+	}
 
 	{
 		unsigned short sdata[4]{};

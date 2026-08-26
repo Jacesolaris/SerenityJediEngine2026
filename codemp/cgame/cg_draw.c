@@ -8615,19 +8615,19 @@ static void CG_DrawRocketLocking(const int lock_ent_num)
 			}
 			else if (cgs.gametype >= GT_TEAM)
 			{
-				const centity_t* hit_ent = &cg_entities[cg.snap->ps.rocketLockIndex];
-				if (hit_ent->currentState.eType == ET_NPC &&
-					hit_ent->currentState.NPC_class == CLASS_VEHICLE &&
-					hit_ent->currentState.owner < ENTITYNUM_WORLD)
+				const centity_t* hitEnt = &cg_entities[cg.snap->ps.rocketLockIndex];
+				if (hitEnt->currentState.eType == ET_NPC &&
+					hitEnt->currentState.NPC_class == CLASS_VEHICLE &&
+					hitEnt->currentState.owner < ENTITYNUM_WORLD)
 				{
 					//this is a vehicle, if it has a pilot and that pilot is on my team, then...
-					if (hit_ent->currentState.owner < MAX_CLIENTS)
+					if (hitEnt->currentState.owner < MAX_CLIENTS)
 					{
-						ci = &cgs.clientinfo[hit_ent->currentState.owner];
+						ci = &cgs.clientinfo[hitEnt->currentState.owner];
 					}
 					else
 					{
-						ci = cg_entities[hit_ent->currentState.owner].npcClient;
+						ci = cg_entities[hitEnt->currentState.owner].npcClient;
 					}
 					if (ci && ci->team == cgs.clientinfo[cg.snap->ps.clientNum].team)
 					{

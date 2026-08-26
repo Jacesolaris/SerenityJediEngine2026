@@ -361,6 +361,13 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 				ent->ambientLight[2] += tr.identityLight * 76;
 			}
 		}
+		// bonus items and view weapons have a fixed minimum add
+		else if (ent->e.renderfx & RF_MORELIGHT)
+		{
+			ent->ambientLight[0] += tr.identityLight * 96;
+			ent->ambientLight[1] += tr.identityLight * 96;
+			ent->ambientLight[2] += tr.identityLight * 96;
+		}
 		else
 		{
 			// give everything a minimum light add
@@ -376,6 +383,13 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 			ent->ambientLight[0] += tr.identityLight * 76;
 			ent->ambientLight[1] += tr.identityLight * 76;
 			ent->ambientLight[2] += tr.identityLight * 76;
+		}
+		// bonus items and view weapons have a fixed minimum add
+		else if (ent->e.renderfx & RF_MORELIGHT)
+		{
+			ent->ambientLight[0] += tr.identityLight * 96;
+			ent->ambientLight[1] += tr.identityLight * 96;
+			ent->ambientLight[2] += tr.identityLight * 96;
 		}
 		else
 		{

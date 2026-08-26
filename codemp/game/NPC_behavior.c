@@ -1799,9 +1799,9 @@ void NPC_BSEmplaced(void)
 		enemyLOS = qtrue;
 
 		const int hit = NPC_ShotEntity(NPCS.NPC->enemy, impactPos);
-		const gentity_t* hit_ent = &g_entities[hit];
+		const gentity_t* hitEnt = &g_entities[hit];
 
-		if (hit == NPCS.NPC->enemy->s.number || hit_ent && hit_ent->takedamage)
+		if (hit == NPCS.NPC->enemy->s.number || hitEnt && hitEnt->takedamage)
 		{
 			//can hit enemy or will hit glass or other minor breakable (or in emplaced gun), so shoot anyway
 			enemyCS = qtrue;

@@ -3342,12 +3342,12 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 							traceEnt->client->saber[rsaber_num].blade[rblade_num].storageTime = level.time;
 							if (saber_lightning_blocked && !hand_lightning_blocked)
 							{
-								const float chance_of_fizz = flrand(0.0f, 1.0f);
+								const float chanceOfFizz = flrand(0.0f, 1.0f);
 								vec3_t ang = { 0, 0, 0 };
 								ang[0] = flrand(0, 360);
 								ang[1] = flrand(0, 360);
 								ang[2] = flrand(0, 360);
-								if (chance_of_fizz > 0)
+								if (chanceOfFizz > 0)
 								{
 									vec3_t end2;
 									VectorMA(traceEnt->client->saber[rsaber_num].blade[rblade_num].muzzlePoint,
@@ -3403,12 +3403,12 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						traceEnt->client->saber[rsaber_num].blade[rblade_num].storageTime = level.time;
 						if (saber_lightning_blocked && !hand_lightning_blocked)
 						{
-							const float chance_of_fizz = flrand(0.0f, 1.0f);
+							const float chanceOfFizz = flrand(0.0f, 1.0f);
 							vec3_t ang = { 0, 0, 0 };
 							ang[0] = flrand(0, 360);
 							ang[1] = flrand(0, 360);
 							ang[2] = flrand(0, 360);
-							if (chance_of_fizz > 0)
+							if (chanceOfFizz > 0)
 							{
 								vec3_t end2;
 								VectorMA(traceEnt->client->saber[rsaber_num].blade[rblade_num].muzzlePoint,

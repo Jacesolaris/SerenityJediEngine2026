@@ -62,6 +62,7 @@ set(MPRend2Files
 	"${MPDir}/rd-rend2/tr_shadows.cpp"
 	"${MPDir}/rd-rend2/tr_skin.cpp"
 	"${MPDir}/rd-rend2/tr_sky.cpp"
+	"${MPDir}/rd-rend2/tr_smaa.h"
 	"${MPDir}/rd-rend2/tr_subs.cpp"
 	"${MPDir}/rd-rend2/tr_surface.cpp"
 	"${MPDir}/rd-rend2/tr_tangentspace.cpp"

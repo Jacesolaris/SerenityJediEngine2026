@@ -3986,14 +3986,19 @@ int BG_ModelCache(const char* modelName, const char* skin_name)
 // ============================================================================
 
 #if defined(_GAME)
-	// Server: NPCs, animation structs, saber data, AI pools
-#define MAX_POOL_SIZE   4194304    // 4 MB
+	// Server: NPCs, animation structs, saber data, AI pools, Increase for more NPCs/Bots
+//#define MAX_POOL_SIZE 4194304    // 4 MB
+#define MAX_POOL_SIZE   8388608    // 8 MB
+//#define MAX_POOL_SIZE 12582912   // 12 MB
+//#define MAX_POOL_SIZE 15728640   // 15 MB
+//#define MAX_POOL_SIZE 20971520   // 20 MB
 #elif defined(_CGAME)
 	// Client game: less needed, but still safe
 #define MAX_POOL_SIZE   2621440    // 2.5 MB
 #elif defined(UI_BUILD)
 	// UI: only G2 menu models + small allocations
 #define MAX_POOL_SIZE   1048576    // 1 MB
+//#define MAX_POOL_SIZE   2097152    // 2 MB Increase for larger menu count
 #endif
 
 // ============================================================================

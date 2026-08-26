@@ -7439,10 +7439,10 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 			take = 0;
 		}
 
-		/*if (mod == MOD_SLIME)
+		if (mod == MOD_SLIME)
 		{
 			trace_t		testTrace;
-			vec3_t		testDirection;
+			vec3_t		testDirection={0, 0, 0};
 			vec3_t		testStartPos;
 			vec3_t		testEndPos;
 
@@ -7457,7 +7457,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 
 			trap->Trace(&testTrace, testStartPos, NULL, NULL, testEndPos, ENTITYNUM_NONE, MASK_SHOT, qfalse, 0, 0);
 
-			float chance_of_fizz = flrand(0.0f, 1.0f);
+			float chanceOfFizz = trap->WE_GetChanceOfSaberFizz();
 			int rsaber_num = 0;
 			int rblade_num = 0;
 			targ->client->saber[rsaber_num].blade[rblade_num].storageTime = level.time;
@@ -7467,7 +7467,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 				testTrace.entityNum == targ->s.number &&
 				testTrace.G2CollisionMap[0].mEntityNum != -1)
 			{
-				if (chance_of_fizz > 0)
+				if (chanceOfFizz > 0)
 				{
 					vec3_t ang = { 0, 0, 0 };
 					ang[0] = flrand(0, 360);
@@ -7481,8 +7481,9 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 					targ->client->poisonTime = level.time + 1000;
 				}
 			}
-			TIMER_Set(targ, "AcidPainDebounce", 200 + (10000.0f * Q_flrand(0.0f, 1.0f) * chance_of_fizz));
-		}*/
+			TIMER_Set(targ, "AcidPainDebounce", 200 + (10000.0f * Q_flrand(0.0f, 1.0f) * chanceOfFizz));
+			gPainHitLoc = HL_CHEST;
+		}
 	}
 
 	if (g_debugDamage.integer)

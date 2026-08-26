@@ -266,7 +266,7 @@ qboolean MP3Stream_InitFromFile(
 	const qboolean bStereoDesired)
 {
 	// ----------------------------------------------------------------------
-	// Safety: validate pointers (fixes MSVC C6011)
+	// Safety: validate pointers
 	// ----------------------------------------------------------------------
 	if (sfx == nullptr)
 	{
@@ -295,12 +295,14 @@ qboolean MP3Stream_InitFromFile(
 		sfx->eSoundCompressionMethod = ct_MP3;
 		sfx->fVolRange = fMaxVol;
 
-		// Compute sample length
 		const int stereoDivisor = (bStereoDesired == qtrue) ? 2 : 1;
+
 		sfx->iSoundLengthInSamples =
 			(iMP3UnPackedSize / 2) / (44100 / dma.speed) / stereoDivisor;
 
+		// ------------------------------------------------------------------
 		// Allocate raw MP3 data
+		// ------------------------------------------------------------------
 		sfx->pSoundData = reinterpret_cast<short*>(SND_malloc(iSrcDatalen, sfx));
 		if (sfx->pSoundData == nullptr)
 		{
@@ -311,22 +313,39 @@ qboolean MP3Stream_InitFromFile(
 		memcpy(sfx->pSoundData, pbSrcData, iSrcDatalen);
 
 		// ------------------------------------------------------------------
+		// Allocate MP3STREAM on heap (fixes MSVC C6262)
+		// ------------------------------------------------------------------
+		MP3STREAM* SFX_MP3Stream =
+			static_cast<MP3STREAM*>(malloc(sizeof(MP3STREAM)));
+
+		if (SFX_MP3Stream == nullptr)
+		{
+			Com_Printf(S_COLOR_RED "MP3Stream_InitFromFile ERROR: malloc failed\n");
+			return qfalse;
+		}
+
+		memset(SFX_MP3Stream, 0, sizeof(MP3STREAM));
+
+		// ------------------------------------------------------------------
 		// Initialize low-level MP3 stream
 		// ------------------------------------------------------------------
-		MP3STREAM SFX_MP3Stream = {}; // zero-init
 		char* psError = C_MP3Stream_DecodeInit(
-			&SFX_MP3Stream,
+			SFX_MP3Stream,
 			pbSrcData,
 			iSrcDatalen,
 			dma.speed,
 			2 * 8,               // width * 8 bits
 			bStereoDesired);
 
-		SFX_MP3Stream.pbSourceData = reinterpret_cast<byte*>(sfx->pSoundData);
+		SFX_MP3Stream->pbSourceData =
+			reinterpret_cast<byte*>(sfx->pSoundData);
 
 		if (psError != nullptr)
 		{
-			Com_Printf(va(S_COLOR_YELLOW "File \"%s\": %s\n", psSrcDataFilename, psError));
+			Com_Printf(va(S_COLOR_YELLOW "File \"%s\": %s\n",
+				psSrcDataFilename, psError));
+
+			free(SFX_MP3Stream);
 			return qfalse;
 		}
 
@@ -334,15 +353,20 @@ qboolean MP3Stream_InitFromFile(
 		// Success: copy stream header into sfx
 		// ------------------------------------------------------------------
 		sfx->pMP3StreamHeader =
-			static_cast<MP3STREAM*>(Z_Malloc(sizeof(MP3STREAM), TAG_SND_MP3STREAMHDR, qfalse));
+			static_cast<MP3STREAM*>(Z_Malloc(sizeof(MP3STREAM),
+				TAG_SND_MP3STREAMHDR,
+				qfalse));
 
 		if (sfx->pMP3StreamHeader == nullptr)
 		{
 			Com_Printf(S_COLOR_RED "MP3Stream_InitFromFile ERROR: Z_Malloc failed\n");
+			free(SFX_MP3Stream);
 			return qfalse;
 		}
 
-		memcpy(sfx->pMP3StreamHeader, &SFX_MP3Stream, sizeof(MP3STREAM));
+		memcpy(sfx->pMP3StreamHeader, SFX_MP3Stream, sizeof(MP3STREAM));
+
+		free(SFX_MP3Stream);
 
 		return qtrue;
 	}

@@ -35,6 +35,7 @@ color4ub_t	styleColors[MAX_LIGHT_STYLES];
 
 void RB_BinTriangleCounts(void);
 
+
 /*
 ==================
 R_DrawElements
@@ -44,12 +45,13 @@ R_DrawElements
 
 void R_DrawElementsVBO(int numIndexes, glIndex_t firstIndex, glIndex_t minIndex, glIndex_t maxIndex)
 {
-	int offset = firstIndex * sizeof(glIndex_t) +
+	size_t offset = firstIndex * sizeof(glIndex_t) +
 		(tess.useInternalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
 
 	GL_DrawIndexed(GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, offset, 1, 0);
 }
 
+#if 0
 static void R_DrawMultiElementsVBO(int multiDrawPrimitives, glIndex_t* multiDrawMinIndex, glIndex_t* multiDrawMaxIndex,
 	GLsizei* multiDrawNumIndexes, glIndex_t** multiDrawFirstIndex)
 {
@@ -59,6 +61,7 @@ static void R_DrawMultiElementsVBO(int multiDrawPrimitives, glIndex_t* multiDraw
 		multiDrawFirstIndex,
 		multiDrawPrimitives);
 }
+#endif
 
 /*
 =============================================================
@@ -69,6 +72,7 @@ SURFACE SHADERS
 */
 
 shaderCommands_t	tess;
+
 
 /*
 =================
@@ -164,8 +168,11 @@ void RB_BeginSurface(shader_t* shader, int fogNum, int cubemapIndex)
 	}
 }
 
+
+
 extern float EvalWaveForm(const waveForm_t* wf);
 extern float EvalWaveFormClamped(const waveForm_t* wf);
+
 
 static void ComputeTexMods(shaderStage_t* pStage, int bundleNum, float* outMatrix, float* outOffTurb)
 {
@@ -187,6 +194,7 @@ static void ComputeTexMods(shaderStage_t* pStage, int bundleNum, float* outMatri
 	for (tm = 0; tm < bundle->numTexMods; tm++) {
 		switch (bundle->texMods[tm].type)
 		{
+
 		case TMOD_NONE:
 			tm = TR_MAX_TEXMODS;		// break out of for loop
 			break;
@@ -458,7 +466,8 @@ static void ComputeShaderColors(shaderStage_t* pStage, vec4_t baseColor, vec4_t 
 		&& !((blend & GLS_SRCBLEND_BITS) == GLS_SRCBLEND_DST_COLOR)
 		&& !((blend & GLS_SRCBLEND_BITS) == GLS_SRCBLEND_ONE_MINUS_DST_COLOR)
 		&& !((blend & GLS_DSTBLEND_BITS) == GLS_DSTBLEND_SRC_COLOR)
-		&& !((blend & GLS_DSTBLEND_BITS) == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR))
+		&& !((blend & GLS_DSTBLEND_BITS) == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR)
+		&& (backEnd.framePostProcessed || !tr.world))
 	{
 		float scale = 1 << tr.overbrightBits;
 
@@ -540,7 +549,7 @@ static void CaptureDrawData(const shaderCommands_t* input, shaderStage_t* stage,
 			glState.currentVBO->vertexesVBO,
 			glState.currentIBO->indexesVBO,
 			numIndexes / 3);
-		ri->FS_Write(data, strlen(data), tr.debugFile);
+		ri->FS_Write(data, int(strlen(data)), tr.debugFile);
 	}
 	else
 	{
@@ -556,7 +565,7 @@ static void CaptureDrawData(const shaderCommands_t* input, shaderStage_t* stage,
 			glState.currentVBO->vertexesVBO,
 			glState.currentIBO->indexesVBO,
 			input->numIndexes / 3);
-		ri->FS_Write(data, strlen(data), tr.debugFile);
+		ri->FS_Write(data, int(strlen(data)), tr.debugFile);
 	}
 }
 
@@ -685,12 +694,12 @@ void RB_FillDrawCommand(
 	}
 	else
 	{
-		int offset = input->firstIndex * sizeof(glIndex_t) +
+		size_t offset = input->firstIndex * sizeof(glIndex_t) +
 			(input->useInternalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
 
 		drawCmd.type = DRAW_COMMAND_INDEXED;
 		drawCmd.params.indexed.indexType = GL_INDEX_TYPE;
-		drawCmd.params.indexed.firstIndex = offset;
+		drawCmd.params.indexed.firstIndex = (glIndex_t)offset;
 		drawCmd.params.indexed.numIndices = input->numIndexes;
 		drawCmd.params.indexed.baseVertex = 0;
 	}
@@ -906,6 +915,8 @@ static UniformBlockBinding GetPreviousBonesBlockUniformBinding()
 static UniformBlockBinding GetShaderInstanceBlockUniformBinding(
 	const trRefEntity_t* refEntity, const shader_t* shader)
 {
+	//const byte currentFrameScene = backEndData->currentFrame->currentScene;
+	//const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
 	UniformBlockBinding binding = {};
 	binding.ubo = tr.shaderInstanceUbo;
 	binding.block = UNIFORM_BLOCK_SHADER_INSTANCE;
@@ -930,6 +941,7 @@ Draws triangle outlines for debugging
 ================
 */
 static void DrawTris(shaderCommands_t* input, const VertexArraysProperties* vertexArrays) {
+
 	Allocator& frameAllocator = *backEndData->perFrameMemory;
 	vertexAttribute_t attribs[ATTR_INDEX_MAX] = {};
 	GL_VertexArraysToAttribs(attribs, ARRAY_LEN(attribs), vertexArrays);
@@ -940,16 +952,17 @@ static void DrawTris(shaderCommands_t* input, const VertexArraysProperties* vert
 		{
 			index |= GENERICDEF_USE_DEFORM_VERTEXES;
 		}
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 		if (glState.vertexAnimation)
 		{
 			index |= GENERICDEF_USE_VERTEX_ANIMATION;
 		}
+		else
 #endif // REND2_SP
-		else if (glState.skeletalAnimation)
-		{
-			index |= GENERICDEF_USE_SKELETAL_ANIMATION;
-		}
+			if (glState.skeletalAnimation)
+			{
+				index |= GENERICDEF_USE_SKELETAL_ANIMATION;
+			}
 
 		shaderProgram_t* sp = &tr.genericShader[index];
 		assert(sp);
@@ -973,7 +986,7 @@ static void DrawTris(shaderCommands_t* input, const VertexArraysProperties* vert
 		uniformDataWriter.SetUniformVec4(UNIFORM_VERTCOLOR, vertColor);
 
 		DrawItem item = {};
-		item.renderState.stateBits = GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE | GLS_POLYGON_OFFSET_FILL;
+		item.renderState.stateBits = GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE;
 		item.renderState.cullType = RB_GetCullType(&backEnd.viewParms, backEnd.currentEntity, input->shader->cullType);
 		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.program = sp;
@@ -1002,24 +1015,8 @@ DrawNormals
 Draws vertex normals for debugging
 ================
 */
-static void DrawNormals(const shaderCommands_t* input)
-{
-	//GL_Bind(tr.whiteImage);
-	//qglColor3f(1, 1, 1);
-	//qglDepthRange(0, 0);	// never occluded
-	//GL_State(GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE);
-
-	//qglBegin(GL_LINES);
-	//for (int i = 0; i < input->numVertexes; i++)
-	//{
-	//	vec3_t temp;
-	//	qglVertex3fv(input->xyz[i]);
-	//	VectorMA(input->xyz[i], 2, input->normal[i], temp);
-	//	qglVertex3fv(temp);
-	//}
-	//qglEnd();
-
-	//qglDepthRange(0, 1);
+static void DrawNormals(shaderCommands_t* input) {
+	//FIXME: implement this
 }
 
 static void ProjectPshadowVBOGLSL(const shaderCommands_t* input, const VertexArraysProperties* vertexArrays) {
@@ -1129,7 +1126,7 @@ static void RB_FogPass(shaderCommands_t* input, const VertexArraysProperties* ve
 
 	if (input->shader->numDeforms && !ShaderRequiresCPUDeforms(input->shader))
 		shaderBits |= FOGDEF_USE_DEFORM_VERTEXES;
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 	if (glState.vertexAnimation)
 		shaderBits |= FOGDEF_USE_VERTEX_ANIMATION;
 	else
@@ -1142,9 +1139,9 @@ static void RB_FogPass(shaderCommands_t* input, const VertexArraysProperties* ve
 		input->shader->sort != SS_FOG)
 		shaderBits |= FOGDEF_USE_FALLBACK_GLOBAL_FOG;
 
-	if (input->numPasses > 0)
+	/*if (input->numPasses > 0)
 		if (input->xstages[0]->alphaTestType != ALPHA_TEST_NONE)
-			shaderBits |= FOGDEF_USE_ALPHA_TEST;
+			shaderBits |= FOGDEF_USE_ALPHA_TEST;*/
 
 	shaderProgram_t* sp = tr.fogShader + shaderBits;
 
@@ -1301,7 +1298,7 @@ static void RB_FogPass(shaderCommands_t* input, const VertexArraysProperties* ve
 static unsigned int RB_CalcShaderVertexAttribs(const shader_t* shader)
 {
 	unsigned int vertexAttribs = shader->vertexAttribs;
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 	if (glState.vertexAnimation)
 	{
 		//vertexAttribs &= ~ATTR_COLOR;
@@ -1334,7 +1331,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 		{
 			index |= REFRACTIONDEF_USE_DEFORM_VERTEXES;
 		}
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 		if (glState.vertexAnimation)
 		{
 			index |= REFRACTIONDEF_USE_VERTEX_ANIMATION;
@@ -1395,7 +1392,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 
 				if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
 				{
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 					if (glState.vertexAnimation)
 					{
 						index |= LIGHTDEF_USE_VERTEX_ANIMATION;
@@ -1439,7 +1436,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 				{
 					index |= GENERICDEF_USE_DEFORM_VERTEXES;
 				}
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 				if (glState.vertexAnimation)
 				{
 					index |= GENERICDEF_USE_VERTEX_ANIMATION;
@@ -1489,7 +1486,7 @@ static shaderProgram_t* SelectShaderProgram(int stageIndex, shaderStage_t* stage
 		{
 			if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
 			{
-#ifdef REND2_SP
+#ifdef REND2_SP_MD3
 				if (glState.vertexAnimation)
 				{
 					index |= LIGHTDEF_USE_VERTEX_ANIMATION;
@@ -1591,7 +1588,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 	{
 		shaderStage_t* pStage = input->xstages[stage];
 		shaderProgram_t* sp;
-		vec4_t texMatrix;
+		vec4_t texMatrix{};
 		vec4_t texOffTurb;
 		int stateBits;
 		colorGen_t forceRGBGen = CGEN_BAD;
@@ -1652,6 +1649,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			if (backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA)
 			{
 				stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+#ifndef REND2_SP
 				if (backEnd.currentEntity->e.renderfx & RF_ALPHA_DEPTH)
 				{
 					// depth write, so faces through the model will be stomped
@@ -1660,6 +1658,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 					// standard alpha surfs.
 					stateBits |= GLS_DEPTHMASK_TRUE;
 				}
+#endif
 			}
 
 			if (backEnd.currentEntity == &backEnd.entityFlare)
@@ -1677,6 +1676,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			{
 				forceAlphaGen = AGEN_LIGHTING_SPECULAR_STATIC;
 			}
+#ifdef REND2_SP
 			if (backEnd.currentEntity->e.renderfx & RF_ALPHA_FADE)
 			{
 				if (backEnd.currentEntity->e.shaderRGBA[3] < 255)
@@ -1685,6 +1685,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 					forceAlphaGen = AGEN_ENTITY;
 				}
 			}
+#endif
 		}
 
 		if (backEnd.viewParms.flags & VPF_POINTSHADOW)
@@ -1724,17 +1725,12 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			}
 		}
 
-		float volumetricBaseValue = -1.0f;
-		if (backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC)
+		if (!(backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC))
 		{
-			volumetricBaseValue = backEnd.currentEntity->e.shaderRGBA[0] / 255.0f;
-		}
-		else
-		{
-			vec4_t baseColor;
-			vec4_t vertColor;
+			vec4_t baseColor{};
+			vec4_t vertColor{};
 
-#ifdef REND2_SP_MAYBE
+#ifdef REND2_SP_GORE
 			// Fade will be set true when rendering some gore surfaces
 			if (input->fade)
 			{
@@ -1757,33 +1753,6 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			{
 				baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f;
 				vertColor[3] = 0.0f;
-			}
-
-			if (backEnd.currentEntity->e.hModel != NULL_HANDLE)
-			{
-				model_t* model = R_GetModelByHandle(backEnd.currentEntity->e.hModel);
-				if (model->type != MOD_BRUSH)
-				{
-					switch (forceRGBGen)
-					{
-					case CGEN_EXACT_VERTEX:
-					case CGEN_EXACT_VERTEX_LIT:
-					case CGEN_VERTEX:
-					case CGEN_VERTEX_LIT:
-						baseColor[0] =
-							baseColor[1] =
-							baseColor[2] =
-							baseColor[3] = 0.0f;
-
-						vertColor[0] =
-							vertColor[1] =
-							vertColor[2] =
-							vertColor[3] = tr.identityLight;
-						break;
-					default:
-						break;
-					}
-				}
 			}
 
 			uniformDataWriter.SetUniformVec4(UNIFORM_BASECOLOR, baseColor);
@@ -1827,9 +1796,9 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			uniformDataWriter.SetUniformVec3(UNIFORM_TONEMINAVGMAXLINEAR, tr.refdef.toneMinAvgMaxLinear);
 		}
 
-#ifdef REND2_SP_MAYBE
+#ifdef REND2_SP_GORE
 		// tess scale will be set true only when theres scaled gore
-		if (!input->scale)
+		if (input->scale)
 			texMatrix[0] = texMatrix[3] = input->texCoords[input->firstIndex][0][0];
 		else
 #endif
@@ -2044,6 +2013,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 						samplerBindingsWriter.AddStaticImage(tr.screenSsaoImage, TB_SSAOMAP);
 					else if (r_ssao->integer)
 						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SSAOMAP);
+
 				}
 			}
 
@@ -2314,6 +2284,10 @@ void RB_EndSurface(void) {
 	tess.firstIndex = 0;
 	tess.multiDrawPrimitives = 0;
 	tess.externalIBO = nullptr;
+#ifdef REND2_SP_GORE
+	tess.fade = false;
+	tess.scale = false;
+#endif
 	glState.vertexAnimation = qfalse;
 	glState.skeletalAnimation = qfalse;
 	glState.genShadows = qfalse;

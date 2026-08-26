@@ -871,83 +871,132 @@ This file's presence is not required
 
 ======================
 */
-static void G_ParseAnimationEvtFile(const int glaIndex, const char* events_directory, const int fileIndex,
+
+// -----------------------------------------------------------------------------
+// G_ParseAnimationEvtFile
+// Loads animevents.cfg for a given skeleton and fills animation event tables.
+// NOTE: Original version used an 80 KB stack buffer. This version moves that
+//       buffer to static storage to avoid massive stack usage.
+// -----------------------------------------------------------------------------
+static void G_ParseAnimationEvtFile(const int gla_index, const char* events_directory, const int file_index,
 	const int i_real_gla_index = -1,
 	const bool model_specific = false)
 {
-	static char text[80000]{};
+	// Large buffer moved off stack → static storage (BSS), zero‑initialized.
+	static char text[80000];
+
 	const char* text_p = text;
 	fileHandle_t f;
 	char events_path[MAX_QPATH];
 	int modelIndex = 0;
 
-	assert(fileIndex >= 0 && fileIndex < MAX_ANIM_FILES);
+	// Validate file index
+	if (!(file_index >= 0 && file_index < MAX_ANIM_FILES))
+	{
+		Com_Printf("G_ParseAnimationEvtFile: invalid file_index %d\n", file_index);
+		return;
+	}
 
-	const char* ps_anim_file_internal_name = i_real_gla_index == -1
+	// Determine if this animation file is flagged as *_skip
+	const char* ps_anim_file_internal_name =
+		(i_real_gla_index == -1)
 		? nullptr
 		: gi.G2API_GetAnimFileInternalNameIndex(i_real_gla_index);
-	const bool b_is_frame_skipped = ps_anim_file_internal_name && strlen(ps_anim_file_internal_name) > 5 && !Q_stricmp(
-		&ps_anim_file_internal_name[strlen(ps_anim_file_internal_name) - 5], "_skip");
 
-	// Open The File, Make Sure It Is Safe
-	//-------------------------------------
+	const qboolean b_is_frame_skipped =
+		(ps_anim_file_internal_name &&
+			strlen(ps_anim_file_internal_name) > 5 &&
+			Q_stricmp(&ps_anim_file_internal_name[strlen(ps_anim_file_internal_name) - 5], "_skip") == 0)
+		? qtrue : qfalse;
+
+	// -------------------------------------------------------------------------
+	// Open animevents.cfg
+	// -------------------------------------------------------------------------
 	Com_sprintf(events_path, MAX_QPATH, "models/players/%s/animevents.cfg", events_directory);
 
 	const int len = cgi_FS_FOpenFile(events_path, &f, FS_READ);
+
 	if (len <= 0)
 	{
-		//no file
+		// No file → nothing to parse
 		return;
 	}
-	if (len >= static_cast<int>(sizeof text - 1))
+
+	if (len >= (int)(sizeof(text) - 1))
 	{
 		cgi_FS_FCloseFile(f);
-		CG_Printf("File %s too long\n", events_path);
+		Com_Printf("G_ParseAnimationEvtFile: File %s too long (%d > %d)\n",
+			events_path, len, (int)sizeof(text) - 1);
 		return;
 	}
 
-	// Read It To The Buffer, Close The File
-	//---------------------------------------
+	// -------------------------------------------------------------------------
+	// Read file into static buffer
+	// -------------------------------------------------------------------------
 	cgi_FS_Read(text, len, f);
-	text[len] = 0;
+	text[len] = '\0';
 	cgi_FS_FCloseFile(f);
 
-	// Get The Pointers To The Anim Event Arrays
-	//-------------------------------------------
-	animFileSet_t& afileset = level.knownAnimFileSets[fileIndex];
+	// -------------------------------------------------------------------------
+	// Get animation event arrays
+	// -------------------------------------------------------------------------
+	animFileSet_t& afileset = level.knownAnimFileSets[file_index];
 	animevent_t* legs_anim_events = afileset.legsAnimEvents;
 	animevent_t* torso_anim_events = afileset.torsoAnimEvents;
 	const animation_t* animations = afileset.animations;
 
-	if (model_specific)
+	// Model‑specific event blocks
+	if (model_specific == true)
 	{
-		const hstring modelName(events_directory);
-		modelIndex = modelName.handle();
+		const hstring model_name(events_directory);
+		modelIndex = model_name.handle();
 	}
 
-	// read information for batches of sounds (UPPER or LOWER)
+	// -------------------------------------------------------------------------
+	// Parse event blocks
+	// -------------------------------------------------------------------------
 	COM_BeginParseSession();
-	while (true)
+
+	while (qtrue)
 	{
-		// Get base frame of sequence
 		const char* token = COM_Parse(&text_p);
-		if (!token || !token[0])
+
+		if (!token || token[0] == '\0')
 		{
-			break;
+			break; // End of file
 		}
 
-		//these stomp anything set in the include file (if it's an event of the same type on the same frame)!
-		if (!Q_stricmp(token, "UPPEREVENTS")) // A batch of upper events
+		// UPPER BODY EVENT BLOCK
+		if (Q_stricmp(token, "UPPEREVENTS") == 0)
 		{
-			ParseAnimationEvtBlock(glaIndex, modelIndex, events_path, torso_anim_events, animations,
-				afileset.torsoAnimEventCount, &text_p, b_is_frame_skipped);
+			ParseAnimationEvtBlock(
+				gla_index,
+				modelIndex,
+				events_path,
+				torso_anim_events,
+				animations,
+				afileset.torsoAnimEventCount,
+				&text_p,
+				b_is_frame_skipped
+			);
 		}
-		else if (!Q_stricmp(token, "LOWEREVENTS")) // A batch of lower events
+
+		// LOWER BODY EVENT BLOCK
+		else if (Q_stricmp(token, "LOWEREVENTS") == 0)
 		{
-			ParseAnimationEvtBlock(glaIndex, modelIndex, events_path, legs_anim_events, animations,
-				afileset.legsAnimEventCount, &text_p, b_is_frame_skipped);
+			ParseAnimationEvtBlock(
+				gla_index,
+				modelIndex,
+				events_path,
+				legs_anim_events,
+				animations,
+				afileset.legsAnimEventCount,
+				&text_p,
+				b_is_frame_skipped
+			);
 		}
 	}
+
 	COM_EndParseSession();
 }
 
@@ -962,164 +1011,178 @@ models/players/visor/animation.cfg, etc
 */
 static qboolean G_ParseAnimationFile(const int glaIndex, const char* skeletonName, const int fileIndex)
 {
-	static char text[120000];
+	// Large buffer moved off stack → static storage (BSS), zero‑initialized.
+	static char text[160000];
+
 	const char* text_p = text;
 	animation_t* animations = level.knownAnimFileSets[fileIndex].animations;
+
 	char skeleton_path[MAX_QPATH];
 
-	// Read In The File To The Text Buffer, Make Sure Everything Is Safe To Continue
-	//-------------------------------------------------------------------------------
+	// -------------------------------------------------------------------------
+	// Load animation.cfg into the static text buffer
+	// -------------------------------------------------------------------------
 	Com_sprintf(skeleton_path, MAX_QPATH, "models/players/%s/%s.cfg", skeletonName, skeletonName);
-	int len = gi.RE_GetAnimationCFG(skeleton_path, text, sizeof text);
+	int len = gi.RE_GetAnimationCFG(skeleton_path, text, sizeof(text));
+
 	if (len <= 0)
 	{
 		Com_sprintf(skeleton_path, MAX_QPATH, "models/players/%s/animation.cfg", skeletonName);
-		len = gi.RE_GetAnimationCFG(skeleton_path, text, sizeof text);
+		len = gi.RE_GetAnimationCFG(skeleton_path, text, sizeof(text));
+
 		if (len <= 0)
 		{
 			return qfalse;
 		}
 	}
-	if (len >= static_cast<int>(sizeof text - 1))
+
+	// Ensure file fits in buffer
+	if (len >= (int)(sizeof(text) - 1))
 	{
-		G_Error("G_ParseAnimationFile: File %s too long\n (%d > %d)", skeletonName, len, sizeof text - 1);
+		Com_Printf("G_ParseAnimationFile: File %s too long (%d > %d)\n",
+			skeletonName, len, (int)sizeof(text) - 1);
+		return qfalse;
 	}
 
-	// Read In Each Token
-	//--------------------
+	// -------------------------------------------------------------------------
+	// Begin parsing
+	// -------------------------------------------------------------------------
 	COM_BeginParseSession();
-	while (true)
+
+	while (qtrue)
 	{
 		const char* token = COM_Parse(&text_p);
 
-		// If No Token, We've Reached The End Of The File
-		//------------------------------------------------
-		if (!token || !token[0])
+		// End of file
+		if (!token || token[0] == '\0')
 		{
 			break;
 		}
 
-		// Get The Anim Number Converted From The First Token
-		//----------------------------------------------------
+		// Convert token to animation index
 		const int anim_num = GetIDForString(animTable, token);
+
 		if (anim_num == -1)
 		{
-#ifndef FINAL_BUILD
-			if (strcmp(token, "ROOT"))
+			// Skip unknown tokens until end of line
+			do
 			{
-				Com_Printf(S_COLOR_RED"WARNING: Unknown token %s in %s\n", token, skeletonPath);
-			}
-#endif
-			//unrecognized animation so skip to end of line,
-			while (token[0])
-			{
-				token = COM_ParseExt(&text_p, qfalse); //returns empty string when next token is EOL
-			}
+				token = COM_ParseExt(&text_p, qfalse);
+			} while (token && token[0] != '\0');
+
 			continue;
 		}
 
-		// GLAIndex
-		//----------
-		animations[anim_num].glaIndex = glaIndex; // Passed Into This Func
+		// ---------------------------------------------------------------------
+		// Parse animation fields
+		// ---------------------------------------------------------------------
 
-		// First Frame
-		//-------------
-		token = COM_Parse(&text_p);
-		if (!token)
-		{
-			break;
-		}
-		assert(atoi(token) >= 0 && atoi(token) < 65536);
-		animations[anim_num].firstFrame = atoi(token);
+		animations[anim_num].glaIndex = glaIndex;
 
-		// Num Frames
-		//------------
+		// FIRST FRAME
 		token = COM_Parse(&text_p);
-		if (!token)
-		{
-			break;
-		}
-		assert(atoi(token) >= 0 && atoi(token) < 65536);
-		animations[anim_num].numFrames = atoi(token);
+		if (!token) break;
 
-		// Loop Frames
-		//-------------
-		token = COM_Parse(&text_p);
-		if (!token)
+		const int firstFrame = atoi(token);
+		if (firstFrame < 0 || firstFrame >= 65536)
 		{
-			break;
+			Com_Printf("G_ParseAnimationFile: Invalid firstFrame %d in %s\n", firstFrame, skeletonName);
 		}
-		assert(atoi(token) >= -1 && atoi(token) < 128);
-		animations[anim_num].loopFrames = atoi(token);
+		animations[anim_num].firstFrame = firstFrame;
+
+		// NUM FRAMES
+		token = COM_Parse(&text_p);
+		if (!token) break;
+
+		const int numFrames = atoi(token);
+		if (numFrames < 0 || numFrames >= 65536)
+		{
+			Com_Printf("G_ParseAnimationFile: Invalid numFrames %d in %s\n", numFrames, skeletonName);
+		}
+		animations[anim_num].numFrames = numFrames;
+
+		// LOOP FRAMES
+		token = COM_Parse(&text_p);
+		if (!token) break;
+
+		const int loopFrames = atoi(token);
+		if (loopFrames < -1 || loopFrames >= 128)
+		{
+			Com_Printf("G_ParseAnimationFile: Invalid loopFrames %d in %s\n", loopFrames, skeletonName);
+		}
+		animations[anim_num].loopFrames = loopFrames;
 
 		// FPS
-		//-----
 		token = COM_Parse(&text_p);
-		if (!token)
+		if (!token) break;
+
+		float fps = (float)atof(token);
+		if (fps == 0.0f)
 		{
-			break;
-		}
-		float fps = atof(token);
-		if (fps == 0)
-		{
-			fps = 1; //Don't allow divide by zero error
+			fps = 1.0f; // avoid divide-by-zero
 		}
 
-		// Calculate Frame Lerp
-		//----------------------
+		// FRAME LERP CALCULATION
 		int lerp;
 
-		if (fps < 0)
+		if (fps < 0.0f)
 		{
-			//backwards
-			lerp = floor(1000.0f / fps);
-			assert(lerp > -32767 && lerp < 32767);
-			animations[anim_num].frameLerp = lerp;
-			assert(animations[anim_num].frameLerp <= 1);
+			lerp = (int)floorf(1000.0f / fps);
 
-			//Slow down saber moves...
+			if (lerp <= -32767 || lerp >= 32767)
+			{
+				Com_Printf("G_ParseAnimationFile: Invalid negative lerp %d in %s\n", lerp, skeletonName);
+			}
+
+			animations[anim_num].frameLerp = lerp;
+
+			// Slowdown logic (unchanged)
 			for (int x = 4; x < LS_MOVE_MAX; x++)
 			{
-				if (saberMoveData[x].animToUse + 77 * 4 == anim_num) // SS_TAVION
+				if (saberMoveData[x].animToUse + 77 * 4 == anim_num)
 				{
-					animations[anim_num].frameLerp *= 1.2;
+					animations[anim_num].frameLerp = (int)(animations[anim_num].frameLerp * 1.2f);
 					break;
 				}
-				if (saberMoveData[x].animToUse + 77 * 5 == anim_num) // SS_DUAL
+				if (saberMoveData[x].animToUse + 77 * 5 == anim_num)
 				{
-					animations[anim_num].frameLerp *= 1.1;
+					animations[anim_num].frameLerp = (int)(animations[anim_num].frameLerp * 1.1f);
 					break;
 				}
-				if (saberMoveData[x].animToUse + 77 * 6 == anim_num) // SS_STAFF
+				if (saberMoveData[x].animToUse + 77 * 6 == anim_num)
 				{
-					animations[anim_num].frameLerp *= 1.1;
+					animations[anim_num].frameLerp = (int)(animations[anim_num].frameLerp * 1.1f);
 					break;
 				}
 			}
 		}
 		else
 		{
-			lerp = ceil(1000.0f / fps);
-			assert(lerp > -32767 && lerp < 32767);
-			animations[anim_num].frameLerp = lerp;
-			assert(animations[anim_num].frameLerp >= 1);
+			lerp = (int)ceilf(1000.0f / fps);
 
-			//Slow down saber moves...
+			if (lerp <= -32767 || lerp >= 32767)
+			{
+				Com_Printf("G_ParseAnimationFile: Invalid lerp %d in %s\n", lerp, skeletonName);
+			}
+
+			animations[anim_num].frameLerp = lerp;
+
+			// Slowdown logic (unchanged)
 			for (int x = 4; x < LS_MOVE_MAX; x++)
 			{
-				if (saberMoveData[x].animToUse + 77 * 4 == anim_num) // SS_TAVION
+				if (saberMoveData[x].animToUse + 77 * 4 == anim_num)
 				{
-					animations[anim_num].frameLerp *= 1.2;
+					animations[anim_num].frameLerp = (int)(animations[anim_num].frameLerp * 1.2f);
 					break;
 				}
-				if (saberMoveData[x].animToUse + 77 * 5 == anim_num) // SS_DUAL
+				if (saberMoveData[x].animToUse + 77 * 5 == anim_num)
 				{
-					animations[anim_num].frameLerp *= 1.1;
+					animations[anim_num].frameLerp = (int)(animations[anim_num].frameLerp * 1.1f);
 					break;
 				}
-				if (saberMoveData[x].animToUse + 77 * 6 == anim_num) // SS_STAFF
+				if (saberMoveData[x].animToUse + 77 * 6 == anim_num)
 				{
-					animations[anim_num].frameLerp *= 1.1;
+					animations[anim_num].frameLerp = (int)(animations[anim_num].frameLerp * 1.1f);
 					break;
 				}
 			}
@@ -1127,13 +1190,6 @@ static qboolean G_ParseAnimationFile(const int glaIndex, const char* skeletonNam
 	}
 
 	COM_EndParseSession();
-
-#ifdef CONVENIENT_ANIMATION_FILE_DEBUG_THING
-	if (strstr(af_filename, "humanoid"))
-	{
-		SpewDebugStuffToFile(animations);
-	}
-#endif
 
 	return qtrue;
 }

@@ -492,6 +492,32 @@ static void R_SetColorMode(GLboolean* rgba, stereoFrame_t stereoFrame, int color
 	}
 }
 
+void RE_LAGoggles(void)
+{
+	tr.refdef.doLAGoggles = true;
+	tr.refdef.doFullbright = true;
+}
+
+/*
+=============
+RE_Scissor
+=============
+*/
+void RE_Scissor(float x, float y, float w, float h)
+{
+	scissorCommand_t* cmd;
+
+	cmd = (scissorCommand_t*)R_GetCommandBuffer(sizeof(*cmd));
+	if (!cmd) {
+		return;
+	}
+	cmd->commandId = RC_SCISSOR;
+	cmd->x = x;
+	cmd->y = y;
+	cmd->w = w;
+	cmd->h = h;
+}
+
 /*
 ====================
 RE_BeginFrame
@@ -500,7 +526,8 @@ If running in stereo, RE_BeginFrame will be called twice
 for each RE_EndFrame
 ====================
 */
-void RE_BeginFrame(const stereoFrame_t stereoFrame) {
+void RE_BeginFrame(stereoFrame_t stereoFrame)
+{
 	drawBufferCommand_t* cmd = NULL;
 	colorMaskCommand_t* colcmd = NULL;
 
@@ -779,6 +806,7 @@ void R_NewFrameSync()
 
 	assert(!currentFrame->sync);
 	currentFrame->sync = qglFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	currentFrame->currentScene = 0;
 
 	backEndData->realFrameNumber++;
 	backEnd.framePostProcessed = qfalse;

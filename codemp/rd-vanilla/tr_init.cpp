@@ -318,41 +318,52 @@ static void R_Splash()
 		break;
 	}
 
-	extern void	RB_SetGL2D();
-	RB_SetGL2D();
-
-	if (pImage)
-	{//invalid paths?
-		GL_Bind(pImage);
+	if (!pImage)
+	{
+		// Can't find the splash image so just clear to black
+		qglClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		qglClear(GL_COLOR_BUFFER_BIT);
 	}
-	GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO);
+	else
+	{
+		extern void	RB_SetGL2D();
+		RB_SetGL2D();
 
-	constexpr int width = 640;
-	constexpr int height = 480;
-	constexpr float x1 = 320 - width / 2;
-	constexpr float x2 = 320 + width / 2;
-	constexpr float y1 = 240 - height / 2;
-	constexpr float y2 = 240 + height / 2;
+		GL_Bind(pImage);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO);
 
-	qglBegin(GL_TRIANGLE_STRIP);
-	qglTexCoord2f(0, 0);
-	qglVertex2f(x1, y1);
-	qglTexCoord2f(1, 0);
-	qglVertex2f(x2, y1);
-	qglTexCoord2f(0, 1);
-	qglVertex2f(x1, y2);
-	qglTexCoord2f(1, 1);
-	qglVertex2f(x2, y2);
-	qglEnd();
+		constexpr int width = 640;
+		constexpr int height = 480;
+		constexpr float x1 = 320 - width / 2;
+		constexpr float x2 = 320 + width / 2;
+		constexpr float y1 = 240 - height / 2;
+		constexpr float y2 = 240 + height / 2;
+
+		qglBegin(GL_TRIANGLE_STRIP);
+		qglTexCoord2f(0, 0);
+		qglVertex2f(x1, y1);
+		qglTexCoord2f(1, 0);
+		qglVertex2f(x2, y1);
+		qglTexCoord2f(0, 1);
+		qglVertex2f(x1, y2);
+		qglTexCoord2f(1, 1);
+		qglVertex2f(x2, y2);
+		qglEnd();
+	}
 
 	if (r_com_rend2->integer != 0)
 	{
 		ri->Cvar_Set("com_rend2", "0");
 	}
 
-	if (com_outcast && com_outcast->integer != 0)
+	qboolean forceCgShadows =
+		(r_shadows->integer == 0 ||
+			r_shadows->integer == 1 ||
+			r_shadows->integer == 3) ? qtrue : qfalse;
+
+	if (forceCgShadows == qtrue)
 	{
-		ri->Cvar_Set("com_outcast", "0");
+		ri->Cvar_Set("cg_shadows", "2");
 	}
 
 	ri->WIN_Present(&window);
@@ -863,6 +874,10 @@ static void InitOpenGL(void)
 	}
 	else
 	{
+		if (r_com_rend2->integer != 0)
+		{
+			ri->Cvar_Set("com_rend2", "0");
+		}
 		// set default state
 		GL_SetDefaultState();
 	}
@@ -947,7 +962,7 @@ byte* RB_ReadPixels(const int x, const int y, const int width, const int height,
 	const int padwidth = PAD(linelen, packAlign);
 
 	// Allocate a few more bytes so that we can choose an alignment we like
-	auto buffer = static_cast<byte*>(Hunk_AllocateTempMemory(padwidth * height + *offset + packAlign - 1));
+	auto buffer = static_cast<byte*>(Hunk_AllocateTempMemory(static_cast<unsigned long long>(padwidth) * height + *offset + packAlign - 1));
 
 	const auto bufstart = static_cast<byte*>(PADP(reinterpret_cast<intptr_t>(buffer) + *offset, packAlign));
 	qglReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, bufstart);
@@ -1004,7 +1019,7 @@ static void R_TakeScreenshot(const int x, const int y, const int width, const in
 		srcptr += padlen;
 	}
 
-	const size_t memcount = linelen * height;
+	const size_t memcount = static_cast<size_t>(linelen) * height;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma && !glConfigExt.doGammaCorrectionWithShaders)
@@ -1039,7 +1054,7 @@ static void R_TakeScreenshotJPEG(const int x, const int y, const int width, cons
 	int padlen;
 
 	byte* buffer = RB_ReadPixels(x, y, width, height, &offset, &padlen);
-	const size_t memcount = (width * 3 + padlen) * height;
+	const size_t memcount = (static_cast<size_t>(width) * 3 + padlen) * height;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma && !glConfigExt.doGammaCorrectionWithShaders)
@@ -1073,7 +1088,8 @@ the menu system, sampled down from full screen distorted images
 ====================
 */
 #define LEVELSHOTSIZE 256
-static void R_LevelShot() {
+static void R_LevelShot()
+{
 	char		checkname[MAX_OSPATH];
 	size_t		offset = 0;
 	int			padlen;
@@ -1259,7 +1275,7 @@ const void* RB_TakeVideoFrameCmd(const void* data)
 
 	qglGetIntegerv(GL_PACK_ALIGNMENT, &pack_align);
 
-	const size_t linelen = cmd->width * 3;
+	const size_t linelen = static_cast<size_t>(cmd->width) * 3;
 
 	// Alignment stuff for glReadPixels
 	const int padwidth = PAD(linelen, pack_align);
@@ -1273,7 +1289,7 @@ const void* RB_TakeVideoFrameCmd(const void* data)
 	qglReadPixels(0, 0, cmd->width, cmd->height, GL_RGB,
 		GL_UNSIGNED_BYTE, c_buf);
 
-	size_t memcount = padwidth * cmd->height;
+	size_t memcount = static_cast<size_t>(padwidth) * cmd->height;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma && !glConfigExt.doGammaCorrectionWithShaders)
@@ -1281,7 +1297,7 @@ const void* RB_TakeVideoFrameCmd(const void* data)
 
 	if (cmd->motionJpeg)
 	{
-		memcount = RE_SaveJPGToBuffer(cmd->encodeBuffer, linelen * cmd->height,
+		memcount = RE_SaveJPGToBuffer(cmd->encodeBuffer, static_cast<size_t>(linelen) * cmd->height,
 			r_aviMotionJpegQuality->integer,
 			cmd->width, cmd->height, c_buf, padlen);
 		ri->CL_WriteAVIVideoFrame(cmd->encodeBuffer, memcount);
@@ -1556,11 +1572,13 @@ static consoleCommand_t	commands[] = {
 	{ "r_atihack",			R_AtiHackToggle_f },
 	{ "r_we",				R_WorldEffect_f },
 	{ "imagecacheinfo",		RE_RegisterImages_Info_f },
-	{ "modelList",			R_model_list_f },
+	{ "modelList",			R_Modellist_f },
 	{ "modelcacheinfo",		RE_RegisterModels_Info_f },
 	{ "weather",			R_SetWeatherEffect_f },
 	{ "r_weather",			R_WeatherEffect_f },
 };
+
+static const size_t numCommands = ARRAY_LEN(commands);
 
 #ifdef _DEBUG
 #define MIN_PRIMITIVES -1
@@ -1747,8 +1765,9 @@ static void R_Register()
 R_Init
 ===============
 */
-extern void R_InitWorldEffects(); //tr_WorldEffects.cpp
-void R_Init()
+extern void R_InitWorldEffects();
+
+void R_Init(void)
 {
 	int i;
 	byte* ptr;
@@ -1759,8 +1778,6 @@ void R_Init()
 	memset(&tr, 0, sizeof tr);
 	memset(&backEnd, 0, sizeof backEnd);
 	memset(&tess, 0, sizeof tess);
-
-	//	Swap_Init();
 
 #ifndef FINAL_BUILD
 	if ((intptr_t)tess.xyz & 15) {
@@ -1845,12 +1862,12 @@ void R_Init()
 RE_Shutdown
 ===============
 */
-void RE_Shutdown(const qboolean destroyWindow, const qboolean restarting)
+void RE_Shutdown(qboolean destroyWindow, qboolean restarting)
 {
 	ri->Printf(PRINT_ALL, "RE_Shutdown( %i )\n", destroyWindow);
 
-	for (const auto& command : commands)
-		ri->Cmd_RemoveCommand(command.cmd);
+	for (size_t i = 0; i < numCommands; i++)
+		ri->Cmd_RemoveCommand(commands[i].cmd);
 
 	if (r_DynamicGlow && r_DynamicGlow->integer)
 	{
@@ -2000,7 +2017,8 @@ GetRefAPI
 @@@@@@@@@@@@@@@@@@@@@
 */
 extern "C" {
-	Q_EXPORT refexport_t* QDECL GetRefAPI(const int api_version, refimport_t* rimp) {
+	Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t* rimp)
+	{
 		static refexport_t re;
 
 		assert(rimp);
@@ -2008,8 +2026,8 @@ extern "C" {
 
 		memset(&re, 0, sizeof re);
 
-		if (api_version != REF_API_VERSION) {
-			ri->Printf(PRINT_ALL, "Mismatched REF_API_VERSION: expected %i, got %i\n", REF_API_VERSION, api_version);
+		if (apiVersion != REF_API_VERSION) {
+			ri->Printf(PRINT_ALL, "Mismatched REF_API_VERSION: expected %i, got %i\n", REF_API_VERSION, apiVersion);
 			return nullptr;
 		}
 
@@ -2081,7 +2099,7 @@ extern "C" {
 		re.RegisterImages_LevelLoadEnd = RE_RegisterImages_LevelLoadEnd;
 		re.RegisterModels_LevelLoadEnd = RE_RegisterModels_LevelLoadEnd;
 
-		re.IsOutsideCausingPain = R_IsOutsideCausingPain;
+		//re.IsOutsideCausingPain = R_IsOutsideCausingPain;
 
 		// AVI recording
 		re.TakeVideoFrame = RE_TakeVideoFrame;

@@ -25,78 +25,74 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #ifdef _G2_GORE
 
-constexpr auto MAX_LODS = 8;
-
+#define MAX_LODS (8)
 struct GoreTextureCoordinates
 {
 	float* tex[MAX_LODS];
 
 	GoreTextureCoordinates()
 	{
-		for (int i = 0; i < MAX_LODS; i++)
+		int i;
+		for (i = 0;i < MAX_LODS;i++)
 		{
-			tex[i] = nullptr;
+			tex[i] = 0;
 		}
 	}
-
 	~GoreTextureCoordinates()
 	{
-		for (int i = 0; i < MAX_LODS; i++)
+		int i;
+		for (i = 0;i < MAX_LODS;i++)
 		{
 			if (tex[i])
 			{
 				extern void R_Free(void* pvAddress);
 				R_Free(tex[i]);
-				tex[i] = nullptr;
+				tex[i] = 0;
 			}
 		}
 	}
 };
 
 int AllocGoreRecord();
-GoreTextureCoordinates* FindGoreRecord(const int tag);
-void DeleteGoreRecord(const int tag);
+GoreTextureCoordinates* FindGoreRecord(int tag);
+void DeleteGoreRecord(int tag);
 
 struct SGoreSurface
 {
-	int shader;
-	int mGoreTag;
-	int mDeleteTime;
-	int mFadeTime;
-	bool mFadeRGB;
+	int			shader;
+	int			mGoreTag;
+	int			mDeleteTime;
+	int			mFadeTime;
+	bool		mFadeRGB;
 
-	int mGoreGrowStartTime;
-	int mGoreGrowEndTime; // set this to -1 to disable growing
+	int			mGoreGrowStartTime;
+	int			mGoreGrowEndTime;    // set this to -1 to disable growing
 	//curscale = (curtime-mGoreGrowStartTime)*mGoreGrowFactor + mGoreGrowOffset;
-	float mGoreGrowFactor;
-	float mGoreGrowOffset;
+	float		mGoreGrowFactor;
+	float		mGoreGrowOffset;
 };
 
 class CGoreSet
 {
 public:
-	int mMyGoreSetTag;
+	int		 mMyGoreSetTag;
 	unsigned char mRefCount;
 	std::multimap<int, SGoreSurface> mGoreRecords; // a map from surface index
-	CGoreSet(const int tag) : mMyGoreSetTag(tag), mRefCount(0)
-	{
-	}
-
+	CGoreSet(int tag) : mMyGoreSetTag(tag), mRefCount(0) {}
 	~CGoreSet();
 };
 
-CGoreSet* FindGoreSet(const int goreSetTag);
+CGoreSet* FindGoreSet(int goreSetTag);
 CGoreSet* NewGoreSet();
-void DeleteGoreSet(const int goreSetTag);
+void		DeleteGoreSet(int goreSetTag);
 
 #endif // _G2_GORE
 
 struct SRagDollEffectorCollision
 {
-	vec3_t effectorPosition;
+	vec3_t			effectorPosition;
 	const trace_t& tr;
-	bool useTracePlane;
-
+	bool			useTracePlane;
 	SRagDollEffectorCollision(const vec3_t effectorPos, const trace_t& t) :
 		tr(t),
 		useTracePlane(false)
@@ -108,13 +104,12 @@ struct SRagDollEffectorCollision
 class CRagDollUpdateParams
 {
 public:
-	virtual ~CRagDollUpdateParams() = default;
 	vec3_t angles;
 	vec3_t position;
 	vec3_t scale;
 	vec3_t velocity;
 	//CServerEntity *me;
-	int me; //index!
+	int	me; //index!
 	int settleFrame;
 
 	int groundEnt;
@@ -123,12 +118,10 @@ public:
 	{
 		//assert(0); // you probably meant to override this
 	}
-
 	virtual void RagDollBegin()
 	{
 		//assert(0); // you probably meant to override this
 	}
-
 	virtual void RagDollSettled()
 	{
 		//assert(0); // you probably meant to override this
@@ -141,33 +134,28 @@ public:
 	}
 
 #ifdef _DEBUG
-	virtual void DebugLine(vec3_t p1, vec3_t p2, int color, bool bbox)
-	{
-		assert(0);
-	}
+	virtual void DebugLine(vec3_t p1, vec3_t p2, int color, bool bbox) { assert(0); }
 #endif
 };
 
 class CRagDollParams
 {
 public:
+
 	enum ERagPhase
 	{
 		RP_START_DEATH_ANIM,
 		RP_END_DEATH_ANIM,
 		RP_DEATH_COLLISION,
 		RP_CORPSE_SHOT,
-		RP_GET_PELVIS_OFFSET,
-		// this actually does nothing but set the pelvisAnglesOffset, and pelvisPositionOffset
-		RP_SET_PELVIS_OFFSET,
-		// this actually does nothing but set the pelvisAnglesOffset, and pelvisPositionOffset
-		RP_DISABLE_EFFECTORS // this removes effectors given by the effectorsToTurnOff member
+		RP_GET_PELVIS_OFFSET,  // this actually does nothing but set the pelvisAnglesOffset, and pelvisPositionOffset
+		RP_SET_PELVIS_OFFSET,  // this actually does nothing but set the pelvisAnglesOffset, and pelvisPositionOffset
+		RP_DISABLE_EFFECTORS  // this removes effectors given by the effectorsToTurnOff member
 	};
-
 	vec3_t angles;
 	vec3_t position;
 	vec3_t scale;
-	vec3_t pelvisAnglesOffset; // always set on return, an argument for RP_SET_PELVIS_OFFSET
+	vec3_t pelvisAnglesOffset;    // always set on return, an argument for RP_SET_PELVIS_OFFSET
 	vec3_t pelvisPositionOffset; // always set on return, an argument for RP_SET_PELVIS_OFFSET
 
 	float fImpactStrength; //should be applicable when RagPhase is RP_DEATH_COLLISION
@@ -191,60 +179,35 @@ public:
 
 	enum ERagEffector
 	{
-		RE_MODEL_ROOT = 0x00000001,
-		//"model_root"
-		RE_PELVIS = 0x00000002,
-		//"pelvis"
-		RE_LOWER_LUMBAR = 0x00000004,
-		//"lower_lumbar"
-		RE_UPPER_LUMBAR = 0x00000008,
-		//"upper_lumbar"
-		RE_THORACIC = 0x00000010,
-		//"thoracic"
-		RE_CRANIUM = 0x00000020,
-		//"cranium"
-		RE_RHUMEROUS = 0x00000040,
-		//"rhumerus"
-		RE_LHUMEROUS = 0x00000080,
-		//"lhumerus"
-		RE_RRADIUS = 0x00000100,
-		//"rradius"
-		RE_LRADIUS = 0x00000200,
-		//"lradius"
-		RE_RFEMURYZ = 0x00000400,
-		//"rfemurYZ"
-		RE_LFEMURYZ = 0x00000800,
-		//"lfemurYZ"
-		RE_RTIBIA = 0x00001000,
-		//"rtibia"
-		RE_LTIBIA = 0x00002000,
-		//"ltibia"
-		RE_RHAND = 0x00004000,
-		//"rhand"
-		RE_LHAND = 0x00008000,
-		//"lhand"
-		RE_RTARSAL = 0x00010000,
-		//"rtarsal"
-		RE_LTARSAL = 0x00020000,
-		//"ltarsal"
-		RE_RTALUS = 0x00040000,
-		//"rtalus"
-		RE_LTALUS = 0x00080000,
-		//"ltalus"
-		RE_RRADIUSX = 0x00100000,
-		//"rradiusX"
-		RE_LRADIUSX = 0x00200000,
-		//"lradiusX"
-		RE_RFEMURX = 0x00400000,
-		//"rfemurX"
-		RE_LFEMURX = 0x00800000,
-		//"lfemurX"
+		RE_MODEL_ROOT = 0x00000001, //"model_root"
+		RE_PELVIS = 0x00000002, //"pelvis"
+		RE_LOWER_LUMBAR = 0x00000004, //"lower_lumbar"
+		RE_UPPER_LUMBAR = 0x00000008, //"upper_lumbar"
+		RE_THORACIC = 0x00000010, //"thoracic"
+		RE_CRANIUM = 0x00000020, //"cranium"
+		RE_RHUMEROUS = 0x00000040, //"rhumerus"
+		RE_LHUMEROUS = 0x00000080, //"lhumerus"
+		RE_RRADIUS = 0x00000100, //"rradius"
+		RE_LRADIUS = 0x00000200, //"lradius"
+		RE_RFEMURYZ = 0x00000400, //"rfemurYZ"
+		RE_LFEMURYZ = 0x00000800, //"lfemurYZ"
+		RE_RTIBIA = 0x00001000, //"rtibia"
+		RE_LTIBIA = 0x00002000, //"ltibia"
+		RE_RHAND = 0x00004000, //"rhand"
+		RE_LHAND = 0x00008000, //"lhand"
+		RE_RTARSAL = 0x00010000, //"rtarsal"
+		RE_LTARSAL = 0x00020000, //"ltarsal"
+		RE_RTALUS = 0x00040000, //"rtalus"
+		RE_LTALUS = 0x00080000, //"ltalus"
+		RE_RRADIUSX = 0x00100000, //"rradiusX"
+		RE_LRADIUSX = 0x00200000, //"lradiusX"
+		RE_RFEMURX = 0x00400000, //"rfemurX"
+		RE_LFEMURX = 0x00800000, //"lfemurX"
 		RE_CEYEBROW = 0x01000000 //"ceyebrow"
 	};
 
-	ERagEffector effectorsToTurnOff; // set this to an | of the above flags for a RP_DISABLE_EFFECTORS
+	ERagEffector effectorsToTurnOff;  // set this to an | of the above flags for a RP_DISABLE_EFFECTORS
 };
-
 //rww - RAGDOLL_END
 
 #endif

@@ -105,8 +105,8 @@ protected:
 
 	//Organization information
 	sequence_l m_children;
-	CSequence* m_parent;
-	CSequence* m_return;
+	CSequence* m_parent = nullptr;
+	CSequence* m_return = nullptr;
 
 	//Data information
 	block_l m_commands;

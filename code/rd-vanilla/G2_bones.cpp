@@ -223,37 +223,41 @@ static qboolean G2_Stop_Bone_Index(boneInfo_v& blist, const int index, const int
 }
 
 // generate a matrix for a given bone given some new angles for it.
-static void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, const int index, const float* angles, const int flags, const Eorientations up, const Eorientations left, const Eorientations forward, const vec3_t offset = nullptr)
+void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, int index, const float* angles, int flags,
+	const Eorientations up, const Eorientations left, const Eorientations forward)
 {
+	mdxaSkel_t* skel;
+	mdxaSkelOffsets_t* offsets;
 	mdxaBone_t		temp1;
-	mdxaBone_t		permutation{};
-	mdxaBone_t* bone_override = &blist[index].matrix;
+	mdxaBone_t		permutation;
+	mdxaBone_t* boneOverride = &blist[index].matrix;
+	vec3_t			newAngles;
 
 	if (flags & (BONE_ANGLES_PREMULT | BONE_ANGLES_POSTMULT))
 	{
 		// build us a matrix out of the angles we are fed - but swap y and z because of wacky Quake setup
-		vec3_t	new_angles{};
+		vec3_t	newAngles;
 
 		// determine what axis newAngles Yaw should revolve around
 		switch (up)
 		{
 		case NEGATIVE_X:
-			new_angles[1] = angles[2] + 180;
+			newAngles[1] = angles[2] + 180;
 			break;
 		case POSITIVE_X:
-			new_angles[1] = angles[2];
+			newAngles[1] = angles[2];
 			break;
 		case NEGATIVE_Y:
-			new_angles[1] = angles[0];
+			newAngles[1] = angles[0];
 			break;
 		case POSITIVE_Y:
-			new_angles[1] = angles[0];
+			newAngles[1] = angles[0];
 			break;
 		case NEGATIVE_Z:
-			new_angles[1] = angles[1] + 180;
+			newAngles[1] = angles[1] + 180;
 			break;
 		case POSITIVE_Z:
-			new_angles[1] = angles[1];
+			newAngles[1] = angles[1];
 			break;
 		default:
 			break;
@@ -263,22 +267,22 @@ static void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, const int 
 		switch (left)
 		{
 		case NEGATIVE_X:
-			new_angles[0] = angles[2];
+			newAngles[0] = angles[2];
 			break;
 		case POSITIVE_X:
-			new_angles[0] = angles[2] + 180;
+			newAngles[0] = angles[2] + 180;
 			break;
 		case NEGATIVE_Y:
-			new_angles[0] = angles[0];
+			newAngles[0] = angles[0];
 			break;
 		case POSITIVE_Y:
-			new_angles[0] = angles[0] + 180;
+			newAngles[0] = angles[0] + 180;
 			break;
 		case NEGATIVE_Z:
-			new_angles[0] = angles[1];
+			newAngles[0] = angles[1];
 			break;
 		case POSITIVE_Z:
-			new_angles[0] = angles[1];
+			newAngles[0] = angles[1];
 			break;
 		default:
 			break;
@@ -288,63 +292,48 @@ static void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, const int 
 		switch (forward)
 		{
 		case NEGATIVE_X:
-			new_angles[2] = angles[2];
+			newAngles[2] = angles[2];
 			break;
 		case POSITIVE_X:
-			new_angles[2] = angles[2];
+			newAngles[2] = angles[2];
 			break;
 		case NEGATIVE_Y:
-			new_angles[2] = angles[0];
+			newAngles[2] = angles[0];
 			break;
 		case POSITIVE_Y:
-			new_angles[2] = angles[0] + 180;
+			newAngles[2] = angles[0] + 180;
 			break;
 		case NEGATIVE_Z:
-			new_angles[2] = angles[1];
+			newAngles[2] = angles[1];
 			break;
 		case POSITIVE_Z:
-			new_angles[2] = angles[1] + 180;
+			newAngles[2] = angles[1] + 180;
 			break;
 		default:
 			break;
 		}
 
-		Create_Matrix(new_angles, bone_override);
-
-		if (offset)
-		{
-			bone_override->matrix[0][3] = offset[0];
-			bone_override->matrix[1][3] = offset[1];
-			bone_override->matrix[2][3] = offset[2];
-		}
+		Create_Matrix(newAngles, boneOverride);
 
 		// figure out where the bone hirearchy info is
-		const mdxaSkelOffsets_t* offsets = reinterpret_cast<mdxaSkelOffsets_t*>(reinterpret_cast<byte*>(mod->mdxa) + sizeof(mdxaHeader_t));
-		const mdxaSkel_t* skel = reinterpret_cast<mdxaSkel_t*>(reinterpret_cast<byte*>(mod->mdxa) + sizeof(mdxaHeader_t) + offsets->offsets[blist[index].
-			boneNumber]);
+		offsets = (mdxaSkelOffsets_t*)((byte*)mod->mdxa + sizeof(mdxaHeader_t));
+		skel = (mdxaSkel_t*)((byte*)mod->mdxa + sizeof(mdxaHeader_t) + offsets->offsets[blist[index].boneNumber]);
 
-		Multiply_3x4Matrix(&temp1, bone_override, &skel->BasePoseMatInv);
-		Multiply_3x4Matrix(bone_override, &skel->BasePoseMat, &temp1);
+		Multiply_3x4Matrix(&temp1, boneOverride, &skel->BasePoseMatInv);
+		Multiply_3x4Matrix(boneOverride, &skel->BasePoseMat, &temp1);
+
 	}
 	else
 	{
-		vec3_t new_angles;
-		VectorCopy(angles, new_angles);
+		VectorCopy(angles, newAngles);
 
 		// why I should need do this Fuck alone knows. But I do.
 		if (left == POSITIVE_Y)
 		{
-			new_angles[0] += 180;
+			newAngles[0] += 180;
 		}
 
-		Create_Matrix(new_angles, &temp1);
-
-		if (offset)
-		{
-			temp1.matrix[0][3] = offset[0];
-			temp1.matrix[1][3] = offset[1];
-			temp1.matrix[2][3] = offset[2];
-		}
+		Create_Matrix(newAngles, &temp1);
 
 		permutation.matrix[0][0] = permutation.matrix[0][1] = permutation.matrix[0][2] = permutation.matrix[0][3] = 0;
 		permutation.matrix[1][0] = permutation.matrix[1][1] = permutation.matrix[1][2] = permutation.matrix[1][3] = 0;
@@ -425,11 +414,13 @@ static void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, const int 
 			break;
 		}
 
-		Multiply_3x4Matrix(bone_override, &temp1, &permutation);
+		Multiply_3x4Matrix(boneOverride, &temp1, &permutation);
+
 	}
 
 	// keep a copy of the matrix in the newmatrix which is actually what we use
-	memcpy(&blist[index].newMatrix, &blist[index].matrix, sizeof mdxaBone_t);
+	memcpy(&blist[index].newMatrix, &blist[index].matrix, sizeof(mdxaBone_t));
+
 }
 
 //=========================================================================================
@@ -450,7 +441,7 @@ qboolean G2_Remove_Bone(const CGhoul2Info* ghlInfo, boneInfo_v& blist, const cha
 #define DEBUG_PCJ (0)
 
 // Given a model handle, and a bone name, we want to set angles specifically for overriding
-qboolean G2_Set_Bone_Angles_Index(CGhoul2Info* ghlInfo, boneInfo_v& blist, const int index, const float* angles, const int flags, const Eorientations yaw, const Eorientations pitch, const Eorientations roll, const int blendTime, const int currentTime, const vec3_t offset)
+qboolean G2_Set_Bone_Angles_Index(CGhoul2Info* ghlInfo, boneInfo_v& blist, const int index, const float* angles, const int flags, const Eorientations yaw, const Eorientations pitch, const Eorientations roll, const int blendTime, const int currentTime)
 {
 	if (index < 0 || index >= static_cast<int>(blist.size()) || blist[index].boneNumber == -1)
 	{
@@ -465,12 +456,14 @@ qboolean G2_Set_Bone_Angles_Index(CGhoul2Info* ghlInfo, boneInfo_v& blist, const
 #if DEBUG_PCJ
 	OutputDebugString(va("%8x  %2d %6d   (%6.2f,%6.2f,%6.2f) %d %d %d %d\n", (int)ghlInfo, index, currentTime, angles[0], angles[1], angles[2], yaw, pitch, roll, flags));
 #endif
-	G2_Generate_Matrix(ghlInfo->animModel, blist, index, angles, flags, yaw, pitch, roll, offset);
+	G2_Generate_Matrix(ghlInfo->animModel, blist, index, angles, flags, yaw, pitch, roll);
 	return qtrue;
 }
 
 // Given a model handle, and a bone name, we want to set angles specifically for overriding
-qboolean G2_Set_Bone_Angles(const CGhoul2Info* ghlInfo, boneInfo_v& blist, const char* boneName, const float* angles, const int flags, const Eorientations up, const Eorientations left, const Eorientations forward, const int blendTime, const int currentTime, const vec3_t offset)
+qboolean G2_Set_Bone_Angles(CGhoul2Info* ghlInfo, boneInfo_v& blist, const char* boneName, const float* angles,
+	const int flags, const Eorientations up, const Eorientations left, const Eorientations forward,
+	const int blendTime, const int currentTime)
 {
 	int			index = G2_Find_Bone(ghlInfo, blist, boneName);
 	if (index == -1)
@@ -484,7 +477,7 @@ qboolean G2_Set_Bone_Angles(const CGhoul2Info* ghlInfo, boneInfo_v& blist, const
 		blist[index].boneBlendStart = currentTime;
 		blist[index].boneBlendTime = blendTime;
 
-		G2_Generate_Matrix(ghlInfo->animModel, blist, index, angles, flags, up, left, forward, offset);
+		G2_Generate_Matrix(ghlInfo->animModel, blist, index, angles, flags, up, left, forward);
 		return qtrue;
 	}
 	return qfalse;

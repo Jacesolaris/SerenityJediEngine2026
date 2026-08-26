@@ -1150,73 +1150,152 @@ static void R_LoadLightGridArray(const lump_t* l, world_t& worldData) {
 R_LoadEntities
 ================
 */
-static void R_LoadEntities(const lump_t* l, world_t& worldData) {
-	const char* p;
-	float ambient = 1;
+static void R_LoadEntities(const lump_t* l, world_t& worldData)
+{
+	const char* p = nullptr;
+	float ambient = 1.0f;
 
 	COM_BeginParseSession();
 
 	world_t* w = &worldData;
-	w->lightGridSize[0] = 64;
-	w->lightGridSize[1] = 64;
-	w->lightGridSize[2] = 128;
+	w->lightGridSize[0] = 64.0f;
+	w->lightGridSize[1] = 64.0f;
+	w->lightGridSize[2] = 128.0f;
 
-	VectorSet(tr.sunAmbient, 1, 1, 1);
-	tr.distanceCull = 12000;//DEFAULT_DISTANCE_CULL;
+	VectorSet(tr.sunAmbient, 1.0f, 1.0f, 1.0f);
+	tr.distanceCull = 12000.0f;
 
-	p = reinterpret_cast<char*>(fileBase + l->fileofs);
+	p = reinterpret_cast<const char*>(fileBase + l->fileofs);
 
 	const char* token = COM_ParseExt(&p, qtrue);
-	if (!*token || *token != '{') {
+	if (!token || token[0] != '{')
+	{
 		COM_EndParseSession();
 		return;
 	}
 
-	// only parse the world spawn
-	while (true) {
-		char value[MAX_TOKEN_CHARS];
+	// ----------------------------------------------------------------------
+	// Parse worldspawn key/value pairs
+	// ----------------------------------------------------------------------
+	while (qtrue)
+	{
 		char keyname[MAX_TOKEN_CHARS];
-		// parse key
-		token = COM_ParseExt(&p, qtrue);
+		char value[MAX_TOKEN_CHARS];
 
-		if (!*token || *token == '}') {
+		// Parse key
+		token = COM_ParseExt(&p, qtrue);
+		if (!token || token[0] == '}')
+		{
 			break;
 		}
-		Q_strncpyz(keyname, token, sizeof keyname);
+		Q_strncpyz(keyname, token, sizeof(keyname));
 
-		// parse value
+		// Parse value
 		token = COM_ParseExt(&p, qtrue);
-
-		if (!*token || *token == '}') {
+		if (!token || token[0] == '}')
+		{
 			break;
 		}
-		Q_strncpyz(value, token, sizeof value);
+		Q_strncpyz(value, token, sizeof(value));
 
-		if (!Q_stricmp(keyname, "distanceCull")) {
-			sscanf(value, "%f", &tr.distanceCull);
+		// ------------------------------------------------------------------
+		// distanceCull
+		// ------------------------------------------------------------------
+		if (Q_stricmp(keyname, "distanceCull") == 0)
+		{
+			float tmp = 0.0f;
+			const int n = sscanf(value, "%f", &tmp);
+			if (n == 1)
+			{
+				tr.distanceCull = tmp;
+			}
+			else
+			{
+				Com_Printf("R_LoadEntities WARNING: failed to parse distanceCull '%s'\n", value);
+			}
 			continue;
 		}
-		//check for linear fog -rww
-		if (!Q_stricmp(keyname, "linFogStart")) {
-			sscanf(value, "%f", &tr.rangedFog);
-			tr.rangedFog = -tr.rangedFog;
+
+		// ------------------------------------------------------------------
+		// linFogStart
+		// ------------------------------------------------------------------
+		if (Q_stricmp(keyname, "linFogStart") == 0)
+		{
+			float tmp = 0.0f;
+			const int n = sscanf(value, "%f", &tmp);
+			if (n == 1)
+			{
+				tr.rangedFog = -tmp;
+			}
+			else
+			{
+				Com_Printf("R_LoadEntities WARNING: failed to parse linFogStart '%s'\n", value);
+			}
 			continue;
 		}
-		// check for a different grid size
-		if (!Q_stricmp(keyname, "gridsize")) {
-			sscanf(value, "%f %f %f", &w->lightGridSize[0], &w->lightGridSize[1], &w->lightGridSize[2]);
+
+		// ------------------------------------------------------------------
+		// gridsize
+		// ------------------------------------------------------------------
+		if (Q_stricmp(keyname, "gridsize") == 0)
+		{
+			float x = 0.0f, y = 0.0f, z = 0.0f;
+			const int n = sscanf(value, "%f %f %f", &x, &y, &z);
+			if (n == 3)
+			{
+				w->lightGridSize[0] = x;
+				w->lightGridSize[1] = y;
+				w->lightGridSize[2] = z;
+			}
+			else
+			{
+				Com_Printf("R_LoadEntities WARNING: failed to parse gridsize '%s'\n", value);
+			}
 			continue;
 		}
-		// find the optional world ambient for arioche
-		if (!Q_stricmp(keyname, "_color")) {
-			sscanf(value, "%f %f %f", &tr.sunAmbient[0], &tr.sunAmbient[1], &tr.sunAmbient[2]);
+
+		// ------------------------------------------------------------------
+		// _color (sun ambient)
+		// ------------------------------------------------------------------
+		if (Q_stricmp(keyname, "_color") == 0)
+		{
+			float r = 0.0f, g = 0.0f, b = 0.0f;
+			const int n = sscanf(value, "%f %f %f", &r, &g, &b);
+			if (n == 3)
+			{
+				tr.sunAmbient[0] = r;
+				tr.sunAmbient[1] = g;
+				tr.sunAmbient[2] = b;
+			}
+			else
+			{
+				Com_Printf("R_LoadEntities WARNING: failed to parse _color '%s'\n", value);
+			}
 			continue;
 		}
-		if (!Q_stricmp(keyname, "ambient")) {
-			sscanf(value, "%f", &ambient);
+
+		// ------------------------------------------------------------------
+		// ambient multiplier
+		// ------------------------------------------------------------------
+		if (Q_stricmp(keyname, "ambient") == 0)
+		{
+			float tmp = 0.0f;
+			const int n = sscanf(value, "%f", &tmp);
+			if (n == 1)
+			{
+				ambient = tmp;
+			}
+			else
+			{
+				Com_Printf("R_LoadEntities WARNING: failed to parse ambient '%s'\n", value);
+			}
+			continue;
 		}
 	}
-	//both default to 1 so no harm if not present.
+
+	// ----------------------------------------------------------------------
+	// Apply ambient multiplier
+	// ----------------------------------------------------------------------
 	VectorScale(tr.sunAmbient, ambient, tr.sunAmbient);
 
 	COM_EndParseSession();

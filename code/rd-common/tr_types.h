@@ -81,6 +81,8 @@ constexpr auto RF_FORCE_ENT_ALPHA = 0x800000; // override shader alpha settings;
 
 constexpr auto RF_ALPHA_DEPTH = 0x1000000; //depth write on alpha model
 
+constexpr auto RF_MORELIGHT = 0x2000000; // allways have some light (viewmodel, some items) | SP version which is different from MP
+
 // refdef flags
 constexpr auto RDF_NOWORLDMODEL = 1; // used for player configuration screen;
 constexpr auto RDF_HYPERSPACE = 4; // teleportation effect;
@@ -141,6 +143,10 @@ using refEntityType_t = enum
 	RT_CLOUDS,
 	RT_LIGHTNING,
 	RT_ENT_CHAIN,
+
+	RT_MAX_MP_REF_ENTITY_TYPE,
+
+	RT_MAX_SP_REF_ENTITY_TYPE,
 
 	RT_MAX_REF_ENTITY_TYPE
 };

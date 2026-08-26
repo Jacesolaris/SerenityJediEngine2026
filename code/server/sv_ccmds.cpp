@@ -385,16 +385,58 @@ static bool SV_Map_(const ForceReload_e eForceReload)
 		}
 	}
 
-	// Disable cube mapping on specific maps
-	for (auto& NoCubeMapping_Map : NoCubeMapping_Maps)
+	// Only operate when Rend2 is active
+	qboolean rend2Active = (com_rend2->integer == 1) ? qtrue : qfalse;
+
+	if (rend2Active == qtrue)
 	{
-		if (strcmp(map, NoCubeMapping_Map) == 0)
+		// ------------------------------------------------------------------
+		// Check if map is in the NoCubeMapping list
+		// ------------------------------------------------------------------
+		qboolean mapIsBlocked = qfalse;
+
+		for (auto& NoCubeMapping_Map : NoCubeMapping_Maps)
+		{
+			if (strcmp(map, NoCubeMapping_Map) == 0)
+			{
+				mapIsBlocked = qtrue;
+				break;
+			}
+		}
+
+		// ------------------------------------------------------------------
+		// If map is blocked → force cubeMapping OFF
+		// ------------------------------------------------------------------
+		if (mapIsBlocked == qtrue)
 		{
 			if (r_cubeMapping->integer != 0)
 			{
 				Cvar_Set("r_cubeMapping", "0");
 			}
-			break;
+		}
+		else
+		{
+			// ------------------------------------------------------------------
+			// Map is NOT blocked → check bounce count
+			// ------------------------------------------------------------------
+			qboolean hasBounces = (r_cubeMappingBounces->integer > 0) ? qtrue : qfalse;
+
+			if (hasBounces == qtrue)
+			{
+				// Turn cube mapping ON
+				if (r_cubeMapping->integer != 1)
+				{
+					Cvar_Set("r_cubeMapping", "1");
+				}
+			}
+			else
+			{
+				// No bounces → cube mapping OFF
+				if (r_cubeMapping->integer != 0)
+				{
+					Cvar_Set("r_cubeMapping", "0");
+				}
+			}
 		}
 	}
 
@@ -743,7 +785,7 @@ static void SV_Status_f()
 		Com_Printf("game    : Jedi Academy %s\n", FS_GetCurrentGameDir());
 	}
 	Com_Printf("map     : %s at %s\n", sv_mapname->string, ivtos(cl->gentity->client->origin));
-	}
+}
 
 /*
 ===========

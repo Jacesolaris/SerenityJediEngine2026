@@ -301,10 +301,12 @@ using consoleCommand_t = struct consoleCommand_s
 };
 
 static consoleCommand_t commands[] = {
-	{"modelList", R_model_list_f},
+	{"modelList", R_Modellist_f},
 	{"modelist", R_ModeList_f},
 	{"modelcacheinfo", RE_RegisterModels_Info_f},
 };
+
+static const size_t numCommands = ARRAY_LEN(commands);
 
 #ifdef _DEBUG
 #define MIN_PRIMITIVES -1
@@ -496,7 +498,7 @@ R_Init
 ===============
 */
 extern void R_InitWorldEffects();
-void R_Init()
+void R_Init(void)
 {
 	Com_Printf("-----Loading MP Dedicated renderer-----\n");
 
@@ -551,12 +553,12 @@ void R_Init()
 RE_Shutdown
 ===============
 */
-void RE_Shutdown(const qboolean destroyWindow, const qboolean restarting)
+void RE_Shutdown(qboolean destroyWindow, qboolean restarting)
 {
 	Com_Printf("RE_Shutdown( %i )\n", destroyWindow);
 
-	for (const auto& command : commands)
-		ri->Cmd_RemoveCommand(command.cmd);
+	for (size_t i = 0; i < numCommands; i++)
+		ri->Cmd_RemoveCommand(commands[i].cmd);
 
 	tr.registered = qfalse;
 }
@@ -579,7 +581,7 @@ GetRefAPI
 
 @@@@@@@@@@@@@@@@@@@@@
 */
-refexport_t* GetRefAPI(const int api_version, refimport_t* rimp)
+refexport_t* GetRefAPI(const int apiVersion, refimport_t* rimp)
 {
 	static refexport_t re;
 
@@ -588,9 +590,9 @@ refexport_t* GetRefAPI(const int api_version, refimport_t* rimp)
 
 	memset(&re, 0, sizeof re);
 
-	if (api_version != REF_API_VERSION)
+	if (apiVersion != REF_API_VERSION)
 	{
-		Com_Printf("Mismatched REF_API_VERSION: expected %i, got %i\n", REF_API_VERSION, api_version);
+		Com_Printf("Mismatched REF_API_VERSION: expected %i, got %i\n", REF_API_VERSION, apiVersion);
 		return nullptr;
 	}
 

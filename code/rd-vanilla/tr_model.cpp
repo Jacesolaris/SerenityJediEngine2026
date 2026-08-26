@@ -458,23 +458,23 @@ model_t* R_GetAnimModelByHandle(const CGhoul2Info* ghlInfo, qhandle_t index)
 	{
 		// Have to recalculate offset to get map animations for JKA Campaign
 		index -= ghlInfo->animModelIndexOffset;
-		int mapIndex{};
+		int map_index = 0;
 		constexpr int len = std::size(tr.models);
 
 		for (int i = 0; i < len; i++)
 		{
 			if (!Q_stricmp(va("models/players/_humanoid/_humanoid.gla"), tr.models[i]->name))
 			{
-				mapIndex = i + 1;
+				map_index = i + 1;
 				break;
 			}
 		}
 
 		// Custom skeletons will be further along than the base _humanoid, don't modify for normal JKA skeletons
-		if (index > mapIndex)
+		if (index > map_index)
 		{
-			const int offSet = index - mapIndex;
-			mod = tr.models[index - offSet];
+			const int off_set = index - map_index;
+			mod = tr.models[index - off_set];
 		}
 		else
 		{
@@ -485,6 +485,7 @@ model_t* R_GetAnimModelByHandle(const CGhoul2Info* ghlInfo, qhandle_t index)
 	{
 		mod = tr.models[index];
 	}
+
 	return mod;
 }
 
@@ -797,8 +798,8 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -806,9 +807,9 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 		size = LittleLong size;
 	}
 
-	if (version != MD3_VERSION) {
-		ri.Printf(PRINT_WARNING, "R_LoadMD3: %s has wrong version (%i should be %i)\n",
-			name, version, MD3_VERSION);
+	if (version != MD3_VERSION)
+	{
+		ri.Printf(PRINT_WARNING, "R_LoadMD3: %s has wrong version (%i should be %i)\n", name, version, MD3_VERSION);
 		return qfalse;
 	}
 
@@ -818,19 +819,15 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 	qboolean bAlreadyFound = qfalse;
 	mod->md3[lod] = static_cast<md3Header_t*>(RE_RegisterModels_Malloc(size, buffer, name, &bAlreadyFound, TAG_MODEL_MD3));
 
-	assert(bAlreadyCached == bAlreadyFound);
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMD3: cache flag mismatch for %s (caller:%d cache:%d)\n", name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
-		// horrible new hackery, if !bAlreadyFound then we've just done a tag-morph, so we need to set the
-		//	bool reference passed into this function to true, to tell the caller NOT to do an FS_Freefile since
-		//	we've hijacked that memory block...
-		//
-		// Aaaargh. Kill me now...
-		//
 		bAlreadyCached = qtrue;
 		assert(mod->md3[lod] == buffer);
-		//		memcpy( mod->md3[lod], buffer, size );	// and don't do this now, since it's the same thing
 
 		LL(mod->md3[lod]->ident);
 		LL(mod->md3[lod]->version);
@@ -843,7 +840,8 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 		LL(mod->md3[lod]->ofsEnd);
 	}
 
-	if (mod->md3[lod]->numFrames < 1) {
+	if (mod->md3[lod]->numFrames < 1)
+	{
 		ri.Printf(PRINT_WARNING, "R_LoadMD3: %s has no frames\n", name);
 		return qfalse;
 	}

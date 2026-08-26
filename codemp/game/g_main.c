@@ -437,6 +437,12 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	level.is_t2_rouge_map = qfalse;
 	level.is_t2_trip_map = qfalse;
 	level.is_t3_byss_map = qfalse;
+	level.NoCubeMapping_Maps = qfalse;
+	level.sp_map = qfalse;
+	level.is_outcast_map = qfalse;
+	level.is_outcast_mp_map = qfalse;
+	level.is_duel_mp_map = qfalse;
+	level.is_no_Dlight_map = qfalse;
 
 	if (Q_stricmp(sje_mapname, "vjun3") == 0)
 	{
@@ -477,6 +483,11 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	if (Q_stricmp(sje_mapname, "t3_byss") == 0)
 	{
 		level.is_t3_byss_map = qtrue;
+	}
+
+	if (Q_stricmp(sje_mapname, "yavin1") == 0 || Q_stricmp(sje_mapname, "yavin1b") == 0)
+	{
+		level.NoCubeMapping_Maps = qtrue;
 	}
 
 	if (Q_stricmp(sje_mapname, "yavin1") == 0 || Q_stricmp(sje_mapname, "yavin1b") == 0 ||
@@ -596,6 +607,57 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	else
 	{
 		trap->Cvar_Set("r_turn_off_dynamiclight", "0");
+	}
+
+	// Only operate when Rend2 is active
+	qboolean rend2Active = (com_rend2.integer == 1) ? qtrue : qfalse;
+
+	if (rend2Active == qtrue)
+	{
+		// ------------------------------------------------------------------
+		// Check if map is in the NoCubeMapping list
+		// ------------------------------------------------------------------
+		qboolean mapIsBlocked = qfalse;
+
+		if (level.NoCubeMapping_Maps == qtrue)
+		{
+			mapIsBlocked = qtrue;
+		}
+
+		// ------------------------------------------------------------------
+		// If map is blocked → force cubeMapping OFF
+		// ------------------------------------------------------------------
+		if (mapIsBlocked == qtrue)
+		{
+			if (r_cubeMapping.integer != 0)
+			{
+				trap->Cvar_Set("r_cubeMapping", "0");
+			}
+		}
+		else
+		{
+			// ------------------------------------------------------------------
+			// Map is NOT blocked → check bounce count
+			// ------------------------------------------------------------------
+			qboolean hasBounces = (r_cubeMappingBounces.integer > 0) ? qtrue : qfalse;
+
+			if (hasBounces == qtrue)
+			{
+				// Turn cube mapping ON
+				if (r_cubeMapping.integer != 1)
+				{
+					trap->Cvar_Set("r_cubeMapping", "1");
+				}
+			}
+			else
+			{
+				// No bounces → cube mapping OFF
+				if (r_cubeMapping.integer != 0)
+				{
+					trap->Cvar_Set("r_cubeMapping", "0");
+				}
+			}
+		}
 	}
 
 	// parse the key/value pairs and spawn gentities
@@ -1610,12 +1672,6 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 			sje_create_info_player_deathmatch(2797, 7403, 1817, 90);
 		}
 	}
-
-	level.sp_map = qfalse;
-	level.is_outcast_map = qfalse;
-	level.is_outcast_mp_map = qfalse;
-	level.is_duel_mp_map = qfalse;
-	level.is_no_Dlight_map = qfalse;
 }
 
 /*

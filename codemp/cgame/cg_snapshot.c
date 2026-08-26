@@ -193,7 +193,7 @@ static void CG_TransitionSnapshot(void)
 	snapshot_t* oldFrame = cg.snap;
 	cg.snap = cg.nextSnap;
 
-	BG_PlayerStateToEntityState(&cg.snap->ps,&cg_entities[cg.snap->ps.clientNum].currentState,qfalse);
+	BG_PlayerStateToEntityState(&cg.snap->ps, &cg_entities[cg.snap->ps.clientNum].currentState, qfalse);
 
 	cg_entities[cg.snap->ps.clientNum].interpolate = qfalse;
 

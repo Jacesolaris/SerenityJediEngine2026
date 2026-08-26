@@ -160,7 +160,7 @@ int G2_Add_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName)
 		// didn't find it? Error
 		//assert(0);
 #ifdef _DEBUG
-		Com_Printf("WARNING: Failed to add bone %s\n", boneName);
+		//Com_Printf("WARNING: Failed to add bone %s\n", boneName);
 #endif
 
 #ifdef _RAG_PRINT_TEST
@@ -491,7 +491,7 @@ qboolean G2_Remove_Bone(const CGhoul2Info* ghlInfo, boneInfo_v& blist, const cha
 
 // Given a model handle, and a bone name, we want to set angles specifically
 // for overriding
-qboolean G2_Set_Bone_Angles_Index(CGhoul2Info* ghlInfo, boneInfo_v& blist, const int index, const float* angles, const int flags, const Eorientations yaw, const Eorientations pitch, const Eorientations roll, const int blendTime, const int currentTime, const vec3_t offset)
+qboolean G2_Set_Bone_Angles_Index(CGhoul2Info* ghlInfo, boneInfo_v& blist, const int index, const float* angles, const int flags, const Eorientations yaw, const Eorientations pitch, const Eorientations roll, const int blendTime, const int currentTime)
 {
 	if (index < 0 || (index >= (int)blist.size()) || (blist[index].boneNumber == -1))
 	{
@@ -512,7 +512,9 @@ qboolean G2_Set_Bone_Angles_Index(CGhoul2Info* ghlInfo, boneInfo_v& blist, const
 }
 
 // Given a model handle, and a bone name, we want to set angles specifically for overriding
-qboolean G2_Set_Bone_Angles(const CGhoul2Info* ghlInfo, boneInfo_v& blist, const char* boneName, const float* angles, const int flags, const Eorientations up, const Eorientations left, const Eorientations forward, const int blendTime, const int currentTime, const vec3_t offset)
+qboolean G2_Set_Bone_Angles(CGhoul2Info* ghlInfo, boneInfo_v& blist, const char* boneName, const float* angles,
+	const int flags, const Eorientations up, const Eorientations left, const Eorientations forward,
+	const int blendTime, const int currentTime)
 {
 	model_t* mod_a = (model_t*)ghlInfo->animModel;
 

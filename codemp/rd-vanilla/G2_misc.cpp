@@ -295,7 +295,7 @@ void G2_List_Model_Bones(const char* fileName)
 
 	// figure out where the offset list is
 	const mdxaSkelOffsets_t* offsets = (mdxaSkelOffsets_t*)((byte*)header + sizeof(mdxaHeader_t));
-		// walk each bone and list it's name
+	// walk each bone and list it's name
 	for (int x = 0; x < mod_a->mdxa->numBones; x++)
 	{
 		const auto skel = (mdxaSkel_t*)((byte*)header + sizeof(mdxaHeader_t) + offsets->offsets[x]);
@@ -345,7 +345,7 @@ qboolean G2_GetAnimFileName(const char* fileName, char** filename)
 //
 /////////////////////////////////////////////////////////////////////
 
-int G2_DecideTraceLod(const CGhoul2Info& ghoul2, const int useLod)
+int G2_DecideTraceLod(CGhoul2Info& ghoul2, int useLod)
 {
 	int returnLod = useLod;
 

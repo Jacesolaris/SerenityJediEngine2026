@@ -340,14 +340,14 @@ static void R_Splash()
 		ri->Cvar_Set("com_rend2", "1");
 	}
 
-	if (r_shadows->integer >= 2)
-	{
-		ri->Cvar_Set("cg_shadows", "2"); // limit to 2 for now, since we don't have a good way to handle cascades yet
-	}
+	qboolean forceCgShadows =
+		(r_shadows->integer == 0 ||
+			r_shadows->integer == 1 ||
+			r_shadows->integer == 3) ? qtrue : qfalse;
 
-	if (com_outcast && com_outcast->integer != 0)
+	if (forceCgShadows == qtrue)
 	{
-		ri->Cvar_Set("com_outcast", "0");
+		ri->Cvar_Set("cg_shadows", "2");
 	}
 
 	ri->WIN_Present(&window);
@@ -622,6 +622,10 @@ static void InitOpenGL(void)
 	}
 	else
 	{
+		if (r_com_rend2->integer != 1)
+		{
+			ri->Cvar_Set("com_rend2", "1");
+		}
 		// set default state
 		GL_SetDefaultState();
 	}
@@ -702,8 +706,7 @@ Return value must be freed with ri->Hunk_FreeTempMemory()
 ==================
 */
 
-static byte* RB_ReadPixels(
-	int x, int y, int width, int height, size_t* offset, int* padlen)
+static byte* RB_ReadPixels(int x, int y, int width, int height, size_t* offset, int* padlen)
 {
 	byte* buffer, * bufstart;
 	int padwidth, linelen;
@@ -715,7 +718,7 @@ static byte* RB_ReadPixels(
 	padwidth = PAD(linelen, packAlign);
 
 	// Allocate a few more bytes so that we can choose an alignment we like
-	buffer = (byte*)ri->Hunk_AllocateTempMemory(padwidth * height + *offset + packAlign - 1);
+	buffer = (byte*)ri->Hunk_AllocateTempMemory(static_cast<unsigned long long>(padwidth) * height + *offset + packAlign - 1);
 
 	bufstart = (byte*)(PADP((intptr_t)buffer + *offset, packAlign));
 	qglReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, bufstart);
@@ -756,7 +759,7 @@ static void R_SaveTGA(
 	int stride)
 {
 	const size_t headerSize = 18;
-	const size_t pixelBufferSize = stride * height;
+	const size_t pixelBufferSize = static_cast<size_t>(stride) * height;
 	const size_t bufferSize = headerSize + pixelBufferSize;
 
 	byte* buffer = (byte*)ri->Hunk_AllocateTempMemory(bufferSize);
@@ -813,8 +816,7 @@ static void R_SaveScreenshotPNG(
 R_SaveScreenshotJPG
 ==================
 */
-static void R_SaveScreenshotJPG(
-	const screenshotReadback_t* screenshotReadback, byte* pixels)
+static void R_SaveScreenshotJPG(const screenshotReadback_t* screenshotReadback, byte* pixels)
 {
 	RE_SaveJPG(
 		screenshotReadback->filename,
@@ -842,7 +844,7 @@ void R_SaveScreenshot(screenshotReadback_t* screenshotReadback)
 	{
 		const int height = screenshotReadback->height;
 		const int stride = screenshotReadback->strideInBytes;
-		const size_t pixelBufferSize = stride * height;
+		const size_t pixelBufferSize = static_cast<size_t>(stride) * height;
 
 		byte* pixels = (byte*)ri->Hunk_AllocateTempMemory(pixelBufferSize);
 		Com_Memcpy(pixels, pixelBuffer, pixelBufferSize);
@@ -901,7 +903,7 @@ const void* RB_TakeScreenshotCmd(const void* data) {
 	qglBindBuffer(GL_PIXEL_PACK_BUFFER, screenshot->pbo);
 	qglBufferData(
 		GL_PIXEL_PACK_BUFFER,
-		strideInBytes * cmd->height,
+		static_cast<GLsizeiptr>(strideInBytes) * cmd->height,
 		nullptr,
 		GL_STATIC_COPY);
 	qglReadPixels(
@@ -1157,7 +1159,7 @@ const void* RB_TakeVideoFrameCmd(const void* data)
 
 	qglGetIntegerv(GL_PACK_ALIGNMENT, &packAlign);
 
-	linelen = cmd->width * 3;
+	linelen = static_cast<size_t>(cmd->width) * 3;
 
 	// Alignment stuff for glReadPixels
 	padwidth = PAD(linelen, packAlign);
@@ -1171,7 +1173,7 @@ const void* RB_TakeVideoFrameCmd(const void* data)
 	qglReadPixels(0, 0, cmd->width, cmd->height, GL_RGB,
 		GL_UNSIGNED_BYTE, cBuf);
 
-	memcount = padwidth * cmd->height;
+	memcount = static_cast<size_t>(padwidth) * cmd->height;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma)
@@ -1461,7 +1463,7 @@ static consoleCommand_t	commands[] = {
 	{ "gfxinfo",			GfxInfo_f },
 	{ "gfxmeminfo",			GfxMemInfo_f },
 	{ "r_we",				R_WorldEffect_f },
-	{ "modelList",			R_model_list_f },
+	{ "modelList",			R_Modellist_f },
 	{ "vbolist",			R_VBOList_f },
 	{ "capframes",			R_CaptureFrameData_f },
 	{ "r_weather",			R_WeatherEffect_f },
@@ -1551,9 +1553,9 @@ static void R_Register(void)
 	r_specularMapping = ri->Cvar_Get("r_specularMapping", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable specular mapping");
 	r_deluxeMapping = ri->Cvar_Get("r_deluxeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable reading deluxemaps when compiled with q3map2");
 	r_deluxeSpecular = ri->Cvar_Get("r_deluxeSpecular", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable/scale the specular response from deluxemaps");
-	r_parallaxMapping = ri->Cvar_Get("r_parallaxMapping", "0", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable parallax mapping");
-	r_cubeMapping = ri->Cvar_Get("r_cubeMapping", "0", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable cubemapping");
-	r_cubeMappingBounces = ri->Cvar_Get("r_cubeMappingBounces", "0", CVAR_ARCHIVE | CVAR_LATCH, "Renders cubemaps multiple times to get reflections in reflections");
+	r_parallaxMapping = ri->Cvar_Get("r_parallaxMapping", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable parallax mapping");
+	r_cubeMapping = ri->Cvar_Get("r_cubeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable cubemapping");
+	r_cubeMappingBounces = ri->Cvar_Get("r_cubeMappingBounces", "2", CVAR_ARCHIVE | CVAR_LATCH, "Renders cubemaps multiple times to get reflections in reflections");
 	ri->Cvar_CheckRange(r_cubeMappingBounces, 0, 2, qfalse);
 	r_baseNormalX = ri->Cvar_Get("r_baseNormalX", "1.0", CVAR_ARCHIVE | CVAR_LATCH, "");
 	r_baseNormalY = ri->Cvar_Get("r_baseNormalY", "1.0", CVAR_ARCHIVE | CVAR_LATCH, "");
@@ -1807,7 +1809,12 @@ static void R_InitBackEndFrameData()
 
 	// For temporal data we need ubo buffers between frames for
 	// reading last frame data without fear of writing next frames data into them
-	bool reserveTemporalUbo = (r_smaa->integer == 2);
+	bool reserveTemporalUbo = (r_smaa->integer == 2
+		// || r_smaa->integer == 4
+		// || r_taa->integer
+		// || r_ssr->integer
+		// || r_motionBlur->integer
+		);
 
 	if (reserveTemporalUbo)
 		backEndData->numFrameUbos = (MAX_FRAMES + 1) * MAX_SCENES;
@@ -2032,7 +2039,7 @@ static void R_ShutdownBackEndFrameData()
 
 static bool r_cacheGPUShaders = false;
 
-void R_ClearTr(void)
+static void R_ClearTr(void)
 {
 	if (r_cacheGPUShaders)
 	{
@@ -2056,6 +2063,9 @@ void R_Init(void)
 {
 	byte* ptr;
 	int i;
+
+	if (r_inited)
+		return;
 
 	ri->Printf(PRINT_ALL, "-----Loading MP Quality Mode-----\n");
 
@@ -2092,6 +2102,7 @@ void R_Init(void)
 	}
 
 	R_InitFogTable();
+
 	R_ImageLoader_Init();
 	R_NoiseInit();
 	R_Register();
@@ -2126,19 +2137,33 @@ void R_Init(void)
 	}
 
 	R_InitImagesPool();
+
 	InitOpenGL();
+
 	R_InitGPUBuffers();
+
 	R_InitStaticConstants();
 	R_InitBackEndFrameData();
 	R_InitImages();
+
 	FBO_Init();
-	GLSL_LoadGPUShaders();
+
+	if (!r_cacheGPUShaders)
+		GLSL_LoadGPUShaders();
+	r_cacheGPUShaders = false;
+
 	R_InitShaders(qfalse);
+
 	R_InitSkins();
+
 	R_InitFonts();
+
 	R_ModelInit();
+
 	R_InitDecals();
+
 	R_InitQueries();
+
 	R_InitWeatherSystem();
 
 #if defined(_DEBUG)
@@ -2151,12 +2176,12 @@ void R_Init(void)
 
 	// print info
 	GfxInfo_f();
+	r_inited = true;
 
 	if (r_com_rend2->integer != 1)
 	{
 		ri->Cvar_Set("com_rend2", "1");
 	}
-
 	ri->Printf(PRINT_ALL, "-----MP Quality Mode loaded-----\n");
 }
 
@@ -2165,7 +2190,7 @@ void R_Init(void)
 RE_Shutdown
 ===============
 */
-void RE_Shutdown(const qboolean destroyWindow, const qboolean restarting)
+void RE_Shutdown(qboolean destroyWindow, qboolean restarting)
 {
 	ri->Printf(PRINT_ALL, "RE_Shutdown( %i )\n", destroyWindow);
 
@@ -2182,29 +2207,41 @@ void RE_Shutdown(const qboolean destroyWindow, const qboolean restarting)
 	R_ShutdownWeatherSystem();
 
 	R_ShutdownFonts();
-	if (tr.registered) {
+
+	if (r_inited)
+	{
 		R_ShutDownQueries();
 		FBO_Shutdown();
 		R_DeleteTextures();
 		R_DestroyGPUBuffers();
-		GLSL_ShutdownGPUShaders();
 
-		if (destroyWindow && restarting)
+		if (!destroyWindow && !restarting)
 		{
-			ri->Z_Free((void*)glConfig.extensions_string);
-			ri->Z_Free((void*)glConfigExt.originalExtensionString);
-
-			qglDeleteVertexArrays(1, &tr.globalVao);
-			SaveGhoul2InfoArray();
+			r_cacheGPUShaders = true;
+			glState.currentProgram = 0;
+			qglUseProgram(0);
 		}
+		else
+			GLSL_ShutdownGPUShaders();
+	}
+
+	if (destroyWindow && restarting && tr.registered)
+	{
+		ri->Z_Free((void*)glConfig.extensions_string);
+		ri->Z_Free((void*)glConfigExt.originalExtensionString);
+
+		qglDeleteVertexArrays(1, &tr.globalVao);
+		SaveGhoul2InfoArray();
 	}
 
 	// shut down platform specific OpenGL stuff
-	if (destroyWindow) {
+	if (destroyWindow)
+	{
 		ri->WIN_Shutdown();
 	}
 
 	tr.registered = qfalse;
+	r_inited = false;
 	backEndData = NULL;
 }
 
@@ -2311,7 +2348,8 @@ GetRefAPI
 @@@@@@@@@@@@@@@@@@@@@
 */
 extern "C" {
-	Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t* rimp) {
+	Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t* rimp)
+	{
 		static refexport_t	re;
 
 		assert(rimp);
@@ -2366,6 +2404,8 @@ extern "C" {
 		re.DrawStretchPic = RE_StretchPic;
 		re.DrawStretchRaw = RE_StretchRaw;
 		re.UploadCinematic = RE_UploadCinematic;
+		re.LAGoggles = RE_LAGoggles;
+		re.Scissor = RE_Scissor;
 
 		re.RegisterFont = RE_RegisterFont;
 		re.Font_StrLenPixels = RE_Font_StrLenPixels;
@@ -2389,6 +2429,12 @@ extern "C" {
 		re.GetRealRes = GetRealRes;
 		// R_AutomapElevationAdjustment
 		re.InitializeWireframeAutomap = stub_InitializeWireframeAutomap;
+		re.GetWindVector = R_GetWindVector;
+		re.GetWindGusting = R_GetWindGusting;
+		//re.IsOutsideCausingPain = R_IsOutsideCausingPain;
+		re.IsOutside = R_IsOutside;
+		re.GetChanceOfSaberFizz = R_GetChanceOfSaberFizz;
+		re.IsShaking = R_IsShaking;
 		re.AddWeatherZone = stub_RE_AddWeatherZone;
 		re.WorldEffectCommand = RE_WorldEffectCommand;
 		re.RegisterMedia_LevelLoadBegin = C_LevelLoadBegin;

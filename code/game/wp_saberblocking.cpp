@@ -68,7 +68,7 @@ extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern qboolean WP_SaberBlockNonRandom(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern saberMoveName_t PM_BrokenParryForParry(int move);
 extern void PM_AddBlockFatigue(playerState_t* ps, int fatigue);
-extern void G_Stagger(gentity_t* hit_ent);
+extern void G_Stagger(gentity_t* hitEnt);
 extern void g_fatigue_bp_knockaway(gentity_t* blocker);
 extern void G_StaggerAttacker(gentity_t* atk);
 extern void G_BounceAttacker(gentity_t* atk);

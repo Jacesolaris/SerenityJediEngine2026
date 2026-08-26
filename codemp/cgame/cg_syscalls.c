@@ -490,6 +490,16 @@ void trap_R_SetRangeFog(const float range)
 	Q_syscall(CG_R_SETRANGEFOG, PASSFLOAT(range));
 }
 
+void trap_R_LAGoggles(void)
+{
+	Q_syscall(CG_R_LA_GOGGLES);
+}
+
+void trap_R_Scissor(float x, float y, float w, float h)
+{
+	Q_syscall(CG_R_SCISSOR, PASSFLOAT(x), PASSFLOAT(y), PASSFLOAT(w), PASSFLOAT(h));
+}
+
 void trap_R_SetRefractProp(const float alpha, const float stretch, const qboolean prepost, const qboolean negate)
 {
 	Q_syscall(CG_R_SETREFRACTIONPROP, PASSFLOAT(alpha), PASSFLOAT(stretch), prepost, negate);
@@ -1386,6 +1396,8 @@ static void TranslateSyscalls(void)
 	trap->R_SetColor = trap_R_SetColor;
 	trap->R_SetLightStyle = trap_R_SetLightStyle;
 	trap->R_SetRangedFog = trap_R_SetRangeFog;
+	trap->R_LAGoggles = trap_R_LAGoggles;
+	trap->R_Scissor = trap_R_Scissor;
 	trap->R_SetRefractionProperties = trap_R_SetRefractProp;
 	trap->RE_WorldEffectCommand = trap_RE_WorldEffectCommand;
 	trap->WE_AddWeatherZone = trap_WE_AddWeatherZone;

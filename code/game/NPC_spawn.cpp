@@ -2642,7 +2642,14 @@ SHY - Spawner is shy
 */
 void SP_NPC_Rax(gentity_t* self)
 {
-	self->NPC_type = "Rax";
+	if (com_outcast && com_outcast->integer == 4) //playing DarkForces
+	{
+		self->NPC_type = "Rax2";
+	}
+	else
+	{
+		self->NPC_type = "Rax";
+	}
 
 	SP_NPC_spawner(self);
 }

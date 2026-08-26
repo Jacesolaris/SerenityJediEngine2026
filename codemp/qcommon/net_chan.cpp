@@ -616,21 +616,42 @@ NET_OutOfBandPrint
 Sends a text message in an out-of-band datagram
 ================
 */
-void QDECL NET_OutOfBandPrint(netsrc_t sock, netadr_t adr, const char* format, ...) {
-	va_list		argptr;
-	char		string[MAX_MSGLEN];
+void QDECL NET_OutOfBandPrint(netsrc_t sock, netadr_t adr, const char* format, ...)
+{
+	// ----------------------------------------------------------------------
+	// Allocate large buffer on heap (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static char* string = nullptr;
 
-	// set the header
-	string[0] = -1;
-	string[1] = -1;
-	string[2] = -1;
-	string[3] = -1;
+	if (string == nullptr)
+	{
+		string = static_cast<char*>(Z_Malloc(MAX_MSGLEN, TAG_TEMP_WORKSPACE, qfalse));
+		if (string == nullptr)
+		{
+			Com_Printf("^1NET_OutOfBandPrint: Failed to allocate string buffer\n");
+			return;
+		}
+	}
 
+	// ----------------------------------------------------------------------
+	// Set the header
+	// ----------------------------------------------------------------------
+	string[0] = static_cast<char>(0xFF);
+	string[1] = static_cast<char>(0xFF);
+	string[2] = static_cast<char>(0xFF);
+	string[3] = static_cast<char>(0xFF);
+
+	// ----------------------------------------------------------------------
+	// Format message
+	// ----------------------------------------------------------------------
+	va_list argptr;
 	va_start(argptr, format);
-	Q_vsnprintf(string + 4, sizeof(string) - 4, format, argptr);
+	Q_vsnprintf(string + 4, MAX_MSGLEN - 4, format, argptr);
 	va_end(argptr);
 
-	// send the datagram
+	// ----------------------------------------------------------------------
+	// Send datagram
+	// ----------------------------------------------------------------------
 	NET_SendPacket(sock, strlen(string), string, adr);
 }
 
@@ -641,26 +662,71 @@ NET_OutOfBandPrint
 Sends a data message in an out-of-band datagram (only used for "connect")
 ================
 */
-void QDECL NET_OutOfBandData(const netsrc_t sock, const netadr_t adr, byte* format, const int len)
+void QDECL NET_OutOfBandData(const netsrc_t sock,
+	const netadr_t adr,
+	byte* format,
+	const int len)
 {
-	byte string[MAX_MSGLEN * 2]{};
-	msg_t mbuf{};
+	// ----------------------------------------------------------------------
+	// Allocate large buffer on heap (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static byte* string = nullptr;
 
-	// set the header
-	string[0] = 0xff;
-	string[1] = 0xff;
-	string[2] = 0xff;
-	string[3] = 0xff;
+	const size_t bufferSize = MAX_MSGLEN * 2;
 
+	if (string == nullptr)
+	{
+		string = static_cast<byte*>(Z_Malloc(bufferSize, TAG_TEMP_WORKSPACE, qfalse));
+		if (string == nullptr)
+		{
+			Com_Printf("^1NET_OutOfBandData: Failed to allocate string buffer\n");
+			return;
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Safety: validate input
+	// ----------------------------------------------------------------------
+	if (format == nullptr)
+	{
+		Com_Printf("^1NET_OutOfBandData: format == NULL\n");
+		return;
+	}
+
+	if (len < 0 || static_cast<size_t>(len + 4) > bufferSize)
+	{
+		Com_Printf("^1NET_OutOfBandData: invalid length %d\n", len);
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Set the header
+	// ----------------------------------------------------------------------
+	string[0] = 0xFF;
+	string[1] = 0xFF;
+	string[2] = 0xFF;
+	string[3] = 0xFF;
+
+	// ----------------------------------------------------------------------
+	// Copy payload
+	// ----------------------------------------------------------------------
 	for (int i = 0; i < len; i++)
 	{
 		string[i + 4] = format[i];
 	}
 
+	// ----------------------------------------------------------------------
+	// Prepare message buffer
+	// ----------------------------------------------------------------------
+	msg_t mbuf{};
 	mbuf.data = string;
 	mbuf.cursize = len + 4;
+
 	Huff_Compress(&mbuf, 12);
-	// send the datagram
+
+	// ----------------------------------------------------------------------
+	// Send datagram
+	// ----------------------------------------------------------------------
 	NET_SendPacket(sock, mbuf.cursize, mbuf.data, adr);
 }
 

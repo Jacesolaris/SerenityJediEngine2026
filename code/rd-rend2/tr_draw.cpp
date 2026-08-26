@@ -25,9 +25,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // tr_draw.c
 #include "tr_local.h"
 
-void RE_GetScreenShot(byte* data, const int w, const int h)
+void RE_GetScreenShot(byte* buffer, int w, int h)
 {
-	byte* source, * allsource;
+	byte* source;
 	byte* src, * dst;
 	size_t offset = 0, memcount;
 	int padlen;
@@ -37,10 +37,12 @@ void RE_GetScreenShot(byte* data, const int w, const int h)
 	float		xScale, yScale;
 	int			xx, yy;
 
-	allsource = RB_ReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, &offset, &padlen);
-	source = allsource + offset;
-
+	source = RB_ReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, &offset, &padlen);
 	memcount = (static_cast<size_t>(glConfig.vidWidth) * 3 + padlen) * glConfig.vidHeight;
+
+	// gamma correct
+	if (glConfig.deviceSupportsGamma)
+		R_GammaCorrect(source + offset, memcount);
 
 	// resample from source
 	xScale = glConfig.vidWidth / (4.0 * w);
@@ -50,13 +52,13 @@ void RE_GetScreenShot(byte* data, const int w, const int h)
 			r = g = b = 0;
 			for (yy = 0; yy < 3; yy++) {
 				for (xx = 0; xx < 4; xx++) {
-					src = source + 3 * (glConfig.vidWidth * (int)((y * 3 + yy) * yScale) + (int)((x * 4 + xx) * xScale));
+					src = source + offset + 3 * (glConfig.vidWidth * (int)((y * 3 + yy) * yScale) + (int)((x * 4 + xx) * xScale));
 					r += src[0];
 					g += src[1];
 					b += src[2];
 				}
 			}
-			dst = dst = data + 4 * ((h - y - 1) * w + x);
+			dst = buffer + 4 * ((h - y - 1) * w + x);
 			dst[0] = r / 12;
 			dst[1] = g / 12;
 			dst[2] = b / 12;
@@ -64,23 +66,19 @@ void RE_GetScreenShot(byte* data, const int w, const int h)
 		}
 	}
 
-	// gamma correct
-	if (glConfig.deviceSupportsGamma)
-		R_GammaCorrect(data, w * h * 4);
-
-	Hunk_FreeTempMemory(allsource);
+	Z_Free(source);
 }
 
 // this is just a chunk of code from RE_TempRawImage_ReadFromFile() below, subroutinised so I can call it
 //	from the screen dissolve code as well...
 //
-static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iLoadedHeight, byte* pb_re_sample_buffer, int* piWidth, int* piHeight)
+static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iLoadedHeight, byte* pbReSampleBuffer, int* piWidth, int* piHeight)
 {
 	byte* pbReturn = NULL;
 
 	// if not resampling, just return some values and return...
 	//
-	if (pb_re_sample_buffer == NULL || (iLoadedWidth == *piWidth && iLoadedHeight == *piHeight))
+	if (pbReSampleBuffer == NULL || (iLoadedWidth == *piWidth && iLoadedHeight == *piHeight))
 	{
 		// if not resampling, we're done, just return the loaded size...
 		//
@@ -98,7 +96,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 
 		int 	r, g, b;
 
-		byte* pbDst = pb_re_sample_buffer;
+		byte* pbDst = pbReSampleBuffer;
 
 		for (int y = 0; y < *piHeight; y++)
 		{
@@ -120,7 +118,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 					}
 				}
 
-				assert(pbDst < pb_re_sample_buffer + (*piWidth * *piHeight * 4));
+				assert(pbDst < pbReSampleBuffer + (*piWidth * *piHeight * 4));
 
 				pbDst[0] = r / iTotPixelsPerDownSample;
 				pbDst[1] = g / iTotPixelsPerDownSample;
@@ -132,7 +130,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 
 		// set return value...
 		//
-		pbReturn = pb_re_sample_buffer;
+		pbReturn = pbReSampleBuffer;
 	}
 
 	return pbReturn;
@@ -142,11 +140,11 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 //	currently it's only used by the server so that savegames can embed a graphic in the auto-save files
 //	(which can't do a screenshot since they're saved out before the level is drawn).
 //
-// by default, the pic will be returned as the original dims, but if pb_re_sample_buffer != NULL then it's assumed to
+// by default, the pic will be returned as the original dims, but if pbReSampleBuffer != NULL then it's assumed to
 //	be a big enough buffer to hold the resampled image, which also means that the width and height params are read as
 //	inputs (as well as still being inherently outputs) and the pic is scaled to that size, and to that buffer.
 //
-// the return value is either NULL, or a pointer to the pixels to use (which may be either the pb_re_sample_buffer param,
+// the return value is either NULL, or a pointer to the pixels to use (which may be either the pbReSampleBuffer param,
 //	or the local ptr below).
 //
 // In either case, you MUST call the free-up function afterwards ( RE_TempRawImage_CleanUp() ) to get rid of any temp
@@ -162,7 +160,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 //
 byte* pbLoadedPic = NULL;
 
-byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pb_re_sample_buffer, const qboolean qbVertFlip)
+byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pbReSampleBuffer, const qboolean qbVertFlip)
 {
 	RE_TempRawImage_CleanUp();	// jic
 
@@ -176,7 +174,7 @@ byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, in
 		if (pbLoadedPic)
 		{
 			pbReturn = RE_ReSample(pbLoadedPic, iLoadedWidth, iLoadedHeight,
-				pb_re_sample_buffer, piWidth, piHeight);
+				pbReSampleBuffer, piWidth, piHeight);
 		}
 	}
 
@@ -271,22 +269,22 @@ static void RE_Blit(const float fX0, const float fY0, const float fX1, const flo
 	//
 	R_IssuePendingRenderCommands();
 
-	GL_SetViewportAndScissor(0, 0, glConfig.vidWidth, glConfig.vidHeight);
+	qglViewport(0, 0, glConfig.vidWidth, glConfig.vidHeight);
+	qglScissor(0, 0, glConfig.vidWidth, glConfig.vidHeight);
 
 	GL_State(iGLState);
 	GL_Cull(CT_TWO_SIDED);
 	GL_BindToTMU(pImage, TB_COLORMAP);
 
-	shaderProgram_t* shaderProgram = atest ? &tr.genericShader[GENERICDEF_USE_ALPHA_TEST] : &tr.genericShader[0];
+	//shaderProgram_t *shaderProgram = atest ? &tr.genericShader[GENERICDEF_USE_ALPHA_TEST] : &tr.genericShader[0];
+	shaderProgram_t* shaderProgram = &tr.genericShader[0];
 	GLSL_BindProgram(shaderProgram);
 
 	RB_BindUniformBlock(tr.staticUbo, UNIFORM_BLOCK_CAMERA, tr.camera2DUboOffset);
 	RB_BindUniformBlock(tr.staticUbo, UNIFORM_BLOCK_ENTITY, tr.entity2DUboOffset);
 
-	vec4_t color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	vec4_t vcolor = { 0.0f, 0.0f, 0.0f, 1.0f };
-	GLSL_SetUniformVec4(shaderProgram, UNIFORM_BASECOLOR, color);
-	GLSL_SetUniformVec4(shaderProgram, UNIFORM_VERTCOLOR, vcolor);
+	GLSL_SetUniformVec4(shaderProgram, UNIFORM_BASECOLOR, colorWhite);
+	GLSL_SetUniformVec4(shaderProgram, UNIFORM_VERTCOLOR, colorBlack);
 	GLSL_SetUniformInt(shaderProgram, UNIFORM_ALPHA_TEST_TYPE, atest ? ALPHA_TEST_LT128 : ALPHA_TEST_NONE);
 
 	vec4_t quadVerts[4] = {
@@ -703,7 +701,7 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 
 			// alloc resample buffer...  (note slight optimisation to avoid spurious alloc)
 			//
-			byte* pb_re_sample_buffer = iPow2VidWidth == Dissolve.iUploadWidth &&
+			byte* pbReSampleBuffer = iPow2VidWidth == Dissolve.iUploadWidth &&
 				iPow2VidHeight == Dissolve.iUploadHeight ?
 				nullptr :
 				static_cast<byte*>(R_Malloc(iPow2VidWidth * iPow2VidHeight * 4, TAG_TEMP_WORKSPACE, qfalse));
@@ -714,7 +712,7 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 				iPow2VidWidth,			// int iLoadedWidth
 				iPow2VidHeight,			// int iLoadedHeight
 				//
-				pb_re_sample_buffer,		// byte *pb_re_sample_buffer
+				pbReSampleBuffer,		// byte *pbReSampleBuffer
 				&Dissolve.iUploadWidth,	// int *piWidth
 				&Dissolve.iUploadHeight	// int *piHeight
 			);
@@ -739,9 +737,9 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 				IMGFLAG_CLAMPTOEDGE,
 				GL_RGBA8);
 
-			if (pb_re_sample_buffer)
+			if (pbReSampleBuffer)
 			{
-				R_Free(pb_re_sample_buffer);
+				R_Free(pbReSampleBuffer);
 			}
 			R_Free(pBuffer);
 

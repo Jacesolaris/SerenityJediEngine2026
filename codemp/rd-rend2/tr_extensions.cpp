@@ -74,6 +74,7 @@ PFNGLISBUFFERPROC qglIsBuffer;
 // Texturing
 PFNGLACTIVETEXTUREPROC qglActiveTexture;
 PFNGLTEXIMAGE3DPROC qglTexImage3D;
+PFNGLTEXSUBIMAGE3DPROC qglTexSubImage3D;
 
 // Shader objects
 PFNGLCREATESHADERPROC qglCreateShader;
@@ -215,6 +216,7 @@ PFNGLGETQUERYOBJECTUIVPROC qglGetQueryObjectuiv;
 
 // GL state
 PFNGLGETSTRINGIPROC qglGetStringi;
+PFNGLCOLORMASKIPROC qglColorMaski;
 
 // Sync objects and fences
 PFNGLFENCESYNCPROC qglFenceSync;
@@ -272,6 +274,7 @@ static qboolean GetGLFunction(GLFuncType& glFunction, const char* glFunctionStri
 
 	return qtrue;
 }
+
 
 static void QCALL GLimp_OnError(GLenum source, GLenum type, GLuint id, GLenum severity,
 	GLsizei length, const GLchar* message, const void* userParam)
@@ -368,6 +371,7 @@ void GLimp_InitCoreFunctions()
 	// Texturing
 	GetGLFunction(qglActiveTexture, "glActiveTexture", qtrue);
 	GetGLFunction(qglTexImage3D, "glTexImage3D", qtrue);
+	GetGLFunction(qglTexSubImage3D, "glTexSubImage3D", qtrue);
 
 	// Shader objects
 	GetGLFunction(qglCreateShader, "glCreateShader", qtrue);
@@ -517,12 +521,14 @@ void GLimp_InitCoreFunctions()
 
 	// GL state
 	GetGLFunction(qglGetStringi, "glGetStringi", qtrue);
+	GetGLFunction(qglColorMaski, "glColorMaski", qtrue);
 
 	// Sync objects and fences
 	GetGLFunction(qglFenceSync, "glFenceSync", qtrue);
 	GetGLFunction(qglDeleteSync, "glDeleteSync", qtrue);
 	GetGLFunction(qglClientWaitSync, "glClientWaitSync", qtrue);
 	GetGLFunction(qglWaitSync, "glWaitSync", qtrue);
+
 }
 
 void GLW_InitTextureCompression(void);

@@ -67,6 +67,7 @@ cvar_t* g_newgameplusJKA;
 cvar_t* g_newgameplusJKO;
 cvar_t* g_spskill;
 cvar_t* r_cubeMapping;
+cvar_t* r_cubeMappingBounces;
 cvar_t* debugNPCFreeze;
 #ifndef _WIN32
 cvar_t* com_ansiColor = nullptr;
@@ -1196,7 +1197,9 @@ void Com_Init(char* commandLine)
 
 		com_outcast = Cvar_Get("com_outcast", "0", CVAR_ARCHIVE | CVAR_SAVEGAME);
 
-		r_cubeMapping = Cvar_Get("r_cubeMapping", "0", CVAR_ARCHIVE | CVAR_LATCH);
+		r_cubeMapping = Cvar_Get("r_cubeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
+		r_cubeMappingBounces = Cvar_Get("r_cubeMappingBounces", "2", CVAR_ARCHIVE | CVAR_LATCH);
+		Cvar_CheckRange(r_cubeMappingBounces, 0, 2, qfalse);
 
 		debugNPCFreeze = Cvar_Get("d_npcfreeze", "0", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 

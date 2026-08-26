@@ -709,26 +709,42 @@ void R_RecursiveWorldNode(mnode_t* node, int planeBits, int dlightBits, int psha
 R_PointInLeaf
 ===============
 */
-static mnode_t* R_PointInLeaf(const vec3_t p) {
-	mnode_t* node;
-	float		d;
-	cplane_t* plane;
+static mnode_t* R_PointInLeaf(const vec3_t p)
+{
+	mnode_t* node = nullptr;
+	float d = 0.0f;
+	cplane_t* plane = nullptr;
 
-	if (!tr.world) {
+	// ----------------------------------------------------------------------
+	// Safety: validate world pointer
+	// ----------------------------------------------------------------------
+	if (tr.world == nullptr)
+	{
 		ri.Error(ERR_DROP, "R_PointInLeaf: bad model");
+		return nullptr;   // REQUIRED to satisfy MSVC and prevent NULL deref
 	}
 
 	node = tr.world->nodes;
-	while (1) {
-		if (node->contents != -1) {
-			break;
+
+	// ----------------------------------------------------------------------
+	// Walk BSP tree until reaching a leaf
+	// ----------------------------------------------------------------------
+	while (qtrue)
+	{
+		if (node->contents != -1)
+		{
+			break;  // leaf reached
 		}
+
 		plane = node->plane;
 		d = DotProduct(p, plane->normal) - plane->dist;
-		if (d > 0) {
+
+		if (d > 0.0f)
+		{
 			node = node->children[0];
 		}
-		else {
+		else
+		{
 			node = node->children[1];
 		}
 	}

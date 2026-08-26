@@ -104,37 +104,37 @@ CL_ParsePacketEntities
 
 ==================
 */
-void CL_ParsePacketEntities(msg_t* msg, const clSnapshot_t* oldframe, clSnapshot_t* newframe)
+static void CL_ParsePacketEntities(msg_t* msg, const clSnapshot_t* oldframe, clSnapshot_t* newframe)
 {
-	int oldnum;
+	int oldnum = 99999;
+	int oldindex = 0;
+	entityState_t* oldstate = nullptr;
 
 	newframe->parseEntitiesNum = cl.parseEntitiesNum;
 	newframe->numEntities = 0;
 
-	// delta from the entities present in oldframe
-	int oldindex = 0;
-	entityState_t* oldstate = nullptr;
-	if (!oldframe)
+	// ----------------------------------------------------------------------
+	// Initialize oldnum / oldstate safely
+	// ----------------------------------------------------------------------
+	if (oldframe != nullptr)
 	{
-		oldnum = 99999;
-	}
-	else
-	{
-		if (oldindex >= oldframe->numEntities)
+		if (oldframe->numEntities > 0)
 		{
-			oldnum = 99999;
+			const int idx = (oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES - 1);
+			oldstate = &cl.parseEntities[idx];
+			oldnum = oldstate->number;
 		}
 		else
 		{
-			oldstate = &cl.parseEntities[
-				oldframe->parseEntitiesNum + oldindex & MAX_PARSE_ENTITIES - 1];
-			oldnum = oldstate->number;
+			oldnum = 99999;
 		}
 	}
 
-	while (true)
+	// ----------------------------------------------------------------------
+	// Main entity delta loop
+	// ----------------------------------------------------------------------
+	while (qtrue)
 	{
-		// read the entity index number
 		const int newnum = MSG_ReadBits(msg, GENTITYNUM_BITS);
 
 		if (newnum == MAX_GENTITIES - 1)
@@ -147,83 +147,99 @@ void CL_ParsePacketEntities(msg_t* msg, const clSnapshot_t* oldframe, clSnapshot
 			Com_Error(ERR_DROP, "CL_ParsePacketEntities: end of message");
 		}
 
+		// ------------------------------------------------------------------
+		// Unchanged entities from oldframe
+		// ------------------------------------------------------------------
 		while (oldnum < newnum)
 		{
-			// one or more entities from the old packet are unchanged
 			if (cl_shownet->integer == 3)
 			{
 				Com_Printf("%3i:  unchanged: %i\n", msg->readcount, oldnum);
 			}
+
 			CL_DeltaEntity(msg, newframe, oldnum, oldstate, qtrue);
 
 			oldindex++;
 
-			if (oldindex >= oldframe->numEntities)
+			if (oldframe == nullptr || oldindex >= oldframe->numEntities)
 			{
 				oldnum = 99999;
+				oldstate = nullptr;
 			}
 			else
 			{
-				oldstate = &cl.parseEntities[
-					oldframe->parseEntitiesNum + oldindex & MAX_PARSE_ENTITIES - 1];
+				const int idx = (oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES - 1);
+				oldstate = &cl.parseEntities[idx];
 				oldnum = oldstate->number;
 			}
 		}
+
+		// ------------------------------------------------------------------
+		// Delta from previous state
+		// ------------------------------------------------------------------
 		if (oldnum == newnum)
 		{
-			// delta from previous state
 			if (cl_shownet->integer == 3)
 			{
 				Com_Printf("%3i:  delta: %i\n", msg->readcount, newnum);
 			}
+
 			CL_DeltaEntity(msg, newframe, newnum, oldstate, qfalse);
 
 			oldindex++;
 
-			if (oldindex >= oldframe->numEntities)
+			if (oldframe == nullptr || oldindex >= oldframe->numEntities)
 			{
 				oldnum = 99999;
+				oldstate = nullptr;
 			}
 			else
 			{
-				oldstate = &cl.parseEntities[
-					oldframe->parseEntitiesNum + oldindex & MAX_PARSE_ENTITIES - 1];
+				const int idx = (oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES - 1);
+				oldstate = &cl.parseEntities[idx];
 				oldnum = oldstate->number;
 			}
+
 			continue;
 		}
 
+		// ------------------------------------------------------------------
+		// Delta from baseline
+		// ------------------------------------------------------------------
 		if (oldnum > newnum)
 		{
-			// delta from baseline
 			if (cl_shownet->integer == 3)
 			{
 				Com_Printf("%3i:  baseline: %i\n", msg->readcount, newnum);
 			}
+
 			CL_DeltaEntity(msg, newframe, newnum, &cl.entityBaselines[newnum], qfalse);
 		}
 	}
 
-	// any remaining entities in the old frame are copied over
+	// ----------------------------------------------------------------------
+	// Copy remaining unchanged entities from oldframe
+	// ----------------------------------------------------------------------
 	while (oldnum != 99999)
 	{
-		// one or more entities from the old packet are unchanged
 		if (cl_shownet->integer == 3)
 		{
 			Com_Printf("%3i:  unchanged: %i\n", msg->readcount, oldnum);
 		}
+
 		CL_DeltaEntity(msg, newframe, oldnum, oldstate, qtrue);
 
 		oldindex++;
 
-		if (oldindex >= oldframe->numEntities)
+		if (oldframe == nullptr || oldindex >= oldframe->numEntities)
 		{
 			oldnum = 99999;
+			oldstate = nullptr;
 		}
 		else
 		{
-			oldstate = &cl.parseEntities[
-				oldframe->parseEntitiesNum + oldindex & MAX_PARSE_ENTITIES - 1];
+			const int idx = (oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES - 1);
+			oldstate = &cl.parseEntities[idx];
 			oldnum = oldstate->number;
 		}
 	}
@@ -238,7 +254,7 @@ cl.snap and saved in cl.snapshots[].  If the snapshot is invalid
 for any reason, no changes to the state will be made at all.
 ================
 */
-void CL_ParseSnapshot(msg_t* msg)
+static void CL_ParseSnapshot(msg_t* msg)
 {
 	clSnapshot_t* old;
 	clSnapshot_t newSnap;
@@ -414,7 +430,7 @@ rww - Update fs_game, this message is so we can use the ext_data
 void MSG_CheckNETFPSFOverrides(qboolean psfOverrides);
 void FS_UpdateGamedir(void);
 
-void CL_ParseSetGame(msg_t* msg)
+static void CL_ParseSetGame(msg_t* msg)
 {
 	char newGameDir[MAX_QPATH]{};
 	int i = 0;
@@ -474,27 +490,36 @@ gamestate, and possibly during gameplay.
 */
 void CL_SystemInfoChanged(void)
 {
-	const char* systemInfo = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SYSTEMINFO];
-	// NOTE TTimo:
-	// when the serverId changes, any further messages we send to the server will use this new serverId
-	// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=475
-	// in some cases, outdated cp commands might get sent with this new serverId
+	const char* systemInfo =
+		cl.gameState.stringData + cl.gameState.stringOffsets[CS_SYSTEMINFO];
+
+	// ----------------------------------------------------------------------
+	// Update serverId
+	// ----------------------------------------------------------------------
 	cl.serverId = atoi(Info_ValueForKey(systemInfo, "sv_serverid"));
 
-	// don't set any vars when playing a demo
-	if (clc.demoplaying)
+	// ----------------------------------------------------------------------
+	// Demo playback: do not modify cvars
+	// ----------------------------------------------------------------------
+	if (clc.demoplaying == qtrue)
 	{
 		return;
 	}
 
+	// ----------------------------------------------------------------------
+	// Cheats
+	// ----------------------------------------------------------------------
 	const char* s = Info_ValueForKey(systemInfo, "sv_cheats");
 	cl_connectedToCheatServer = atoi(s);
-	if (!cl_connectedToCheatServer)
+
+	if (cl_connectedToCheatServer == 0)
 	{
 		Cvar_SetCheatState();
 	}
 
-	// check pure server string
+	// ----------------------------------------------------------------------
+	// Pure server pak lists
+	// ----------------------------------------------------------------------
 	s = Info_ValueForKey(systemInfo, "sv_paks");
 	const char* t = Info_ValueForKey(systemInfo, "sv_pakNames");
 	FS_PureServerSetLoadedPaks(s, t);
@@ -503,42 +528,80 @@ void CL_SystemInfoChanged(void)
 	t = Info_ValueForKey(systemInfo, "sv_referencedPakNames");
 	FS_PureServerSetReferencedPaks(s, t);
 
-	qboolean gameSet = qfalse;
-	// scan through all the variables in the systeminfo and locally set cvars to match
-	s = systemInfo;
-	while (s)
+	// ----------------------------------------------------------------------
+	// Allocate large buffers on heap (avoid C6262)
+	// ----------------------------------------------------------------------
+	char* key = static_cast<char*>(malloc(BIG_INFO_KEY));
+	char* value = static_cast<char*>(malloc(BIG_INFO_VALUE));
+
+	if (key == nullptr || value == nullptr)
 	{
-		char value[BIG_INFO_VALUE];
-		char key[BIG_INFO_KEY];
+		Com_Printf("CL_SystemInfoChanged WARNING: malloc failed\n");
+
+		if (key) free(key);
+		if (value) free(value);
+
+		return;
+	}
+
+	qboolean gameSet = qfalse;
+
+	// ----------------------------------------------------------------------
+	// Parse all key/value pairs in systeminfo
+	// ----------------------------------------------------------------------
+	s = systemInfo;
+
+	while (s != nullptr)
+	{
 		Info_NextPair(&s, key, value);
-		if (!key[0])
+
+		if (key[0] == '\0')
 		{
 			break;
 		}
-		// ehw!
-		if (!Q_stricmp(key, "fs_game"))
+
+		// ------------------------------------------------------------------
+		// fs_game special handling
+		// ------------------------------------------------------------------
+		if (Q_stricmp(key, "fs_game") == 0)
 		{
-			if (FS_CheckDirTraversal(value))
+			if (FS_CheckDirTraversal(value) == qtrue)
 			{
-				Com_Printf(S_COLOR_YELLOW "WARNING: Server sent invalid fs_game value %s\n", value);
+				Com_Printf(S_COLOR_YELLOW
+					"WARNING: Server sent invalid fs_game value %s\n",
+					value);
 				continue;
 			}
 
-			if (!FS_FilenameCompare(value, BASEGAME))
+			if (FS_FilenameCompare(value, BASEGAME) == 0)
 			{
-				Q_strncpyz(value, "", sizeof value);
+				Q_strncpyz(value, "", BIG_INFO_VALUE);
 			}
 
 			gameSet = qtrue;
 		}
+
 		Cvar_Server_Set(key, value);
 	}
-	// if game folder should not be set and it is set at the client side
-	if (!gameSet && *Cvar_VariableString("fs_game"))
+
+	// ----------------------------------------------------------------------
+	// If server did not set fs_game but client has one, clear it
+	// ----------------------------------------------------------------------
+	if (gameSet == qfalse && *Cvar_VariableString("fs_game"))
 	{
 		Cvar_Set("fs_game", "");
 	}
+
+	// ----------------------------------------------------------------------
+	// Pure server flag
+	// ----------------------------------------------------------------------
 	cl_connectedToPureServer = Cvar_VariableValue("sv_pure");
+
+	// ----------------------------------------------------------------------
+	// Cleanup
+	// ----------------------------------------------------------------------
+	free(key);
+	free(value);
 }
 
 /*
@@ -654,93 +717,133 @@ A download message has been received from the server
 */
 void CL_ParseDownload(msg_t* msg)
 {
-	unsigned char data[MAX_MSGLEN];
-
-	if (!*clc.downloadTempName)
+	// ----------------------------------------------------------------------
+	// Allocate large download buffer on heap (avoid MSVC C6262)
+	// ----------------------------------------------------------------------
+	unsigned char* data = static_cast<unsigned char*>(malloc(MAX_MSGLEN));
+	if (data == nullptr)
 	{
-		Com_Printf("Server sending download, but no download was requested\n");
+		Com_Printf("CL_ParseDownload ERROR: malloc failed for %d bytes\n", MAX_MSGLEN);
 		CL_AddReliableCommand("stopdl", qfalse);
 		return;
 	}
 
-	// read the data
+	// ----------------------------------------------------------------------
+	// No download requested
+	// ----------------------------------------------------------------------
+	if (clc.downloadTempName[0] == '\0')
+	{
+		Com_Printf("Server sending download, but no download was requested\n");
+		CL_AddReliableCommand("stopdl", qfalse);
+		free(data);
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Read block index
+	// ----------------------------------------------------------------------
 	const uint16_t block = MSG_ReadShort(msg);
 
-	if (!block && !clc.downloadBlock)
+	// ----------------------------------------------------------------------
+	// Block zero: contains file size
+	// ----------------------------------------------------------------------
+	if (block == 0 && clc.downloadBlock == 0)
 	{
-		// block zero is special, contains file size
 		clc.downloadSize = MSG_ReadLong(msg);
-
 		Cvar_SetValue("cl_downloadSize", clc.downloadSize);
 
 		if (clc.downloadSize < 0)
 		{
-			Com_Error(ERR_DROP, "%s", MSG_ReadString(msg));
+			const char* err = MSG_ReadString(msg);
+			free(data);
+			Com_Error(ERR_DROP, "%s", err);
 		}
 	}
 
-	const int size = /*(unsigned short)*/MSG_ReadShort(msg);
-	if (size < 0 || size > static_cast<int>(sizeof data))
+	// ----------------------------------------------------------------------
+	// Read chunk size
+	// ----------------------------------------------------------------------
+	const int size = MSG_ReadShort(msg);
+
+	if (size < 0 || size > MAX_MSGLEN)
 	{
-		Com_Error(ERR_DROP, "CL_ParseDownload: Invalid size %d for download chunk", size);
+		free(data);
+		Com_Error(ERR_DROP,
+			"CL_ParseDownload: Invalid size %d for download chunk",
+			size);
 	}
 
+	// ----------------------------------------------------------------------
+	// Read chunk data
+	// ----------------------------------------------------------------------
 	MSG_ReadData(msg, data, size);
 
+	// ----------------------------------------------------------------------
+	// Validate block order
+	// ----------------------------------------------------------------------
 	if ((clc.downloadBlock & 0xFFFF) != block)
 	{
-		Com_DPrintf("CL_ParseDownload: Expected block %d, got %d\n", clc.downloadBlock & 0xFFFF, block);
+		Com_DPrintf("CL_ParseDownload: Expected block %d, got %d\n",
+			clc.downloadBlock & 0xFFFF, block);
+		free(data);
 		return;
 	}
 
-	// open the file if not opened yet
-	if (!clc.download)
+	// ----------------------------------------------------------------------
+	// Open file if not already opened
+	// ----------------------------------------------------------------------
+	if (clc.download == 0)
 	{
 		clc.download = FS_SV_FOpenFileWrite(clc.downloadTempName);
 
-		if (!clc.download)
+		if (clc.download == 0)
 		{
 			Com_Printf("Could not create %s\n", clc.downloadTempName);
 			CL_AddReliableCommand("stopdl", qfalse);
 			CL_NextDownload();
+			free(data);
 			return;
 		}
 	}
 
-	if (size)
+	// ----------------------------------------------------------------------
+	// Write chunk
+	// ----------------------------------------------------------------------
+	if (size > 0)
+	{
 		FS_Write(data, size, clc.download);
+	}
 
+	// ----------------------------------------------------------------------
+	// Acknowledge block
+	// ----------------------------------------------------------------------
 	CL_AddReliableCommand(va("nextdl %d", clc.downloadBlock), qfalse);
 	clc.downloadBlock++;
 
 	clc.downloadCount += size;
-
-	// So UI gets access to it
 	Cvar_SetValue("cl_downloadCount", clc.downloadCount);
 
-	if (!size)
+	// ----------------------------------------------------------------------
+	// EOF block (size == 0)
+	// ----------------------------------------------------------------------
+	if (size == 0)
 	{
-		// A zero length block means EOF
-		if (clc.download)
+		if (clc.download != 0)
 		{
 			FS_FCloseFile(clc.download);
 			clc.download = 0;
 
-			// rename the file
 			FS_SV_Rename(clc.downloadTempName, clc.downloadName, qfalse);
 		}
 
-		// send intentions now
-		// We need this because without it, we would hold the last nextdl and then start
-		// loading right away.  If we take a while to load, the server is happily trying
-		// to send us that last block over and over.
-		// Write it twice to help make sure we acknowledge the download
+		// Double packet send to ensure server receives final ack
 		CL_WritePacket();
 		CL_WritePacket();
 
-		// get another file if needed
 		CL_NextDownload();
 	}
+
+	free(data);
 }
 
 int CL_GetValueForHidden(const char* s)

@@ -38,12 +38,13 @@ Used by both the front end (for DlightBmodel) and
 the back end (before doing the lighting calculation)
 ===============
 */
-void R_TransformDlights(const int count, dlight_t* dl, const orientationr_t* ori)
+void R_TransformDlights(int count, dlight_t* dl, orientationr_t* ori)
 {
 	int		i;
 	vec3_t	temp;
 
-	for (i = 0; i < count; i++, dl++) {
+	for (i = 0; i < count; i++, dl++)
+	{
 		VectorSubtract(dl->origin, ori->origin, temp);
 		dl->transformed[0] = DotProduct(temp, ori->axis[0]);
 		dl->transformed[1] = DotProduct(temp, ori->axis[1]);
@@ -92,11 +93,9 @@ void R_DlightBmodel(bmodel_t* bmodel, trRefEntity_t* ent)
 	ent->needDlights = (qboolean)(mask != 0);
 
 	world_t* world = R_GetWorld(bmodel->worldIndex);
-
 	// set the dlight bits in all the surfaces
-	for (i = 0; i < bmodel->numSurfaces; i++)
-	{
-		surf = tr.world->surfaces + bmodel->firstSurface + i;
+	for (i = 0; i < bmodel->numSurfaces; i++) {
+		surf = world->surfaces + bmodel->firstSurface + i;
 
 		switch (*surf->data)
 		{
@@ -141,15 +140,13 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent, world_t* world)
 	vec3_t	direction;
 	float	totalFactor;
 	uint32_t startGridPos;
-
-	if (r_fullbright->integer || r_ambientScale->integer == -1 || tr.refdef.doLAGoggles)
+	if (r_fullbright->integer || tr.refdef.doLAGoggles)
 	{
 		ent->ambientLight[0] = ent->ambientLight[1] = ent->ambientLight[2] = 255.0f;
 		ent->directedLight[0] = ent->directedLight[1] = ent->directedLight[2] = 255.0f;
 		VectorCopy(tr.sunDirection, ent->lightDir);
 		return;
 	}
-
 	if (ent->e.renderfx & RF_LIGHTING_ORIGIN) {
 		// seperate lightOrigins are needed so an object that is
 		// sinking into the ground can still be lit, and so
@@ -212,7 +209,7 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent, world_t* world)
 			}
 		}
 
-		if (gridPos >= world->numGridArrayElements)
+		if (gridPos >= (unsigned)world->numGridArrayElements)
 		{//we've gone off the array somehow
 			continue;
 		}
@@ -249,7 +246,7 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent, world_t* world)
 		}
 		else
 		{
-			for (j = 0; j < MAXLIGHTMAPS; j++)
+			for (j = 0;j < MAXLIGHTMAPS;j++)
 			{
 				if (data->styles[j] != LS_LSNONE)
 				{
@@ -303,7 +300,8 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent, world_t* world)
 LogLight
 ===============
 */
-static void LogLight(const trRefEntity_t* ent) {
+static void LogLight(trRefEntity_t* ent)
+{
 	int	max1, max2;
 
 	if (!(ent->e.renderfx & RF_FIRST_PERSON)) {
@@ -365,8 +363,7 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 
 	// if NOWORLDMODEL, only use dynamic lights (menu system, etc)
 	if (!(refdef->rdflags & RDF_NOWORLDMODEL)
-		&& tr.world->lightGridData)
-	{
+		&& tr.world->lightGridData) {
 		R_SetupEntityLightingGrid(ent, tr.world);
 	}
 	else {
@@ -377,10 +374,9 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 		VectorCopy(tr.sunDirection, ent->lightDir);
 	}
 
-	// only do min lighting when there is no hdr light data
-	if (tr.hdrLighting != qtrue)
+	// bonus items and view weapons have a fixed minimum add
+	if (r_AdvancedsurfaceSprites->integer)
 	{
-		// bonus items and view weapons have a fixed minimum add
 		if (ent->e.renderfx & RF_MINLIGHT)
 		{
 			if (ent->e.shaderRGBA[0] == 255 &&
@@ -398,12 +394,57 @@ void R_SetupEntityLighting(const trRefdef_t* refdef, trRefEntity_t* ent)
 				ent->ambientLight[2] += tr.identityLight * 76;
 			}
 		}
+		// bonus items and view weapons have a fixed minimum add
+		else if (ent->e.renderfx & RF_MORELIGHT)
+		{
+			ent->ambientLight[0] += tr.identityLight * 96;
+			ent->ambientLight[1] += tr.identityLight * 96;
+			ent->ambientLight[2] += tr.identityLight * 96;
+		}
 		else
 		{
 			// give everything a minimum light add
 			ent->ambientLight[0] += tr.identityLight * 8;
 			ent->ambientLight[1] += tr.identityLight * 8;
 			ent->ambientLight[2] += tr.identityLight * 8;
+		}
+	}
+	else
+	{
+		// only do min lighting when there is no hdr light data
+		if (tr.hdrLighting != qtrue)
+		{
+			if (ent->e.renderfx & RF_MINLIGHT)
+			{
+				if (ent->e.shaderRGBA[0] == 255 &&
+					ent->e.shaderRGBA[1] == 255 &&
+					ent->e.shaderRGBA[2] == 0)
+				{
+					ent->ambientLight[0] += tr.identityLight * 255;
+					ent->ambientLight[1] += tr.identityLight * 255;
+					ent->ambientLight[2] += tr.identityLight * 0;
+				}
+				else
+				{
+					ent->ambientLight[0] += tr.identityLight * 76;
+					ent->ambientLight[1] += tr.identityLight * 76;
+					ent->ambientLight[2] += tr.identityLight * 76;
+				}
+			}
+			// bonus items and view weapons have a fixed minimum add
+			else if (ent->e.renderfx & RF_MORELIGHT)
+			{
+				ent->ambientLight[0] += tr.identityLight * 96;
+				ent->ambientLight[1] += tr.identityLight * 96;
+				ent->ambientLight[2] += tr.identityLight * 96;
+			}
+			else
+			{
+				// give everything a minimum light add
+				ent->ambientLight[0] += tr.identityLight * 8;
+				ent->ambientLight[1] += tr.identityLight * 8;
+				ent->ambientLight[2] += tr.identityLight * 8;
+			}
 		}
 	}
 

@@ -727,7 +727,7 @@ static void RB_DrawVerticalSurfaceSprites(shaderStage_t* stage, shaderCommands_t
 				fb = posj + randomchart[randomindex] * step;
 				randomindex += randominterval;
 
-				rightvectorcount = rightvectorcount + 1 & 3;
+				rightvectorcount = static_cast<byte>((static_cast<int>(rightvectorcount) + 1) & 3);
 
 				if (fa > 1.0)
 					continue;

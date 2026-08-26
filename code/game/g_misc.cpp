@@ -416,7 +416,7 @@ void SP_misc_model_static(gentity_t* ent)
 	/* Read modelscale_vec */
 	G_SpawnString("modelscale_vec", "1 1 1", &value);
 
-	/* ⭐ FIX: check sscanf return value */
+	/* check sscanf return value */
 	const int parsed = sscanf(value, "%f %f %f", &scale[0], &scale[1], &scale[2]);
 	if (parsed != 3)
 	{

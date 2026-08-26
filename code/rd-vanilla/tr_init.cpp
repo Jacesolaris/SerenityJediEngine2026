@@ -321,9 +321,14 @@ static void R_Splash()
 		ri.Cvar_Set("com_rend2", "0");
 	}
 
-	if (com_outcast && com_outcast->integer != 0)
+	qboolean forceCgShadows =
+		(r_shadows->integer == 0 ||
+			r_shadows->integer == 1 ||
+			r_shadows->integer == 3) ? qtrue : qfalse;
+
+	if (forceCgShadows == qtrue)
 	{
-		ri.Cvar_Set("com_outcast", "0");
+		ri.Cvar_Set("cg_shadows", "2");
 	}
 
 	ri.WIN_Present(&window);
@@ -785,6 +790,10 @@ static void InitOpenGL(void)
 	}
 	else
 	{
+		if (r_com_rend2->integer != 0)
+		{
+			ri.Cvar_Set("com_rend2", "0");
+		}
 		// set default state
 		GL_SetDefaultState();
 	}
@@ -868,7 +877,7 @@ byte* RB_ReadPixels(const int x, const int y, const int width, const int height,
 	const int padwidth = PAD(linelen, packAlign);
 
 	// Allocate a few more bytes so that we can choose an alignment we like
-	auto buffer = static_cast<byte*>(R_Malloc(padwidth * height + *offset + packAlign - 1, TAG_TEMP_WORKSPACE, qfalse));
+	auto buffer = static_cast<byte*>(R_Malloc(static_cast<unsigned long long>(padwidth) * height + *offset + packAlign - 1, TAG_TEMP_WORKSPACE, qfalse));
 
 	const auto bufstart = static_cast<byte*>(PADP(reinterpret_cast<intptr_t>(buffer) + *offset, packAlign));
 	qglReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, bufstart);
@@ -925,7 +934,7 @@ static void R_TakeScreenshot(const int x, const int y, const int width, const in
 		srcptr += padlen;
 	}
 
-	const size_t memcount = linelen * height;
+	const size_t memcount = static_cast<size_t>(linelen) * height;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma)
@@ -941,7 +950,8 @@ static void R_TakeScreenshot(const int x, const int y, const int width, const in
 R_TakeScreenshotPNG
 ==================
 */
-static void R_TakeScreenshotPNG(const int x, const int y, const int width, const int height, const char* fileName) {
+static void R_TakeScreenshotPNG(const int x, const int y, const int width, const int height, const char* fileName)
+{
 	size_t offset = 0;
 	int padlen = 0;
 
@@ -955,12 +965,13 @@ static void R_TakeScreenshotPNG(const int x, const int y, const int width, const
 R_TakeScreenshotJPEG
 ==================
 */
-static void R_TakeScreenshotJPEG(const int x, const int y, const int width, const int height, const char* fileName) {
+static void R_TakeScreenshotJPEG(const int x, const int y, const int width, const int height, const char* fileName)
+{
 	size_t offset = 0;
 	int padlen;
 
 	byte* buffer = RB_ReadPixels(x, y, width, height, &offset, &padlen);
-	const size_t memcount = (width * 3 + padlen) * height;
+	const size_t memcount = (static_cast<size_t>(width) * 3 + padlen) * height;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma)
@@ -1534,6 +1545,8 @@ static consoleCommand_t	commands[] = {
 	{ "r_weather",			R_WeatherEffect_f },
 };
 
+static const size_t numCommands = ARRAY_LEN(commands);
+
 #ifdef _DEBUG
 #define MIN_PRIMITIVES -1
 #else
@@ -1747,19 +1760,20 @@ R_Init
 ===============
 */
 extern void R_InitWorldEffects();
-void R_Init()
+
+void R_Init(void)
 {
 	int	err;
 	int i;
 
+	ri.Printf(PRINT_ALL, "-----Loading SP Performance Mode-----\n");
+
 	ShaderEntryPtrs_Clear();
 
-	ri.Printf(PRINT_ALL, "-----Loading SP Perfermormance Mode-----\n");
-
 	// clear all our internal state
-	memset(&tr, 0, sizeof tr);
-	memset(&backEnd, 0, sizeof backEnd);
-	memset(&tess, 0, sizeof tess);
+	memset(&tr, 0, sizeof(tr));
+	memset(&backEnd, 0, sizeof(backEnd));
+	memset(&tess, 0, sizeof(tess));
 
 #ifndef FINAL_BUILD
 	if ((intptr_t)tess.xyz & 15) {
@@ -1772,16 +1786,16 @@ void R_Init()
 	//
 	for (i = 0; i < FUNCTABLE_SIZE; i++)
 	{
-		tr.sinTable[i] = sin(DEG2RAD(i * 360.0f / static_cast<float>(FUNCTABLE_SIZE - 1)));
-		tr.squareTable[i] = i < FUNCTABLE_SIZE / 2 ? 1.0f : -1.0f;
-		tr.sawToothTable[i] = static_cast<float>(i) / FUNCTABLE_SIZE;
+		tr.sinTable[i] = sin(DEG2RAD(i * 360.0f / ((float)(FUNCTABLE_SIZE - 1))));
+		tr.squareTable[i] = (i < FUNCTABLE_SIZE / 2) ? 1.0f : -1.0f;
+		tr.sawToothTable[i] = (float)i / FUNCTABLE_SIZE;
 		tr.inverseSawToothTable[i] = 1.0f - tr.sawToothTable[i];
 
 		if (i < FUNCTABLE_SIZE / 2)
 		{
 			if (i < FUNCTABLE_SIZE / 4)
 			{
-				tr.triangleTable[i] = static_cast<float>(i) / (static_cast<float>(FUNCTABLE_SIZE) / 4);
+				tr.triangleTable[i] = (float)i / (FUNCTABLE_SIZE / 4);
 			}
 			else
 			{
@@ -1794,21 +1808,23 @@ void R_Init()
 		}
 	}
 	R_InitFogTable();
+
 	R_ImageLoader_Init();
 	R_NoiseInit();
 	R_Register();
 
-	backEndData = static_cast<backEndData_t*>(R_Hunk_Alloc(sizeof(backEndData_t), qtrue));
+	backEndData = (backEndData_t*)R_Hunk_Alloc(sizeof(backEndData_t), qtrue);
 	R_InitNextFrame();
 
-	constexpr color4ub_t color = { 0xff, 0xff, 0xff, 0xff };
+	const color4ub_t color = { 0xff, 0xff, 0xff, 0xff };
 	for (i = 0; i < MAX_LIGHT_STYLES; i++) {
-		const auto* ba = (byteAlias_t*)&color;
+		byteAlias_t* ba = (byteAlias_t*)&color;
 		RE_SetLightStyle(i, ba->i);
 	}
 	InitOpenGL();
+
 	R_InitImages();
-	R_InitShaders(qfalse);
+	R_InitShaders();
 	R_InitSkins();
 	R_ModelInit();
 	R_InitWorldEffects();
@@ -1826,7 +1842,8 @@ void R_Init()
 	{
 		ri.Cvar_Set("com_rend2", "0");
 	}
-	ri.Printf(PRINT_ALL, "-----SP Perfermormance Mode loaded-----\n");
+
+	ri.Printf(PRINT_ALL, "-----SP Performance Mode loaded-----\n");
 }
 
 /*
@@ -1835,12 +1852,11 @@ RE_Shutdown
 ===============
 */
 extern void R_ShutdownWorldEffects();
-void RE_Shutdown(const qboolean destroyWindow, const qboolean restarting)
-{
-	ri.Printf(PRINT_ALL, "RE_Shutdown( %i )\n", destroyWindow);
 
-	for (const auto& command : commands)
-		ri.Cmd_RemoveCommand(command.cmd);
+void RE_Shutdown(qboolean destroyWindow, qboolean restarting)
+{
+	for (size_t i = 0; i < numCommands; i++)
+		ri.Cmd_RemoveCommand(commands[i].cmd);
 
 	if (r_DynamicGlow && r_DynamicGlow->integer)
 	{
@@ -1887,9 +1903,6 @@ void RE_Shutdown(const qboolean destroyWindow, const qboolean restarting)
 			if (restarting)
 			{
 				SaveGhoul2InfoArray();
-
-				// Hack to fix crashing when toggling fullscreen
-				memset(&glConfig, 0, sizeof glConfig);
 			}
 		}
 	}
@@ -1992,7 +2005,7 @@ static void RE_SVModelInit()
 	tr.numShaders = 0;
 	tr.numSkins = 0;
 	R_InitImages();
-	R_InitShaders(qfalse);
+	R_InitShaders();
 	R_ModelInit();
 }
 
@@ -2006,7 +2019,7 @@ extern void R_LoadImage(const char* shortname, byte** pic, int* width, int* heig
 extern void RE_WorldEffectCommand(const char* command);
 extern qboolean R_inPVS(const vec3_t p1, const vec3_t p2, byte* mask);
 extern void RE_GetModelBounds(const refEntity_t* ref_ent, vec3_t bounds1, vec3_t bounds2);
-extern void G2API_AnimateG2Models(CGhoul2Info_v& ghoul2, const int acurrent_time, CRagDollUpdateParams* params);
+extern void G2API_AnimateG2Models(CGhoul2Info_v& ghoul2, const int AcurrentTime, CRagDollUpdateParams* params);
 extern qboolean G2API_GetRagBonePos(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t pos, vec3_t entAngles, vec3_t entPos, vec3_t entScale);
 extern qboolean G2API_RagEffectorKick(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t velocity);
 extern qboolean G2API_RagForceSolve(CGhoul2Info_v& ghoul2, const qboolean force);
@@ -2028,16 +2041,17 @@ static unsigned int AnyLanguage_ReadCharFromString_JK2(char** text, qboolean* pb
 }
 #endif
 
-extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(const int api_version, const refimport_t* refimp) {
+extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t* rimp)
+{
 	static refexport_t	re;
 
-	ri = *refimp;
+	ri = *rimp;
 
 	memset(&re, 0, sizeof re);
 
-	if (api_version != REF_API_VERSION) {
+	if (apiVersion != REF_API_VERSION) {
 		ri.Printf(PRINT_ALL, "Mismatched REF_API_VERSION: expected %i, got %i\n",
-			REF_API_VERSION, api_version);
+			REF_API_VERSION, apiVersion);
 		return nullptr;
 	}
 

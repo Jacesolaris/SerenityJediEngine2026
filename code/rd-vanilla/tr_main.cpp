@@ -190,7 +190,7 @@ int R_CullPointAndRadius(const vec3_t pt, const float radius)
 	}
 
 	return CULL_IN; // completely inside frustum
-	}
+}
 
 /*
 =================

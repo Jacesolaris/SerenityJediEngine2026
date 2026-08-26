@@ -631,7 +631,7 @@ void CGCam_Distance(const float distance, const float initLerp)
 
 static void CGCam_FollowUpdate(void)
 {
-	vec3_t center, dir, cameraAngles, vec, focus[MAX_CAMERA_GROUP_SUBJECTS]; //No more than 16 subjects in a cameraGroup
+	vec3_t center, dir, cameraAngles, vec, focus[MAX_CAMERA_GROUP_SUBJECTS] = { 0 }; //No more than 16 subjects in a cameraGroup
 	int num_subjects = 0, i;
 
 	if (client_camera.cameraGroup[0] == -1)

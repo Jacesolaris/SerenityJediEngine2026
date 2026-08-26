@@ -480,35 +480,6 @@ static SOCKET NET_IPSocket(char* net_interface, const int port, int* err)
 		Com_Printf("Opening IP socket: localhost:%i\n", port);
 	}
 
-	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("--------------------- Client Initialization ---------------------\n");
-	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 19/08/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 08------------------------------\n");
-	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("------------------------LightSaber-------------------------------\n");
-	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
-	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("This mod improves the hit detection and alters the saber traces.\n");
-	Com_Printf("Additionally,the first part of a swing will now do damage.\n");
-	Com_Printf("This allows the beginning of the swing to be blocked/parried.\n");
-	Com_Printf("Because of this new early-block system, saber spam or heavy\n");
-	Com_Printf("exploits will be less effective.\n");
-	Com_Printf("A player can 'deny' an enemy who wildly swings their saber\n");
-	Com_Printf("and will force them to make cleaner, more precise hits.\n");
-	Com_Printf("To make up for the beginning of the swing's shortcomings\n");
-	Com_Printf("I added a 50 percent increase to end-phase damage.\n");
-	Com_Printf("More damage at the end of the swing should maintain the fast-paced feel.\n");
-	Com_Printf("Well-timed and well-aimed slashes are more effective than on basejka.\n");
-	Com_Printf("This could potentially improve the way we play JKA quite a lot.\n");
-	Com_Printf("Less spam-friendly, and more accurate hit detection could make the game more movie like.\n");
-	Com_Printf("-----------------------------------------------------------------\n");
-
-	Com_Printf("------Type (seta cl_noprint 0) to see text------\n");
-	Com_Printf("------Type (helpdebug) to open debug command list------\n");
-	Com_Printf("------Type (Adminlogin <password>) to log in as admin------\n");
-
 	if ((newsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET)
 	{
 		*err = socketError;

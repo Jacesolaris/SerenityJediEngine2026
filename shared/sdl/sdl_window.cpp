@@ -337,7 +337,7 @@ static bool GLimp_DetectAvailableModes()
 GLimp_SetMode
 ===============
 */
-static rserr_t GLimp_SetMode(glconfig_t* glConfig, const windowDesc_t* windowDesc, const char* windowTitle,	const int mode,	const qboolean fullscreen, const qboolean noborder)
+static rserr_t GLimp_SetMode(glconfig_t* glConfig, const windowDesc_t* windowDesc, const char* windowTitle, const int mode, const qboolean fullscreen, const qboolean noborder)
 {
 	int depthBits;
 	int samples;

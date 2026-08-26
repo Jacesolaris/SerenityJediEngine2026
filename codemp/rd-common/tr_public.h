@@ -30,7 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../qcommon/qcommon.h"
 #include "../ghoul2/ghoul2_shared.h"
 
-constexpr auto REF_API_VERSION = 20;
+constexpr auto REF_API_VERSION = 21;
 
 //
 // these are the functions exported by the refresh module
@@ -92,6 +92,8 @@ using refexport_t = struct refexport_s
 		qhandle_t hShader); // 0 = white
 	void (*DrawRotatePic2)(float x, float y, float w, float h, float s1, float t1, float s2, float t2, float a1,
 		qhandle_t hShader); // 0 = white
+	void	(*LAGoggles)(void);
+	void	(*Scissor) (float x, float y, float w, float h);	// 0 = white
 
 	// Draw images for cinematic rendering, pass as 32 bit rgba
 	void (*DrawStretchRaw)(int x, int y, int w, int h, int cols, int rows, const byte* data, int client,
@@ -130,6 +132,8 @@ using refexport_t = struct refexport_s
 
 	void (*GetBModelVerts)(int bmodelIndex, vec3_t* vec, vec3_t normal);
 
+
+
 	// These were missing in 1.01, had direct access to renderer backend
 	void (*SetRangedFog)(float range);
 	void (*SetRefractionProperties)(float distortionAlpha, float distortionStretch, qboolean distortionPrePost,
@@ -160,7 +164,7 @@ using refexport_t = struct refexport_s
 	int (*G2API_AddBoltSurfNum)(CGhoul2Info* ghlInfo, int surfIndex);
 	int (*G2API_AddSurface)(CGhoul2Info* ghlInfo, int surfaceNumber, int polyNumber, float BarycentricI,
 		float BarycentricJ, int lod);
-	void (*G2API_AnimateG2ModelsRag)(CGhoul2Info_v& ghoul2, int acurrent_time, CRagDollUpdateParams* params);
+	void (*G2API_AnimateG2ModelsRag)(CGhoul2Info_v& ghoul2, int AcurrentTime, CRagDollUpdateParams* params);
 	qboolean(*G2API_AttachEnt)(int* boltInfo, CGhoul2Info_v& ghoul2, int modelIndex, int toBoltIndex, int entNum,
 		int toModelNum);
 	qboolean(*G2API_AttachG2Model)(CGhoul2Info_v& ghoul2From, int modelFrom, CGhoul2Info_v& ghoul2To, int toBoltIndex,
@@ -279,16 +283,23 @@ using refexport_t = struct refexport_s
 		float (*Font_StrLenPixels)(const char* text, int iFontIndex, float scale);
 	} ext;
 
-	float (*IsOutsideCausingPain)(vec3_t pos);
+	// Weather effects
+	bool	(*GetWindVector)(vec3_t windVector, vec3_t atPoint);
+	bool	(*GetWindGusting)(vec3_t atpoint);
+	bool    (*IsOutside)(vec3_t pos);
+	float	(*IsOutsideCausingPain)(vec3_t pos);
+	float	(*GetChanceOfSaberFizz)(void);
+	bool	(*IsShaking)(vec3_t pos);
+	bool	(*SetTempGlobalFogColor)(vec3_t color);
 };
 
 //
 // these are the functions imported by the refresh module
 //
-using refimport_t = struct refimport_s
+typedef struct refimport_s
 {
 	void (QDECL* Printf)(int printLevel, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
-	void (QDECL* Error)(int errorLevel, const char* fmt, ...) __attribute__((noreturn, format(printf, 2, 3)));
+	void (QDECL* Error)	(int errorLevel, const char* fmt, ...) NORETURN_PTR __attribute__((format(printf, 2, 3)));
 	void (QDECL* OPrintf)(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
 	// milliseconds should only be used for profiling, never for anything game related. Get time from the refdef
@@ -386,13 +397,13 @@ using refimport_t = struct refimport_s
 	const void* (*PD_Load)(const char* name, size_t* size);
 
 	int (*SV_PointContents)(const vec3_t p, clipHandle_t model);
-};
+}refimport_t;
 
 // this is the only function actually exported at the linker level
 // If the module can't init to a valid rendering state, NULL will be
 // returned.
 #ifdef DEDICATED // dedicated server will statically compile rd-dedicated
-refexport_t* GetRefAPI(int api_version, refimport_t* rimp);
+refexport_t* GetRefAPI(int apiVersion, refimport_t* rimp);
 #else
 typedef	refexport_t* (QDECL* GetRefAPI_t) (int apiVersion, refimport_t* rimp);
 #endif

@@ -666,8 +666,8 @@ static qboolean ServerLoadMDXA(model_t* mod, void* buffer, const char* mod_name,
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -686,7 +686,10 @@ static qboolean ServerLoadMDXA(model_t* mod, void* buffer, const char* mod_name,
 	qboolean bAlreadyFound = qfalse;
 	mdxa = mod->mdxa = static_cast<mdxaHeader_t*>(RE_RegisterServerModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLA));
 
-	assert(bAlreadyCached == bAlreadyFound);	// I should probably eliminate 'bAlreadyFound', but wtf?
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "ServerLoadMDXA: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
@@ -777,6 +780,7 @@ ServerLoadMDXM - load a Ghoul 2 Mesh file
 =================
 */
 extern int OldToNewRemapTable[72];
+
 static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& bAlreadyCached)
 {
 	int					i, j;
@@ -802,8 +806,8 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -821,7 +825,10 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 	qboolean bAlreadyFound = qfalse;
 	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterServerModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
 
-	assert(bAlreadyCached == bAlreadyFound);	// I should probably eliminate 'bAlreadyFound', but wtf?
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "ServerLoadMDXM: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
@@ -858,7 +865,7 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 		isAnOldModelFile = true;
 	}
 
-	surfInfo = (mdxmSurfHierarchy_t*)((byte*)mdxm + mdxm->ofsSurfHierarchy);
+	surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsSurfHierarchy);
 #ifdef Q3_BIG_ENDIAN
 	surfIndexes = (mdxmHierarchyOffsets_t*)((byte*)mdxm + sizeof(mdxmHeader_t));
 #endif
@@ -888,18 +895,18 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 #endif
 
 		// find the next surface
-		surfInfo = (mdxmSurfHierarchy_t*)((byte*)surfInfo + (intptr_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->childIndexes[surfInfo->numChildren]);
+		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>(reinterpret_cast<byte*>(surfInfo) + reinterpret_cast<intptr_t>(&static_cast<mdxmSurfHierarchy_t*>(nullptr)->childIndexes[surfInfo->numChildren]));
 	}
 
 	// swap all the LOD's	(we need to do the middle part of this even for intel, because of shader reg and err-check)
-	lod = (mdxmLOD_t*)((byte*)mdxm + mdxm->ofsLODs);
+	lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsLODs);
 	for (int l = 0; l < mdxm->numLODs; l++)
 	{
 		int	triCount = 0;
 
 		LL(lod->ofsEnd);
 		// swap all the surfaces
-		surf = (mdxmSurface_t*)((byte*)lod + sizeof(mdxmLOD_t) + mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t));
+		surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(lod) + sizeof(mdxmLOD_t) + (mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t)));
 		for (i = 0; i < mdxm->numSurfaces; i++)
 		{
 			LL(surf->thisSurfaceIndex);
@@ -970,7 +977,7 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 #endif
 			if (isAnOldModelFile)
 			{
-				int* boneRef = (int*)((byte*)surf + surf->ofsBoneReferences);
+				auto boneRef = reinterpret_cast<int*>(reinterpret_cast<byte*>(surf) + surf->ofsBoneReferences);
 				for (j = 0; j < surf->numBoneReferences; j++)
 				{
 					assert(boneRef[j] >= 0 && boneRef[j] < 72);
@@ -986,11 +993,11 @@ static qboolean ServerLoadMDXM(model_t* mod, void* buffer, const char* mod_name,
 			}
 
 			// find the next surface
-			surf = (mdxmSurface_t*)((byte*)surf + surf->ofsEnd);
+			surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(surf) + surf->ofsEnd);
 		}
 
 		// find the next LOD
-		lod = (mdxmLOD_t*)((byte*)lod + lod->ofsEnd);
+		lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(lod) + lod->ofsEnd);
 	}
 
 	return qtrue;
@@ -1392,8 +1399,8 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -1413,19 +1420,15 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 	qboolean bAlreadyFound = qfalse;
 	mod->md3[lod] = static_cast<md3Header_t*>(RE_RegisterModels_Malloc(size, buffer, name, &bAlreadyFound, TAG_MODEL_MD3));
 
-	assert(bAlreadyCached == bAlreadyFound);	// I should probably eliminate 'bAlreadyFound', but wtf?
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMD3: cache flag mismatch for %s (caller:%d cache:%d)\n", name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
-		// horrible new hackery, if !bAlreadyFound then we've just done a tag-morph, so we need to set the
-		//	bool reference passed into this function to true, to tell the caller NOT to do an ri->FS_Freefile since
-		//	we've hijacked that memory block...
-		//
-		// Aaaargh. Kill me now...
-		//
 		bAlreadyCached = qtrue;
 		assert(mod->md3[lod] == buffer);
-		//		memcpy( mod->md3[lod], buffer, size );	// and don't do this now, since it's the same thing
 
 		LL(mod->md3[lod]->ident);
 		LL(mod->md3[lod]->version);
@@ -1628,10 +1631,10 @@ static void R_ModelFree(void)
 
 /*
 ================
-R_model_list_f
+R_Modellist_f
 ================
 */
-void R_model_list_f(void) {
+void R_Modellist_f(void) {
 	int total = 0;
 	for (int i = 1; i < tr.numModels; i++) {
 		model_t* mod = tr.models[i];

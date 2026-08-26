@@ -3948,7 +3948,7 @@ static void CG_AddCEntity(centity_t* cent)
 	}
 
 	// don't render when we are in spec, happens occasionally on map_restart and such
-	if (cg.predictedPlayerState.clientNum == cent->currentState.number && cg.predictedPlayerState.persistant[PERS_TEAM]	== TEAM_SPECTATOR)
+	if (cg.predictedPlayerState.clientNum == cent->currentState.number && cg.predictedPlayerState.persistant[PERS_TEAM] == TEAM_SPECTATOR)
 	{
 		return;
 	}

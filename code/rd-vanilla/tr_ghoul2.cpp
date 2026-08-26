@@ -904,146 +904,346 @@ static void UnCompressBone(float mat[3][4], const int iBoneIndex, const mdxaHead
 #define DEBUG_G2_TIMING (0)
 #define DEBUG_G2_TIMING_RENDER_ONLY (1)
 
-void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFramesInFile, int& currentFrame, int& newFrame, float& lerp)
-{
-	assert(bone.startFrame >= 0);
-	assert(bone.startFrame <= numFramesInFile);
-	assert(bone.endFrame >= 0);
-	assert(bone.endFrame <= numFramesInFile);
+/*
+====================
+G2_TimingModel (rd-vanilla)
 
-	// yes - add in animation speed to current frame
+Safely computes animation timing for a bone:
+- Replaces asserts with debug prints + clamping.
+- Keeps original behaviour for valid data.
+- Prevents crashes when start/end/current/new frames go out of range.
+====================
+*/
+void G2_TimingModel(
+	boneInfo_t& bone,
+	const int current_time,
+	const int numFramesInFile,
+	int& currentFrame,
+	int& newFrame,
+	float& lerp)
+{
+	// --------------------------------------------------------
+	// Validate and clamp start/end frames to valid range
+	// --------------------------------------------------------
+	if (bone.startFrame < 0 || bone.startFrame > numFramesInFile)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_TimingModel (rd-vanilla) - startFrame %d out of range (0..%d). Clamping.\n", bone.startFrame, numFramesInFile - 1);
+#endif
+		if (bone.startFrame < 0)
+		{
+			bone.startFrame = 0;
+		}
+		else
+		{
+			bone.startFrame = numFramesInFile - 1;
+		}
+	}
+
+	if (bone.endFrame < 0 || bone.endFrame > numFramesInFile)
+	{
+#ifdef _DEBUG
+		Com_Printf(
+			"Debug: G2_TimingModel (rd-vanilla) - endFrame %d out of range (0..%d). Clamping.\n",
+			bone.endFrame, numFramesInFile - 1);
+#endif
+		if (bone.endFrame < 0)
+		{
+			bone.endFrame = 0;
+		}
+		else
+		{
+			bone.endFrame = numFramesInFile - 1;
+		}
+	}
+
+	// --------------------------------------------------------
+	// Compute time in "frames" based on animSpeed and startTime
+	// --------------------------------------------------------
 	const float animSpeed = bone.animSpeed;
-	float time;
-	if (bone.pauseTime)
+	float       time;
+
+	if (bone.pauseTime != 0)
 	{
 		time = (bone.pauseTime - bone.startTime) / 50.0f;
 	}
 	else
 	{
-		time = (currentTime - bone.startTime) / 50.0f;
+		time = (current_time - bone.startTime) / 50.0f;
 	}
+
 	if (time < 0.0f)
 	{
 		time = 0.0f;
 	}
-	float new_frame_g = bone.startFrame + time * animSpeed;
 
-	const int anim_size = bone.endFrame - bone.startFrame;
+	float newFrame_g = bone.startFrame + time * animSpeed;
+
+	const int   animSize = bone.endFrame - bone.startFrame;
 	const float endFrame = static_cast<float>(bone.endFrame);
-	// we are supposed to be animating right?
-	if (anim_size)
+
+	// --------------------------------------------------------
+	// Non-zero length animation
+	// --------------------------------------------------------
+	if (animSize != 0)
 	{
-		// did we run off the end?
-		if (animSpeed > 0.0f && new_frame_g > endFrame - 1 ||
-			animSpeed < 0.0f && new_frame_g < endFrame + 1)
+		// Did we run off the end?
+		if ((animSpeed > 0.0f && newFrame_g > endFrame - 1.0f) ||
+			(animSpeed < 0.0f && newFrame_g < endFrame + 1.0f))
 		{
-			// yep - decide what to do
-			if (bone.flags & BONE_ANIM_OVERRIDE_LOOP)
+			// We ran off the end; decide what to do.
+			if ((bone.flags & BONE_ANIM_OVERRIDE_LOOP) != 0)
 			{
-				// get our new animation frame back within the bounds of the animation set
+				// Looping animation.
 				if (animSpeed < 0.0f)
 				{
-					// we don't use this case, or so I am told
-					// if we do, let me know, I need to insure the mod works
+					// Reverse loop (rarely used).
 
-					// should we be creating a virtual frame?
-					if (new_frame_g < endFrame + 1 && new_frame_g >= endFrame)
+					// Virtual frame near end?
+					if (newFrame_g < endFrame + 1.0f && newFrame_g >= endFrame)
 					{
-						// now figure out what we are lerping between
-						// delta is the fraction between this frame and the next, since the new anim is always at a .0f;
-						lerp = endFrame + 1 - new_frame_g;
-						// frames are easy to calculate
-						currentFrame = endFrame;
-						assert(currentFrame >= 0 && currentFrame < numFramesInFile);
+						lerp = (endFrame + 1.0f) - newFrame_g;
+
+						currentFrame = static_cast<int>(endFrame);
+						if (currentFrame < 0 || currentFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+								currentFrame);
+#endif
+							if (currentFrame < 0)
+							{
+								currentFrame = 0;
+							}
+							else
+							{
+								currentFrame = numFramesInFile - 1;
+							}
+						}
+
 						newFrame = bone.startFrame;
-						assert(newFrame >= 0 && newFrame < numFramesInFile);
+						if (newFrame < 0 || newFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - newFrame %d out of range. Clamping.\n",
+								newFrame);
+#endif
+							if (newFrame < 0)
+							{
+								newFrame = 0;
+							}
+							else
+							{
+								newFrame = numFramesInFile - 1;
+							}
+						}
 					}
 					else
 					{
-						if (new_frame_g <= endFrame + 1)
+						if (newFrame_g <= endFrame + 1.0f)
 						{
-							new_frame_g = endFrame + fmod(new_frame_g - endFrame, anim_size) - anim_size;
+							newFrame_g =
+								endFrame +
+								static_cast<float>(fmod(newFrame_g - endFrame,
+									static_cast<double>(animSize))) -
+								static_cast<float>(animSize);
 						}
-						// now figure out what we are lerping between
-						// delta is the fraction between this frame and the next, since the new anim is always at a .0f;
-						lerp = ceil(new_frame_g) - new_frame_g;
-						// frames are easy to calculate
-						currentFrame = ceil(new_frame_g);
-						assert(currentFrame >= 0 && currentFrame < numFramesInFile);
-						// should we be creating a virtual frame?
-						if (currentFrame <= endFrame + 1)
+
+						lerp = ceilf(newFrame_g) - newFrame_g;
+
+						currentFrame = static_cast<int>(ceilf(newFrame_g));
+						if (currentFrame < 0 || currentFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+								currentFrame);
+#endif
+							if (currentFrame < 0)
+							{
+								currentFrame = 0;
+							}
+							else
+							{
+								currentFrame = numFramesInFile - 1;
+							}
+						}
+
+						if (currentFrame <= static_cast<int>(endFrame + 1.0f))
 						{
 							newFrame = bone.startFrame;
-							assert(newFrame >= 0 && newFrame < numFramesInFile);
 						}
 						else
 						{
 							newFrame = currentFrame - 1;
-							assert(newFrame >= 0 && newFrame < numFramesInFile);
+						}
+
+						if (newFrame < 0 || newFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - newFrame %d out of range. Clamping.\n",
+								newFrame);
+#endif
+							if (newFrame < 0)
+							{
+								newFrame = 0;
+							}
+							else
+							{
+								newFrame = numFramesInFile - 1;
+							}
 						}
 					}
 				}
 				else
 				{
-					// should we be creating a virtual frame?
-					if (new_frame_g > endFrame - 1 && new_frame_g < endFrame)
+					// Forward loop.
+					if (newFrame_g > endFrame - 1.0f && newFrame_g < endFrame)
 					{
-						// now figure out what we are lerping between
-						// delta is the fraction between this frame and the next, since the new anim is always at a .0f;
-						lerp = new_frame_g - static_cast<int>(new_frame_g);
-						// frames are easy to calculate
-						currentFrame = static_cast<int>(new_frame_g);
-						assert(currentFrame >= 0 && currentFrame < numFramesInFile);
+						lerp = newFrame_g - static_cast<float>(static_cast<int>(newFrame_g));
+
+						currentFrame = static_cast<int>(newFrame_g);
+						if (currentFrame < 0 || currentFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+								currentFrame);
+#endif
+							if (currentFrame < 0)
+							{
+								currentFrame = 0;
+							}
+							else
+							{
+								currentFrame = numFramesInFile - 1;
+							}
+						}
+
 						newFrame = bone.startFrame;
-						assert(newFrame >= 0 && newFrame < numFramesInFile);
+						if (newFrame < 0 || newFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - newFrame %d out of range. Clamping.\n",
+								newFrame);
+#endif
+							if (newFrame < 0)
+							{
+								newFrame = 0;
+							}
+							else
+							{
+								newFrame = numFramesInFile - 1;
+							}
+						}
 					}
 					else
 					{
-						if (new_frame_g >= endFrame)
+						if (newFrame_g >= endFrame)
 						{
-							new_frame_g = endFrame + fmod(new_frame_g - endFrame, anim_size) - anim_size;
+							newFrame_g =
+								endFrame +
+								static_cast<float>(fmod(newFrame_g - endFrame,
+									static_cast<double>(animSize))) -
+								static_cast<float>(animSize);
 						}
-						// now figure out what we are lerping between
-						// delta is the fraction between this frame and the next, since the new anim is always at a .0f;
-						lerp = new_frame_g - static_cast<int>(new_frame_g);
-						// frames are easy to calculate
-						currentFrame = static_cast<int>(new_frame_g);
-						assert(currentFrame >= 0 && currentFrame < numFramesInFile);
-						// should we be creating a virtual frame?
-						if (new_frame_g >= endFrame - 1)
+
+						lerp = newFrame_g - static_cast<float>(static_cast<int>(newFrame_g));
+
+						currentFrame = static_cast<int>(newFrame_g);
+						if (currentFrame < 0 || currentFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+								currentFrame);
+#endif
+							if (currentFrame < 0)
+							{
+								currentFrame = 0;
+							}
+							else
+							{
+								currentFrame = numFramesInFile - 1;
+							}
+						}
+
+						if (newFrame_g >= endFrame - 1.0f)
 						{
 							newFrame = bone.startFrame;
-							assert(newFrame >= 0 && newFrame < numFramesInFile);
 						}
 						else
 						{
 							newFrame = currentFrame + 1;
-							assert(newFrame >= 0 && newFrame < numFramesInFile);
+						}
+
+						if (newFrame < 0 || newFrame >= numFramesInFile)
+						{
+#ifdef _DEBUG
+							Com_Printf(
+								"Debug: G2_TimingModel (rd-vanilla) - newFrame %d out of range. Clamping.\n",
+								newFrame);
+#endif
+							if (newFrame < 0)
+							{
+								newFrame = 0;
+							}
+							else
+							{
+								newFrame = numFramesInFile - 1;
+							}
 						}
 					}
 				}
-				// sanity check
-				assert(newFrame < endFrame && newFrame >= bone.startFrame || anim_size < 10);
+
+				// Original "sanity check" assert replaced by a debug hint.
+				if (!((newFrame < endFrame && newFrame >= bone.startFrame) || animSize < 10))
+				{
+#ifdef _DEBUG
+					Com_Printf(
+						"Debug: G2_TimingModel (rd-vanilla) - loop sanity condition failed "
+						"(newFrame=%d, start=%d, end=%d, animSize=%d).\n",
+						newFrame, bone.startFrame, bone.endFrame, animSize);
+#endif
+				}
 			}
 			else
 			{
+				// Non-looping animation.
 				if ((bone.flags & BONE_ANIM_OVERRIDE_FREEZE) == BONE_ANIM_OVERRIDE_FREEZE)
 				{
-					// if we are supposed to reset the default anim, then do so
 					if (animSpeed > 0.0f)
 					{
 						currentFrame = bone.endFrame - 1;
-						assert(currentFrame >= 0 && currentFrame < numFramesInFile);
 					}
 					else
 					{
 						currentFrame = bone.endFrame + 1;
-						assert(currentFrame >= 0 && currentFrame < numFramesInFile);
+					}
+
+					if (currentFrame < 0 || currentFrame >= numFramesInFile)
+					{
+#ifdef _DEBUG
+						Com_Printf(
+							"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+							currentFrame);
+#endif
+						if (currentFrame < 0)
+						{
+							currentFrame = 0;
+						}
+						else
+						{
+							currentFrame = numFramesInFile - 1;
+						}
 					}
 
 					newFrame = currentFrame;
-					assert(newFrame >= 0 && newFrame < numFramesInFile);
-					lerp = 0;
+					lerp = 0.0f;
 				}
 				else
 				{
@@ -1053,42 +1253,75 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 		}
 		else
 		{
-			if (animSpeed > 0.0)
+			// Still within the animation range.
+			if (animSpeed > 0.0f)
 			{
-				// frames are easy to calculate
-				currentFrame = static_cast<int>(new_frame_g);
+				currentFrame = static_cast<int>(newFrame_g);
+				lerp = newFrame_g - static_cast<float>(currentFrame);
 
-				// figure out the difference between the two frames	- we have to decide what frame and what percentage of that
-				// frame we want to display
-				lerp = new_frame_g - currentFrame;
-
-				assert(currentFrame >= 0 && currentFrame < numFramesInFile);
+				if (currentFrame < 0 || currentFrame >= numFramesInFile)
+				{
+#ifdef _DEBUG
+					Com_Printf(
+						"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+						currentFrame);
+#endif
+					if (currentFrame < 0)
+					{
+						currentFrame = 0;
+					}
+					else
+					{
+						currentFrame = numFramesInFile - 1;
+					}
+				}
 
 				newFrame = currentFrame + 1;
-				// are we now on the end frame?
-				assert(static_cast<int>(endFrame) <= numFramesInFile);
+
+				if (static_cast<int>(endFrame) > numFramesInFile)
+				{
+#ifdef _DEBUG
+					Com_Printf(
+						"Debug: G2_TimingModel (rd-vanilla) - endFrame %d > numFramesInFile %d.\n",
+						static_cast<int>(endFrame), numFramesInFile);
+#endif
+				}
+
 				if (newFrame >= static_cast<int>(endFrame))
 				{
-					// we only want to lerp with the first frame of the anim if we are looping
-					if (bone.flags & BONE_ANIM_OVERRIDE_LOOP)
+					if ((bone.flags & BONE_ANIM_OVERRIDE_LOOP) != 0)
 					{
 						newFrame = bone.startFrame;
-						assert(newFrame >= 0 && newFrame < numFramesInFile);
 					}
-					// if we intend to end this anim or freeze after this, then just keep on the last frame
 					else
 					{
 						newFrame = bone.endFrame - 1;
-						assert(newFrame >= 0 && newFrame < numFramesInFile);
 					}
 				}
-				assert(newFrame >= 0 && newFrame < numFramesInFile);
+
+				if (newFrame < 0 || newFrame >= numFramesInFile)
+				{
+#ifdef _DEBUG
+					Com_Printf(
+						"Debug: G2_TimingModel (rd-vanilla) - newFrame %d out of range. Clamping.\n",
+						newFrame);
+#endif
+					if (newFrame < 0)
+					{
+						newFrame = 0;
+					}
+					else
+					{
+						newFrame = numFramesInFile - 1;
+					}
+				}
 			}
 			else
 			{
-				lerp = ceil(new_frame_g) - new_frame_g;
-				// frames are easy to calculate
-				currentFrame = ceil(new_frame_g);
+				lerp = ceilf(newFrame_g) - newFrame_g;
+
+				currentFrame = static_cast<int>(ceilf(newFrame_g));
+
 				if (currentFrame > bone.startFrame)
 				{
 					currentFrame = bone.startFrame;
@@ -1098,31 +1331,62 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 				else
 				{
 					newFrame = currentFrame - 1;
-					// are we now on the end frame?
-					if (newFrame < endFrame + 1)
+
+					if (newFrame < endFrame + 1.0f)
 					{
-						// we only want to lerp with the first frame of the anim if we are looping
-						if (bone.flags & BONE_ANIM_OVERRIDE_LOOP)
+						if ((bone.flags & BONE_ANIM_OVERRIDE_LOOP) != 0)
 						{
 							newFrame = bone.startFrame;
-							assert(newFrame >= 0 && newFrame < numFramesInFile);
 						}
-						// if we intend to end this anim or freeze after this, then just keep on the last frame
 						else
 						{
 							newFrame = bone.endFrame + 1;
-							assert(newFrame >= 0 && newFrame < numFramesInFile);
 						}
 					}
 				}
-				assert(currentFrame >= 0 && currentFrame < numFramesInFile);
-				assert(newFrame >= 0 && newFrame < numFramesInFile);
+
+				if (currentFrame < 0 || currentFrame >= numFramesInFile)
+				{
+#ifdef _DEBUG
+					Com_Printf(
+						"Debug: G2_TimingModel (rd-vanilla) - currentFrame %d out of range. Clamping.\n",
+						currentFrame);
+#endif
+					if (currentFrame < 0)
+					{
+						currentFrame = 0;
+					}
+					else
+					{
+						currentFrame = numFramesInFile - 1;
+					}
+				}
+
+				if (newFrame < 0 || newFrame >= numFramesInFile)
+				{
+#ifdef _DEBUG
+					Com_Printf(
+						"Debug: G2_TimingModel (rd-vanilla) - newFrame %d out of range. Clamping.\n",
+						newFrame);
+#endif
+					if (newFrame < 0)
+					{
+						newFrame = 0;
+					}
+					else
+					{
+						newFrame = numFramesInFile - 1;
+					}
+				}
 			}
 		}
 	}
 	else
 	{
-		if (animSpeed < 0.0)
+		// ----------------------------------------------------
+		// Zero-length animation (startFrame == endFrame)
+		// ----------------------------------------------------
+		if (animSpeed < 0.0f)
 		{
 			currentFrame = bone.endFrame + 1;
 		}
@@ -1130,14 +1394,72 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 		{
 			currentFrame = bone.endFrame - 1;
 		}
+
 		if (currentFrame < 0)
 		{
 			currentFrame = 0;
 		}
-		assert(currentFrame >= 0 && currentFrame < numFramesInFile);
+		else if (currentFrame >= numFramesInFile)
+		{
+			currentFrame = numFramesInFile - 1;
+		}
+
 		newFrame = currentFrame;
-		assert(newFrame >= 0 && newFrame < numFramesInFile);
-		lerp = 0;
+		lerp = 0.0f;
+	}
+
+	// --------------------------------------------------------
+	// Final safety clamps (replacing final asserts)
+	// --------------------------------------------------------
+	if (currentFrame < 0 || currentFrame >= numFramesInFile)
+	{
+#ifdef _DEBUG
+		Com_Printf(
+			"Debug: G2_TimingModel (rd-vanilla) - final currentFrame %d out of range. Clamping.\n",
+			currentFrame);
+#endif
+		if (currentFrame < 0)
+		{
+			currentFrame = 0;
+		}
+		else
+		{
+			currentFrame = numFramesInFile - 1;
+		}
+	}
+
+	if (newFrame < 0 || newFrame >= numFramesInFile)
+	{
+#ifdef _DEBUG
+		Com_Printf(
+			"Debug: G2_TimingModel (rd-vanilla) - final newFrame %d out of range. Clamping.\n",
+			newFrame);
+#endif
+		if (newFrame < 0)
+		{
+			newFrame = 0;
+		}
+		else
+		{
+			newFrame = numFramesInFile - 1;
+		}
+	}
+
+	if (lerp < 0.0f || lerp > 1.0f)
+	{
+#ifdef _DEBUG
+		Com_Printf(
+			"Debug: G2_TimingModel (rd-vanilla) - final lerp %f out of range (0..1). Clamping.\n",
+			lerp);
+#endif
+		if (lerp < 0.0f)
+		{
+			lerp = 0.0f;
+		}
+		else
+		{
+			lerp = 1.0f;
+		}
 	}
 }
 
@@ -3151,282 +3473,70 @@ int OldToNewRemapTable[72] = {
 	52 // Bone71:   "face_always_":			Parent: "cranium"  (index 17)
 };
 
-/*
-
-Bone   0:   "model_root":
-			Parent: ""  (index -1)
-			#Kids:  1
-			Child 0: (index 1), name "pelvis"
-
-Bone   1:   "pelvis":
-			Parent: "model_root"  (index 0)
-			#Kids:  4
-			Child 0: (index 2), name "Motion"
-			Child 1: (index 3), name "lfemurYZ"
-			Child 2: (index 7), name "rfemurYZ"
-			Child 3: (index 11), name "lower_lumbar"
-
-Bone   2:   "Motion":
-			Parent: "pelvis"  (index 1)
-			#Kids:  0
-
-Bone   3:   "lfemurYZ":
-			Parent: "pelvis"  (index 1)
-			#Kids:  3
-			Child 0: (index 4), name "lfemurX"
-			Child 1: (index 5), name "ltibia"
-			Child 2: (index 49), name "ltail"
-
-Bone   4:   "lfemurX":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  0
-
-Bone   5:   "ltibia":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  1
-			Child 0: (index 6), name "ltalus"
-
-Bone   6:   "ltalus":
-			Parent: "ltibia"  (index 5)
-			#Kids:  0
-
-Bone   7:   "rfemurYZ":
-			Parent: "pelvis"  (index 1)
-			#Kids:  3
-			Child 0: (index 8), name "rfemurX"
-			Child 1: (index 9), name "rtibia"
-			Child 2: (index 50), name "rtail"
-
-Bone   8:   "rfemurX":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  0
-
-Bone   9:   "rtibia":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  1
-			Child 0: (index 10), name "rtalus"
-
-Bone  10:   "rtalus":
-			Parent: "rtibia"  (index 9)
-			#Kids:  0
-
-Bone  11:   "lower_lumbar":
-			Parent: "pelvis"  (index 1)
-			#Kids:  1
-			Child 0: (index 12), name "upper_lumbar"
-
-Bone  12:   "upper_lumbar":
-			Parent: "lower_lumbar"  (index 11)
-			#Kids:  1
-			Child 0: (index 13), name "thoracic"
-
-Bone  13:   "thoracic":
-			Parent: "upper_lumbar"  (index 12)
-			#Kids:  5
-			Child 0: (index 14), name "cervical"
-			Child 1: (index 24), name "rclavical"
-			Child 2: (index 25), name "rhumerus"
-			Child 3: (index 37), name "lclavical"
-			Child 4: (index 38), name "lhumerus"
-
-Bone  14:   "cervical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  1
-			Child 0: (index 15), name "cranium"
-
-Bone  15:   "cranium":
-			Parent: "cervical"  (index 14)
-			#Kids:  1
-			Child 0: (index 52), name "face_always_"
-
-Bone  16:   "ceyebrow":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  17:   "jaw":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  18:   "lblip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  19:   "leye":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  20:   "rblip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  21:   "ltlip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  22:   "rtlip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  23:   "reye":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  24:   "rclavical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  0
-
-Bone  25:   "rhumerus":
-			Parent: "thoracic"  (index 13)
-			#Kids:  2
-			Child 0: (index 26), name "rhumerusX"
-			Child 1: (index 27), name "rradius"
-
-Bone  26:   "rhumerusX":
-			Parent: "rhumerus"  (index 25)
-			#Kids:  0
-
-Bone  27:   "rradius":
-			Parent: "rhumerus"  (index 25)
-			#Kids:  9
-			Child 0: (index 28), name "rradiusX"
-			Child 1: (index 29), name "rhand"
-			Child 2: (index 30), name "r_d1_j1"
-			Child 3: (index 31), name "r_d1_j2"
-			Child 4: (index 32), name "r_d2_j1"
-			Child 5: (index 33), name "r_d2_j2"
-			Child 6: (index 34), name "r_d4_j1"
-			Child 7: (index 35), name "r_d4_j2"
-			Child 8: (index 36), name "rhang_tag_bone"
-
-Bone  28:   "rradiusX":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  29:   "rhand":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  30:   "r_d1_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  31:   "r_d1_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  32:   "r_d2_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  33:   "r_d2_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  34:   "r_d4_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  35:   "r_d4_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  36:   "rhang_tag_bone":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  37:   "lclavical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  0
-
-Bone  38:   "lhumerus":
-			Parent: "thoracic"  (index 13)
-			#Kids:  2
-			Child 0: (index 39), name "lhumerusX"
-			Child 1: (index 40), name "lradius"
-
-Bone  39:   "lhumerusX":
-			Parent: "lhumerus"  (index 38)
-			#Kids:  0
-
-Bone  40:   "lradius":
-			Parent: "lhumerus"  (index 38)
-			#Kids:  9
-			Child 0: (index 41), name "lradiusX"
-			Child 1: (index 42), name "lhand"
-			Child 2: (index 43), name "l_d4_j1"
-			Child 3: (index 44), name "l_d4_j2"
-			Child 4: (index 45), name "l_d2_j1"
-			Child 5: (index 46), name "l_d2_j2"
-			Child 6: (index 47), name "l_d1_j1"
-			Child 7: (index 48), name "l_d1_j2"
-			Child 8: (index 51), name "lhang_tag_bone"
-
-Bone  41:   "lradiusX":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  42:   "lhand":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  43:   "l_d4_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  44:   "l_d4_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  45:   "l_d2_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  46:   "l_d2_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  47:   "l_d1_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  48:   "l_d1_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  49:   "ltail":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  0
-
-Bone  50:   "rtail":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  0
-
-Bone  51:   "lhang_tag_bone":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  52:   "face_always_":
-			Parent: "cranium"  (index 15)
-			#Kids:  8
-			Child 0: (index 16), name "ceyebrow"
-			Child 1: (index 17), name "jaw"
-			Child 2: (index 18), name "lblip2"
-			Child 3: (index 19), name "leye"
-			Child 4: (index 20), name "rblip2"
-			Child 5: (index 21), name "ltlip2"
-			Child 6: (index 22), name "rtlip2"
-			Child 7: (index 23), name "reye"
-
-*/
+int NewToOldRemapTable[53] = {
+0,  // JKA Bone 00 model_root           to JK2 Bone 00 model_root
+1,  // JKA Bone 01 pelvis               to JK2 Bone 01 pelvis
+2,  // JKA Bone 02 Motion               to JK2 Bone 02 Motion
+3,  // JKA Bone 03 lfemurYZ             to JK2 Bone 03 lfemurYZ
+4,  // JKA Bone 04 lfemurX              to JK2 Bone 04 lfemurX
+5,  // JKA Bone 05 ltibia               to JK2 Bone 05 ltibia
+6,  // JKA Bone 06 ltalus               to JK2 Bone 06 ltalus
+8,  // JKA Bone 07 rfemurYZ             to JK2 Bone 08 rfemurYZ
+9,  // JKA Bone 08 rfemurX              to JK2 Bone 09 rfemurX
+10, // JKA Bone 09 rtibia               to JK2 Bone 10 rtibia
+11, // JKA Bone 10 rtalus               to JK2 Bone 11 rtalus
+13, // JKA Bone 11 lower_lumbar         to JK2 Bone 13 lower_lumbar
+14, // JKA Bone 12 upper_lumbar         to JK2 Bone 14 upper_lumbar
+15, // JKA Bone 13 thoracic             to JK2 Bone 15 thoracic
+16, // JKA Bone 14 cervical             to JK2 Bone 16 cervical
+17, // JKA Bone 15 cranium              to JK2 Bone 17 cranium
+18, // JKA Bone 16 ceyebrow             to JK2 Bone 18 ceyebrow
+19, // JKA Bone 17 jaw                  to JK2 Bone 19 jaw
+20, // JKA Bone 18 lblip2               to JK2 Bone 20 lblip2
+21, // JKA Bone 19 leye                 to JK2 Bone 21 leye
+22, // JKA Bone 20 rblip2               to JK2 Bone 22 rblip2
+23, // JKA Bone 21 ltlip2               to JK2 Bone 23 ltlip2
+24, // JKA Bone 22 rtlip2               to JK2 Bone 24 rtlip2
+25, // JKA Bone 23 reye                 to JK2 Bone 25 reye
+26, // JKA Bone 24 rclavical            to JK2 Bone 26 rclavical
+27, // JKA Bone 25 rhumerus             to JK2 Bone 27 rhumerus
+28, // JKA Bone 26 rhumerusX            to JK2 Bone 28 rhumerusX
+29, // JKA Bone 27 rradius              to JK2 Bone 29 rradius
+30, // JKA Bone 28 rradiusX             to JK2 Bone 30 rradiusX
+31, // JKA Bone 29 rhand                to JK2 Bone 31 rhand
+36, // JKA Bone 30 r_d1_j1              to JK2 Bone 36 r_d1_j1
+37, // JKA Bone 31 r_d1_j2              to JK2 Bone 37 r_d1_j2
+39, // JKA Bone 32 r_d2_j1              to JK2 Bone 39 r_d2_j1
+40, // JKA Bone 33 r_d2_j2              to JK2 Bone 40 r_d2_j2
+45, // JKA Bone 34 r_d4_j1              to JK2 Bone 45 r_d4_j1
+46, // JKA Bone 35 r_d4_j2              to JK2 Bone 46 r_d4_j2
+48, // JKA Bone 36 rhang_tag_bone       to JK2 Bone 48 rhang_tag_bone
+49, // JKA Bone 37 lclavical            to JK2 Bone 49 lclavical
+50, // JKA Bone 38 lhumerus             to JK2 Bone 50 lhumerus
+51, // JKA Bone 39 lhumerusX            to JK2 Bone 51 lhumerusX
+52, // JKA Bone 40 lradius              to JK2 Bone 52 lradius
+53, // JKA Bone 41 lradiusX             to JK2 Bone 53 lradiusX
+54, // JKA Bone 42 lhand                to JK2 Bone 54 lhand
+59, // JKA Bone 43 l_d4_j1              to JK2 Bone 59 l_d4_j1
+60, // JKA Bone 44 l_d4_j2              to JK2 Bone 60 l_d4_j2
+65, // JKA Bone 45 l_d2_j1              to JK2 Bone 65 l_d2_j1
+66, // JKA Bone 46 l_d2_j2              to JK2 Bone 66 l_d2_j2
+68, // JKA Bone 47 l_d1_j1              to JK2 Bone 68 l_d1_j1
+69, // JKA Bone 48 l_d1_j2              to JK2 Bone 69 l_d1_j2
+3,  // JKA Bone 49 ltail                to JK2 Bone 03 lfemurYZ
+8,  // JKA Bone 50 rtail                to JK2 Bone 08 rfemurYZ
+54, // JKA Bone 51 lhang_tag_bone       to JK2 Bone 54 lhand
+71  // JKA Bone 52 face                 to JK2 Bone 71 face
+};
 
 qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& bAlreadyCached)
 {
-	int i, j;
+	int					i, l, j;
 	mdxmHeader_t* pinmodel, * mdxm;
 	mdxmLOD_t* lod;
 	mdxmSurface_t* surf;
-	int version;
-	int size;
+	int					version;
+	int					size;
 	shader_t* sh;
 	mdxmSurfHierarchy_t* surfInfo;
 
@@ -3444,8 +3554,8 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -3455,21 +3565,20 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 	if (version != MDXM_VERSION)
 	{
-#ifdef _DEBUG
-		Com_Error(ERR_DROP, "R_LoadMDXM: %s has wrong version (%i should be %i)\n", mod_name, version, MDXM_VERSION);
-#else
-		ri.Printf(PRINT_WARNING, "R_LoadMDXM: %s has wrong version (%i should be %i)\n", mod_name, version, MDXM_VERSION);
-#endif
+		Com_Printf(S_COLOR_YELLOW  "R_LoadMDXM: %s has wrong version (%i should be %i)\n", mod_name, version, MDXM_VERSION);
+		return qfalse;
 	}
 
 	mod->type = MOD_MDXM;
 	mod->dataSize += size;
 
 	qboolean bAlreadyFound = qfalse;
-	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterModels_Malloc(
-		size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
+	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
 
-	assert(bAlreadyCached == bAlreadyFound);
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXM: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
@@ -3489,23 +3598,25 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	// first up, go load in the animation file we need that has the skeletal animation info for this model
 	mdxm->animIndex = RE_RegisterModel(va("%s.gla", mdxm->animName));
 
+	char  animGLAName[MAX_QPATH];
+	char* strippedName;
+	char* slash = NULL;
 	const char* mapname = sv_mapname->string;
 
-	if (strcmp(mapname, "nomap") != 0)
+	if (strcmp(mapname, "nomap"))
 	{
-		char animGLAName[MAX_QPATH];
-		if (strrchr(mapname, '/')) //maps in subfolders use the root name, ( presuming only one level deep!)
+		if (strrchr(mapname, '/'))	//maps in subfolders use the root name, ( presuming only one level deep!)
 		{
 			mapname = strrchr(mapname, '/') + 1;
 		}
 		//stripped name of GLA for this model
-		Q_strncpyz(animGLAName, mdxm->animName, sizeof animGLAName);
-		char* slash = strrchr(animGLAName, '/');
+		Q_strncpyz(animGLAName, mdxm->animName, sizeof(animGLAName));
+		slash = strrchr(animGLAName, '/');
 		if (slash)
 		{
 			*slash = 0;
 		}
-		char* strippedName = COM_SkipPath(animGLAName);
+		strippedName = COM_SkipPath(animGLAName);
 		if (VALIDSTRING(strippedName))
 		{
 			RE_RegisterModel(va("models/players/%s_%s/%s_%s.gla", strippedName, mapname, strippedName, mapname));
@@ -3518,6 +3629,12 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	{
 		isAnOldModelFile = true;
 	}
+#else
+	bool isANewModelFile = false;
+	if (mdxm->numBones == 53 && strstr(mdxm->animName, "_humanoid"))
+	{
+		isANewModelFile = true;
+	}
 #endif
 
 	if (!mdxm->animIndex)
@@ -3529,7 +3646,9 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	else
 	{
 		// let us mix JK2/JKA models and animations
-		if (tr.models[mdxm->animIndex]->mdxa->numBones != 53 && tr.models[mdxm->animIndex]->mdxa->numBones != 72 && mdxm->numBones != 53 &&
+		if (tr.models[mdxm->animIndex]->mdxa->numBones != 53
+			&& tr.models[mdxm->animIndex]->mdxa->numBones != 72 &&
+			mdxm->numBones != 53 &&
 			mdxm->numBones != 72)
 		{
 			assert(tr.models[mdxm->animIndex]->mdxa->numBones == mdxm->numBones);
@@ -3549,24 +3668,23 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #endif
 			}
 			if (!isAnOldModelFile)
-			{
-				//hmm, load up the old JK2 ones anyway?
+			{//hmm, load up the old JK2 ones anyway?
 				return qfalse;
 			}
 		}
 	}
 #endif
 
-	mod->numLods = mdxm->numLODs - 1; //copy this up to the model for ease of use - it wil get inced after this.
+	mod->numLods = mdxm->numLODs - 1;	//copy this up to the model for ease of use - it wil get inced after this.
 
 	if (bAlreadyFound)
 	{
-		return qtrue; // All done. Stop, go no further, do not LittleLong(), do not pass Go...
+		return qtrue;	// All done. Stop, go no further, do not LittleLong(), do not pass Go...
 	}
 
 	surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsSurfHierarchy);
 #ifdef Q3_BIG_ENDIAN
-	surfIndexes = (mdxmHierarchyOffsets_t*)((byte*)mdxm + sizeof(mdxmHeader_t));
+	surfIndexes = static_cast<mdxmHierarchyOffsets_t*>(reinterpret_cast<byte*>(mdxm) + sizeof(mdxmHeader_t));
 #endif
 	for (i = 0; i < mdxm->numSurfaces; i++)
 	{
@@ -3574,17 +3692,16 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		LL(surfInfo->numChildren);
 		LL(surfInfo->parentIndex);
 
-#ifndef JK2_MODE
-		Q_strlwr(surfInfo->name); //just in case
-		if (strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off") == 0)
+		Q_strlwr(surfInfo->name);	//just in case
+
+		if (!strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off"))
 		{
-			surfInfo->name[strlen(surfInfo->name) - 4] = 0; //remove "_off" from name
+			surfInfo->name[strlen(surfInfo->name) - 4] = 0;	//remove "_off" from name
 		}
-#endif
 
 		if (surfInfo->shader[0] == '[')
 		{
-			surfInfo->shader[0] = 0; //kill the stupid [nomaterial] since carcass doesn't
+			surfInfo->shader[0] = 0;	//kill the stupid [nomaterial] since carcass doesn't
 		}
 
 		// do all the children indexs
@@ -3599,8 +3716,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 		if (!sh)
 		{
-			surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (intptr_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->
-				childIndexes[surfInfo->numChildren]);
+			surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (intptr_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->childIndexes[surfInfo->numChildren]);
 			continue;
 		}
 
@@ -3621,19 +3737,18 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #endif
 
 		// find the next surface
-		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (intptr_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->
-			childIndexes[surfInfo->numChildren]);
+		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (intptr_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->childIndexes[surfInfo->numChildren]);
 	}
 
 	// swap all the LOD's	(we need to do the middle part of this even for intel, because of shader reg and err-check)
 	lod = reinterpret_cast<mdxmLOD_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsLODs);
-	for (int l = 0; l < mdxm->numLODs; l++)
+	for (l = 0; l < mdxm->numLODs; l++)
 	{
-		int triCount = 0;
+		int	triCount = 0;
 
 		LL(lod->ofsEnd);
 		// swap all the surfaces
-		surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(lod) + sizeof(mdxmLOD_t) + mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t));
+		surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(lod) + sizeof(mdxmLOD_t) + (mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t)));
 		for (i = 0; i < mdxm->numSurfaces; i++)
 		{
 			LL(surf->thisSurfaceIndex);
@@ -3648,13 +3763,11 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 			triCount += surf->numTriangles;
 
-			if (surf->numVerts > SHADER_MAX_VERTEXES)
-			{
+			if (surf->numVerts > SHADER_MAX_VERTEXES) {
 				Com_Error(ERR_DROP, "R_LoadMDXM: %s has more than %i verts on a surface (%i)",
 					mod_name, SHADER_MAX_VERTEXES, surf->numVerts);
 			}
-			if (surf->numTriangles * 3 > SHADER_MAX_INDEXES)
-			{
+			if (surf->numTriangles * 3 > SHADER_MAX_INDEXES) {
 				Com_Error(ERR_DROP, "R_LoadMDXM: %s has more than %i triangles on a surface (%i)",
 					mod_name, SHADER_MAX_INDEXES / 3, surf->numTriangles);
 			}
@@ -3724,6 +3837,23 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 					}
 				}
 			}
+#else
+			if (isANewModelFile)
+			{
+				auto boneRef = reinterpret_cast<int*>(reinterpret_cast<byte*>(surf) + surf->ofsBoneReferences);
+				for (j = 0; j < surf->numBoneReferences; j++)
+				{
+					assert(boneRef[j] >= 0 && boneRef[j] < 53);
+					if (boneRef[j] >= 0 && boneRef[j] < 53)
+					{
+						boneRef[j] = NewToOldRemapTable[boneRef[j]];
+					}
+					else
+					{
+						boneRef[j] = 0;
+					}
+				}
+			}
 #endif
 			// find the next surface
 			surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(surf) + surf->ofsEnd);
@@ -3761,8 +3891,8 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -3784,7 +3914,10 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	mdxa = mod->mdxa = static_cast<mdxaHeader_t*>(RE_RegisterModels_Malloc(
 		size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLA));
 
-	assert(bAlreadyCached == bAlreadyFound);
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXA: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{

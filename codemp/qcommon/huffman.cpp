@@ -131,14 +131,40 @@ static void swap(huff_t* huff, node_t* node1, node_t* node2)
 /* Swap these two nodes in the linked list (update ranks) */
 static void swaplist(node_t* node1, node_t* node2)
 {
-	node_t* par1 = node1->next;
+	// ----------------------------------------------------------------------
+	// Safety: validate pointers
+	// ----------------------------------------------------------------------
+	if (node1 == nullptr || node2 == nullptr)
+	{
+		//Com_Printf("swaplist WARNING: node1 or node2 is NULL\n");
+		return;
+	}
+
+	// If either node has no links, swapping is impossible
+	if (node1->next == nullptr || node1->prev == nullptr ||
+		node2->next == nullptr || node2->prev == nullptr)
+	{
+		//Com_Printf("swaplist WARNING: NULL link detected (next/prev)\n");
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Swap next pointers
+	// ----------------------------------------------------------------------
+	node_t* tmpNext = node1->next;
 	node1->next = node2->next;
-	node2->next = par1;
+	node2->next = tmpNext;
 
-	par1 = node1->prev;
+	// ----------------------------------------------------------------------
+	// Swap prev pointers
+	// ----------------------------------------------------------------------
+	node_t* tmpPrev = node1->prev;
 	node1->prev = node2->prev;
-	node2->prev = par1;
+	node2->prev = tmpPrev;
 
+	// ----------------------------------------------------------------------
+	// Self-loop correction
+	// ----------------------------------------------------------------------
 	if (node1->next == node1)
 	{
 		node1->next = node2;
@@ -147,19 +173,27 @@ static void swaplist(node_t* node1, node_t* node2)
 	{
 		node2->next = node1;
 	}
-	if (node1->next)
+
+	// ----------------------------------------------------------------------
+	// Fix forward links
+	// ----------------------------------------------------------------------
+	if (node1->next != nullptr)
 	{
 		node1->next->prev = node1;
 	}
-	if (node2->next)
+	if (node2->next != nullptr)
 	{
 		node2->next->prev = node2;
 	}
-	if (node1->prev)
+
+	// ----------------------------------------------------------------------
+	// Fix backward links
+	// ----------------------------------------------------------------------
+	if (node1->prev != nullptr)
 	{
 		node1->prev->next = node1;
 	}
-	if (node2->prev)
+	if (node2->prev != nullptr)
 	{
 		node2->prev->next = node2;
 	}
@@ -413,48 +447,89 @@ void Huff_offsetTransmit(const huff_t* huff, const int ch, byte* fout, int* offs
 
 void Huff_Decompress(msg_t* mbuf, const int offset)
 {
-	int ch;
-	byte seq[65536]{};
-	huff_t huff;
+	int ch = 0;
 
+	// ----------------------------------------------------------------------
+	// Allocate large buffers on heap (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static byte* seq = nullptr;
+	static huff_t* huff = nullptr;
+
+	if (seq == nullptr)
+	{
+		seq = static_cast<byte*>(Z_Malloc(65536, TAG_TEMP_WORKSPACE, qfalse));
+		if (seq == nullptr)
+		{
+			Com_Printf("^1Huff_Decompress: Failed to allocate seq buffer\n");
+			return;
+		}
+	}
+
+	if (huff == nullptr)
+	{
+		huff = static_cast<huff_t*>(Z_Malloc(sizeof(huff_t), TAG_TEMP_WORKSPACE, qfalse));
+		if (huff == nullptr)
+		{
+			Com_Printf("^1Huff_Decompress: Failed to allocate huff struct\n");
+			return;
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Validate message buffer
+	// ----------------------------------------------------------------------
 	const int size = mbuf->cursize - offset;
-	byte* buffer = mbuf->data + offset;
-
 	if (size <= 0)
 	{
 		return;
 	}
 
-	Com_Memset(&huff, 0, sizeof(huff_t));
-	// Initialize the tree & list with the NYT node
-	huff.tree = huff.lhead = huff.ltail = huff.loc[NYT] = &huff.nodeList[huff.blocNode++];
-	huff.tree->symbol = NYT;
-	huff.tree->weight = 0;
-	huff.lhead->next = huff.lhead->prev = nullptr;
-	huff.tree->parent = huff.tree->left = huff.tree->right = nullptr;
+	byte* buffer = mbuf->data + offset;
 
+	// ----------------------------------------------------------------------
+	// Initialize Huffman state
+	// ----------------------------------------------------------------------
+	Com_Memset(huff, 0, sizeof(huff_t));
+
+	huff->tree = huff->lhead = huff->ltail = huff->loc[NYT] = &huff->nodeList[huff->blocNode++];
+	huff->tree->symbol = NYT;
+	huff->tree->weight = 0;
+	huff->lhead->next = nullptr;
+	huff->lhead->prev = nullptr;
+	huff->tree->parent = nullptr;
+	huff->tree->left = nullptr;
+	huff->tree->right = nullptr;
+
+	// ----------------------------------------------------------------------
+	// Read compressed length
+	// ----------------------------------------------------------------------
 	int cch = buffer[0] * 256 + buffer[1];
-	// don't overflow with bad messages
+
 	if (cch > mbuf->maxsize - offset)
 	{
 		cch = mbuf->maxsize - offset;
 	}
+
 	bloc = 16;
 
+	// ----------------------------------------------------------------------
+	// Main decompression loop
+	// ----------------------------------------------------------------------
 	for (int j = 0; j < cch; j++)
 	{
 		ch = 0;
-		// don't overflow reading from the messages
-		// FIXME: would it be better to have a overflow check in get_bit ?
-		if (bloc >> 3 > size)
+
+		// Prevent overflow reading bits
+		if ((bloc >> 3) > size)
 		{
 			seq[j] = 0;
 			break;
 		}
-		Huff_Receive(huff.tree, &ch, buffer); /* Get a character */
+
+		Huff_Receive(huff->tree, &ch, buffer);
+
 		if (ch == NYT)
 		{
-			/* We got a NYT, get the symbol associated with it */
 			ch = 0;
 			for (int i = 0; i < 8; i++)
 			{
@@ -462,10 +537,14 @@ void Huff_Decompress(msg_t* mbuf, const int offset)
 			}
 		}
 
-		seq[j] = ch; /* Write symbol */
+		seq[j] = static_cast<byte>(ch);
 
-		Huff_addRef(&huff, static_cast<byte>(ch)); /* Increment node */
+		Huff_addRef(huff, static_cast<byte>(ch));
 	}
+
+	// ----------------------------------------------------------------------
+	// Write decompressed data back into message buffer
+	// ----------------------------------------------------------------------
 	mbuf->cursize = cch + offset;
 	Com_Memcpy(mbuf->data + offset, seq, cch);
 }
@@ -474,40 +553,81 @@ extern int oldsize;
 
 void Huff_Compress(msg_t* mbuf, const int offset)
 {
-	byte seq[65536]{};
-	huff_t huff;
+	// ----------------------------------------------------------------------
+	// Allocate large buffers on heap (fixes MSVC C6262)
+	// ----------------------------------------------------------------------
+	static byte* seq = nullptr;
+	static huff_t* huff = nullptr;
 
+	if (seq == nullptr)
+	{
+		seq = static_cast<byte*>(Z_Malloc(65536, TAG_TEMP_WORKSPACE, qfalse));
+		if (seq == nullptr)
+		{
+			Com_Printf("^1Huff_Compress: Failed to allocate seq buffer\n");
+			return;
+		}
+	}
+
+	if (huff == nullptr)
+	{
+		huff = static_cast<huff_t*>(Z_Malloc(sizeof(huff_t), TAG_TEMP_WORKSPACE, qfalse));
+		if (huff == nullptr)
+		{
+			Com_Printf("^1Huff_Compress: Failed to allocate huff struct\n");
+			return;
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Validate message buffer
+	// ----------------------------------------------------------------------
 	const int size = mbuf->cursize - offset;
-	const byte* buffer = mbuf->data + +offset;
-
 	if (size <= 0)
 	{
 		return;
 	}
 
-	Com_Memset(&huff, 0, sizeof(huff_t));
-	// Add the NYT (not yet transmitted) node into the tree/list */
-	huff.tree = huff.lhead = huff.loc[NYT] = &huff.nodeList[huff.blocNode++];
-	huff.tree->symbol = NYT;
-	huff.tree->weight = 0;
-	huff.lhead->next = huff.lhead->prev = nullptr;
-	huff.tree->parent = huff.tree->left = huff.tree->right = nullptr;
-	huff.loc[NYT] = huff.tree;
+	const byte* buffer = mbuf->data + offset;
 
-	seq[0] = size >> 8;
-	seq[1] = size & 0xff;
+	// ----------------------------------------------------------------------
+	// Initialize Huffman state
+	// ----------------------------------------------------------------------
+	Com_Memset(huff, 0, sizeof(huff_t));
+
+	huff->tree = huff->lhead = huff->loc[NYT] = &huff->nodeList[huff->blocNode++];
+	huff->tree->symbol = NYT;
+	huff->tree->weight = 0;
+	huff->lhead->next = nullptr;
+	huff->lhead->prev = nullptr;
+	huff->tree->parent = nullptr;
+	huff->tree->left = nullptr;
+	huff->tree->right = nullptr;
+
+	// ----------------------------------------------------------------------
+	// Write uncompressed size header
+	// ----------------------------------------------------------------------
+	seq[0] = static_cast<byte>(size >> 8);
+	seq[1] = static_cast<byte>(size & 0xFF);
 
 	bloc = 16;
 
+	// ----------------------------------------------------------------------
+	// Main compression loop
+	// ----------------------------------------------------------------------
 	for (int i = 0; i < size; i++)
 	{
 		const int ch = buffer[i];
-		Huff_transmit(&huff, ch, seq, size << 3); /* Transmit symbol */
-		Huff_addRef(&huff, static_cast<byte>(ch)); /* Do update */
+
+		Huff_transmit(huff, ch, seq, size << 3);
+		Huff_addRef(huff, static_cast<byte>(ch));
 	}
 
 	bloc += 8; // next byte
 
+	// ----------------------------------------------------------------------
+	// Write compressed data back into message buffer
+	// ----------------------------------------------------------------------
 	mbuf->cursize = (bloc >> 3) + offset;
 	Com_Memcpy(mbuf->data + offset, seq, bloc >> 3);
 }

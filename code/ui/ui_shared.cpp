@@ -6347,7 +6347,7 @@ static void Item_Text_Paint(itemDef_t* item)
 		DC->drawText(item->textRect.x + item->text2alignx, item->textRect.y + item->text2aligny, item->textscale, color,
 			textPtr, 0, item->textStyle, item->font);
 	}
-	}
+}
 
 /*
 =================

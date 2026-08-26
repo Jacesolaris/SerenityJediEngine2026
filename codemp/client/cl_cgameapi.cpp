@@ -1424,6 +1424,14 @@ intptr_t CL_CgameSystemCalls(intptr_t* args)
 		re->SetRangedFog(VMF(1));
 		return 0;
 
+	case CG_R_LA_GOGGLES:
+		re->LAGoggles();
+		return 0;
+
+	case CG_R_SCISSOR:
+		re->Scissor(VMF(1), VMF(2), VMF(3), VMF(4));
+		return 0;
+
 	case CG_R_SETREFRACTIONPROP:
 		re->SetRefractionProperties(VMF(1), VMF(2), static_cast<qboolean>(args[3]), static_cast<qboolean>(args[4]));
 		return 0;
@@ -2061,6 +2069,9 @@ void CL_BindCGame(void)
 		cgi.RE_WorldEffectCommand = re->WorldEffectCommand;
 		cgi.RE_InitRendererTerrain = RE_InitRendererTerrain;
 		cgi.WE_AddWeatherZone = re->AddWeatherZone;
+		//cgi.WE_IsOutsideCausingPain = re->IsOutsideCausingPain;
+		//cgi.WE_IsOutside = re->IsOutside;
+		cgi.R_LAGoggles = re->LAGoggles;
 		cgi.GetCurrentSnapshotNumber = CL_GetCurrentSnapshotNumber;
 		cgi.GetCurrentCmdNumber = CL_GetCurrentCmdNumber;
 		cgi.GetDefaultState = CL_GetDefaultState;

@@ -2135,6 +2135,21 @@ static void SV_G2API_GetSurfaceName(void* ghoul2, const int surfNumber, const in
 	strcpy(fillBuf, tmp);
 }
 
+static float SV_G2API_GetChanceOfSaberFizz(void)
+{
+	return re->GetChanceOfSaberFizz();
+}
+
+//static float SV_G2API_IsOutsideCausingPain(vec3_t pos)
+//{
+//	return re->IsOutsideCausingPain(pos);
+//}
+//
+//static float SV_G2API_IsOutside(vec3_t pos)
+//{
+//	return re->IsOutside(pos);
+//}
+
 static void GVM_Cvar_Set(const char* var_name, const char* value)
 {
 	Cvar_VM_Set(var_name, value, VM_GAME);
@@ -3722,6 +3737,9 @@ void SV_BindGame(void)
 		gi.G2API_CleanEntAttachments = SV_G2API_CleanEntAttachments;
 		gi.G2API_OverrideServer = SV_G2API_OverrideServer;
 		gi.G2API_GetSurfaceName = SV_G2API_GetSurfaceName;
+		gi.WE_GetChanceOfSaberFizz = SV_G2API_GetChanceOfSaberFizz;
+		//gi.WE_IsOutsideCausingPain = SV_G2API_IsOutsideCausingPain;
+		//gi.WE_IsOutside = SV_G2API_IsOutside;
 
 		const auto GetGameAPI = reinterpret_cast<GetGameAPI_t>(gvm->GetModuleAPI);
 		gameExport_t* ret = GetGameAPI(GAME_API_VERSION, &gi);

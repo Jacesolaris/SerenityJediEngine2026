@@ -4258,7 +4258,7 @@ void G_StartRoll(gentity_t* ent, const int anim)
 	ent->client->ps.saberMove = LS_NONE;
 }
 
-static qboolean pm_try_roll()
+static qboolean PM_TryRoll()
 {
 	constexpr float roll_dist = 192; //was 64;
 
@@ -4280,6 +4280,11 @@ static qboolean pm_try_roll()
 	{
 		//player can't do this in 1st person
 		return qfalse;
+	}
+	if (pm->gent->client->NPC_class == CLASS_VADER || pm->gent->client->NPC_class == CLASS_DESANN)
+	{
+		//no anim
+		PM_SaberLungeAttackMove(qtrue);
 	}
 	if (pm->ps->saber[0].saberFlags & SFL_NO_ROLLS)
 	{
@@ -4354,45 +4359,13 @@ static qboolean pm_try_roll()
 	}
 	else if (pm->cmd.rightmove > 0)
 	{
-		if (pm->ps->weapon == WP_SABER)
-		{
-			if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
-			{
-				anim = BOTH_ROLL_R;
-				VectorMA(pm->ps->origin, roll_dist, right, traceto);
-			}
-			else
-			{
-				anim = BOTH_ROLL_R;
-				VectorMA(pm->ps->origin, roll_dist, right, traceto);
-			}
-		}
-		else
-		{
-			anim = BOTH_ROLL_R;
-			VectorMA(pm->ps->origin, roll_dist, right, traceto);
-		}
+		anim = BOTH_ROLL_R;
+		VectorMA(pm->ps->origin, roll_dist, right, traceto);
 	}
 	else if (pm->cmd.rightmove < 0)
 	{
-		if (pm->ps->weapon == WP_SABER)
-		{
-			if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
-			{
-				anim = BOTH_ROLL_L;
-				VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-			}
-			else
-			{
-				anim = BOTH_ROLL_L;
-				VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-			}
-		}
-		else
-		{
-			anim = BOTH_ROLL_L;
-			VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-		}
+		anim = BOTH_ROLL_L;
+		VectorMA(pm->ps->origin, -roll_dist, right, traceto);
 	}
 	else
 	{
@@ -4507,6 +4480,12 @@ static qboolean PM_TryRoll_SJE()
 		return qfalse;
 	}
 
+	if (pm->gent->client->NPC_class == CLASS_VADER || pm->gent->client->NPC_class == CLASS_DESANN)
+	{
+		//no anim
+		PM_SaberLungeAttackMove(qtrue);
+	}
+
 	if (pm->ps->saber[0].saberFlags & SFL_NO_ROLLS)
 	{
 		return qfalse;
@@ -4582,45 +4561,13 @@ static qboolean PM_TryRoll_SJE()
 	}
 	else if (pm->cmd.rightmove > 0)
 	{
-		if (pm->ps->weapon == WP_SABER)
-		{
-			if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
-			{
-				anim = BOTH_ROLL_R;
-				VectorMA(pm->ps->origin, roll_dist, right, traceto);
-			}
-			else
-			{
-				anim = BOTH_ROLL_R;
-				VectorMA(pm->ps->origin, roll_dist, right, traceto);
-			}
-		}
-		else
-		{
-			anim = BOTH_ROLL_R;
-			VectorMA(pm->ps->origin, roll_dist, right, traceto);
-		}
+		anim = BOTH_ROLL_R;
+		VectorMA(pm->ps->origin, roll_dist, right, traceto);
 	}
 	else if (pm->cmd.rightmove < 0)
 	{
-		if (pm->ps->weapon == WP_SABER)
-		{
-			if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
-			{
-				anim = BOTH_ROLL_L;
-				VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-			}
-			else
-			{
-				anim = BOTH_ROLL_L;
-				VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-			}
-		}
-		else
-		{
-			anim = BOTH_ROLL_L;
-			VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-		}
+		anim = BOTH_ROLL_L;
+		VectorMA(pm->ps->origin, -roll_dist, right, traceto);
 	}
 	else
 	{
@@ -4852,7 +4799,7 @@ static void PM_CrashLand()
 		if (!PM_InOnGroundAnim(pm->ps) && !PM_InKnockDown(pm->ps))
 		{
 			//roll!
-			if (pm_try_roll())
+			if (PM_TryRoll())
 			{
 				//absorb some impact
 				delta *= 0.5f;
@@ -10657,12 +10604,13 @@ static void PM_Footsteps(void)
 			&& (!PM_InRollIgnoreTimer(pm->ps) || !pm->ps->legsAnimTimer && pm->cmd.upmove < 0))
 		{
 			qboolean rolled = qfalse;
+
 			if (PM_RunningAnim(pm->ps->legsAnim)
 				|| pm->ps->legsAnim == BOTH_FORCEHEAL_START
 				|| PM_CanRollFromSoulCal(pm->ps))
 			{
 				//roll!
-				rolled = pm_try_roll();
+				rolled = PM_TryRoll();
 			}
 			else if (PM_CrouchAnim(pm->gent->client->ps.legsAnim) &&
 				(pm->cmd.buttons & BUTTON_DASH))
@@ -10676,6 +10624,7 @@ static void PM_Footsteps(void)
 				//roll!
 				rolled = PM_TryRoll_SJE();
 			}
+
 			if (!rolled)
 			{
 				if (pm->ps->pm_flags & PMF_BACKWARDS_RUN)

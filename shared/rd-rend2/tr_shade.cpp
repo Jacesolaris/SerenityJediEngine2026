@@ -44,12 +44,13 @@ R_DrawElements
 
 void R_DrawElementsVBO(int numIndexes, glIndex_t firstIndex, glIndex_t minIndex, glIndex_t maxIndex)
 {
-	int offset = firstIndex * sizeof(glIndex_t) +
+	size_t offset = firstIndex * sizeof(glIndex_t) +
 		(tess.useInternalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
 
 	GL_DrawIndexed(GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, offset, 1, 0);
 }
 
+#if 0
 static void R_DrawMultiElementsVBO(int multiDrawPrimitives, glIndex_t* multiDrawMinIndex, glIndex_t* multiDrawMaxIndex,
 	GLsizei* multiDrawNumIndexes, glIndex_t** multiDrawFirstIndex)
 {
@@ -59,6 +60,7 @@ static void R_DrawMultiElementsVBO(int multiDrawPrimitives, glIndex_t* multiDraw
 		multiDrawFirstIndex,
 		multiDrawPrimitives);
 }
+#endif
 
 /*
 =============================================================
@@ -458,7 +460,8 @@ static void ComputeShaderColors(shaderStage_t* pStage, vec4_t baseColor, vec4_t 
 		&& !((blend & GLS_SRCBLEND_BITS) == GLS_SRCBLEND_DST_COLOR)
 		&& !((blend & GLS_SRCBLEND_BITS) == GLS_SRCBLEND_ONE_MINUS_DST_COLOR)
 		&& !((blend & GLS_DSTBLEND_BITS) == GLS_DSTBLEND_SRC_COLOR)
-		&& !((blend & GLS_DSTBLEND_BITS) == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR))
+		&& !((blend & GLS_DSTBLEND_BITS) == GLS_DSTBLEND_ONE_MINUS_SRC_COLOR)
+		&& (backEnd.framePostProcessed || !tr.world))
 	{
 		float scale = 1 << tr.overbrightBits;
 
@@ -540,7 +543,7 @@ static void CaptureDrawData(const shaderCommands_t* input, shaderStage_t* stage,
 			glState.currentVBO->vertexesVBO,
 			glState.currentIBO->indexesVBO,
 			numIndexes / 3);
-		ri.FS_Write(data, strlen(data), tr.debugFile);
+		ri.FS_Write(data, int(strlen(data)), tr.debugFile);
 	}
 	else
 	{
@@ -556,7 +559,7 @@ static void CaptureDrawData(const shaderCommands_t* input, shaderStage_t* stage,
 			glState.currentVBO->vertexesVBO,
 			glState.currentIBO->indexesVBO,
 			input->numIndexes / 3);
-		ri.FS_Write(data, strlen(data), tr.debugFile);
+		ri.FS_Write(data, int(strlen(data)), tr.debugFile);
 	}
 }
 
@@ -685,12 +688,12 @@ void RB_FillDrawCommand(
 	}
 	else
 	{
-		int offset = input->firstIndex * sizeof(glIndex_t) +
+		size_t offset = input->firstIndex * sizeof(glIndex_t) +
 			(input->useInternalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
 
 		drawCmd.type = DRAW_COMMAND_INDEXED;
 		drawCmd.params.indexed.indexType = GL_INDEX_TYPE;
-		drawCmd.params.indexed.firstIndex = offset;
+		drawCmd.params.indexed.firstIndex = (glIndex_t)offset;
 		drawCmd.params.indexed.numIndices = input->numIndexes;
 		drawCmd.params.indexed.baseVertex = 0;
 	}
@@ -1003,23 +1006,8 @@ DrawNormals
 Draws vertex normals for debugging
 ================
 */
-static void DrawNormals(const shaderCommands_t* input)
-{
-	//GL_Bind(tr.whiteImage);
-	//qglColor3f(1, 1, 1);
-	//qglDepthRange(0, 0);	// never occluded
-	//GL_State(GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE);
-
-	//qglBegin(GL_LINES);
-	//for (int i = 0; i < input->numVertexes; i++) {
-	//	vec3_t temp;
-	//	qglVertex3fv(input->xyz[i]);
-	//	VectorMA(input->xyz[i], 2, input->normal[i], temp);
-	//	qglVertex3fv(temp);
-	//}
-	//qglEnd();
-
-	//qglDepthRange(0, 1);
+static void DrawNormals(shaderCommands_t* input) {
+	//FIXME: implement this
 }
 
 static void ProjectPshadowVBOGLSL(const shaderCommands_t* input, const VertexArraysProperties* vertexArrays) {
@@ -1142,9 +1130,9 @@ static void RB_FogPass(shaderCommands_t* input, const VertexArraysProperties* ve
 		input->shader->sort != SS_FOG)
 		shaderBits |= FOGDEF_USE_FALLBACK_GLOBAL_FOG;
 
-	if (input->numPasses > 0)
+	/*if (input->numPasses > 0)
 		if (input->xstages[0]->alphaTestType != ALPHA_TEST_NONE)
-			shaderBits |= FOGDEF_USE_ALPHA_TEST;
+			shaderBits |= FOGDEF_USE_ALPHA_TEST;*/
 
 	shaderProgram_t* sp = tr.fogShader + shaderBits;
 
@@ -1652,6 +1640,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			if (backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA)
 			{
 				stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+#ifndef REND2_SP
 				if (backEnd.currentEntity->e.renderfx & RF_ALPHA_DEPTH)
 				{
 					// depth write, so faces through the model will be stomped
@@ -1660,6 +1649,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 					// standard alpha surfs.
 					stateBits |= GLS_DEPTHMASK_TRUE;
 				}
+#endif
 			}
 
 			if (backEnd.currentEntity == &backEnd.entityFlare)
@@ -1677,6 +1667,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			{
 				forceAlphaGen = AGEN_LIGHTING_SPECULAR_STATIC;
 			}
+#ifdef REND2_SP
 			if (backEnd.currentEntity->e.renderfx & RF_ALPHA_FADE)
 			{
 				if (backEnd.currentEntity->e.shaderRGBA[3] < 255)
@@ -1685,6 +1676,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 					forceAlphaGen = AGEN_ENTITY;
 				}
 			}
+#endif
 		}
 
 		if (backEnd.viewParms.flags & VPF_POINTSHADOW)
@@ -1724,12 +1716,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			}
 		}
 
-		float volumetricBaseValue = -1.0f;
-		if (backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC)
-		{
-			volumetricBaseValue = backEnd.currentEntity->e.shaderRGBA[0] / 255.0f;
-		}
-		else
+		if (!(backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC))
 		{
 			vec4_t baseColor{};
 			vec4_t vertColor{};
@@ -1757,33 +1744,6 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			{
 				baseColor[3] = backEnd.currentEntity->e.shaderRGBA[3] / 255.0f;
 				vertColor[3] = 0.0f;
-			}
-
-			if (backEnd.currentEntity->e.hModel != NULL_HANDLE)
-			{
-				model_t* model = R_GetModelByHandle(backEnd.currentEntity->e.hModel);
-				if (model->type != MOD_BRUSH)
-				{
-					switch (forceRGBGen)
-					{
-					case CGEN_EXACT_VERTEX:
-					case CGEN_EXACT_VERTEX_LIT:
-					case CGEN_VERTEX:
-					case CGEN_VERTEX_LIT:
-						baseColor[0] =
-							baseColor[1] =
-							baseColor[2] =
-							baseColor[3] = 0.0f;
-
-						vertColor[0] =
-							vertColor[1] =
-							vertColor[2] =
-							vertColor[3] = tr.identityLight;
-						break;
-					default:
-						break;
-					}
-				}
 			}
 
 			uniformDataWriter.SetUniformVec4(UNIFORM_BASECOLOR, baseColor);

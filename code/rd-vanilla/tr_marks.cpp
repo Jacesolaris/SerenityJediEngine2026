@@ -28,9 +28,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
-constexpr auto MAX_VERTS_ON_POLY = 64;
+#define MAX_VERTS_ON_POLY		64
 
-constexpr auto MARKER_OFFSET = 0;	// 1;
+#define MARKER_OFFSET			0	// 1;
 
 /*
 =============

@@ -3046,274 +3046,6 @@ int OldToNewRemapTable[72] = {
 	52 // Bone71:   "face_always_":			Parent: "cranium"  (index 17)
 };
 
-/*
-
-Bone   0:   "model_root":
-			Parent: ""  (index -1)
-			#Kids:  1
-			Child 0: (index 1), name "pelvis"
-
-Bone   1:   "pelvis":
-			Parent: "model_root"  (index 0)
-			#Kids:  4
-			Child 0: (index 2), name "Motion"
-			Child 1: (index 3), name "lfemurYZ"
-			Child 2: (index 7), name "rfemurYZ"
-			Child 3: (index 11), name "lower_lumbar"
-
-Bone   2:   "Motion":
-			Parent: "pelvis"  (index 1)
-			#Kids:  0
-
-Bone   3:   "lfemurYZ":
-			Parent: "pelvis"  (index 1)
-			#Kids:  3
-			Child 0: (index 4), name "lfemurX"
-			Child 1: (index 5), name "ltibia"
-			Child 2: (index 49), name "ltail"
-
-Bone   4:   "lfemurX":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  0
-
-Bone   5:   "ltibia":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  1
-			Child 0: (index 6), name "ltalus"
-
-Bone   6:   "ltalus":
-			Parent: "ltibia"  (index 5)
-			#Kids:  0
-
-Bone   7:   "rfemurYZ":
-			Parent: "pelvis"  (index 1)
-			#Kids:  3
-			Child 0: (index 8), name "rfemurX"
-			Child 1: (index 9), name "rtibia"
-			Child 2: (index 50), name "rtail"
-
-Bone   8:   "rfemurX":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  0
-
-Bone   9:   "rtibia":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  1
-			Child 0: (index 10), name "rtalus"
-
-Bone  10:   "rtalus":
-			Parent: "rtibia"  (index 9)
-			#Kids:  0
-
-Bone  11:   "lower_lumbar":
-			Parent: "pelvis"  (index 1)
-			#Kids:  1
-			Child 0: (index 12), name "upper_lumbar"
-
-Bone  12:   "upper_lumbar":
-			Parent: "lower_lumbar"  (index 11)
-			#Kids:  1
-			Child 0: (index 13), name "thoracic"
-
-Bone  13:   "thoracic":
-			Parent: "upper_lumbar"  (index 12)
-			#Kids:  5
-			Child 0: (index 14), name "cervical"
-			Child 1: (index 24), name "rclavical"
-			Child 2: (index 25), name "rhumerus"
-			Child 3: (index 37), name "lclavical"
-			Child 4: (index 38), name "lhumerus"
-
-Bone  14:   "cervical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  1
-			Child 0: (index 15), name "cranium"
-
-Bone  15:   "cranium":
-			Parent: "cervical"  (index 14)
-			#Kids:  1
-			Child 0: (index 52), name "face_always_"
-
-Bone  16:   "ceyebrow":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  17:   "jaw":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  18:   "lblip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  19:   "leye":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  20:   "rblip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  21:   "ltlip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  22:   "rtlip2":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  23:   "reye":
-			Parent: "face_always_"  (index 52)
-			#Kids:  0
-
-Bone  24:   "rclavical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  0
-
-Bone  25:   "rhumerus":
-			Parent: "thoracic"  (index 13)
-			#Kids:  2
-			Child 0: (index 26), name "rhumerusX"
-			Child 1: (index 27), name "rradius"
-
-Bone  26:   "rhumerusX":
-			Parent: "rhumerus"  (index 25)
-			#Kids:  0
-
-Bone  27:   "rradius":
-			Parent: "rhumerus"  (index 25)
-			#Kids:  9
-			Child 0: (index 28), name "rradiusX"
-			Child 1: (index 29), name "rhand"
-			Child 2: (index 30), name "r_d1_j1"
-			Child 3: (index 31), name "r_d1_j2"
-			Child 4: (index 32), name "r_d2_j1"
-			Child 5: (index 33), name "r_d2_j2"
-			Child 6: (index 34), name "r_d4_j1"
-			Child 7: (index 35), name "r_d4_j2"
-			Child 8: (index 36), name "rhang_tag_bone"
-
-Bone  28:   "rradiusX":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  29:   "rhand":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  30:   "r_d1_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  31:   "r_d1_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  32:   "r_d2_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  33:   "r_d2_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  34:   "r_d4_j1":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  35:   "r_d4_j2":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  36:   "rhang_tag_bone":
-			Parent: "rradius"  (index 27)
-			#Kids:  0
-
-Bone  37:   "lclavical":
-			Parent: "thoracic"  (index 13)
-			#Kids:  0
-
-Bone  38:   "lhumerus":
-			Parent: "thoracic"  (index 13)
-			#Kids:  2
-			Child 0: (index 39), name "lhumerusX"
-			Child 1: (index 40), name "lradius"
-
-Bone  39:   "lhumerusX":
-			Parent: "lhumerus"  (index 38)
-			#Kids:  0
-
-Bone  40:   "lradius":
-			Parent: "lhumerus"  (index 38)
-			#Kids:  9
-			Child 0: (index 41), name "lradiusX"
-			Child 1: (index 42), name "lhand"
-			Child 2: (index 43), name "l_d4_j1"
-			Child 3: (index 44), name "l_d4_j2"
-			Child 4: (index 45), name "l_d2_j1"
-			Child 5: (index 46), name "l_d2_j2"
-			Child 6: (index 47), name "l_d1_j1"
-			Child 7: (index 48), name "l_d1_j2"
-			Child 8: (index 51), name "lhang_tag_bone"
-
-Bone  41:   "lradiusX":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  42:   "lhand":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  43:   "l_d4_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  44:   "l_d4_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  45:   "l_d2_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  46:   "l_d2_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  47:   "l_d1_j1":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  48:   "l_d1_j2":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  49:   "ltail":
-			Parent: "lfemurYZ"  (index 3)
-			#Kids:  0
-
-Bone  50:   "rtail":
-			Parent: "rfemurYZ"  (index 7)
-			#Kids:  0
-
-Bone  51:   "lhang_tag_bone":
-			Parent: "lradius"  (index 40)
-			#Kids:  0
-
-Bone  52:   "face_always_":
-			Parent: "cranium"  (index 15)
-			#Kids:  8
-			Child 0: (index 16), name "ceyebrow"
-			Child 1: (index 17), name "jaw"
-			Child 2: (index 18), name "lblip2"
-			Child 3: (index 19), name "leye"
-			Child 4: (index 20), name "rblip2"
-			Child 5: (index 21), name "ltlip2"
-			Child 6: (index 22), name "rtlip2"
-			Child 7: (index 23), name "reye"
-
-*/
-
 qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& bAlreadyCached)
 {
 	int i, j;
@@ -3338,8 +3070,8 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -3349,8 +3081,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 	if (version != MDXM_VERSION)
 	{
-		Com_Printf(S_COLOR_YELLOW "R_LoadMDXM: %s has wrong version (%i should be %i)\n", mod_name, version,
-			MDXM_VERSION);
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXM: %s has wrong version (%i should be %i)\n", mod_name, version, MDXM_VERSION);
 		return qfalse;
 	}
 
@@ -3358,10 +3089,12 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	mod->dataSize += size;
 
 	qboolean bAlreadyFound = qfalse;
-	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterModels_Malloc(
-		size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
+	mdxm = mod->mdxm = static_cast<mdxmHeader_t*>(RE_RegisterModels_Malloc(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM));
 
-	assert(bAlreadyCached == bAlreadyFound);
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXM: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
@@ -3420,8 +3153,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		RE_RegisterModels_StoreShaderRequest(mod_name, &surfInfo->shader[0], &surfInfo->shaderIndex);
 
 		// find the next surface
-		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (size_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->
-			childIndexes[surfInfo->numChildren]);
+		surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>((byte*)surfInfo + (size_t) & static_cast<mdxmSurfHierarchy_t*>(nullptr)->childIndexes[surfInfo->numChildren]);
 	}
 
 	// swap all the LOD's	(we need to do the middle part of this even for intel, because of shader reg and err-check)
@@ -3432,7 +3164,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 		LL(lod->ofsEnd);
 		// swap all the surfaces
-		surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(lod) + sizeof(mdxmLOD_t) + mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t));
+		surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(lod) + sizeof(mdxmLOD_t) + (mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t)));
 		for (i = 0; i < mdxm->numSurfaces; i++)
 		{
 			LL(surf->numTriangles);
@@ -3459,52 +3191,6 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 			// change to surface identifier
 			surf->ident = SF_MDX;
-			// register the shaders
-#if 0 //#ifndef _M_IX86
-//
-// optimisation, we don't bother doing this for standard intel case since our data's already in that format...
-//
-			// FIXME - is this correct?
-			// do all the bone reference data
-			boneRef = (int*)((byte*)surf + surf->ofsBoneReferences);
-			for (j = 0; j < surf->numBoneReferences; j++)
-			{
-				LL(boneRef[j]);
-			}
-
-			// swap all the triangles
-			tri = (mdxmTriangle_t*)((byte*)surf + surf->ofsTriangles);
-			for (j = 0; j < surf->numTriangles; j++, tri++)
-			{
-				LL(tri->indexes[0]);
-				LL(tri->indexes[1]);
-				LL(tri->indexes[2]);
-			}
-
-			// swap all the vertexes
-			v = (mdxmVertex_t*)((byte*)surf + surf->ofsVerts);
-			for (j = 0; j < surf->numVerts; j++)
-			{
-				v->normal[0] = LittleFloat(v->normal[0]);
-				v->normal[1] = LittleFloat(v->normal[1]);
-				v->normal[2] = LittleFloat(v->normal[2]);
-
-				v->texCoords[0] = LittleFloat(v->texCoords[0]);
-				v->texCoords[1] = LittleFloat(v->texCoords[1]);
-
-				v->numWeights = LittleLong(v->numWeights);
-				v->offset[0] = LittleFloat(v->offset[0]);
-				v->offset[1] = LittleFloat(v->offset[1]);
-				v->offset[2] = LittleFloat(v->offset[2]);
-
-				for (k = 0; k < surf->maxVertBoneWeights; k++)
-				{
-					v->weights[k].boneIndex = LittleLong(v->weights[k].boneIndex);
-					v->weights[k].boneWeight = LittleFloat(v->weights[k].boneWeight);
-				}
-				v = (mdxmVertex_t*)&v->weights[surf->maxVertBoneWeights];
-			}
-#endif
 
 			if (isAnOldModelFile)
 			{
@@ -3757,8 +3443,8 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	//
 	// read some fields from the binary, but only LittleLong() them when we know this wasn't an already-cached model...
 	//
-	version = pinmodel->version;
-	size = pinmodel->ofsEnd;
+	version = (pinmodel->version);
+	size = (pinmodel->ofsEnd);
 
 	if (!bAlreadyCached)
 	{
@@ -3768,8 +3454,7 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 	if (version != MDXA_VERSION)
 	{
-		Com_Printf(S_COLOR_YELLOW "R_LoadMDXA: %s has wrong version (%i should be %i)\n",
-			mod_name, version, MDXA_VERSION);
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXA: %s has wrong version (%i should be %i)\n", mod_name, version, MDXA_VERSION);
 		return qfalse;
 	}
 
@@ -3793,22 +3478,18 @@ qboolean R_LoadMDXA(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 #endif
 		mod_name, &bAlreadyFound, TAG_MODEL_GLA));
 
-	assert(bAlreadyCached == bAlreadyFound); // I should probably eliminate 'bAlreadyFound', but wtf?
+	if (bAlreadyCached != bAlreadyFound)
+	{
+		Com_Printf(S_COLOR_YELLOW "R_LoadMDXA: cache flag mismatch for %s (caller:%d cache:%d)\n", mod_name, bAlreadyCached, bAlreadyFound);
+	}
 
 	if (!bAlreadyFound)
 	{
 #ifdef CREATE_LIMB_HIERARCHY
 		memcpy(mdxa, buffer, oSize);
 #else
-		// horrible new hackery, if !bAlreadyFound then we've just done a tag-morph, so we need to set the
-		//	bool reference passed into this function to true, to tell the caller NOT to do an ri->FS_Freefile since
-		//	we've hijacked that memory block...
-		//
-		// Aaaargh. Kill me now...
-		//
 		bAlreadyCached = qtrue;
 		assert(mdxa == buffer);
-		//		memcpy( mdxa, buffer, size );	// and don't do this now, since it's the same thing
 #endif
 		LL(mdxa->ident);
 		LL(mdxa->version);

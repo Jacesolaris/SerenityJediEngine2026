@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_marks.c -- polygon projection on the world polygons
 
 #include "tr_local.h"
-//#include "assert.h"
 
 #define MAX_VERTS_ON_POLY		64
 
@@ -38,6 +37,7 @@ Out must have space for two more vertexes than in
 #define	SIDE_FRONT	0
 #define	SIDE_BACK	1
 #define	SIDE_ON		2
+
 static void R_ChopPolyBehindPlane(const int numInPoints, vec3_t inPoints[MAX_VERTS_ON_POLY], int* numOutPoints, vec3_t outPoints[MAX_VERTS_ON_POLY], vec3_t normal, const float dist, const float epsilon)
 {
 	float		dists[MAX_VERTS_ON_POLY + 4] = { 0 };

@@ -57,7 +57,7 @@ typedef unsigned int glIndex_t;
 #define MAX_VISCOUNTS 5
 #define MAX_VBOS      4096
 #define MAX_IBOS      4096
-#define MAX_G2_BONES  72
+#define MAX_G2_BONES  256
 #define MAX_GPU_FOGS  24
 
 #define MAX_CALC_PSHADOWS    64
@@ -461,7 +461,7 @@ typedef enum
 typedef struct VBO_s
 {
 	uint32_t        vertexesVBO;
-	int             vertexesSize;	// amount of memory data allocated for all vertices in bytes
+	size_t          vertexesSize;	// amount of memory data allocated for all vertices in bytes
 
 	uint32_t		offsets[ATTR_INDEX_MAX];
 	uint32_t		strides[ATTR_INDEX_MAX];
@@ -472,7 +472,7 @@ typedef struct VBO_s
 typedef struct IBO_s
 {
 	uint32_t        indexesVBO;
-	int             indexesSize;	// amount of memory data allocated for all triangles in bytes
+	size_t          indexesSize;	// amount of memory data allocated for all triangles in bytes
 	//  uint32_t        ofsIndexes;
 } IBO_t;
 
@@ -1043,6 +1043,7 @@ typedef struct shader_s {
 	void		(*optimalStageIteratorFunc)(void);
 	qboolean	isHDRLit;
 	qboolean	useSimpleDepthShader;
+	depthPrepass_t	depthPrepass;
 	qboolean	useDistortion;
 
 	float clampTime;                                  // time this shader is clamped to
@@ -2254,7 +2255,7 @@ int	R_LerpTag(orientation_t* tag, const qhandle_t handle, const int startFrame, 
 
 void R_ModelBounds(const qhandle_t handle, vec3_t mins, vec3_t maxs);
 
-void R_model_list_f(void);
+void R_Modellist_f(void);
 
 //====================================================
 
@@ -2304,8 +2305,8 @@ struct vertexAttribute_t
 struct bufferBinding_t
 {
 	GLuint buffer;
-	int offset;
-	int size;
+	size_t offset;
+	size_t size;
 };
 
 // the renderer front end should never modify glstate_t
@@ -2325,7 +2326,6 @@ typedef struct glstate_s {
 	uint32_t        vertexAttribsNewFrame;
 	uint32_t        vertexAttribsOldFrame;
 	float           vertexAttribsInterpolation;
-	int				vertexAttribsTexCoordOffset[2];
 	qboolean        vertexAnimation;
 	qboolean		skeletalAnimation;
 	qboolean		genShadows;
@@ -2661,6 +2661,7 @@ typedef struct trGlobals_s {
 	viewParms_t				viewParms;
 	viewParms_t				cachedViewParms[3 + MAX_DLIGHTS * 6 + 3 + MAX_DRAWN_PSHADOWS];
 	int						numCachedViewParms;
+	qboolean				portalRenderedThisFrame;
 
 	viewParms_t				skyPortalParms;
 	byte					skyPortalAreaMask[MAX_MAP_AREA_BYTES];
@@ -2712,13 +2713,6 @@ typedef struct trGlobals_s {
 
 	int						numIBOs;
 	IBO_t* ibos[MAX_IBOS];
-
-#ifdef _G2_GORE
-	VBO_t* goreVBO;
-	int						goreVBOCurrentIndex;
-	IBO_t* goreIBO;
-	int						goreIBOCurrentIndex;
-#endif
 
 	// shader indexes from other modules will be looked up in tr.shaders[]
 	// shader indexes from drawsurfs will be looked up in sortedShaders[]
@@ -3020,7 +3014,7 @@ void	GL_DepthRange(float min, float max);
 void	GL_VertexAttribPointers(size_t numAttributes,
 	vertexAttribute_t* attributes);
 void	GL_DrawIndexed(GLenum primitiveType, int numIndices, GLenum indexType,
-	int offset, int numInstances, int baseVertex);
+	size_t offset, int numInstances, int baseVertex);
 void	GL_MultiDrawIndexed(GLenum primitiveType, int* numIndices,
 	glIndex_t** offsets, int numDraws);
 void	GL_Draw(GLenum primitiveType, int firstVertex, int numVertices, int numInstances);
@@ -3036,6 +3030,8 @@ typedef _skinSurface_t skinSurface_t;
 void RE_StretchRaw(const int x, const int y, const int w, const int h, const int cols, const int rows, const byte* data, const int client, const qboolean dirty);
 void RE_UploadCinematic(const int cols, const int rows, const byte* data, const int client, const qboolean dirty);
 void RE_SetRangedFog(float range);
+void RE_LAGoggles(void);
+void RE_Scissor(float x, float y, float w, float h);
 
 void		RE_BeginRegistration(glconfig_t* glconfig);
 void		RE_LoadWorldMap(const char* mapname);
@@ -3156,7 +3152,7 @@ struct shaderCommands_s
 	int			fogNum;
 	int         cubemapIndex;
 	bool		entityMergable;
-#ifdef REND2_SP_MAYBE
+#ifdef REND2_SP_GORE
 	bool		scale;		// uses texCoords[input->firstIndex] for storage
 	bool		fade;		// uses svars.colors[input->firstIndex] for storage
 #endif
@@ -3307,11 +3303,12 @@ struct VertexArraysProperties
 	int numVertexArrays;
 
 	int enabledAttributes[ATTR_INDEX_MAX];
-	int offsets[ATTR_INDEX_MAX];
-	int sizes[ATTR_INDEX_MAX];
-	int strides[ATTR_INDEX_MAX];
-	int streamStrides[ATTR_INDEX_MAX];
+	size_t offsets[ATTR_INDEX_MAX];
+	size_t sizes[ATTR_INDEX_MAX];
+	size_t strides[ATTR_INDEX_MAX];
+	size_t streamStrides[ATTR_INDEX_MAX];
 	void* streams[ATTR_INDEX_MAX];
+	size_t stepRates[ATTR_INDEX_MAX];
 };
 
 uint32_t R_VboPackTangent(vec4_t v);
@@ -3338,7 +3335,7 @@ void			RB_UpdateGoreVertexData(struct gpuFrame_t* currentFrame, srfG2GoreSurface
 #endif
 void			RB_CommitInternalBufferData();
 
-void			RB_BindUniformBlock(GLuint ubo, uniformBlock_t block, int offset);
+void			RB_BindUniformBlock(GLuint ubo, uniformBlock_t block, size_t offset);
 size_t			RB_BindAndUpdateFrameUniformBlock(uniformBlock_t block, void* data);
 void			RB_AddShaderToShaderInstanceUBO(shader_t* shader);
 size_t			RB_AddShaderInstanceBlock(void* data);
@@ -3490,30 +3487,18 @@ public:
 	// Copy assignment: copy all relevant members
 	CRenderableSurface& operator =(const CRenderableSurface& src)
 	{
-		if (this == &src)
-		{
-			return *this;
-		}
-
 		ident = src.ident;
 		boneCache = src.boneCache;
 		surfaceData = src.surfaceData;
 #ifdef _G2_GORE
 		alternateTex = src.alternateTex;
 		goreChain = src.goreChain;
-		scale = src.scale;
-		fade = src.fade;
-		impactTime = src.impactTime;
 #endif
 		vboMesh = src.vboMesh;
-		genShadows = src.genShadows;
-		dlightBits = src.dlightBits;
-		pshadowBits = src.pshadowBits;
 
 		return *this;
 	}
 
-	// Default constructor: explicitly initialize every member
 	CRenderableSurface()
 		: ident(SF_MDX)
 		, boneCache(nullptr)
@@ -3540,14 +3525,9 @@ public:
 #ifdef _G2_GORE
 		alternateTex = nullptr;
 		goreChain = nullptr;
-		scale = 1.0f;
-		fade = 0.0f;
-		impactTime = 0.0f;
 #endif
 		vboMesh = nullptr;
 		genShadows = qfalse;
-		dlightBits = 0;
-		pshadowBits = 0;
 	}
 };
 
@@ -3656,6 +3636,12 @@ typedef struct rotatePicCommand_s {
 	float	a;
 } rotatePicCommand_t;
 
+typedef struct scissorCommand_s {
+	int	commandId;
+	float x, y;
+	float w, h;
+} scissorCommand_t;
+
 typedef struct drawSurfsCommand_s {
 	int		commandId;
 	trRefdef_t	refdef;
@@ -3732,6 +3718,7 @@ typedef enum {
 	RC_DRAW_BUFFER,
 	RC_SWAP_BUFFERS,
 	RC_SCREENSHOT,
+	RC_SCISSOR,
 	RC_VIDEOFRAME,
 	RC_COLORMASK,
 	RC_CLEARDEPTH,
@@ -3783,8 +3770,8 @@ struct modelUboCache_t
 	int       modelUboOffset;
 };
 
-constexpr auto MAX_GPU_TIMERS = (512);
-constexpr auto MAX_SCENES = (3);
+#define MAX_GPU_TIMERS (512)
+#define MAX_SCENES (3)
 
 struct gpuFrame_t
 {
@@ -3912,6 +3899,7 @@ qhandle_t RE_RegisterShader(const char* name);
 qhandle_t RE_RegisterShaderNoMip(const char* name);
 const char* RE_ShaderNameFromIndex(int index);
 image_t* R_CreateImage(const char* name, byte* pic, int width, int height, imgType_t type, int flags, int internalFormat);
+image_t* R_CreateImage3D(const char* name, byte* data, int width, int height, int depth, int internalFormat);
 
 float ProjectRadius(const float r, vec3_t location);
 void RE_RegisterModels_StoreShaderRequest(const char* psModelFileName, const char* psShaderName, int* piShaderIndexPoke);

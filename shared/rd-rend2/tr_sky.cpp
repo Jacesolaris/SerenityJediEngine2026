@@ -440,7 +440,7 @@ static void DrawSkySide(struct image_s* image, const int mins[2], const int maxs
 	Allocator& frameAllocator = *backEndData->perFrameMemory;
 
 	shaderProgram_t* sp = &tr.lightallShader[0];
-	float colorScale = backEnd.refdef.colorScale;
+	float colorScale = backEnd.refdef.colorScale * tr.identityLight;
 	uniformDataWriter.Start(sp);
 	uniformDataWriter.SetUniformVec4(
 		UNIFORM_BASECOLOR, colorScale, colorScale, colorScale, 1.0f);
@@ -450,8 +450,12 @@ static void DrawSkySide(struct image_s* image, const int mins[2], const int maxs
 		UNIFORM_DIFFUSETEXMATRIX, 1.0f, 0.0f, 0.0f, 1.0f);
 	uniformDataWriter.SetUniformVec4(
 		UNIFORM_DIFFUSETEXOFFTURB, 0.0f, 0.0f, 0.0f, 0.0f);
+	uniformDataWriter.SetUniformVec4(
+		UNIFORM_ENABLETEXTURES, 0.0f, 0.0f, 0.0f, 0.0f);
+	uniformDataWriter.SetUniformInt(
+		UNIFORM_ALPHA_TEST_TYPE, ALPHA_TEST_NONE);
 
-	samplerBindingsWriter.AddStaticImage(image, TB_DIFFUSEMAP);;
+	samplerBindingsWriter.AddStaticImage(image, TB_DIFFUSEMAP);
 
 	const byte currentFrameScene = backEndData->currentFrame->currentScene;
 	const GLuint currentFrameUbo = backEndData->currentFrame->ubo[currentFrameScene];
@@ -461,6 +465,7 @@ static void DrawSkySide(struct image_s* image, const int mins[2], const int maxs
 	};
 
 	DrawItem item = {};
+	item.renderState.stateBits = tr.portalRenderedThisFrame ? 0 : GLS_DEPTHTEST_DISABLE;
 	item.renderState.cullType = CT_TWO_SIDED;
 	item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, tess.shader);
 	item.program = sp;

@@ -75,11 +75,9 @@ namespace
 
 	void GenerateRainModel(weatherObject_t& ws, const int maxParticleCount)
 	{
-		const int mapExtentZ = (int)(tr.world->bmodels[0].bounds[1][2] - tr.world->bmodels[0].bounds[0][2]);
-		const int PARTICLE_COUNT = (int)(maxParticleCount * mapExtentZ / CHUNK_EXTENDS);
-		std::vector<rainVertex_t> rainVertices(PARTICLE_COUNT * CHUNK_COUNT);
+		std::vector<rainVertex_t> rainVertices(maxParticleCount * CHUNK_COUNT);
 
-		for (int i = 0; i < rainVertices.size(); ++i)
+		for (size_t i = 0; i < rainVertices.size(); ++i)
 		{
 			rainVertex_t& vertex = rainVertices[i];
 			vertex.position[0] = Q_flrand(-HALF_CHUNK_EXTENDS, HALF_CHUNK_EXTENDS);
@@ -175,24 +173,22 @@ namespace
 			FBO_Bind(tr.weatherDepthFbo);
 
 			GL_SetViewportAndScissor(0, 0, tr.weatherDepthFbo->width, tr.weatherDepthFbo->height);
+			uint32_t glState = GLS_DEPTHMASK_TRUE;
 
 			if (tr.weatherSystem->weatherBrushType == WEATHER_BRUSHES_OUTSIDE) // used outside brushes
 			{
 				qglClearDepth(0.0f);
-				GL_State(GLS_DEPTHMASK_TRUE | GLS_DEPTHFUNC_GREATER);
+				glState = GLS_DEPTHMASK_TRUE | GLS_DEPTHFUNC_GREATER;
 			}
 			else // used inside brushes
 			{
 				qglClearDepth(1.0f);
-				GL_State(GLS_DEPTHMASK_TRUE);
 			}
 
+			GL_State(glState);
 			qglClear(GL_DEPTH_BUFFER_BIT);
 			qglClearDepth(1.0f);
-			qglEnable(GL_DEPTH_CLAMP);
 
-			GL_Cull(CT_TWO_SIDED);
-			vec4_t color = { 0.0f, 0.0f, 0.0f, 1.0f };
 			backEnd.currentEntity = &tr.worldEntity;
 
 			vec3_t stepSize = {
@@ -202,13 +198,13 @@ namespace
 			};
 
 			vec3_t up = {
-				stepSize[0] * 0.5f,
+				stepSize[0] * 1.05f,
 				0.0f,
 				0.0f
 			};
 			vec3_t left = {
 				0.0f,
-				stepSize[1] * 0.5f,
+				stepSize[1] * 1.05f,
 				0.0f
 			};
 			vec3_t traceVec = {
@@ -220,6 +216,11 @@ namespace
 			for (int i = 0; i < tr.weatherSystem->numWeatherBrushes; i++)
 			{
 				RE_BeginFrame(STEREO_CENTER);
+
+				GL_State(glState);
+				qglEnable(GL_DEPTH_CLAMP);
+				GL_Cull(CT_TWO_SIDED);
+
 				weatherBrushes_t* currentWeatherBrush = &tr.weatherSystem->weatherBrushes[i];
 
 				// RBSP brushes actually store their bounding box in the first 6 planes! Nice
@@ -286,7 +287,6 @@ namespace
 						// Now test if the intersected point is actually on the brush
 						for (int j = 0; j < currentWeatherBrush->numPlanes; j++)
 						{
-							vec4_t* plane = &currentWeatherBrush->planes[j];
 							vec3_t normal = {
 								currentWeatherBrush->planes[j][0],
 								currentWeatherBrush->planes[j][1],
@@ -304,9 +304,9 @@ namespace
 						{
 							RB_UpdateVBOs(ATTR_POSITION);
 							GLSL_VertexAttribsState(ATTR_POSITION, NULL);
-							GLSL_BindProgram(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE]);
+							GLSL_BindProgram(&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES]);
 							GLSL_SetUniformMatrix4x4(
-								&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE],
+								&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES],
 								UNIFORM_MODELVIEWPROJECTIONMATRIX,
 								tr.weatherSystem->weatherMVP);
 							R_DrawElementsVBO(tess.numIndexes, tess.firstIndex, tess.minIndex, tess.maxIndex);
@@ -320,7 +320,34 @@ namespace
 							tess.externalIBO = nullptr;
 						}
 
-						RB_AddQuadStamp(rayPos, left, up, color);
+						int ndx = tess.numVertexes;
+
+						tess.indexes[tess.numIndexes] = ndx;
+						tess.indexes[tess.numIndexes + 1] = ndx + 1;
+						tess.indexes[tess.numIndexes + 2] = ndx + 3;
+
+						tess.indexes[tess.numIndexes + 3] = ndx + 3;
+						tess.indexes[tess.numIndexes + 4] = ndx + 1;
+						tess.indexes[tess.numIndexes + 5] = ndx + 2;
+
+						tess.xyz[ndx][0] = rayPos[0] - left[0];
+						tess.xyz[ndx][1] = rayPos[1] - left[1];
+						tess.xyz[ndx][2] = rayPos[2] - left[2];
+
+						tess.xyz[ndx + 1][0] = rayPos[0] + up[0];
+						tess.xyz[ndx + 1][1] = rayPos[1] + up[1];
+						tess.xyz[ndx + 1][2] = rayPos[2] + up[2];
+
+						tess.xyz[ndx + 2][0] = rayPos[0] + left[0];
+						tess.xyz[ndx + 2][1] = rayPos[1] + left[1];
+						tess.xyz[ndx + 2][2] = rayPos[2] + left[2];
+
+						tess.xyz[ndx + 3][0] = rayPos[0] - up[0];
+						tess.xyz[ndx + 3][1] = rayPos[1] - up[1];
+						tess.xyz[ndx + 3][2] = rayPos[2] - up[2];
+
+						tess.numVertexes += 4;
+						tess.numIndexes += 6;
 					}
 				}
 				R_NewFrameSync();
@@ -329,9 +356,9 @@ namespace
 			// draw remaining quads
 			RB_UpdateVBOs(ATTR_POSITION);
 			GLSL_VertexAttribsState(ATTR_POSITION, NULL);
-			GLSL_BindProgram(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE]);
+			GLSL_BindProgram(&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES]);
 			GLSL_SetUniformMatrix4x4(
-				&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE],
+				&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES],
 				UNIFORM_MODELVIEWPROJECTIONMATRIX,
 				tr.weatherSystem->weatherMVP);
 			R_DrawElementsVBO(tess.numIndexes, tess.firstIndex, tess.minIndex, tess.maxIndex);
@@ -578,7 +605,7 @@ void R_LoadWeatherImages()
 		tr.weatherSystem->weatherSlots[WEATHER_FOG].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
 }
 
-void RE_WorldEffectCommand(const char* command) // rend2 sp
+void RE_WorldEffectCommand(const char* command)
 {
 	if (!command)
 	{
@@ -617,7 +644,6 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 		tr.weatherSystem->activeWeatherTypes = 0;
 		tr.weatherSystem->activeWindObjects = 0;
 		tr.weatherSystem->frozen = false;
-		tr.weatherSystem->pain = 0.0f;
 	}
 	else if (g_Weather->integer == 0)
 	{
@@ -626,7 +652,6 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 		tr.weatherSystem->activeWeatherTypes = 0;
 		tr.weatherSystem->activeWindObjects = 0;
 		tr.weatherSystem->frozen = false;
-		tr.weatherSystem->pain = 0.0f;
 	}
 
 	// Freeze / UnFreeze - Stops All Particle Motion Updates
@@ -799,7 +824,7 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].velocityOrientationScale = 1.0f;
 
-		tr.weatherSystem->pain = 0.1f;
+		//tr.weatherSystem->pain = 0.1f;
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.34f, 0.7f, 0.34f, 0.7f);
 		VectorScale(
@@ -822,7 +847,7 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].velocityOrientationScale = 1.0f;
 
-		tr.weatherSystem->pain = 0.1f;
+		//tr.weatherSystem->pain = 0.1f;
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.34f, 0.7f, 0.34f, 0.7f);
 		VectorScale(
@@ -873,10 +898,7 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 		tr.weatherSystem->weatherSlots[WEATHER_SNOW].velocityOrientationScale = 0.0f;
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SNOW].color, 0.75f, 0.75f, 0.75f, 0.75f);
-		VectorScale(
-			tr.weatherSystem->weatherSlots[WEATHER_SNOW].color,
-			0.75f,
-			tr.weatherSystem->weatherSlots[WEATHER_SNOW].color);
+		VectorScale(tr.weatherSystem->weatherSlots[WEATHER_SNOW].color, 0.75f, tr.weatherSystem->weatherSlots[WEATHER_SNOW].color);
 	}
 	else if (g_Weather->integer == 1)
 	{
@@ -894,10 +916,7 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 		tr.weatherSystem->weatherSlots[WEATHER_SNOW].velocityOrientationScale = 0.0f;
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SNOW].color, 0.75f, 0.75f, 0.75f, 0.75f);
-		VectorScale(
-			tr.weatherSystem->weatherSlots[WEATHER_SNOW].color,
-			0.75f,
-			tr.weatherSystem->weatherSlots[WEATHER_SNOW].color);
+		VectorScale(tr.weatherSystem->weatherSlots[WEATHER_SNOW].color, 0.75f, tr.weatherSystem->weatherSlots[WEATHER_SNOW].color);
 	}
 
 	// Create A Some stuff
@@ -972,7 +991,7 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SAND].color, 0.9f, 0.6f, 0.0f, 0.5f);
 	}
-	else if (Q_stricmp(token, "sandstorm") == 0)
+	else if (Q_stricmp(token, "Sandstorm") == 0)
 	{
 		if (!tr.weatherSystem->weatherSlots[WEATHER_SAND].active)
 			tr.weatherSystem->activeWeatherTypes++;
@@ -1174,7 +1193,6 @@ void RE_WorldEffectCommand(const char* command) // rend2 sp
 		ri.Printf(PRINT_ALL, "	lightrain\n");
 		ri.Printf(PRINT_ALL, "	rain\n");
 		ri.Printf(PRINT_ALL, "	acidrain\n");
-		ri.Printf(PRINT_ALL, "	lava\n");
 		ri.Printf(PRINT_ALL, "	heavyrain\n");
 		ri.Printf(PRINT_ALL, "	snow\n");
 		ri.Printf(PRINT_ALL, "	spacedust (count)\n");
@@ -1262,7 +1280,6 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 			{
 				chunkIndex = ((int(centerZoneOffsetX + numMinZonesX) + x + 1) % 3 + 3) % 3;
 				chunkIndex += (((int(centerZoneOffsetY + numMinZonesY) + y + 1) % 3 + 3) % 3) * 3;
-
 				VectorSet2(
 					zoneOffsets[chunkIndex],
 					x,

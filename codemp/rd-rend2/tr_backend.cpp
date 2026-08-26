@@ -39,40 +39,47 @@ static float	s_flipMatrix[16] = {
 /*
 ** GL_Bind
 */
-void GL_Bind(image_t* image) {
+void GL_Bind(image_t* image)
+{
 	int texnum;
 
-	if (!image) {
+	if (!image)
+	{
 		ri->Printf(PRINT_WARNING, "GL_Bind: NULL image\n");
 		texnum = tr.defaultImage->texnum;
 	}
-	else {
+	else
+	{
 		texnum = image->texnum;
 	}
 
-	if (r_nobind->integer && tr.dlightImage) {
+	if (r_nobind->integer && tr.dlightImage)
+	{// performance evaluation option
 		texnum = tr.dlightImage->texnum;
 	}
 
-	if (glState.currenttextures[glState.currenttmu] != texnum) {
-		// SAFE: only write frameUsed if image is valid
-		if (image) {
+	if (glState.currenttextures[glState.currenttmu] != texnum)
+	{
+		if (image)
+		{
 			image->frameUsed = tr.frameCount;
 		}
-
 		glState.currenttextures[glState.currenttmu] = texnum;
 
-		// SAFE: guard ALL flag checks
-		if (image && (image->flags & IMGFLAG_CUBEMAP)) {
+		if (image && (image->flags & IMGFLAG_CUBEMAP))
+		{
 			qglBindTexture(GL_TEXTURE_CUBE_MAP, texnum);
 		}
-		else if (image && (image->flags & IMGFLAG_3D)) {
+		else if (image && (image->flags & IMGFLAG_3D))
+		{
 			qglBindTexture(GL_TEXTURE_3D, texnum);
 		}
-		else if (image && (image->flags & IMGFLAG_2D_ARRAY)) {
+		else if (image && (image->flags & IMGFLAG_2D_ARRAY))
+		{
 			qglBindTexture(GL_TEXTURE_2D_ARRAY, texnum);
 		}
-		else {
+		else
+		{
 			qglBindTexture(GL_TEXTURE_2D, texnum);
 		}
 	}
@@ -81,7 +88,7 @@ void GL_Bind(image_t* image) {
 /*
 ** GL_SelectTexture
 */
-void GL_SelectTexture(const int unit)
+void GL_SelectTexture(int unit)
 {
 	if (glState.currenttmu == unit)
 	{
@@ -102,7 +109,6 @@ void GL_SelectTexture(const int unit)
 void GL_BindToTMU(image_t* image, int tmu)
 {
 	int		texnum;
-	int     oldtmu = glState.currenttmu;
 
 	if (!image)
 		texnum = 0;
@@ -173,7 +179,7 @@ void GL_DepthRange(float min, float max)
 ** This routine is responsible for setting the most commonly changed state
 ** in Q3.
 */
-void GL_State(const uint32_t stateBits)
+void GL_State(uint32_t stateBits)
 {
 	uint32_t diff = stateBits ^ glState.glStateBits;
 
@@ -297,13 +303,18 @@ void GL_State(const uint32_t stateBits)
 	}
 
 	//
-	// check colormask
+	// check colormasks
 	//
-	if (diff & GLS_COLORMASK_BITS)
+	if (diff & (GLS_COLORMASK_BITS | GLS_COLORMASK_BUF1))
 	{
 		if (stateBits & GLS_COLORMASK_BITS)
 		{
 			qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		}
+		else if (stateBits & GLS_COLORMASK_BUF1)
+		{
+			qglColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+			qglColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		}
 		else
 		{
@@ -405,7 +416,7 @@ void GL_VertexAttribPointers(
 	assert(attributes != nullptr || numAttributes == 0);
 
 	uint32_t newAttribs = 0;
-	for (int i = 0; i < numAttributes; i++)
+	for (size_t i = 0; i < numAttributes; i++)
 	{
 		vertexAttribute_t& attrib = attributes[i];
 		vertexAttribute_t& currentAttrib = glState.currentVaoAttribs[attrib.index];
@@ -465,7 +476,7 @@ void GL_DrawIndexed(
 	GLenum primitiveType,
 	int numIndices,
 	GLenum indexType,
-	int offset,
+	size_t offset,
 	int numInstances,
 	int baseVertex)
 {
@@ -542,12 +553,12 @@ static void RB_Hyperspace(void) {
 	qglClearBufferfv(GL_COLOR, 0, v);
 }
 
-static void SetViewportAndScissor(void)
-{
+static void SetViewportAndScissor(void) {
 	GL_SetProjectionMatrix(backEnd.viewParms.projectionMatrix);
 
 	// set the window clipping
-	GL_SetViewportAndScissor(backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight);
+	GL_SetViewportAndScissor(backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
+		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight);
 }
 
 /*
@@ -558,7 +569,8 @@ Any mirrored or portaled views have already been drawn, so prepare
 to actually render the visible surfaces for this view
 =================
 */
-static void RB_BeginDrawingView(void) {
+static void RB_BeginDrawingView(void)
+{
 	int clearBits = 0;
 
 	// we will need to change the projection matrix before drawing
@@ -567,21 +579,14 @@ static void RB_BeginDrawingView(void) {
 
 	// FIXME: HUGE HACK: render to the screen fbo if we've already postprocessed the frame and aren't drawing more world
 	// drawing more world check is in case of double renders, such as skyportals
-	if (backEnd.viewParms.targetFbo == NULL)
+	FBO_t* targetFBO = backEnd.viewParms.targetFbo;
+	if (backEnd.viewParms.targetFbo == NULL &&
+		tr.renderFbo &&
+		!(backEnd.framePostProcessed && (backEnd.refdef.rdflags & RDF_NOWORLDMODEL)))
 	{
-		if (!tr.renderFbo || (backEnd.framePostProcessed && (backEnd.refdef.rdflags & RDF_NOWORLDMODEL)))
-		{
-			FBO_Bind(NULL);
-		}
-		else
-		{
-			FBO_Bind(tr.renderFbo);
-		}
+		targetFBO = tr.renderFbo;
 	}
-	else
-	{
-		FBO_Bind(backEnd.viewParms.targetFbo);
-	}
+	FBO_Bind(targetFBO);
 
 	//
 	// set the modelview matrix for the viewer
@@ -613,7 +618,11 @@ static void RB_BeginDrawingView(void) {
 #endif
 	}
 
-	if (tr.refdef.rdflags & RDF_AUTOMAP || (!(backEnd.refdef.rdflags & RDF_NOWORLDMODEL)))
+	if (
+#ifndef REND2_SP
+		tr.refdef.rdflags & RDF_AUTOMAP ||
+#endif
+		(!(backEnd.refdef.rdflags & RDF_NOWORLDMODEL)))
 	{
 		if (tr.world && tr.world->globalFog)
 		{
@@ -634,8 +643,7 @@ static void RB_BeginDrawingView(void) {
 	if (backEnd.viewParms.targetFbo == NULL)
 	{
 		// Clear the glow target
-		float black[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-		qglClearBufferfv(GL_COLOR, 1, black);
+		qglClearBufferfv(GL_COLOR, 1, colorBlack);
 	}
 
 	if ((backEnd.refdef.rdflags & RDF_HYPERSPACE))
@@ -643,6 +651,17 @@ static void RB_BeginDrawingView(void) {
 		RB_Hyperspace();
 		return;
 	}
+
+	if (clearBits &&
+		!(backEnd.viewParms.flags & VPF_NOCLEAR) &&
+		!(backEnd.viewParms.flags & VPF_DEPTHSHADOW) &&
+		tr.depthVelocityFbo != nullptr)
+	{
+		FBO_Bind(tr.depthVelocityFbo);
+		qglClearBufferfv(GL_COLOR, 0, colorBlack);
+	}
+
+	FBO_Bind(targetFBO);
 
 	// we will only draw a sun if there was sky rendered in this view
 	backEnd.skyRenderedThisView = qfalse;
@@ -659,10 +678,10 @@ static void RB_BeginDrawingView(void) {
 		plane[2] = backEnd.viewParms.portalPlane.normal[2];
 		plane[3] = backEnd.viewParms.portalPlane.dist;
 
-		plane2[0] = DotProduct(backEnd.viewParms.ori->axis[0], plane);
-		plane2[1] = DotProduct(backEnd.viewParms.ori->axis[1], plane);
-		plane2[2] = DotProduct(backEnd.viewParms.ori->axis[2], plane);
-		plane2[3] = DotProduct(plane, backEnd.viewParms.ori->origin) - plane[3];
+		plane2[0] = DotProduct(backEnd.viewParms.ori.axis[0], plane);
+		plane2[1] = DotProduct(backEnd.viewParms.ori.axis[1], plane);
+		plane2[2] = DotProduct(backEnd.viewParms.ori.axis[2], plane);
+		plane2[3] = DotProduct(plane, backEnd.viewParms.ori.origin) - plane[3];
 #endif
 		GL_SetModelviewMatrix(s_flipMatrix);
 	}
@@ -1176,35 +1195,24 @@ Replaces assert with a debug print to avoid hard crashes.
 */
 void RB_AddDrawItem(Pass* pass, uint32_t sortKey, const DrawItem& drawItem)
 {
-	// If pass is NULL, this is a 2D draw call → draw immediately.
+	// There will be no pass if we are drawing a 2D object.
 	if (pass)
 	{
-		// Check for overflow in the pass draw list.
 		if (pass->numDrawItems >= pass->maxDrawItems)
 		{
 			// Replaces assert(!"Ran out of space for pass");
 #ifdef _DEBUG
-			Com_Printf(
-				S_COLOR_RED
-				"RB_AddDrawItem: Ran out of space for pass (max=%d)\n"
-				S_COLOR_WHITE,
-				pass->maxDrawItems
-			);
+			Com_Printf(S_COLOR_RED"RB_AddDrawItem: Ran out of space for pass (max=%d)\n" S_COLOR_WHITE, pass->maxDrawItems);
 #endif
 			return;
 		}
 
-		// Store sort key and draw item.
 		pass->sortKeys[pass->numDrawItems] = sortKey;
-		pass->drawItems[pass->numDrawItems] = drawItem;
-
-		// Increment count explicitly.
-		pass->numDrawItems++;
+		pass->drawItems[pass->numDrawItems++] = drawItem;
 	}
 	else
 	{
-		// No pass → immediate draw.
-		uint32_t drawOrder[1] = { 0 };
+		uint32_t drawOrder[] = { 0 };
 		RB_DrawItems(1, &drawItem, drawOrder);
 	}
 }
@@ -1246,8 +1254,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 {
 	shader_t* oldShader = nullptr;
 	int oldEntityNum = -1;
-	int oldSort = -1;
-	int oldDepthRange = 0;
 	CBoneCache* oldBoneCache = nullptr;
 
 	drawSurf_t* drawSurf = drawSurfs;
@@ -1261,16 +1267,13 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemapIndex, &postRender);
 		assert(shader != nullptr);
 
-		if (shader->useSimpleDepthShader == qtrue)
-			shader = tr.defaultShader;
-
-		if (shader->sort != SS_OPAQUE || shader->useDistortion)
+		if (shader->sort != SS_OPAQUE || shader->useDistortion || shader->depthPrepass == DEPTHPREPASS_SKIP)
 		{
 			// Don't draw yet, let's see what's to come
 			continue;
 		}
 
-		if (shader->useSimpleDepthShader == qtrue)
+		if (shader->depthPrepass == DEPTHPREPASS_SIMPLE)
 			shader = tr.defaultShader;
 
 		if (*drawSurf->surface == SF_MDX)
@@ -1309,8 +1312,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 			oldShader = shader;
 		}
 
-		oldSort = drawSurf->sort;
-
 		// change the modelview matrix if needed
 		if (entityNum != oldEntityNum)
 		{
@@ -1337,9 +1338,7 @@ static void RB_SubmitDrawSurfs(
 {
 	shader_t* oldShader = nullptr;
 	int oldEntityNum = -1;
-	int oldSort = -1;
 	int oldFogNum = -1;
-	int oldDepthRange = 0;
 	int oldDlighted = 0;
 	int oldPostRender = 0;
 	int oldCubemapIndex = -1;
@@ -1386,8 +1385,6 @@ static void RB_SubmitDrawSurfs(
 			continue;
 		}
 
-		oldSort = drawSurf->sort;
-
 		//
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
@@ -1411,6 +1408,7 @@ static void RB_SubmitDrawSurfs(
 			oldDlighted = dlighted;
 			oldPostRender = postRender;
 			oldCubemapIndex = cubemapIndex;
+			tess.dlightBits = dlighted;
 		}
 
 		if (entityNum != oldEntityNum)
@@ -1424,10 +1422,6 @@ static void RB_SubmitDrawSurfs(
 
 		if (backEnd.refractionFill != isDistortionShader)
 			continue;
-
-		// ugly hack for now...
-		// find better way to pass dlightbits
-		tess.dlightBits = drawSurf->dlightBits;
 
 		// add the triangles for this surface
 		rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
@@ -1465,7 +1459,7 @@ static void RB_SubmitRenderPass(
 RB_RenderDrawSurfList
 ==================
 */
-static void RB_RenderDrawSurfList(drawSurf_t* drawSurfs, const int numDrawSurfs)
+static void RB_RenderDrawSurfList(drawSurf_t* drawSurfs, int numDrawSurfs)
 {
 	int estimatedNumShaderStages = (backEnd.viewParms.flags & VPF_DEPTHSHADOW) ? 1 : 4;
 
@@ -1506,7 +1500,7 @@ static void RB_RenderDrawSurfList(drawSurf_t* drawSurfs, const int numDrawSurfs)
 			backEnd.currentEntity = &tr.worldEntity;
 			RB_BeginSurface(tr.volumetricFogCapShader, tr.world->globalFogIndex, 0);
 			vec3_t origin, left, up;
-			vec4_t color;
+			vec4_t color{};
 			VectorCopy4(tr.world->globalFog->color, color);
 
 			float depthToRenderTo = tr.world->globalFog->parms.depthForOpaque;
@@ -1533,7 +1527,9 @@ static void RB_RenderDrawSurfList(drawSurf_t* drawSurfs, const int numDrawSurfs)
 	}
 
 	// Do the drawing and release memory
-	RB_SubmitRenderPass(*backEndData->currentPass, *backEndData->perFrameMemory);
+	RB_SubmitRenderPass(
+		*backEndData->currentPass,
+		*backEndData->perFrameMemory);
 
 	backEndData->perFrameMemory->ResetTo(allocMark);
 	backEndData->currentPass = nullptr;
@@ -1542,6 +1538,9 @@ static void RB_RenderDrawSurfList(drawSurf_t* drawSurfs, const int numDrawSurfs)
 	backEnd.refdef.floatTime = originalTime;
 	FBO_Bind(fbo);
 	GL_SetModelviewMatrix(backEnd.viewParms.world.modelViewMatrix);
+
+	if (backEnd.viewParms.viewParmType == VPT_PORTAL || backEnd.viewParms.viewParmType == VPT_SKYPORTAL)
+		tr.portalRenderedThisFrame = qtrue;
 }
 
 /*
@@ -1558,8 +1557,7 @@ RB_SetGL2D
 
 ================
 */
-void RB_SetGL2D(void)
-{
+void	RB_SetGL2D(void) {
 	matrix_t matrix;
 	int width, height;
 
@@ -1673,16 +1671,15 @@ void RE_StretchRaw(const int x, const int y, const int w, const int h, const int
 	VectorSet2(texCoords[2], (cols - 0.5f) / cols, (rows - 0.5f) / rows);
 	VectorSet2(texCoords[3], 0.5f / cols, (rows - 0.5f) / rows);
 
-	GLSL_BindProgram(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE]);
+	GLSL_BindProgram(&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES]);
 
-	GLSL_SetUniformMatrix4x4(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE], UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
-	GLSL_SetUniformVec4(&tr.textureColorShader[TEXCOLORDEF_SCREEN_TRIANGLE], UNIFORM_COLOR, colorWhite);
+	GLSL_SetUniformMatrix4x4(&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES], UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+	GLSL_SetUniformVec4(&tr.textureColorShader[TEXCOLORDEF_USE_VERTICES], UNIFORM_COLOR, colorWhite);
 
 	RB_InstantQuad2(quadVerts, texCoords);
 }
 
-void RE_UploadCinematic(const int cols, const int rows, const byte* data, const int client, const qboolean dirty)
-{
+void RE_UploadCinematic(int cols, int rows, const byte* data, int client, qboolean dirty) {
 	GL_Bind(tr.scratchImage[client]);
 
 	// if the scratchImage isn't in the format we want, specify it as a new texture
@@ -1747,6 +1744,7 @@ static const void* RB_StretchPic(const void* data) {
 	RB_SetGL2D();
 
 	shader = cmd->shader;
+	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();
@@ -1830,6 +1828,7 @@ static const void* RB_RotatePic(const void* data)
 	RB_SetGL2D();
 
 	shader = cmd->shader;
+	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();
@@ -1923,6 +1922,7 @@ static const void* RB_RotatePic2(const void* data)
 	RB_SetGL2D();
 
 	shader = cmd->shader;
+	shader = (shader->remappedShader) ? shader->remappedShader : shader;
 	if (shader != tess.shader) {
 		if (tess.numIndexes) {
 			RB_EndSurface();
@@ -1991,14 +1991,43 @@ static const void* RB_RotatePic2(const void* data)
 	return (const void*)(cmd + 1);
 }
 
+#ifdef REND2_SP
+/*
+=============
+RB_ScissorPic
+=============
+*/
+static const void* RB_Scissor(const void* data)
+{
+	const scissorCommand_t* cmd;
+
+	cmd = (const scissorCommand_t*)data;
+
+	if (!backEnd.projection2D)
+	{
+		RB_SetGL2D();
+	}
+
+	if (cmd->x >= 0)
+	{
+		qglScissor(cmd->x, (glConfig.vidHeight - cmd->y - cmd->h), cmd->w, cmd->h);
+	}
+	else
+	{
+		qglScissor(0, 0, glConfig.vidWidth, glConfig.vidHeight);
+	}
+
+	return (const void*)(cmd + 1);
+}
+#endif
+
 /*
 =============
 RB_PrefilterEnvMap
 =============
 */
 
-static const void* RB_PrefilterEnvMap(const void* data)
-{
+static const void* RB_PrefilterEnvMap(const void* data) {
 	const convolveCubemapCommand_t* cmd = (const convolveCubemapCommand_t*)data;
 
 	// finish any 2D drawing if needed
@@ -2056,7 +2085,7 @@ static const void* RB_PrefilterEnvMap(const void* data)
 
 		GL_SetViewportAndScissor(0, 0, width, height);
 
-		vec4_t viewInfo;
+		vec4_t viewInfo{};
 		VectorSet4(viewInfo, maxLuma, level, roughnessMips, level / roughnessMips);
 		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
 		RB_InstantTriangle();
@@ -2100,7 +2129,7 @@ static void RB_RenderSSAO()
 
 	FBO_Bind(tr.screenSsaoFbo);
 
-	GL_SetViewportAndScissor(0, 0, tr.quarterFbo[1]->width, tr.quarterFbo[1]->height);
+	GL_SetViewportAndScissor(0, 0, tr.screenSsaoFbo->width, tr.screenSsaoFbo->height);
 
 	GLSL_BindProgram(&tr.depthBlurShader[1]);
 
@@ -2114,14 +2143,38 @@ static void RB_RenderSSAO()
 static void RB_RenderDepthOnly(drawSurf_t* drawSurfs, int numDrawSurfs)
 {
 	backEnd.depthFill = qtrue;
-	qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+	bool needVelocityBuffer =
+		!(backEnd.viewParms.flags & VPF_DEPTHSHADOW) &&
+		tr.depthVelocityFbo != nullptr;
+	FBO_t* oldFbo = glState.currentFBO;
+	if (needVelocityBuffer)
+	{
+		FBO_Bind(tr.depthVelocityFbo);
+	}
+	else
+	{
+		qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	}
 	RB_RenderDrawSurfList(drawSurfs, numDrawSurfs);
+	if (needVelocityBuffer)
+		FBO_Bind(oldFbo);
+
 	qglColorMask(
 		!backEnd.colorMask[0],
 		!backEnd.colorMask[1],
 		!backEnd.colorMask[2],
 		!backEnd.colorMask[3]);
 	backEnd.depthFill = qfalse;
+
+	if (tr.msaaResolveVelocityFbo && needVelocityBuffer)
+	{
+		FBO_FastBlit(
+			tr.depthVelocityFbo, NULL,
+			tr.msaaResolveVelocityFbo, NULL,
+			GL_COLOR_BUFFER_BIT,
+			GL_NEAREST);
+	}
 
 	// Only resolve the main pass depth
 	if (tr.msaaResolveFbo && backEnd.viewParms.targetFbo == tr.renderFbo)
@@ -2263,6 +2316,9 @@ static void RB_UpdateCameraConstants(gpuFrame_t* frame)
 		VectorCopy(viewBasis[2], cameraBlock.viewUp);
 		VectorCopy(tr.cachedViewParms[i].ori.origin, cameraBlock.viewOrigin);
 
+		if (backEnd.viewParms.viewParmType == VPT_MAIN && frame->currentScene == 0)
+			memcpy(frame->viewProjectionMatrix, cameraBlock.viewProjectionMatrix, sizeof(matrix_t));
+
 		tr.cameraUboOffsets[tr.cachedViewParms[i].currentViewParm] = RB_AppendConstantsData(
 			frame, &cameraBlock, sizeof(cameraBlock));
 	}
@@ -2306,6 +2362,7 @@ static void RB_UpdateSceneConstants(gpuFrame_t* frame, const trRefdef_t* refdef)
 		sceneBlock.globalFogIndex = -1;
 	sceneBlock.currentTime = refdef->floatTime;
 	sceneBlock.frameTime = refdef->frameTime;
+	frame->time = refdef->floatTime;
 
 	tr.sceneUboOffset = RB_AppendConstantsData(
 		frame, &sceneBlock, sizeof(sceneBlock));
@@ -2396,7 +2453,6 @@ static void RB_UpdateFogsConstants(gpuFrame_t* frame)
 		fogData->hasPlane = 0;
 		fogsBlock.numFogs++;
 	}
-
 	tr.fogsUboOffset = RB_AppendConstantsData(
 		frame, &fogsBlock, sizeof(fogsBlock));
 }
@@ -2481,6 +2537,13 @@ static void ComputeDeformValues(
 	*type = DEFORM_NONE;
 	*waveFunc = GF_NONE;
 
+	// Handled via the CGEN_DISINTEGRATION_2 color gen, as both just happen at the same time
+	/*if (refEntity->e.renderfx & RF_DISINTEGRATE2)
+	{
+		*type = DEFORM_DISINTEGRATION;
+		return;
+	}*/
+
 	if (!ShaderRequiresCPUDeforms(shader))
 	{
 		// only support the first one
@@ -2546,10 +2609,10 @@ static void ComputeDeformValues(
 		case DEFORM_PROJECTION_SHADOW:
 			*type = DEFORM_PROJECTION_SHADOW;
 			/*
-			deformParams0[0] = backEnd.ori->axis[0][2];
-			deformParams0[1] = backEnd.ori->axis[1][2];
-			deformParams0[2] = backEnd.ori->axis[2][2];
-			deformParams0[3] = backEnd.ori->origin[2] - refEntity->e.shadowPlane;
+			deformParams0[0] = backEnd.ori.axis[0][2];
+			deformParams0[1] = backEnd.ori.axis[1][2];
+			deformParams0[2] = backEnd.ori.axis[2][2];
+			deformParams0[3] = backEnd.ori.origin[2] - refEntity->e.shadowPlane;
 
 			vec3_t lightDir;
 			VectorCopy(refEntity->modelLightDir, lightDir);
@@ -2906,8 +2969,7 @@ RB_SwapBuffers
 
 =============
 */
-static const void* RB_SwapBuffers(const void* data)
-{
+static const void* RB_SwapBuffers(const void* data) {
 	const swapBuffersCommand_t* cmd;
 
 	// finish any 2D drawing if needed
@@ -2931,7 +2993,7 @@ static const void* RB_SwapBuffers(const void* data)
 		long sum = 0;
 		unsigned char* stencilReadback;
 
-		stencilReadback = (unsigned char*)ri->Hunk_AllocateTempMemory(glConfig.vidWidth * glConfig.vidHeight);
+		stencilReadback = (unsigned char*)Hunk_AllocateTempMemory(glConfig.vidWidth * glConfig.vidHeight);
 		qglReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, stencilReadback);
 
 		for (i = 0; i < glConfig.vidWidth * glConfig.vidHeight; i++) {
@@ -2939,7 +3001,7 @@ static const void* RB_SwapBuffers(const void* data)
 		}
 
 		backEnd.pc.c_overDraw += sum;
-		ri->Hunk_FreeTempMemory(stencilReadback);
+		Hunk_FreeTempMemory(stencilReadback);
 	}
 
 	if (!backEnd.framePostProcessed)
@@ -3367,6 +3429,11 @@ void RB_ExecuteRenderCommands(const void* data) {
 		case RC_ROTATE_PIC2:
 			data = RB_RotatePic2(data);
 			break;
+#ifdef REND2_SP
+		case RC_SCISSOR:
+			data = RB_Scissor(data);
+			break;
+#endif
 		case RC_DRAW_SURFS:
 			data = RB_DrawSurfs(data);
 			break;

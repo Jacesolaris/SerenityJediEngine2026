@@ -835,7 +835,7 @@ model_t* R_GetModelByHandle(const qhandle_t index);
 int	R_LerpTag(orientation_t* tag, const qhandle_t handle, const int startFrame, const int endFrame, const float frac, const char* tagName);
 void R_ModelBounds(const qhandle_t handle, vec3_t mins, vec3_t maxs);
 
-void R_model_list_f(void);
+void R_Modellist_f(void);
 
 //====================================================
 constexpr auto MAX_LIGHTMAPS = 256;
@@ -1312,7 +1312,7 @@ void	GL_Cull(int cullType);
 #define GLS_DEFAULT			GLS_DEPTHMASK_TRUE
 #define GLS_ALPHA			(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA)
 
-void	RE_StretchRaw(int x, int y, int w, int h, int cols, int rows, const byte* data, int client, qboolean dirty);
+void	RE_StretchRaw(const int x, const int y, const int w, const int h, const int cols, const int rows, const byte* data, const int client, const qboolean dirty);
 void	RE_UploadCinematic(int cols, int rows, const byte* data, int client, qboolean dirty);
 
 void		RE_BeginFrame(stereoFrame_t stereoFrame);

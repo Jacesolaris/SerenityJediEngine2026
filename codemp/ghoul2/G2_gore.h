@@ -96,13 +96,13 @@ class CRagDollUpdateParams
 {
 public:
 	virtual ~CRagDollUpdateParams() = default;
-	vec3_t angles;
-	vec3_t position;
-	vec3_t scale;
-	vec3_t velocity;
+	vec3_t angles = { 0.0f, 0.0f, 0.0f };
+	vec3_t position = { 0.0f, 0.0f, 0.0f };
+	vec3_t scale = { 0.0f, 0.0f, 0.0f };
+	vec3_t velocity = { 0.0f, 0.0f, 0.0f };
 	//CServerEntity *me;
-	int me; //index!
-	int settleFrame;
+	int me = 0; //index!
+	int settleFrame = 0;
 
 	//at some point I'll want to make VM callbacks in here. For now I am just doing nothing.
 	virtual void EffectorCollision(const SRagDollEffectorCollision& data)

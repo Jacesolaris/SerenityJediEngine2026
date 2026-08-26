@@ -226,7 +226,8 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 	}
 #endif
 
-	if (static_cast<int>(ent->reType) < 0 || ent->reType >= RT_MAX_REF_ENTITY_TYPE) {
+	if (static_cast<int>(ent->reType) < 0 || ent->reType >= RT_MAX_SP_REF_ENTITY_TYPE || ent->reType == RT_MAX_MP_REF_ENTITY_TYPE || ent->reType >= RT_MAX_REF_ENTITY_TYPE)
+	{
 		Com_Error(ERR_DROP, "RE_AddRefEntityToScene: bad reType %i", ent->reType);
 	}
 
@@ -262,50 +263,20 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
  ************************************************************************************************/
 void RE_AddMiniRefEntityToScene(const miniRefEntity_t* ent)
 {
-#if 0
-	refEntity_t* parent;
-#endif
-
 	if (!tr.registered)
 	{
 		return;
 	}
 	if (!ent)
 	{
-		refEntParent = -1;
 		return;
 	}
 
-#if 1 //i hate you minirefent!
 	refEntity_t		tempEnt;
 
-	memcpy(&tempEnt, ent, sizeof * ent);
-	memset((char*)&tempEnt + sizeof * ent, 0, sizeof tempEnt - sizeof * ent);
+	memcpy(&tempEnt, ent, sizeof(*ent));
+	memset(((char*)&tempEnt) + sizeof(*ent), 0, sizeof(tempEnt) - sizeof(*ent));
 	RE_AddRefEntityToScene(&tempEnt);
-#else
-
-	if (ent->reType < 0 || ent->reType >= RT_MAX_REF_ENTITY_TYPE)
-	{
-		Com_Error(ERR_DROP, "RE_AddMiniRefEntityToScene: bad reType %i", ent->reType);
-	}
-
-	if (!r_numentities || refEntParent == -1 || r_numminientities >= MAX_MINI_ENTITIES)
-	{ //rww - add it as a refent also if we run out of minis
-//		Com_Error( ERR_DROP, "RE_AddMiniRefEntityToScene: mini without parent ref ent");
-		refEntity_t		tempEnt;
-
-		memcpy(&tempEnt, ent, sizeof(*ent));
-		memset(((char*)&tempEnt) + sizeof(*ent), 0, sizeof(tempEnt) - sizeof(*ent));
-		RE_AddRefEntityToScene(&tempEnt);
-		return;
-	}
-
-	parent = &backEndData->entities[refEntParent].e;
-	parent->uRefEnt.uMini.miniCount++;
-
-	backEndData->miniEntities[r_numminientities].e = *ent;
-	r_numminientities++;
-#endif
 }
 
 /*

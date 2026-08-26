@@ -1486,17 +1486,17 @@ qboolean CG_CalcFOVFromX(float fov_x)
 			|| cg.snap->ps.legsAnim == BOTH_KNEES2TO1)
 		{
 			fov_x += 25.0f * perc;
-			fov_y -= cos(cg.time * 0.0008f) * 5.0f * perc;
+			fov_y -= cos(cg.time * 0.0004f) * 5.0f * perc;
 		}
 		else if (cg.snap->ps.forcePowersActive & 1 << FP_ABSORB)
 		{
 			fov_x += 15.0f * perc;
-			fov_y -= cos(cg.time * 0.0008f) * 2.0f * perc;
+			fov_y -= cos(cg.time * 0.0004f) * 2.0f * perc;
 		}
 		else
 		{
-			fov_x += 45.0f * perc;
-			fov_y -= cos(cg.time * 0.0018f) * 15.0f * perc;
+			fov_x += 35.0f * perc;
+			fov_y -= cos(cg.time * 0.009f) * 10.0f * perc;
 		}
 	}
 

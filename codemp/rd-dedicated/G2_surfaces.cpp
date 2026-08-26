@@ -150,7 +150,7 @@ mdxmSurface_t* G2_FindSurface(const CGhoul2Info* ghlInfo, const surfaceInfo_v& s
 }
 
 // set a named surface offFlags - if it doesn't find a surface with this name in the list then it will add one.
-qboolean G2_SetSurfaceOnOff(const CGhoul2Info* ghlInfo, surfaceInfo_v& slist, const char* surfaceName, const int offFlags)
+qboolean G2_SetSurfaceOnOff(CGhoul2Info* ghlInfo, surfaceInfo_v& slist, const char* surfaceName, const int offFlags)
 {
 	int					surfIndex = -1;
 	// find the model we want
@@ -228,7 +228,7 @@ void G2_SetSurfaceOnOffFromSkin(CGhoul2Info* ghlInfo, const qhandle_t renderSkin
 }
 
 // return a named surfaces off flags - should tell you if this surface is on or off.
-int G2_IsSurfaceOff(const CGhoul2Info* ghlInfo, const surfaceInfo_v& slist, const char* surfaceName)
+int G2_IsSurfaceOff(CGhoul2Info* ghlInfo, surfaceInfo_v& slist, const char* surfaceName)
 {
 	const model_t* mod = const_cast<model_t*>(ghlInfo->currentModel);
 	int surfIndex = -1;
@@ -419,7 +419,7 @@ qboolean G2_SetRootSurface(CGhoul2Info_v& ghoul2, const int modelIndex, const ch
 	return qfalse;
 }
 
-extern int G2_DecideTraceLod(const CGhoul2Info& ghoul2, const int useLod);
+extern int G2_DecideTraceLod(CGhoul2Info& ghoul2, int useLod);
 
 int G2_AddSurface(CGhoul2Info* ghoul2, const int surfaceNumber, const int polyNumber, const float BarycentricI, const float BarycentricJ, int lod)
 {
@@ -496,7 +496,7 @@ qboolean G2_RemoveSurface(surfaceInfo_v& slist, const int index)
 	return qfalse;
 }
 
-int G2_GetParentSurface(const CGhoul2Info* ghlInfo, const int index)
+int G2_GetParentSurface(CGhoul2Info* ghlInfo, const int index)
 {
 	const auto mod = const_cast<model_t*>(ghlInfo->currentModel);
 	const auto surfIndexes = reinterpret_cast<mdxmHierarchyOffsets_t*>(reinterpret_cast<byte*>(mod->mdxm) + sizeof(mdxmHeader_t));
@@ -509,7 +509,7 @@ int G2_GetParentSurface(const CGhoul2Info* ghlInfo, const int index)
 	return surfInfo->parentIndex;
 }
 
-int G2_GetSurfaceIndex(const CGhoul2Info* ghlInfo, const char* surfaceName)
+int G2_GetSurfaceIndex(CGhoul2Info* ghlInfo, const char* surfaceName)
 {
 	const auto mod = const_cast<model_t*>(ghlInfo->currentModel);
 	int flags;
@@ -517,7 +517,7 @@ int G2_GetSurfaceIndex(const CGhoul2Info* ghlInfo, const char* surfaceName)
 	return G2_IsSurfaceLegal(mod, surfaceName, &flags);
 }
 
-int G2_IsSurfaceRendered(const CGhoul2Info* ghlInfo, const char* surfaceName, const surfaceInfo_v& slist)
+int G2_IsSurfaceRendered(CGhoul2Info* ghlInfo, const char* surfaceName, surfaceInfo_v& slist)
 {
 	int flags = 0; //, surfFlags = 0;
 	int surfIndex = 0;

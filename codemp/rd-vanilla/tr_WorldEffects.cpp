@@ -260,11 +260,11 @@ public:
 
 	using TFlags = ratl::bits_vs<FLAG_MAX>;
 
-	float mAlpha;
+	float mAlpha = 1.0f;
 	TFlags mFlags;
-	CVec3 mPosition;
-	CVec3 mVelocity;
-	float mMass; // A higher number will more greatly resist force and result in greater gravity
+	CVec3 mPosition = { 0, 0, 0 };
+	CVec3 mVelocity = { 0, 0, 0 };
+	float mMass = 1.0f; // A higher number will more greatly resist force and result in greater gravity
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -273,17 +273,17 @@ public:
 class CWindZone
 {
 public:
-	bool mGlobal;
-	SVecRange mRBounds;
-	SVecRange mRVelocity;
-	SIntRange mRDuration;
-	SIntRange mRDeadTime;
-	float mMaxDeltaVelocityPerUpdate;
-	float mChanceOfDeadTime;
+	bool mGlobal = false;
+	SVecRange mRBounds = {};
+	SVecRange mRVelocity = {};
+	SIntRange mRDuration = {};
+	SIntRange mRDeadTime = {};
+	float mMaxDeltaVelocityPerUpdate = 0.0f;
+	float mChanceOfDeadTime = 0.0f;
 
-	CVec3 mCurrentVelocity;
-	CVec3 mTargetVelocity;
-	int mTargetVelocityTimeRemaining;
+	CVec3 mCurrentVelocity = { 0, 0, 0 };
+	CVec3 mTargetVelocity = { 0, 0, 0 };
+	int mTargetVelocityTimeRemaining = 0;
 
 public:
 	////////////////////////////////////////////////////////////////////////////////////
@@ -387,12 +387,12 @@ private:
 	struct SWeatherZone
 	{
 		static bool mMarkedOutside;
-		uint32_t* mPointCache;
-		SVecRange mExtents;
-		SVecRange mSize;
-		int mWidth;
-		int mHeight;
-		int mDepth;
+		uint32_t* mPointCache = nullptr;
+		SVecRange mExtents = {};
+		SVecRange mSize = {};
+		int mWidth = 0;
+		int mHeight = 0;
+		int mDepth = 0;
 
 		////////////////////////////////////////////////////////////////////////////////////
 		// Convert To Cell

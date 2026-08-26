@@ -2408,9 +2408,9 @@ static void g_roll_missile(gentity_t* ent)
 		// NOTE: Ghoul2 impacts can report allsolid; we must still process entity hits.
 		if (trace.entityNum < ENTITYNUM_WORLD)
 		{
-			gentity_t* hit_ent = &g_entities[trace.entityNum];
+			gentity_t* hitEnt = &g_entities[trace.entityNum];
 
-			if (hit_ent && (hit_ent->takedamage || (hit_ent->contents & CONTENTS_LIGHTSABER)))
+			if (hitEnt && (hitEnt->takedamage || (hitEnt->contents & CONTENTS_LIGHTSABER)))
 			{
 				G_MissileImpact(ent, &trace);
 
@@ -2698,11 +2698,11 @@ void g_run_missile(gentity_t* ent)
 			}
 
 			CCollisionRecord& coll = i;
-			const gentity_t* hit_ent = &g_entities[coll.mEntityNum];
+			const gentity_t* hitEnt = &g_entities[coll.mEntityNum];
 
 			// process collision records here...
 			// make sure we only do this once, not for all the entrance wounds we might generate
-			if (coll.mFlags & G2_FRONTFACE/* && !(hitModel)*/ && hit_ent->health)
+			if (coll.mFlags & G2_FRONTFACE/* && !(hitModel)*/ && hitEnt->health)
 			{
 				if (tr_hit_loc == HL_NONE)
 				{

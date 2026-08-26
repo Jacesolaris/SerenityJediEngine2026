@@ -48,7 +48,7 @@ extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thre
 extern qboolean PM_InKnockDown(const playerState_t* ps);
 extern qboolean NPC_CanUseAdvancedFighting();
 extern void NPC_AngerSound();
-extern qboolean WP_AbsorbKick(gentity_t* hit_ent, gentity_t* pusher, vec3_t push_dir);
+extern qboolean WP_AbsorbKick(gentity_t* hitEnt, gentity_t* pusher, vec3_t push_dir);
 extern cvar_t* g_allowgunnerbash;
 extern void npc_check_speak(gentity_t* speaker_npc);
 
@@ -322,46 +322,46 @@ static void ST_Speech(const gentity_t* self, const int speech_type, const float 
 	switch (speech_type)
 	{
 	case SPEECH_CHASE:
-		G_AddVoiceEvent(self, Q_irand(EV_CHASE1, EV_CHASE3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_CHASE1, EV_CHASE3), 20000);
 		break;
 	case SPEECH_CONFUSED:
-		G_AddVoiceEvent(self, Q_irand(EV_CONFUSE1, EV_CONFUSE3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_CONFUSE1, EV_CONFUSE3), 20000);
 		break;
 	case SPEECH_COVER:
-		G_AddVoiceEvent(self, Q_irand(EV_COVER1, EV_COVER5), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_COVER1, EV_COVER5), 20000);
 		break;
 	case SPEECH_DETECTED:
-		G_AddVoiceEvent(self, Q_irand(EV_DETECTED1, EV_DETECTED5), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_DETECTED1, EV_DETECTED5), 20000);
 		break;
 	case SPEECH_GIVEUP:
-		G_AddVoiceEvent(self, Q_irand(EV_GIVEUP1, EV_GIVEUP4), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_GIVEUP1, EV_GIVEUP4), 20000);
 		break;
 	case SPEECH_LOOK:
-		G_AddVoiceEvent(self, Q_irand(EV_LOOK1, EV_LOOK2), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_LOOK1, EV_LOOK2), 20000);
 		break;
 	case SPEECH_LOST:
-		G_AddVoiceEvent(self, EV_LOST1, 2000);
+		G_AddVoiceEvent(self, EV_LOST1, 20000);
 		break;
 	case SPEECH_OUTFLANK:
-		G_AddVoiceEvent(self, Q_irand(EV_OUTFLANK1, EV_OUTFLANK2), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_OUTFLANK1, EV_OUTFLANK2), 20000);
 		break;
 	case SPEECH_ESCAPING:
-		G_AddVoiceEvent(self, Q_irand(EV_ESCAPING1, EV_ESCAPING3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_ESCAPING1, EV_ESCAPING3), 20000);
 		break;
 	case SPEECH_SIGHT:
-		G_AddVoiceEvent(self, Q_irand(EV_SIGHT1, EV_SIGHT3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_SIGHT1, EV_SIGHT3), 20000);
 		break;
 	case SPEECH_SOUND:
-		G_AddVoiceEvent(self, Q_irand(EV_SOUND1, EV_SOUND3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_SOUND1, EV_SOUND3), 20000);
 		break;
 	case SPEECH_SUSPICIOUS:
-		G_AddVoiceEvent(self, Q_irand(EV_SUSPICIOUS1, EV_SUSPICIOUS5), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_SUSPICIOUS1, EV_SUSPICIOUS5), 20000);
 		break;
 	case SPEECH_YELL:
-		G_AddVoiceEvent(self, Q_irand(EV_ANGER1, EV_ANGER3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_ANGER1, EV_ANGER3), 20000);
 		break;
 	case SPEECH_PUSHED:
-		G_AddVoiceEvent(self, Q_irand(EV_PUSHED1, EV_PUSHED3), 2000);
+		G_AddVoiceEvent(self, Q_irand(EV_PUSHED1, EV_PUSHED3), 20000);
 		break;
 	default:
 		break;
@@ -3775,11 +3775,11 @@ void NPC_BSST_Attack()
 			{
 				//if enemy is FOV, go ahead and check for shooting
 				const int hit = NPC_ShotEntity(NPC->enemy, impactPos);
-				const gentity_t* hit_ent = &g_entities[hit];
+				const gentity_t* hitEnt = &g_entities[hit];
 
 				if (hit == NPC->enemy->s.number
-					|| hit_ent && hit_ent->client && hit_ent->client->playerTeam == NPC->client->enemyTeam
-					|| hit_ent && hit_ent->takedamage && (hit_ent->svFlags & SVF_GLASS_BRUSH || hit_ent->health < 40 ||
+					|| hitEnt && hitEnt->client && hitEnt->client->playerTeam == NPC->client->enemyTeam
+					|| hitEnt && hitEnt->takedamage && (hitEnt->svFlags & SVF_GLASS_BRUSH || hitEnt->health < 40 ||
 						NPC
 						->s.weapon == WP_EMPLACED_GUN))
 				{
@@ -3794,7 +3794,7 @@ void NPC_BSST_Attack()
 					//Hmm, have to get around this bastard
 					NPC_AimAdjust(1); //adjust aim better longer we can see enemy
 					ST_ResolveBlockedShot(hit);
-					if (hit_ent && hit_ent->client && hit_ent->client->playerTeam == NPC->client->playerTeam)
+					if (hitEnt && hitEnt->client && hitEnt->client->playerTeam == NPC->client->playerTeam)
 					{
 						//would hit an ally, don't fire!!!
 						hitAlly = qtrue;

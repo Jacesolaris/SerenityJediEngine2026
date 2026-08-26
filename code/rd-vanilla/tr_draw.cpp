@@ -162,35 +162,40 @@ void RE_UploadCinematic(const int cols, const int rows, const byte* data, const 
 }
 
 extern byte* RB_ReadPixels(int x, int y, int width, int height, size_t* offset, int* padlen);
-void RE_GetScreenShot(byte* data, const int w, const int h)
+void RE_GetScreenShot(byte* buffer, int w, int h)
 {
-	size_t offset = 0;
+	byte* source;
+	byte* src, * dst;
+	size_t offset = 0, memcount;
 	int padlen;
 
-	int g, b;
+	int			x, y;
+	int			r, g, b;
+	float		xScale, yScale;
+	int			xx, yy;
 
-	byte* source = RB_ReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, &offset, &padlen);
-	const size_t memcount = (glConfig.vidWidth * 3 + padlen) * glConfig.vidHeight;
+	source = RB_ReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, &offset, &padlen);
+	memcount = (static_cast<size_t>(glConfig.vidWidth) * 3 + padlen) * glConfig.vidHeight;
 
 	// gamma correct
 	if (glConfig.deviceSupportsGamma)
 		R_GammaCorrect(source + offset, memcount);
 
 	// resample from source
-	const float x_scale = glConfig.vidWidth / (4.0 * w);
-	const float y_scale = glConfig.vidHeight / (3.0 * h);
-	for (int y = 0; y < h; y++) {
-		for (int x = 0; x < w; x++) {
-			int r = g = b = 0;
-			for (int yy = 0; yy < 3; yy++) {
-				for (int xx = 0; xx < 4; xx++) {
-					const byte* src = source + offset + 3 * (glConfig.vidWidth * static_cast<int>((y * 3 + yy) * y_scale) + static_cast<int>((x * 4 + xx) * x_scale));
+	xScale = glConfig.vidWidth / (4.0 * w);
+	yScale = glConfig.vidHeight / (3.0 * h);
+	for (y = 0; y < h; y++) {
+		for (x = 0; x < w; x++) {
+			r = g = b = 0;
+			for (yy = 0; yy < 3; yy++) {
+				for (xx = 0; xx < 4; xx++) {
+					src = source + offset + 3 * (glConfig.vidWidth * (int)((y * 3 + yy) * yScale) + (int)((x * 4 + xx) * xScale));
 					r += src[0];
 					g += src[1];
 					b += src[2];
 				}
 			}
-			byte* dst = data + 4 * ((h - y - 1) * w + x);
+			dst = buffer + 4 * ((h - y - 1) * w + x);
 			dst[0] = r / 12;
 			dst[1] = g / 12;
 			dst[2] = b / 12;
@@ -204,13 +209,13 @@ void RE_GetScreenShot(byte* data, const int w, const int h)
 // this is just a chunk of code from RE_TempRawImage_ReadFromFile() below, subroutinised so I can call it
 //	from the screen dissolve code as well...
 //
-static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iLoadedHeight, byte* pb_re_sample_buffer, int* piWidth, int* piHeight)
+static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iLoadedHeight, byte* pbReSampleBuffer, int* piWidth, int* piHeight)
 {
 	byte* pb_return;
 
 	// if not resampling, just return some values and return...
 	//
-	if (pb_re_sample_buffer == nullptr || iLoadedWidth == *piWidth && iLoadedHeight == *piHeight)
+	if (pbReSampleBuffer == nullptr || iLoadedWidth == *piWidth && iLoadedHeight == *piHeight)
 	{
 		// if not resampling, we're done, just return the loaded size...
 		//
@@ -228,7 +233,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 
 		int g, b;
 
-		byte* pb_dst = pb_re_sample_buffer;
+		byte* pb_dst = pbReSampleBuffer;
 
 		for (int y = 0; y < *piHeight; y++)
 		{
@@ -250,7 +255,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 					}
 				}
 
-				assert(pb_dst < pb_re_sample_buffer + *piWidth * *piHeight * 4);
+				assert(pb_dst < pbReSampleBuffer + *piWidth * *piHeight * 4);
 
 				pb_dst[0] = r / i_tot_pixels_per_down_sample;
 				pb_dst[1] = g / i_tot_pixels_per_down_sample;
@@ -262,7 +267,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 
 		// set return value...
 		//
-		pb_return = pb_re_sample_buffer;
+		pb_return = pbReSampleBuffer;
 	}
 
 	return pb_return;
@@ -272,11 +277,11 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 //	currently it's only used by the server so that savegames can embed a graphic in the auto-save files
 //	(which can't do a screenshot since they're saved out before the level is drawn).
 //
-// by default, the pic will be returned as the original dims, but if pb_re_sample_buffer != NULL then it's assumed to
+// by default, the pic will be returned as the original dims, but if pbReSampleBuffer != NULL then it's assumed to
 //	be a big enough buffer to hold the resampled image, which also means that the width and height params are read as
 //	inputs (as well as still being inherently outputs) and the pic is scaled to that size, and to that buffer.
 //
-// the return value is either NULL, or a pointer to the pixels to use (which may be either the pb_re_sample_buffer param,
+// the return value is either NULL, or a pointer to the pixels to use (which may be either the pbReSampleBuffer param,
 //	or the local ptr below).
 //
 // In either case, you MUST call the free-up function afterwards ( RE_TempRawImage_CleanUp() ) to get rid of any temp
@@ -292,7 +297,7 @@ static byte* RE_ReSample(byte* pbLoadedPic, const int iLoadedWidth, const int iL
 //
 byte* pbLoadedPic = nullptr;
 
-byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pb_re_sample_buffer, const qboolean qbVertFlip)
+byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pbReSampleBuffer, const qboolean qbVertFlip)
 {
 	RE_TempRawImage_CleanUp();	// jic
 
@@ -306,7 +311,7 @@ byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, in
 		if (pbLoadedPic)
 		{
 			pb_return = RE_ReSample(pbLoadedPic, iLoadedWidth, iLoadedHeight,
-				pb_re_sample_buffer, piWidth, piHeight);
+				pbReSampleBuffer, piWidth, piHeight);
 		}
 	}
 
@@ -838,7 +843,7 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 
 			// alloc resample buffer...  (note slight optimisation to avoid spurious alloc)
 			//
-			byte* pb_re_sample_buffer = iPow2VidWidth == Dissolve.iUploadWidth &&
+			byte* pbReSampleBuffer = iPow2VidWidth == Dissolve.iUploadWidth &&
 				iPow2VidHeight == Dissolve.iUploadHeight ?
 				nullptr :
 				static_cast<byte*>(R_Malloc(iPow2VidWidth * iPow2VidHeight * 4, TAG_TEMP_WORKSPACE, qfalse));
@@ -849,7 +854,7 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 				iPow2VidWidth,			// int iLoadedWidth
 				iPow2VidHeight,			// int iLoadedHeight
 				//
-				pb_re_sample_buffer,		// byte *pb_re_sample_buffer
+				pbReSampleBuffer,		// byte *pbReSampleBuffer
 				&Dissolve.iUploadWidth,	// int *piWidth
 				&Dissolve.iUploadHeight	// int *piHeight
 			);
@@ -880,9 +885,9 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 				GL_CLAMP			// int glWrapClampMode
 			);
 
-			if (pb_re_sample_buffer)
+			if (pbReSampleBuffer)
 			{
-				R_Free(pb_re_sample_buffer);
+				R_Free(pbReSampleBuffer);
 			}
 			R_Free(pBuffer);
 

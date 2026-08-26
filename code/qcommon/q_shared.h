@@ -236,15 +236,16 @@ using cbufExec_t = enum
 //
 // these aren't needed by any of the VMs.  put in another header?
 //
-constexpr auto MAX_MAP_AREA_BYTES = 64; // bit vector of area visibility;
+#define	MAX_MAP_AREA_BYTES		32		// bit vector of area visibility
 
 // Light Style Constants
 
-constexpr auto LS_STYLES_START = 0;
-constexpr auto LS_NUM_STYLES = 32;
+#define LS_STYLES_START			0
+#define LS_NUM_STYLES			32
 #define	LS_SWITCH_START			(LS_STYLES_START+LS_NUM_STYLES)
-constexpr auto LS_NUM_SWITCH = 32;
+#define LS_NUM_SWITCH			32
 #define MAX_LIGHT_STYLES		64
+
 #define	LS_LSNONE			0xff
 
 // print levels from renderer (FIXME: set up for game / cgame?)

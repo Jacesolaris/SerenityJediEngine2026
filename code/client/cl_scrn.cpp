@@ -643,9 +643,9 @@ void SCR_SetScreenshot(const byte* pbData, const int w, const int h)
 // This is just a client-side wrapper for the function RE_TempRawImage_ReadFromFile() in the renderer code...
 //
 
-byte* SCR_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pb_re_sample_buffer, qboolean qbVertFlip)
+byte* SCR_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pbReSampleBuffer, qboolean qbVertFlip)
 {
-	return re.TempRawImage_ReadFromFile(psLocalFilename, piWidth, piHeight, pb_re_sample_buffer, qbVertFlip);
+	return re.TempRawImage_ReadFromFile(psLocalFilename, piWidth, piHeight, pbReSampleBuffer, qbVertFlip);
 }
 //
 // ditto (sort of)...

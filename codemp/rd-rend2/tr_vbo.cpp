@@ -82,43 +82,64 @@ R_CreateVBO
 */
 VBO_t* R_CreateVBO(byte* vertexes, size_t vertexesSize, vboUsage_t usage, const char* debugName)
 {
-	VBO_t* vbo;
+	VBO_t* vbo = nullptr;
 
-	if (tr.numVBOs == MAX_VBOS) {
+	// ----------------------------------------------------------------------
+	// Safety: prevent out-of-bounds write to tr.vbos[]
+	// ----------------------------------------------------------------------
+	if (tr.numVBOs >= MAX_VBOS)
+	{
 		ri->Error(ERR_DROP, "R_CreateVBO: MAX_VBOS hit");
+		return nullptr;    // REQUIRED to satisfy MSVC and prevent buffer overrun
 	}
 
 	R_IssuePendingRenderCommands();
 
-	vbo = tr.vbos[tr.numVBOs] = (VBO_t*)Hunk_Alloc(sizeof(*vbo), h_low);
+	// ----------------------------------------------------------------------
+	// Allocate VBO struct
+	// ----------------------------------------------------------------------
+	vbo = static_cast<VBO_t*>(Hunk_Alloc(sizeof(*vbo), h_low));
+	tr.vbos[tr.numVBOs] = vbo;
 
 	memset(vbo, 0, sizeof(*vbo));
 
 	vbo->vertexesSize = vertexesSize;
+
 	qglGenBuffers(1, &vbo->vertexesVBO);
 	tr.numVBOs++;
 
+	// ----------------------------------------------------------------------
+	// Upload vertex data
+	// ----------------------------------------------------------------------
 	qglBindBuffer(GL_ARRAY_BUFFER, vbo->vertexesVBO);
-	if (glRefConfig.annotateResources) qglObjectLabel(GL_BUFFER, vbo->vertexesVBO, -1, va("%s_VBO", debugName));
+
+	if (glRefConfig.annotateResources)
+	{
+		qglObjectLabel(GL_BUFFER, vbo->vertexesVBO, -1, va("%s_VBO", debugName));
+	}
+
 	if (glRefConfig.immutableBuffers)
 	{
 		GLbitfield creationFlags = 0;
+
 		if (usage == VBO_USAGE_DYNAMIC)
 		{
-			creationFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+			creationFlags = GL_MAP_WRITE_BIT |
+				GL_MAP_PERSISTENT_BIT |
+				GL_MAP_COHERENT_BIT;
 		}
 
 		qglBufferStorage(GL_ARRAY_BUFFER, vertexesSize, vertexes, creationFlags);
 	}
 	else
 	{
-		int glUsage = GetGLBufferUsage(usage);
+		const int glUsage = GetGLBufferUsage(usage);
 		qglBufferData(GL_ARRAY_BUFFER, vertexesSize, vertexes, glUsage);
 	}
 
 	qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	glState.currentVBO = NULL;
+	glState.currentVBO = nullptr;
 
 	GL_CheckErrors();
 
@@ -132,28 +153,49 @@ R_CreateIBO
 */
 IBO_t* R_CreateIBO(byte* indexes, size_t indexesSize, vboUsage_t usage, const char* debugName)
 {
-	IBO_t* ibo;
+	IBO_t* ibo = nullptr;
 
-	if (tr.numIBOs == MAX_IBOS) {
+	// ----------------------------------------------------------------------
+	// Safety: prevent out-of-bounds write to tr.ibos[]
+	// ----------------------------------------------------------------------
+	if (tr.numIBOs >= MAX_IBOS)
+	{
 		ri->Error(ERR_DROP, "R_CreateIBO: MAX_IBOS hit");
+		return nullptr;    // REQUIRED to satisfy MSVC and prevent buffer overrun
 	}
 
 	R_IssuePendingRenderCommands();
 
-	ibo = tr.ibos[tr.numIBOs] = (IBO_t*)ri->Hunk_Alloc(sizeof(*ibo), h_low);
+	// ----------------------------------------------------------------------
+	// Allocate IBO struct
+	// ----------------------------------------------------------------------
+	ibo = static_cast<IBO_t*>(Hunk_Alloc(sizeof(*ibo), h_low));
+	tr.ibos[tr.numIBOs] = ibo;
 
 	ibo->indexesSize = indexesSize;
+
 	qglGenBuffers(1, &ibo->indexesVBO);
 	tr.numIBOs++;
 
+	// ----------------------------------------------------------------------
+	// Upload index data
+	// ----------------------------------------------------------------------
 	qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo->indexesVBO);
-	if (glRefConfig.annotateResources) qglObjectLabel(GL_BUFFER, ibo->indexesVBO, -1, va("%s_IBO", debugName));
+
+	if (glRefConfig.annotateResources)
+	{
+		qglObjectLabel(GL_BUFFER, ibo->indexesVBO, -1, va("%s_IBO", debugName));
+	}
+
 	if (glRefConfig.immutableBuffers)
 	{
 		GLbitfield creationFlags = 0;
+
 		if (usage == VBO_USAGE_DYNAMIC)
 		{
-			creationFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+			creationFlags = GL_MAP_WRITE_BIT |
+				GL_MAP_PERSISTENT_BIT |
+				GL_MAP_COHERENT_BIT;
 		}
 
 		qglBufferStorage(GL_ELEMENT_ARRAY_BUFFER, indexesSize, indexes, creationFlags);
@@ -161,13 +203,13 @@ IBO_t* R_CreateIBO(byte* indexes, size_t indexesSize, vboUsage_t usage, const ch
 	}
 	else
 	{
-		int glUsage = GetGLBufferUsage(usage);
+		const int glUsage = GetGLBufferUsage(usage);
 		qglBufferData(GL_ELEMENT_ARRAY_BUFFER, indexesSize, indexes, glUsage);
 	}
 
 	qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	glState.currentIBO = NULL;
+	glState.currentIBO = nullptr;
 
 	GL_CheckErrors();
 
@@ -293,6 +335,7 @@ void R_InitGPUBuffers(void)
 
 	qglBindBuffer(GL_UNIFORM_BUFFER, tr.shaderInstanceUbo);
 	glState.currentGlobalUBO = tr.shaderInstanceUbo;
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_BUFFER, tr.shaderInstanceUbo, -1, "ShaderInstanceUBO");
 	qglBufferData(
 		GL_UNIFORM_BUFFER,
 		MAX_SHADERS * alignedBlockSize,
@@ -358,8 +401,8 @@ void R_VBOList_f(void)
 	int             i;
 	VBO_t* vbo;
 	IBO_t* ibo;
-	int             vertexesSize = 0;
-	int             indexesSize = 0;
+	size_t         vertexesSize = 0;
+	size_t         indexesSize = 0;
 
 	ri->Printf(PRINT_ALL, " vertex buffers\n");
 	ri->Printf(PRINT_ALL, "----------------\n\n");
@@ -402,10 +445,11 @@ static void AddVertexArray(
 	VertexArraysProperties* properties,
 	int attributeIndex,
 	size_t size,
-	int stride,
-	int offset,
+	size_t stride,
+	size_t offset,
+	size_t stepRate,
 	void* stream,
-	int streamStride)
+	size_t streamStride)
 {
 	properties->enabledAttributes[properties->numVertexArrays] = attributeIndex;
 	properties->offsets[attributeIndex] = offset;
@@ -414,6 +458,7 @@ static void AddVertexArray(
 	properties->strides[attributeIndex] = stride;
 	properties->streams[attributeIndex] = stream;
 	properties->streamStrides[attributeIndex] = streamStride;
+	properties->stepRates[attributeIndex] = stepRate;
 
 	properties->numVertexArrays++;
 }
@@ -444,6 +489,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.xyz[0]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.xyz,
 				sizeof(tess.xyz[0]));
 
@@ -454,6 +500,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.texCoords[0][0]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.texCoords[0][0],
 				sizeof(tess.texCoords[0][0]) * NUM_TESS_TEXCOORDS);
 
@@ -464,6 +511,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.texCoords[0][1]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.texCoords[0][1],
 				sizeof(tess.texCoords[0][0]) * NUM_TESS_TEXCOORDS);
 
@@ -474,6 +522,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.texCoords[0][2]) * 2,
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.texCoords[0][2],
 				sizeof(tess.texCoords[0][0]) * NUM_TESS_TEXCOORDS);
 		;
@@ -485,6 +534,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.texCoords[0][3]) * 2,
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.texCoords[0][3],
 				sizeof(tess.texCoords[0][0]) * NUM_TESS_TEXCOORDS);
 
@@ -495,6 +545,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.texCoords[0][4]) * 2,
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.texCoords[0][4],
 				sizeof(tess.texCoords[0][0]) * NUM_TESS_TEXCOORDS);
 
@@ -505,6 +556,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.normal[0]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.normal,
 				sizeof(tess.normal[0]));
 
@@ -515,6 +567,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.tangent[0]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.tangent,
 				sizeof(tess.tangent[0]));
 
@@ -525,6 +578,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.vertexColors[0]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.vertexColors,
 				sizeof(tess.vertexColors[0]));
 
@@ -535,6 +589,7 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 				sizeof(tess.lightdir[0]),
 				0,
 				properties->vertexDataSize,
+				0,
 				tess.lightdir,
 				sizeof(tess.lightdir[0]));
 	}
@@ -562,6 +617,7 @@ void CalculateVertexArraysFromVBO(
 				vbo->sizes[i],
 				vbo->strides[i],
 				vbo->offsets[i],
+				vbo->stepRates[i],
 				NULL,
 				0);
 	}
@@ -611,8 +667,7 @@ void RB_UpdateVBOs(unsigned int attribBits)
 		if ((currentFrame->dynamicVboWriteOffset + totalVertexDataSize) > frameVbo->vertexesSize)
 		{
 			// TODO: Eh...resize?
-			//assert(!"This shouldn't happen");
-			Com_Printf("^1WARNING: Dynamic VBO overflow — skipping draw this frame\n");
+			assert(!"This shouldn't happen");
 			return;
 		}
 
@@ -663,8 +718,7 @@ void RB_UpdateVBOs(unsigned int attribBits)
 		if ((currentFrame->dynamicIboWriteOffset + totalIndexDataSize) > frameIbo->indexesSize)
 		{
 			// TODO: Resize the buffer?
-			//assert(!"This shouldn't happen");
-			Com_Printf("^1WARNING: Dynamic VBO overflow — skipping draw this frame\n");
+			assert(!"This shouldn't happen");
 			return;
 		}
 
@@ -762,7 +816,7 @@ void RB_CommitInternalBufferData()
 	currentFrame->dynamicVboCommitOffset = currentFrame->dynamicVboWriteOffset;
 }
 
-void RB_BindUniformBlock(GLuint ubo, uniformBlock_t block, int offset)
+void RB_BindUniformBlock(GLuint ubo, uniformBlock_t block, size_t offset)
 {
 	const uniformBlockInfo_t* blockInfo = uniformBlocksInfo + block;
 

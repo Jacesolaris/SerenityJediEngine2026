@@ -1036,10 +1036,10 @@ static int CreateNextSaveName(char* fileName)
 		{
 			return qtrue;
 		}
-		}
+	}
 
 	return qfalse;
-	}
+}
 
 /*
 ===============
@@ -1249,7 +1249,7 @@ static qboolean UI_RunMenuScript(const char** args)
 			{
 				ui.Cmd_ExecuteText(EXEC_APPEND, "map yavin1\n");
 			}
-			}
+		}
 		else if (Q_stricmp(name, "startoutcast") == 0)
 		{
 			Menus_CloseAll();
@@ -1880,10 +1880,10 @@ static qboolean UI_RunMenuScript(const char** args)
 		{
 			Com_Printf("unknown UI script %s\n", name);
 		}
-		}
+	}
 
 	return qtrue;
-	}
+}
 
 /*
 =================
@@ -3506,25 +3506,11 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 19/08/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 08------------------------------\n");
+	Com_Printf("---------------------Build date 26/08/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 11------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
-	Com_Printf("-----------------------------------------------------------------\n");
-	Com_Printf("This mod improves the hit detection and alters the saber traces.\n");
-	Com_Printf("Additionally,the first part of a swing will now do damage.\n");
-	Com_Printf("This allows the beginning of the swing to be blocked/parried.\n");
-	Com_Printf("Because of this new early-block system, saber spam or heavy\n");
-	Com_Printf("exploits will be less effective.\n");
-	Com_Printf("A player can 'deny' an enemy who wildly swings their saber\n");
-	Com_Printf("and will force them to make cleaner, more precise hits.\n");
-	Com_Printf("To make up for the beginning of the swing's shortcomings\n");
-	Com_Printf("I added a 50 percent increase to end-phase damage.\n");
-	Com_Printf("More damage at the end of the swing should maintain the fast-paced feel.\n");
-	Com_Printf("Well-timed and well-aimed slashes are more effective than on basejka.\n");
-	Com_Printf("This could potentially improve the way we play JKA quite a lot.\n");
-	Com_Printf("Less spam-friendly, and more accurate hit detection could make the game more movie like.\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 
 	Com_Printf("------Type (seta cl_noprint 0) to see text------\n");

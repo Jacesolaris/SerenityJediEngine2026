@@ -1232,10 +1232,10 @@ void	GL_Cull(int cullType);
 #define GLS_DEFAULT			GLS_DEPTHMASK_TRUE
 #define GLS_ALPHA			(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA)
 
-void	RE_StretchRaw(int x, int y, int w, int h, int cols, int rows, const byte* data, int i_client, qboolean b_dirty);
+void	RE_StretchRaw(const int x, const int y, const int w, const int h, const int cols, const int rows, const byte* data, const int client, const qboolean dirty);
 void	RE_UploadCinematic(int cols, int rows, const byte* data, int client, qboolean dirty);
-void	RE_GetScreenShot(byte* data, int w, int h);
-byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pb_re_sample_buffer, const qboolean qbVertFlip);
+void	RE_GetScreenShot(byte* buffer, int w, int h);
+byte* RE_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pbReSampleBuffer, const qboolean qbVertFlip);
 void	RE_TempRawImage_CleanUp();
 
 void		RE_BeginRegistration(glconfig_t* glconfigOut);
@@ -1295,7 +1295,7 @@ qhandle_t		 RE_RegisterShaderNoMip(const char* name);
 
 shader_t* R_FindShader(const char* name, const int* lightmapIndexes, const byte* styles, const qboolean mipRawImage);
 shader_t* R_GetShaderByHandle(const qhandle_t hShader);
-void R_InitShaders(const qboolean server);
+void R_InitShaders(void);
 void R_ShaderList_f(void);
 
 //

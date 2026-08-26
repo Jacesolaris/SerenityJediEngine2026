@@ -1112,61 +1112,69 @@ void RB_CalcDiffuseColor(unsigned char* colors)
 */
 void RB_CalcDiffuseEntityColor(unsigned char* colors)
 {
-	int				ambient_light_int = 0;
-	vec3_t			ambient_light;
-	vec3_t			lightDir;
-	vec3_t			directed_light;
-
-	if (!backEnd.currentEntity)
-	{//error, use the normal lighting
+	// ----------------------------------------------------------------------
+	// Safety: if no current entity, fall back to normal diffuse lighting
+	// ----------------------------------------------------------------------
+	if (backEnd.currentEntity == nullptr)
+	{
 		RB_CalcDiffuseColor(colors);
+		return;    // REQUIRED: prevents NULL dereference
 	}
 
 	const trRefEntity_t* ent = backEnd.currentEntity;
+
+	vec3_t ambient_light;
+	vec3_t directed_light;
+	vec3_t lightDir;
+
 	VectorCopy(ent->ambientLight, ambient_light);
 	VectorCopy(ent->directedLight, directed_light);
 	VectorCopy(ent->lightDir, lightDir);
 
-	const float r = backEnd.currentEntity->e.shaderRGBA[0] / 255.0f;
-	const float g = backEnd.currentEntity->e.shaderRGBA[1] / 255.0f;
-	const float b = backEnd.currentEntity->e.shaderRGBA[2] / 255.0f;
+	// ----------------------------------------------------------------------
+	// Entity shader color scaling
+	// ----------------------------------------------------------------------
+	const float r = static_cast<float>(ent->e.shaderRGBA[0]) / 255.0f;
+	const float g = static_cast<float>(ent->e.shaderRGBA[1]) / 255.0f;
+	const float b = static_cast<float>(ent->e.shaderRGBA[2]) / 255.0f;
 
-	reinterpret_cast<byte*>(&ambient_light_int)[0] = Q_ftol(r * ent->ambientLight[0]);
-	reinterpret_cast<byte*>(&ambient_light_int)[1] = Q_ftol(g * ent->ambientLight[1]);
-	reinterpret_cast<byte*>(&ambient_light_int)[2] = Q_ftol(b * ent->ambientLight[2]);
-	reinterpret_cast<byte*>(&ambient_light_int)[3] = backEnd.currentEntity->e.shaderRGBA[3];
+	int ambient_light_int = 0;
+
+	reinterpret_cast<byte*>(&ambient_light_int)[0] = Q_ftol(r * ambient_light[0]);
+	reinterpret_cast<byte*>(&ambient_light_int)[1] = Q_ftol(g * ambient_light[1]);
+	reinterpret_cast<byte*>(&ambient_light_int)[2] = Q_ftol(b * ambient_light[2]);
+	reinterpret_cast<byte*>(&ambient_light_int)[3] = ent->e.shaderRGBA[3];
 
 	float* v = tess.xyz[0];
 	float* normal = tess.normal[0];
-
 	const int numVertexes = tess.numVertexes;
 
+	// ----------------------------------------------------------------------
+	// Per‑vertex diffuse lighting
+	// ----------------------------------------------------------------------
 	for (int i = 0; i < numVertexes; i++, v += 4, normal += 4)
 	{
 		const float incoming = DotProduct(normal, lightDir);
-		if (incoming <= 0) {
+
+		if (incoming <= 0.0f)
+		{
 			*reinterpret_cast<int*>(&colors[i * 4]) = ambient_light_int;
 			continue;
 		}
+
 		float j = ambient_light[0] + incoming * directed_light[0];
-		if (j > 255) {
-			j = 255;
-		}
+		if (j > 255.0f) j = 255.0f;
 		colors[i * 4 + 0] = Q_ftol(j * r);
 
 		j = ambient_light[1] + incoming * directed_light[1];
-		if (j > 255) {
-			j = 255;
-		}
+		if (j > 255.0f) j = 255.0f;
 		colors[i * 4 + 1] = Q_ftol(j * g);
 
 		j = ambient_light[2] + incoming * directed_light[2];
-		if (j > 255) {
-			j = 255;
-		}
+		if (j > 255.0f) j = 255.0f;
 		colors[i * 4 + 2] = Q_ftol(j * b);
 
-		colors[i * 4 + 3] = backEnd.currentEntity->e.shaderRGBA[3];
+		colors[i * 4 + 3] = ent->e.shaderRGBA[3];
 	}
 }
 

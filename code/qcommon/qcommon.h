@@ -621,6 +621,7 @@ extern cvar_t* g_newgameplusJKA;
 extern cvar_t* g_newgameplusJKO;
 extern cvar_t* g_spskill;
 extern cvar_t* r_cubeMapping;
+extern cvar_t* r_cubeMappingBounces;
 extern cvar_t* debugNPCFreeze;
 #ifndef _WIN32
 extern	cvar_t* com_ansiColor;
@@ -791,7 +792,7 @@ qboolean UI_GameCommand();
 byte* SCR_GetScreenshot(qboolean* qValid);
 #ifdef JK2_MODE
 void	SCR_SetScreenshot(const byte* pbData, int w, int h);
-byte* SCR_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pb_re_sample_buffer, qboolean qbVertFlip);
+byte* SCR_TempRawImage_ReadFromFile(const char* psLocalFilename, int* piWidth, int* piHeight, byte* pbReSampleBuffer, qboolean qbVertFlip);
 void	SCR_TempRawImage_CleanUp();
 #endif
 

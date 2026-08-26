@@ -261,28 +261,66 @@ static void RB_SurfacePolychain(const srfPoly_t* p)
 	tess.numVertexes = numv;
 }
 
-static uint32_t ComputeFinalVertexColor(const byte* colors) {
-	int k;
+static uint32_t ComputeFinalVertexColor(const byte* colors)
+{
+	int k = 0;
 	byteAlias_t result{};
-	uint32_t g, b;
+	uint32_t r = 0;
+	uint32_t g = 0;
+	uint32_t b = 0;
 
+	// ----------------------------------------------------------------------
+	// Initialize result with incoming vertex color (RGBA)
+	// ----------------------------------------------------------------------
 	for (k = 0; k < 4; k++)
+	{
 		result.b[k] = colors[k];
+	}
 
+	// ----------------------------------------------------------------------
+	// If not using per-vertex lightmap, return original color
+	// ----------------------------------------------------------------------
 	if (tess.shader->lightmapIndex[0] != LIGHTMAP_BY_VERTEX)
+	{
 		return result.ui;
+	}
 
-	if (r_fullbright->integer) {
+	// ----------------------------------------------------------------------
+	// Fullbright override
+	// ----------------------------------------------------------------------
+	if (r_fullbright->integer != 0)
+	{
 		result.b[0] = 255;
 		result.b[1] = 255;
 		result.b[2] = 255;
 		return result.ui;
 	}
-	// an optimization could be added here to compute the style[0] (which is always the world normal light)
-	uint32_t r = g = b = 0;
-	for (k = 0; k < MAXLIGHTMAPS; k++) {
-		if (tess.shader->styles[k] < LS_UNUSED) {
-			byte* style_color = styleColors[tess.shader->styles[k]];
+
+	// ----------------------------------------------------------------------
+	// Accumulate styled light contributions
+	// ----------------------------------------------------------------------
+	r = 0;
+	g = 0;
+	b = 0;
+
+	for (k = 0; k < MAXLIGHTMAPS; k++)
+	{
+		const int styleIndex = tess.shader->styles[k];
+
+		if (styleIndex < LS_UNUSED)
+		{
+			// Safety: ensure style index is within styleColors bounds
+			if (styleIndex < 0 || styleIndex >= MAX_LIGHT_STYLES)
+			{
+				Com_Printf(
+					"ComputeFinalVertexColor WARNING: invalid style index %d (MAX_LIGHT_STYLES %d)\n",
+					styleIndex,
+					MAX_LIGHT_STYLES
+				);
+				break;
+			}
+
+			byte* style_color = styleColors[styleIndex];
 
 			r += static_cast<uint32_t>(*colors++) * static_cast<uint32_t>(*style_color++);
 			g += static_cast<uint32_t>(*colors++) * static_cast<uint32_t>(*style_color++);
@@ -290,11 +328,17 @@ static uint32_t ComputeFinalVertexColor(const byte* colors) {
 			colors++;
 		}
 		else
+		{
 			break;
+		}
 	}
-	result.b[0] = Com_Clamp(0, 255, r >> 8);
-	result.b[1] = Com_Clamp(0, 255, g >> 8);
-	result.b[2] = Com_Clamp(0, 255, b >> 8);
+
+	// ----------------------------------------------------------------------
+	// Clamp accumulated RGB back to byte range
+	// ----------------------------------------------------------------------
+	result.b[0] = static_cast<byte>(Com_Clamp(0, 255, static_cast<int>(r >> 8)));
+	result.b[1] = static_cast<byte>(Com_Clamp(0, 255, static_cast<int>(g >> 8)));
+	result.b[2] = static_cast<byte>(Com_Clamp(0, 255, static_cast<int>(b >> 8)));
 
 	return result.ui;
 }
@@ -1969,7 +2013,8 @@ static void RB_SurfaceEntity(surfaceType_t* surfType)
 	// Tell the backend to merge the drawcalls except
 	// for types that can't be merged
 	// TODO: Create RT_BEAM internal shader and make it compatible with pass system
-	switch (backEnd.currentEntity->e.reType) {
+	switch (backEnd.currentEntity->e.reType) 
+	{
 	case RT_BEAM:
 	case RT_ENT_CHAIN:
 		break;

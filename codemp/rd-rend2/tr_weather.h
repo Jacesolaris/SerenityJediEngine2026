@@ -119,7 +119,14 @@ void R_AddWeatherBrush(uint8_t numPlanes, vec4_t* planes);
 void R_LoadWeatherImages();
 void R_ShutdownWeatherSystem();
 void RB_SurfaceWeather(srfWeather_t* surf);
+bool R_IsOutside(vec3_t pos);
+bool R_IsShaking(vec3_t pos);
+float R_IsOutsideCausingPain(vec3_t pos);
+float R_GetChanceOfSaberFizz();
+bool R_GetWindVector(vec3_t windVector, vec3_t atPoint); // doesn't work?
+bool R_GetWindGusting(vec3_t atPoint); // doesn't work
 
+void RE_WorldEffectCommand(const char* cmd);
 void R_WorldEffect_f(void);
 void R_WeatherEffect_f(void);
 void R_SetWeatherEffect_f(void);

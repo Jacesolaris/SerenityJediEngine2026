@@ -225,7 +225,8 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 		return;
 	}
 
-	if (ent->reType < 0 || ent->reType >= RT_MAX_REF_ENTITY_TYPE) {
+	if (static_cast<int>(ent->reType) < 0 || ent->reType >= RT_MAX_SP_REF_ENTITY_TYPE || ent->reType == RT_MAX_MP_REF_ENTITY_TYPE || ent->reType >= RT_MAX_REF_ENTITY_TYPE)
+	{
 		Com_Error(ERR_DROP, "RE_AddRefEntityToScene: bad reType %i", ent->reType);
 	}
 
@@ -235,6 +236,23 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 	r_numentities++;
 }
 
+void RE_AddMiniRefEntityToScene(const miniRefEntity_t* ent)
+{
+	if (!tr.registered)
+	{
+		return;
+	}
+	if (!ent)
+	{
+		return;
+	}
+
+	refEntity_t		tempEnt;
+
+	memcpy(&tempEnt, ent, sizeof(*ent));
+	memset(((char*)&tempEnt) + sizeof(*ent), 0, sizeof(tempEnt) - sizeof(*ent));
+	RE_AddRefEntityToScene(&tempEnt);
+}
 /*
 =====================
 RE_AddLightToScene
