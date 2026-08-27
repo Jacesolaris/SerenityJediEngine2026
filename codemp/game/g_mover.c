@@ -1015,18 +1015,39 @@ void InitMoverTrData(gentity_t* ent)
 	}
 }
 
-void InitMover(gentity_t* ent)
+static void InitMover(gentity_t* ent)
 {
-	float light;
+	// Safety: do nothing if ent is NULL
+	if (!ent)
+	{
+		Com_Printf("InitMover: called with NULL ent\n");
+		return;
+	}
+
+	float  light;
 	vec3_t color;
 
-	// if the "model2" key is set, use a seperate model
-	// for drawing, but clip against the brushes
+	// ----------------------------------------------------------------------
+	// No locked doors in MP, ever: clear MOVER_LOCKED on self and parent
+	// ----------------------------------------------------------------------
+	if (ent->spawnflags & MOVER_LOCKED)
+	{
+		ent->spawnflags &= ~MOVER_LOCKED;
+	}
+
+	if (ent->parent && (ent->parent->spawnflags & MOVER_LOCKED))
+	{
+		ent->parent->spawnflags &= ~MOVER_LOCKED;
+	}
+
+	// ----------------------------------------------------------------------
+	// Optional visual model: model2 used for drawing, brushes for clipping
+	// ----------------------------------------------------------------------
 	if (ent->model2)
 	{
 		if (strstr(ent->model2, ".glm"))
 		{
-			//for now, not supported in MP.
+			// GLM movers not supported in MP
 			ent->s.model_index2 = 0;
 		}
 		else
@@ -1035,55 +1056,88 @@ void InitMover(gentity_t* ent)
 		}
 	}
 
-	// if the "color" or "light" keys are set, setup constantLight
-	const qboolean lightSet = G_SpawnFloat("light", "100", &light);
-	const qboolean colorSet = G_SpawnVector("color", "1 1 1", color);
-	if (lightSet || colorSet)
+	// ----------------------------------------------------------------------
+	// Constant light setup from "light" and "color" spawn keys
+	// ----------------------------------------------------------------------
+	const qboolean lightSet = (G_SpawnFloat("light", "100", &light) == qtrue) ? qtrue : qfalse;
+	const qboolean colorSet = (G_SpawnVector("color", "1 1 1", color) == qtrue) ? qtrue : qfalse;
+
+	if (lightSet == qtrue || colorSet == qtrue)
 	{
-		int r = color[0] * 255;
+		int r = (int)(color[0] * 255.0f);
 		if (r > 255)
 		{
 			r = 255;
 		}
-		int g = color[1] * 255;
+		else if (r < 0)
+		{
+			r = 0;
+		}
+
+		int g = (int)(color[1] * 255.0f);
 		if (g > 255)
 		{
 			g = 255;
 		}
-		int b = color[2] * 255;
+		else if (g < 0)
+		{
+			g = 0;
+		}
+
+		int b = (int)(color[2] * 255.0f);
 		if (b > 255)
 		{
 			b = 255;
 		}
-		int i = light / 4;
+		else if (b < 0)
+		{
+			b = 0;
+		}
+
+		int i = (int)(light / 4.0f);
 		if (i > 255)
 		{
 			i = 255;
 		}
-		ent->s.constantLight = r | g << 8 | b << 16 | i << 24;
+		else if (i < 0)
+		{
+			i = 0;
+		}
+
+		ent->s.constantLight = (r) | (g << 8) | (b << 16) | (i << 24);
 	}
 
+	// ----------------------------------------------------------------------
+	// Mover behaviour setup
+	// ----------------------------------------------------------------------
 	ent->use = Use_BinaryMover;
 	ent->reached = Reached_BinaryMover;
 
 	ent->moverState = MOVER_POS1;
 	ent->r.svFlags = SVF_USE_CURRENT_ORIGIN;
+	ent->s.eType = ET_MOVER;
+
+	// Inactive movers
 	if (ent->spawnflags & MOVER_INACTIVE)
 	{
-		// Make it inactive
 		ent->flags |= FL_INACTIVE;
 	}
+
+	// Player-usable movers
 	if (ent->spawnflags & MOVER_PLAYER_USE)
 	{
-		//Can be used by the player's BUTTON_USE
 		ent->r.svFlags |= SVF_PLAYER_USABLE;
 	}
-	ent->s.eType = ET_MOVER;
+
+	// ----------------------------------------------------------------------
+	// Final origin and linking
+	// ----------------------------------------------------------------------
 	VectorCopy(ent->pos1, ent->r.currentOrigin);
 	trap->LinkEntity((sharedEntity_t*)ent);
 
 	InitMoverTrData(ent);
 }
+
 
 /*
 ===============================================================================
