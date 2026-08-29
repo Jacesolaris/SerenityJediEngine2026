@@ -6804,11 +6804,9 @@ gentity_t* jedi_find_enemy_in_cone(const gentity_t* self, gentity_t* fallback, c
 		// --- PVS check ---
 		if (gi.inPVS(check->currentOrigin, self->currentOrigin) == qfalse)
 		{
-			if (g_spskill != NULL && g_spskill->integer != 0)
+			if (g_spskill->integer > 1)
 			{
-				const float range = (g_npc_is_smart_range != NULL)
-					? static_cast<float>(g_npc_is_smart_range->integer)
-					: 3500.0f;
+				const float range = (g_npc_is_smart_range != NULL) ? static_cast<float>(g_npc_is_smart_range->integer) : 3500.0f;
 
 				const float dist_sq = static_cast<float>(DistanceSquared(self->currentOrigin, check->currentOrigin));
 
@@ -7279,7 +7277,7 @@ static void Jedi_DebounceDirectionChanges()
 	}
 }
 
-static void Jedi_TimersApply()
+void Jedi_TimersApply()
 {
 	//use careful anim/slower movement if not already moving
 	if (!ucmd.forwardmove && !TIMER_Done(NPC, "walking"))
@@ -7295,7 +7293,6 @@ static void Jedi_TimersApply()
 	if (!ucmd.rightmove)
 	{
 		//only if not already strafing
-		//FIXME: if enemy behind me and turning to face enemy, don't strafe in that direction, too
 		if (!TIMER_Done(NPC, "strafeLeft"))
 		{
 			if (NPCInfo->desiredYaw > NPC->client->ps.viewangles[YAW] + 60)
@@ -7328,28 +7325,21 @@ static void Jedi_TimersApply()
 
 	if (!TIMER_Done(NPC, "gripping"))
 	{
-		//FIXME: what do we do if we ran out of power?  NPC's can't?
-		//FIXME: don't keep turning to face enemy or we'll end up spinning around
 		ucmd.buttons |= BUTTON_FORCEGRIP;
 	}
 
 	if (!TIMER_Done(NPC, "grasping"))
 	{
-		//FIXME: what do we do if we ran out of power?  NPC's can't?
-		//FIXME: don't keep turning to face enemy or we'll end up spinning around
 		ucmd.buttons |= BUTTON_FORCEGRASP;
 	}
 
 	if (!TIMER_Done(NPC, "draining"))
 	{
-		//FIXME: what do we do if we ran out of power?  NPC's can't?
-		//FIXME: don't keep turning to face enemy or we'll end up spinning around
 		ucmd.buttons |= BUTTON_FORCE_DRAIN;
 	}
 
 	if (!TIMER_Done(NPC, "holdLightning"))
 	{
-		//hold down the lightning key
 		ucmd.buttons |= BUTTON_FORCE_LIGHTNING;
 	}
 }
@@ -10017,7 +10007,7 @@ static qboolean NPC_IsExcludedForGestures(gentity_t* NPC)
 }
 
 // Helper: return qtrue if both NPC and enemy are on the ground and NPC is in a neutral state
-static qboolean NPC_CanReactToEnemy(gentity_t* NPC, gentity_t* enemy)
+qboolean NPC_CanReactToEnemy(gentity_t* NPC, gentity_t* enemy)
 {
 	if (!NPC || !NPC->client || !enemy || !enemy->client)
 	{
@@ -10050,7 +10040,7 @@ static qboolean NPC_CanReactToEnemy(gentity_t* NPC, gentity_t* enemy)
 }
 
 // Helper: play gloat voice and optionally deactivate saber
-static void NPC_PlayGloatAndMaybeSheathe(gentity_t* NPC)
+void NPC_PlayGloatAndMaybeSheathe(gentity_t* NPC)
 {
 	if (!NPC || !NPC->client)
 	{
@@ -10065,7 +10055,7 @@ static void NPC_PlayGloatAndMaybeSheathe(gentity_t* NPC)
 	G_AddVoiceEvent(NPC, Q_irand(EV_GLOAT1, EV_GLOAT3), Q_irand(12000, 15000));
 }
 
-static void NPC_HandleSpeechDebounceAndIncrement(gentity_t* NPC)
+void NPC_HandleSpeechDebounceAndIncrement(gentity_t* NPC)
 {
 	if (!NPC || !NPC->client)
 	{

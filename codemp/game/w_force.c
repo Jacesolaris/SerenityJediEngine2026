@@ -1007,10 +1007,10 @@ extern qboolean BG_InKnockDown(int anim); //bg_pmove.c
 
 int ForcePowerUsableOn(const gentity_t* attacker, const gentity_t* other, const forcePowers_t forcePower)
 {
-	if (!other)                     // ⭐ FIX 1: prevent NULL dereference
+	if (!other)                     // FIX 1: prevent NULL dereference
 		return 0;
 
-	if (other->client &&            // ⭐ FIX 2: safe to dereference now
+	if (other->client &&            // FIX 2: safe to dereference now
 		(other->client->ps.inAirAnim ||
 			other->client->ps.groundEntityNum == ENTITYNUM_NONE))
 	{

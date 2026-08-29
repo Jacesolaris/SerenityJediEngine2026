@@ -5699,7 +5699,6 @@ static void CG_DrawCrosshairBackupNames()
 
 	vec3_t diff;
 	VectorSubtract(cg_entities[g_crosshairEntNum].lerpOrigin, cg.refdef.vieworg, diff);
-	const float distSq = VectorLengthSquared(diff);
 
 	centity_t* cent = &cg_entities[g_crosshairEntNum];
 
@@ -6383,7 +6382,6 @@ static void CG_DrawCrosshairNames(void)
 
 	vec3_t diff;
 	VectorSubtract(cg_entities[g_crosshairEntNum].lerpOrigin, cg.refdef.vieworg, diff);
-	const float distSq = VectorLengthSquared(diff);
 
 	centity_t* cent = &cg_entities[g_crosshairEntNum];
 

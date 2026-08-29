@@ -731,7 +731,7 @@ static gentity_t* SelectNearestDeathmatchSpawnPoint(vec3_t from)
 	baseOrigin[2] += 9;
 
 	// ---------------------------------------------------------
-	// ⭐ ALWAYS run SafeSpawn for bots or single-spawn maps
+	// ALWAYS run SafeSpawn for bots or single-spawn maps
 	// ---------------------------------------------------------
 	if (SafeSpawn_IsOccupied(baseOrigin) ||
 		level.numDeathmatchSpawns <= 1 ||   // tiny maps

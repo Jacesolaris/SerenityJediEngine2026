@@ -1449,6 +1449,8 @@ typedef struct playerState_s {
 	qboolean IsSprinting;
 	qboolean IsAiming;
 	int			saberRiposteTime;
+	vec3_t		mins;
+	vec3_t		maxs;
 } playerState_t;
 
 typedef struct siegePers_s

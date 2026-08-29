@@ -2917,7 +2917,7 @@ void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 	}
 
 	//
-	// ⭐ PHASE 2 — Unfreeze at 10 seconds
+	// PHASE 2 — Unfreeze at 10 seconds
 	//
 	if (!missile_in_stasis && missile->userFloat1 > 0 && level.time >= missile->userFloat1)
 	{

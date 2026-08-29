@@ -266,7 +266,11 @@ int NPC_ReactionTime(void)
 
 extern qboolean BG_ParseLiteral(const char** data, const char* string);
 
-#define MAX_NPC_DATA_SIZE 0x100000
+//#define MAX_NPC_DATA_SIZE 0x100000// 1 MB was running until 27/08/2026 
+#define MAX_NPC_DATA_SIZE 0x200000// 2 MB // this will run 400 NPCs,
+//#define MAX_NPC_DATA_SIZE 0x400000 // 4 MB  // this will run 800 NPCs, 4 MB is more than enough for any NPC data file
+//#define MAX_NPC_DATA_SIZE 0x800000 // 8 MB Absolut max can cause a crash if exceeded, but 4 MB is more than enough for any NPC data file
+
 char NPCParms[MAX_NPC_DATA_SIZE];
 
 static rank_t TranslateRankName(const char* name)

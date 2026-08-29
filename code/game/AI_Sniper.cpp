@@ -51,7 +51,6 @@ constexpr auto REALIZE_THRESHOLD = 0.6f;
 #define CAUTIOUS_THRESHOLD	( REALIZE_THRESHOLD * 0.75 )
 
 extern void NPC_Tusken_Taunt();
-qboolean NPC_CheckPlayerTeamStealth();
 
 static qboolean enemyLOS;
 static qboolean enemyCS;

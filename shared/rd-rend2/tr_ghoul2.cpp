@@ -1162,12 +1162,6 @@ void G2_TimingModel(
 	// --------------------------------------------------------
 	if (bone.startFrame < 0 || bone.startFrame >= numFramesInFile)
 	{
-#ifdef _DEBUG
-		Com_Printf(
-			"Debug: G2_TimingModel - startFrame %d out of range (0..%d). Clamping.\n",
-			bone.startFrame, numFramesInFile - 1);
-#endif
-
 		if (bone.startFrame < 0)
 		{
 			bone.startFrame = 0;
@@ -1180,12 +1174,6 @@ void G2_TimingModel(
 
 	if (bone.endFrame < 0 || bone.endFrame >= numFramesInFile)
 	{
-#ifdef _DEBUG
-		Com_Printf(
-			"Debug: G2_TimingModel - endFrame %d out of range (0..%d). Clamping.\n",
-			bone.endFrame, numFramesInFile - 1);
-#endif
-
 		if (bone.endFrame < 0)
 		{
 			bone.endFrame = 0;
@@ -1344,12 +1332,6 @@ void G2_TimingModel(
 
 				if (currentFrame < 0 || currentFrame >= numFramesInFile)
 				{
-#ifdef _DEBUG
-					Com_Printf(
-						"Debug: G2_TimingModel - currentFrame %d out of range (0..%d). Clamping.\n",
-						currentFrame, numFramesInFile - 1);
-#endif
-
 					if (currentFrame < 0)
 					{
 						currentFrame = 0;
@@ -1361,15 +1343,6 @@ void G2_TimingModel(
 				}
 
 				newFrame = currentFrame + 1;
-
-				if ((int)endFrame > numFramesInFile)
-				{
-#ifdef _DEBUG
-					Com_Printf(
-						"Debug: G2_TimingModel - endFrame %d > numFramesInFile %d. Clamping.\n",
-						(int)endFrame, numFramesInFile);
-#endif
-				}
 
 				if (newFrame >= (int)endFrame)
 				{
@@ -1447,12 +1420,6 @@ void G2_TimingModel(
 	// --------------------------------------------------------
 	if (currentFrame < 0 || currentFrame >= numFramesInFile)
 	{
-#ifdef _DEBUG
-		Com_Printf(
-			"Debug: G2_TimingModel - final currentFrame %d out of range (0..%d). Clamping.\n",
-			currentFrame, numFramesInFile - 1);
-#endif
-
 		if (currentFrame < 0)
 		{
 			currentFrame = 0;
@@ -1465,12 +1432,6 @@ void G2_TimingModel(
 
 	if (newFrame < 0 || newFrame >= numFramesInFile)
 	{
-#ifdef _DEBUG
-		Com_Printf(
-			"Debug: G2_TimingModel - final newFrame %d out of range (0..%d). Clamping.\n",
-			newFrame, numFramesInFile - 1);
-#endif
-
 		if (newFrame < 0)
 		{
 			newFrame = 0;
@@ -1483,12 +1444,6 @@ void G2_TimingModel(
 
 	if (lerp < 0.0f || lerp > 1.0f)
 	{
-#ifdef _DEBUG
-		Com_Printf(
-			"Debug: G2_TimingModel - final lerp %f out of range (0.0..1.0). Clamping.\n",
-			lerp);
-#endif
-
 		if (lerp < 0.0f)
 		{
 			lerp = 0.0f;

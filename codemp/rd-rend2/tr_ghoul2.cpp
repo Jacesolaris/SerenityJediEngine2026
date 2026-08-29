@@ -1097,78 +1097,118 @@ static void UnCompressBone(float mat[3][4], const int iBoneIndex, const mdxaHead
 #define DEBUG_G2_TIMING (0)
 #define DEBUG_G2_TIMING_RENDER_ONLY (1)
 
-void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFramesInFile, int& currentFrame, int& newFrame, float& lerp)
-{
-	assert(bone.startFrame >= 0);
-	assert(bone.startFrame <= numFramesInFile);
-	assert(bone.endFrame >= 0);
-	assert(bone.endFrame <= numFramesInFile);
+/*
+====================
+G2_TimingModel
 
-	// yes - add in animation speed to current frame
+Safely computes animation timing for a bone:
+- Replaces asserts with debug prints and clamping.
+- Keeps original behaviour unless invalid data would crash.
+- Assumes numFramesInFile is the total number of valid frames (0..numFramesInFile-1).
+====================
+*/
+void G2_TimingModel(
+	boneInfo_t& bone,
+	const int current_time,
+	const int numFramesInFile,
+	int& currentFrame,
+	int& newFrame,
+	float& lerp)
+{
+	// --------------------------------------------------------
+	// Validate and clamp start/end frames to valid range
+	// --------------------------------------------------------
+	if (bone.startFrame < 0 || bone.startFrame >= numFramesInFile)
+	{
+		if (bone.startFrame < 0)
+		{
+			bone.startFrame = 0;
+		}
+		else
+		{
+			bone.startFrame = numFramesInFile - 1;
+		}
+	}
+
+	if (bone.endFrame < 0 || bone.endFrame >= numFramesInFile)
+	{
+		if (bone.endFrame < 0)
+		{
+			bone.endFrame = 0;
+		}
+		else
+		{
+			bone.endFrame = numFramesInFile - 1;
+		}
+	}
+
+	// --------------------------------------------------------
+	// Compute time in "frames" based on animSpeed and startTime
+	// --------------------------------------------------------
 	const float animSpeed = bone.animSpeed;
 	float time;
-	if (bone.pauseTime)
+
+	if (bone.pauseTime != 0)
 	{
 		time = (bone.pauseTime - bone.startTime) / 50.0f;
 	}
 	else
 	{
-		time = (currentTime - bone.startTime) / 50.0f;
+		time = (current_time - bone.startTime) / 50.0f;
 	}
 
-	time = Q_max(0.0f, time);
+	if (time < 0.0f)
+	{
+		time = 0.0f;
+	}
+
 	float newLerpFrame = bone.startFrame + (time * animSpeed);
 
-	const int numFramesInAnim = bone.endFrame - bone.startFrame;
+	const int   numFramesInAnim = bone.endFrame - bone.startFrame;
 	const float endFrame = (float)bone.endFrame;
 
-	// we are supposed to be animating right?
+	// --------------------------------------------------------
+	// Non-zero length animation
+	// --------------------------------------------------------
 	if (numFramesInAnim != 0)
 	{
-		// did we run off the end?
-		if ((animSpeed > 0.0f && newLerpFrame > (endFrame - 1)) ||
-			(animSpeed < 0.0f && newLerpFrame < (endFrame + 1)))
+		// Did we run off the end of the anim?
+		if ((animSpeed > 0.0f && newLerpFrame > (endFrame - 1.0f)) ||
+			(animSpeed < 0.0f && newLerpFrame < (endFrame + 1.0f)))
 		{
-			// yep - decide what to do
-			if (bone.flags & BONE_ANIM_OVERRIDE_LOOP)
+			// We ran off the end; decide what to do based on flags.
+			if ((bone.flags & BONE_ANIM_OVERRIDE_LOOP) != 0)
 			{
-				// get our new animation frame back within the bounds of the animation set
+				// Looping animation
 				if (animSpeed < 0.0f)
 				{
-					// we don't use this case, or so I am told
-					// if we do, let me know, I need to insure the mod works
+					// Negative speed (reverse) case.
+					// Original comment: "we don't use this case, or so I am told"
 
-					// should we be creating a virtual frame?
-					if ((newLerpFrame < (endFrame + 1)) && (newLerpFrame >= endFrame))
+					// Virtual frame near end?
+					if ((newLerpFrame < (endFrame + 1.0f)) && (newLerpFrame >= endFrame))
 					{
-						// now figure out what we are lerping between delta is
-						// the fraction between this frame and the next, since
-						// the new anim is always at a .0f;
-						lerp = endFrame + 1 - newLerpFrame;
+						// Lerp fraction between endFrame and startFrame.
+						lerp = (endFrame + 1.0f) - newLerpFrame;
 
-						// frames are easy to calculate
-						currentFrame = endFrame;
+						currentFrame = (int)endFrame;
 						newFrame = bone.startFrame;
 					}
 					else
 					{
-						if (newLerpFrame <= (endFrame + 1))
+						if (newLerpFrame <= (endFrame + 1.0f))
 						{
 							newLerpFrame =
-								endFrame + fmod(newLerpFrame - endFrame, numFramesInAnim) -
-								numFramesInAnim;
+								endFrame +
+								(float)fmod(newLerpFrame - endFrame, (double)numFramesInAnim) -
+								(float)numFramesInAnim;
 						}
 
-						// now figure out what we are lerping between delta is
-						// the fraction between this frame and the next, since
-						// the new anim is always at a .0f;
-						lerp = ceil(newLerpFrame) - newLerpFrame;
+						lerp = ceilf(newLerpFrame) - newLerpFrame;
 
-						// frames are easy to calculate
-						currentFrame = ceil(newLerpFrame);
+						currentFrame = (int)ceilf(newLerpFrame);
 
-						// should we be creating a virtual frame?
-						if (currentFrame <= (endFrame + 1))
+						if (currentFrame <= (int)(endFrame + 1.0f))
 						{
 							newFrame = bone.startFrame;
 						}
@@ -1180,15 +1220,12 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 				}
 				else
 				{
-					// should we be creating a virtual frame?
-					if ((newLerpFrame > (endFrame - 1)) && (newLerpFrame < endFrame))
+					// Positive speed (normal forward loop).
+					if ((newLerpFrame > (endFrame - 1.0f)) && (newLerpFrame < endFrame))
 					{
-						// now figure out what we are lerping between delta is
-						// the fraction between this frame and the next, since
-						// the new anim is always at a .0f;
-						lerp = newLerpFrame - (int)newLerpFrame;
+						// Virtual frame between last frame and startFrame.
+						lerp = newLerpFrame - (float)((int)newLerpFrame);
 
-						// frames are easy to calculate
 						currentFrame = (int)newLerpFrame;
 						newFrame = bone.startFrame;
 					}
@@ -1197,20 +1234,16 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 						if (newLerpFrame >= endFrame)
 						{
 							newLerpFrame =
-								endFrame + fmod(newLerpFrame - endFrame, numFramesInAnim) -
-								numFramesInAnim;
+								endFrame +
+								(float)fmod(newLerpFrame - endFrame, (double)numFramesInAnim) -
+								(float)numFramesInAnim;
 						}
 
-						// now figure out what we are lerping between delta is
-						// the fraction between this frame and the next, since
-						// the new anim is always at a .0f;
-						lerp = newLerpFrame - (int)newLerpFrame;
+						lerp = newLerpFrame - (float)((int)newLerpFrame);
 
-						// frames are easy to calculate
 						currentFrame = (int)newLerpFrame;
 
-						// should we be creating a virtual frame?
-						if (newLerpFrame >= (endFrame - 1))
+						if (newLerpFrame >= (endFrame - 1.0f))
 						{
 							newFrame = bone.startFrame;
 						}
@@ -1223,9 +1256,10 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 			}
 			else
 			{
-				if (((bone.flags & BONE_ANIM_OVERRIDE_FREEZE) == BONE_ANIM_OVERRIDE_FREEZE))
+				// Non-looping animation
+				if ((bone.flags & BONE_ANIM_OVERRIDE_FREEZE) == BONE_ANIM_OVERRIDE_FREEZE)
 				{
-					// if we are supposed to reset the default anim, then do so
+					// Freeze on last frame depending on direction.
 					if (animSpeed > 0.0f)
 					{
 						currentFrame = bone.endFrame - 1;
@@ -1240,50 +1274,53 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 				}
 				else
 				{
+					// End the animation.
 					bone.flags &= ~BONE_ANIM_TOTAL;
 				}
 			}
 		}
 		else
 		{
-			if (animSpeed > 0.0)
+			// Still within the animation range.
+			if (animSpeed > 0.0f)
 			{
-				// frames are easy to calculate
+				// Forward animation.
 				currentFrame = (int)newLerpFrame;
+				lerp = newLerpFrame - (float)currentFrame;
 
-				// figure out the difference between the two frames	- we have
-				// to decide what frame and what percentage of that frame we
-				// want to display
-				lerp = (newLerpFrame - currentFrame);
-
-				assert(currentFrame >= 0 && currentFrame < numFramesInFile);
+				if (currentFrame < 0 || currentFrame >= numFramesInFile)
+				{
+					if (currentFrame < 0)
+					{
+						currentFrame = 0;
+					}
+					else
+					{
+						currentFrame = numFramesInFile - 1;
+					}
+				}
 
 				newFrame = currentFrame + 1;
 
-				// are we now on the end frame?
-				assert((int)endFrame <= numFramesInFile);
 				if (newFrame >= (int)endFrame)
 				{
-					// we only want to lerp with the first frame of the anim if
-					// we are looping
-					if (bone.flags & BONE_ANIM_OVERRIDE_LOOP)
+					if ((bone.flags & BONE_ANIM_OVERRIDE_LOOP) != 0)
 					{
 						newFrame = bone.startFrame;
 					}
 					else
 					{
-						// if we intend to end this anim or freeze after this, then
-						// just keep on the last frame
 						newFrame = bone.endFrame - 1;
 					}
 				}
 			}
 			else
 			{
-				lerp = (ceil(newLerpFrame) - newLerpFrame);
+				// Reverse animation.
+				lerp = ceilf(newLerpFrame) - newLerpFrame;
 
-				// frames are easy to calculate
-				currentFrame = ceil(newLerpFrame);
+				currentFrame = (int)ceilf(newLerpFrame);
+
 				if (currentFrame > bone.startFrame)
 				{
 					currentFrame = bone.startFrame;
@@ -1294,17 +1331,12 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 				{
 					newFrame = currentFrame - 1;
 
-					// are we now on the end frame?
-					if (newFrame < endFrame + 1)
+					if (newFrame < (endFrame + 1.0f))
 					{
-						// we only want to lerp with the first frame of the
-						// anim if we are looping
-						if (bone.flags & BONE_ANIM_OVERRIDE_LOOP)
+						if ((bone.flags & BONE_ANIM_OVERRIDE_LOOP) != 0)
 						{
 							newFrame = bone.startFrame;
 						}
-						// if we intend to end this anim or freeze after this,
-						// then just keep on the last frame
 						else
 						{
 							newFrame = bone.endFrame + 1;
@@ -1316,7 +1348,10 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 	}
 	else
 	{
-		if (animSpeed < 0.0)
+		// ----------------------------------------------------
+		// Zero-length animation (startFrame == endFrame)
+		// ----------------------------------------------------
+		if (animSpeed < 0.0f)
 		{
 			currentFrame = bone.endFrame + 1;
 		}
@@ -1325,15 +1360,57 @@ void G2_TimingModel(boneInfo_t& bone, const int currentTime, const int numFrames
 			currentFrame = bone.endFrame - 1;
 		}
 
-		currentFrame = Q_max(0, currentFrame);
-		newFrame = currentFrame;
+		if (currentFrame < 0)
+		{
+			currentFrame = 0;
+		}
+		else if (currentFrame >= numFramesInFile)
+		{
+			currentFrame = numFramesInFile - 1;
+		}
 
+		newFrame = currentFrame;
 		lerp = 0.0f;
 	}
 
-	assert(currentFrame >= 0 && currentFrame < numFramesInFile);
-	assert(newFrame >= 0 && newFrame < numFramesInFile);
-	assert(lerp >= 0.0f && lerp <= 1.0f);
+	// --------------------------------------------------------
+	// Final safety clamps (replace final asserts)
+	// --------------------------------------------------------
+	if (currentFrame < 0 || currentFrame >= numFramesInFile)
+	{
+		if (currentFrame < 0)
+		{
+			currentFrame = 0;
+		}
+		else
+		{
+			currentFrame = numFramesInFile - 1;
+		}
+	}
+
+	if (newFrame < 0 || newFrame >= numFramesInFile)
+	{
+		if (newFrame < 0)
+		{
+			newFrame = 0;
+		}
+		else
+		{
+			newFrame = numFramesInFile - 1;
+		}
+	}
+
+	if (lerp < 0.0f || lerp > 1.0f)
+	{
+		if (lerp < 0.0f)
+		{
+			lerp = 0.0f;
+		}
+		else
+		{
+			lerp = 1.0f;
+		}
+	}
 }
 
 #ifdef _RAG_PRINT_TEST

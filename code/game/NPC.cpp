@@ -1258,37 +1258,6 @@ static void NPC_CheckAttackHold()
 	}
 }
 
-qboolean NPC_CanUseAdvancedFighting()
-{
-	// Evasion/Weapon Switching/etc...
-	switch (NPC->client->NPC_class)
-	{
-	case CLASS_SITHLORD:
-	case CLASS_BESPIN_COP:
-	case CLASS_CLAW:
-	case CLASS_COMMANDO:
-	case CLASS_DESANN:
-	case CLASS_VADER:
-	case CLASS_JEDI:
-	case CLASS_KYLE:
-	case CLASS_LUKE:
-	case CLASS_MORGANKATARN:
-	case CLASS_MURJJ:
-	case CLASS_REBEL:
-	case CLASS_REBORN:
-	case CLASS_REELO:
-	case CLASS_SHADOWTROOPER:
-	case CLASS_TAVION:
-	case CLASS_BOBAFETT:
-	case CLASS_YODA:
-	case CLASS_WOOKIE:
-		break;
-	default:
-		return qfalse;
-	}
-	return qtrue;
-}
-
 /*
 void NPC_KeepCurrentFacing(void)
 
@@ -1350,16 +1319,6 @@ NPC_BehaviorSet_Default
 
 void NPC_BehaviorSet_Default(const int b_state)
 {
-	if (NPC->enemy && NPC->enemy->inuse && NPC->enemy->health > 0)
-	{
-		// Have an anemy... Check if we should use advanced fighting for this NPC...
-		if (NPC_CanUseAdvancedFighting())
-		{
-			// This NPC can use advanced tactics... Use them!!!
-			NPC_BSJedi_Default();
-			return;
-		}
-	}
 	switch (b_state)
 	{
 	case BS_ADVANCE_FIGHT: //head toward captureGoal, shoot anything that gets in the way

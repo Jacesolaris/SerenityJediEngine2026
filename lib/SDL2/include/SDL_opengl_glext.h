@@ -56,8 +56,6 @@ extern "C" {
 #define GLAPI extern
 #endif
 
-#define GL_GLEXT_VERSION 20240327
-
 #ifndef GL_VERSION_1_2
 #define GL_VERSION_1_2 1
 #define GL_UNSIGNED_BYTE_3_3_2            0x8032

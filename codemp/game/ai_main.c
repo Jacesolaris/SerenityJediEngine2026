@@ -17386,7 +17386,7 @@ int bot_ai_startframe(const int time)
 
 		bot_state_t* bs = botstates[i];
 
-		// ⭐ UNFREEZE LOGIC GOES HERE
+		// UNFREEZE LOGIC GOES HERE
 		if ((bs->cur_ps.userInt3 & (1 << FLAG_FROZEN)) &&
 			bs->cur_ps.frozenTime < level.time)
 		{

@@ -6816,7 +6816,7 @@ INTERNAL AI ROUTINES
 // large stack allocations (fixing MSVC C6262), add safety checks, explicit
 // qboolean usage, and debug prints instead of asserts.
 // ============================================================================
-static gentity_t* Jedi_FindEnemyInCone(const gentity_t* self, gentity_t* fallback, const float min_dot)
+static gentity_t* Jedi_FindEnemyInCone(const gentity_t* self, gentity_t* fallback, const float minDot)
 {
 	// ----------------------------------------------------------------------
 	// Safety: validate NPC client
@@ -6910,7 +6910,7 @@ static gentity_t* Jedi_FindEnemyInCone(const gentity_t* self, gentity_t* fallbac
 		float dist = VectorNormalize(dir);
 
 		// Must be inside cone
-		if (DotProduct(dir, forward) < min_dot)
+		if (DotProduct(dir, forward) < minDot)
 		{
 			continue;
 		}
