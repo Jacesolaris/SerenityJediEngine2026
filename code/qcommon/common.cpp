@@ -1244,10 +1244,7 @@ void Com_Init(char* commandLine)
 		s = va("%s %s %s", Q3_VERSION, PLATFORM_STRING, SOURCE_DATE);
 		com_version = Cvar_Get("version", s, CVAR_ROM | CVAR_SERVERINFO);
 
-#ifdef JK2_MODE
-		JK2SP_Init();
-		Com_Printf("Running Jedi Outcast Mode\n");
-#else
+
 		SE_Init(); // Initialize StringEd
 
 		if (com_outcast && com_outcast->integer == 1) //playing outcast
@@ -1286,8 +1283,6 @@ void Com_Init(char* commandLine)
 		{
 			Com_Printf("Running Jedi Academy Mode\n");
 		}
-
-#endif
 
 		Sys_Init(); // this also detects CPU type, so I can now do this CPU check below...
 
@@ -1761,11 +1756,7 @@ void Com_Shutdown()
 		com_journalFile = 0;
 	}
 
-#ifdef JK2_MODE
-	JK2SP_Shutdown();
-#else
 	SE_ShutDown(); //close the string packages
-#endif
 
 	Netchan_Shutdown();
 }

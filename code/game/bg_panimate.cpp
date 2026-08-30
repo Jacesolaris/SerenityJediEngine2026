@@ -4500,7 +4500,7 @@ saberMoveName_t PM_CheckPullAttack()
 		&& pm->cmd.buttons & BUTTON_ATTACK //attacking
 		&& G_EnoughPowerForSpecialMove(pm->ps->forcePower, FATIGUE_JUMPATTACK, qfalse, isPlayer))
 	{
-		qboolean do_move = g_saberNewControlScheme->integer ? qtrue : qfalse;
+		qboolean doMove = g_saberNewControlScheme->integer ? qtrue : qfalse;
 		//in new control scheme, can always do this, even if there's no-one to do it to
 
 		saberMoveName_t pullAttackMove;
@@ -4578,10 +4578,10 @@ saberMoveName_t PM_CheckPullAttack()
 				{
 					G_Sound(pm->gent, G_SoundIndex("sound/weapons/force/pull.wav"));
 				}
-				do_move = qtrue;
+				doMove = qtrue;
 			}
 		}
-		if (do_move)
+		if (doMove)
 		{
 			if (pm->gent)
 			{

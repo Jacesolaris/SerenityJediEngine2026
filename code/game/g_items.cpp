@@ -1655,7 +1655,7 @@ void clear_registered_items()
 		RegisterItem(FindItemForInventory(INV_CLOAK));
 		RegisterItem(FindItemForInventory(INV_SEEKER));
 	}
-	else if (com_outcast && com_outcast->integer == 1 || com_outcast && com_outcast->integer == 4) //playing outcast
+	else if ((com_outcast && com_outcast->integer == 1) || (com_outcast && com_outcast->integer == 4)) //playing outcast
 	{
 		RegisterItem(FindItemForWeapon(WP_MELEE)); //has no item
 		RegisterItem(FindItemForWeapon(WP_BRYAR_PISTOL));

@@ -1966,39 +1966,39 @@ void NPC_BSEmplaced()
 		return;
 	}
 
-	qboolean enemy_los = qfalse;
-	qboolean enemy_cs = qfalse;
-	qboolean face_enemy = qfalse;
+	qboolean enemyLOS = qfalse;
+	qboolean enemyCS = qfalse;
+	qboolean faceEnemy = qfalse;
 	qboolean shoot = qfalse;
 
 	if (NPC_ClearLOS(NPC->enemy))
 	{
 		vec3_t impact_pos;
-		enemy_los = qtrue;
+		enemyLOS = qtrue;
 
 		const int hit = NPC_ShotEntity(NPC->enemy, impact_pos);
-		const gentity_t* hitEnt = &g_entities[hit];
+		const gentity_t* hit_ent = &g_entities[hit];
 
-		if (hit == NPC->enemy->s.number || hitEnt && hitEnt->takedamage)
+		if (hit == NPC->enemy->s.number || hit_ent && hit_ent->takedamage)
 		{
 			//can hit enemy or will hit glass or other minor breakable (or in emplaced gun), so shoot anyway
-			enemy_cs = qtrue;
+			enemyCS = qtrue;
 			NPC_AimAdjust(2); //adjust aim better longer we have clear shot at enemy
 			VectorCopy(NPC->enemy->currentOrigin, NPCInfo->enemyLastSeenLocation);
 		}
 	}
 
-	if (enemy_los)
+	if (enemyLOS)
 	{
 		//FIXME: no need to face enemy if we're moving to some other goal and he's too far away to shoot?
-		face_enemy = qtrue;
+		faceEnemy = qtrue;
 	}
-	if (enemy_cs)
+	if (enemyCS)
 	{
 		shoot = qtrue;
 	}
 
-	if (face_enemy)
+	if (faceEnemy)
 	{
 		//face the enemy
 		NPC_FaceEnemy(qtrue);

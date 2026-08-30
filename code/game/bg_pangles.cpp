@@ -553,7 +553,7 @@ qboolean PM_AdjustAnglesToPuller(gentity_t* ent, const gentity_t* puller, usercm
 	return qtrue;
 }
 
-qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolean do_move)
+qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolean doMove)
 {//Jedi Fallen order wall run code, adapted for Jedi Knight: Jedi Academy
 	// ----------------------------------------------------------------------
 	// Safety:
@@ -694,7 +694,7 @@ qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolea
 			if ((ent->s.number && !G_ControlledByPlayer(ent)) ||
 				(!player_locked && !PlayerAffectedByStasis()))
 			{
-				if (do_move == qtrue)
+				if (doMove == qtrue)
 				{
 					float zVel = ent->client->ps.velocity[2];
 
@@ -734,7 +734,7 @@ qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolea
 		// ----------------------------------------------------------------------
 		// Wall‑run ended → play stop animation
 		// ----------------------------------------------------------------------
-		if (do_move == qtrue)
+		if (doMove == qtrue)
 		{
 			if (ent->client->ps.legsAnim == BOTH_WALL_RUN_RIGHT)
 			{
@@ -1079,7 +1079,7 @@ qboolean PM_AdjustAnglesForGrapple(gentity_t* ent, usercmd_t* ucmd)
 	return qtrue;
 }
 
-qboolean PM_AdjustAngleForWallRunUp(gentity_t* ent, usercmd_t* ucmd, const qboolean do_move)
+qboolean PM_AdjustAngleForWallRunUp(gentity_t* ent, usercmd_t* ucmd, const qboolean doMove)
 {
 	if (ent->client->ps.legsAnim == BOTH_FORCEWALLRUNFLIP_START)
 	{
@@ -1171,7 +1171,7 @@ qboolean PM_AdjustAngleForWallRunUp(gentity_t* ent, usercmd_t* ucmd, const qbool
 				if (ent->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(ent) || !player_locked && !
 					PlayerAffectedByStasis())
 				{
-					if (do_move)
+					if (doMove)
 					{
 						//pull me toward the wall
 						VectorScale(trace.plane.normal, -128, ent->client->ps.velocity);
@@ -1191,7 +1191,7 @@ qboolean PM_AdjustAngleForWallRunUp(gentity_t* ent, usercmd_t* ucmd, const qbool
 			}
 		}
 		//failed!
-		if (do_move)
+		if (doMove)
 		{
 			//stop it
 			VectorScale(fwd, WALL_RUN_UP_BACKFLIP_SPEED, ent->client->ps.velocity);
@@ -1213,7 +1213,7 @@ float G_ForceWallJumpStrength()
 	return forceJumpStrength[FORCE_LEVEL_3] / 2.5f;
 }
 
-qboolean PM_AdjustAngleForWallJump(gentity_t* ent, usercmd_t* ucmd, const qboolean do_move)
+qboolean PM_AdjustAngleForWallJump(gentity_t* ent, usercmd_t* ucmd, const qboolean doMove)
 {
 	if (PM_InLedgeMove(ent->client->ps.legsAnim))
 	{
@@ -1315,7 +1315,7 @@ qboolean PM_AdjustAngleForWallJump(gentity_t* ent, usercmd_t* ucmd, const qboole
 			if (ent->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(ent) || !player_locked && !
 				PlayerAffectedByStasis())
 			{
-				if (do_move)
+				if (doMove)
 				{
 					//pull me toward the wall
 					VectorScale(trace.plane.normal, -128, ent->client->ps.velocity);
@@ -1325,7 +1325,7 @@ qboolean PM_AdjustAngleForWallJump(gentity_t* ent, usercmd_t* ucmd, const qboole
 			ent->client->ps.pm_flags |= PMF_STUCK_TO_WALL;
 			return qtrue;
 		}
-		if (do_move
+		if (doMove
 			&& ent->client->ps.pm_flags & PMF_STUCK_TO_WALL)
 		{
 			//jump off

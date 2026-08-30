@@ -801,7 +801,7 @@ void NPC_BSDefault()
 	uses various scriptflags to determine how an npc should behave
 */
 extern void NPC_CheckGetNewWeapon();
-extern void NPC_BSST_Attack();
+extern void NPC_BSST_Attack(void);
 
 void NPC_BSDefault()
 {

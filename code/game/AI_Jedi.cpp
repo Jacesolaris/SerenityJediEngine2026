@@ -140,7 +140,6 @@ extern qboolean BG_InKnockDown(int anim);
 extern void ForceGrasp(gentity_t* ent);
 extern qboolean WP_SaberAttacking(const gentity_t* self);
 extern void ForceTelepathy(gentity_t* self);
-extern cvar_t* com_outcast;
 extern qboolean wp_saber_block_check_random(gentity_t* self, vec3_t hitloc);
 qboolean Jedi_EvasionRoll(gentity_t* ai_ent);
 extern qboolean NPC_IsOversized(const gentity_t* self);

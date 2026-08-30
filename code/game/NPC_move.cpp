@@ -53,7 +53,6 @@ qboolean NPC_CheckFallPositionOK(const gentity_t* NPC, vec3_t position);
 
 static qboolean NPC_Jump(vec3_t dest, const int goal_ent_num)
 {
-	//FIXME: if land on enemy, knock him down & jump off again
 	float bestImpactDist = Q3_INFINITE; //fireSpeed,
 	constexpr float minShotSpeed = 30.0f, max_shot_speed = 500.0f;
 	qboolean belowBlocked = qfalse, aboveBlocked = qfalse;

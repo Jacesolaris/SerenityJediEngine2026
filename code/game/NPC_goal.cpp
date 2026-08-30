@@ -34,15 +34,6 @@ void SetGoal(gentity_t* goal, float rating)
 {
 	NPCInfo->goalEntity = goal;
 	NPCInfo->goalTime = level.time;
-
-	if (goal)
-	{
-		//		Debug_NPCPrintf( NPC, debugNPCAI, DEBUG_LEVEL_INFO, "NPC_SetGoal: %s @ %s (%f)\n", goal->classname, vtos( goal->currentOrigin), rating );
-	}
-	else
-	{
-		//		Debug_NPCPrintf( NPC, debugNPCAI, DEBUG_LEVEL_INFO, "NPC_SetGoal: NONE\n" );
-	}
 }
 
 /*
