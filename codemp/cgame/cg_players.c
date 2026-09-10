@@ -49,11 +49,14 @@ extern qboolean manual_saberreadyanim(int anim);
 extern qboolean PM_SaberStanceAnim(int anim);
 extern qboolean PM_RunningAnim(int anim);
 extern qboolean PM_WindAnim(int anim);
-extern qboolean PM_InKataAnim(int anim);
+extern qboolean PM_InKataAnim(const int anim);
 extern qboolean PM_StandingAtReadyAnim(int anim);
 extern qboolean PM_WalkingOrRunningAnim(int anim);
-extern qboolean pm_saber_innonblockable_attack(int anim);
+extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean G_DrawSaberTrailForAnimation(int anim);
+extern qboolean PM_SaberInTransitionDamageMove(const playerState_t* ps);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int AnimIndex);
+extern qboolean BG_SaberInPartialDamageMove(const playerState_t* ps, const int AnimIndex);
 
 #define MIN_SABERBLADE_DRAW_LENGTH 0.5f
 
@@ -902,7 +905,7 @@ static void CG_ColorFromInt(const int val, vec3_t color)
 //load anim info
 static int CG_G2SkelForModel(void* g2)
 {
-	int anim_index = -1;
+	int AnimIndex = -1;
 	char GLAName[MAX_QPATH] = { 0 };
 
 	GLAName[0] = 0;
@@ -913,19 +916,19 @@ static int CG_G2SkelForModel(void* g2)
 	{
 		strcpy(slash, "/animation.cfg");
 
-		anim_index = bg_parse_animation_file(GLAName, NULL, qfalse);
+		AnimIndex = bg_parse_animation_file(GLAName, NULL, qfalse);
 	}
 
-	return anim_index;
+	return AnimIndex;
 }
 
 //get the appropriate anim events file index
-static int CG_G2EvIndexForModel(void* g2, const int anim_index)
+static int CG_G2EvIndexForModel(void* g2, const int AnimIndex)
 {
 	int evt_index = -1;
 	char GLAName[MAX_QPATH] = { 0 };
 
-	if (anim_index == -1)
+	if (AnimIndex == -1)
 	{
 		assert(!"shouldn't happen, bad animIndex");
 		return -1;
@@ -940,7 +943,7 @@ static int CG_G2EvIndexForModel(void* g2, const int anim_index)
 		slash++;
 		*slash = 0;
 
-		evt_index = BG_ParseAnimationEvtFile(GLAName, anim_index, bgNumAnimEvents);
+		evt_index = BG_ParseAnimationEvtFile(GLAName, AnimIndex, bgNumAnimEvents);
 	}
 
 	return evt_index;
@@ -13808,7 +13811,7 @@ void CG_CacheG2AnimInfo(const char* modelName)
 		char GLAName[MAX_QPATH] = { 0 };
 		char original_model_name[MAX_QPATH];
 
-		int anim_index = -1;
+		int AnimIndex = -1;
 
 		GLAName[0] = 0;
 		trap->G2API_GetGLAName(g2, 0, GLAName);
@@ -13820,10 +13823,10 @@ void CG_CacheG2AnimInfo(const char* modelName)
 		{
 			strcpy(slash, "/animation.cfg");
 
-			anim_index = bg_parse_animation_file(GLAName, NULL, qfalse);
+			AnimIndex = bg_parse_animation_file(GLAName, NULL, qfalse);
 		}
 
-		if (anim_index != -1)
+		if (AnimIndex != -1)
 		{
 			slash = Q_strrchr(original_model_name, '/');
 			if (slash)
@@ -13832,7 +13835,7 @@ void CG_CacheG2AnimInfo(const char* modelName)
 				*slash = 0;
 			}
 
-			BG_ParseAnimationEvtFile(original_model_name, anim_index, bgNumAnimEvents);
+			BG_ParseAnimationEvtFile(original_model_name, AnimIndex, bgNumAnimEvents);
 		}
 
 		//Now free the temp instance
@@ -15411,30 +15414,28 @@ void CG_CheckThirdPersonAlpha(const centity_t* cent, refEntity_t* legs)
 
 /*
 ================
-GetSelfLegAnimPoint
+CG_GetSelfLegAnimPoint
 
 Based On:  G_GetAnimPoint
 ================
 */
 //Get the point in the leg animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
-static float GetSelfLegAnimPoint()
+static float CG_GetSelfLegAnimPoint()
 {
-	return BG_GetLegsAnimPoint(&cg.predictedPlayerState,
-		cg_entities[cg.predictedPlayerState.clientNum].localAnimIndex);
+	return BG_GetLegsAnimPoint(&cg.predictedPlayerState, cg_entities[cg.predictedPlayerState.clientNum].localAnimIndex);
 }
 
 /*
 ================
-GetSelfTorsoAnimPoint
+CG_GetSelfTorsoAnimPoint
 
 Based On:  G_GetAnimPoint
 ================
 */
 //Get the point in the torso animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
-static float GetSelfTorsoAnimPoint()
+float CG_GetSelfTorsoAnimPoint()
 {
-	return bg_get_torso_anim_point(&cg.predictedPlayerState,
-		cg_entities[cg.predictedPlayerState.clientNum].localAnimIndex);
+	return BG_GetSelfTorsoAnimPoint(&cg.predictedPlayerState, cg_entities[cg.predictedPlayerState.clientNum].localAnimIndex);
 }
 
 /*
@@ -15452,8 +15453,8 @@ pitch (x) axis.
 
 static void SmoothTrueView(vec3_t eye_angles)
 {
-	const float leg_anim_point = GetSelfLegAnimPoint();
-	const float torso_anim_point = GetSelfTorsoAnimPoint();
+	const float leg_anim_point = CG_GetSelfLegAnimPoint();
+	const float torso_anim_point = CG_GetSelfTorsoAnimPoint();
 
 	qboolean eye_range = qtrue;
 	qboolean use_ref_def = qfalse;
@@ -17006,6 +17007,10 @@ void CG_Player(centity_t* cent)
 	qboolean check_droid_shields = qfalse;
 	int health;
 
+	if (!cent || !cg.snap)
+	{
+		return; /* or continue / skip this block as appropriate */
+	}
 	//first if we are not an npc and we are using an emplaced gun then make sure our
 	//angles are visually capped to the constraints (otherwise it's possible to lerp
 	//a little outside and look kind of twitchy)
@@ -19879,20 +19884,110 @@ stillDoSaber:
 		trap->R_AddRefEntityToScene(&legs);
 	}
 
+	// Non‑local players: show non‑blockable attack warning tint on legs
 	if (cent->currentState.number != cg.snap->ps.clientNum)
 	{
-		if (cg_SaberInnonblockableAttackWarning.integer)
+		if (cg_SaberInnonblockableAttackWarning.integer != 0)
 		{
-			if (pm_saber_innonblockable_attack(cent->currentState.torsoAnim) && !(cent->currentState.powerups & 1 <<
-				PW_CLOAKED))
+			const qboolean isNonBlockable =
+				(PM_SaberInnonblockableAttack(cent->currentState.torsoAnim) == qtrue)
+				? qtrue
+				: qfalse;
+
+			const qboolean isCloaked =
+				((cent->currentState.powerups & (1 << PW_CLOAKED)) != 0)
+				? qtrue
+				: qfalse;
+
+			// Debug print to see what is happening
+			//Com_Printf("[NB-WARN] client=%d anim=%d isNonBlockable=%d isCloaked=%d\n",cent->currentState.number,cent->currentState.torsoAnim,(int)isNonBlockable,(int)isCloaked);
+
+			if (isNonBlockable == qtrue && isCloaked == qfalse)
 			{
+				// Clear conflicting render flags
 				legs.renderfx &= ~RF_FORCE_ENT_ALPHA;
 				legs.renderfx &= ~RF_MINLIGHT;
 
+				// Apply red tint to indicate dangerous, non‑blockable attack
 				legs.renderfx |= RF_RGB_TINT;
-				legs.shaderRGBA[0] = 255;
-				legs.shaderRGBA[1] = legs.shaderRGBA[2] = 0;
-				legs.shaderRGBA[3] = 255;
+				legs.shaderRGBA[0] = 255;  // R
+				legs.shaderRGBA[1] = 0;    // G
+				legs.shaderRGBA[2] = 0;    // B
+				legs.shaderRGBA[3] = 255;  // A
+
+				// Debug print confirming tint applied
+				//Com_Printf("[NB-WARN] Tint applied to client=%d (RED)\n",cent->currentState.number);
+
+				trap->R_AddRefEntityToScene(&legs);
+			}
+		}
+	}
+
+	// Local player: saber damage coloring (blue = partial, red = full)
+	if (cent->currentState.number == cg.snap->ps.clientNum)
+	{
+		if (cg_IsSaberDoingAttackDamage.integer == 1)
+		{
+			qboolean doTint = qfalse;
+			qboolean tintBlue = qfalse;
+			qboolean tintRed = qfalse;
+
+			// 1. Transitional damage window → BLUE
+			const qboolean inTransition = (PM_SaberInTransitionDamageMove(&cg.snap->ps) == qtrue) ? qtrue : qfalse;
+
+			if (inTransition == qtrue)
+			{
+				doTint = qtrue;
+				tintBlue = qtrue;
+			}
+			else
+			{
+				// 2. Non‑idle damage moves
+				const qboolean inNonIdle = (PM_SaberInNonIdleDamageMove(&cg.snap->ps, 0) == qtrue) ? qtrue : qfalse;
+
+				if (inNonIdle == qtrue)
+				{
+					// 2a. Partial damage window → BLUE
+					const qboolean inPartial = (BG_SaberInPartialDamageMove(&cg.snap->ps, 0) == qtrue)
+						? qtrue
+						: qfalse;
+
+					if (inPartial == qtrue)
+					{
+						doTint = qtrue;
+						tintBlue = qtrue;
+					}
+					else
+					{
+						// 2b. Full damage window → RED
+						doTint = qtrue;
+						tintRed = qtrue;
+					}
+				}
+			}
+
+			// Apply tint if needed
+			if (doTint == qtrue)
+			{
+				legs.renderfx |= RF_RGB_TINT;
+
+				if (tintBlue == qtrue)
+				{
+					legs.shaderRGBA[0] = 0;
+					legs.shaderRGBA[1] = 0;
+					legs.shaderRGBA[2] = 255;
+					legs.shaderRGBA[3] = 255;
+				}
+				else if (tintRed == qtrue)
+				{
+					legs.shaderRGBA[0] = 255;
+					legs.shaderRGBA[1] = 0;
+					legs.shaderRGBA[2] = 0;
+					legs.shaderRGBA[3] = 255;
+				}
+
+				// Debug print
+				//Com_Printf("[SABER-TINT] doTint=%d blue=%d red=%d anim=%d\n",(int)doTint,(int)tintBlue,	(int)tintRed,cg.snap->ps.torsoAnim);
 
 				trap->R_AddRefEntityToScene(&legs);
 			}

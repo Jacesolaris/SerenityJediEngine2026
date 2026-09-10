@@ -2602,7 +2602,7 @@ static	void R_SetParent(mnode_t* node, mnode_t* parent)
 R_LoadNodesAndLeafs
 =================
 */
-static	void R_LoadNodesAndLeafs(world_t* worldData, lump_t* nodeLump, lump_t* leafLump) 
+static	void R_LoadNodesAndLeafs(world_t* worldData, lump_t* nodeLump, lump_t* leafLump)
 {
 	int			i, j, p;
 	dnode_t* in;
@@ -2733,7 +2733,7 @@ static	void R_LoadMarksurfaces(world_t* worldData, lump_t* l)
 R_LoadPlanes
 =================
 */
-static	void R_LoadPlanes(world_t* worldData, lump_t* l) 
+static	void R_LoadPlanes(world_t* worldData, lump_t* l)
 {
 	int			i, j;
 	cplane_t* out;

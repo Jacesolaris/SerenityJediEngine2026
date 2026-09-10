@@ -58,7 +58,7 @@ extern qboolean PM_RollingAnim(int anim);
 extern qboolean PM_CrouchAnim(int anim);
 extern qboolean BG_KnockDownAnim(int anim);
 extern void ScalePlayer(gentity_t* self, int scale);
-extern qboolean PM_InAnimForsaber_move(int anim, int saberMove);
+extern qboolean PM_InAnimForSaberMove(int anim, int saberMove);
 extern qboolean PM_SaberInStart(int move);
 extern int PM_AnimLength(const animNumber_t anim);
 extern qboolean PM_SaberInReturn(int move);
@@ -69,7 +69,7 @@ extern void g_atst_check_pain(gentity_t* self, gentity_t* other, int damage);
 qboolean PM_RunningAnim(int anim);
 void ThrowSaberToAttacker(gentity_t* self, const gentity_t* attacker);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
-extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int AnimIndex);
 extern void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
 extern qboolean manual_saberblocking(const gentity_t* defender);
 extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
@@ -3786,7 +3786,7 @@ qboolean G_CheckForStrongAttackMomentum(const gentity_t* self)
 	if (pm_power_level_for_saber_anims(&self->client->ps) > FORCE_LEVEL_2)
 	{
 		//strong attacks can't be interrupted
-		if (PM_InAnimForsaber_move(self->client->ps.torsoAnim, self->client->ps.saberMove))
+		if (PM_InAnimForSaberMove(self->client->ps.torsoAnim, self->client->ps.saberMove))
 		{
 			//our saberMove was not already interupted by some other anim (like pain)
 			if (PM_SaberInStart(self->client->ps.saberMove))
@@ -7442,7 +7442,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 		if (mod == MOD_SLIME)
 		{
 			trace_t		testTrace;
-			vec3_t		testDirection={0, 0, 0};
+			vec3_t		testDirection = { 0, 0, 0 };
 			vec3_t		testStartPos;
 			vec3_t		testEndPos;
 

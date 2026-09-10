@@ -4242,7 +4242,7 @@ static qboolean PM_AdjustAnglesForKnockdown(playerState_t* ps, usercmd_t* ucmd)
 		}
 
 		if (!PM_InForceGetUp(ps) || (ps->legsTimer > 800 || pm->ps->weapon != WP_SABER) &&
-			bg_get_torso_anim_point(ps, pm_entSelf->localAnimIndex) < .9f && ps->stats[STAT_HEALTH] > 0)
+			BG_GetSelfTorsoAnimPoint(ps, pm_entSelf->localAnimIndex) < .9f && ps->stats[STAT_HEALTH] > 0)
 		{
 			//can only attack if you've started a force-getup and are using the saber
 			ucmd->buttons = 0;
@@ -7524,6 +7524,7 @@ static int PM_TryRoll(void)
 
 #ifdef _GAME
 	gentity_t* npc = &g_entities[pm->ps->clientNum];
+
 	if (npc->npc_roll_start)
 	{
 		if (npc->npc_roll_direction == EVASION_ROLL_DIR_BACK)
@@ -17813,7 +17814,7 @@ static QINLINE void PM_CmdForSaberMoves(usercmd_t* ucmd)
 		case BOTH_H1_S1_B_:
 		case BOTH_H1_S1_BR:
 			//slight backwards stumble
-			if (bg_get_torso_anim_point(pm->ps, pm_entSelf->localAnimIndex) >= .5f)
+			if (BG_GetSelfTorsoAnimPoint(pm->ps, pm_entSelf->localAnimIndex) >= .5f)
 			{
 				//past the stumble part of the animation
 				ucmd->forwardmove = -46;
@@ -18629,13 +18630,7 @@ static void PmoveSingle(pmove_t* pmove)
 	else if (PM_InGrappleMove(pm->ps->torsoAnim))
 	{
 		stiffenedUp = qtrue;
-		//PM_SetPMViewAngle(pm->ps, pm->ps->viewangles, &pm->cmd);
 	}
-	//else if (PM_MeleeblockHoldAnim(pm->ps->torsoAnim) || PM_MeleeblockAnim(pm->ps->torsoAnim))
-	//{
-	//	stiffenedUp = qtrue;
-	//	//PM_SetPMViewAngle(pm->ps, pm->ps->viewangles, &pm->cmd);
-	//}
 	else if (pm->ps->saberMove == LS_STABDOWN_DUAL ||
 		pm->ps->saberMove == LS_STABDOWN_STAFF ||
 		pm->ps->saberMove == LS_STABDOWN_BACKHAND ||
@@ -20144,6 +20139,9 @@ qboolean PM_ForceUsingSaberAnim(const int anim)
 	case BOTH_A5_SPECIAL:
 	case BOTH_GRIEVOUS_SPIN:
 	case BOTH_GRIEVOUS_PROTECT:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_YODA_SPECIAL:
 	case BOTH_ARIAL_LEFT:
 	case BOTH_ARIAL_RIGHT:

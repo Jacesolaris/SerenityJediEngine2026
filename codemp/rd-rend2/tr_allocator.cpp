@@ -75,7 +75,6 @@ void* Allocator::Alloc(size_t allocSize)
 	return result;
 }
 
-
 void* Allocator::Mark() const
 {
 	return mark;

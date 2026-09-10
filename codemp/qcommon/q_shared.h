@@ -1451,6 +1451,11 @@ typedef struct playerState_s {
 	int			saberRiposteTime;
 	vec3_t		mins;
 	vec3_t		maxs;
+	int		saberLastSmashTime;
+	int		saberSmashTriggered;
+	int     SaberSmashStartTime;
+	int     SaberSmashLastStartTime;
+	int     Smash_Count;
 } playerState_t;
 
 typedef struct siegePers_s
@@ -2050,6 +2055,10 @@ typedef struct entityState_s {
 	int		modelindex;		// model used
 	int     weaponfiredelaytime;
 	int     reloadTime;
+
+	int SaberSmashStartTime;
+	int SaberSmashLastStartTime;
+	int Smash_Count;
 } entityState_t;//any additions here must also be added to entityStateFields in msg.cpp and netf_overrides.txt in ext-data/ mp
 
 typedef enum {
@@ -2233,6 +2242,7 @@ typedef enum
 	CF_UNDERSIZEDGUNNER,
 	CF_UNDERSIZEDJEDI,
 	CF_AIMINGGUN,
+	CF_SABERSMASHING,
 } communicatingflags_e;
 
 typedef enum

@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-30,Month-08,Year-26,BuildNum-14" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-10,Month-09,Year-26,BuildNum-01" // build date
 
 #define	STEPSIZE		18
 
@@ -377,7 +377,7 @@ extern qboolean			bgpa_ftext_loaded;
 extern animation_t		bgHumanoidAnimations[MAX_TOTALANIMATIONS];
 
 #define MAX_ANIM_FILES	32
-#define MAX_ANIM_EVENTS 600
+#define MAX_ANIM_EVENTS 1200
 
 typedef enum
 {
@@ -926,6 +926,7 @@ typedef enum {
 	EV_SABER_BLOCK,
 	EV_SABER_BODY_HIT,
 	EV_SABER_CLASHFLARE,
+	EV_SABER_SLAM,
 	EV_SABER_UNHOLSTER,
 	EV_BECOME_JEDIMASTER,
 	EV_DISRUPTOR_MAIN_SHOT,
@@ -943,6 +944,10 @@ typedef enum {
 	EV_BLOCKSHAKE,
 
 	EV_LOCALTIMER,
+
+	EV_SLAMTIMER,
+
+	EV_DASHTIMER,
 
 	EV_USE,			// +Use key
 
@@ -1483,9 +1488,12 @@ typedef enum {
 	LS_KICK_R_AIR,
 	LS_KICK_L_AIR,
 	LS_STABDOWN,
-	LS_STABDOWN_BACKHAND,
 	LS_STABDOWN_STAFF,
 	LS_STABDOWN_DUAL,
+	LS_STABDOWN_BACKHAND,
+	LS_SMASHDOWN_SINGLE,
+	LS_SMASHDOWN_STAFF,
+	LS_SMASHDOWN_DUAL,
 	LS_DUAL_SPIN_PROTECT,
 	LS_DUAL_SPIN_PROTECT_GRIE,
 	LS_STAFF_SOULCAL,
@@ -1727,8 +1735,10 @@ typedef enum saberType_e
 {
 	SABER_NONE = 0,
 	SABER_SINGLE,
+	SABER_SINGLE_SMASH,
 	SABER_SINGLE_CLASSIC,
 	SABER_STAFF,
+	SABER_STAFF_SMASH,
 	SABER_DAGGER,
 	SABER_BROAD,
 	SABER_PRONG,
@@ -1970,8 +1980,8 @@ void BG_G2ATSTAngles(void* ghoul2, int time, vec3_t cent_lerpAngles);
 //BG anim utility functions:
 
 int BG_AnimLength(int index, animNumber_t anim);
-float bg_get_torso_anim_point(const playerState_t* ps, int anim_index);
-float BG_GetLegsAnimPoint(const playerState_t* ps, int anim_index);
+float BG_GetSelfTorsoAnimPoint(const playerState_t* ps, const int animSetIndex);
+float BG_GetLegsAnimPoint(const playerState_t* ps, const int animSetIndex);
 
 qboolean PM_InSpecialJump(int anim);
 qboolean PM_InSaberStandAnim(int anim);
@@ -1990,7 +2000,7 @@ qboolean PM_FlippingAnim(int anim);
 qboolean PM_SpinningSaberAnim(int anim);
 qboolean PM_SaberInSpecialAttack(int anim);
 qboolean PM_SaberInKata(saberMoveName_t saberMove);
-qboolean PM_InKataAnim(int anim);
+qboolean PM_InKataAnim(const int anim);
 qboolean PM_InKataBotDashDodgeAnim(const int anim);
 qboolean PM_KickingAnim(int anim);
 qboolean PM_PunchAnim(int anim);
@@ -2024,8 +2034,8 @@ int		bg_parse_animation_file(const char* filename, animation_t* anim_set, qboole
 int		BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, const int eventFileIndex);
 #endif
 
-qboolean BG_HasAnimation(int anim_index, int animation);
-int		PM_PickAnim(int anim_index, int min_anim, int max_anim);
+qboolean BG_HasAnimation(int AnimIndex, int animation);
+int		PM_PickAnim(int AnimIndex, int min_anim, int max_anim);
 
 int BG_GetItemIndexByTag(int tag, int type);
 

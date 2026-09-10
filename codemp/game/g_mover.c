@@ -1138,7 +1138,6 @@ static void InitMover(gentity_t* ent)
 	InitMoverTrData(ent);
 }
 
-
 /*
 ===============================================================================
 

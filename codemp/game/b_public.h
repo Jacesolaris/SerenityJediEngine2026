@@ -109,6 +109,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define AID_CONFUSED	0x00000004	//Is unable to come up with a course of action
 #define AID_LOSTPATH	0x00000008	//Cannot make a valid movement due to lack of connections
 
+#define SABER_SMASH_COOLDOWN_MS 20000
+
 //#endif //__DEBUG
 
 typedef enum

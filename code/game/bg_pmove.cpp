@@ -145,7 +145,7 @@ extern qboolean PM_StandingidleAnim(int move);
 extern qboolean PM_SaberDoDamageAnim(int anim);
 extern qboolean PM_KnockDownAnim(int anim);
 extern qboolean PM_SaberInKata(saberMoveName_t saberMove);
-extern qboolean PM_InKataAnim(int anim);
+extern qboolean PM_InKataAnim(const int anim);
 extern cvar_t* g_DebugSaberCombat;
 extern cvar_t* g_allowslipping;
 extern cvar_t* g_allowClimbing;
@@ -4203,6 +4203,9 @@ static int PM_GetLandingAnim()
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -4276,202 +4279,14 @@ static qboolean PM_TryRoll()
 			return qfalse;
 		}
 	}
+
 	if ((pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) && !BG_AllowThirdPersonSpecialMove(pm->ps))
 	{
 		//player can't do this in 1st person
 		return qfalse;
 	}
-	if (pm->gent->client->NPC_class == CLASS_VADER || pm->gent->client->NPC_class == CLASS_DESANN)
+	if (!pm->gent)
 	{
-		//no anim
-		PM_SaberLungeAttackMove(qtrue);
-	}
-	if (pm->ps->saber[0].saberFlags & SFL_NO_ROLLS)
-	{
-		return qfalse;
-	}
-	if (pm->ps->dualSabers
-		&& pm->ps->saber[1].saberFlags & SFL_NO_ROLLS)
-	{
-		return qfalse;
-	}
-
-	vec3_t fwd, right, traceto;
-	const vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
-	const vec3_t maxs = { pm->maxs[0], pm->maxs[1], static_cast<float>(pm->gent->client->crouchheight) };
-	const vec3_t mins = { pm->mins[0], pm->mins[1], pm->mins[2] + STEPSIZE };
-	trace_t trace;
-	int anim = -1;
-
-	AngleVectors(fwd_angles, fwd, right, nullptr);
-
-	gentity_t* npc = &g_entities[pm->ps->clientNum];
-
-	if (npc->npc_roll_start)
-	{
-		if (npc->npc_roll_direction == EVASION_ROLL_DIR_BACK)
-		{
-			// backward roll
-			anim = BOTH_ROLL_B;
-			VectorMA(pm->ps->origin, -roll_dist, fwd, traceto);
-		}
-		else if (npc->npc_roll_direction == EVASION_ROLL_DIR_RIGHT)
-		{
-			//right
-			anim = BOTH_ROLL_R;
-			VectorMA(pm->ps->origin, roll_dist, right, traceto);
-		}
-		else if (npc->npc_roll_direction == EVASION_ROLL_DIR_LEFT)
-		{
-			//left
-			anim = BOTH_ROLL_L;
-			VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-		}
-		// No matter what, re-initialize the roll flag, so we dont end up with npcs rolling all around the map :)
-		npc->npc_roll_start = qfalse;
-	}
-	else if (pm->cmd.forwardmove)
-	{
-		if (pm->ps->pm_flags & PMF_BACKWARDS_RUN)
-		{
-			anim = BOTH_ROLL_B;
-			VectorMA(pm->ps->origin, -roll_dist, fwd, traceto);
-		}
-		else
-		{
-			if (pm->ps->weapon == WP_SABER)
-			{
-				anim = BOTH_ROLL_F;
-				VectorMA(pm->ps->origin, roll_dist, fwd, traceto);
-			}
-			else if (pm->ps->weapon == WP_MELEE)
-			{
-				anim = BOTH_ROLL_F2;
-				VectorMA(pm->ps->origin, roll_dist, fwd, traceto);
-			}
-			else
-			{
-				//GUNNERS WILL DO THIS
-				anim = BOTH_ROLL_F1;
-				VectorMA(pm->ps->origin, roll_dist, fwd, traceto);
-			}
-		}
-	}
-	else if (pm->cmd.rightmove > 0)
-	{
-		anim = BOTH_ROLL_R;
-		VectorMA(pm->ps->origin, roll_dist, right, traceto);
-	}
-	else if (pm->cmd.rightmove < 0)
-	{
-		anim = BOTH_ROLL_L;
-		VectorMA(pm->ps->origin, -roll_dist, right, traceto);
-	}
-	else
-	{
-		//???
-	}
-
-	if (anim != -1)
-	{
-		qboolean roll = qfalse;
-		int clipmask = CONTENTS_SOLID;
-		if (pm->ps->clientNum)
-		{
-			clipmask |= CONTENTS_MONSTERCLIP | CONTENTS_BOTCLIP;
-		}
-		else
-		{
-			if (pm->gent && pm->gent->enemy && pm->gent->enemy->health > 0)
-			{
-				//player can always roll in combat
-				roll = qtrue;
-			}
-			else
-			{
-				clipmask |= CONTENTS_PLAYERCLIP;
-			}
-		}
-		if (!roll)
-		{
-			pm->trace(&trace, pm->ps->origin, mins, maxs, traceto, pm->ps->clientNum, clipmask,
-				static_cast<EG2_Collision>(0), 0);
-			if (trace.fraction >= 1.0f)
-			{
-				//okay, clear, check for a bottomless drop
-				vec3_t top;
-				VectorCopy(traceto, top);
-				traceto[2] -= 256;
-				pm->trace(&trace, top, mins, maxs, traceto, pm->ps->clientNum, CONTENTS_SOLID,
-					static_cast<EG2_Collision>(0), 0);
-				if (trace.fraction < 1.0f)
-				{
-					//not a bottomless drop
-					roll = qtrue;
-				}
-			}
-			else
-			{
-				//hit an architectural obstruction
-				if (pm->ps->clientNum)
-				{
-					//NPCs don't care about rolling into walls, just off ledges
-					if (!(trace.contents & CONTENTS_BOTCLIP))
-					{
-						roll = qtrue;
-					}
-				}
-				else if (G_EntIsDoor(trace.entityNum))
-				{
-					//okay to roll into a door
-					if (G_EntIsUnlockedDoor(trace.entityNum))
-					{
-						//if it's an auto-door
-						roll = qtrue;
-					}
-				}
-				else
-				{
-					//check other conditions
-					const gentity_t* traceEnt = &g_entities[trace.entityNum];
-					if (traceEnt && traceEnt->svFlags & SVF_GLASS_BRUSH)
-					{
-						//okay to roll through glass
-						roll = qtrue;
-					}
-				}
-			}
-		}
-		if (roll)
-		{
-			G_StartRoll(pm->gent, anim);
-			return qtrue;
-		}
-	}
-	return qfalse;
-}
-
-static qboolean PM_TryRoll_SJE()
-{
-	constexpr float roll_dist = 192; //was 64;
-
-	if (PM_SaberInAttack(pm->ps->saberMove) || PM_SaberInSpecialAttack(pm->ps->torsoAnim)
-		|| PM_SpinningSaberAnim(pm->ps->legsAnim)
-		|| PM_SaberInStart(pm->ps->saberMove))
-	{
-		//attacking or spinning (or, if player, starting an attack)
-		if (PM_CanRollFromSoulCal(pm->ps))
-		{
-			//hehe
-		}
-		else
-		{
-			return qfalse;
-		}
-	}
-	if ((pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) && !BG_AllowThirdPersonSpecialMove(pm->ps))
-	{
-		//player can't do this in 1st person
 		return qfalse;
 	}
 
@@ -4497,9 +4312,7 @@ static qboolean PM_TryRoll_SJE()
 	}
 
 	vec3_t fwd, right, traceto;
-	const vec3_t fwd_angles = {
-		0, pm->ps->viewangles[YAW], 0
-	};
+	const vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
 	const vec3_t maxs = { pm->maxs[0], pm->maxs[1], static_cast<float>(pm->gent->client->crouchheight) };
 	const vec3_t mins = { pm->mins[0], pm->mins[1], pm->mins[2] + STEPSIZE };
 	trace_t trace;
@@ -10616,13 +10429,13 @@ static void PM_Footsteps(void)
 				(pm->cmd.buttons & BUTTON_DASH))
 			{
 				//roll!
-				rolled = PM_TryRoll_SJE();
+				rolled = PM_TryRoll();
 			}
 
 			if (OVERRIDE_ROLL_CHECK)
 			{
 				//roll!
-				rolled = PM_TryRoll_SJE();
+				rolled = PM_TryRoll();
 			}
 
 			if (!rolled)
@@ -13368,6 +13181,9 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 				|| new_move == LS_STABDOWN_BACKHAND
 				|| new_move == LS_STABDOWN_STAFF
 				|| new_move == LS_STABDOWN_DUAL
+				|| new_move == LS_SMASHDOWN_SINGLE
+				|| new_move == LS_SMASHDOWN_STAFF
+				|| new_move == LS_SMASHDOWN_DUAL
 				|| new_move == LS_DUAL_SPIN_PROTECT
 				|| new_move == LS_DUAL_SPIN_PROTECT_GRIE
 				|| new_move == LS_STAFF_SOULCAL
@@ -13602,6 +13418,9 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		case LS_DUAL_SPIN_PROTECT:
 		case LS_DUAL_SPIN_PROTECT_GRIE:
 		case LS_STAFF_SOULCAL:
+		case LS_SMASHDOWN_SINGLE:
+		case LS_SMASHDOWN_STAFF:
+		case LS_SMASHDOWN_DUAL:
 			//FIXME: probably more...
 			pm->ps->SaberActivate();
 			if (pm->ps->dualSabers && pm->gent->weaponModel[1] == -1)
@@ -17393,6 +17212,250 @@ saberMoveName_t PM_DoAI_Fake(const int curmove)
 
 /*
 =================
+Kata Animationstyles
+=================
+*/
+
+static qboolean PM_SaberSmashOnCooldown(const playerState_t* ps)
+{
+	if (!ps)
+	{
+		return qfalse;
+	}
+
+	if (ps->Smash_Count > 0 && (level.time - ps->SaberSmashLastStartTime) < SABER_SMASH_COOLDOWN_MS)
+	{
+		return qtrue;
+	}
+	return qfalse;
+}
+
+static void PM_KataAnimationStyle(void)
+{
+	// Safety
+	if (pm == nullptr ||
+		pm->ps == nullptr ||
+		pm->gent == nullptr ||
+		pm->gent->client == nullptr)
+	{
+		return;
+	}
+
+	const int saberOffenseLevel = pm->ps->forcePowerLevel[FP_SABER_OFFENSE];
+	const int forceCurrent = pm->ps->forcePower;
+	const int forceMax = pm->ps->forcePowerMax;
+	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.95f)) ? qtrue : qfalse;
+	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
+
+	saberMoveName_t overrideMove = LS_INVALID;
+
+	//see if we have an overridden (or cancelled) kata move
+	if (pm->ps->saber[0].kataMove != LS_INVALID)
+	{
+		if (pm->ps->saber[0].kataMove != LS_NONE)
+		{
+			overrideMove = static_cast<saberMoveName_t>(pm->ps->saber[0].kataMove);
+		}
+	}
+	if (overrideMove == LS_INVALID)
+	{//not overridden by first saber, check second
+		if (pm->ps->dualSabers)
+		{
+			if (pm->ps->saber[1].kataMove != LS_INVALID)
+			{
+				if (pm->ps->saber[1].kataMove != LS_NONE)
+				{
+					overrideMove = static_cast<saberMoveName_t>(pm->ps->saber[1].kataMove);
+				}
+			}
+		}
+	}
+	//no overrides, cancelled?
+	if (overrideMove == LS_INVALID)
+	{
+		if (pm->ps->saber[0].kataMove == LS_NONE)
+		{
+			overrideMove = LS_NONE;
+		}
+		else if (pm->ps->dualSabers)
+		{
+			if (pm->ps->saber[1].kataMove == LS_NONE)
+			{
+				overrideMove = LS_NONE;
+			}
+		}
+	}
+
+	if (overrideMove == LS_INVALID)
+	{
+		switch (pm->ps->saberAnimLevel)
+		{
+		case SS_FAST:
+		{
+			if (pm->ps->dualSabers && pm->ps->saber[1].Active())
+			{
+				PM_SetSaberMove(LS_DUAL_SPIN_PROTECT);
+			}
+			else
+			{
+				if (smashReady == qtrue &&
+					saberOffenseLevel == FORCE_LEVEL_3 &&
+					hasEnoughForce == qtrue)
+				{
+					PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+				}
+				else if (pm->ps->saber[0].type == SABER_YODA)
+				{
+					PM_SetSaberMove(LS_YODA_SPECIAL);
+				}
+				else
+				{
+					PM_SetSaberMove(LS_A1_SPECIAL);
+				}
+			}
+		}
+		break;
+
+		case SS_MEDIUM:
+		{
+			if (smashReady == qtrue &&
+				saberOffenseLevel == FORCE_LEVEL_3 &&
+				hasEnoughForce == qtrue)
+			{
+				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+			}
+			else
+			{
+				PM_SetSaberMove(LS_A2_SPECIAL);
+			}
+		}
+		break;
+
+		case SS_STRONG:
+		{
+			if (smashReady == qtrue &&
+				saberOffenseLevel == FORCE_LEVEL_3 &&
+				hasEnoughForce == qtrue)
+			{
+				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+			}
+			else if (pm->ps->saber[0].type == SABER_PALP)
+			{
+				PM_SetSaberMove(LS_A_JUMP_PALP_);
+			}
+			else
+			{
+				PM_SetSaberMove(LS_A3_SPECIAL);
+			}
+		}
+		break;
+
+		case SS_DESANN:
+		{
+			if (smashReady == qtrue &&
+				saberOffenseLevel == FORCE_LEVEL_3 &&
+				hasEnoughForce == qtrue)
+			{
+				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+			}
+			else if (pm->ps->saber[0].type == SABER_PALP)
+			{
+				PM_SetSaberMove(LS_A_JUMP_PALP_);
+			}
+			else
+			{
+				PM_SetSaberMove(LS_A5_SPECIAL);
+			}
+		}
+		break;
+
+		case SS_TAVION:
+		{
+			if (smashReady == qtrue &&
+				saberOffenseLevel == FORCE_LEVEL_3 &&
+				hasEnoughForce == qtrue)
+			{
+				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+			}
+			else if (pm->ps->saber[0].type == SABER_YODA)
+			{
+				PM_SetSaberMove(LS_YODA_SPECIAL);
+			}
+			else
+			{
+				PM_SetSaberMove(LS_A4_SPECIAL);
+			}
+		}
+		break;
+
+		case SS_DUAL:
+		{
+			if (smashReady == qtrue &&
+				saberOffenseLevel == FORCE_LEVEL_3 &&
+				hasEnoughForce == qtrue)
+			{
+				PM_SetSaberMove(LS_SMASHDOWN_DUAL);
+			}
+			else if (pm->ps->saber[0].type == SABER_GRIE ||
+				pm->ps->saber[0].type == SABER_GRIE4)
+			{
+				PM_SetSaberMove(LS_DUAL_SPIN_PROTECT_GRIE);
+			}
+			else if (pm->ps->saber[0].type == SABER_DAGGER ||
+				pm->ps->saber[0].type == SABER_BACKHAND ||
+				pm->ps->saber[0].type == SABER_ASBACKHAND)
+			{
+				PM_SetSaberMove(LS_STAFF_SOULCAL);
+			}
+			else
+			{
+				PM_SetSaberMove(LS_DUAL_SPIN_PROTECT);
+			}
+		}
+		break;
+		case SS_STAFF:
+		{
+			if (smashReady == qtrue &&
+				saberOffenseLevel == FORCE_LEVEL_3 &&
+				hasEnoughForce == qtrue)
+			{
+				PM_SetSaberMove(LS_SMASHDOWN_STAFF);
+			}
+			else
+			{
+				PM_SetSaberMove(LS_STAFF_SOULCAL);
+			}
+		}
+		break;
+		default:;
+			break;
+		}
+		pm->ps->weaponstate = WEAPON_FIRING;
+
+		if (pm->gent)
+		{
+			G_DrainPowerForSpecialMove(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER, qtrue);
+		}
+	}
+	else if (overrideMove != LS_NONE)
+	{
+		PM_SetSaberMove(overrideMove);
+		pm->ps->weaponstate = WEAPON_FIRING;
+
+		if (pm->gent)
+		{
+			G_DrainPowerForSpecialMove(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER, qtrue);
+		}
+	}
+	if (overrideMove != LS_NONE)
+	{
+		//not cancelled
+		return;
+	}
+}
+
+/*
+=================
 PM_WeaponLightsaber
 
 Consults a chart to choose what to do with the lightsaber.
@@ -18049,137 +18112,7 @@ static void PM_WeaponLightsaber(void)
 	// *********************************************************
 	if (PM_CanDoKata())
 	{
-		saberMoveName_t override_move = LS_INVALID;
-
-		//see if we have an overridden (or cancelled) kata move
-		if (pm->ps->saber[0].kataMove != LS_INVALID)
-		{
-			if (pm->ps->saber[0].kataMove != LS_NONE)
-			{
-				override_move = static_cast<saberMoveName_t>(pm->ps->saber[0].kataMove);
-			}
-		}
-		if (override_move == LS_INVALID)
-		{
-			//not overridden by first saber, check second
-			if (pm->ps->dualSabers)
-			{
-				if (pm->ps->saber[1].kataMove != LS_INVALID)
-				{
-					if (pm->ps->saber[1].kataMove != LS_NONE)
-					{
-						override_move = static_cast<saberMoveName_t>(pm->ps->saber[1].kataMove);
-					}
-				}
-			}
-		}
-		//no overrides, cancelled?
-		if (override_move == LS_INVALID)
-		{
-			if (pm->ps->saber[0].kataMove == LS_NONE)
-			{
-				override_move = LS_NONE;
-			}
-			else if (pm->ps->dualSabers)
-			{
-				if (pm->ps->saber[1].kataMove == LS_NONE)
-				{
-					override_move = LS_NONE;
-				}
-			}
-		}
-
-		if (override_move == LS_INVALID)
-		{
-			switch (pm->ps->saberAnimLevel)
-			{
-			case SS_FAST:
-				if (pm->ps->saber[0].type == SABER_YODA)
-				{
-					PM_SetSaberMove(LS_YODA_SPECIAL);
-				}
-				else
-				{
-					PM_SetSaberMove(LS_A1_SPECIAL);
-				}
-				break;
-
-			case SS_MEDIUM:
-				PM_SetSaberMove(LS_A2_SPECIAL);
-				break;
-
-			case SS_STRONG:
-				if (pm->ps->saber[0].type == SABER_PALP)
-				{
-					PM_SetSaberMove(LS_A_JUMP_PALP_);
-				}
-				else
-				{
-					PM_SetSaberMove(LS_A3_SPECIAL);
-				}
-				break;
-
-			case SS_DESANN:
-				if (pm->ps->saber[0].type == SABER_PALP)
-				{
-					PM_SetSaberMove(LS_A_JUMP_PALP_);
-				}
-				else
-				{
-					PM_SetSaberMove(LS_A5_SPECIAL);
-				}
-				break;
-
-			case SS_TAVION:
-				if (pm->ps->saber[0].type == SABER_YODA)
-				{
-					PM_SetSaberMove(LS_YODA_SPECIAL);
-				}
-				else
-				{
-					PM_SetSaberMove(LS_A4_SPECIAL);
-				}
-				break;
-
-			case SS_DUAL:
-				if (pm->ps->saber[0].type == SABER_GRIE ||
-					pm->ps->saber[0].type == SABER_GRIE4)
-				{
-					PM_SetSaberMove(LS_DUAL_SPIN_PROTECT_GRIE);
-				}
-				else if (pm->ps->saber[0].type == SABER_DAGGER ||
-					pm->ps->saber[0].type == SABER_BACKHAND ||
-					pm->ps->saber[0].type == SABER_ASBACKHAND)
-				{
-					PM_SetSaberMove(LS_STAFF_SOULCAL);
-				}
-				else
-				{
-					PM_SetSaberMove(LS_DUAL_SPIN_PROTECT);
-				}
-				break;
-			case SS_STAFF:
-				PM_SetSaberMove(LS_STAFF_SOULCAL);
-				break;
-			default:;
-				break;
-			}
-
-			pm->ps->weaponstate = WEAPON_FIRING;
-			WP_ForcePowerDrain(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER);
-		}
-		else if (override_move != LS_NONE)
-		{
-			PM_SetSaberMove(override_move);
-			pm->ps->weaponstate = WEAPON_FIRING;
-			G_DrainPowerForSpecialMove(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER, qtrue);
-		}
-
-		if (override_move != LS_NONE)
-		{
-			//not cancelled
-			return;
-		}
+		PM_KataAnimationStyle();
 	}
 
 	if ((pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer()) &&
@@ -21816,46 +21749,186 @@ void PM_SaberPerfectBlockUpdate(const int new_move)
 	}
 }
 
+extern float CG_GetSelfTorsoAnimPoint();
 //saber status utility tools
+extern float CG_GetSelfTorsoAnimPoint();
+
+// saber status utility tools
 static qboolean PM_SaberInFullDamageMove(const playerState_t* ps)
 {
-	//The player is attacking with a saber attack that does full damage
-	if (PM_SaberInAttack(ps->saberMove)
-		|| PM_SaberInDamageMove(ps->saberMove)
-		|| PM_SaberInSpecialAttack(ps->torsoAnim) //jacesolaris 2019 test for idlekill
-		|| PM_SaberDoDamageAnim(ps->torsoAnim)
-		&& !PM_KickMove(ps->saberMove)
-		&& !PM_InSaberLock(ps->torsoAnim)
-		|| PM_SuperBreakWinAnim(ps->torsoAnim))
+	if (ps == NULL)
 	{
-		//in attack animation
+		return qfalse;
+	}
+
+	const float torso_anim_point = CG_GetSelfTorsoAnimPoint();
+
+	// Full damage conditions
+	const qboolean inAttack = (PM_SaberInAttack(ps->saberMove) == qtrue) ? qtrue : qfalse;
+	const qboolean inDamage = (PM_SaberInDamageMove(ps->saberMove) == qtrue) ? qtrue : qfalse;
+	const qboolean inSpecial = (PM_SaberInSpecialAttack(ps->torsoAnim) == qtrue) ? qtrue : qfalse;
+	const qboolean inDoDamageAnim = (PM_SaberDoDamageAnim(ps->torsoAnim) == qtrue) ? qtrue : qfalse;
+	const qboolean inKick = (PM_KickMove(ps->saberMove) == qtrue) ? qtrue : qfalse;
+	const qboolean inLock = (PM_InSaberLock(ps->torsoAnim) == qtrue) ? qtrue : qfalse;
+	const qboolean inSuperBreak = (PM_SuperBreakWinAnim(ps->torsoAnim) == qtrue) ? qtrue : qfalse;
+
+	if (inAttack == qtrue ||
+		inDamage == qtrue ||
+		inSpecial == qtrue ||
+		(inDoDamageAnim == qtrue && inKick == qfalse && inLock == qfalse) ||
+		inSuperBreak == qtrue)
+	{
+		// Invert BG partial windows → PM full windows
+		switch (ps->torsoAnim)
+		{
+		case BOTH_ATTACK_BACK:
+			if (torso_anim_point >= 0.30f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_A2_STABBACK1:
+			if (torso_anim_point >= 0.40f && torso_anim_point <= 0.65f) { return qtrue; }
+			break;
+
+		case BOTH_CROUCHATTACKBACK1:
+			if (torso_anim_point >= 0.25f && torso_anim_point <= 0.75f) { return qtrue; }
+			break;
+
+		case BOTH_BUTTERFLY_LEFT:
+		case BOTH_BUTTERFLY_RIGHT:
+		case BOTH_BUTTERFLY_FL1:
+		case BOTH_BUTTERFLY_FR1:
+		case BOTH_FJSS_TR_BL:
+		case BOTH_FJSS_TL_BR:
+			if (torso_anim_point >= 0.25f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_FORCELEAP2_T__B_:
+			if (torso_anim_point >= 0.50f && torso_anim_point <= 0.75f) { return qtrue; }
+			break;
+
+		case BOTH_JUMPFLIPSTABDOWN:
+		case BOTH_JUMPFLIPSLASHDOWN1:
+			if (torso_anim_point >= 0.20f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_ROLL_STAB:
+			if (torso_anim_point >= 0.30f && torso_anim_point <= 0.75f) { return qtrue; }
+			break;
+
+		case BOTH_JUMPATTACK6:
+			if (torso_anim_point >= 0.25f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_JUMPATTACK7:
+			if (torso_anim_point >= 0.35f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_SPINATTACK6:
+			if (torso_anim_point >= 0.35f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_SPINATTACK7:
+			if (torso_anim_point >= 0.45f && torso_anim_point <= 0.85f) { return qtrue; }
+			break;
+
+		case BOTH_FORCELONGLEAP_ATTACK:
+			if (torso_anim_point >= 0.20f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_STABDOWN:
+		case BOTH_STABDOWN_STAFF:
+		case BOTH_STABDOWN_DUAL:
+		case BOTH_STABDOWN_BACKHAND:
+			if (torso_anim_point >= 0.50f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_SMASHDOWN_SINGLE:
+			if (torso_anim_point >= 0.10f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_SMASHDOWN_DUAL:
+			if (torso_anim_point >= 0.45f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_SMASHDOWN_STAFF:
+			if (torso_anim_point >= 0.20f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		case BOTH_A6_SABERPROTECT:
+			if (torso_anim_point >= 0.30f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_A7_SOULCAL:
+			if (torso_anim_point >= 0.25f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_A1_SPECIAL:
+		case BOTH_A2_SPECIAL:
+		case BOTH_A3_SPECIAL:
+			if (torso_anim_point >= 0.20f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_FLIP_ATTACK7:
+			if (torso_anim_point >= 0.40f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_PULL_IMPALE_STAB:
+		case BOTH_PULL_IMPALE_SWING:
+			if (torso_anim_point >= 0.40f && torso_anim_point <= 0.70f) { return qtrue; }
+			break;
+
+		case BOTH_ALORA_SPIN_SLASH:
+			if (torso_anim_point >= 0.22f && torso_anim_point <= 0.90f) { return qtrue; }
+			break;
+
+		case BOTH_A6_FB:
+		case BOTH_A6_LR:
+			if (torso_anim_point >= 0.45f && torso_anim_point <= 0.80f) { return qtrue; }
+			break;
+
+		default:
+			break;
+		}
+
+		// If not blocked, full damage
 		if (ps->saberBlocked == BLOCKED_NONE)
 		{
-			//and not attempting to do some sort of block animation
 			return qtrue;
 		}
 	}
+
 	return qfalse;
 }
 
-qboolean BG_SaberInTransitionDamageMove(const playerState_t* ps)
+qboolean PM_SaberInTransitionDamageMove(const playerState_t* ps)
 {
-	//player is in a saber move where it does transitional damage
-	if (PM_SaberInTransition(ps->saberMove))
+	if (ps == NULL)
+	{
+		return qfalse;
+	}
+
+	// Transitional saber moves do damage only during transition
+	const qboolean inTransition = (PM_SaberInTransition(ps->saberMove) == qtrue) ? qtrue : qfalse;
+
+	if (inTransition == qtrue)
 	{
 		if (ps->saberBlocked == BLOCKED_NONE)
 		{
-			//and not attempting to do some sort of block animation
 			return qtrue;
 		}
 	}
+
 	return qfalse;
 }
 
 qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps)
 {
-	//player is in a saber move that does something more than idle saber damage
-	return PM_SaberInFullDamageMove(ps);
+	if (ps == NULL)
+	{
+		return qfalse;
+	}
+
+	return (PM_SaberInFullDamageMove(ps) == qtrue) ? qtrue : qfalse;
 }
 
 extern qboolean PM_BounceAnim(int anim);

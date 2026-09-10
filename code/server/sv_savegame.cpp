@@ -309,20 +309,10 @@ void SV_SaveGame_f()
 	if (!SG_GameAllowedToSaveHere(qfalse)) //full check
 		return; // this prevents people saving via quick-save now during cinematic.
 
-#ifdef JK2_MODE
-	if (!Q_stricmp(filename, "quik*") || !Q_stricmp(filename, "auto*"))
-	{
-		SCR_PrecacheScreenshot();
-		if (filename[4] == '*')
-			filename[4] = 0;	//remove the *
-		SG_StoreSaveGameComment("");	// clear previous comment/description, which will force time/date comment.
-	}
-#else
 	if (!Q_stricmp(filename, "auto"))
 	{
 		SG_StoreSaveGameComment(""); // clear previous comment/description, which will force time/date comment.
 	}
-#endif
 
 	Com_Printf(S_COLOR_CYAN "%s \"%s\"...\n", SE_GetString("CON_TEXT_SAVING_GAME"), filename);
 

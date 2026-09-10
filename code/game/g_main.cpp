@@ -270,6 +270,8 @@ cvar_t* g_npc_is_smart_range;
 cvar_t* g_AimingCinematicCamera;
 cvar_t* g_HitTracking;
 
+cvar_t* g_SaberBounceOnWalls;
+
 qboolean stop_icarus = qfalse;
 
 extern char* G_GetLocationForEnt(const gentity_t* ent);
@@ -869,6 +871,8 @@ static void G_InitCvars()
 	g_AimingCinematicCamera = gi.cvar("g_AimingCinematicCamera", "1", CVAR_ARCHIVE);
 
 	g_HitTracking = gi.cvar("g_HitTracking", "0", CVAR_ARCHIVE);
+
+	g_SaberBounceOnWalls = gi.cvar("g_saberbounceonwalls", "0", CVAR_ARCHIVE);
 }
 
 /*

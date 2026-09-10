@@ -1596,7 +1596,8 @@ void NPC_Begin(gentity_t* ent)
 					}
 					else if (ent->client->saber[0].type == SABER_STAFF
 						|| ent->client->saber[0].type == SABER_STAFF_UNSTABLE
-						|| ent->client->saber[0].type == SABER_STAFF_THIN)
+						|| ent->client->saber[0].type == SABER_STAFF_THIN
+						|| ent->client->saber[0].type == SABER_STAFF_SMASH)
 					{
 						newLevel = SS_TAVION;
 					}

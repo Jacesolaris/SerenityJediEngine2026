@@ -3431,18 +3431,6 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 		}
 	}
 
-	/*if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) && g_AimingCinematicCamera->integer)
-	{
-		if (ent->client->ps.communicatingflags & (1 << CF_AIMINGGUN))
-		{
-			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_CDP;
-		}
-		else
-		{
-			cg.overrides.active &= ~(CG_OVERRIDE_3RD_PERSON_CDP);
-		}
-	}*/
-
 	//check force drain
 	if (ent->client->ps.forcePowersActive & 1 << FP_DRAIN)
 	{
@@ -4175,11 +4163,8 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 				VectorClear(ent->client->ps.moveDir);
 			}
 		}
-		vec3_t kickDir = { 0, 0, 0 }, kickDir2 = { 0, 0, 0 }, kickEnd = { 0, 0, 0 }, kickEnd2 = { 0, 0, 0 }, fwdAngs = {
-				   0, ent->client->ps.viewangles[YAW], 0
-		};
-		float animLength = PM_AnimLength(ent->client->clientInfo.animFileIndex,
-			static_cast<animNumber_t>(ent->client->ps.legsAnim));
+		vec3_t kickDir = { 0, 0, 0 }, kickDir2 = { 0, 0, 0 }, kickEnd = { 0, 0, 0 }, kickEnd2 = { 0, 0, 0 }, fwdAngs = { 0, ent->client->ps.viewangles[YAW], 0 };
+		float animLength = PM_AnimLength(ent->client->clientInfo.animFileIndex, static_cast<animNumber_t>(ent->client->ps.legsAnim));
 		float elapsedTime = animLength - ent->client->ps.legsAnimTimer;
 		float remainingTime = animLength - elapsedTime;
 		float kickDist = ent->maxs[0] * 1.5f + STAFF_KICK_RANGE + 8.0f; //fudge factor of 8
@@ -5353,6 +5338,42 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 			cg.overrides.thirdPersonPitchOffset = cg_thirdPersonPitchOffset.value + backDist / 2.0f;
 		}
 		overridAngles = PM_AdjustAnglesForSpinProtect(ent, ucmd) ? qtrue : overridAngles;
+	}
+	else if (ent->client->ps.torsoAnim == BOTH_SMASHDOWN_SINGLE ||
+		ent->client->ps.torsoAnim == BOTH_SMASHDOWN_STAFF ||
+		ent->client->ps.torsoAnim == BOTH_SMASHDOWN_DUAL)
+	{
+		ucmd->forwardmove = ucmd->rightmove = ucmd->upmove = 0;
+		if (ent->NPC)
+		{
+			VectorClear(ent->client->ps.moveDir);
+			ent->client->ps.forceJumpCharge = 0;
+		}
+		if (!ent->s.number)
+		{
+			float animLength = PM_AnimLength(ent->client->clientInfo.animFileIndex, static_cast<animNumber_t>(ent->client->ps.torsoAnim));
+			float elapsedTime = animLength - ent->client->ps.torsoAnimTimer;
+			float backDist = 0;
+			if (elapsedTime <= 300.0f)
+			{
+				//starting anim
+				backDist = elapsedTime / 300.0f * 45.0f;
+			}
+			else if (ent->client->ps.torsoAnimTimer <= 300.0f)
+			{
+				//ending anim
+				backDist = ent->client->ps.torsoAnimTimer / 300.0f * 45.0f;
+			}
+			else
+			{
+				//in middle of anim
+				backDist = 45.0f;
+			}
+			//back off and look down
+			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_3RD_PERSON_POF;
+			cg.overrides.thirdPersonRange = cg_thirdPersonRange.value + backDist;
+			cg.overrides.thirdPersonPitchOffset = cg_thirdPersonPitchOffset.value + backDist / 2.0f;
+		}
 	}
 	else if (ent->client->ps.legsAnim == BOTH_A5_SPECIAL)
 	{
@@ -8499,6 +8520,14 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			client->ps.Dash_Count = 0;
 			client->ps.communicatingflags &= ~(1 << CF_DASHING);
 		}
+		if ((client->ps.SaberSmashStartTime > level.time) ||
+			(client->ps.SaberSmashLastStartTime > level.time))
+		{
+			client->ps.SaberSmashStartTime = 0;
+			client->ps.SaberSmashLastStartTime = 0;
+			client->ps.Smash_Count = 0;
+			client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
+		}
 		if (IsRespecting(ent))
 		{
 			client->ps.respectingtime = level.time;
@@ -8588,7 +8617,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 					// fire event when Dash_Count becomes 2
 					if (client->ps.Dash_Count == 2)
 					{
-						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_LOCALTIMER);
+						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_DASHTIMER);
 						te->s.time = level.time;
 						te->s.time2 = 2500;
 
@@ -8597,6 +8626,9 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 
 						// networked index for cgame
 						te->s.otherentityNum = ent->s.number;
+
+						// ensure the updated entityState is linked so clients get the time/time2 and otherentityNum
+						gi.linkentity(te);
 					}
 
 					if ((client->ps.communicatingflags & (1 << CF_DASHING)) == 0)
@@ -8628,6 +8660,68 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 					client->ps.dashstartTime = 0;
 					client->ps.Dash_Count = 0;
 					client->ps.communicatingflags &= ~(1 << CF_DASHING);
+				}
+			}
+		}
+		else if (client->ps.saberSmashTriggered == qtrue)
+		{
+			if (client->ps.Smash_Count < 1)
+			{
+				if ((client->ps.SaberSmashStartTime <= 0) &&
+					((level.time - client->ps.SaberSmashLastStartTime) >= 100))
+				{
+					client->ps.SaberSmashStartTime = level.time;
+					client->ps.SaberSmashLastStartTime = level.time;
+					client->ps.Smash_Count++;
+
+					// fire event when Smash_Count becomes 1
+					if (client->ps.Smash_Count == 1)
+					{
+						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_SLAMTIMER);
+						te->s.time = level.time;
+						te->s.time2 = SABER_SMASH_COOLDOWN_MS;
+
+						// server-side owner pointer
+						te->owner = ent;
+
+						// networked index for cgame
+						te->s.otherentityNum = ent->s.number;
+
+						// ensure the updated entityState is linked so clients get the time/time2 and otherentityNum
+						gi.linkentity(te);
+					}
+
+					if ((client->ps.communicatingflags & (1 << CF_SABERSMASHING)) == 0)
+					{
+						client->ps.communicatingflags |= (1 << CF_SABERSMASHING);
+					}
+				}
+				else if ((level.time - client->ps.SaberSmashLastStartTime) >= 10)
+				{
+					client->ps.SaberSmashStartTime = 0;
+					client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
+				}
+			}
+			else
+			{
+				if ((client->ps.SaberSmashStartTime <= 0) &&
+					((level.time - client->ps.SaberSmashLastStartTime) >= SABER_SMASH_COOLDOWN_MS))
+				{
+					client->ps.SaberSmashStartTime = level.time;
+					client->ps.SaberSmashLastStartTime = level.time;
+
+					if ((client->ps.communicatingflags & (1 << CF_SABERSMASHING)) == 0)
+					{
+						client->ps.communicatingflags |= (1 << CF_SABERSMASHING);
+					}
+				}
+				else if ((level.time - client->ps.SaberSmashLastStartTime) >= SABER_SMASH_COOLDOWN_MS)
+				{
+					// cooldown fully finished: reset everything, including trigger
+					client->ps.SaberSmashStartTime = 0;
+					client->ps.Smash_Count = 0;
+					client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
+					ent->client->ps.saberSmashTriggered = qfalse;
 				}
 			}
 		}
@@ -8711,6 +8805,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDJEDI);
 			client->ps.communicatingflags &= ~(1 << CF_OVERSIZEDGUNNER);
 			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDGUNNER);
+			client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
 			if (client->ps.weapon != WP_STUN_BATON ||
 				(client->ps.communicatingflags |= client->ps.grapplestartTime >= 3000))
 			{

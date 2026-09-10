@@ -729,6 +729,10 @@ using entity_event_t = enum
 	EV_TESTLINE,
 
 	EV_LOCALTIMER,
+
+	EV_SLAMTIMER,
+
+	EV_DASHTIMER,
 };
 
 class animation_t
@@ -763,7 +767,7 @@ public:
 }; // animation_t
 
 #define MAX_ANIM_FILES	32
-constexpr auto MAX_ANIM_EVENTS = 600;
+constexpr auto MAX_ANIM_EVENTS = 1200;
 
 //size of Anim eventData array...
 constexpr auto MAX_RANDOM_ANIM_SOUNDS = 8;

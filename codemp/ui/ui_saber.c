@@ -2106,6 +2106,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 		switch (saberType)
 		{
 		case SABER_SINGLE:
+		case SABER_SINGLE_SMASH:
 		case SABER_SINGLE_CLASSIC:
 		case SABER_UNSTABLE:
 		case SABER_THIN:
@@ -2135,6 +2136,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 		case SABER_STAFF_SFX:
 		case SABER_STAFF_MAUL:
 		case SABER_ELECTROSTAFF:
+		case SABER_STAFF_SMASH:
 			if (bladeNum == 0)
 			{
 				VectorMA(bladeOrigin, 12 * scale, axis[0], bladeOrigin);

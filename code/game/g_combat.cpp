@@ -94,7 +94,7 @@ extern qboolean PM_SpinningSaberAnim(int anim);
 extern qboolean PM_FlippingAnim(int anim);
 extern qboolean PM_InSpecialJump(int anim);
 extern qboolean PM_RollingAnim(int anim);
-extern qboolean PM_InAnimForsaber_move(int anim, int saberMove);
+extern qboolean PM_InAnimForSaberMove(int anim, int saberMove);
 extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInReturn(int move);
 extern int PM_AnimLength(const int index, const animNumber_t anim);
@@ -5908,7 +5908,7 @@ qboolean G_CheckForStrongAttackMomentum(const gentity_t* self)
 	if (PM_PowerLevelForSaberAnim(&self->client->ps) > FORCE_LEVEL_2)
 	{
 		//strong attacks can't be interrupted
-		if (PM_InAnimForsaber_move(self->client->ps.torsoAnim, self->client->ps.saberMove))
+		if (PM_InAnimForSaberMove(self->client->ps.torsoAnim, self->client->ps.saberMove))
 		{
 			//our saberMove was not already interupted by some other anim (like pain)
 			if (PM_SaberInStart(self->client->ps.saberMove))

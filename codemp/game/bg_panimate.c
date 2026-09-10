@@ -474,9 +474,12 @@ qboolean PM_SaberInAttack(const int move)
 	case LS_KICK_R_AIR:
 	case LS_KICK_L_AIR:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
@@ -516,6 +519,9 @@ qboolean PM_SaberInKata(const saberMoveName_t saberMove)
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 		return qtrue;
 	default:
 		break;
@@ -649,7 +655,7 @@ qboolean PM_SaberDrawPutawayAnim(const int anim)
 	return qfalse;
 }
 
-qboolean PM_InAnimForsaber_move(int anim, const int saberMove)
+qboolean PM_InAnimForSaberMove(int anim, const int saberMove)
 {
 	switch (anim)
 	{
@@ -703,6 +709,9 @@ qboolean PM_InAnimForsaber_move(int anim, const int saberMove)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -845,9 +854,12 @@ qboolean PM_SaberInDamageMove(const int move)
 	case LS_TAUNTAUN_ATTACK_RIGHT:
 	case LS_TAUNTAUN_ATTACK_LEFT:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
@@ -909,6 +921,9 @@ qboolean PM_SaberDoDamageAnim(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1062,6 +1077,9 @@ qboolean PM_InKataAnim(const int anim)
 	case BOTH_YODA_SPECIAL:
 	case BOTH_GRIEVOUS_SPIN:
 	case BOTH_GRIEVOUS_PROTECT:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 		return qtrue;
 	default:;
 	}
@@ -1097,6 +1115,9 @@ qboolean PM_InKataBotDashDodgeAnim(const int anim)
 	case BOTH_GRIEVOUS_PROTECT:
 	case BOTH_SPINATTACK6:
 	case BOTH_SPINATTACK7:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 		return qtrue;
 	default:;
 	}
@@ -1153,9 +1174,12 @@ qboolean PM_SaberInKillMove(const int move)
 	case LS_LEAP_ATTACK:
 	case LS_LEAP_ATTACK2:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_A1_SPECIAL:
 	case LS_A2_SPECIAL:
 	case LS_A3_SPECIAL:
@@ -1224,9 +1248,12 @@ qboolean PM_SaberInSpecial(const int move)
 	case LS_KICK_R_AIR:
 	case LS_KICK_L_AIR:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
@@ -1317,6 +1344,9 @@ qboolean BG_InExtraDefenseSaberMove(const int move)
 	case LS_GRIEVOUS_SPECIAL:
 	case LS_JUMPATTACK_DUAL:
 	case LS_GRIEVOUS_LUNGE:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 		return qtrue;
 	default:;
 	}
@@ -1535,6 +1565,9 @@ qboolean PM_SaberInSpecialAttack(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1561,7 +1594,7 @@ qboolean PM_SaberInSpecialAttack(const int anim)
 	return qfalse;
 }
 
-qboolean pm_saber_innonblockable_attack(const int anim)
+qboolean PM_SaberInnonblockableAttack(const int anim)
 {
 	switch (anim)
 	{
@@ -1591,6 +1624,9 @@ qboolean pm_saber_innonblockable_attack(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1713,7 +1749,7 @@ int PM_InGrappleMove(const int anim)
 
 qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 {
-	if (PM_InAnimForsaber_move(anim, move))
+	if (PM_InAnimForSaberMove(anim, move))
 	{
 		switch (move)
 		{
@@ -1749,9 +1785,12 @@ qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 		case LS_KICK_BF:
 		case LS_KICK_RL:
 		case LS_STABDOWN:
-		case LS_STABDOWN_BACKHAND:
 		case LS_STABDOWN_STAFF:
 		case LS_STABDOWN_DUAL:
+		case LS_STABDOWN_BACKHAND:
+		case LS_SMASHDOWN_SINGLE:
+		case LS_SMASHDOWN_STAFF:
+		case LS_SMASHDOWN_DUAL:
 		case LS_DUAL_SPIN_PROTECT:
 		case LS_DUAL_SPIN_PROTECT_GRIE:
 		case LS_STAFF_SOULCAL:
@@ -1849,6 +1888,9 @@ qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -2493,6 +2535,9 @@ qboolean BG_StabDownAnim(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 		return qtrue;
 	default:;
 	}
@@ -3444,6 +3489,7 @@ int pm_power_level_for_saber_anims(const playerState_t* ps)
 		}
 		break;
 	case BOTH_STABDOWN:
+	case BOTH_SMASHDOWN_SINGLE:
 		if (ps->torsoTimer <= 900)
 		{
 			//end of anim
@@ -3452,6 +3498,7 @@ int pm_power_level_for_saber_anims(const playerState_t* ps)
 		break;
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
+	case BOTH_SMASHDOWN_STAFF:
 		if (ps->torsoTimer <= 850)
 		{
 			//end of anim
@@ -3459,6 +3506,7 @@ int pm_power_level_for_saber_anims(const playerState_t* ps)
 		}
 		break;
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_DUAL:
 		if (ps->torsoTimer <= 900)
 		{
 			//end of anim
@@ -6351,7 +6399,7 @@ static void PM_SetAnimFinal(const int setAnimParts, const int anim, const int se
 	BG_SetAnimFinal(pm->ps, pm->animations, setAnimParts, anim, setAnimFlags);
 }
 
-qboolean BG_HasAnimation(const int anim_index, const int animation)
+qboolean BG_HasAnimation(const int AnimIndex, const int animation)
 {
 	//must be a valid anim number
 	if (animation < 0 || animation >= MAX_ANIMATIONS)
@@ -6360,10 +6408,10 @@ qboolean BG_HasAnimation(const int anim_index, const int animation)
 	}
 
 	//Must have a file index entry
-	if (anim_index < 0 || anim_index > bgNumAllAnims)
+	if (AnimIndex < 0 || AnimIndex > bgNumAllAnims)
 		return qfalse;
 
-	const animation_t* animations = bgAllAnims[anim_index].anims;
+	const animation_t* animations = bgAllAnims[AnimIndex].anims;
 
 	//No frames, no anim
 	if (animations[animation].numFrames == 0)
@@ -6373,7 +6421,7 @@ qboolean BG_HasAnimation(const int anim_index, const int animation)
 	return qtrue;
 }
 
-int PM_PickAnim(const int anim_index, const int min_anim, const int max_anim)
+int PM_PickAnim(const int AnimIndex, const int min_anim, const int max_anim)
 {
 	int anim;
 	int count = 0;
@@ -6382,7 +6430,7 @@ int PM_PickAnim(const int anim_index, const int min_anim, const int max_anim)
 	{
 		anim = Q_irand(min_anim, max_anim);
 		count++;
-	} while (!BG_HasAnimation(anim_index, anim) && count < 1000);
+	} while (!BG_HasAnimation(AnimIndex, anim) && count < 1000);
 
 	if (count == 1000)
 	{
@@ -6447,76 +6495,172 @@ void PM_SetAnim(const int setAnimParts, const int anim, const int setAnimFlags)
 	BG_SetAnim(pm->ps, pm->animations, setAnimParts, anim, setAnimFlags);
 }
 
-float bg_get_torso_anim_point(const playerState_t* ps, const int anim_index)
+float BG_GetSelfTorsoAnimPoint(const playerState_t* ps, const int animSetIndex)
 {
-	float attack_anim_length = 0;
-	float anim_speed_factor = 1.0f;
-
-	//Be sure to scale by the proper anim speed just as if we were going to play the animation
-	PM_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, ps->torsoAnim, &anim_speed_factor,
-		ps->userInt3);
-
-	if (anim_speed_factor > 0)
+	// Safety
+	if (ps == NULL)
 	{
-		if (bgAllAnims[anim_index].anims[ps->torsoAnim].numFrames < 2)
+		return 0.0f;
+	}
+
+	// Validate animSetIndex
+	const int bgAnimsCount = (int)(sizeof(bgAllAnims) / sizeof(bgAllAnims[0]));
+	if (animSetIndex < 0 || animSetIndex >= bgAnimsCount)
+	{
+		return 0.0f;
+	}
+
+	if (bgAllAnims[animSetIndex].anims == NULL)
+	{
+		return 0.0f;
+	}
+
+	// Validate torsoAnim
+	const int torsoAnim = ps->torsoAnim;
+	if (torsoAnim < 0)
+	{
+		return 0.0f;
+	}
+
+	const animation_t* anim = &bgAllAnims[animSetIndex].anims[torsoAnim];
+
+	if (anim->numFrames <= 0)
+	{
+		return 0.0f;
+	}
+
+	// Compute animation length
+	float animSpeedFactor = 1.0f;
+	PM_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, ps->torsoAnim, &animSpeedFactor, ps->userInt3);
+
+	float attackAnimLength = 0.0f;
+
+	if (animSpeedFactor > 0.0f)
+	{
+		if (anim->numFrames < 2)
 		{
-			//single frame animations should just run with one frame worth of animation.
-			attack_anim_length = fabs(bgAllAnims[anim_index].anims[ps->torsoAnim].frameLerp) * (1 / anim_speed_factor);
+			attackAnimLength = fabs(anim->frameLerp) * (1.0f / animSpeedFactor);
 		}
 		else
 		{
-			attack_anim_length = (bgAllAnims[anim_index].anims[ps->torsoAnim].numFrames - 1) * fabs(
-				bgAllAnims[anim_index].anims[ps->torsoAnim].frameLerp) * (1 / anim_speed_factor);
+			attackAnimLength = (anim->numFrames - 1) * fabs(anim->frameLerp) * (1.0f / animSpeedFactor);
 		}
 
-		if (attack_anim_length > 1)
+		if (attackAnimLength > 1.0f)
 		{
-			//set the timer to be one unit of time less than the actual animation time so the timer will expire on the frame at which the animation finishes.
-			attack_anim_length--;
+			attackAnimLength -= 1.0f;
 		}
 	}
 
-	const float current_point = ps->torsoTimer;
+	if (attackAnimLength <= 0.0f)
+	{
+		return 0.0f;
+	}
 
-	const float anim_percentage = current_point / attack_anim_length;
+	const float timeRemaining = (float)ps->torsoTimer;
+	const float timeElapsed = attackAnimLength - timeRemaining;
 
-	return anim_percentage;
+	float percent = timeElapsed / attackAnimLength;
+
+	// Clamp
+	if (percent < 0.0f)
+	{
+		percent = 0.0f;
+	}
+	else if (percent > 1.0f)
+	{
+		percent = 1.0f;
+	}
+
+	return percent;
 }
 
-float BG_GetLegsAnimPoint(const playerState_t* ps, const int anim_index)
+float BG_GetLegsAnimPoint(const playerState_t* ps, const int animSetIndex)
 {
-	float attack_anim_length = 0;
-	float anim_speed_factor = 1.0f;
-
-	//Be sure to scale by the proper anim speed just as if we were going to play the animation
-	PM_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, ps->legsAnim, &anim_speed_factor,
-		ps->userInt3);
-
-	if (anim_speed_factor > 0)
+	// Safety: validate playerState
+	if (ps == NULL)
 	{
-		if (bgAllAnims[anim_index].anims[ps->legsAnim].numFrames < 2)
+		//Com_Printf("BG_GetLegsAnimPoint: ps == NULL\n");
+		return 0.0f;
+	}
+
+	// Validate animSetIndex
+	const int bgAnimsCount = (int)(sizeof(bgAllAnims) / sizeof(bgAllAnims[0]));
+	if (animSetIndex < 0 || animSetIndex >= bgAnimsCount)
+	{
+		//Com_Printf("BG_GetLegsAnimPoint: animSetIndex %d out of range\n", animSetIndex);
+		return 0.0f;
+	}
+
+	// Validate anim table pointer
+	if (bgAllAnims[animSetIndex].anims == NULL)
+	{
+		//Com_Printf("BG_GetLegsAnimPoint: bgAllAnims[%d].anims == NULL\n", animSetIndex);
+		return 0.0f;
+	}
+
+	// Validate legsAnim
+	const int legsAnim = ps->legsAnim;
+	if (legsAnim < 0)
+	{
+		//Com_Printf("BG_GetLegsAnimPoint: legsAnim < 0 (%d)\n", legsAnim);
+		return 0.0f;
+	}
+
+	const animation_t* anim = &bgAllAnims[animSetIndex].anims[legsAnim];
+
+	// Validate animation frame count
+	if (anim->numFrames <= 0)
+	{
+		//Com_Printf("BG_GetLegsAnimPoint: anim->numFrames <= 0 for legsAnim %d\n", legsAnim);
+		return 0.0f;
+	}
+
+	// Compute animation speed factor
+	float animSpeedFactor = 1.0f;
+	PM_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, ps->legsAnim, &animSpeedFactor, ps->userInt3);
+
+	float attackAnimLength = 0.0f;
+
+	if (animSpeedFactor > 0.0f)
+	{
+		if (anim->numFrames < 2)
 		{
-			//single frame animations should just run with one frame worth of animation.
-			attack_anim_length = fabs(bgAllAnims[anim_index].anims[ps->legsAnim].frameLerp) * (1 / anim_speed_factor);
+			attackAnimLength = fabs(anim->frameLerp) * (1.0f / animSpeedFactor);
 		}
 		else
 		{
-			attack_anim_length = (bgAllAnims[anim_index].anims[ps->legsAnim].numFrames - 1) * fabs(
-				bgAllAnims[anim_index].anims[ps->legsAnim].frameLerp) * (1 / anim_speed_factor);
+			attackAnimLength = (anim->numFrames - 1) * fabs(anim->frameLerp) * (1.0f / animSpeedFactor);
 		}
 
-		if (attack_anim_length > 1)
+		if (attackAnimLength > 1.0f)
 		{
-			//set the timer to be one unit of time less than the actual animation time so the timer will expire on the frame at which the animation finishes.
-			attack_anim_length--;
+			attackAnimLength -= 1.0f;
 		}
 	}
 
-	const float current_point = ps->legsTimer;
+	if (attackAnimLength <= 0.0f)
+	{
+		//Com_Printf("BG_GetLegsAnimPoint: attackAnimLength <= 0\n");
+		return 0.0f;
+	}
 
-	const float anim_percentage = current_point / attack_anim_length;
+	const float timeRemaining = (float)ps->legsTimer;
+	const float timeElapsed = attackAnimLength - timeRemaining;
 
-	return anim_percentage;
+	float percent = timeElapsed / attackAnimLength;
+
+	// Clamp
+	if (percent < 0.0f)
+	{
+		percent = 0.0f;
+	}
+	else if (percent > 1.0f)
+	{
+		percent = 1.0f;
+	}
+
+	return percent;
 }
 
 qboolean BG_HopAnim(const int anim)

@@ -1120,7 +1120,7 @@ typedef struct gameImport_s {
 	void		(*G2API_AttachInstanceToEntNum)			(void* ghoul2, int entityNum, qboolean server);
 	void		(*G2API_ClearAttachedInstance)			(int entityNum);
 	void		(*G2API_CleanEntAttachments)			();
-	qboolean    (*G2API_OverrideServer)					(void* serverInstance);
+	qboolean(*G2API_OverrideServer)					(void* serverInstance);
 	void		(*G2API_GetSurfaceName)					(void* ghoul2, int surfNumber, int modelIndex, char* fillBuf);
 	float		(*WE_GetChanceOfSaberFizz)(void);
 	//float		(*WE_IsOutsideCausingPain)(vec3_t pos);

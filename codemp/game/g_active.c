@@ -2869,7 +2869,7 @@ static void G_HeldByMonster(gentity_t* ent, usercmd_t* ucmd)
 			G_SetOrigin(ent, ent->client->ps.origin);
 			SetClientViewAngle(ent, ent->client->ps.viewangles);
 			G_SetAngles(ent, ent->client->ps.viewangles);
-			trap->LinkEntity((sharedEntity_t*)ent); //redundant?
+			trap->LinkEntity((sharedEntity_t*)ent);
 		}
 	}
 	// don't allow movement, weapon switching, and most kinds of button presses
@@ -5706,7 +5706,8 @@ static void ClientThink_real(gentity_t* ent)
 							|| client->saber[0].type == SABER_STAFF_THIN
 							|| client->saber[0].type == SABER_ASBACKHAND
 							|| client->saber[0].type == SABER_STAFF_MAUL
-							|| client->saber[0].type == SABER_ELECTROSTAFF)
+							|| client->saber[0].type == SABER_ELECTROSTAFF
+							|| client->saber[0].type == SABER_STAFF_SMASH)
 						{
 							if (client->ps.saberHolstered == 2)
 							{
@@ -5735,7 +5736,8 @@ static void ClientThink_real(gentity_t* ent)
 							|| client->saber[0].type == SABER_STAFF_THIN
 							|| client->saber[0].type == SABER_ASBACKHAND
 							|| client->saber[0].type == SABER_STAFF_MAUL
-							|| client->saber[0].type == SABER_ELECTROSTAFF)
+							|| client->saber[0].type == SABER_ELECTROSTAFF
+							|| client->saber[0].type == SABER_STAFF_SMASH)
 						{
 							if (client->ps.saberHolstered == 2)
 							{
@@ -6022,6 +6024,14 @@ static void ClientThink_real(gentity_t* ent)
 			client->ps.Dash_Count = 0;
 			client->ps.communicatingflags &= ~(1 << CF_DASHING);
 		}
+		if ((client->ps.SaberSmashStartTime > level.time) ||
+			(client->ps.SaberSmashLastStartTime > level.time))
+		{
+			client->ps.SaberSmashStartTime = 0;
+			client->ps.SaberSmashLastStartTime = 0;
+			client->ps.Smash_Count = 0;
+			client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
+		}
 		if (IsPressingDashButton(ent) == qtrue)
 		{
 			if (client->ps.Dash_Count < 2)
@@ -6036,7 +6046,7 @@ static void ClientThink_real(gentity_t* ent)
 					// fire event when Dash_Count becomes 2
 					if (client->ps.Dash_Count == 2)
 					{
-						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_LOCALTIMER);
+						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_DASHTIMER);
 						te->s.time = level.time;
 						te->s.time2 = 2500;
 
@@ -6045,6 +6055,9 @@ static void ClientThink_real(gentity_t* ent)
 
 						// networked index for cgame
 						te->s.otherentityNum = ent->s.number;
+
+						// ensure the updated entityState is linked so clients get the time/time2 and otherentityNum
+						trap->LinkEntity((sharedEntity_t*)te);
 					}
 
 					if ((client->ps.communicatingflags & (1 << CF_DASHING)) == 0)
@@ -6076,6 +6089,68 @@ static void ClientThink_real(gentity_t* ent)
 					client->ps.dashstartTime = 0;
 					client->ps.Dash_Count = 0;
 					client->ps.communicatingflags &= ~(1 << CF_DASHING);
+				}
+			}
+		}
+		else if (client->ps.saberSmashTriggered == qtrue)
+		{
+			if (client->ps.Smash_Count < 1)
+			{
+				if ((client->ps.SaberSmashStartTime <= 0) &&
+					((level.time - client->ps.SaberSmashLastStartTime) >= 100))
+				{
+					client->ps.SaberSmashStartTime = level.time;
+					client->ps.SaberSmashLastStartTime = level.time;
+					client->ps.Smash_Count++;
+
+					// fire event when Smash_Count becomes 1
+					if (client->ps.Smash_Count == 1)
+					{
+						gentity_t* te = G_TempEntity(ent->client->ps.origin, EV_SLAMTIMER);
+						te->s.time = level.time;
+						te->s.time2 = SABER_SMASH_COOLDOWN_MS;
+
+						// server-side owner pointer
+						te->owner = ent;
+
+						// networked index for cgame
+						te->s.otherentityNum = ent->s.number;
+
+						// ensure the updated entityState is linked so clients get the time/time2 and otherentityNum
+						trap->LinkEntity((sharedEntity_t*)te);
+					}
+
+					if ((client->ps.communicatingflags & (1 << CF_SABERSMASHING)) == 0)
+					{
+						client->ps.communicatingflags |= (1 << CF_SABERSMASHING);
+					}
+				}
+				else if ((level.time - client->ps.SaberSmashLastStartTime) >= 10)
+				{
+					client->ps.SaberSmashStartTime = 0;
+					client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
+				}
+			}
+			else
+			{
+				if ((client->ps.SaberSmashStartTime <= 0) &&
+					((level.time - client->ps.SaberSmashLastStartTime) >= SABER_SMASH_COOLDOWN_MS))
+				{
+					client->ps.SaberSmashStartTime = level.time;
+					client->ps.SaberSmashLastStartTime = level.time;
+
+					if ((client->ps.communicatingflags & (1 << CF_SABERSMASHING)) == 0)
+					{
+						client->ps.communicatingflags |= (1 << CF_SABERSMASHING);
+					}
+				}
+				else if ((level.time - client->ps.SaberSmashLastStartTime) >= SABER_SMASH_COOLDOWN_MS)
+				{
+					// cooldown fully finished: reset everything, including trigger
+					client->ps.SaberSmashStartTime = 0;
+					client->ps.Smash_Count = 0;
+					client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
+					ent->client->ps.saberSmashTriggered = qfalse;
 				}
 			}
 		}
@@ -6216,6 +6291,7 @@ static void ClientThink_real(gentity_t* ent)
 			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDJEDI);
 			client->ps.communicatingflags &= ~(1 << CF_OVERSIZEDGUNNER);
 			client->ps.communicatingflags &= ~(1 << CF_UNDERSIZEDGUNNER);
+			client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
 			if (client->ps.weapon != WP_STUN_BATON ||
 				(client->ps.communicatingflags |= client->ps.grapplestartTime >= 3000))
 			{

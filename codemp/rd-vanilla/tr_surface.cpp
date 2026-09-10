@@ -2013,7 +2013,7 @@ static void RB_SurfaceEntity(surfaceType_t* surfType)
 	// Tell the backend to merge the drawcalls except
 	// for types that can't be merged
 	// TODO: Create RT_BEAM internal shader and make it compatible with pass system
-	switch (backEnd.currentEntity->e.reType) 
+	switch (backEnd.currentEntity->e.reType)
 	{
 	case RT_BEAM:
 	case RT_ENT_CHAIN:

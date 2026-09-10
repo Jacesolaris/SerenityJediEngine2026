@@ -37,9 +37,7 @@ It is safe to actually issue drawing commands here if you don't want to
 use the shader system.
 */
 
-
 //============================================================================
-
 
 /*
 ==============
@@ -92,7 +90,6 @@ static void RB_CheckVBOandIBO(VBO_t* vbo, IBO_t* ibo)
 	}
 }
 
-
 /*
 ==============
 RB_AddQuadStampExt
@@ -131,7 +128,6 @@ void RB_AddQuadStampExt(vec3_t origin, vec3_t left, vec3_t up, float color[4], f
 	tess.xyz[ndx + 3][0] = origin[0] + left[0] - up[0];
 	tess.xyz[ndx + 3][1] = origin[1] + left[1] - up[1];
 	tess.xyz[ndx + 3][2] = origin[2] + left[2] - up[2];
-
 
 	// constant normal all the way around
 	VectorSubtract(vec3_origin, backEnd.viewParms.ori.axis[0], normal);
@@ -174,7 +170,6 @@ void RB_AddQuadStamp(vec3_t origin, vec3_t left, vec3_t up, float color[4]) {
 	RB_AddQuadStampExt(origin, left, up, color, 0, 0, 1, 1);
 }
 
-
 /*
 ==============
 RB_InstantQuad
@@ -184,7 +179,6 @@ based on Tess_InstantQuad from xreal
 */
 void RB_InstantQuad2(vec4_t quadVerts[4], vec2_t texCoords[4])
 {
-
 	tess.numVertexes = 0;
 	tess.numIndexes = 0;
 	tess.firstIndex = 0;
@@ -231,7 +225,6 @@ void RB_InstantQuad2(vec4_t quadVerts[4], vec2_t texCoords[4])
 	tess.useInternalVBO = qfalse;
 }
 
-
 void RB_InstantQuad(vec4_t quadVerts[4])
 {
 	vec2_t texCoords[4]{};
@@ -253,7 +246,6 @@ void RB_InstantTriangle()
 {
 	qglDrawArrays(GL_TRIANGLES, 0, 3);
 }
-
 
 /*
 ==============
@@ -608,8 +600,6 @@ static void RB_SurfaceBSPTriangles(srfBspSurface_t* srf)
 	RB_SurfaceVertsAndIndexes(srf->numVerts, srf->verts, srf->numIndexes,
 		srf->indexes, srf->dlightBits, srf->pshadowBits);
 }
-
-
 
 /*
 ==============
@@ -1401,11 +1391,8 @@ static void VectorArrayNormalize(vec4_t * normals, unsigned int count)
 		normals++;
 	}
 #endif
-
 }
 #endif
-
-
 
 /*
 ** LerpMeshVertexes
@@ -1574,7 +1561,6 @@ static void LerpMeshVertexes_scalar(mdvSurface_t * surf, float backlerp)
 			newXyz += 4, newNormals += 4,
 			outXyz += 4, outNormal += 4)
 		{
-
 			outXyz[0] = newXyz[0] * newXyzScale;
 			outXyz[1] = newXyz[1] * newXyzScale;
 			outXyz[2] = newXyz[2] * newXyzScale;
@@ -1698,7 +1684,6 @@ static void LerpMeshVertexes_scalar(mdvSurface_t * surf, float backlerp)
 			outNormal++;
 		}
 	}
-
 }
 
 static void LerpMeshVertexes(mdvSurface_t * surf, float backlerp)
@@ -1714,7 +1699,6 @@ static void LerpMeshVertexes(mdvSurface_t * surf, float backlerp)
 #endif
 	LerpMeshVertexes_scalar(surf, backlerp);
 }
-
 
 /*
 =============
@@ -1756,9 +1740,7 @@ static void RB_SurfaceMesh(mdvSurface_t * surface) {
 	}
 
 	tess.numVertexes += surface->numVerts;
-
 }
-
 
 /*
 ==============
@@ -1775,7 +1757,6 @@ static void RB_SurfaceBSPFace(srfBspSurface_t * srf) {
 	RB_SurfaceVertsAndIndexes(srf->numVerts, srf->verts, srf->numIndexes,
 		srf->indexes, srf->dlightBits, srf->pshadowBits);
 }
-
 
 static float	LodErrorForVolume(vec3_t local, float radius) {
 	vec3_t		world{};
@@ -1874,7 +1855,6 @@ static void RB_SurfaceBSPGrid(srfBspSurface_t * srf)
 	heightTable[lodHeight] = srf->height - 1;
 	lodHeight++;
 
-
 	// very large grids may have more points or indexes than can be fit
 	// in the tess structure, so we may have to issue it in multiple passes
 
@@ -1965,7 +1945,6 @@ static void RB_SurfaceBSPGrid(srfBspSurface_t * srf)
 				//*vDlightBits++ = dlightBits;
 			}
 		}
-
 
 		// add the indexes
 		{
@@ -2364,9 +2343,9 @@ RB_SurfaceEntity
 Entities that have a single procedurally generated surface
 ====================
 */
-static void RB_SurfaceEntity(surfaceType_t * surfType) 
+static void RB_SurfaceEntity(surfaceType_t * surfType)
 {
-	switch (backEnd.currentEntity->e.reType) 
+	switch (backEnd.currentEntity->e.reType)
 	{
 	case RT_SPRITE:
 		RB_SurfaceSprite();
@@ -2427,9 +2406,9 @@ static void RB_SurfaceEntity(surfaceType_t * surfType)
 		break;
 	}
 
-	// Tell the backend to merge the drawcalls except 
+	// Tell the backend to merge the drawcalls except
 	// for types that can't be merged
-	// TODO: Create RT_BEAM internal shader and make it compatible with pass system 
+	// TODO: Create RT_BEAM internal shader and make it compatible with pass system
 	switch (backEnd.currentEntity->e.reType)
 	{
 	case RT_BEAM:

@@ -132,8 +132,6 @@ using refexport_t = struct refexport_s
 
 	void (*GetBModelVerts)(int bmodelIndex, vec3_t* vec, vec3_t normal);
 
-
-
 	// These were missing in 1.01, had direct access to renderer backend
 	void (*SetRangedFog)(float range);
 	void (*SetRefractionProperties)(float distortionAlpha, float distortionStretch, qboolean distortionPrePost,

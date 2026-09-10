@@ -99,7 +99,7 @@ extern qboolean PM_CrouchAnim(const int anim);
 extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 extern qboolean PM_PainAnim(int anim);
 extern qboolean PM_InKnockDown(const playerState_t* ps);
-extern qboolean PM_InKataAnim(int anim);
+extern qboolean PM_InKataAnim(const int anim);
 extern qboolean PM_InCartwheel(int anim);
 extern int G_PickPainAnim(const gentity_t* self, const vec3_t point, int hit_loc);
 extern qboolean PM_SaberInMassiveBounce(int anim);

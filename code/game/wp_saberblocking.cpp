@@ -75,7 +75,7 @@ extern void G_BounceAttacker(gentity_t* atk);
 extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
 extern saberMoveName_t PM_SaberBounceForAttack(int move);
 extern void WP_SaberDrop(const gentity_t* self, gentity_t* saber);
-extern qboolean pm_saber_innonblockable_attack(int anim);
+extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInKata(saberMoveName_t saberMove);
 extern void WP_SaberClearDamageForEntNum(gentity_t* attacker, const int entityNum, const int saberNum, const int bladeNum);
@@ -747,7 +747,7 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 
 	const qboolean atkfake = ((attacker->client->ps.userInt3 & 1 << FLAG_ATTACKFAKE) != 0) ? qtrue : qfalse;
 
-	if (pm_saber_innonblockable_attack(attacker->client->ps.torsoAnim))
+	if (PM_SaberInnonblockableAttack(attacker->client->ps.torsoAnim))
 	{
 		//perfect Blocking
 		if (m_blocking) // A perfectly timed block
@@ -883,7 +883,7 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 
 			if (!m_blocking)
 			{
-				if (pm_saber_innonblockable_attack(blocker->client->ps.torsoAnim))
+				if (PM_SaberInnonblockableAttack(blocker->client->ps.torsoAnim))
 				{
 					sab_beh_animate_heavy_slow_bounce_attacker(attacker);
 
@@ -957,7 +957,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 	// ============================================================
 	// UNBLOCKABLE ATTACK BRANCH
 	// ============================================================
-	if (!pm_saber_innonblockable_attack(attacker->client->ps.torsoAnim))
+	if (!PM_SaberInnonblockableAttack(attacker->client->ps.torsoAnim))
 	{ //if the attack is blockable, then check for accurate parry
 		if (blocker->client->ps.blockPoints <= BLOCKPOINTS_FATIGUE) // blocker has less than 20BP
 		{//Low points = bad blocks

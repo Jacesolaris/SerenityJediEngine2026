@@ -1578,8 +1578,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 30/08/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 14------------------------------\n");
+	Com_Printf("---------------------Build date 10/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 01------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -6299,9 +6299,12 @@ static void UI_SiegeSetCvarsForClass(siegeClass_t* scl)
 					char buf[1024];
 					if (scl->saber1[0] && UI_SaberTypeForSaber(scl->saber1, buf))
 					{
-						if (!Q_stricmp(buf, "SABER_STAFF") || !Q_stricmp(buf, "SABER_STAFF_UNSTABLE") || !
-							Q_stricmp(buf, "SABER_STAFF_SFX") || !Q_stricmp(buf, "SABER_STAFF_THIN") || !Q_stricmp(
-								buf, "SABER_STAFF_MAUL"))
+						if (!Q_stricmp(buf, "SABER_STAFF") ||
+							!Q_stricmp(buf, "SABER_STAFF_UNSTABLE") ||
+							!Q_stricmp(buf, "SABER_STAFF_SFX") ||
+							!Q_stricmp(buf, "SABER_STAFF_THIN") ||
+							!Q_stricmp(buf, "SABER_STAFF_MAUL") ||
+							!Q_stricmp(buf, "SABER_STAFF_SMASH"))
 						{
 							Q_strncpyz(saberType, "gfx/hud/w_icon_saberstaff", sizeof saberType);
 						}

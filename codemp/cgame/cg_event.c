@@ -905,6 +905,40 @@ static void CG_LocalTimingBar(const int start_time, const int duration)
 	cg_genericTimerColor[3] = 1.0f;
 }
 
+//set the local timing bar
+extern int cg_slamTimerBar;
+extern int cg_slamTimerDur;
+extern vec4_t cg_slamTimerColor;
+
+static void CG_SlamTimingBar(const int start_time, const int duration)
+{
+	cg_slamTimerBar = start_time + duration;
+	cg_slamTimerDur = duration;
+
+	// green slam cooldown bar
+	cg_slamTimerColor[0] = 0.0f;
+	cg_slamTimerColor[1] = 1.0f;
+	cg_slamTimerColor[2] = 0.0f;
+	cg_slamTimerColor[3] = 1.0f;
+}
+
+//set the local timing bar
+extern int cg_dashTimerBar;
+extern int cg_dashTimerDur;
+extern vec4_t cg_dashTimerColor;
+
+static void CG_DashTimingBar(const int start_time, const int duration)
+{
+	cg_dashTimerBar = start_time + duration;
+	cg_dashTimerDur = duration;
+
+	// blue dash cooldown bar
+	cg_dashTimerColor[0] = 0.0f;  // red
+	cg_dashTimerColor[1] = 0.0f;  // green
+	cg_dashTimerColor[2] = 1.0f;  // blue
+	cg_dashTimerColor[3] = 1.0f;  // alpha
+}
+
 /*
 ===============
 CG_UseItem
@@ -3571,6 +3605,31 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 		}
 		break;
 
+	case EV_SABER_SLAM:
+		DEBUGNAME("EV_SABER_SLAM");
+		{
+			vec3_t org;
+			vec3_t normal;
+
+			// networked origin and normal
+			VectorCopy(es->origin, org);
+			VectorCopy(es->angles, normal);
+
+			// play slam effect (full parameter list required)
+			trap->FX_PlayEffectID(
+				cgs.effects.saberSlamEffect, // effect ID
+				org,                         // origin
+				normal,                      // forward/normal direction
+				-1,                          // volume (default)
+				-1,                          // radius (default)
+				qfalse                       // isPortal
+			);
+
+			// optional camera shake
+			// CG_CameraShake(0.5f, 300);
+		}
+		break;
+
 	case EV_SABER_UNHOLSTER:
 		DEBUGNAME("EV_SABER_UNHOLSTER");
 		{
@@ -3892,6 +3951,22 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 		if (es->owner == cg.predictedPlayerState.clientNum)
 		{
 			CG_LocalTimingBar(es->time, es->time2);
+		}
+		break;
+
+	case EV_SLAMTIMER:
+		DEBUGNAME("EV_SLAMTIMER");
+		if (es->otherentityNum == cg.predictedPlayerState.clientNum)
+		{
+			CG_SlamTimingBar(es->time, es->time2);
+		}
+		break;
+
+	case EV_DASHTIMER:
+		DEBUGNAME("EV_DASHTIMER");
+		if (es->otherentityNum == cg.predictedPlayerState.clientNum)
+		{
+			CG_DashTimingBar(es->time, es->time2);
 		}
 		break;
 	case EV_USE_ITEM0:

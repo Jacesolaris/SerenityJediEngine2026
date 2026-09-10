@@ -1244,7 +1244,6 @@ void Com_Init(char* commandLine)
 		s = va("%s %s %s", Q3_VERSION, PLATFORM_STRING, SOURCE_DATE);
 		com_version = Cvar_Get("version", s, CVAR_ROM | CVAR_SERVERINFO);
 
-
 		SE_Init(); // Initialize StringEd
 
 		if (com_outcast && com_outcast->integer == 1) //playing outcast

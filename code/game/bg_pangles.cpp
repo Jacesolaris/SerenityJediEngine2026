@@ -36,7 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../ghoul2/ghoul2_gore.h"
 
 extern void CG_SetClientViewAngles(vec3_t angles, qboolean override_view_ent);
-extern qboolean PM_InAnimForsaber_move(int anim, int saberMove);
+extern qboolean PM_InAnimForSaberMove(int anim, int saberMove);
 extern qboolean PM_InForceGetUp(const playerState_t* ps);
 extern qboolean PM_InKnockDown(const playerState_t* ps);
 extern qboolean PM_InReboundJump(int anim);
@@ -854,7 +854,7 @@ qboolean PM_AdjustAnglesForBackAttack(gentity_t* ent, usercmd_t* ucmd)
 	if ((ent->client->ps.saberMove == LS_A_BACK || ent->client->ps.saberMove == LS_A_BACK_CR || ent->client->ps.
 		saberMove == LS_A_BACKSTAB
 		|| ent->client->ps.saberMove == LS_A_BACKSTAB_B)
-		&& PM_InAnimForsaber_move(ent->client->ps.torsoAnim, ent->client->ps.saberMove))
+		&& PM_InAnimForSaberMove(ent->client->ps.torsoAnim, ent->client->ps.saberMove))
 	{
 		if (ent->client->ps.saberMove != LS_A_BACKSTAB || !ent->enemy || ent->s.number >= MAX_CLIENTS && !
 			G_ControlledByPlayer(ent))
@@ -1532,8 +1532,6 @@ qboolean PM_AdjustAnglesForStabDown(gentity_t* ent, usercmd_t* ucmd)
 		case BOTH_STABDOWN:
 			if (elapsed_time >= 300 && elapsed_time < 900)
 			{
-				//push forward?
-				//FIXME: speed!
 				ucmd->forwardmove = 127;
 			}
 			break;
@@ -1541,16 +1539,12 @@ qboolean PM_AdjustAnglesForStabDown(gentity_t* ent, usercmd_t* ucmd)
 		case BOTH_STABDOWN_STAFF:
 			if (elapsed_time > 400 && elapsed_time < 950)
 			{
-				//push forward?
-				//FIXME: speed!
 				ucmd->forwardmove = 127;
 			}
 			break;
 		case BOTH_STABDOWN_DUAL:
 			if (elapsed_time >= 300 && elapsed_time < 900)
 			{
-				//push forward?
-				//FIXME: speed!
 				ucmd->forwardmove = 127;
 			}
 			break;

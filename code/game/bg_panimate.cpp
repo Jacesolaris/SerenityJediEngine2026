@@ -246,15 +246,17 @@ saberMoveData_t saberMoveData[LS_MOVE_MAX] = {
 	// LS_KICK_B_AIR
 	{"StfKickRightAir", BOTH_A7_KICK_R_AIR, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200},
 	// LS_KICK_R_AIR
-	{"StfKickLeftAir", BOTH_A7_KICK_L_AIR, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200},
-	// LS_KICK_L_AIR
-	{"StabDown", BOTH_STABDOWN, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200}, // LS_STABDOWN
-	{"StabDownbhd", BOTH_STABDOWN_BACKHAND, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200},
-	// LS_STABDOWN_BACKHAND
-	{"StabDownStf", BOTH_STABDOWN_STAFF, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200},
-	// LS_STABDOWN_STAFF
-	{"StabDownDual", BOTH_STABDOWN_DUAL, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200},
-	// LS_STABDOWN_DUAL
+	{"StfKickLeftAir", BOTH_A7_KICK_L_AIR, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200},// LS_KICK_L_AIR
+
+	{"StabDown", BOTH_STABDOWN, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 }, // LS_STABDOWN
+	{"StabDownStf", BOTH_STABDOWN_STAFF, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 },	// LS_STABDOWN_STAFF
+	{"StabDownDual", BOTH_STABDOWN_DUAL, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 },		// LS_STABDOWN_DUAL
+	{"StabDownbhd", BOTH_STABDOWN_BACKHAND, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 },	// LS_STABDOWN_BACKHAND
+
+	{"SmashDown", BOTH_SMASHDOWN_SINGLE, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 },   // LS_SMASHDOWN_SINGLE
+	{"smashDownStf", BOTH_SMASHDOWN_STAFF, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 }, // LS_SMASHDOWN_STAFF
+	{"SmashDownDual", BOTH_SMASHDOWN_DUAL, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_S_R2L, 200 }, // LS_SMASHDOWN_DUAL
+
 	{"dualspinprot", BOTH_A6_SABERPROTECT, Q_R, Q_R, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_READY, 500},
 	// LS_DUAL_SPIN_PROTECT
 	{"dualspinprotgrie", BOTH_GRIEVOUS_PROTECT, Q_R, Q_R,AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_READY, 500},
@@ -860,6 +862,7 @@ int PM_PowerLevelForSaberAnim(const playerState_t* ps, const int saberNum)
 		}
 		break;
 	case BOTH_STABDOWN:
+	case BOTH_SMASHDOWN_SINGLE:
 		if (ps->torsoAnimTimer <= 900)
 		{
 			//end of anim
@@ -868,6 +871,7 @@ int PM_PowerLevelForSaberAnim(const playerState_t* ps, const int saberNum)
 		break;
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
+	case BOTH_SMASHDOWN_STAFF:
 		if (ps->torsoAnimTimer <= 850)
 		{
 			//end of anim
@@ -875,6 +879,7 @@ int PM_PowerLevelForSaberAnim(const playerState_t* ps, const int saberNum)
 		}
 		break;
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_DUAL:
 		if (ps->torsoAnimTimer <= 900)
 		{
 			//end of anim
@@ -1223,7 +1228,7 @@ int PM_PowerLevelForSaberAnim(const playerState_t* ps, const int saberNum)
 	return FORCE_LEVEL_0;
 }
 
-qboolean PM_InAnimForsaber_move(int anim, const int saberMove)
+qboolean PM_InAnimForSaberMove(int anim, const int saberMove)
 {
 	switch (anim)
 	{
@@ -1276,6 +1281,9 @@ qboolean PM_InAnimForsaber_move(int anim, const int saberMove)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1417,9 +1425,12 @@ qboolean PM_SaberInDamageMove(const int move)
 	case LS_TAUNTAUN_ATTACK_RIGHT:
 	case LS_TAUNTAUN_ATTACK_LEFT:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
@@ -1480,6 +1491,9 @@ qboolean PM_SaberDoDamageAnim(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1603,6 +1617,9 @@ qboolean PM_SaberInKillAttack(const int anim)
 	case BOTH_A1_SPECIAL:
 	case BOTH_A2_SPECIAL:
 	case BOTH_A3_SPECIAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_FLIP_ATTACK7:
 	case BOTH_PULL_IMPALE_STAB:
 	case BOTH_PULL_IMPALE_SWING:
@@ -1686,6 +1703,9 @@ qboolean PM_SaberInSpecialAttack(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1731,7 +1751,7 @@ qboolean PM_SaberInSpecialAttack(const int anim)
 	return qfalse;
 }
 
-qboolean pm_saber_innonblockable_attack(const int anim)
+qboolean PM_SaberInnonblockableAttack(const int anim)
 {
 	switch (anim)
 	{
@@ -1760,6 +1780,9 @@ qboolean pm_saber_innonblockable_attack(const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -1869,9 +1892,12 @@ qboolean PM_SaberInAttack(const int move)
 	case LS_KICK_R_AIR:
 	case LS_KICK_L_AIR:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
@@ -2139,9 +2165,12 @@ qboolean PM_SaberInSpecial(const int move)
 	case LS_KICK_R_AIR:
 	case LS_KICK_L_AIR:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
@@ -2261,7 +2290,7 @@ int PM_InGrappleMove(const int anim)
 
 qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 {
-	if (PM_InAnimForsaber_move(anim, move))
+	if (PM_InAnimForSaberMove(anim, move))
 	{
 		switch (move)
 		{
@@ -2296,9 +2325,12 @@ qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 		case LS_KICK_BF:
 		case LS_KICK_RL:
 		case LS_STABDOWN:
-		case LS_STABDOWN_BACKHAND:
 		case LS_STABDOWN_STAFF:
 		case LS_STABDOWN_DUAL:
+		case LS_STABDOWN_BACKHAND:
+		case LS_SMASHDOWN_SINGLE:
+		case LS_SMASHDOWN_STAFF:
+		case LS_SMASHDOWN_DUAL:
 		case LS_DUAL_SPIN_PROTECT:
 		case LS_DUAL_SPIN_PROTECT_GRIE:
 		case LS_STAFF_SOULCAL:
@@ -2395,6 +2427,9 @@ qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_A6_SABERPROTECT:
 	case BOTH_A7_SOULCAL:
 	case BOTH_A1_SPECIAL:
@@ -5862,8 +5897,7 @@ void PM_SetTorsoAnimTimer(gentity_t* ent, int* torsoAnimTimer, const int time)
 	}
 }
 
-void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent,
-	const int fatigued)
+void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent,const int fatigued)
 {
 	char buf[128];
 
@@ -9902,9 +9936,12 @@ qboolean PM_StabDownAnim(const int anim)
 	switch (anim)
 	{
 	case BOTH_STABDOWN:
+	case BOTH_SMASHDOWN_SINGLE:
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
 	case BOTH_STABDOWN_DUAL:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 		return qtrue;
 	default:;
 	}
@@ -9972,6 +10009,9 @@ qboolean PM_ForceUsingSaberAnim(const int anim)
 	case BOTH_A3_SPECIAL:
 	case BOTH_A4_SPECIAL:
 	case BOTH_A5_SPECIAL:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 	case BOTH_GRIEVOUS_SPIN:
 	case BOTH_GRIEVOUS_PROTECT:
 	case BOTH_YODA_SPECIAL:
@@ -10405,6 +10445,9 @@ qboolean PM_SaberInKata(const saberMoveName_t saberMove)
 	case LS_DUAL_SPIN_PROTECT:
 	case LS_DUAL_SPIN_PROTECT_GRIE:
 	case LS_STAFF_SOULCAL:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 		return qtrue;
 	default:
 		break;
@@ -10477,6 +10520,9 @@ qboolean PM_InKataAnim(const int anim)
 	case BOTH_YODA_SPECIAL:
 	case BOTH_GRIEVOUS_SPIN:
 	case BOTH_GRIEVOUS_PROTECT:
+	case BOTH_SMASHDOWN_SINGLE:
+	case BOTH_SMASHDOWN_STAFF:
+	case BOTH_SMASHDOWN_DUAL:
 		return qtrue;
 	default:;
 	}
@@ -10515,9 +10561,12 @@ qboolean PM_SaberInKillMove(const int move)
 	case LS_A_FLIP_SLASH:
 	case LS_LEAP_ATTACK:
 	case LS_STABDOWN:
-	case LS_STABDOWN_BACKHAND:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
+	case LS_STABDOWN_BACKHAND:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+	case LS_SMASHDOWN_DUAL:
 	case LS_A1_SPECIAL:
 	case LS_A2_SPECIAL:
 	case LS_A3_SPECIAL:

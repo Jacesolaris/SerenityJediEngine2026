@@ -113,7 +113,7 @@ extern void WP_BlockPointsDrain(const gentity_t* self, int fatigue);
 extern void PM_AddBlockFatigue(playerState_t* ps, int fatigue);
 extern void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward);
 extern qboolean PM_InSlopeAnim(int anim);
-extern qboolean pm_saber_innonblockable_attack(int anim);
+extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean PM_InForceGetUp(const playerState_t* ps);
 extern qboolean PM_KnockDownAnim(int anim);
 extern qboolean PM_InGetUp(const playerState_t* ps);
@@ -5368,7 +5368,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 		return;
 	}
 
-	if (pm_saber_innonblockable_attack(self->client->ps.torsoAnim))
+	if (PM_SaberInnonblockableAttack(self->client->ps.torsoAnim))
 	{
 		return;
 	}

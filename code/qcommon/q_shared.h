@@ -878,7 +878,9 @@ using saberType_t = enum
 {
 	SABER_NONE = 0,
 	SABER_SINGLE,
+	SABER_SINGLE_SMASH,
 	SABER_STAFF,
+	SABER_STAFF_SMASH,
 	SABER_DAGGER,
 	SABER_BROAD,
 	SABER_PRONG,
@@ -1891,11 +1893,14 @@ public:
 
 	qboolean SaberStaff()
 	{
-		return static_cast<qboolean>(saber[0].type == SABER_STAFF || saber[0].type == SABER_STAFF_UNSTABLE || saber[0].
-			type ==
-			SABER_STAFF_SFX || saber[0].type == SABER_STAFF_THIN || saber[0].type == SABER_STAFF_MAUL || saber[0].type
-			==
-			SABER_ELECTROSTAFF || dualSabers && saber[1].type == SABER_STAFF);
+		return static_cast<qboolean>(saber[0].type == SABER_STAFF ||
+			saber[0].type == SABER_STAFF_UNSTABLE ||
+			saber[0].type == SABER_STAFF_SFX ||
+			saber[0].type == SABER_STAFF_THIN ||
+			saber[0].type == SABER_STAFF_MAUL ||
+			saber[0].type == SABER_ELECTROSTAFF ||
+			saber[0].type == SABER_STAFF_SMASH ||
+			dualSabers && saber[1].type == SABER_STAFF);
 	};
 	qboolean SaberActive() { return static_cast<qboolean>(saber[0].Active() || dualSabers && saber[1].Active()); };
 
@@ -2236,7 +2241,11 @@ public:
 	int      weaponfiredelaytime;
 	qboolean IsAiming;
 	int		saberAttackSequence;
-	int saberRiposteTime;
+	int     saberRiposteTime;
+	int     saberSmashTriggered;
+	int     SaberSmashStartTime;
+	int     SaberSmashLastStartTime;
+	int     Smash_Count;
 
 #endif // !JK2_MODE
 
@@ -2503,6 +2512,10 @@ public:
 		saved_game.write<int32_t>(IsAiming);
 		saved_game.write<int32_t>(saberAttackSequence);
 		saved_game.write<int32_t>(saberRiposteTime);
+		saved_game.write<int32_t>(saberSmashTriggered);
+		saved_game.write<int32_t>(SaberSmashStartTime);
+		saved_game.write<int32_t>(SaberSmashLastStartTime);
+		saved_game.write<int32_t>(Smash_Count);
 #endif // !JK2_MODE
 	}
 
@@ -2769,6 +2782,10 @@ public:
 		saved_game.read<int32_t>(IsAiming);
 		saved_game.read<int32_t>(saberAttackSequence);
 		saved_game.read<int32_t>(saberRiposteTime);
+		saved_game.read<int32_t>(saberSmashTriggered);
+		saved_game.read<int32_t>(SaberSmashStartTime);
+		saved_game.read<int32_t>(SaberSmashLastStartTime);
+		saved_game.read<int32_t>(Smash_Count);
 #endif // !JK2_MODE
 	}
 }; // PlayerStateBase
@@ -3101,6 +3118,10 @@ using entityState_t = struct entityState_s
 	//this without a lot of hassle?)
 	int			hackingBaseTime;
 
+	int SaberSmashStartTime;
+	int SaberSmashLastStartTime;
+	int Smash_Count;
+
 #ifndef JK2_MODE
 	qboolean isPortalEnt;
 #endif // !JK2_MODE
@@ -3223,6 +3244,10 @@ using entityState_t = struct entityState_s
 
 		saved_game.write<int32_t>(hackingTime);
 		saved_game.write<int32_t>(hackingBaseTime);
+
+		saved_game.write<int32_t>(SaberSmashStartTime);
+		saved_game.write<int32_t>(SaberSmashLastStartTime);
+		saved_game.write<int32_t>(Smash_Count);
 #endif // !JK2_MODE
 	}
 
@@ -3344,6 +3369,10 @@ using entityState_t = struct entityState_s
 
 		saved_game.read<int32_t>(hackingTime);
 		saved_game.read<int32_t>(hackingBaseTime);
+
+		saved_game.read<int32_t>(SaberSmashStartTime);
+		saved_game.read<int32_t>(SaberSmashLastStartTime);
+		saved_game.read<int32_t>(Smash_Count);
 #endif // !JK2_MODE
 	}
 };
@@ -3574,6 +3603,7 @@ using communicatingflags_e = enum
 	CF_UNDERSIZEDGUNNER,
 	CF_UNDERSIZEDJEDI,
 	CF_AIMINGGUN,
+	CF_SABERSMASHING,
 };
 
 using PlayerEffectFlags_e = enum

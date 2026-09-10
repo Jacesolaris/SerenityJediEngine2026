@@ -911,7 +911,6 @@ static int CanGetToVectorTravel(vec3_t org1, vec3_t moveTo, vec3_t mins, vec3_t 
 			{
 				workingOrg[0] = tr.endpos[0];
 				workingOrg[1] = tr.endpos[1];
-				//trap->LinkEntity(self);
 				didMove = 1;
 			}
 		}
@@ -955,7 +954,6 @@ static int CanGetToVectorTravel(vec3_t org1, vec3_t moveTo, vec3_t mins, vec3_t 
 					{
 						//plop us down on the step after moving up
 						VectorCopy(tr.endpos, workingOrg);
-						//trap->LinkEntity(self);
 						didMove = 1;
 					}
 				}

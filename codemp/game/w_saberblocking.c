@@ -43,7 +43,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_public.h"
 
 //////////Defines////////////////
-extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int anim_index);
+extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int AnimIndex);
 extern qboolean PM_SaberInBounce(int move);
 extern qboolean BG_InSlowBounce(const playerState_t* ps);
 extern bot_state_t* botstates[MAX_CLIENTS];
@@ -68,7 +68,7 @@ extern void G_Stagger(gentity_t* hitEnt);
 extern void g_fatigue_bp_knockaway(gentity_t* blocker);
 extern qboolean PM_SuperBreakLoseAnim(int anim);
 extern qboolean WP_ButterFingers(gentity_t* saberent, gentity_t* saber_owner, const gentity_t* other, const trace_t* tr);
-extern qboolean pm_saber_innonblockable_attack(int anim);
+extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern int G_GetParryForBlock(int block);
 extern qboolean WP_SaberMBlockDirection(gentity_t* self, vec3_t hitloc, const qboolean missileBlock);
@@ -724,7 +724,7 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 
 	const qboolean atkfake = ((attacker->client->ps.userInt3 & 1 << FLAG_ATTACKFAKE) != 0) ? qtrue : qfalse;
 
-	if (pm_saber_innonblockable_attack(attacker->client->ps.torsoAnim))
+	if (PM_SaberInnonblockableAttack(attacker->client->ps.torsoAnim))
 	{
 		//perfect Blocking
 		if (m_blocking) // A perfectly timed block
@@ -860,7 +860,7 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 
 			if (!m_blocking)
 			{
-				if (pm_saber_innonblockable_attack(blocker->client->ps.torsoAnim))
+				if (PM_SaberInnonblockableAttack(blocker->client->ps.torsoAnim))
 				{
 					sab_beh_animate_heavy_slow_bounce_attacker(attacker);
 
@@ -923,7 +923,7 @@ qboolean sab_beh_block_vs_attack(
 	// ------------------------------------------------------------
 	// NON‑UNBLOCKABLE ATTACKS
 	// ------------------------------------------------------------
-	if (!pm_saber_innonblockable_attack(attacker->client->ps.torsoAnim))
+	if (!PM_SaberInnonblockableAttack(attacker->client->ps.torsoAnim))
 	{
 		// --------------------------------------------------------
 		// LOW BP (<= 20)

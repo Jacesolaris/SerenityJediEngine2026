@@ -300,9 +300,9 @@ using refexport_t = struct
 	qboolean(*G2API_GetAnimRangeIndex)(CGhoul2Info* ghlInfo, int boneIndex, int* startFrame, int* endFrame);
 
 	qboolean(*G2API_GetBoneAnim)(CGhoul2Info* ghlInfo, const char* boneName, const int AcurrentTime,
-		float* currentFrame, int* startFrame, int* endFrame, int* flags, float* animSpeed, int*modelList);
+		float* currentFrame, int* startFrame, int* endFrame, int* flags, float* animSpeed, int* modelList);
 	qboolean(*G2API_GetBoneAnimIndex)(CGhoul2Info* ghlInfo, const int iBoneIndex, const int AcurrentTime,
-		float* currentFrame, int* startFrame, int* endFrame, int* flags, float* animSpeed, int*modelList);
+		float* currentFrame, int* startFrame, int* endFrame, int* flags, float* animSpeed, int* modelList);
 
 	int (*G2API_GetBoneIndex)(CGhoul2Info* ghlInfo, const char* boneName, const qboolean bAddIfNotFound);
 	qboolean(*G2API_GetBoltMatrix)(CGhoul2Info_v& ghoul2, int modelIndex, int boltIndex, mdxaBone_t* matrix,

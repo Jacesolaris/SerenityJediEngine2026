@@ -241,11 +241,12 @@ XCVAR_DEF(g_holocronCooldown, "60", NULL, CVAR_LATCH, qtrue)
 XCVAR_DEF(g_maxHolocronGift, "1", NULL, CVAR_LATCH, qtrue)
 XCVAR_DEF(g_debugHolocron, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_overpoweredsaberthrow, "1", NULL, CVAR_ARCHIVE, qtrue)
-XCVAR_DEF(g_sabermustreturn, "1", NULL, CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(g_sabermustreturn, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_SaberBounceOnWalls, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_noIgniteTwirl, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_HitTracking, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(r_cubeMapping, "1", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(r_cubeMappingBounces, "2", NULL, CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(g_IsSaberDoingAttackDamage, "0", NULL, CVAR_ARCHIVE, qtrue)
 
 #undef XCVAR_DEF

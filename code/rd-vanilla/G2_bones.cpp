@@ -321,7 +321,6 @@ void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, int index, const 
 
 		Multiply_3x4Matrix(&temp1, boneOverride, &skel->BasePoseMatInv);
 		Multiply_3x4Matrix(boneOverride, &skel->BasePoseMat, &temp1);
-
 	}
 	else
 	{
@@ -415,12 +414,10 @@ void G2_Generate_Matrix(const model_t* mod, boneInfo_v& blist, int index, const 
 		}
 
 		Multiply_3x4Matrix(boneOverride, &temp1, &permutation);
-
 	}
 
 	// keep a copy of the matrix in the newmatrix which is actually what we use
 	memcpy(&blist[index].newMatrix, &blist[index].matrix, sizeof(mdxaBone_t));
-
 }
 
 //=========================================================================================

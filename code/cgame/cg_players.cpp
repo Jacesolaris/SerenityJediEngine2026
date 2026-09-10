@@ -40,7 +40,7 @@ constexpr auto CG_SWINGSPEED = 0.3f;
 
 extern qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, int bladeNum);
 extern void WP_SaberSwingSound(const gentity_t* ent, int saberNum, swingType_t swing_type);
-extern qboolean PM_InKataAnim(int anim);
+extern qboolean PM_InKataAnim(const int anim);
 extern qboolean PM_InLedgeMove(int anim);
 extern void WP_SabersDamageTrace(gentity_t* ent, qboolean no_effects);
 extern void wp_saber_update_old_blade_data(gentity_t* ent);
@@ -82,11 +82,11 @@ extern qboolean PM_RunningAnim(int anim);
 extern qboolean PM_WalkingAnim(int anim);
 extern qboolean PM_WindAnim(int anim);
 extern qboolean PM_StandingAtReadyAnim(int anim);
-extern qboolean pm_saber_innonblockable_attack(int anim);
+extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean NPC_IsMando(const gentity_t* self);
 extern qboolean NPC_IsOversized(const gentity_t* self);
 extern qboolean BG_SaberInPartialDamageMove(gentity_t* self);
-extern qboolean BG_SaberInTransitionDamageMove(const playerState_t* ps);
+extern qboolean PM_SaberInTransitionDamageMove(const playerState_t* ps);
 extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps);
 extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int color);
 
@@ -4053,9 +4053,9 @@ static qboolean CG_PlayerShadow(centity_t* const cent, float* const shadowPlane)
 			cgs.model_draw, cent->currentState.modelScale);
 		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, sideOrigin);
 		sideOrigin[2] += 30; //fudge up a bit for coplaner
-		bShadowed = static_cast<qboolean>(player_shadow(sideOrigin, 0, shadowPlane, 28, cgs.media.shadowMarkShader) ||	bShadowed);
+		bShadowed = static_cast<qboolean>(player_shadow(sideOrigin, 0, shadowPlane, 28, cgs.media.shadowMarkShader) || bShadowed);
 
-		bShadowed = static_cast<qboolean>(player_shadow(rootOrigin, cent->pe.legs.yawAngle, shadowPlane, 64, cgs.media.shadowMarkShader) ||	bShadowed);
+		bShadowed = static_cast<qboolean>(player_shadow(rootOrigin, cent->pe.legs.yawAngle, shadowPlane, 64, cgs.media.shadowMarkShader) || bShadowed);
 		return bShadowed;
 	}
 	else if (cent->gent->client->NPC_class == CLASS_RANCOR)
@@ -6211,29 +6211,7 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 	//------------------------
 	if (powerups & 1 << PW_BATTLESUIT)
 	{
-		//float diff = gent->client->ps.powerups[PW_BATTLESUIT] - cg.time;
-
-		//if (cent->gent->client->ps.weapon != WP_SABER)
-		//{
-		//	if (diff > 0)
-		//	{
-		//		float t;
-		//		t = 1.0f - diff / (ARMOR_EFFECT_TIME * 2.0f);
-		//		// Only display when we have damage
-		//		if (t < 0.0f || t > 1.0f)
-		//		{
-		//		}
-		//		else
-		//		{
-		//			ent->shaderRGBA[0] = ent->shaderRGBA[1] = ent->shaderRGBA[2] = 255.0f * t;
-		//			ent->shaderRGBA[3] = 255;
-		//			ent->renderfx &= ~RF_ALPHA_FADE;
-		//			ent->renderfx |= RF_RGB_TINT;
-		//			ent->customShader = cgs.media.personalShieldShader;
-		//			cgi_R_AddRefEntityToScene(ent);
-		//		}
-		//	}
-		//}
+		//looks shit.
 	}
 	//------------------------------------------------------
 
@@ -6433,8 +6411,7 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 	{
 		if (cg_SaberInnonblockableAttackWarning.integer == 1 || cg_DebugSaberCombat.integer)
 		{
-			if (pm_saber_innonblockable_attack(cent->currentState.torsoAnim) && !(cent->currentState.powerups & 1 <<
-				PW_CLOAKED))
+			if (PM_SaberInnonblockableAttack(cent->currentState.torsoAnim) && !(cent->currentState.powerups & 1 << PW_CLOAKED))
 			{
 				ent->renderfx |= RF_RGB_TINT;
 				ent->shaderRGBA[0] = 255;
@@ -6446,43 +6423,65 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 		}
 	}
 
-	if (!in_camera)
-	{
-		//test for all sorts of shit... does it work? show me.
-		if (cg_IsSaberDoingAttackDamage.integer == 1 || cg_DebugSaberCombat.integer)
+	if (cent->currentState.number == cg.snap->ps.clientNum && !in_camera)
+	{   // test for saber damage coloring
+		if (cg_IsSaberDoingAttackDamage.integer == 1)
 		{
-			if (BG_SaberInTransitionDamageMove(&cent->gent->client->ps)) //if in a transition dont do damage turn green
+			qboolean doTint = qfalse;
+			qboolean tintBlue = qfalse;
+			qboolean tintRed = qfalse;
+
+			// 1. Transition damage → BLUE
+			if (PM_SaberInTransitionDamageMove(&cent->gent->client->ps) == qtrue)
+			{
+				doTint = qtrue;
+				tintBlue = qtrue;
+			}
+			else
+			{
+				// 2. Non‑idle damage moves
+				if (PM_SaberInNonIdleDamageMove(&cent->gent->client->ps) == qtrue)
+				{
+					// 2a. Partial damage window → BLUE
+					if (BG_SaberInPartialDamageMove(cent->gent) == qtrue)
+					{
+						doTint = qtrue;
+						tintBlue = qtrue;
+					}
+					else
+					{
+						// 2b. Full damage window → RED
+						doTint = qtrue;
+						tintRed = qtrue;
+					}
+				}
+			}
+
+			// Apply tint if needed
+			if (doTint == qtrue)
 			{
 				ent->renderfx |= RF_RGB_TINT;
-				ent->shaderRGBA[0] = 0;
-				ent->shaderRGBA[1] = ent->shaderRGBA[2] = 255;
-				ent->shaderRGBA[3] = 0;
+
+				if (tintBlue == qtrue)
+				{
+					ent->shaderRGBA[0] = 0;     // R
+					ent->shaderRGBA[1] = 0;     // G
+					ent->shaderRGBA[2] = 255;   // B
+					ent->shaderRGBA[3] = 255;   // A (visible)
+				}
+				else if (tintRed == qtrue)
+				{
+					ent->shaderRGBA[0] = 255;   // R
+					ent->shaderRGBA[1] = 0;     // G
+					ent->shaderRGBA[2] = 0;     // B
+					ent->shaderRGBA[3] = 255;   // A (visible)
+				}
 
 				cgi_R_AddRefEntityToScene(ent);
 			}
-			else if (PM_SaberInNonIdleDamageMove(&cent->gent->client->ps)) //doing damage make red
-			{
-				if (BG_SaberInPartialDamageMove(cent->gent)) //turn of damage in the move turn green
-				{
-					ent->renderfx |= RF_RGB_TINT;
-					ent->shaderRGBA[0] = 0;
-					ent->shaderRGBA[1] = ent->shaderRGBA[2] = 255;
-					ent->shaderRGBA[3] = 0;
-
-					cgi_R_AddRefEntityToScene(ent);
-				}
-				else
-				{
-					ent->renderfx |= RF_RGB_TINT; //doing damage make red
-					ent->shaderRGBA[0] = 255;
-					ent->shaderRGBA[1] = ent->shaderRGBA[2] = 0;
-					ent->shaderRGBA[3] = 255;
-
-					cgi_R_AddRefEntityToScene(ent);
-				}
-			}
 		}
 	}
+
 	//For now, these two are using the old shield shader. This is just so that you
 	//can tell it apart from the JM/duel shaders, but it's still very obvious.
 	if (cent->gent->client->ps.forcePowersActive & 1 << FP_PROTECT
@@ -12589,6 +12588,7 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 		switch (cent->gent->client->ps.saber[saberNum].type)
 		{
 		case SABER_SINGLE:
+		case SABER_SINGLE_SMASH:
 		case SABER_DAGGER:
 		case SABER_LANCE:
 		case SABER_UNSTABLE:
@@ -14014,11 +14014,11 @@ void CG_AddSaberBlade(const centity_t* cent, centity_t* scent, const int renderf
 
 /*
 ================
-GetSelfLegAnimPoint
+CG_GetSelfLegAnimPoint
 ================
 */
 //Get the point in the leg animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
-static float GetSelfLegAnimPoint()
+static float CG_GetSelfLegAnimPoint()
 {
 	float current = 0.0f;
 	int end = 0;
@@ -14045,12 +14045,12 @@ static float GetSelfLegAnimPoint()
 
 /*
 ================
-GetSelfTorsoAnimPoint
+CG_GetSelfTorsoAnimPoint
 
 ================
 */
 //Get the point in the torso animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
-static float GetSelfTorsoAnimPoint()
+float CG_GetSelfTorsoAnimPoint()
 {
 	float current = 0.0f;
 	int end = 0;
@@ -14090,8 +14090,8 @@ pitch (x) axis.
 
 static void SmoothTrueView(vec3_t eye_angles)
 {
-	const float leg_anim_point = GetSelfLegAnimPoint();
-	const float torso_anim_point = GetSelfTorsoAnimPoint();
+	const float leg_anim_point = CG_GetSelfLegAnimPoint();
+	const float torso_anim_point = CG_GetSelfTorsoAnimPoint();
 
 	qboolean eye_range = qtrue;
 	qboolean use_ref_def = qfalse;

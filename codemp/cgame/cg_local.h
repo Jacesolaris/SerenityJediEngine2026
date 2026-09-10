@@ -1775,6 +1775,7 @@ typedef struct cgEffects_s {
 
 	fxHandle_t strikeProjectile;
 	fxHandle_t strikeHit;
+	fxHandle_t saberSlamEffect;
 } cgEffects_t;
 
 #define MAX_STATIC_MODELS 4000

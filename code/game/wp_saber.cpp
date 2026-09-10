@@ -109,7 +109,7 @@ extern void Jedi_RageStop(const gentity_t* self);
 extern int PM_PickAnim(const gentity_t* self, int minAnim, int maxAnim);
 extern void NPC_SetPainEvent(gentity_t* self);
 extern qboolean PM_SwimmingAnim(int anim);
-extern qboolean PM_InAnimForsaber_move(int anim, int saberMove);
+extern qboolean PM_InAnimForSaberMove(int anim, int saberMove);
 extern qboolean PM_SpinningSaberAnim(int anim);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInKillAttack(int anim);
@@ -199,7 +199,7 @@ extern qboolean BG_InKnockDown(int anim);
 extern saberMoveName_t PM_BrokenParryForParry(int move);
 extern qboolean PM_SaberInDamageMove(int move);
 extern qboolean PM_SaberDoDamageAnim(int anim);
-extern qboolean pm_saber_innonblockable_attack(int anim);
+extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean PM_Saberinstab(int move);
 extern qboolean PM_RestAnim(int anim);
 extern qboolean PM_KickingAnim(int anim);
@@ -268,6 +268,7 @@ extern qboolean PM_InSlopeAnim(int anim);
 extern qboolean PM_BoltBlockingAnim(const int anim);
 extern qboolean PM_SaberDrawPutawayAnim(int anim);
 extern qboolean BG_SaberSprintAnim(int anim);
+extern cvar_t* g_SaberBounceOnWalls;
 
 qboolean g_saberNoEffects = qfalse;
 qboolean g_noClashFlare = qfalse;
@@ -1013,11 +1014,13 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 		{
 			if (holster_place == HOLSTER_LHIP)
 			{
-				if (ent->client->ps.saber[0].type == SABER_STAFF || ent->client->ps.saber[0].type == SABER_STAFF_MAUL ||
-					ent->client->ps.saber[0].type == SABER_STAFF_SFX
-					|| ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE || ent->client->ps.saber[0].type ==
-					SABER_STAFF_THIN
-					|| ent->client->ps.saber[0].type == SABER_BACKHAND)
+				if (ent->client->ps.saber[0].type == SABER_STAFF ||
+					ent->client->ps.saber[0].type == SABER_STAFF_MAUL ||
+					ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
+					ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
+					ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
+					ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
+					ent->client->ps.saber[0].type == SABER_BACKHAND)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_bl");
 				}
@@ -1051,11 +1054,13 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 			}
 			else if (holster_place == HOLSTER_HIPS)
 			{
-				if (ent->client->ps.saber[0].type == SABER_STAFF || ent->client->ps.saber[0].type == SABER_STAFF_MAUL ||
-					ent->client->ps.saber[0].type == SABER_STAFF_SFX
-					|| ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE || ent->client->ps.saber[0].type ==
-					SABER_STAFF_THIN
-					|| ent->client->ps.saber[0].type == SABER_BACKHAND)
+				if (ent->client->ps.saber[0].type == SABER_STAFF ||
+					ent->client->ps.saber[0].type == SABER_STAFF_MAUL ||
+					ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
+					ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
+					ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
+					ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
+					ent->client->ps.saber[0].type == SABER_BACKHAND)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_br");
 				}
@@ -1098,11 +1103,13 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 			{
 				if (ent->client->ps.saber[0].holsterPlace == HOLSTER_LHIP)
 				{
-					if (ent->client->ps.saber[0].type == SABER_STAFF || ent->client->ps.saber[0].type ==
-						SABER_STAFF_MAUL || ent->client->ps.saber[0].type == SABER_STAFF_SFX
-						|| ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE || ent->client->ps.saber[0].type ==
-						SABER_STAFF_THIN
-						|| ent->client->ps.saber[0].type == SABER_BACKHAND)
+					if (ent->client->ps.saber[0].type == SABER_STAFF ||
+						ent->client->ps.saber[0].type == SABER_STAFF_MAUL ||
+						ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
+						ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
+						ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
+						ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
+						ent->client->ps.saber[0].type == SABER_BACKHAND)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_br");
 					}
@@ -1136,11 +1143,13 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 				}
 				else
 				{
-					if (ent->client->ps.saber[0].type == SABER_STAFF || ent->client->ps.saber[0].type ==
-						SABER_STAFF_MAUL || ent->client->ps.saber[0].type == SABER_STAFF_SFX
-						|| ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE || ent->client->ps.saber[0].type ==
-						SABER_STAFF_THIN
-						|| ent->client->ps.saber[0].type == SABER_BACKHAND)
+					if (ent->client->ps.saber[0].type == SABER_STAFF ||
+						ent->client->ps.saber[0].type == SABER_STAFF_MAUL ||
+						ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
+						ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
+						ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
+						ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
+						ent->client->ps.saber[0].type == SABER_BACKHAND)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_bl");
 					}
@@ -2495,7 +2504,7 @@ static int g_get_attack_damage(const gentity_t* self, const int min_dmg, const i
 	int total_damage = max_dmg;
 	float attack_anim_length = PM_AnimLength(self->client->clientInfo.animFileIndex,
 		static_cast<animNumber_t>(self->client->ps.torsoAnim));
-	constexpr float anim_speed_factor = 1.0f;
+	constexpr float animSpeedFactor = 1.0f;
 	float time_scale_mod = PM_GetTimeScaleMod(self);
 
 	//Be sure to scale by the proper anim speed just as if we were going to play the animation
@@ -2503,7 +2512,7 @@ static int g_get_attack_damage(const gentity_t* self, const int min_dmg, const i
 	PM_SaberStartTransAnim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &time_scale_mod, self,
 		self->userInt3);
 
-	const int speed_dif = attack_anim_length - attack_anim_length * anim_speed_factor;
+	const int speed_dif = attack_anim_length - attack_anim_length * animSpeedFactor;
 	attack_anim_length += speed_dif;
 	float peak_point = attack_anim_length;
 	peak_point -= attack_anim_length * mult_point;
@@ -2538,13 +2547,13 @@ static int g_get_attack_damage(const gentity_t* self, const int min_dmg, const i
 static float g_get_anim_point(const gentity_t* self)
 {
 	float attack_anim_length = PM_AnimLength(self->client->clientInfo.animFileIndex, static_cast<animNumber_t>(self->client->ps.torsoAnim));
-	float anim_speed_factor = 1.0f;
+	float animSpeedFactor = 1.0f;
 
 	//Be sure to scale by the proper anim speed just as if we were going to play the animation
-	PM_SaberStartTransAnim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &anim_speed_factor, self,
+	PM_SaberStartTransAnim(self->client->ps.saberAnimLevel, self->client->ps.torsoAnim, &animSpeedFactor, self,
 		self->userInt3);
 
-	const int speed_dif = attack_anim_length - attack_anim_length * anim_speed_factor;
+	const int speed_dif = attack_anim_length - attack_anim_length * animSpeedFactor;
 	attack_anim_length += speed_dif;
 
 	const float current_point = self->client->ps.torsoAnimTimer;
@@ -2556,7 +2565,7 @@ static float g_get_anim_point(const gentity_t* self)
 
 extern float damageModifier[];
 extern float hitLochealth_percentage[];
-extern qboolean BG_SaberInTransitionDamageMove(const playerState_t* ps);
+extern qboolean PM_SaberInTransitionDamageMove(const playerState_t* ps);
 qboolean BG_SaberInPartialDamageMove(gentity_t* self);
 
 static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, const int base_d_flags,
@@ -2588,7 +2597,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 		return qfalse;
 	}
 
-	if (BG_SaberInTransitionDamageMove(&ent->client->ps)) //if in a transition dont do damage
+	if (PM_SaberInTransitionDamageMove(&ent->client->ps)) //if in a transition dont do damage
 	{
 		return qfalse;
 	}
@@ -4294,7 +4303,7 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 	if (tr.entityNum == ENTITYNUM_WORLD)
 	{
 		if (attacker && attacker->client &&
-			(attacker->client->ps.saber[saberNum].saberFlags & SFL_BOUNCE_ON_WALLS))
+			(attacker->client->ps.saber[saberNum].saberFlags & SFL_BOUNCE_ON_WALLS || g_SaberBounceOnWalls->integer == 1))
 		{
 			VectorCopy(tr.endpos, saberHitLocation);
 			VectorCopy(tr.plane.normal, saberHitNormal);
@@ -6617,6 +6626,278 @@ void g_fatigue_bp_knockaway(gentity_t* blocker)
 
 /*
 ---------------------------------------------------------
+Saber Slam Trace and Radius Damage
+---------------------------------------------------------
+*/
+static qboolean WP_GetSaberBoltOrigin(gentity_t* ent, int saberNum, const char** boltNames, int boltCount, vec3_t outOrigin)
+{
+	if (ent == nullptr)
+	{
+		return qfalse;
+	}
+
+	const size_t gh2count = ent->ghoul2.size();
+	if (gh2count == 0)
+	{
+		return qfalse;
+	}
+
+	if (saberNum < 0 || saberNum > 1)
+	{
+		return qfalse;
+	}
+
+	const int modelIndex = ent->weaponModel[saberNum];
+	if (modelIndex <= 0 || (size_t)modelIndex >= gh2count)
+	{
+		return qfalse;
+	}
+
+	// ----------------------------------------------------------------------
+	// Bolt name candidates
+	// ----------------------------------------------------------------------
+	const char* defaultNames[] =
+	{
+		"*blade1",
+		"*blade2",
+		"blade1",
+		"blade2",
+		"tag_blade1",
+		"tag_blade2"
+	};
+
+	const char** names = boltNames;
+	int namesCount = boltCount;
+
+	if (names == nullptr || boltCount == 0)
+	{
+		names = defaultNames;
+		namesCount = (int)(sizeof(defaultNames) / sizeof(defaultNames[0]));
+	}
+
+	// ----------------------------------------------------------------------
+	// Try each bolt name until one succeeds
+	// ----------------------------------------------------------------------
+	int boltIndex = -1;
+
+	for (int i = 0; i < namesCount; i++)
+	{
+		if (names[i] == nullptr)
+		{
+			continue;
+		}
+
+		boltIndex = gi.G2API_AddBolt(&ent->ghoul2[modelIndex], names[i]);
+
+		if (boltIndex != -1)
+		{
+			break;
+		}
+	}
+
+	if (boltIndex == -1)
+	{
+		return qfalse;
+	}
+
+	// ----------------------------------------------------------------------
+	// Compute bolt matrix
+	// ----------------------------------------------------------------------
+	mdxaBone_t boltMatrix;
+	vec3_t angles = { 0.0f, ent->currentAngles[YAW], 0.0f };
+	vec3_t tmpOrigin;
+
+	gi.G2API_GetBoltMatrix(
+		ent->ghoul2,
+		modelIndex,
+		boltIndex,
+		&boltMatrix,
+		angles,
+		ent->currentOrigin,
+		level.time,
+		nullptr,
+		ent->s.modelScale);
+
+	// Convert matrix to world-space origin
+	gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, tmpOrigin);
+	VectorCopy(tmpOrigin, outOrigin);
+
+	return qtrue;
+}
+
+static void G_PlayerSaberSmash(gentity_t* owner)
+{
+	if (owner == nullptr || owner->inuse == qfalse)
+	{
+		return;
+	}
+
+	if (owner->client == nullptr)
+	{
+		return;
+	}
+
+	// ----------------------------------------------------------------------
+	// Bolt name candidates
+	// ----------------------------------------------------------------------
+
+	const char* bladeCandidates[] =
+	{
+		"*blade1",
+		"*blade2"
+	};
+
+	vec3_t bladeOrigin;
+
+	// Try secondary saber first, then primary
+	if (WP_GetSaberBoltOrigin(owner, 1, bladeCandidates, (int)(sizeof(bladeCandidates) / sizeof(bladeCandidates[0])), bladeOrigin) == qfalse)
+	{
+		if (WP_GetSaberBoltOrigin(owner, 0, bladeCandidates, (int)(sizeof(bladeCandidates) / sizeof(bladeCandidates[0])), bladeOrigin) == qfalse)
+		{
+			// No blade bolt found on either saber.
+			return;
+		}
+	}
+
+	// ----------------------------------------------------------------------
+	// Prepare trace downward from blade tip
+	// ----------------------------------------------------------------------
+	trace_t trace;
+	gentity_t* radiusEnts[128];
+
+	constexpr float radius = 300.0f;
+	constexpr float halfRad = radius * 0.5f;
+
+	vec3_t mins{};
+	vec3_t maxs{};
+	vec3_t entDir;
+
+	// Trace down from blade tip (deep enough to guarantee floor impact).
+	vec3_t bottom;
+	VectorCopy(bladeOrigin, bottom);
+	bottom[2] -= 256.0f; // deep enough to guarantee floor impact
+
+	gi.trace(&trace,
+		bladeOrigin,
+		vec3_origin,
+		vec3_origin,
+		bottom,
+		owner->s.number,
+		MASK_SHOT,
+		G2_RETURNONHIT,
+		10);
+
+	// ----------------------------------------------------------------------
+	// Play effect + sound at impact point
+	// ----------------------------------------------------------------------
+	G_PlayEffect(G_EffectIndex("saber/sabersmash.efx"), trace.endpos, trace.plane.normal);
+
+	// ----------------------------------------------------------------------
+	// Radius search setup
+	// ----------------------------------------------------------------------
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = trace.endpos[i] - radius;
+		maxs[i] = trace.endpos[i] + radius;
+	}
+	// ----------------------------------------------------------------------
+	// Find entities in radius
+	// ----------------------------------------------------------------------
+	const int numEnts = gi.EntitiesInBox(mins, maxs, radiusEnts, 128);
+
+	for (int i = 0; i < numEnts; i++)
+	{
+		gentity_t* ent = radiusEnts[i];
+
+		if (ent == nullptr || ent->inuse == qfalse)
+		{
+			continue;
+		}
+
+		if (ent == owner)
+		{
+			continue;
+		}
+
+		if ((ent->flags & FL_NO_KNOCKBACK) != 0)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Breakables
+		// ------------------------------------------------------------------
+		if (ent->client == nullptr)
+		{
+			if (G_EntIsBreakable(ent->s.number, owner) == qtrue)
+			{
+				G_Damage(ent, owner, owner, vec3_origin, ent->currentOrigin, 100, 0, MOD_EXPLOSIVE_SPLASH);
+			}
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Held entities cannot be thrown
+		// ------------------------------------------------------------------
+		if ((ent->client->ps.eFlags & EF_HELD_BY_RANCOR) != 0 ||
+			(ent->client->ps.eFlags & EF_HELD_BY_WAMPA) != 0)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Compute distance from slam point
+		// ------------------------------------------------------------------
+		VectorSubtract(ent->currentOrigin, trace.endpos, entDir);
+
+		const float dist = VectorNormalize(entDir);
+
+		if (dist > radius)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
+		// Inner radius damage
+		// ------------------------------------------------------------------
+		if (dist < halfRad)
+		{
+			G_Damage(ent, owner, owner, vec3_origin, ent->currentOrigin, Q_irand(20, 30), DAMAGE_NO_KNOCKBACK, MOD_EXPLOSIVE_SPLASH);
+		}
+
+		// ------------------------------------------------------------------
+		// Throw + knockdown (non-heavy NPCs)
+		// ------------------------------------------------------------------
+		if (ent->client != nullptr &&
+			ent->client->NPC_class != CLASS_RANCOR &&
+			ent->client->NPC_class != CLASS_ATST)
+		{
+			float throwStr = 10.0f + (radius - dist) * 0.25f;
+
+			if (throwStr > 85.0f)
+			{
+				throwStr = 85.0f;
+			}
+
+			entDir[2] += 0.1f;
+			VectorNormalize(entDir);
+
+			G_Throw(ent, entDir, throwStr);
+
+			if (ent->health > 0)
+			{
+				if (dist < halfRad ||
+					ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+				{
+					G_Knockdown(ent, owner, vec3_origin, 500.0f, qtrue);
+				}
+			}
+		}
+	}
+}
+
+/*
+---------------------------------------------------------
 void WP_SaberDamageTrace( gentity_t *ent, int saberNum, int bladeNum )
 
   Constantly trace from the old blade pos to new, down the saber beam and do damage
@@ -6638,9 +6919,13 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 	vec3_t end_new;
 	float base_damage;
 	int base_d_flags = 0;
-	qboolean hit_wall = qfalse;
+	qboolean saber_hit_wall = qfalse;
 	qboolean broken_parry = qfalse;
 	qboolean saber_in_special = PM_SaberInSpecialAttack(ent->client->ps.torsoAnim);
+	int isSmashTorso = (ent->client->ps.torsoAnim == BOTH_SMASHDOWN_SINGLE ||
+		ent->client->ps.torsoAnim == BOTH_SMASHDOWN_STAFF ||
+		ent->client->ps.torsoAnim == BOTH_SMASHDOWN_DUAL) ? 1 : 0;
+	int partialDamage = BG_SaberInPartialDamageMove(ent) ? 1 : 0;
 
 	for (int& ven : victimentity_num)
 	{
@@ -6873,7 +7158,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 		{
 			//okay, in a saberMove that does damage//make sure we're in the right anim
 			if (!PM_SaberInSpecialAttack(ent->client->ps.torsoAnim)
-				&& !PM_InAnimForsaber_move(ent->client->ps.torsoAnim, ent->client->ps.saberMove))
+				&& !PM_InAnimForSaberMove(ent->client->ps.torsoAnim, ent->client->ps.saberMove))
 			{
 				//forced into some other animation somehow, like a pain or death?
 				if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
@@ -7128,7 +7413,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 
 	if (VectorCompare2(base_old, base_new) && VectorCompare2(end_old, end_new))
 	{
-		hit_wall = WP_SaberDamageForTrace(ent->s.number, mp2, end_new, base_damage * 4, md2, qfalse,
+		saber_hit_wall = WP_SaberDamageForTrace(ent->s.number, mp2, end_new, base_damage * 4, md2, qfalse,
 			ent->client->ps.saber[saberNum].type,
 			qfalse, saberNum, bladeNum);
 	}
@@ -7140,7 +7425,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 		vec3_t ma1, ma2, md2_ang{}, cur_base2;
 		int xx;
 		//do the trace at the base first
-		hit_wall = WP_SaberDamageForTrace(ent->s.number, base_old, base_new, base_damage, md2, qfalse,
+		saber_hit_wall = WP_SaberDamageForTrace(ent->s.number, base_old, base_new, base_damage, md2, qfalse,
 			ent->client->ps.saber[saberNum].type,
 			qtrue, saberNum, bladeNum);
 
@@ -7230,7 +7515,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 					qfalse,
 					ent->client->ps.saber[saberNum].type, qtrue, saberNum, bladeNum))
 				{
-					hit_wall = qtrue;
+					saber_hit_wall = qtrue;
 				}
 
 				//if hit a saber, shorten rest of traces to match
@@ -7251,12 +7536,12 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 					AngleVectors(md2_ang, cur_md2, nullptr, nullptr);
 					hit_saber = qtrue;
 				}
-				if (hit_wall)
+				if (saber_hit_wall)
 				{
 					break;
 				}
 			}
-			if (hit_wall || hit_saber)
+			if (saber_hit_wall || hit_saber)
 			{
 				break;
 			}
@@ -7284,7 +7569,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 		if (WP_SaberDamageForTrace(ent->s.number, end_old, end_new, tip_dmg_mod * base_damage, md2, qfalse,
 			ent->client->ps.saber[saberNum].type, qfalse, saberNum, bladeNum))
 		{
-			hit_wall = qtrue;
+			saber_hit_wall = qtrue;
 		}
 	}
 
@@ -7381,7 +7666,10 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 					|| ent->client->ps.torsoAnim == BOTH_YODA_SPECIAL
 					|| ent->client->ps.torsoAnim == BOTH_GRIEVOUS_SPIN
 					|| ent->client->ps.torsoAnim == BOTH_A6_SABERPROTECT
-					|| ent->client->ps.torsoAnim == BOTH_GRIEVOUS_PROTECT)
+					|| ent->client->ps.torsoAnim == BOTH_GRIEVOUS_PROTECT
+					|| ent->client->ps.torsoAnim == BOTH_SMASHDOWN_SINGLE
+					|| ent->client->ps.torsoAnim == BOTH_SMASHDOWN_STAFF
+					|| ent->client->ps.torsoAnim == BOTH_SMASHDOWN_DUAL)
 				{
 					//parry/block/break-parry bonus for single-style kata moves
 					attacker_power_level++;
@@ -7434,7 +7722,10 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 					|| hit_owner->client->ps.torsoAnim == BOTH_YODA_SPECIAL
 					|| hit_owner->client->ps.torsoAnim == BOTH_GRIEVOUS_SPIN
 					|| hit_owner->client->ps.torsoAnim == BOTH_A6_SABERPROTECT
-					|| hit_owner->client->ps.torsoAnim == BOTH_GRIEVOUS_PROTECT)
+					|| hit_owner->client->ps.torsoAnim == BOTH_GRIEVOUS_PROTECT
+					|| hit_owner->client->ps.torsoAnim == BOTH_SMASHDOWN_SINGLE
+					|| hit_owner->client->ps.torsoAnim == BOTH_SMASHDOWN_STAFF
+					|| hit_owner->client->ps.torsoAnim == BOTH_SMASHDOWN_DUAL)
 				{
 					//parry/block/break-parry bonus for single-style kata moves
 					blocker_power_level++;
@@ -7844,93 +8135,98 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 	}
 	else
 	{
-		if (hit_wall
-			&& ent->client->ps.saber[saberNum].saberFlags & SFL_BOUNCE_ON_WALLS
-			&& (PM_SaberInAttackPure(ent->client->ps.saberMove) //only in a normal attack anim
-				|| ent->client->ps.saberMove == LS_A_JUMP_T__B_ || ent->client->ps.saberMove == LS_A_JUMP_PALP_))
-			//or in the strong jump-fwd-attack "death from above" move
+		if (saber_hit_wall)
 		{
-			//bounce off walls
-			ent->client->ps.saberBlocked = BLOCKED_ATK_BOUNCE;
-			ent->client->ps.saberBounceMove = LS_D1_BR + (saberMoveData[ent->client->ps.saberMove].startQuad - Q_BR);
-			//do bounce sound & force feedback
-			wp_saber_bounce_on_wall_sound(ent, saberNum, bladeNum);
-			//do hit effect
-			if (!g_saberNoEffects)
-			{
-				if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
-					&& ent->client->ps.saber[saberNum].hitOtherEffect)
+			if ((ent->client->ps.saber[saberNum].saberFlags & SFL_BOUNCE_ON_WALLS || g_SaberBounceOnWalls->integer == 1) &&
+				(PM_SaberInAttackPure(ent->client->ps.saberMove) || ent->client->ps.saberMove == LS_A_JUMP_T__B_ || ent->client->ps.saberMove == LS_A_JUMP_PALP_))//or in the strong jump-fwd-attack "death from above" move
+			{//bounce off walls
+				ent->client->ps.saberBlocked = BLOCKED_ATK_BOUNCE;
+				ent->client->ps.saberBounceMove = LS_D1_BR + (saberMoveData[ent->client->ps.saberMove].startQuad - Q_BR);
+				//do bounce sound & force feedback
+				wp_saber_bounce_on_wall_sound(ent, saberNum, bladeNum);
+				//do hit effect
+				if (!g_saberNoEffects)
 				{
-					G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect, saberHitLocation, saberHitNormal);
+					if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
+						&& ent->client->ps.saber[saberNum].hitOtherEffect)
+					{
+						G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect, saberHitLocation, saberHitNormal);
+					}
+					else if (WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
+						&& ent->client->ps.saber[saberNum].hitOtherEffect2)
+					{
+						G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect2, saberHitLocation, saberHitNormal);
+					}
+					else
+					{
+						G_PlayEffect("saber/saber_bodyhit", saberHitLocation, saberHitNormal);
+					}
 				}
-				else if (WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
-					&& ent->client->ps.saber[saberNum].hitOtherEffect2)
+				//do radius damage/knockback, if any
+				if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum))
 				{
-					G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect2, saberHitLocation, saberHitNormal);
+					WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius,
+						ent->client->ps.saber[saberNum].splashDamage,
+						ent->client->ps.saber[saberNum].splashKnockback);
 				}
 				else
 				{
-					G_PlayEffect("saber/saber_bodyhit", saberHitLocation, saberHitNormal);
+					WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius2,
+						ent->client->ps.saber[saberNum].splashDamage2,
+						ent->client->ps.saber[saberNum].splashKnockback2);
 				}
 			}
-			//do radius damage/knockback, if any
-			if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum))
-			{
-				WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius,
-					ent->client->ps.saber[saberNum].splashDamage,
-					ent->client->ps.saber[saberNum].splashKnockback);
-			}
-			else
-			{
-				WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius2,
-					ent->client->ps.saber[saberNum].splashDamage2,
-					ent->client->ps.saber[saberNum].splashKnockback2);
-			}
-		}
-		else if (hit_wall &&
-			!PM_SaberInAttackPure(ent->client->ps.saberMove) &&
-			!PM_CrouchAnim(ent->client->ps.legsAnim) &&
-			!PM_WalkingAnim(ent->client->ps.legsAnim) &&
-			!PM_RunningAnim(ent->client->ps.legsAnim) &&
-			ent->client->buttons & BUTTON_WALKING &&
-			((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) &&
-			(ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)))
-		{
-			//reflect from wall
-			//do bounce sound & force feedback
-			ent->client->ps.saberBlocked = BLOCKED_ATK_BOUNCE;
-			ent->client->ps.saberBounceMove = LS_D1_BR + (saberMoveData[ent->client->ps.saberMove].startQuad - Q_BR);
+			else if (!PM_SaberInAttackPure(ent->client->ps.saberMove) &&
+				!PM_CrouchAnim(ent->client->ps.legsAnim) &&
+				!PM_WalkingAnim(ent->client->ps.legsAnim) &&
+				!PM_RunningAnim(ent->client->ps.legsAnim) &&
+				ent->client->buttons & BUTTON_WALKING &&
+				((ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0) &&
+				(ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)))
+			{//reflect from wall
+				//do bounce sound & force feedback
+				ent->client->ps.saberBlocked = BLOCKED_ATK_BOUNCE;
+				ent->client->ps.saberBounceMove = LS_D1_BR + (saberMoveData[ent->client->ps.saberMove].startQuad - Q_BR);
 
-			//do hit effect
-			if (!g_saberNoEffects)
-			{
-				if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
-					&& ent->client->ps.saber[saberNum].hitOtherEffect)
+				//do hit effect
+				if (!g_saberNoEffects)
 				{
-					G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect, saberHitLocation, saberHitNormal);
+					if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
+						&& ent->client->ps.saber[saberNum].hitOtherEffect)
+					{
+						G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect, saberHitLocation, saberHitNormal);
+					}
+					else if (WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
+						&& ent->client->ps.saber[saberNum].hitOtherEffect2)
+					{
+						G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect2, saberHitLocation, saberHitNormal);
+					}
+					else
+					{
+						G_PlayEffect("saber/saber_cut", saberHitLocation, saberHitNormal);
+					}
 				}
-				else if (WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
-					&& ent->client->ps.saber[saberNum].hitOtherEffect2)
+				//do radius damage/knockback, if any
+				if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum))
 				{
-					G_PlayEffect(ent->client->ps.saber[saberNum].hitOtherEffect2, saberHitLocation, saberHitNormal);
+					WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius,
+						ent->client->ps.saber[saberNum].splashDamage,
+						ent->client->ps.saber[saberNum].splashKnockback);
 				}
 				else
 				{
-					G_PlayEffect("saber/saber_cut", saberHitLocation, saberHitNormal);
+					WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius2,
+						ent->client->ps.saber[saberNum].splashDamage2,
+						ent->client->ps.saber[saberNum].splashKnockback2);
 				}
 			}
-			//do radius damage/knockback, if any
-			if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum))
+			else if ((isSmashTorso == qtrue) && (partialDamage == qfalse))
 			{
-				WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius,
-					ent->client->ps.saber[saberNum].splashDamage,
-					ent->client->ps.saber[saberNum].splashKnockback);
-			}
-			else
-			{
-				WP_SaberRadiusDamage(ent, saberHitLocation, ent->client->ps.saber[saberNum].splashRadius2,
-					ent->client->ps.saber[saberNum].splashDamage2,
-					ent->client->ps.saber[saberNum].splashKnockback2);
+				if (ent->client->ps.saberSmashTriggered == qfalse)
+				{
+					G_PlayerSaberSmash(ent);
+					ent->client->ps.saberSmashTriggered = qtrue;
+				}
 			}
 		}
 	}
@@ -7962,7 +8258,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 		}
 	}
 
-	if (hit_wall)
+	if (saber_hit_wall)
 	{
 		//just so Jedi knows that he hit a wall
 		ent->client->ps.saberEventFlags |= SEF_HITWALL;
@@ -10327,7 +10623,10 @@ static void WP_SaberThrow(gentity_t* self, const usercmd_t* ucmd)
 			|| self->client->ps.torsoAnim == BOTH_A4_SPECIAL
 			|| self->client->ps.torsoAnim == BOTH_A5_SPECIAL
 			|| self->client->ps.torsoAnim == BOTH_GRIEVOUS_SPIN
-			|| self->client->ps.torsoAnim == BOTH_YODA_SPECIAL)
+			|| self->client->ps.torsoAnim == BOTH_YODA_SPECIAL
+			|| self->client->ps.torsoAnim == BOTH_SMASHDOWN_SINGLE
+			|| self->client->ps.torsoAnim == BOTH_SMASHDOWN_STAFF
+			|| self->client->ps.torsoAnim == BOTH_SMASHDOWN_DUAL)
 		{
 			//don't throw in these anims!
 			return;
@@ -11853,7 +12152,7 @@ qboolean NPC_Should_Block(const gentity_t* npc)
 	}
 
 	// Cannot block during non‑blockable saber attacks
-	if (pm_saber_innonblockable_attack(npc->client->ps.torsoAnim) == qtrue)
+	if (PM_SaberInnonblockableAttack(npc->client->ps.torsoAnim) == qtrue)
 	{
 		return qfalse;
 	}
@@ -16046,7 +16345,7 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 		return;
 	}
 
-	if (pm_saber_innonblockable_attack(self->client->ps.torsoAnim))
+	if (PM_SaberInnonblockableAttack(self->client->ps.torsoAnim))
 	{
 		return;
 	}
@@ -30180,7 +30479,7 @@ void G_SaberBounce(const gentity_t* attacker, gentity_t* victim)
 		return;
 	}
 
-	if (pm_saber_innonblockable_attack(attacker->client->ps.torsoAnim))
+	if (PM_SaberInnonblockableAttack(attacker->client->ps.torsoAnim))
 	{
 		return;
 	}
@@ -30302,67 +30601,84 @@ void player_Freeze(const gentity_t* self)
 
 qboolean BG_SaberInPartialDamageMove(gentity_t* self)
 {
-	//The player is attacking with a saber attack that does NO damage AT THIS POINT
-	if (pm_saber_innonblockable_attack(self->client->ps.torsoAnim))
+	if (self == NULL || self->client == NULL)
 	{
-		float current = 0.0f;
-		int end = 0;
-		int start = 0;
+		return qfalse;
+	}
 
-		if (!!gi.G2API_GetBoneAnimIndex(&self->ghoul2[self->playerModel],
-			self->lowerLumbarBone,
-			level.time,
-			&current,
-			&start,
-			&end,
-			nullptr,
-			nullptr,
-			nullptr))
-		{
-			const float percent_complete = (current - start) / (end - start);
+	if (PM_SaberInnonblockableAttack(self->client->ps.torsoAnim) == qfalse)
+	{
+		return qfalse;
+	}
 
-			if (g_IsSaberDoingAttackDamage->integer || g_DebugSaberCombat->integer)
-			{
-				gi.Printf("%f\n", percent_complete);
-			}
+	float current = 0.0f;
+	int   start = 0;
+	int   end = 0;
 
-			switch (self->client->ps.torsoAnim)
-			{
-			case BOTH_ATTACK_BACK: return static_cast<qboolean>(percent_complete < 0.30 || percent_complete > 0.80);
-			case BOTH_A2_STABBACK1: return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.65);
-			case BOTH_CROUCHATTACKBACK1: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.75);
-			case BOTH_BUTTERFLY_LEFT: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_BUTTERFLY_RIGHT: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_BUTTERFLY_FL1: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_BUTTERFLY_FR1: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_FJSS_TR_BL: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_FJSS_TL_BR: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_FORCELEAP2_T__B_: return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.75);
-			case BOTH_JUMPFLIPSTABDOWN: return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
-			case BOTH_JUMPFLIPSLASHDOWN1: return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
-			case BOTH_ROLL_STAB: return static_cast<qboolean>(percent_complete < 0.30 || percent_complete > 0.75);
-			case BOTH_JUMPATTACK6: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_JUMPATTACK7: return static_cast<qboolean>(percent_complete < 0.35 || percent_complete > 0.90);
-			case BOTH_SPINATTACK6: return static_cast<qboolean>(percent_complete < 0.35 || percent_complete > 0.80);
-			case BOTH_SPINATTACK7: return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.85);
-			case BOTH_FORCELONGLEAP_ATTACK: return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
-			case BOTH_STABDOWN: return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
-			case BOTH_STABDOWN_STAFF: return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
-			case BOTH_STABDOWN_DUAL: return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
-			case BOTH_A6_SABERPROTECT: return static_cast<qboolean>(percent_complete < 0.35 || percent_complete > 0.90);
-			case BOTH_A7_SOULCAL: return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
-			case BOTH_A1_SPECIAL: return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.90);
-			case BOTH_A2_SPECIAL: return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.90);
-			case BOTH_A3_SPECIAL: return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.90);
-			case BOTH_FLIP_ATTACK7: return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.90);
-			case BOTH_PULL_IMPALE_STAB: return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.70);
-			case BOTH_PULL_IMPALE_SWING: return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.70);
-			case BOTH_ALORA_SPIN_SLASH: return static_cast<qboolean>(percent_complete < 0.22 || percent_complete > 0.90);
-			case BOTH_A6_FB: return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.80);
-			case BOTH_A6_LR: return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.80);
-			default:;
-			}
-		}
+	if (gi.G2API_GetBoneAnimIndex(&self->ghoul2[self->playerModel],
+		self->lowerLumbarBone,
+		level.time,
+		&current,
+		&start,
+		&end,
+		NULL,
+		NULL,
+		NULL) == 0)
+	{
+		return qfalse;
+	}
+
+	if (end == start)
+	{
+		return qfalse;
+	}
+
+	const float percent_complete = (current - (float)start) / (float)(end - start);
+
+#ifndef _DEBUG
+	gi.Printf("%f\n", percent_complete);
+#endif
+
+	switch (self->client->ps.torsoAnim)
+	{
+	case BOTH_ATTACK_BACK:             return static_cast<qboolean>(percent_complete < 0.30 || percent_complete > 0.80);
+	case BOTH_A2_STABBACK1:            return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.65);
+	case BOTH_CROUCHATTACKBACK1:       return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.75);
+	case BOTH_BUTTERFLY_LEFT:          return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_BUTTERFLY_RIGHT:         return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_BUTTERFLY_FL1:           return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_BUTTERFLY_FR1:           return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_FJSS_TR_BL:              return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_FJSS_TL_BR:              return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_FORCELEAP2_T__B_:        return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.75);
+	case BOTH_JUMPFLIPSTABDOWN:        return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
+	case BOTH_JUMPFLIPSLASHDOWN1:      return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
+	case BOTH_ROLL_STAB:               return static_cast<qboolean>(percent_complete < 0.30 || percent_complete > 0.75);
+	case BOTH_JUMPATTACK6:             return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_JUMPATTACK7:             return static_cast<qboolean>(percent_complete < 0.35 || percent_complete > 0.90);
+	case BOTH_SPINATTACK6:             return static_cast<qboolean>(percent_complete < 0.35 || percent_complete > 0.80);
+	case BOTH_SPINATTACK7:             return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.85);
+	case BOTH_FORCELONGLEAP_ATTACK:    return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
+	case BOTH_STABDOWN:                return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
+	case BOTH_STABDOWN_STAFF:          return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
+	case BOTH_STABDOWN_DUAL:           return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
+	case BOTH_SMASHDOWN_SINGLE:        return static_cast<qboolean>(percent_complete < 0.10 || percent_complete > 0.80);
+	case BOTH_SMASHDOWN_DUAL:          return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.80);
+	case BOTH_SMASHDOWN_STAFF:         return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.80);
+	case BOTH_STABDOWN_BACKHAND:       return static_cast<qboolean>(percent_complete < 0.50 || percent_complete > 0.80);
+	case BOTH_A6_SABERPROTECT:         return static_cast<qboolean>(percent_complete < 0.30 || percent_complete > 0.90);
+	case BOTH_A7_SOULCAL:              return static_cast<qboolean>(percent_complete < 0.25 || percent_complete > 0.90);
+	case BOTH_A1_SPECIAL:              return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.90);
+	case BOTH_A2_SPECIAL:              return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.90);
+	case BOTH_A3_SPECIAL:              return static_cast<qboolean>(percent_complete < 0.20 || percent_complete > 0.90);
+	case BOTH_FLIP_ATTACK7:            return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.90);
+	case BOTH_PULL_IMPALE_STAB:        return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.70);
+	case BOTH_PULL_IMPALE_SWING:       return static_cast<qboolean>(percent_complete < 0.40 || percent_complete > 0.70);
+	case BOTH_ALORA_SPIN_SLASH:        return static_cast<qboolean>(percent_complete < 0.22 || percent_complete > 0.90);
+	case BOTH_A6_FB:                   return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.80);
+	case BOTH_A6_LR:                   return static_cast<qboolean>(percent_complete < 0.45 || percent_complete > 0.80);
+	default:;
+		break;
 	}
 
 	return qfalse;

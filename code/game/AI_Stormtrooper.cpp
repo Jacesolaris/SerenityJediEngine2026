@@ -50,7 +50,7 @@ extern void NPC_AngerSound();
 extern qboolean WP_AbsorbKick(gentity_t* hitEnt, gentity_t* pusher, vec3_t push_dir);
 extern cvar_t* g_allowgunnerbash;
 extern void npc_check_speak(gentity_t* speaker_npc);
-
+extern qboolean G_TuskenAttackAnimDamage(gentity_t* self);
 extern cvar_t* d_asynchronousGroupAI;
 
 constexpr auto MAX_VIEW_DIST = 1024;
@@ -63,14 +63,11 @@ constexpr auto DISTANCE_THRESHOLD = 0.075f;
 #define	MIN_TURN_AROUND_DIST_SQ	(10000)	//(100 squared) don't stop running backwards if your goal is less than 100 away
 constexpr auto SABER_AVOID_DIST = 128.0f; //256.0f;
 #define SABER_AVOID_DIST_SQ (SABER_AVOID_DIST*SABER_AVOID_DIST)
-
 constexpr auto DISTANCE_SCALE = 0.35f; //These first three get your base detection rating, ideally add up to 1;
 constexpr auto FOV_SCALE = 0.40f; //;
 constexpr auto LIGHT_SCALE = 0.25f; //;
-
 constexpr auto SPEED_SCALE = 0.25f; //These next two are bonuses;
 constexpr auto TURNING_SCALE = 0.25f; //;
-
 constexpr auto REALIZE_THRESHOLD = 0.6f;
 #define CAUTIOUS_THRESHOLD	( REALIZE_THRESHOLD * 0.75 )
 
@@ -3580,8 +3577,8 @@ void NPC_BSST_Attack(void)
 		}
 		return;
 	}
-	if (!in_camera && (TIMER_Done(NPC, "flee") && 
-		NPC_CheckForDanger(	NPC_CheckAlertEvents(qtrue, qtrue, -1, qfalse, AEL_DANGER))))
+	if (!in_camera && (TIMER_Done(NPC, "flee") &&
+		NPC_CheckForDanger(NPC_CheckAlertEvents(qtrue, qtrue, -1, qfalse, AEL_DANGER))))
 	{
 		ST_Speech(NPC, SPEECH_COVER, 0);
 		NPC_CheckEvasion();
@@ -5001,7 +4998,6 @@ static void Gunner_HoldPosition(void)
 	NPCInfo->combatMove = qfalse;
 }
 
-
 static qboolean Gunner_Move(gentity_t* goal, const qboolean retreat)
 {
 	// Safety: ensure NPC, NPCInfo, and client exist
@@ -5038,12 +5034,13 @@ static qboolean Gunner_Move(gentity_t* goal, const qboolean retreat)
 	navInfo_t info;
 	NAV_GetLastMove(info);
 
-	gi.Printf("Attempt to move toward enemy\n");
+	if (d_combatinfo->integer)
+	{
+		gi.Printf("Attempt to move toward enemy\n");
+	}
 
 	// If we collided with our enemy, stop and hold position
-	const qboolean collidedWithEnemy =
-		((info.flags & NIF_COLLISION) != 0 && info.blocker == NPC->enemy) ?
-		qtrue : qfalse;
+	const qboolean collidedWithEnemy = ((info.flags & NIF_COLLISION) != 0 && info.blocker == NPC->enemy) ? qtrue : qfalse;
 
 	if (collidedWithEnemy == qtrue)
 	{
@@ -5061,7 +5058,6 @@ static qboolean Gunner_Move(gentity_t* goal, const qboolean retreat)
 	// Movement succeeded
 	return qtrue;
 }
-
 
 static void Gunner_FaceEnemy(const qboolean do_pitch)
 {
@@ -5117,12 +5113,10 @@ static void Gunner_FaceEnemy(const qboolean do_pitch)
 		// Slight downward tilt when saber is in flight
 		if (NPC->client->ps.saberInFlight == qtrue)
 		{
-			NPCInfo->desiredPitch =
-				AngleNormalize360(NPCInfo->desiredPitch + 10.0f);
+			NPCInfo->desiredPitch = AngleNormalize360(NPCInfo->desiredPitch + 10.0f);
 		}
 	}
 }
-
 
 static float GunnerDistanceToEnemy(gentity_t* self)
 {
@@ -5151,8 +5145,7 @@ static qboolean GunnerShouldAttack(gentity_t* self)
 	}
 
 	// Check line of sight to enemy
-	const qboolean hasLOS =
-		(NPC_ClearLOS(self->enemy) == qtrue) ? qtrue : qfalse;
+	const qboolean hasLOS = (NPC_ClearLOS(self->enemy) == qtrue) ? qtrue : qfalse;
 
 	// If too far away, move toward the enemy (closing gap behaviour)
 	const qboolean enemyExists = (self->enemy != nullptr) ? qtrue : qfalse;
@@ -5173,8 +5166,7 @@ static qboolean GunnerShouldAttack(gentity_t* self)
 	}
 
 	// Must be on the ground
-	const qboolean selfOnGround =
-		(self->client->ps.groundEntityNum != ENTITYNUM_NONE) ? qtrue : qfalse;
+	const qboolean selfOnGround = (self->client->ps.groundEntityNum != ENTITYNUM_NONE) ? qtrue : qfalse;
 
 	if (selfOnGround == qfalse)
 	{
@@ -5182,13 +5174,11 @@ static qboolean GunnerShouldAttack(gentity_t* self)
 	}
 
 	// Enemy must also be on the ground
-	const qboolean enemyHasClient =
-		(self->enemy->client != nullptr) ? qtrue : qfalse;
+	const qboolean enemyHasClient = (self->enemy->client != nullptr) ? qtrue : qfalse;
 
 	if (enemyHasClient == qtrue)
 	{
-		const qboolean enemyOnGround =
-			(self->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE) ? qtrue : qfalse;
+		const qboolean enemyOnGround = (self->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE) ? qtrue : qfalse;
 
 		if (enemyOnGround == qfalse)
 		{
@@ -5204,8 +5194,7 @@ static qboolean GunnerShouldAttack(gentity_t* self)
 
 	// Must be within preferred attack range
 	// (tight enough to hit, far enough to avoid clipping)
-	const qboolean inRange =
-		(GunnerInAttackRange(self, 64.0f, 192.0f) == qtrue) ? qtrue : qfalse;
+	const qboolean inRange = (GunnerInAttackRange(self, 64.0f, 192.0f) == qtrue) ? qtrue : qfalse;
 
 	if (inRange == qfalse)
 	{
@@ -5215,7 +5204,6 @@ static qboolean GunnerShouldAttack(gentity_t* self)
 	// All conditions satisfied: attack allowed
 	return qtrue;
 }
-
 
 static void Enhanced_Gunner_SetEnemyInfo(vec3_t enemy_dest,
 	vec3_t enemy_dir,
@@ -5271,14 +5259,9 @@ static void Enhanced_Gunner_SetEnemyInfo(vec3_t enemy_dest,
 	VectorSubtract(enemy_dest, NPC->currentOrigin, enemy_dir);
 
 	// Compute distance minus muzzle offset (weapon tip)
-	const float muzzleOffset =
-		(NPC->client->renderInfo.muzzlePoint[0] +
-			NPC->maxs[0] * 1.5f +
-			16.0f);
-
+	const float muzzleOffset = (NPC->client->renderInfo.muzzlePoint[0] + NPC->maxs[0] * 1.5f + 16.0f);
 	*enemy_dist = VectorNormalize(enemy_dir) - muzzleOffset;
 }
-
 
 static qboolean Gunner_Strafe(const int strafeTimeMin,
 	const int strafeTimeMax,
@@ -5355,7 +5338,6 @@ static qboolean Gunner_Strafe(const int strafeTimeMin,
 	return qfalse;
 }
 
-
 static void Gunner_CombatTimersUpdate(const int enemy_dist)
 {
 	// Safety: ensure NPC, NPCInfo, and enemy exist
@@ -5372,8 +5354,7 @@ static void Gunner_CombatTimersUpdate(const int enemy_dist)
 
 		// Adjust aggression based on enemy weapon and behaviour
 		const qboolean hasEnemy = (NPC->enemy != nullptr) ? qtrue : qfalse;
-		const qboolean enemyHasClient =
-			(hasEnemy == qtrue && NPC->enemy->client != nullptr) ? qtrue : qfalse;
+		const qboolean enemyHasClient = (hasEnemy == qtrue && NPC->enemy->client != nullptr) ? qtrue : qfalse;
 
 		if (hasEnemy == qtrue && enemyHasClient == qtrue)
 		{
@@ -5382,8 +5363,7 @@ static void Gunner_CombatTimersUpdate(const int enemy_dist)
 			case WP_SABER:
 			{
 				// If enemy saber is NOT active, charge harder
-				const qboolean saberActive =
-					(NPC->enemy->client->ps.SaberActive() == qtrue) ? qtrue : qfalse;
+				const qboolean saberActive = (NPC->enemy->client->ps.SaberActive() == qtrue) ? qtrue : qfalse;
 
 				if (saberActive == qfalse)
 				{
@@ -5406,8 +5386,7 @@ static void Gunner_CombatTimersUpdate(const int enemy_dist)
 			case WP_ROCKET_LAUNCHER:
 			{
 				// If enemy is not shooting at us, increase aggression
-				const qboolean enemyNotShooting =
-					(NPC->enemy->attackDebounceTime < level.time) ? qtrue : qfalse;
+				const qboolean enemyNotShooting = (NPC->enemy->attackDebounceTime < level.time) ? qtrue : qfalse;
 
 				if (enemyNotShooting == qtrue)
 				{
@@ -5441,12 +5420,14 @@ static void Gunner_CombatTimersUpdate(const int enemy_dist)
 		if (startStrafe == qtrue)
 		{
 			// Attempt to initiate a strafe
-			const qboolean strafed =
-				(Gunner_Strafe(1000, 3000, 0, 4000, qtrue) == qtrue) ? qtrue : qfalse;
+			const qboolean strafed = (Gunner_Strafe(1000, 3000, 0, 4000, qtrue) == qtrue) ? qtrue : qfalse;
 
 			if (strafed == qtrue)
 			{
-				gi.Printf("off strafe\n");
+				if (d_combatinfo->integer)
+				{
+					gi.Printf("off strafe\n");
+				}
 			}
 		}
 		else
@@ -5497,7 +5478,6 @@ static qboolean Gunner_CheckCombatMove(void)
 	return qfalse;
 }
 
-
 static void Gunner_CombatDistance(const float enemy_dist)
 {
 	// Safety: ensure NPC, NPCInfo, and enemy exist
@@ -5519,7 +5499,10 @@ static void Gunner_CombatDistance(const float enemy_dist)
 			{
 				// Advance toward enemy (no retreat)
 				Gunner_Move(NPC->enemy, qfalse);
-				gi.Printf("Advance toward enemy\n");
+				if (d_combatinfo->integer)
+				{
+					gi.Printf("Advance toward enemy\n");
+				}
 			}
 		}
 
@@ -5533,7 +5516,10 @@ static void Gunner_CombatDistance(const float enemy_dist)
 		// Face enemy and fire
 		Gunner_FaceEnemy(qtrue);
 		WeaponThink();
-		gi.Printf("GunnerShouldAttacks\n");
+		if (d_combatinfo->integer)
+		{
+			gi.Printf("GunnerShouldAttacks\n");
+		}
 		return;
 	}
 
@@ -5545,16 +5531,21 @@ static void Gunner_CombatDistance(const float enemy_dist)
 	{
 		// Low aggression: retreat / defend
 		Gunner_Move(NPC->enemy, qtrue);
-		gi.Printf("Low aggression: retreat\n");
+		if (d_combatinfo->integer)
+		{
+			gi.Printf("Low aggression: retreat\n");
+		}
 	}
 	else if (aggression > 5)
 	{
 		// High aggression: advance / close distance
 		Gunner_Move(NPC->enemy, qfalse);
-		gi.Printf("High aggression: advance\n");
+		if (d_combatinfo->integer)
+		{
+			gi.Printf("High aggression: advance\n");
+		}
 	}
 }
-
 
 static void Enhanced_Gunner_Combat(void)
 {
@@ -5594,10 +5585,9 @@ static void Enhanced_Gunner_Combat(void)
 
 	// Update last seen enemy position
 	const qboolean enemyHasClient = (NPC->enemy->client != nullptr) ? qtrue : qfalse;
-	const qboolean bothOnGround =
-		(enemyHasClient == qtrue &&
-			NPC->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE &&
-			NPC->client->ps.groundEntityNum != ENTITYNUM_NONE) ? qtrue : qfalse;
+	const qboolean bothOnGround = (enemyHasClient == qtrue &&
+		NPC->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE &&
+		NPC->client->ps.groundEntityNum != ENTITYNUM_NONE) ? qtrue : qfalse;
 
 	if (enemyHasClient == qfalse || bothOnGround == qtrue)
 	{
@@ -5613,8 +5603,7 @@ static void Enhanced_Gunner_Combat(void)
 	Jedi_TimersApply();
 
 	// Ensure movement direction is safe (no cliffs or walls)
-	const qboolean moveDirClear =
-		(NPC_MoveDirClear(ucmd.forwardmove, ucmd.rightmove, qtrue) == qtrue) ?
+	const qboolean moveDirClear = (NPC_MoveDirClear(ucmd.forwardmove, ucmd.rightmove, qtrue) == qtrue) ?
 		qtrue : qfalse;
 
 	if (moveDirClear == qfalse)
@@ -5623,8 +5612,7 @@ static void Enhanced_Gunner_Combat(void)
 		NAV_GetLastMove(info);
 
 		// If micro-nav failed, try macro-nav
-		const qboolean usingMacroNav =
-			((info.flags & NIF_MACRO_NAV) != 0) ? qtrue : qfalse;
+		const qboolean usingMacroNav = ((info.flags & NIF_MACRO_NAV) != 0) ? qtrue : qfalse;
 
 		if (usingMacroNav == qfalse)
 		{
@@ -5636,7 +5624,6 @@ static void Enhanced_Gunner_Combat(void)
 		TIMER_Set(NPC, "strafeRight", 0);
 	}
 }
-
 
 static void Enhanced_Attack(void)
 {
@@ -5785,9 +5772,8 @@ static void NPC_BSST_AttackAdvanced(void)
 		NPC->enemy = nullptr;
 
 		// Confusion/insanity gate for enemy search
-		const qboolean canSearch =
-			(NPCInfo->confusionTime < level.time &&
-				NPCInfo->insanityTime < level.time) ? qtrue : qfalse;
+		const qboolean canSearch = (NPCInfo->confusionTime < level.time &&
+			NPCInfo->insanityTime < level.time) ? qtrue : qfalse;
 
 		gentity_t* const new_enemy = NPC_CheckEnemy(canSearch, qfalse, qfalse);
 
@@ -5805,10 +5791,6 @@ static void NPC_BSST_AttackAdvanced(void)
 		NPCInfo->enemyCheckDebounceTime = level.time + Q_irand(1000, 3000);
 	}
 }
-
-
-
-extern qboolean G_TuskenAttackAnimDamage(gentity_t* self);
 
 static qboolean NPC_CanUseAdvancedFighting(void)
 {
@@ -5896,7 +5878,6 @@ static qboolean NPC_CanUseAdvancedFighting(void)
 	}
 }
 
-
 void NPC_BSST_Default()
 {
 	if (NPCInfo->scriptFlags & SCF_FIRE_WEAPON)
@@ -5937,20 +5918,29 @@ void NPC_BSST_Default()
 				{
 					NPC_CheckGetNewWeapon();
 					NPC_BSST_AttackAdvanced();
-					gi.Printf("Using Advanced Tactics\n");
+					if (d_combatinfo->integer)
+					{
+						gi.Printf("Using Advanced Tactics\n");
+					}
 				}
 				else
 				{
 					NPC_CheckGetNewWeapon();
 					NPC_BSST_Attack();
-					gi.Printf("Using Normal Tactics\n");
+					if (d_combatinfo->integer)
+					{
+						gi.Printf("Using Normal Tactics\n");
+					}
 				}
 			}
 			else
 			{
 				NPC_CheckGetNewWeapon();
 				NPC_BSST_Attack();
-				gi.Printf("Using Basic Tactics\n");
+				if (d_combatinfo->integer)
+				{
+					gi.Printf("Using Basic Tactics\n");
+				}
 			}
 
 			npc_check_speak(NPC);

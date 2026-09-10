@@ -440,7 +440,6 @@ static void Howler_Howl()
 	}
 }
 
-
 //------------------------------
 static void Howler_Attack(const float enemy_dist, const qboolean howl)
 {

@@ -67,7 +67,7 @@ extern void RemoveBarrier(gentity_t* ent);
 extern void CancelReload(gentity_t* ent);
 extern Vehicle_t* G_IsRidingVehicle(const gentity_t* pEnt);
 extern void TurnBarrierOff(gentity_t* ent);
-extern qboolean PM_InKataAnim(int anim);
+extern qboolean PM_InKataAnim(const int anim);
 extern void ForceRepulse(gentity_t* self);
 extern void ForceGrasp(gentity_t* self);
 extern void ForceFear(gentity_t* self);

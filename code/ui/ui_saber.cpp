@@ -2222,9 +2222,17 @@ saberType_t TranslateSaberType(const char* name)
 	{
 		return SABER_SINGLE;
 	}
+	if (!Q_stricmp(name, "SABER_SINGLE_SMASH"))
+	{
+		return SABER_SINGLE_SMASH;
+	}
 	if (!Q_stricmp(name, "SABER_STAFF"))
 	{
 		return SABER_STAFF;
+	}
+	if (!Q_stricmp(name, "SABER_STAFF_SMASH"))
+	{
+		return SABER_STAFF_SMASH;
 	}
 	if (!Q_stricmp(name, "SABER_BROAD"))
 	{
@@ -2435,6 +2443,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 		switch (saberType)
 		{
 		case SABER_SINGLE:
+		case SABER_SINGLE_SMASH:
 		case SABER_DAGGER:
 		case SABER_LANCE:
 		case SABER_UNSTABLE:
@@ -2461,6 +2470,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 		case SABER_STAFF_SFX:
 		case SABER_STAFF_MAUL:
 		case SABER_ELECTROSTAFF:
+		case SABER_STAFF_SMASH:
 			if (bladeNum == 1)
 			{
 				VectorScale(axis[0], -1, axis[0]);
