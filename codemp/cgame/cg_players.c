@@ -12612,9 +12612,10 @@ CheckTrail:
 									VectorSet(rgb1, 32.0f, 32.0f, 32.0f); // make the sith sword trail pretty faint
 									trail_dur *= 2.0f; // stay around twice as long?
 								}
-								else if (client->saber[saberNum].type == SABER_UNSTABLE
-									|| client->saber[saberNum].type == SABER_STAFF_UNSTABLE
-									|| client->saber[saberNum].type == SABER_ELECTROSTAFF)
+								else if (client->saber[saberNum].type == SABER_UNSTABLE ||
+									client->saber[saberNum].type == SABER_SINGLE_KYLO_REN ||
+									client->saber[saberNum].type == SABER_STAFF_UNSTABLE
+									|| client->saber[saberNum].type == SABER_STAFF_ELECTROSTAFF)
 								{
 									fx.mShader = cgs.media.unstableBlurShader;
 									trail_dur = trail_dur / 2.0f;   // SP: stay around twice as long
@@ -12880,8 +12881,9 @@ JustDoIt:
 		// Draw the Raven blade.
 		if (cent->currentState.botclass == BCLASS_UNSTABLESABER ||
 			client->saber[saberNum].type == SABER_UNSTABLE ||
+			client->saber[saberNum].type == SABER_SINGLE_KYLO_REN ||
 			client->saber[saberNum].type == SABER_STAFF_UNSTABLE ||
-			client->saber[saberNum].type == SABER_ELECTROSTAFF)
+			client->saber[saberNum].type == SABER_STAFF_ELECTROSTAFF)
 		{
 			CG_DoSaberUnstable(org, axis[0], saber_len, client->saber[saberNum].blade[bladeNum].lengthMax,
 				client->saber[saberNum].blade[bladeNum].radius, scolor, renderfx,
@@ -12911,8 +12913,9 @@ JustDoIt:
 		case 1:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER ||
 				client->saber[saberNum].type == SABER_UNSTABLE ||
+				client->saber[saberNum].type == SABER_SINGLE_KYLO_REN ||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE ||
-				client->saber[saberNum].type == SABER_ELECTROSTAFF)
+				client->saber[saberNum].type == SABER_STAFF_ELECTROSTAFF)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -12951,7 +12954,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -12972,7 +12975,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13011,7 +13014,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13032,7 +13035,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13071,7 +13074,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13092,7 +13095,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13131,7 +13134,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13152,7 +13155,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13191,7 +13194,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13212,7 +13215,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13251,7 +13254,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13272,7 +13275,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13311,7 +13314,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13332,7 +13335,7 @@ JustDoIt:
 			if (cent->currentState.botclass == BCLASS_UNSTABLESABER || client->saber[saberNum].type == SABER_UNSTABLE
 				||
 				client->saber[saberNum].type == SABER_STAFF_UNSTABLE || client->saber[saberNum].type ==
-				SABER_ELECTROSTAFF)
+				SABER_STAFF_ELECTROSTAFF || client->saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoTFASaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin, fx.mVerts[3].origin,
 					client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -13371,7 +13374,7 @@ JustDoIt:
 					client->saber[saberNum].numBlades < 3 && !(client->saber[saberNum].saberFlags2 &
 						SFL2_NO_DLIGHT), cent->currentState.clientNum, saberNum);
 			}
-			else if (client->saber[saberNum].type == SABER_GRIE || client->saber[saberNum].type == SABER_GRIE4)
+			else if (client->saber[saberNum].type == SABER_DUAL_GRIE || client->saber[saberNum].type == SABER_DUAL_GRIE4)
 			{
 				CG_DoBattlefrontSaber(fx.mVerts[0].origin, fx.mVerts[1].origin, fx.mVerts[2].origin,
 					fx.mVerts[3].origin, client->saber[saberNum].blade[bladeNum].lengthMax,
@@ -19884,75 +19887,44 @@ stillDoSaber:
 		trap->R_AddRefEntityToScene(&legs);
 	}
 
-	// Non‑local players: show non‑blockable attack warning tint on legs
 	if (cent->currentState.number != cg.snap->ps.clientNum)
 	{
-		if (cg_SaberInnonblockableAttackWarning.integer != 0)
+		if (g_SaberInnonblockableAttackWarning.integer == 1)
 		{
-			const qboolean isNonBlockable =
-				(PM_SaberInnonblockableAttack(cent->currentState.torsoAnim) == qtrue)
-				? qtrue
-				: qfalse;
-
-			const qboolean isCloaked =
-				((cent->currentState.powerups & (1 << PW_CLOAKED)) != 0)
-				? qtrue
-				: qfalse;
-
-			// Debug print to see what is happening
-			//Com_Printf("[NB-WARN] client=%d anim=%d isNonBlockable=%d isCloaked=%d\n",cent->currentState.number,cent->currentState.torsoAnim,(int)isNonBlockable,(int)isCloaked);
-
-			if (isNonBlockable == qtrue && isCloaked == qfalse)
+			if (PM_SaberInnonblockableAttack(cent->currentState.torsoAnim) && !(cent->currentState.powerups & 1 << PW_CLOAKED))
 			{
-				// Clear conflicting render flags
-				legs.renderfx &= ~RF_FORCE_ENT_ALPHA;
-				legs.renderfx &= ~RF_MINLIGHT;
-
-				// Apply red tint to indicate dangerous, non‑blockable attack
 				legs.renderfx |= RF_RGB_TINT;
-				legs.shaderRGBA[0] = 255;  // R
-				legs.shaderRGBA[1] = 0;    // G
-				legs.shaderRGBA[2] = 0;    // B
-				legs.shaderRGBA[3] = 255;  // A
-
-				// Debug print confirming tint applied
-				//Com_Printf("[NB-WARN] Tint applied to client=%d (RED)\n",cent->currentState.number);
+				legs.shaderRGBA[0] = 255;
+				legs.shaderRGBA[1] = legs.shaderRGBA[2] = 0;
+				legs.shaderRGBA[3] = 255;
 
 				trap->R_AddRefEntityToScene(&legs);
 			}
 		}
 	}
 
-	// Local player: saber damage coloring (blue = partial, red = full)
 	if (cent->currentState.number == cg.snap->ps.clientNum)
 	{
-		if (cg_IsSaberDoingAttackDamage.integer == 1)
+		if (g_IsSaberDoingAttackDamage.integer == 1)
 		{
 			qboolean doTint = qfalse;
 			qboolean tintBlue = qfalse;
 			qboolean tintRed = qfalse;
+			qboolean tintGreen = qfalse;
 
 			// 1. Transitional damage window → BLUE
-			const qboolean inTransition = (PM_SaberInTransitionDamageMove(&cg.snap->ps) == qtrue) ? qtrue : qfalse;
-
-			if (inTransition == qtrue)
+			if (PM_SaberInTransitionDamageMove(&cg.snap->ps) == qtrue)
 			{
 				doTint = qtrue;
-				tintBlue = qtrue;
+				tintGreen = qtrue;
 			}
 			else
 			{
 				// 2. Non‑idle damage moves
-				const qboolean inNonIdle = (PM_SaberInNonIdleDamageMove(&cg.snap->ps, 0) == qtrue) ? qtrue : qfalse;
-
-				if (inNonIdle == qtrue)
+				if (PM_SaberInNonIdleDamageMove(&cg.snap->ps, 0) == qtrue)
 				{
 					// 2a. Partial damage window → BLUE
-					const qboolean inPartial = (BG_SaberInPartialDamageMove(&cg.snap->ps, 0) == qtrue)
-						? qtrue
-						: qfalse;
-
-					if (inPartial == qtrue)
+					if (BG_SaberInPartialDamageMove(&cg.snap->ps, 0) == qtrue)
 					{
 						doTint = qtrue;
 						tintBlue = qtrue;
@@ -19971,23 +19943,28 @@ stillDoSaber:
 			{
 				legs.renderfx |= RF_RGB_TINT;
 
-				if (tintBlue == qtrue)
+				if (tintGreen == qtrue)
 				{
+					// GREEN tint
+					legs.shaderRGBA[0] = 0;     // R
+					legs.shaderRGBA[1] = 255;   // G
+					legs.shaderRGBA[2] = 0;     // B
+					legs.shaderRGBA[3] = 255;   // A
+				}
+				else if (tintBlue == qtrue)
+				{// BLUE tint (partial damage)
 					legs.shaderRGBA[0] = 0;
 					legs.shaderRGBA[1] = 0;
 					legs.shaderRGBA[2] = 255;
 					legs.shaderRGBA[3] = 255;
 				}
 				else if (tintRed == qtrue)
-				{
+				{// RED tint (full damage)
 					legs.shaderRGBA[0] = 255;
 					legs.shaderRGBA[1] = 0;
 					legs.shaderRGBA[2] = 0;
 					legs.shaderRGBA[3] = 255;
 				}
-
-				// Debug print
-				//Com_Printf("[SABER-TINT] doTint=%d blue=%d red=%d anim=%d\n",(int)doTint,(int)tintBlue,	(int)tintRed,cg.snap->ps.torsoAnim);
 
 				trap->R_AddRefEntityToScene(&legs);
 			}

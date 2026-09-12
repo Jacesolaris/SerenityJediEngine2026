@@ -2218,21 +2218,18 @@ saber_colors_t TranslateSaberColor(const char* name)
 
 saberType_t TranslateSaberType(const char* name)
 {
-	if (!Q_stricmp(name, "SABER_SINGLE"))
+	if (!Q_stricmp(name, "SABER_SINGLE"))//Base Jka
 	{
 		return SABER_SINGLE;
 	}
-	if (!Q_stricmp(name, "SABER_SINGLE_SMASH"))
-	{
-		return SABER_SINGLE_SMASH;
-	}
-	if (!Q_stricmp(name, "SABER_STAFF"))
+	if (!Q_stricmp(name, "SABER_STAFF"))//Base Jka
 	{
 		return SABER_STAFF;
 	}
-	if (!Q_stricmp(name, "SABER_STAFF_SMASH"))
+	//Custom Jka Sabers
+	if (!Q_stricmp(name, "SABER_DAGGER"))
 	{
-		return SABER_STAFF_SMASH;
+		return SABER_DAGGER;
 	}
 	if (!Q_stricmp(name, "SABER_BROAD"))
 	{
@@ -2241,10 +2238,6 @@ saberType_t TranslateSaberType(const char* name)
 	if (!Q_stricmp(name, "SABER_PRONG"))
 	{
 		return SABER_PRONG;
-	}
-	if (!Q_stricmp(name, "SABER_DAGGER"))
-	{
-		return SABER_DAGGER;
 	}
 	if (!Q_stricmp(name, "SABER_ARC"))
 	{
@@ -2270,9 +2263,112 @@ saberType_t TranslateSaberType(const char* name)
 	{
 		return SABER_TRIDENT;
 	}
-	if (!Q_stricmp(name, "SABER_SITH_SWORD"))
+	if (!Q_stricmp(name, "SABER_SITH_SWORD"))// Tavion sword
 	{
 		return SABER_SITH_SWORD;
+	}
+	// custom Added sabers for specific animations
+	if (!Q_stricmp(name, "SABER_SINGLE_ANAKIN"))
+	{
+		return SABER_SINGLE_ANAKIN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KENOBI"))
+	{
+		return SABER_SINGLE_KENOBI;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KESTIS"))
+	{
+		return SABER_SINGLE_KESTIS;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_DARKFORCES"))
+	{
+		return SABER_SINGLE_DARKFORCES;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_DOOKU"))
+	{
+		return SABER_SINGLE_DOOKU;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_GALEN"))
+	{
+		return SABER_SINGLE_GALEN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_QUIGON"))
+	{
+		return SABER_SINGLE_QUIGON;
+	}
+	if (!Q_stricmp(name, "SABER_DUAL_GRIE"))
+	{
+		return SABER_DUAL_GRIE;
+	}
+	if (!Q_stricmp(name, "SABER_DUAL_GRIE4"))
+	{
+		return SABER_DUAL_GRIE4;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KOTOR"))
+	{
+		return SABER_SINGLE_KOTOR;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_LUKE"))
+	{
+		return SABER_SINGLE_LUKE;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_WINDU"))
+	{
+		return SABER_SINGLE_WINDU;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_MAUL"))
+	{
+		return SABER_SINGLE_MAUL;
+	}
+	if (!Q_stricmp(name, "SABER_STAFF_MAUL"))
+	{
+		return SABER_STAFF_MAUL;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_MOVIEDUELS"))
+	{
+		return SABER_SINGLE_MOVIEDUELS;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_OBIWAN"))
+	{
+		return SABER_SINGLE_OBIWAN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_PALP"))
+	{
+		return SABER_SINGLE_PALP;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KYLO_REN"))
+	{
+		return SABER_SINGLE_KYLO_REN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_REY"))
+	{
+		return SABER_SINGLE_REY;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_VADER"))
+	{
+		return SABER_SINGLE_VADER;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_YODA"))
+	{
+		return SABER_SINGLE_YODA;
+	}
+	// custom added sabers for specific models
+	if (!Q_stricmp(name, "SABER_SINGLE_BACKHAND"))
+	{
+		return SABER_SINGLE_BACKHAND;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_ASBACKHAND"))
+	{
+		return SABER_SINGLE_ASBACKHAND;
+	}
+	if (!Q_stricmp(name, "SABER_STAFF_ELECTROSTAFF"))
+	{
+		return SABER_STAFF_ELECTROSTAFF;
+	}
+	//Misc added sabers
+	if (!Q_stricmp(name, "SABER_SINGLE_CLASSIC"))
+	{
+		return SABER_SINGLE_CLASSIC;
 	}
 	if (!Q_stricmp(name, "SABER_UNSTABLE"))
 	{
@@ -2294,73 +2390,9 @@ saberType_t TranslateSaberType(const char* name)
 	{
 		return SABER_SFX;
 	}
-	if (!Q_stricmp(name, "SABER_STAFF_SFX"))
-	{
-		return SABER_STAFF_SFX;
-	}
 	if (!Q_stricmp(name, "SABER_CUSTOMSFX"))
 	{
 		return SABER_CUSTOMSFX;
-	}
-	if (!Q_stricmp(name, "SABER_BACKHAND"))
-	{
-		return SABER_BACKHAND;
-	}
-	if (!Q_stricmp(name, "SABER_YODA"))
-	{
-		return SABER_YODA;
-	}
-	if (!Q_stricmp(name, "SABER_DOOKU"))
-	{
-		return SABER_DOOKU;
-	}
-	if (!Q_stricmp(name, "SABER_PALP"))
-	{
-		return SABER_PALP;
-	}
-	if (!Q_stricmp(name, "SABER_ANAKIN"))
-	{
-		return SABER_ANAKIN;
-	}
-	if (!Q_stricmp(name, "SABER_GRIE"))
-	{
-		return SABER_GRIE;
-	}
-	if (!Q_stricmp(name, "SABER_GRIE4"))
-	{
-		return SABER_GRIE4;
-	}
-	if (!Q_stricmp(name, "SABER_OBIWAN"))
-	{
-		return SABER_OBIWAN;
-	}
-	if (!Q_stricmp(name, "SABER_ASBACKHAND"))
-	{
-		return SABER_ASBACKHAND;
-	}
-	if (!Q_stricmp(name, "SABER_ELECTROSTAFF"))
-	{
-		return SABER_ELECTROSTAFF;
-	}
-	if (!Q_stricmp(name, "SABER_WINDU"))
-	{
-		return SABER_WINDU;
-	}
-	if (!Q_stricmp(name, "SABER_VADER"))
-	{
-		return SABER_VADER;
-	}
-	if (!Q_stricmp(name, "SABER_STAFF_MAUL"))
-	{
-		return SABER_STAFF_MAUL;
-	}
-	if (!Q_stricmp(name, "SABER_KENOBI"))
-	{
-		return SABER_KENOBI;
-	}
-	if (!Q_stricmp(name, "SABER_REY"))
-	{
-		return SABER_REY;
 	}
 	return SABER_SINGLE;
 }
@@ -2443,34 +2475,47 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 		switch (saberType)
 		{
 		case SABER_SINGLE:
-		case SABER_SINGLE_SMASH:
 		case SABER_DAGGER:
 		case SABER_LANCE:
+			// custom Added sabers for specific animations
+		case SABER_SINGLE_ANAKIN:
+		case SABER_SINGLE_KENOBI:
+		case SABER_SINGLE_KESTIS:
+		case SABER_SINGLE_DARKFORCES:
+		case SABER_SINGLE_DOOKU:
+		case SABER_SINGLE_GALEN:
+		case SABER_SINGLE_QUIGON:
+		case SABER_DUAL_GRIE:
+		case SABER_DUAL_GRIE4:
+		case SABER_SINGLE_KOTOR:
+		case SABER_SINGLE_LUKE:
+		case SABER_SINGLE_WINDU:
+		case SABER_SINGLE_MAUL:
+		case SABER_SINGLE_MOVIEDUELS:
+		case SABER_SINGLE_OBIWAN:
+		case SABER_SINGLE_PALP:
+		case SABER_SINGLE_KYLO_REN:
+		case SABER_SINGLE_REY:
+		case SABER_SINGLE_VADER:
+		case SABER_SINGLE_YODA:
+			// custom added sabers for specific models
+		case SABER_SINGLE_BACKHAND:
+		case SABER_SINGLE_ASBACKHAND:
+			//Misc added sabers
+		case SABER_SINGLE_CLASSIC:
 		case SABER_UNSTABLE:
 		case SABER_THIN:
 		case SABER_SFX:
 		case SABER_CUSTOMSFX:
-		case SABER_YODA:
-		case SABER_DOOKU:
-		case SABER_BACKHAND:
-		case SABER_PALP:
-		case SABER_ANAKIN:
-		case SABER_GRIE:
-		case SABER_GRIE4:
-		case SABER_OBIWAN:
-		case SABER_ASBACKHAND:
-		case SABER_WINDU:
-		case SABER_VADER:
-		case SABER_KENOBI:
-		case SABER_REY:
 			break;
 		case SABER_STAFF:
+			// custom added sabers for specific models
+		case SABER_STAFF_MAUL:
+		case SABER_STAFF_ELECTROSTAFF:
+			//Misc added sabers
 		case SABER_STAFF_UNSTABLE:
 		case SABER_STAFF_THIN:
 		case SABER_STAFF_SFX:
-		case SABER_STAFF_MAUL:
-		case SABER_ELECTROSTAFF:
-		case SABER_STAFF_SMASH:
 			if (bladeNum == 1)
 			{
 				VectorScale(axis[0], -1, axis[0]);
@@ -2632,7 +2677,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 	if (ui_SFXSabers.integer < 1)
 	{
 		// Draw the Raven blade.
-		if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+		if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 		{
 			UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 		}
@@ -2646,7 +2691,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 		switch (ui_SFXSabers.integer)
 		{
 		case 1:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2656,7 +2701,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 2:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2666,7 +2711,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 3:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2676,7 +2721,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 4:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2686,7 +2731,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 5:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2696,7 +2741,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 6:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2706,7 +2751,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 7:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}
@@ -2716,7 +2761,7 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 			}
 			break;
 		case 8:
-			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE)
+			if (saberType == SABER_UNSTABLE || saberType == SABER_STAFF_UNSTABLE || saberType == SABER_SINGLE_KYLO_REN)
 			{
 				UI_DoTFASaber(bladeOrigin, axis[0], bladeLength, bladeRadius, bladeColor, whichSaber);
 			}

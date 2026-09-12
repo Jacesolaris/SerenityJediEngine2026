@@ -2980,8 +2980,8 @@ static saberMoveName_t PM_PickBackStab()
 	}
 	if (pm->gent->client->ps.saberAnimLevel == SS_TAVION)
 	{
-		if (pm->ps->saber[0].type == SABER_BACKHAND
-			|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+		if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 		{
 			return LS_A_BACKSTAB_B;
 		}
@@ -2991,8 +2991,8 @@ static saberMoveName_t PM_PickBackStab()
 	{
 		if (pm->ps->saberMove == LS_READY || !Q_irand(0, 3))
 		{
-			if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND
+			if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND
 				|| pm->ps->saber[0].type == SABER_STAFF_MAUL) //saber backhand
 			{
 				return LS_A_BACKSTAB_B;
@@ -3015,8 +3015,8 @@ static saberMoveName_t PM_PickBackStab()
 		}
 		return LS_A_BACK;
 	}
-	if (pm->ps->saber[0].type == SABER_BACKHAND
-		|| pm->ps->saber[0].type == SABER_ASBACKHAND
+	if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+		|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND
 		|| pm->ps->saber[0].type == SABER_STAFF_MAUL) //saber backhand
 	{
 		return LS_A_BACKSTAB_B;
@@ -3123,8 +3123,8 @@ static saberMoveName_t PM_CheckStabDown()
 		}
 		if (pm->ps->saberAnimLevel == SS_STAFF)
 		{
-			if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+			if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 			{
 				return LS_STABDOWN_BACKHAND;
 			}
@@ -3323,8 +3323,8 @@ saberMoveName_t PM_AttackForEnemyPos(const qboolean allow_fb, const qboolean all
 								gent->NPC->rank >= RANK_LT_JG)
 							{
 								//only fencers and above can do this
-								if (pm->ps->saber[0].type == SABER_BACKHAND
-									|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+								if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+									|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 								{
 									auto_move = LS_A_BACKSTAB_B;
 								}
@@ -3426,11 +3426,11 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 	}
 	if (pm->ps->dualSabers)
 	{
-		if (pm->ps->saber[0].type == SABER_GRIE)
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE)
 		{
 			return LS_GRIEVOUS_SPECIAL;
 		}
-		if (pm->ps->saber[0].type == SABER_GRIE4)
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 		{
 			return LS_SPINATTACK_GRIEV;
 		}
@@ -3440,11 +3440,11 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 	{
 	case SS_DUAL:
 	{
-		if (pm->ps->saber[0].type == SABER_GRIE)
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE)
 		{
 			return LS_GRIEVOUS_SPECIAL;
 		}
-		if (pm->ps->saber[0].type == SABER_GRIE4)
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 		{
 			return LS_SPINATTACK_GRIEV;
 		}
@@ -3492,7 +3492,7 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 			VectorScale(jumpFwd, 150, pm->ps->velocity);
 			pm->ps->velocity[2] = 50;
 			PM_AddEvent(EV_JUMP);
-			if (pm->ps->saber[0].type == SABER_YODA || pm->ps->saber[0].type == SABER_PALP)
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA || pm->ps->saber[0].type == SABER_SINGLE_PALP)
 			{
 				return LS_A_JUMP_PALP_;
 			}
@@ -3675,8 +3675,8 @@ saberMoveName_t PM_SaberJumpForwardAttackMove()
 			return LS_JUMPATTACK_STAFF_RIGHT;
 		}
 
-		if (pm->ps->saber[0].type == SABER_GRIE4 || pm->ps->saber[0].type == SABER_GRIE || pm->ps->saber[0].type ==
-			SABER_PALP
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE4 || pm->ps->saber[0].type == SABER_DUAL_GRIE || pm->ps->saber[0].type ==
+			SABER_SINGLE_PALP
 			&& pm->ps->saberAnimLevel == SS_DUAL)
 		{
 			return LS_GRIEVOUS_LUNGE;
@@ -3707,7 +3707,7 @@ saberMoveName_t PM_SaberJumpForwardAttackMove()
 	}
 	pm->cmd.upmove = 0;
 
-	if (pm->ps->saber[0].type == SABER_YODA || pm->ps->saber[0].type == SABER_PALP)
+	if (pm->ps->saber[0].type == SABER_SINGLE_YODA || pm->ps->saber[0].type == SABER_SINGLE_PALP)
 	{
 		return LS_A_JUMP_PALP_;
 	}
@@ -4421,11 +4421,11 @@ static saberMoveName_t PM_CheckDualSpinProtect()
 			//drain the required force power
 		}
 
-		if (pm->ps->saber[0].type == SABER_GRIE)
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE)
 		{
 			return LS_DUAL_SPIN_PROTECT_GRIE;
 		}
-		if (pm->ps->saber[0].type == SABER_GRIE4)
+		if (pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 		{
 			return LS_DUAL_SPIN_PROTECT_GRIE;
 		}
@@ -4433,8 +4433,8 @@ static saberMoveName_t PM_CheckDualSpinProtect()
 		{
 			return LS_STAFF_SOULCAL;
 		}
-		if (pm->ps->saber[0].type == SABER_BACKHAND
-			|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+		if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 		{
 			return LS_STAFF_SOULCAL;
 		}
@@ -5164,8 +5164,8 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 											NPC && pm->gent->NPC->rank >= RANK_LT_JG)
 										{
 											//only fencers and above can do this
-											if (pm->ps->saber[0].type == SABER_BACKHAND
-												|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+											if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+												|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 											{
 												return LS_A_BACKSTAB_B;
 											}
@@ -5897,7 +5897,7 @@ void PM_SetTorsoAnimTimer(gentity_t* ent, int* torsoAnimTimer, const int time)
 	}
 }
 
-void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent,const int fatigued)
+void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent, const int fatigued)
 {
 	char buf[128];
 
@@ -6899,31 +6899,31 @@ static void PM_TorsoAnimLightsaber()
 						case SS_STRONG:
 						case SS_TAVION:
 						case SS_DESANN:
-							if (pm->ps->saber[0].type == SABER_BACKHAND || pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+							if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND || pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_YODA)
+							else if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_DOOKU)
+							else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_DOOKU_SMALLDRAW, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_UNSTABLE)
+							else if (pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERSTANCE_STANCE_ALT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_OBIWAN)
+							else if (pm->ps->saber[0].type == SABER_SINGLE_OBIWAN)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SHOWOFF_OBI, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_SFX || pm->ps->saber[0].type == SABER_REY)
+							else if (pm->ps->saber[0].type == SABER_SFX || pm->ps->saber[0].type == SABER_SINGLE_REY)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_GRIE || pm->ps->saber[0].type == SABER_GRIE4)
+							else if (pm->ps->saber[0].type == SABER_DUAL_GRIE || pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_GRIEVOUS_SABERON, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}

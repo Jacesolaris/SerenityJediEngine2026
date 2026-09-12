@@ -1210,6 +1210,19 @@ void GLSL_SetUniformVec3(shaderProgram_t* program, int uniformNum, const vec3_t 
 
 void GLSL_SetUniformVec4(shaderProgram_t* program, int uniformNum, const vec4_t v)
 {
+	if (!program)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec4: NULL program (uniform %i)\n", uniformNum);
+		return;
+	}
+
+	// defensive checks: ensure uniform arrays/buffers are initialized
+	if (!program->uniforms || !program->uniformBuffer || !program->uniformBufferOffsets)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec4: program %s has uninitialized uniform data (uniform %i)\n", program->name ? program->name : "<unnamed>", uniformNum);
+		return;
+	}
+
 	GLint* uniforms = program->uniforms;
 	float* compare = (float*)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
 

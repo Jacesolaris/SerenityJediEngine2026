@@ -790,8 +790,10 @@ static void CG_General(centity_t* cent)
 								|| cent->gent->owner->client->ps.saber[0].type == SABER_THIN
 								|| cent->gent->owner->client->ps.saber[0].type == SABER_SFX
 								|| cent->gent->owner->client->ps.saber[0].type == SABER_CUSTOMSFX
-								|| cent->gent->owner->client->ps.saber[0].type == SABER_GRIE
-								|| cent->gent->owner->client->ps.saber[0].type == SABER_UNSTABLE)
+								|| cent->gent->owner->client->ps.saber[0].type == SABER_DUAL_GRIE
+								|| cent->gent->owner->client->ps.saber[0].type == SABER_UNSTABLE
+								|| cent->gent->owner->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN
+								|| cent->gent->owner->client->ps.saber[0].type == SABER_STAFF_UNSTABLE)
 							{
 								spin_sound = cgi_S_RegisterSound("sound/weapons/saber/saberspin2.wav");
 							}
@@ -865,8 +867,10 @@ static void CG_General(centity_t* cent)
 							|| cent->gent->owner->client->ps.saber[0].type == SABER_THIN
 							|| cent->gent->owner->client->ps.saber[0].type == SABER_SFX
 							|| cent->gent->owner->client->ps.saber[0].type == SABER_CUSTOMSFX
-							|| cent->gent->owner->client->ps.saber[0].type == SABER_GRIE
-							|| cent->gent->owner->client->ps.saber[0].type == SABER_UNSTABLE)
+							|| cent->gent->owner->client->ps.saber[0].type == SABER_DUAL_GRIE
+							|| cent->gent->owner->client->ps.saber[0].type == SABER_UNSTABLE
+							|| cent->gent->owner->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN
+							|| cent->gent->owner->client->ps.saber[0].type == SABER_STAFF_UNSTABLE)
 						{
 							spin_sound = cgi_S_RegisterSound("sound/weapons/saber/saberspin2.wav");
 						}

@@ -66,11 +66,9 @@ static char saberParms[MAX_SABER_DATA_SIZE];
 stringID_table_t saberTable[] =
 {
 	ENUM2STRING(SABER_NONE),
-	ENUM2STRING(SABER_SINGLE),
-	ENUM2STRING(SABER_SINGLE_SMASH),
-	ENUM2STRING(SABER_SINGLE_CLASSIC),
-	ENUM2STRING(SABER_STAFF),
-	ENUM2STRING(SABER_STAFF_SMASH),
+	ENUM2STRING(SABER_SINGLE), // Base Jka
+	ENUM2STRING(SABER_STAFF), // Base Jka
+	//Custom Jka Sabers
 	ENUM2STRING(SABER_BROAD),
 	ENUM2STRING(SABER_PRONG),
 	ENUM2STRING(SABER_DAGGER),
@@ -80,7 +78,35 @@ stringID_table_t saberTable[] =
 	ENUM2STRING(SABER_LANCE),
 	ENUM2STRING(SABER_STAR),
 	ENUM2STRING(SABER_TRIDENT),
-	ENUM2STRING(SABER_SITH_SWORD),
+	ENUM2STRING(SABER_SITH_SWORD),// Tavion sword
+	// custom Added sabers for specific animations
+	ENUM2STRING(SABER_SINGLE_ANAKIN),
+	ENUM2STRING(SABER_SINGLE_KENOBI),
+	ENUM2STRING(SABER_SINGLE_KESTIS),
+	ENUM2STRING(SABER_SINGLE_DARKFORCES),
+	ENUM2STRING(SABER_SINGLE_DOOKU),
+	ENUM2STRING(SABER_SINGLE_GALEN),
+	ENUM2STRING(SABER_SINGLE_QUIGON),
+	ENUM2STRING(SABER_DUAL_GRIE),
+	ENUM2STRING(SABER_DUAL_GRIE4),
+	ENUM2STRING(SABER_SINGLE_KOTOR),
+	ENUM2STRING(SABER_SINGLE_LUKE),
+	ENUM2STRING(SABER_SINGLE_WINDU),
+	ENUM2STRING(SABER_SINGLE_MAUL),
+	ENUM2STRING(SABER_STAFF_MAUL),
+	ENUM2STRING(SABER_SINGLE_MOVIEDUELS),
+	ENUM2STRING(SABER_SINGLE_OBIWAN),
+	ENUM2STRING(SABER_SINGLE_PALP),
+	ENUM2STRING(SABER_SINGLE_KYLO_REN),
+	ENUM2STRING(SABER_SINGLE_REY),
+	ENUM2STRING(SABER_SINGLE_VADER),
+	ENUM2STRING(SABER_SINGLE_YODA),
+	// custom added sabers for specific models
+	ENUM2STRING(SABER_SINGLE_BACKHAND),
+	ENUM2STRING(SABER_SINGLE_ASBACKHAND),
+	ENUM2STRING(SABER_STAFF_ELECTROSTAFF),
+	//Misc added sabers
+	ENUM2STRING(SABER_SINGLE_CLASSIC),
 	ENUM2STRING(SABER_UNSTABLE),
 	ENUM2STRING(SABER_STAFF_UNSTABLE),
 	ENUM2STRING(SABER_THIN),
@@ -88,21 +114,6 @@ stringID_table_t saberTable[] =
 	ENUM2STRING(SABER_SFX),
 	ENUM2STRING(SABER_STAFF_SFX),
 	ENUM2STRING(SABER_CUSTOMSFX),
-	ENUM2STRING(SABER_BACKHAND),
-	ENUM2STRING(SABER_YODA),
-	ENUM2STRING(SABER_DOOKU),
-	ENUM2STRING(SABER_PALP),
-	ENUM2STRING(SABER_ANAKIN),
-	ENUM2STRING(SABER_GRIE),
-	ENUM2STRING(SABER_GRIE4),
-	ENUM2STRING(SABER_OBIWAN),
-	ENUM2STRING(SABER_ASBACKHAND),
-	ENUM2STRING(SABER_STAFF_MAUL),
-	ENUM2STRING(SABER_ELECTROSTAFF),
-	ENUM2STRING(SABER_WINDU),
-	ENUM2STRING(SABER_VADER),
-	ENUM2STRING(SABER_KENOBI),
-	ENUM2STRING(SABER_REY),
 	{"", -1}
 };
 
@@ -476,25 +487,18 @@ saber_styles_t TranslateSaberStyle(const char* name)
 
 saberType_t TranslateSaberType(const char* name)
 {
-	if (!Q_stricmp(name, "SABER_SINGLE"))
+	if (!Q_stricmp(name, "SABER_SINGLE"))//Base Jka
 	{
 		return SABER_SINGLE;
 	}
-	if (!Q_stricmp(name, "SABER_SINGLE_SMASH"))
-	{
-		return SABER_SINGLE_SMASH;
-	}
-	if (!Q_stricmp(name, "SABER_SINGLE_CLASSIC"))
-	{
-		return SABER_SINGLE_CLASSIC;
-	}
-	if (!Q_stricmp(name, "SABER_STAFF"))
+	if (!Q_stricmp(name, "SABER_STAFF"))//Base Jka
 	{
 		return SABER_STAFF;
 	}
-	if (!Q_stricmp(name, "SABER_STAFF_SMASH"))
+	//Custom Jka Sabers
+	if (!Q_stricmp(name, "SABER_DAGGER"))
 	{
-		return SABER_STAFF_SMASH;
+		return SABER_DAGGER;
 	}
 	if (!Q_stricmp(name, "SABER_BROAD"))
 	{
@@ -503,10 +507,6 @@ saberType_t TranslateSaberType(const char* name)
 	if (!Q_stricmp(name, "SABER_PRONG"))
 	{
 		return SABER_PRONG;
-	}
-	if (!Q_stricmp(name, "SABER_DAGGER"))
-	{
-		return SABER_DAGGER;
 	}
 	if (!Q_stricmp(name, "SABER_ARC"))
 	{
@@ -532,9 +532,112 @@ saberType_t TranslateSaberType(const char* name)
 	{
 		return SABER_TRIDENT;
 	}
-	if (!Q_stricmp(name, "SABER_SITH_SWORD"))
+	if (!Q_stricmp(name, "SABER_SITH_SWORD"))// Tavion sword
 	{
 		return SABER_SITH_SWORD;
+	}
+	// custom Added sabers for specific animations
+	if (!Q_stricmp(name, "SABER_SINGLE_ANAKIN"))
+	{
+		return SABER_SINGLE_ANAKIN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KENOBI"))
+	{
+		return SABER_SINGLE_KENOBI;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KESTIS"))
+	{
+		return SABER_SINGLE_KESTIS;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_DARKFORCES"))
+	{
+		return SABER_SINGLE_DARKFORCES;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_DOOKU"))
+	{
+		return SABER_SINGLE_DOOKU;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_GALEN"))
+	{
+		return SABER_SINGLE_GALEN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_QUIGON"))
+	{
+		return SABER_SINGLE_QUIGON;
+	}
+	if (!Q_stricmp(name, "SABER_DUAL_GRIE"))
+	{
+		return SABER_DUAL_GRIE;
+	}
+	if (!Q_stricmp(name, "SABER_DUAL_GRIE4"))
+	{
+		return SABER_DUAL_GRIE4;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KOTOR"))
+	{
+		return SABER_SINGLE_KOTOR;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_LUKE"))
+	{
+		return SABER_SINGLE_LUKE;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_WINDU"))
+	{
+		return SABER_SINGLE_WINDU;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_MAUL"))
+	{
+		return SABER_SINGLE_MAUL;
+	}
+	if (!Q_stricmp(name, "SABER_STAFF_MAUL"))
+	{
+		return SABER_STAFF_MAUL;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_MOVIEDUELS"))
+	{
+		return SABER_SINGLE_MOVIEDUELS;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_OBIWAN"))
+	{
+		return SABER_SINGLE_OBIWAN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_PALP"))
+	{
+		return SABER_SINGLE_PALP;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_KYLO_REN"))
+	{
+		return SABER_SINGLE_KYLO_REN;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_REY"))
+	{
+		return SABER_SINGLE_REY;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_VADER"))
+	{
+		return SABER_SINGLE_VADER;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_YODA"))
+	{
+		return SABER_SINGLE_YODA;
+	}
+	// custom added sabers for specific models
+	if (!Q_stricmp(name, "SABER_SINGLE_BACKHAND"))
+	{
+		return SABER_SINGLE_BACKHAND;
+	}
+	if (!Q_stricmp(name, "SABER_SINGLE_ASBACKHAND"))
+	{
+		return SABER_SINGLE_ASBACKHAND;
+	}
+	if (!Q_stricmp(name, "SABER_STAFF_ELECTROSTAFF"))
+	{
+		return SABER_STAFF_ELECTROSTAFF;
+	}
+	//Misc added sabers
+	if (!Q_stricmp(name, "SABER_SINGLE_CLASSIC"))
+	{
+		return SABER_SINGLE_CLASSIC;
 	}
 	if (!Q_stricmp(name, "SABER_UNSTABLE"))
 	{
@@ -556,73 +659,9 @@ saberType_t TranslateSaberType(const char* name)
 	{
 		return SABER_SFX;
 	}
-	if (!Q_stricmp(name, "SABER_STAFF_SFX"))
-	{
-		return SABER_STAFF_SFX;
-	}
 	if (!Q_stricmp(name, "SABER_CUSTOMSFX"))
 	{
 		return SABER_CUSTOMSFX;
-	}
-	if (!Q_stricmp(name, "SABER_BACKHAND"))
-	{
-		return SABER_BACKHAND;
-	}
-	if (!Q_stricmp(name, "SABER_YODA"))
-	{
-		return SABER_YODA;
-	}
-	if (!Q_stricmp(name, "SABER_DOOKU"))
-	{
-		return SABER_DOOKU;
-	}
-	if (!Q_stricmp(name, "SABER_PALP"))
-	{
-		return SABER_PALP;
-	}
-	if (!Q_stricmp(name, "SABER_ANAKIN"))
-	{
-		return SABER_ANAKIN;
-	}
-	if (!Q_stricmp(name, "SABER_GRIE"))
-	{
-		return SABER_GRIE;
-	}
-	if (!Q_stricmp(name, "SABER_GRIE4"))
-	{
-		return SABER_GRIE4;
-	}
-	if (!Q_stricmp(name, "SABER_OBIWAN"))
-	{
-		return SABER_OBIWAN;
-	}
-	if (!Q_stricmp(name, "SABER_ASBACKHAND"))
-	{
-		return SABER_ASBACKHAND;
-	}
-	if (!Q_stricmp(name, "SABER_ELECTROSTAFF"))
-	{
-		return SABER_ELECTROSTAFF;
-	}
-	if (!Q_stricmp(name, "SABER_WINDU"))
-	{
-		return SABER_WINDU;
-	}
-	if (!Q_stricmp(name, "SABER_VADER"))
-	{
-		return SABER_VADER;
-	}
-	if (!Q_stricmp(name, "SABER_STAFF_MAUL"))
-	{
-		return SABER_STAFF_MAUL;
-	}
-	if (!Q_stricmp(name, "SABER_KENOBI"))
-	{
-		return SABER_KENOBI;
-	}
-	if (!Q_stricmp(name, "SABER_REY"))
-	{
-		return SABER_REY;
 	}
 	return SABER_SINGLE;
 }

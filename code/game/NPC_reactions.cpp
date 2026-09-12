@@ -378,8 +378,7 @@ static void NPC_ChoosePainAnimation(gentity_t* self, const gentity_t* other, con
 			{
 				self->client->ps.saberAnimLevel = SS_FAST; //next attack must be a quick attack
 			}
-			if (self->client->ps.saber[0].type == SABER_STAFF ||
-				self->client->ps.saber[0].type == SABER_STAFF_SMASH)
+			if (self->client->ps.saber[0].type == SABER_STAFF)
 			{
 				self->client->ps.saberAnimLevel = SS_STAFF;
 			}

@@ -1589,15 +1589,14 @@ void NPC_Begin(gentity_t* ent)
 				newLevel++;
 				if (newLevel > SS_STAFF)
 				{
-					if (ent->client->saber[0].type == SABER_BACKHAND
-						|| ent->client->saber[0].type == SABER_ASBACKHAND)
+					if (ent->client->saber[0].type == SABER_SINGLE_BACKHAND
+						|| ent->client->saber[0].type == SABER_SINGLE_ASBACKHAND)
 					{
 						newLevel = SS_STAFF;
 					}
 					else if (ent->client->saber[0].type == SABER_STAFF
 						|| ent->client->saber[0].type == SABER_STAFF_UNSTABLE
-						|| ent->client->saber[0].type == SABER_STAFF_THIN
-						|| ent->client->saber[0].type == SABER_STAFF_SMASH)
+						|| ent->client->saber[0].type == SABER_STAFF_THIN)
 					{
 						newLevel = SS_TAVION;
 					}

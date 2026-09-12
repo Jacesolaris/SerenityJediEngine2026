@@ -500,6 +500,10 @@ void CG_RegisterWeapon(const int weapon_num)
 		{
 			cgi_S_RegisterSound(va("sound/weapons/saber/saberblock%d.mp3", i));
 		}
+		for (i = 1; i < 30; i++)
+		{
+			cgi_S_RegisterSound(va("sound/weapons/saber/classicblock%d.mp3", i));
+		}
 		for (i = 1; i < 10; i++)
 		{
 			cgi_S_RegisterSound(va("sound/weapons/saber/saberlock%d.mp3", i));

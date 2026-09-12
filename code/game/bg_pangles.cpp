@@ -2233,8 +2233,8 @@ void PM_UpdateViewAngles(int saberAnimLevel, playerState_t* ps, usercmd_t* cmd, 
 						}
 						else if (saberAnimLevel == SS_STAFF)
 						{
-							if (pm->ps->saber[0].type == SABER_BACKHAND
-								|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+							if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+								|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 								//saber backhand
 							{
 								if (ps->torsoAnim == BOTH_BLOCK_HOLD_L_STAFF)
@@ -2286,8 +2286,8 @@ void PM_UpdateViewAngles(int saberAnimLevel, playerState_t* ps, usercmd_t* cmd, 
 						}
 						else if (saberAnimLevel == SS_STAFF)
 						{
-							if (pm->ps->saber[0].type == SABER_BACKHAND
-								|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+							if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+								|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 								//saber backhand
 							{
 								if (ps->torsoAnim == BOTH_BLOCK_HOLD_R_STAFF)

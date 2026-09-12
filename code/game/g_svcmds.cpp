@@ -413,24 +413,24 @@ static void Svcmd_SaberAttackCycle_f()
 		return;
 	}
 
-	if (self->client->ps.saber[0].type == SABER_BACKHAND && self->client->ps.saberAnimLevel == SS_STAFF)
+	if (self->client->ps.saber[0].type == SABER_SINGLE_BACKHAND && self->client->ps.saberAnimLevel == SS_STAFF)
 	{
 		return;
 	}
 
-	if (self->client->ps.saber[0].type == SABER_ASBACKHAND && self->client->ps.saberAnimLevel == SS_STAFF)
+	if (self->client->ps.saber[0].type == SABER_SINGLE_ASBACKHAND && self->client->ps.saberAnimLevel == SS_STAFF)
 	{
 		return;
 	}
 
-	if (self->client->ps.saber[0].type == SABER_ELECTROSTAFF && self->client->ps.saberAnimLevel == SS_STAFF)
+	if (self->client->ps.saber[0].type == SABER_STAFF_ELECTROSTAFF && self->client->ps.saberAnimLevel == SS_STAFF)
 	{
 		return;
 	}
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
 		&& !PM_ControlledByPlayer() &&
-		(self->client->ps.saber[0].type == SABER_STAFF || self->client->ps.saber[0].type == SABER_STAFF_SMASH) &&
+		(self->client->ps.saber[0].type == SABER_STAFF) &&
 		self->client->ps.saberAnimLevel == SS_STAFF)
 	{
 		return;
@@ -438,7 +438,7 @@ static void Svcmd_SaberAttackCycle_f()
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
 		&& !PM_ControlledByPlayer() &&
-		self->client->ps.saber[0].type == SABER_ELECTROSTAFF &&
+		self->client->ps.saber[0].type == SABER_STAFF_ELECTROSTAFF &&
 		self->client->ps.saberAnimLevel == SS_STAFF)
 	{
 		return;
@@ -462,7 +462,7 @@ static void Svcmd_SaberAttackCycle_f()
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
 		&& !PM_ControlledByPlayer() &&
-		(self->client->ps.saber[0].type == SABER_SINGLE || self->client->ps.saber[0].type == SABER_SINGLE_SMASH) &&
+		(self->client->ps.saber[0].type == SABER_SINGLE) &&
 		self->client->ps.saberAnimLevel == SS_DUAL)
 	{
 		return;
@@ -656,7 +656,7 @@ static void Svcmd_SaberAttackCycle_f()
 		{
 			if (self->s.clientNum >= MAX_CLIENTS //not the player
 				&& !PM_ControlledByPlayer() &&
-				(self->client->ps.saber[0].type == SABER_STAFF || self->client->ps.saber[0].type == SABER_STAFF_SMASH) &&
+				(self->client->ps.saber[0].type == SABER_STAFF) &&
 				self->client->ps.saberAnimLevel == SS_STAFF)
 			{
 				saberAnimLevel = SS_STAFF;
@@ -677,13 +677,13 @@ static void Svcmd_SaberAttackCycle_f()
 			}
 			else if (self->s.clientNum >= MAX_CLIENTS //not the player
 				&& !PM_ControlledByPlayer() &&
-				(self->client->ps.saber[0].type == SABER_SINGLE || self->client->ps.saber[0].type == SABER_SINGLE_SMASH) &&
+				(self->client->ps.saber[0].type == SABER_SINGLE) &&
 				self->client->ps.saberAnimLevel == SS_DUAL)
 			{
 				saberAnimLevel = SS_DUAL;
 			}
-			else if (self->client->ps.saber[0].type == SABER_BACKHAND
-				|| self->client->ps.saber[0].type == SABER_ASBACKHAND) //saber backhand
+			else if (self->client->ps.saber[0].type == SABER_SINGLE_BACKHAND
+				|| self->client->ps.saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 			{
 				saberAnimLevel = SS_STAFF;
 			}

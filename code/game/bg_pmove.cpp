@@ -10635,11 +10635,11 @@ static void PM_Footsteps(void)
 						{
 							if (is_wanting_sprint) //dual sprint here
 							{
-								if (pm->ps->saber[0].type == SABER_GRIE)
+								if (pm->ps->saber[0].type == SABER_DUAL_GRIE)
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
 								}
-								else if (pm->ps->saber[0].type == SABER_GRIE4)
+								else if (pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
 								}
@@ -10678,19 +10678,19 @@ static void PM_Footsteps(void)
 							}
 							else
 							{
-								if (pm->ps->saber[0].type == SABER_BACKHAND || pm->ps->saber[0].type == SABER_ASBACKHAND)
+								if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND || pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN_STAFF, setAnimFlags);
 								}
-								else if (pm->ps->saber[0].type == SABER_YODA) //saber yoda
+								else if (pm->ps->saber[0].type == SABER_SINGLE_YODA) //saber yoda
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN10, setAnimFlags);
 								}
-								else if (pm->ps->saber[0].type == SABER_GRIE) //saber kylo
+								else if (pm->ps->saber[0].type == SABER_DUAL_GRIE) //saber kylo
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
 								}
-								else if (pm->ps->saber[0].type == SABER_GRIE4) //saber kylo
+								else if (pm->ps->saber[0].type == SABER_DUAL_GRIE4) //saber kylo
 								{
 									PM_SetAnim(pm, SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
 								}
@@ -11679,38 +11679,39 @@ static void PM_FinishWeaponChange()
 						else
 						{
 							//standing
-							if (pm->ps->saber[0].type == SABER_BACKHAND
-								|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+							if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+								|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_YODA)
+							else if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_DOOKU)
+							else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_DOOKU_SMALLDRAW,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_UNSTABLE)
+							else if (pm->ps->saber[0].type == SABER_UNSTABLE ||
+								pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERSTANCE_STANCE_ALT,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_OBIWAN) //saber kylo
+							else if (pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) //saber kylo
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SHOWOFF_OBI,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_SFX || pm->ps->saber[0].type == SABER_REY)
+							else if (pm->ps->saber[0].type == SABER_SFX || pm->ps->saber[0].type == SABER_SINGLE_REY)
 							{
 								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA,
 									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (pm->ps->saber[0].type == SABER_GRIE || pm->ps->saber[0].type == SABER_GRIE4)
+							else if (pm->ps->saber[0].type == SABER_DUAL_GRIE || pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 							{
 								PM_SetSaberMove(LS_DRAW3);
 							}
@@ -12882,8 +12883,8 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		}
 		else if (pm->ps->saber[0].stylesLearned == 1 << SS_STAFF)
 		{
-			if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND) //saber backhand
+			if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_AFLAG_PACE);
 			}
@@ -12903,7 +12904,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 			&& !(pm->ps->saber[0].stylesForbidden & 1 << SS_DUAL)
 			&& !(pm->ps->saber[1].stylesForbidden & 1 << SS_DUAL))
 		{
-			if (pm->ps->saber[0].type == SABER_GRIE || pm->ps->saber[0].type == SABER_GRIE4)
+			if (pm->ps->saber[0].type == SABER_DUAL_GRIE || pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_GRIEVOUS_SABERON, SETANIM_AFLAG_PACE);
 			}
@@ -12930,7 +12931,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 			&& !(pm->ps->saber[1].stylesForbidden & 1 << SS_DUAL)
 			&& pm->ps->saber[1].Active())
 		{
-			if (pm->ps->saber[0].type == SABER_GRIE || pm->ps->saber[0].type == SABER_GRIE4)
+			if (pm->ps->saber[0].type == SABER_DUAL_GRIE || pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 			{
 				PM_SetAnim(pm, SETANIM_BOTH, BOTH_STAND2TO1, SETANIM_AFLAG_PACE);
 			}
@@ -12962,7 +12963,7 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 			&& !(pm->ps->saber[1].stylesForbidden & 1 << SS_DUAL)
 			&& pm->ps->saber[1].Active())
 		{
-			if (pm->ps->saber[0].type == SABER_GRIE || pm->ps->saber[0].type == SABER_GRIE4)
+			if (pm->ps->saber[0].type == SABER_DUAL_GRIE || pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 			{
 				PM_SetAnim(pm, SETANIM_BOTH, BOTH_STAND2TO1, SETANIM_AFLAG_PACE);
 			}
@@ -16655,8 +16656,8 @@ static qboolean PM_SaberBlocking()
 				PM_SetSaberMove(static_cast<saberMoveName_t>(pm->ps->saberBounceMove));
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_BLOCK_BACK_HAND, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				pm->ps->torsoAnimTimer += Q_irand(200, 1000);
@@ -16668,10 +16669,10 @@ static qboolean PM_SaberBlocking()
 			}
 			break;
 		case BLOCKED_UPPER_RIGHT_PROJ:
-			if (pm->ps->saber[0].type == SABER_DOOKU
-				|| pm->ps->saber[0].type == SABER_ANAKIN
-				|| pm->ps->saber[0].type == SABER_REY
-				|| pm->ps->saber[0].type == SABER_PALP && pm->ps->userInt3 & 1 << FLAG_BLOCKDRAINED)
+			if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU
+				|| pm->ps->saber[0].type == SABER_SINGLE_ANAKIN
+				|| pm->ps->saber[0].type == SABER_SINGLE_REY
+				|| pm->ps->saber[0].type == SABER_SINGLE_PALP && pm->ps->userInt3 & 1 << FLAG_BLOCKDRAINED)
 			{
 				PM_SetSaberMove(LS_K1_TR);
 			}
@@ -16687,8 +16688,8 @@ static qboolean PM_SaberBlocking()
 				PM_SetSaberMove(static_cast<saberMoveName_t>(pm->ps->saberBounceMove));
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_BLOCK_BACK_HAND, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				pm->ps->torsoAnimTimer += Q_irand(200, 1000);
@@ -16700,10 +16701,10 @@ static qboolean PM_SaberBlocking()
 			}
 			break;
 		case BLOCKED_UPPER_LEFT_PROJ:
-			if (pm->ps->saber[0].type == SABER_DOOKU
-				|| pm->ps->saber[0].type == SABER_ANAKIN
-				|| pm->ps->saber[0].type == SABER_REY
-				|| pm->ps->saber[0].type == SABER_PALP && pm->ps->userInt3 & 1 << FLAG_BLOCKDRAINED)
+			if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU
+				|| pm->ps->saber[0].type == SABER_SINGLE_ANAKIN
+				|| pm->ps->saber[0].type == SABER_SINGLE_REY
+				|| pm->ps->saber[0].type == SABER_SINGLE_PALP && pm->ps->userInt3 & 1 << FLAG_BLOCKDRAINED)
 			{
 				PM_SetSaberMove(LS_K1_TL);
 			}
@@ -16749,8 +16750,8 @@ static qboolean PM_SaberBlocking()
 				PM_SetSaberMove(static_cast<saberMoveName_t>(pm->ps->saberBounceMove));
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_BLOCK_BACK_HAND, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				pm->ps->torsoAnimTimer += Q_irand(200, 1000);
@@ -16771,17 +16772,17 @@ static qboolean PM_SaberBlocking()
 				PM_SetSaberMove(static_cast<saberMoveName_t>(pm->ps->saberBounceMove));
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_BLOCK_BACK_HAND, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				pm->ps->torsoAnimTimer += Q_irand(200, 1000);
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_DOOKU
-				|| pm->ps->saber[0].type == SABER_ANAKIN
-				|| pm->ps->saber[0].type == SABER_REY
-				|| pm->ps->saber[0].type == SABER_PALP && pm->ps->userInt3 & 1 << FLAG_BLOCKDRAINED)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU
+				|| pm->ps->saber[0].type == SABER_SINGLE_ANAKIN
+				|| pm->ps->saber[0].type == SABER_SINGLE_REY
+				|| pm->ps->saber[0].type == SABER_SINGLE_PALP && pm->ps->userInt3 & 1 << FLAG_BLOCKDRAINED)
 			{
 				PM_SetSaberMove(LS_REFLECT_ATTACK_FRONT);
 			}
@@ -16807,17 +16808,17 @@ static qboolean PM_SaberBlocking()
 				PM_SetSaberMove(static_cast<saberMoveName_t>(pm->ps->saberBounceMove));
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_BACKHAND
-				|| pm->ps->saber[0].type == SABER_ASBACKHAND)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 			{
 				PM_SetAnim(pm, SETANIM_TORSO, BOTH_BLOCK_BACK_HAND, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				pm->ps->torsoAnimTimer += Q_irand(200, 1000);
 				pm->ps->weaponTime = pm->ps->torsoAnimTimer;
 			}
-			else if (pm->ps->saber[0].type == SABER_DOOKU
-				|| pm->ps->saber[0].type == SABER_ANAKIN
-				|| pm->ps->saber[0].type == SABER_REY
-				|| pm->ps->saber[0].type == SABER_PALP)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU
+				|| pm->ps->saber[0].type == SABER_SINGLE_ANAKIN
+				|| pm->ps->saber[0].type == SABER_SINGLE_REY
+				|| pm->ps->saber[0].type == SABER_SINGLE_PALP)
 			{
 				PM_SetSaberMove(LS_REFLECT_ATTACK_FRONT);
 			}
@@ -17304,7 +17305,7 @@ static void PM_KataAnimationStyle(void)
 				{
 					PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 				}
-				else if (pm->ps->saber[0].type == SABER_YODA)
+				else if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
 				{
 					PM_SetSaberMove(LS_YODA_SPECIAL);
 				}
@@ -17339,7 +17340,7 @@ static void PM_KataAnimationStyle(void)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
-			else if (pm->ps->saber[0].type == SABER_PALP)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_PALP)
 			{
 				PM_SetSaberMove(LS_A_JUMP_PALP_);
 			}
@@ -17358,7 +17359,7 @@ static void PM_KataAnimationStyle(void)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
-			else if (pm->ps->saber[0].type == SABER_PALP)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_PALP)
 			{
 				PM_SetSaberMove(LS_A_JUMP_PALP_);
 			}
@@ -17377,7 +17378,7 @@ static void PM_KataAnimationStyle(void)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
-			else if (pm->ps->saber[0].type == SABER_YODA)
+			else if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
 			{
 				PM_SetSaberMove(LS_YODA_SPECIAL);
 			}
@@ -17396,14 +17397,14 @@ static void PM_KataAnimationStyle(void)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_DUAL);
 			}
-			else if (pm->ps->saber[0].type == SABER_GRIE ||
-				pm->ps->saber[0].type == SABER_GRIE4)
+			else if (pm->ps->saber[0].type == SABER_DUAL_GRIE ||
+				pm->ps->saber[0].type == SABER_DUAL_GRIE4)
 			{
 				PM_SetSaberMove(LS_DUAL_SPIN_PROTECT_GRIE);
 			}
 			else if (pm->ps->saber[0].type == SABER_DAGGER ||
-				pm->ps->saber[0].type == SABER_BACKHAND ||
-				pm->ps->saber[0].type == SABER_ASBACKHAND)
+				pm->ps->saber[0].type == SABER_SINGLE_BACKHAND ||
+				pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)
 			{
 				PM_SetSaberMove(LS_STAFF_SOULCAL);
 			}

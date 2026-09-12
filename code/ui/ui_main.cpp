@@ -2420,8 +2420,7 @@ the text buffer to static storage, eliminating MSVC warning C6262.
 */
 static qboolean UI_ParseAnimationFile(const char* af_filename)
 {
-	/* FIX: move 80 KB buffer off the stack */
-	static char text[120000];
+	static char text[180000];
 
 	const char* text_p;
 	animation_t* animations =
@@ -3506,7 +3505,7 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 10/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------Build date 11/09/2026-----------------------\n"); // build date
 	Com_Printf("---------------------------Build 01------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");

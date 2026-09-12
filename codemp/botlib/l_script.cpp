@@ -812,13 +812,13 @@ int PS_ReadPunctuation(script_t* script, token_t* token)
 		} //end if
 	} //end for
 	return 0;
-} //end of the function PS_ReadPunctuation
-//============================================================================
-//
-// Parameter:				-
-// Returns:					-
-// Changes Globals:		-
-//============================================================================
+	} //end of the function PS_ReadPunctuation
+	//============================================================================
+	//
+	// Parameter:				-
+	// Returns:					-
+	// Changes Globals:		-
+	//============================================================================
 static int PS_ReadPrimitive(script_t * script, token_t * token)
 {
 	int len = 0;

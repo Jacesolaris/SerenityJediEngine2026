@@ -3032,7 +3032,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_GESTURE1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
 					case SS_MEDIUM:
-						if (saber1 && saber1->type == SABER_OBIWAN) //saber kylo
+						if (saber1 && saber1->type == SABER_SINGLE_OBIWAN) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_OBI, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						}
@@ -3043,7 +3043,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
-						if (saber1 && saber1->type == SABER_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
+						if (saber1 && saber1->type == SABER_SINGLE_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						}
@@ -3064,7 +3064,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 							G_Sound(ent, CHAN_WEAPON, ent->client->saber[0].soundOn);
 						}
 						ent->client->ps.saberHolstered = 0;
-						if (ent->client->saber[0].type == SABER_GRIE || ent->client->saber[0].type == SABER_GRIE4)
+						if (ent->client->saber[0].type == SABER_DUAL_GRIE || ent->client->saber[0].type == SABER_DUAL_GRIE4)
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						}
@@ -3318,7 +3318,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_FAST, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
 					case SS_MEDIUM:
-						if (saber1 && saber1->type == SABER_OBIWAN) //saber kylo
+						if (saber1 && saber1->type == SABER_SINGLE_OBIWAN) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_OBI, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						}
@@ -3349,7 +3349,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_FAST, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
 					case SS_MEDIUM:
-						if (saber1 && saber1->type == SABER_OBIWAN) //saber kylo
+						if (saber1 && saber1->type == SABER_SINGLE_OBIWAN) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_OBI, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						}
@@ -3692,7 +3692,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 					NPC_SetAnim(ent, SETANIM_TORSO, BOTH_GESTURE1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
 				case SS_MEDIUM:
-					if (saber1 && saber1->type == SABER_OBIWAN) //saber kylo
+					if (saber1 && saber1->type == SABER_SINGLE_OBIWAN) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_OBI,
 							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -3705,7 +3705,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
-					if (saber1 && saber1->type == SABER_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
+					if (saber1 && saber1->type == SABER_SINGLE_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					}
@@ -3727,7 +3727,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						G_Sound(ent, CHAN_WEAPON, ent->client->saber[0].soundOn);
 					}
 					ent->client->ps.saberHolstered = 0;
-					if (ent->client->saber[0].type == SABER_GRIE || ent->client->saber[0].type == SABER_GRIE4)
+					if (ent->client->saber[0].type == SABER_DUAL_GRIE || ent->client->saber[0].type == SABER_DUAL_GRIE4)
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT,
 							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -3770,7 +3770,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 					NPC_SetAnim(ent, SETANIM_TORSO, BOTH_GESTURE1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
 				case SS_MEDIUM:
-					if (saber1 && saber1->type == SABER_OBIWAN) //saber kylo
+					if (saber1 && saber1->type == SABER_SINGLE_OBIWAN) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_OBI,
 							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -3783,7 +3783,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
-					if (saber1 && saber1->type == SABER_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
+					if (saber1 && saber1->type == SABER_SINGLE_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					}
@@ -3805,7 +3805,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						G_Sound(ent, CHAN_WEAPON, ent->client->saber[0].soundOn);
 					}
 					ent->client->ps.saberHolstered = 0;
-					if (ent->client->saber[0].type == SABER_GRIE || ent->client->saber[0].type == SABER_GRIE4)
+					if (ent->client->saber[0].type == SABER_DUAL_GRIE || ent->client->saber[0].type == SABER_DUAL_GRIE4)
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAFF_TAUNT,
 							SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -3997,31 +3997,31 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 						case SS_STRONG:
 						case SS_TAVION:
 						case SS_DESANN:
-							if (saber1 && (saber1->type == SABER_BACKHAND || saber1->type == SABER_ASBACKHAND))
+							if (saber1 && (saber1->type == SABER_SINGLE_BACKHAND || saber1->type == SABER_SINGLE_ASBACKHAND))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (saber1 && (saber1->type == SABER_YODA))
+							else if (saber1 && (saber1->type == SABER_SINGLE_YODA))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (saber1 && (saber1->type == SABER_DOOKU))
+							else if (saber1 && (saber1->type == SABER_SINGLE_DOOKU))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_DOOKU_SMALLDRAW, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (saber1 && (saber1->type == SABER_UNSTABLE))
+							else if (saber1 && (saber1->type == SABER_UNSTABLE || saber1->type == SABER_SINGLE_KYLO_REN))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABERSTANCE_STANCE_ALT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (saber1 && (saber1->type == SABER_OBIWAN))
+							else if (saber1 && (saber1->type == SABER_SINGLE_OBIWAN))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_OBI, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (saber1 && (saber1->type == SABER_SFX || saber1->type == SABER_REY))
+							else if (saber1 && (saber1->type == SABER_SFX || saber1->type == SABER_SINGLE_REY))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
-							else if (saber1 && (saber1->type == SABER_GRIE || saber1->type == SABER_GRIE4))
+							else if (saber1 && (saber1->type == SABER_DUAL_GRIE || saber1->type == SABER_DUAL_GRIE4))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_GRIEVOUS_SABERON, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
@@ -5701,13 +5701,12 @@ static void ClientThink_real(gentity_t* ent)
 						{
 						}
 						else if (client->saber[0].type == SABER_STAFF
-							|| client->saber[0].type == SABER_BACKHAND
+							|| client->saber[0].type == SABER_SINGLE_BACKHAND
 							|| client->saber[0].type == SABER_STAFF_UNSTABLE
 							|| client->saber[0].type == SABER_STAFF_THIN
-							|| client->saber[0].type == SABER_ASBACKHAND
+							|| client->saber[0].type == SABER_SINGLE_ASBACKHAND
 							|| client->saber[0].type == SABER_STAFF_MAUL
-							|| client->saber[0].type == SABER_ELECTROSTAFF
-							|| client->saber[0].type == SABER_STAFF_SMASH)
+							|| client->saber[0].type == SABER_STAFF_ELECTROSTAFF)
 						{
 							if (client->ps.saberHolstered == 2)
 							{
@@ -5731,13 +5730,12 @@ static void ClientThink_real(gentity_t* ent)
 							client->ps.saberHolstered = 0;
 						}
 						else if (client->saber[0].type == SABER_STAFF
-							|| client->saber[0].type == SABER_BACKHAND
+							|| client->saber[0].type == SABER_SINGLE_BACKHAND
 							|| client->saber[0].type == SABER_STAFF_UNSTABLE
 							|| client->saber[0].type == SABER_STAFF_THIN
-							|| client->saber[0].type == SABER_ASBACKHAND
+							|| client->saber[0].type == SABER_SINGLE_ASBACKHAND
 							|| client->saber[0].type == SABER_STAFF_MAUL
-							|| client->saber[0].type == SABER_ELECTROSTAFF
-							|| client->saber[0].type == SABER_STAFF_SMASH)
+							|| client->saber[0].type == SABER_STAFF_ELECTROSTAFF)
 						{
 							if (client->ps.saberHolstered == 2)
 							{

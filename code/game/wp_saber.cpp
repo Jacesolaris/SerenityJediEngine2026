@@ -917,9 +917,9 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 
 	if (!(ent && ent->client && ent->client->ps.stats[STAT_WEAPONS] & 1 << WP_SABER) ||
 		ent->client->ps.saber[0].type == SABER_DAGGER ||
-		ent->client->ps.saber[0].type == SABER_GRIE ||
-		ent->client->ps.saber[0].type == SABER_GRIE4 ||
-		ent->client->ps.saber[0].type == SABER_ELECTROSTAFF ||
+		ent->client->ps.saber[0].type == SABER_DUAL_GRIE ||
+		ent->client->ps.saber[0].type == SABER_DUAL_GRIE4 ||
+		ent->client->ps.saber[0].type == SABER_STAFF_ELECTROSTAFF ||
 		ent->client->ps.saber[0].type == SABER_SITH_SWORD ||
 		ent->client->NPC_class == CLASS_MANDO)
 	{
@@ -1019,8 +1019,7 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 					ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
 					ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
 					ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
-					ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
-					ent->client->ps.saber[0].type == SABER_BACKHAND)
+					ent->client->ps.saber[0].type == SABER_SINGLE_BACKHAND)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_bl");
 				}
@@ -1028,15 +1027,15 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*l_hand_cap_l_arm");
 				}
-				else if (ent->client->ps.saber[0].type == SABER_YODA)
+				else if (ent->client->ps.saber[0].type == SABER_SINGLE_YODA)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fl");
 				}
-				else if (ent->client->ps.saber[0].type == SABER_UNSTABLE)
+				else if (ent->client->ps.saber[0].type == SABER_UNSTABLE || ent->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fr");
 				}
-				else if (ent->client->ps.saber[0].type == SABER_OBIWAN)
+				else if (ent->client->ps.saber[0].type == SABER_SINGLE_OBIWAN)
 				{
 					if (com_outcast && com_outcast->integer == 10) //jko version
 					{
@@ -1059,8 +1058,7 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 					ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
 					ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
 					ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
-					ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
-					ent->client->ps.saber[0].type == SABER_BACKHAND)
+					ent->client->ps.saber[0].type == SABER_SINGLE_BACKHAND)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_br");
 				}
@@ -1068,15 +1066,15 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*r_hand_cap_r_arm");
 				}
-				else if (ent->client->ps.saber[0].type == SABER_YODA)
+				else if (ent->client->ps.saber[0].type == SABER_SINGLE_YODA)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fl");
 				}
-				else if (ent->client->ps.saber[0].type == SABER_UNSTABLE)
+				else if (ent->client->ps.saber[0].type == SABER_UNSTABLE || ent->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN)
 				{
 					handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fr");
 				}
-				else if (ent->client->ps.saber[0].type == SABER_OBIWAN)
+				else if (ent->client->ps.saber[0].type == SABER_SINGLE_OBIWAN)
 				{
 					if (com_outcast && com_outcast->integer == 10) //jko version
 					{
@@ -1108,8 +1106,7 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 						ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
 						ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
 						ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
-						ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
-						ent->client->ps.saber[0].type == SABER_BACKHAND)
+						ent->client->ps.saber[0].type == SABER_SINGLE_BACKHAND)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_br");
 					}
@@ -1117,15 +1114,15 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*r_hand_cap_r_arm");
 					}
-					else if (ent->client->ps.saber[0].type == SABER_YODA)
+					else if (ent->client->ps.saber[0].type == SABER_SINGLE_YODA)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fl");
 					}
-					else if (ent->client->ps.saber[0].type == SABER_UNSTABLE)
+					else if (ent->client->ps.saber[0].type == SABER_UNSTABLE || ent->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fr");
 					}
-					else if (ent->client->ps.saber[0].type == SABER_OBIWAN)
+					else if (ent->client->ps.saber[0].type == SABER_SINGLE_OBIWAN)
 					{
 						if (com_outcast && com_outcast->integer == 10) //jko version
 						{
@@ -1148,8 +1145,7 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 						ent->client->ps.saber[0].type == SABER_STAFF_SFX ||
 						ent->client->ps.saber[0].type == SABER_STAFF_UNSTABLE ||
 						ent->client->ps.saber[0].type == SABER_STAFF_THIN ||
-						ent->client->ps.saber[0].type == SABER_STAFF_SMASH ||
-						ent->client->ps.saber[0].type == SABER_BACKHAND)
+						ent->client->ps.saber[0].type == SABER_SINGLE_BACKHAND)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_bl");
 					}
@@ -1157,15 +1153,15 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*l_hand_cap_l_arm");
 					}
-					else if (ent->client->ps.saber[0].type == SABER_YODA)
+					else if (ent->client->ps.saber[0].type == SABER_SINGLE_YODA)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fl");
 					}
-					else if (ent->client->ps.saber[0].type == SABER_UNSTABLE)
+					else if (ent->client->ps.saber[0].type == SABER_UNSTABLE || ent->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN)
 					{
 						handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*hip_fr");
 					}
-					else if (ent->client->ps.saber[0].type == SABER_OBIWAN)
+					else if (ent->client->ps.saber[0].type == SABER_SINGLE_OBIWAN)
 					{
 						if (com_outcast && com_outcast->integer == 10) //jko version
 						{
@@ -1754,6 +1750,7 @@ static void WP_SaberBlockSound(const gentity_t* ent, const int saberNum, const i
 		return;
 	}
 	const int index = Q_irand(1, 90);
+	const int classicindex = Q_irand(1, 30);
 
 	if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
 		&& ent->client->ps.saber[saberNum].blockSound[0])
@@ -1767,7 +1764,14 @@ static void WP_SaberBlockSound(const gentity_t* ent, const int saberNum, const i
 	}
 	else
 	{
-		G_Sound(ent, G_SoundIndex(va("sound/weapons/saber/saberblock%d.mp3", index)));
+		if (ent->client->ps.saber[0].type == SABER_SINGLE_CLASSIC || ent->client->ps.saber[0].type == SABER_SINGLE_LUKE)
+		{
+			G_Sound(ent, G_SoundIndex(va("sound/weapons/saber/classicblock%d.mp3", classicindex)));
+		}
+		else
+		{
+			G_Sound(ent, G_SoundIndex(va("sound/weapons/saber/saberblock%d.mp3", index)));
+		}
 	}
 }
 
@@ -1802,6 +1806,7 @@ static void wp_saber_bounce_on_wall_sound(const gentity_t* ent, const int saberN
 		return;
 	}
 	const int index = Q_irand(1, 90);
+	const int classicindex = Q_irand(1, 30);
 
 	if (!WP_SaberBladeUseSecondBladeStyle(&ent->client->ps.saber[saberNum], bladeNum)
 		&& ent->client->ps.saber[saberNum].bounceSound[0])
@@ -1825,7 +1830,14 @@ static void wp_saber_bounce_on_wall_sound(const gentity_t* ent, const int saberN
 	}
 	else
 	{
-		G_Sound(ent, G_SoundIndex(va("sound/weapons/saber/saberblock%d.mp3", index)));
+		if (ent->client->ps.saber[0].type == SABER_SINGLE_CLASSIC || ent->client->ps.saber[0].type == SABER_SINGLE_LUKE)
+		{
+			G_Sound(ent, G_SoundIndex(va("sound/weapons/saber/classicblock%d.mp3", classicindex)));
+		}
+		else
+		{
+			G_Sound(ent, G_SoundIndex(va("sound/weapons/saber/saberblock%d.mp3", index)));
+		}
 	}
 }
 
@@ -15549,7 +15561,7 @@ void WP_ResistForcePush(gentity_t* self, const gentity_t* pusher, const qboolean
 	{
 		NPC_SetAnim(self, parts, BOTH_RESISTPUSH, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 	}
-	else if (self->client->ps.saber[0].type == SABER_YODA)
+	else if (self->client->ps.saber[0].type == SABER_SINGLE_YODA)
 	{
 		NPC_SetAnim(self, parts, BOTH_YODA_RESISTFORCE, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 	}
@@ -16496,18 +16508,19 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 				sound_index = G_SoundIndex("sound/weapons/force/pushhard.mp3");
 			}
 		}
-		else if (self->client->ps.saber[0].type == SABER_YODA) //saber yoda
+		else if (self->client->ps.saber[0].type == SABER_SINGLE_YODA) //saber yoda
 		{
 			sound_index = G_SoundIndex("sound/weapons/force/pushyoda.mp3");
 		}
 		else if (self->client->ps.saber[0].type == SABER_UNSTABLE //saber kylo
+			|| self->client->ps.saber[0].type == SABER_SINGLE_KYLO_REN
 			|| self->client->ps.saber[0].type == SABER_STAFF_UNSTABLE
 			|| self->client->ps.saber[0].type == SABER_STAFF_MAUL
-			|| self->client->ps.saber[0].type == SABER_BACKHAND
-			|| self->client->ps.saber[0].type == SABER_ASBACKHAND
-			|| self->client->ps.saber[0].type == SABER_ANAKIN
-			|| self->client->ps.saber[0].type == SABER_PALP
-			|| self->client->ps.saber[0].type == SABER_DOOKU) //saber yoda
+			|| self->client->ps.saber[0].type == SABER_SINGLE_BACKHAND
+			|| self->client->ps.saber[0].type == SABER_SINGLE_ASBACKHAND
+			|| self->client->ps.saber[0].type == SABER_SINGLE_ANAKIN
+			|| self->client->ps.saber[0].type == SABER_SINGLE_PALP
+			|| self->client->ps.saber[0].type == SABER_SINGLE_DOOKU) //saber yoda
 		{
 			sound_index = G_SoundIndex("sound/weapons/force/push.mp3");
 		}

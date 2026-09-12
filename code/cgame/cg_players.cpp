@@ -6407,77 +6407,93 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 		cgi_R_AddRefEntityToScene(ent);
 	}
 
-	if (cent->gent->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(cent->gent))
+	if (!in_camera)
 	{
-		if (cg_SaberInnonblockableAttackWarning.integer == 1 || cg_DebugSaberCombat.integer)
+		if (cent->gent->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(cent->gent))
 		{
-			if (PM_SaberInnonblockableAttack(cent->currentState.torsoAnim) && !(cent->currentState.powerups & 1 << PW_CLOAKED))
+			if (cg_SaberInnonblockableAttackWarning.integer == 1)
 			{
-				ent->renderfx |= RF_RGB_TINT;
-				ent->shaderRGBA[0] = 255;
-				ent->shaderRGBA[1] = ent->shaderRGBA[2] = 0;
-				ent->shaderRGBA[3] = 255;
+				if (PM_SaberInnonblockableAttack(cent->currentState.torsoAnim) && !(cent->currentState.powerups & 1 << PW_CLOAKED))
+				{
+					ent->renderfx |= RF_RGB_TINT;
+					ent->shaderRGBA[0] = 255;
+					ent->shaderRGBA[1] = ent->shaderRGBA[2] = 0;
+					ent->shaderRGBA[3] = 255;
 
-				cgi_R_AddRefEntityToScene(ent);
+					cgi_R_AddRefEntityToScene(ent);
+				}
 			}
 		}
 	}
 
-	if (cent->currentState.number == cg.snap->ps.clientNum && !in_camera)
-	{   // test for saber damage coloring
-		if (cg_IsSaberDoingAttackDamage.integer == 1)
+	if (!in_camera)
+	{
+		if (cent->currentState.number == cg.snap->ps.clientNum)
 		{
-			qboolean doTint = qfalse;
-			qboolean tintBlue = qfalse;
-			qboolean tintRed = qfalse;
+			// test for saber damage coloring
+			if (cg_IsSaberDoingAttackDamage.integer == 1)
+			{
+				qboolean doTint = qfalse;
+				qboolean tintBlue = qfalse;
+				qboolean tintRed = qfalse;
+				qboolean tintGreen = qfalse;
 
-			// 1. Transition damage → BLUE
-			if (PM_SaberInTransitionDamageMove(&cent->gent->client->ps) == qtrue)
-			{
-				doTint = qtrue;
-				tintBlue = qtrue;
-			}
-			else
-			{
-				// 2. Non‑idle damage moves
-				if (PM_SaberInNonIdleDamageMove(&cent->gent->client->ps) == qtrue)
+				// 1. Transition damage
+				if (PM_SaberInTransitionDamageMove(&cent->gent->client->ps) == qtrue)
 				{
-					// 2a. Partial damage window → BLUE
-					if (BG_SaberInPartialDamageMove(cent->gent) == qtrue)
+					doTint = qtrue;
+					tintGreen = qtrue;
+				}
+				else
+				{
+					// 2. Non‑idle damage moves
+					if (PM_SaberInNonIdleDamageMove(&cent->gent->client->ps) == qtrue)
 					{
-						doTint = qtrue;
-						tintBlue = qtrue;
+						// 2a. Partial damage window → BLUE
+						if (BG_SaberInPartialDamageMove(cent->gent) == qtrue)
+						{
+							doTint = qtrue;
+							tintBlue = qtrue;
+						}
+						else
+						{
+							// 2b. Full damage window → RED
+							doTint = qtrue;
+							tintRed = qtrue;
+						}
 					}
-					else
+				}
+
+				// Apply tint if needed
+				if (doTint == qtrue)
+				{
+					ent->renderfx |= RF_RGB_TINT;
+
+					if (tintGreen == qtrue)
 					{
-						// 2b. Full damage window → RED
-						doTint = qtrue;
-						tintRed = qtrue;
+						// GREEN tint
+						ent->shaderRGBA[0] = 0;     // R
+						ent->shaderRGBA[1] = 255;   // G
+						ent->shaderRGBA[2] = 0;     // B
+						ent->shaderRGBA[3] = 255;   // A
 					}
-				}
-			}
+					else if (tintBlue == qtrue)
+					{// BLUE tint (partial damage)
+						ent->shaderRGBA[0] = 0;
+						ent->shaderRGBA[1] = 0;
+						ent->shaderRGBA[2] = 255;
+						ent->shaderRGBA[3] = 255;
+					}
+					else if (tintRed == qtrue)
+					{// RED tint (full damage)
+						ent->shaderRGBA[0] = 255;
+						ent->shaderRGBA[1] = 0;
+						ent->shaderRGBA[2] = 0;
+						ent->shaderRGBA[3] = 255;
+					}
 
-			// Apply tint if needed
-			if (doTint == qtrue)
-			{
-				ent->renderfx |= RF_RGB_TINT;
-
-				if (tintBlue == qtrue)
-				{
-					ent->shaderRGBA[0] = 0;     // R
-					ent->shaderRGBA[1] = 0;     // G
-					ent->shaderRGBA[2] = 255;   // B
-					ent->shaderRGBA[3] = 255;   // A (visible)
+					cgi_R_AddRefEntityToScene(ent);
 				}
-				else if (tintRed == qtrue)
-				{
-					ent->shaderRGBA[0] = 255;   // R
-					ent->shaderRGBA[1] = 0;     // G
-					ent->shaderRGBA[2] = 0;     // B
-					ent->shaderRGBA[3] = 255;   // A (visible)
-				}
-
-				cgi_R_AddRefEntityToScene(ent);
 			}
 		}
 	}
@@ -12588,33 +12604,47 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 		switch (cent->gent->client->ps.saber[saberNum].type)
 		{
 		case SABER_SINGLE:
-		case SABER_SINGLE_SMASH:
 		case SABER_DAGGER:
 		case SABER_LANCE:
+			// custom Added sabers for specific animations
+		case SABER_SINGLE_ANAKIN:
+		case SABER_SINGLE_KENOBI:
+		case SABER_SINGLE_KESTIS:
+		case SABER_SINGLE_DARKFORCES:
+		case SABER_SINGLE_DOOKU:
+		case SABER_SINGLE_GALEN:
+		case SABER_SINGLE_QUIGON:
+		case SABER_DUAL_GRIE:
+		case SABER_DUAL_GRIE4:
+		case SABER_SINGLE_KOTOR:
+		case SABER_SINGLE_LUKE:
+		case SABER_SINGLE_WINDU:
+		case SABER_SINGLE_MAUL:
+		case SABER_SINGLE_MOVIEDUELS:
+		case SABER_SINGLE_OBIWAN:
+		case SABER_SINGLE_PALP:
+		case SABER_SINGLE_KYLO_REN:
+		case SABER_SINGLE_REY:
+		case SABER_SINGLE_VADER:
+		case SABER_SINGLE_YODA:
+			// custom added sabers for specific models
+		case SABER_SINGLE_BACKHAND:
+		case SABER_SINGLE_ASBACKHAND:
+			//Misc added sabers
+		case SABER_SINGLE_CLASSIC:
 		case SABER_UNSTABLE:
 		case SABER_THIN:
 		case SABER_SFX:
 		case SABER_CUSTOMSFX:
-		case SABER_YODA:
-		case SABER_DOOKU:
-		case SABER_BACKHAND:
-		case SABER_PALP:
-		case SABER_ANAKIN:
-		case SABER_GRIE:
-		case SABER_GRIE4:
-		case SABER_OBIWAN:
-		case SABER_ASBACKHAND:
-		case SABER_WINDU:
-		case SABER_VADER:
-		case SABER_KENOBI:
-		case SABER_REY:
 			break;
 		case SABER_STAFF:
+			// custom added sabers for specific models
+		case SABER_STAFF_MAUL:
+		case SABER_STAFF_ELECTROSTAFF:
+			//Misc added sabers
 		case SABER_STAFF_UNSTABLE:
 		case SABER_STAFF_THIN:
 		case SABER_STAFF_SFX:
-		case SABER_STAFF_MAUL:
-		case SABER_ELECTROSTAFF:
 			if (bladeNum == 1)
 			{
 				VectorScale(axis[0], -1, axis[0]);
@@ -13152,7 +13182,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						}
 						else if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE
 							|| cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE
-							|| cent->gent->client->ps.saber[saberNum].type == SABER_ELECTROSTAFF)
+							|| cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF
+							|| cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 						{
 							fx->mShader = cgs.media.unstableBlurShader;
 							duration = saber_trail->duration / (PM_InKataAnim(cg.snap->ps.torsoAnim) ? 20.0f : 5.0f);
@@ -13242,7 +13273,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 
 		if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
 			cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
-			cent->gent->client->ps.saber[saberNum].type == SABER_ELECTROSTAFF)
+			cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+			cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 		{
 			CG_DoSaberUnstable(org, axis[0], length, client->ps.saber[saberNum].blade[bladeNum].lengthMax,
 				client->ps.saber[saberNum].blade[bladeNum].radius,
@@ -13382,7 +13414,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 		{
 			if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
 				cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
-				cent->gent->client->ps.saber[saberNum].type == SABER_ELECTROSTAFF)
+				cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+				cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 			{
 				CG_DoSaberUnstable(org, axis[0], length, client->ps.saber[saberNum].blade[bladeNum].lengthMax,
 					client->ps.saber[saberNum].blade[bladeNum].radius,
@@ -13410,9 +13443,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 			switch (cg_SFXSabers.integer)
 			{
 			case 1:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13454,8 +13488,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13475,9 +13509,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 2:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13519,8 +13554,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13539,9 +13574,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 3:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13583,8 +13619,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13603,9 +13639,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 4:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13647,8 +13684,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13667,9 +13704,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 5:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13711,8 +13749,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13731,9 +13769,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 6:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13775,8 +13814,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13797,9 +13836,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 7:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13841,8 +13881,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,
@@ -13861,9 +13901,10 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 				}
 				break;
 			case 8:
-				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_STAFF_UNSTABLE || cent->gent->client->ps.saber[saberNum].type ==
-						SABER_ELECTROSTAFF)
+				if (cent->gent->client->ps.saber[saberNum].type == SABER_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_UNSTABLE ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_STAFF_ELECTROSTAFF ||
+					cent->gent->client->ps.saber[saberNum].type == SABER_SINGLE_KYLO_REN)
 				{
 					CG_DoTFASaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip, saber_trail->dualbase,
 						client->ps.saber[saberNum].blade[bladeNum].lengthMax,
@@ -13905,8 +13946,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						client->ps.saber[saberNum].blade[bladeNum].color, renderfx,
 						static_cast<qboolean>(no_dlight == qfalse));
 				}
-				else if (cent->gent->client->ps.saber[saberNum].type == SABER_GRIE || cent->gent->client->ps.saber[
-					saberNum].type == SABER_GRIE4)
+				else if (cent->gent->client->ps.saber[saberNum].type == SABER_DUAL_GRIE || cent->gent->client->ps.saber[
+					saberNum].type == SABER_DUAL_GRIE4)
 				{
 					CG_DoBattlefrontSaber(saber_trail->base, saber_trail->tip, saber_trail->dualtip,
 						saber_trail->dualbase,

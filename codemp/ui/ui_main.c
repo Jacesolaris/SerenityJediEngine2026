@@ -273,7 +273,7 @@ models/players/visor/animation.cfg, etc
 
 ======================
 */
-static char UIPAFtext[120000];
+static char UIPAFtext[180000];
 
 int UI_ParseAnimationFile(const char* filename, animation_t* animset, qboolean is_humanoid)
 {
@@ -1578,7 +1578,7 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 10/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------Build date 11/09/2026-----------------------\n"); // build date
 	Com_Printf("---------------------------Build 01------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
@@ -6303,8 +6303,7 @@ static void UI_SiegeSetCvarsForClass(siegeClass_t* scl)
 							!Q_stricmp(buf, "SABER_STAFF_UNSTABLE") ||
 							!Q_stricmp(buf, "SABER_STAFF_SFX") ||
 							!Q_stricmp(buf, "SABER_STAFF_THIN") ||
-							!Q_stricmp(buf, "SABER_STAFF_MAUL") ||
-							!Q_stricmp(buf, "SABER_STAFF_SMASH"))
+							!Q_stricmp(buf, "SABER_STAFF_MAUL"))
 						{
 							Q_strncpyz(saberType, "gfx/hud/w_icon_saberstaff", sizeof saberType);
 						}

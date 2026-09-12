@@ -4441,7 +4441,7 @@ static void WP_SaberBounceOnWallSound(gentity_t* ent, const int saberNum, const 
 	}
 	else
 	{
-		if (ent->client->saber[saberNum].type == SABER_SINGLE_CLASSIC)
+		if (ent->client->saber[saberNum].type == SABER_SINGLE_CLASSIC || ent->client->saber[saberNum].type == SABER_SINGLE_LUKE)
 		{
 			G_Sound(ent, CHAN_AUTO, G_SoundIndex(va("sound/weapons/saber/classicblock%d.mp3", classicindex)));
 		}
@@ -7098,7 +7098,7 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 		saberClashEventParm = 1;
 
 		// Only lock view if one player is in an attack move
-		if (!idle_damage ||	PM_SaberInNonIdleDamageMove(&blocker->client->ps, blocker->localAnimIndex))
+		if (!idle_damage || PM_SaberInNonIdleDamageMove(&blocker->client->ps, blocker->localAnimIndex))
 		{
 			saberClashOther = blocker->s.number;
 		}
@@ -7289,7 +7289,6 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 		{
 			wp_saber_specific_do_hit(self, rSaberNum, rBladeNum, victim, tr.endpos, dmg);
 		}
-
 
 		// If the victim died, prevent saber bounce passthrough
 		if (victim->health <= 0 && !isSmashTorso)

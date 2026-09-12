@@ -3537,18 +3537,18 @@ void Cmd_ToggleSaber_f(gentity_t* ent)
 qboolean G_ValidSaberStyle(const gentity_t* ent, const int saber_style)
 {
 	if (saber_style == SS_MEDIUM
-		&& !(ent->client->saber[0].type == SABER_BACKHAND
-			|| ent->client->saber[0].type == SABER_ASBACKHAND))
+		&& !(ent->client->saber[0].type == SABER_SINGLE_BACKHAND
+			|| ent->client->saber[0].type == SABER_SINGLE_ASBACKHAND))
 	{
 		//SS_YELLOW is the default and always valid
 		return qtrue;
 	}
 
-	if ((ent->client->saber[0].type == SABER_BACKHAND) && (saber_style != SS_STAFF))
+	if ((ent->client->saber[0].type == SABER_SINGLE_BACKHAND) && (saber_style != SS_STAFF))
 	{
 		return qfalse;
 	}
-	if ((ent->client->saber[0].type == SABER_ASBACKHAND) && (saber_style != SS_STAFF))
+	if ((ent->client->saber[0].type == SABER_SINGLE_ASBACKHAND) && (saber_style != SS_STAFF))
 	{
 		return qfalse;
 	}
@@ -3620,12 +3620,12 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 		return;
 	}
 
-	if ((ent->client->saber[0].type == SABER_BACKHAND) && ent->client->ps.fd.saberAnimLevel == SS_STAFF)
+	if ((ent->client->saber[0].type == SABER_SINGLE_BACKHAND) && ent->client->ps.fd.saberAnimLevel == SS_STAFF)
 	{
 		return;
 	}
 
-	if ((ent->client->saber[0].type == SABER_ASBACKHAND) && ent->client->ps.fd.saberAnimLevel == SS_STAFF)
+	if ((ent->client->saber[0].type == SABER_SINGLE_ASBACKHAND) && ent->client->ps.fd.saberAnimLevel == SS_STAFF)
 	{
 		return;
 	}
@@ -3635,7 +3635,7 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 		return;
 	}
 
-	if ((ent->client->saber[0].type == SABER_ELECTROSTAFF) && ent->client->ps.fd.saberAnimLevel == SS_STAFF)
+	if ((ent->client->saber[0].type == SABER_STAFF_ELECTROSTAFF) && ent->client->ps.fd.saberAnimLevel == SS_STAFF)
 	{
 		return;
 	}
@@ -3788,11 +3788,11 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 		{
 			if (select_level > SS_TAVION)
 			{
-				if ((ent->client->saber[0].type == SABER_BACKHAND))
+				if ((ent->client->saber[0].type == SABER_SINGLE_BACKHAND))
 				{
 					select_level = SS_STAFF;
 				}
-				else if ((ent->client->saber[0].type == SABER_ASBACKHAND))
+				else if ((ent->client->saber[0].type == SABER_SINGLE_ASBACKHAND))
 				{
 					select_level = SS_STAFF;
 				}
