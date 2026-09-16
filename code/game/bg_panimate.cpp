@@ -2932,9 +2932,9 @@ static qboolean PM_CheckEnemyInBack(const float backCheckDist)
 	}
 	trace_t trace;
 	vec3_t end, fwd;
-	const vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+	const vec3_t fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 
-	AngleVectors(fwd_angles, fwd, nullptr, nullptr);
+	AngleVectors(fwdAngles, fwd, nullptr, nullptr);
 	VectorMA(pm->ps->origin, -backCheckDist, fwd, end);
 
 	pm->trace(&trace, pm->ps->origin, vec3_origin, vec3_origin, end, pm->ps->clientNum, CONTENTS_SOLID | CONTENTS_BODY,
@@ -3379,7 +3379,7 @@ qboolean PM_InSecondaryStyle()
 
 saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 {
-	vec3_t fwd_angles, jumpFwd;
+	vec3_t fwdAngles, jumpFwd;
 
 	if (in_camera)
 	{
@@ -3454,10 +3454,10 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 		return LS_SPINATTACK;
 		break;
 	case SS_TAVION:
-		VectorCopy(pm->ps->viewangles, fwd_angles);
-		fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
+		VectorCopy(pm->ps->viewangles, fwdAngles);
+		fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
 		//do the lunge
-		AngleVectors(fwd_angles, jumpFwd, nullptr, nullptr);
+		AngleVectors(fwdAngles, jumpFwd, nullptr, nullptr);
 		VectorScale(jumpFwd, 150, pm->ps->velocity);
 		pm->ps->velocity[2] = 50;
 		PM_AddEvent(EV_JUMP);
@@ -3472,10 +3472,10 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 		}
 		break;
 	case SS_FAST:
-		VectorCopy(pm->ps->viewangles, fwd_angles);
-		fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
+		VectorCopy(pm->ps->viewangles, fwdAngles);
+		fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
 		//do the lunge
-		AngleVectors(fwd_angles, jumpFwd, nullptr, nullptr);
+		AngleVectors(fwdAngles, jumpFwd, nullptr, nullptr);
 		VectorScale(jumpFwd, 150, pm->ps->velocity);
 		pm->ps->velocity[2] = 50;
 		PM_AddEvent(EV_JUMP);
@@ -3485,10 +3485,10 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 	case SS_DESANN:
 		if (fallback_to_normal_lunge)
 		{
-			VectorCopy(pm->ps->viewangles, fwd_angles);
-			fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
+			VectorCopy(pm->ps->viewangles, fwdAngles);
+			fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
 			//do the lunge
-			AngleVectors(fwd_angles, jumpFwd, nullptr, nullptr);
+			AngleVectors(fwdAngles, jumpFwd, nullptr, nullptr);
 			VectorScale(jumpFwd, 150, pm->ps->velocity);
 			pm->ps->velocity[2] = 50;
 			PM_AddEvent(EV_JUMP);
@@ -3502,10 +3502,10 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 	default: //normal lunge
 		if (fallback_to_normal_lunge)
 		{
-			VectorCopy(pm->ps->viewangles, fwd_angles);
-			fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
+			VectorCopy(pm->ps->viewangles, fwdAngles);
+			fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
 			//do the lunge
-			AngleVectors(fwd_angles, jumpFwd, nullptr, nullptr);
+			AngleVectors(fwdAngles, jumpFwd, nullptr, nullptr);
 			VectorScale(jumpFwd, 150, pm->ps->velocity);
 			pm->ps->velocity[2] = 50;
 			PM_AddEvent(EV_JUMP);
@@ -3683,11 +3683,11 @@ saberMoveName_t PM_SaberJumpForwardAttackMove()
 		}
 		return LS_JUMPATTACK_DUAL;
 	}
-	vec3_t fwd_angles, jump_fwd;
+	vec3_t fwdAngles, jump_fwd;
 
-	VectorCopy(pm->ps->viewangles, fwd_angles);
-	fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
-	AngleVectors(fwd_angles, jump_fwd, nullptr, nullptr);
+	VectorCopy(pm->ps->viewangles, fwdAngles);
+	fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
+	AngleVectors(fwdAngles, jump_fwd, nullptr, nullptr);
 	VectorScale(jump_fwd, 200, pm->ps->velocity);
 	pm->ps->velocity[2] = 180;
 	pm->ps->forceJumpZStart = pm->ps->origin[2]; //so we don't take damage if we land at same height
@@ -3717,7 +3717,7 @@ saberMoveName_t PM_SaberJumpForwardAttackMove()
 
 saberMoveName_t PM_NPC_Force_Leap_Attack()
 {
-	vec3_t fwd_angles, jump_fwd;
+	vec3_t fwdAngles, jump_fwd;
 
 	// see if we have an overridden (or cancelled) kata move
 	if (pm->ps->saber[0].jumpAtkFwdMove != LS_INVALID)
@@ -3772,9 +3772,9 @@ saberMoveName_t PM_NPC_Force_Leap_Attack()
 		pm->ps->saberAnimLevel == SS_TAVION ||
 		pm->ps->saberAnimLevel == SS_MEDIUM)
 	{
-		VectorCopy(pm->ps->viewangles, fwd_angles);
-		fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
-		AngleVectors(fwd_angles, jump_fwd, nullptr, nullptr);
+		VectorCopy(pm->ps->viewangles, fwdAngles);
+		fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
+		AngleVectors(fwdAngles, jump_fwd, nullptr, nullptr);
 		VectorScale(jump_fwd, 150, pm->ps->velocity);
 		pm->ps->velocity[2] = 250;
 
@@ -3841,9 +3841,9 @@ saberMoveName_t PM_NPC_Force_Leap_Attack()
 	}
 	else
 	{
-		VectorCopy(pm->ps->viewangles, fwd_angles);
-		fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
-		AngleVectors(fwd_angles, jump_fwd, nullptr, nullptr);
+		VectorCopy(pm->ps->viewangles, fwdAngles);
+		fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
+		AngleVectors(fwdAngles, jump_fwd, nullptr, nullptr);
 		VectorScale(jump_fwd, 150, pm->ps->velocity);
 		pm->ps->velocity[2] = 180;
 		pm->ps->forceJumpZStart = pm->ps->origin[2]; // so we don't take damage if we land at same height
@@ -4059,11 +4059,11 @@ saberMoveName_t PM_SaberFlipOverAttackMove()
 		return LS_NONE;
 	}
 
-	vec3_t fwd_angles, jumpFwd;
+	vec3_t fwdAngles, jumpFwd;
 
-	VectorCopy(pm->ps->viewangles, fwd_angles);
-	fwd_angles[PITCH] = fwd_angles[ROLL] = 0;
-	AngleVectors(fwd_angles, jumpFwd, nullptr, nullptr);
+	VectorCopy(pm->ps->viewangles, fwdAngles);
+	fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
+	AngleVectors(fwdAngles, jumpFwd, nullptr, nullptr);
 
 	// Forward velocity
 	if (pm->ps->saberAnimLevel == SS_FAST || pm->ps->saberAnimLevel == SS_TAVION)
@@ -4234,13 +4234,13 @@ qboolean PM_CheckFlipOverAttackMove(const qboolean checkEnemy)
 			//based on presence of enemy
 			if (pm->gent->enemy) //have an enemy
 			{
-				vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+				vec3_t fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 				if (pm->gent->enemy->health > 0
 					&& pm->ps->forceRageRecoveryTime < pm->cmd.serverTime //not in a force Rage recovery period
 					&& pm->gent->enemy->maxs[2] > 12
 					&& (!pm->gent->enemy->client || !PM_InKnockDownOnGround(&pm->gent->enemy->client->ps))
 					&& DistanceSquared(pm->gent->currentOrigin, pm->gent->enemy->currentOrigin) < 10000
-					&& InFront(pm->gent->enemy->currentOrigin, pm->gent->currentOrigin, fwd_angles, 0.3f))
+					&& InFront(pm->gent->enemy->currentOrigin, pm->gent->currentOrigin, fwdAngles, 0.3f))
 				{
 					//enemy must be alive, not low to ground, close and in front
 					return qtrue;
@@ -4879,7 +4879,7 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 		{
 			//cartwheel right
 			vec3_t right;
-			const vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+			const vec3_t fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 			if (pm->gent)
 			{
 				G_DrainPowerForSpecialMove(pm->gent, FP_LEVITATION, SABER_ALT_ATTACK_POWER_LR);
@@ -4893,7 +4893,7 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 			}
 			if (pm->ps->saberAnimLevel == SS_STAFF)
 			{
-				AngleVectors(fwd_angles, nullptr, right, nullptr);
+				AngleVectors(fwdAngles, nullptr, right, nullptr);
 				pm->ps->velocity[0] = pm->ps->velocity[1] = 0;
 				VectorMA(pm->ps->velocity, 190, right, pm->ps->velocity);
 				return LS_BUTTERFLY_RIGHT;
@@ -4902,7 +4902,7 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 				&& (!pm->ps->dualSabers || !(pm->ps->saber[1].saberFlags & SFL_NO_CARTWHEELS)))
 			{
 				//okay to do cartwheels with this saber
-				AngleVectors(fwd_angles, nullptr, right, nullptr);
+				AngleVectors(fwdAngles, nullptr, right, nullptr);
 				pm->ps->velocity[0] = pm->ps->velocity[1] = 0;
 				VectorMA(pm->ps->velocity, 190, right, pm->ps->velocity);
 				PM_SetJumped(JUMP_VELOCITY, qtrue);
@@ -4949,7 +4949,7 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 		{
 			//cartwheel left
 			vec3_t right;
-			const vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+			const vec3_t fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 			if (pm->gent)
 			{
 				G_DrainPowerForSpecialMove(pm->gent, FP_LEVITATION, SABER_ALT_ATTACK_POWER_LR);
@@ -4962,7 +4962,7 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 			}
 			if (pm->ps->saberAnimLevel == SS_STAFF)
 			{
-				AngleVectors(fwd_angles, nullptr, right, nullptr);
+				AngleVectors(fwdAngles, nullptr, right, nullptr);
 				pm->ps->velocity[0] = pm->ps->velocity[1] = 0;
 				VectorMA(pm->ps->velocity, -190, right, pm->ps->velocity);
 				return LS_BUTTERFLY_LEFT;
@@ -4971,7 +4971,7 @@ saberMoveName_t PM_SaberAttackForMovement(const int forwardmove, const int right
 				&& (!pm->ps->dualSabers || !(pm->ps->saber[1].saberFlags & SFL_NO_CARTWHEELS)))
 			{
 				//okay to do cartwheels with this saber
-				AngleVectors(fwd_angles, nullptr, right, nullptr);
+				AngleVectors(fwdAngles, nullptr, right, nullptr);
 				pm->ps->velocity[0] = pm->ps->velocity[1] = 0;
 				VectorMA(pm->ps->velocity, -190, right, pm->ps->velocity);
 				PM_SetJumped(JUMP_VELOCITY, qtrue);
@@ -10448,6 +10448,23 @@ qboolean PM_SaberInKata(const saberMoveName_t saberMove)
 	case LS_SMASHDOWN_SINGLE:
 	case LS_SMASHDOWN_STAFF:
 	case LS_SMASHDOWN_DUAL:
+		return qtrue;
+	default:
+		break;
+	}
+	return qfalse;
+}
+
+qboolean PM_SaberInSmashdown(const saberMoveName_t saberMove)
+{
+	switch (saberMove)
+	{
+		//case LS_STABDOWN_WINDU:
+			///////////////////////////////////////////
+	case LS_SMASHDOWN_DUAL:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+		//////////////////////////////////////////
 		return qtrue;
 	default:
 		break;

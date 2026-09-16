@@ -4289,3 +4289,47 @@ void AngleClamp(vec3_t ang)
 	if (Q_isnan(ang[PITCH])) ang[PITCH] = 0;
 	if (Q_isnan(ang[ROLL]))  ang[ROLL] = 0;
 }
+
+/*
+=============
+G_NewString
+
+Builds a copy of the string, translating \n to real linefeeds
+so message texts can be multi-line
+=============
+*/
+
+char* G_NewString(const char* string)
+{
+	if (string == NULL)
+	{
+		Com_Printf("G_NewString: NULL input string\n");
+		return NULL;
+	}
+
+	const int len = strlen(string) + 1;
+	char* newb = (char*)BG_Alloc(len);
+	char* out_p = newb;
+
+	for (int i = 0; i < len; i++)
+	{
+		if (string[i] == '\\' && i < len - 1)
+		{
+			if (string[i + 1] == 'n')
+			{
+				*out_p++ = '\n';
+				i++;
+			}
+			else
+			{
+				*out_p++ = '\\';
+			}
+		}
+		else
+		{
+			*out_p++ = string[i];
+		}
+	}
+
+	return newb;
+}

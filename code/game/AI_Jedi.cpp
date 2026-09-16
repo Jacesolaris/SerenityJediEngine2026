@@ -4410,12 +4410,12 @@ static evasionType_t jedi_check_flip_evasions(gentity_t* self, const float right
 		(self->NPC->rank == RANK_CREWMAN || self->NPC->rank >= RANK_LT))
 	{
 		vec3_t fwd, right, traceto;
-		const vec3_t fwd_angles = { 0, self->client->ps.viewangles[YAW], 0 };
+		const vec3_t fwdAngles = { 0, self->client->ps.viewangles[YAW], 0 };
 		const vec3_t maxs = { self->maxs[0], self->maxs[1], 24.0f };
 		const vec3_t mins = { self->mins[0], self->mins[1], self->mins[2] + STEPSIZE };
 		trace_t trace;
 
-		AngleVectors(fwd_angles, fwd, right, nullptr);
+		AngleVectors(fwdAngles, fwd, right, nullptr);
 
 		int parts = SETANIM_BOTH;
 		int anim;

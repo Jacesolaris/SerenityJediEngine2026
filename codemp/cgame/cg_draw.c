@@ -5743,15 +5743,15 @@ static float cg_draw_radar(float y)
 					float new_dist;
 					for (predict_time = timeStep; predict_time < 5000; predict_time += timeStep)
 					{
-						vec3_t move_dir;
+						vec3_t moveDir;
 						vec3_t my_pos;
 						vec3_t asteroid_pos;
 						//asteroid dir, speed, size, + my dir & speed...
 						BG_EvaluateTrajectory(&cent->currentState.pos, cg.time + predict_time, asteroid_pos);
 						//FIXME: I don't think it's calcing "myPos" correctly
-						AngleVectors(cg.predictedVehicleState.viewangles, move_dir, NULL, NULL);
+						AngleVectors(cg.predictedVehicleState.viewangles, moveDir, NULL, NULL);
 						VectorMA(cg.predictedVehicleState.origin,
-							cg.predictedVehicleState.speed * predict_time / 1000.0f, move_dir, my_pos);
+							cg.predictedVehicleState.speed * predict_time / 1000.0f, moveDir, my_pos);
 						new_dist = Distance(my_pos, asteroid_pos);
 						if (new_dist - cent->currentState.speed <= RADAR_MIN_ASTEROID_SURF_WARN_DIST) //200.0f )
 						{

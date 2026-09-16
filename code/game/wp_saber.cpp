@@ -18977,7 +18977,7 @@ int IsPressingKickButton(const gentity_t* self)
 {
 	if (!(self->client->buttons & BUTTON_DASH)
 		&& self->client->NPC_class != CLASS_DROIDEKA
-		&& (self->client->buttons & BUTTON_KICK && self->client->ps.pm_flags & PMF_KICK_HELD))
+		&& (self->client->buttons & BUTTON_KICK))
 	{
 		return qtrue;
 	}
@@ -30647,10 +30647,6 @@ qboolean BG_SaberInPartialDamageMove(gentity_t* self)
 	}
 
 	const float percent_complete = (current - (float)start) / (float)(end - start);
-
-#ifndef _DEBUG
-	gi.Printf("%f\n", percent_complete);
-#endif
 
 	switch (self->client->ps.torsoAnim)
 	{

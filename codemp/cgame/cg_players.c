@@ -2867,7 +2867,7 @@ static void CG_PlayerAnimEvents(const int animFileIndex, const int eventFileInde
 			old_anim = cg_entities[entNum].currentState.legsAnim;
 			anim = cg_entities[entNum].nextState.legsAnim;
 		}
-		if (anim != old_anim)
+		if (anim < 0 || anim != old_anim)
 		{
 			//not in same anim
 			in_same_anim = qfalse;

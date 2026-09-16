@@ -4729,7 +4729,7 @@ static void DoNormalDodge(gentity_t* self, const int dodge_anim)
 static qboolean DodgeRollCheck(const gentity_t* self, const int dodge_anim, vec3_t forward, vec3_t right)
 {
 	//checks to see if there's a cliff in the direction that dodgeAnim would travel.
-	vec3_t mins = { 0 }, maxs = { 0 }, traceto_mod, tracefrom_mod, move_dir;
+	vec3_t mins = { 0 }, maxs = { 0 }, traceto_mod, tracefrom_mod, moveDir;
 	trace_t tr;
 	int dodge_distance = 200; //how far away do we do the scans.
 
@@ -4738,13 +4738,13 @@ static qboolean DodgeRollCheck(const gentity_t* self, const int dodge_anim, vec3
 		BOTH_HOP_F)
 	{
 		//forward rolls
-		VectorCopy(forward, move_dir);
+		VectorCopy(forward, moveDir);
 	}
 	else if (dodge_anim == BOTH_ROLL_B || dodge_anim == BOTH_HOP_B)
 	{
 		//backward rolls
-		VectorCopy(forward, move_dir);
-		VectorScale(move_dir, -1, move_dir);
+		VectorCopy(forward, moveDir);
+		VectorScale(moveDir, -1, moveDir);
 	}
 	else if (dodge_anim == BOTH_GETUP_BROLL_R
 		|| dodge_anim == BOTH_GETUP_FROLL_R
@@ -4752,7 +4752,7 @@ static qboolean DodgeRollCheck(const gentity_t* self, const int dodge_anim, vec3
 		|| dodge_anim == BOTH_HOP_R)
 	{
 		//right rolls
-		VectorCopy(right, move_dir);
+		VectorCopy(right, moveDir);
 	}
 	else if (dodge_anim == BOTH_GETUP_BROLL_L
 		|| dodge_anim == BOTH_GETUP_FROLL_L
@@ -4760,8 +4760,8 @@ static qboolean DodgeRollCheck(const gentity_t* self, const int dodge_anim, vec3
 		|| dodge_anim == BOTH_HOP_L)
 	{
 		//left rolls
-		VectorCopy(right, move_dir);
-		VectorScale(move_dir, -1, move_dir);
+		VectorCopy(right, moveDir);
+		VectorScale(moveDir, -1, moveDir);
 	}
 	else
 	{
@@ -4776,7 +4776,7 @@ static qboolean DodgeRollCheck(const gentity_t* self, const int dodge_anim, vec3
 
 	//set up the trace positions
 	VectorCopy(self->client->ps.origin, tracefrom_mod);
-	VectorMA(tracefrom_mod, dodge_distance, move_dir, traceto_mod);
+	VectorMA(tracefrom_mod, dodge_distance, moveDir, traceto_mod);
 
 	mins[0] = -15;
 	mins[1] = -15;

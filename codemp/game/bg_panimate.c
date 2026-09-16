@@ -529,6 +529,23 @@ qboolean PM_SaberInKata(const saberMoveName_t saberMove)
 	return qfalse;
 }
 
+qboolean PM_SaberInSmashdown(const saberMoveName_t saberMove)
+{
+	switch (saberMove)
+	{
+		//case LS_STABDOWN_WINDU:
+			///////////////////////////////////////////
+	case LS_SMASHDOWN_DUAL:
+	case LS_SMASHDOWN_SINGLE:
+	case LS_SMASHDOWN_STAFF:
+		//////////////////////////////////////////
+		return qtrue;
+	default:
+		break;
+	}
+	return qfalse;
+}
+
 qboolean PM_SaberInOverHeadSlash(const saberMoveName_t saberMove)
 {
 	switch (saberMove)
@@ -4918,8 +4935,7 @@ int CheckAnimFrameForEventType(const animevent_t* anim_events, const int key_fra
 	return -1;
 }
 
-static void ParseAnimationEvtBlock(const char* aeb_filename, animevent_t* anim_events, const animation_t* animations,
-	const char** text_p)
+static void ParseAnimationEvtBlock(const char* aeb_filename, animevent_t* anim_events, const animation_t* animations,const char** text_p)
 {
 	const char* token;
 	int num, n, lowest_val, highest_val, cur_anim_event, last_anim_event = 0;

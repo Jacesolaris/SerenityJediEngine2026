@@ -166,6 +166,7 @@ extern cvar_t* g_noIgniteTwirl;
 extern void TurnBarrierOff(gentity_t* ent);
 extern cvar_t* g_HitTracking;
 extern void PM_RemoveGunnerAimFlag(qboolean removeFlag);
+extern qboolean PM_SaberInSmashdown(saberMoveName_t saberMove);
 
 int PM_BlockingPoseForsaber_anim_levelDual(void);
 int PM_BlockingPoseForsaber_anim_levelStaff(void);
@@ -428,10 +429,10 @@ qboolean PM_CheckGrabWall(const trace_t* trace)
 			return qfalse;
 		}
 		//hit a flat wall during our long jump, see if we should grab it
-		vec3_t move_dir;
-		VectorCopy(pm->ps->velocity, move_dir);
-		VectorNormalize(move_dir);
-		if (DotProduct(move_dir, trace->plane.normal) > -0.65f)
+		vec3_t moveDir;
+		VectorCopy(pm->ps->velocity, moveDir);
+		VectorNormalize(moveDir);
+		if (DotProduct(moveDir, trace->plane.normal) > -0.65f)
 		{
 			//not enough of a direct impact, just slide off
 			return qfalse;
@@ -498,10 +499,10 @@ qboolean PM_CheckGrabWall(const trace_t* trace)
 	//FIXME: check for obstructions in the dir we're going to jump
 	//		- including "do not enter" brushes!
 	//hit a flat wall during our long jump, see if we should grab it
-	vec3_t move_dir;
-	VectorCopy(pm->ps->velocity, move_dir);
-	VectorNormalize(move_dir);
-	if (DotProduct(move_dir, trace->plane.normal) > -0.65f)
+	vec3_t moveDir;
+	VectorCopy(pm->ps->velocity, moveDir);
+	VectorNormalize(moveDir);
+	if (DotProduct(moveDir, trace->plane.normal) > -0.65f)
 	{
 		//not enough of a direct impact, just slide off
 		return qfalse;
@@ -2075,12 +2076,12 @@ static qboolean PM_CheckJump()
 			if (anim != -1 && PM_HasAnimation(pm->gent, anim))
 			{
 				vec3_t fwd, right, traceto, mins = { pm->mins[0], pm->mins[1], 0 }, maxs = { pm->maxs[0], pm->maxs[1], 24 },
-					fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+					fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 				trace_t trace;
 				qboolean do_trace = qfalse;
 				int contents = CONTENTS_SOLID;
 
-				AngleVectors(fwd_angles, fwd, right, nullptr);
+				AngleVectors(fwdAngles, fwd, right, nullptr);
 
 				//trace-check for a wall, if necc.
 				switch (anim)
@@ -2407,11 +2408,11 @@ static qboolean PM_CheckJump()
 			{
 				//running on a wall
 				vec3_t right, traceto, mins = { pm->mins[0], pm->mins[0], 0 }, maxs = { pm->maxs[0], pm->maxs[0], 24 },
-					fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+					fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 				trace_t trace;
 				int anim = -1;
 
-				AngleVectors(fwd_angles, nullptr, right, nullptr);
+				AngleVectors(fwdAngles, nullptr, right, nullptr);
 
 				if (legs_anim == BOTH_WALL_RUN_LEFT)
 				{
@@ -2475,11 +2476,11 @@ static qboolean PM_CheckJump()
 			{
 				//want to jump off wall
 				vec3_t fwd, traceto, mins = { pm->mins[0], pm->mins[0], 0 }, maxs = { pm->maxs[0], pm->maxs[0], 24 },
-					fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+					fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 				trace_t trace;
 				int anim = -1;
 
-				AngleVectors(fwd_angles, fwd, nullptr, nullptr);
+				AngleVectors(fwdAngles, fwd, nullptr, nullptr);
 
 				float anim_len = PM_AnimLength(pm->gent->client->clientInfo.animFileIndex, BOTH_FORCEWALLRUNFLIP_START);
 				if (pm->ps->legsAnimTimer < anim_len - 250) //was 400
@@ -2542,7 +2543,7 @@ static qboolean PM_CheckJump()
 					//okay to do wall-grabs with this saber
 					vec3_t check_dir, mins = { pm->mins[0], pm->mins[1], 0 }, maxs = {
 							   pm->maxs[0], pm->maxs[1], 24
-					}, fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+					}, fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 					trace_t trace;
 					int anim = -1;
 
@@ -2551,24 +2552,24 @@ static qboolean PM_CheckJump()
 						if (pm->cmd.rightmove > 0)
 						{
 							anim = BOTH_FORCEWALLREBOUND_RIGHT;
-							AngleVectors(fwd_angles, nullptr, check_dir, nullptr);
+							AngleVectors(fwdAngles, nullptr, check_dir, nullptr);
 						}
 						else if (pm->cmd.rightmove < 0)
 						{
 							anim = BOTH_FORCEWALLREBOUND_LEFT;
-							AngleVectors(fwd_angles, nullptr, check_dir, nullptr);
+							AngleVectors(fwdAngles, nullptr, check_dir, nullptr);
 							VectorScale(check_dir, -1, check_dir);
 						}
 					}
 					else if (pm->cmd.forwardmove > 0)
 					{
 						anim = BOTH_FORCEWALLREBOUND_FORWARD;
-						AngleVectors(fwd_angles, check_dir, nullptr, nullptr);
+						AngleVectors(fwdAngles, check_dir, nullptr, nullptr);
 					}
 					else if (pm->cmd.forwardmove < 0)
 					{
 						anim = BOTH_FORCEWALLREBOUND_BACK;
-						AngleVectors(fwd_angles, check_dir, nullptr, nullptr);
+						AngleVectors(fwdAngles, check_dir, nullptr, nullptr);
 						VectorScale(check_dir, -1, check_dir);
 					}
 					if (anim != -1)
@@ -4312,13 +4313,13 @@ static qboolean PM_TryRoll()
 	}
 
 	vec3_t fwd, right, traceto;
-	const vec3_t fwd_angles = { 0, pm->ps->viewangles[YAW], 0 };
+	const vec3_t fwdAngles = { 0, pm->ps->viewangles[YAW], 0 };
 	const vec3_t maxs = { pm->maxs[0], pm->maxs[1], static_cast<float>(pm->gent->client->crouchheight) };
 	const vec3_t mins = { pm->mins[0], pm->mins[1], pm->mins[2] + STEPSIZE };
 	trace_t trace;
 	int anim = -1;
 
-	AngleVectors(fwd_angles, fwd, right, nullptr);
+	AngleVectors(fwdAngles, fwd, right, nullptr);
 
 	gentity_t* npc = &g_entities[pm->ps->clientNum];
 
@@ -5572,18 +5573,18 @@ static void PM_GroundTraceMissed()
 									}
 									else
 									{
-										vec3_t move_dir, look_angles, look_dir, look_right;
+										vec3_t moveDir, look_angles, look_dir, look_right;
 										int anim;
 
-										VectorCopy(pm->ps->velocity, move_dir);
-										move_dir[2] = 0;
-										VectorNormalize(move_dir);
+										VectorCopy(pm->ps->velocity, moveDir);
+										moveDir[2] = 0;
+										VectorNormalize(moveDir);
 
 										VectorCopy(pm->ps->viewangles, look_angles);
 										look_angles[PITCH] = look_angles[ROLL] = 0;
 										AngleVectors(look_angles, look_dir, look_right, nullptr);
 
-										float dot = DotProduct(move_dir, look_dir);
+										float dot = DotProduct(moveDir, look_dir);
 										if (dot > 0.5)
 										{
 											//redundant
@@ -5595,7 +5596,7 @@ static void PM_GroundTraceMissed()
 										}
 										else
 										{
-											dot = DotProduct(move_dir, look_right);
+											dot = DotProduct(moveDir, look_right);
 											if (dot > 0.5)
 											{
 												anim = BOTH_INAIRRIGHT1;
@@ -17242,10 +17243,10 @@ static void PM_KataAnimationStyle(void)
 		return;
 	}
 
-	const int saberOffenseLevel = pm->ps->forcePowerLevel[FP_SABER_OFFENSE];
+	const int saberOffenseLevel = pm->ps->forcePowerLevel[FP_PUSH];
 	const int forceCurrent = pm->ps->forcePower;
 	const int forceMax = pm->ps->forcePowerMax;
-	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.95f)) ? qtrue : qfalse;
+	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.99f)) ? qtrue : qfalse;
 	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
 
 	saberMoveName_t overrideMove = LS_INVALID;
@@ -17433,9 +17434,16 @@ static void PM_KataAnimationStyle(void)
 		}
 		pm->ps->weaponstate = WEAPON_FIRING;
 
-		if (pm->gent)
+		if (pm->ps)
 		{
-			G_DrainPowerForSpecialMove(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER, qtrue);
+			if (PM_SaberInSmashdown(static_cast<saberMoveName_t>(pm->ps->saberMove)))
+			{
+				G_DrainPowerForSpecialMove(pm->gent, FP_PUSH, SABER_KATA_ATTACK_POWER, qtrue);
+			}
+			else
+			{
+				G_DrainPowerForSpecialMove(pm->gent, FP_PUSH, SABER_ALT_ATTACK_POWER, qfalse);
+			}
 		}
 	}
 	else if (overrideMove != LS_NONE)
@@ -17443,9 +17451,16 @@ static void PM_KataAnimationStyle(void)
 		PM_SetSaberMove(overrideMove);
 		pm->ps->weaponstate = WEAPON_FIRING;
 
-		if (pm->gent)
+		if (pm->ps)
 		{
-			G_DrainPowerForSpecialMove(pm->gent, FP_SABER_OFFENSE, SABER_ALT_ATTACK_POWER, qtrue);
+			if (PM_SaberInSmashdown(static_cast<saberMoveName_t>(pm->ps->saberMove)))
+			{
+				G_DrainPowerForSpecialMove(pm->gent, FP_PUSH, SABER_KATA_ATTACK_POWER, qtrue);
+			}
+			else
+			{
+				G_DrainPowerForSpecialMove(pm->gent, FP_PUSH, SABER_ALT_ATTACK_POWER, qfalse);
+			}
 		}
 	}
 	if (overrideMove != LS_NONE)
@@ -22063,7 +22078,7 @@ static qboolean LedgeGrabableEntity(const int entityNum)
 
 static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 {
-	vec3_t fwd_angles, move_dir;
+	vec3_t fwdAngles, moveDir;
 	const float animationpoint = GetSelfLegAnimPointforLedge();
 
 	switch (anim)
@@ -22075,10 +22090,10 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 	case BOTH_LEDGE_LEFT:
 		if (animationpoint > .333 && animationpoint < .666)
 		{
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, nullptr, move_dir, nullptr);
-			VectorScale(move_dir, -30, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, nullptr, moveDir, nullptr);
+			VectorScale(moveDir, -30, moveDir);
+			VectorCopy(moveDir, ps->velocity);
 		}
 		else
 		{
@@ -22088,10 +22103,10 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 	case BOTH_LEDGE_RIGHT:
 		if (animationpoint > .333 && animationpoint < .666)
 		{
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, nullptr, move_dir, nullptr);
-			VectorScale(move_dir, 30, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, nullptr, moveDir, nullptr);
+			VectorScale(moveDir, 30, moveDir);
+			VectorCopy(moveDir, ps->velocity);
 		}
 		else
 		{
@@ -22099,34 +22114,34 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 		}
 		break;
 	case BOTH_LEDGE_MERCPULL:
-		if (animationpoint > .8 && animationpoint < .925)
+		if (animationpoint > 0.8f && animationpoint < 0.925f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 154;
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, move_dir, nullptr, nullptr);
-			VectorScale(move_dir, 70, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			vec3_t fwdAngles;
+			VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, moveDir, NULL, NULL);  // moveDir is forward (z ≈ 0)
+			VectorScale(moveDir, 70.0f, moveDir);         // small forward nudge (tweak 30.0f)
+			ps->velocity[0] = moveDir[0];
+			ps->velocity[1] = moveDir[1];
+			ps->velocity[2] = 154.0f;                      // keep upward velocity
 		}
-		else if (animationpoint > .7 && animationpoint < .75)
+		else if (animationpoint > .7f && animationpoint < .75f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 26;
+			ps->velocity[0] = 0.0f;
+			ps->velocity[1] = 0.0f;
+			ps->velocity[2] = 26.0f;
 		}
 		else if (animationpoint > .375 && animationpoint < .7)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 140;
+			ps->velocity[0] = 0.0f;
+			ps->velocity[1] = 0.0f;
+			ps->velocity[2] = 140.0f;
 		}
 		else if (animationpoint < .375)
 		{
-			VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwd_angles, nullptr, nullptr, move_dir);
-			VectorScale(move_dir, 140, move_dir);
-			VectorCopy(move_dir, ps->velocity);
+			VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, NULL, NULL, moveDir);
+			VectorScale(moveDir, 200.0f, moveDir);
+			VectorCopy(moveDir, ps->velocity);
 		}
 		else
 		{
@@ -22333,7 +22348,7 @@ static qboolean LedgeTrace(trace_t* trace, vec3_t dir, float* lerpup, float* ler
 //check for ledge grab
 void PM_CheckGrab()
 {
-	vec3_t check_dir, trace_to, fwd_angles;
+	vec3_t check_dir, trace_to, fwdAngles;
 	trace_t trace;
 	float lerpup = 0;
 	float lerpfwd = 0;
@@ -22410,8 +22425,8 @@ void PM_CheckGrab()
 	}
 
 	//try looking in front of us first
-	VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0.0f);
-	AngleVectors(fwd_angles, check_dir, nullptr, nullptr);
+	VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0.0f);
+	AngleVectors(fwdAngles, check_dir, nullptr, nullptr);
 
 	if (!VectorCompare(pm->ps->velocity, vec3_origin))
 	{
@@ -22435,12 +22450,12 @@ void PM_CheckGrab()
 		{
 			if (pm->cmd.rightmove > 0)
 			{
-				AngleVectors(fwd_angles, nullptr, check_dir, nullptr);
+				AngleVectors(fwdAngles, nullptr, check_dir, nullptr);
 				VectorNormalize(check_dir);
 			}
 			else if (pm->cmd.rightmove < 0)
 			{
-				AngleVectors(fwd_angles, nullptr, check_dir, nullptr);
+				AngleVectors(fwdAngles, nullptr, check_dir, nullptr);
 				VectorScale(check_dir, -1, check_dir);
 				VectorNormalize(check_dir);
 			}
@@ -22452,7 +22467,7 @@ void PM_CheckGrab()
 		}
 		else if (pm->cmd.forwardmove < 0)
 		{
-			AngleVectors(fwd_angles, check_dir, nullptr, nullptr);
+			AngleVectors(fwdAngles, check_dir, nullptr, nullptr);
 			VectorScale(check_dir, -1, check_dir);
 			VectorNormalize(check_dir);
 		}
@@ -22497,7 +22512,7 @@ void PM_CheckGrab()
 	{
 		if (PM_IsGunner() == qtrue)
 		{
-			G_SetWeapon(pm->gent, WP_MELEE);
+			G_SetWeapon(pm->gent, WP_NONE);
 			G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/change.wav");
 		}
 	}

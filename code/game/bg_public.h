@@ -738,33 +738,31 @@ using entity_event_t = enum
 class animation_t
 {
 public:
-	unsigned short firstFrame;
-	unsigned short numFrames;
-	short frameLerp; // msec between frames
-	//initial lerp is abs(frameLerp)
-	signed char loopFrames; // 0 to numFrames, -1 = no loop
+	int   firstFrame;   // was unsigned short
+	int   numFrames;    // was unsigned short
+	short frameLerp;    // unchanged, kept in +-32767 and never 0
+	short loopFrames;   // was signed char, now short
 	unsigned char glaIndex;
 
-	void sg_export(
-		ojk::SavedGameHelper& saved_game) const
+	void sg_export(ojk::SavedGameHelper& saved_game) const
 	{
-		saved_game.write<uint16_t>(firstFrame);
-		saved_game.write<uint16_t>(numFrames);
+		saved_game.write<int32_t>(firstFrame);
+		saved_game.write<int32_t>(numFrames);
 		saved_game.write<int16_t>(frameLerp);
-		saved_game.write<int8_t>(loopFrames);
+		saved_game.write<int16_t>(loopFrames);
 		saved_game.write<uint8_t>(glaIndex);
 	}
 
-	void sg_import(
-		ojk::SavedGameHelper& saved_game)
+	void sg_import(ojk::SavedGameHelper& saved_game)
 	{
-		saved_game.read<uint16_t>(firstFrame);
-		saved_game.read<uint16_t>(numFrames);
+		saved_game.read<int32_t>(firstFrame);
+		saved_game.read<int32_t>(numFrames);
 		saved_game.read<int16_t>(frameLerp);
-		saved_game.read<int8_t>(loopFrames);
+		saved_game.read<int16_t>(loopFrames);
 		saved_game.read<uint8_t>(glaIndex);
 	}
-}; // animation_t
+};
+// animation_t
 
 #define MAX_ANIM_FILES	32
 constexpr auto MAX_ANIM_EVENTS = 1200;
@@ -829,36 +827,33 @@ using animEventType_t = enum
 using animevent_t = struct animevent_s
 {
 	animEventType_t eventType;
-	signed short modelOnly; //event is specific to a modelname to skeleton
-	unsigned short glaIndex;
-	unsigned short keyFrame; //Frame to play event on
-	signed short eventData[AED_ARRAY_SIZE];
-	//Unique IDs, can be soundIndex of sound file to play OR effect index or footstep type, etc.
+	signed short    modelOnly;
+	unsigned short  glaIndex;
+	int             keyFrame;   // -1 = unused slot
+	signed short    eventData[AED_ARRAY_SIZE];
 	char* stringData;
-	//we allow storage of one string, temporarily (in case we have to look up an index later, then make sure to set stringData to NULL so we only do the look-up once)
 
-	void sg_export(
-		ojk::SavedGameHelper& saved_game) const
+	void sg_export(ojk::SavedGameHelper& saved_game) const
 	{
 		saved_game.write<int32_t>(eventType);
 		saved_game.write<int16_t>(modelOnly);
 		saved_game.write<uint16_t>(glaIndex);
-		saved_game.write<uint16_t>(keyFrame);
+		saved_game.write<int32_t>(keyFrame);
 		saved_game.write<int16_t>(eventData);
 		saved_game.write<int32_t>(stringData);
 	}
 
-	void sg_import(
-		ojk::SavedGameHelper& saved_game)
+	void sg_import(ojk::SavedGameHelper& saved_game)
 	{
 		saved_game.read<int32_t>(eventType);
 		saved_game.read<int16_t>(modelOnly);
 		saved_game.read<uint16_t>(glaIndex);
-		saved_game.read<uint16_t>(keyFrame);
+		saved_game.read<int32_t>(keyFrame);
 		saved_game.read<int16_t>(eventData);
 		saved_game.read<int32_t>(stringData);
 	}
 };
+
 
 using footstepType_t = enum
 {

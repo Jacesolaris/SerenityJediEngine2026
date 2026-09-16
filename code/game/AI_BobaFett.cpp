@@ -1568,11 +1568,11 @@ bool Boba_Flee()
 				TIMER_Set(NPC, "ResampleEnemyDirection", Q_irand(500, 1000));
 				AverageEnemyDirectionSamples++;
 
-				vec3_t move_dir;
-				VectorCopy(NPC->enemy->client->ps.velocity, move_dir);
-				VectorNormalize(move_dir);
+				vec3_t moveDir;
+				VectorCopy(NPC->enemy->client->ps.velocity, moveDir);
+				VectorNormalize(moveDir);
 
-				VectorAdd(AverageEnemyDirection, move_dir, AverageEnemyDirection);
+				VectorAdd(AverageEnemyDirection, moveDir, AverageEnemyDirection);
 			}
 
 			if (g_bobaDebug->integer && AverageEnemyDirectionSamples)

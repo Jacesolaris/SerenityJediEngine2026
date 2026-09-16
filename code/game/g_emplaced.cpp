@@ -118,10 +118,10 @@ static void EWebPositionUser(gentity_t* owner, gentity_t* eweb)
 		if (!tr.startsolid && !tr.allsolid) //&& tr.fraction == 1.0f)
 		{
 			//all clear, we can move there
-			vec3_t move_dir;
+			vec3_t moveDir;
 			VectorCopy(tr.endpos, p);
-			VectorSubtract(p, eweb->pos4, move_dir);
-			const float move_dist = VectorNormalize(move_dir);
+			VectorSubtract(p, eweb->pos4, moveDir);
+			const float move_dist = VectorNormalize(moveDir);
 			if (move_dist > 4.0f)
 			{
 				//moved past the threshold from last position
@@ -131,7 +131,7 @@ static void EWebPositionUser(gentity_t* owner, gentity_t* eweb)
 				VectorCopy(p, eweb->pos4); //update the position
 				//find out what direction he moved in
 				AngleVectors(owner->currentAngles, nullptr, oRight, nullptr);
-				if (DotProduct(move_dir, oRight) > 0)
+				if (DotProduct(moveDir, oRight) > 0)
 				{
 					//moved to his right, play right strafe
 					strafeAnim = BOTH_STRAFE_RIGHT1;

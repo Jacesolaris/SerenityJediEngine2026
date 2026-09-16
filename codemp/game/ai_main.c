@@ -107,11 +107,11 @@ int numberof_siege_specific_class(int team, const char* classname);
 void bot_aim_leading(bot_state_t* bs, vec3_t headlevel, float lead_amount);
 float bot_weapon_can_lead(const bot_state_t* bs);
 int bot_weapon_detpack(bot_state_t* bs, const gentity_t* target);
-void trace_move(bot_state_t* bs, vec3_t move_dir, int target_num);
+void trace_move(bot_state_t* bs, vec3_t moveDir, int target_num);
 extern qboolean G_NameInTriggerClassList(const char* list, const char* str);
 void bot_behave_defend_basic(bot_state_t* bs, vec3_t defpoint);
 int bot_select_choice_weapon(bot_state_t* bs, int weapon, int doselection);
-void adjustfor_strafe(const bot_state_t* bs, vec3_t move_dir);
+void adjustfor_strafe(const bot_state_t* bs, vec3_t moveDir);
 void bot_behave_attack(bot_state_t* bs);
 extern const gbuyable_t bg_buylist[];
 extern qboolean IsSurrendering(const gentity_t* self);
@@ -120,6 +120,7 @@ extern qboolean IsCowering(const gentity_t* self);
 extern qboolean IsAnimRequiresResponce(const gentity_t* self);
 qboolean G_ThereIsAMaster(void);
 void bot_behave_attack_move(bot_state_t* bs);
+extern qboolean PM_SaberInSmashdown(saberMoveName_t saberMove);
 
 //rww - new bot cvars..
 vmCvar_t bot_forcepowers;
@@ -3496,7 +3497,7 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 	// ---------------------------------------------------------
 	// STACK-SAFE VECTOR SET (reused scratch vectors)
 	// ---------------------------------------------------------
-	vec3_t move_dir, view_dir, ang;
+	vec3_t moveDir, view_dir, ang;
 	vec3_t scratch1, scratch2; // replaces 10+ separate locals
 	qboolean movetrace = qtrue;
 
@@ -3532,9 +3533,9 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 	// ---------------------------------------------------------
 	// MOVE DIRECTION (2D)
 	// ---------------------------------------------------------
-	VectorSubtract(dest, bs->origin, move_dir);
-	move_dir[2] = 0;
-	VectorNormalize(move_dir);
+	VectorSubtract(dest, bs->origin, moveDir);
+	moveDir[2] = 0;
+	VectorNormalize(moveDir);
 
 	// ---------------------------------------------------------
 	// WAYPOINT SPECIAL LOGIC
@@ -3641,7 +3642,7 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 					bs->jumpTime = level.time + 100;
 					bs->wpSpecial = qtrue;
 					wp_visible_update(bs);
-					trap->EA_Move(bs->client, move_dir, 5000);
+					trap->EA_Move(bs->client, moveDir, 5000);
 					return;
 				}
 			}
@@ -3708,7 +3709,7 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 			bs->meleeStrafeTime = level.time + Q_irand(500, 1000);
 		}
 
-		adjustfor_strafe(bs, move_dir);
+		adjustfor_strafe(bs, moveDir);
 	}
 
 	// ---------------------------------------------------------
@@ -3716,7 +3717,7 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 	// ---------------------------------------------------------
 	if (movetrace)
 	{
-		trace_move(bs, move_dir, bs->DestIgnore);
+		trace_move(bs, moveDir, bs->DestIgnore);
 	}
 
 	// ---------------------------------------------------------
@@ -3724,7 +3725,7 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 	// ---------------------------------------------------------
 	if (DistanceHorizontal(bs->origin, dest) > 10)
 	{
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 }
 
@@ -3741,9 +3742,9 @@ static qboolean dont_block_allies(bot_state_t* bs)
 			&& Distance(g_entities[i].client->ps.origin, bs->origin) < 50) //and we're too close to them.
 		{
 			//on your team and too close
-			vec3_t move_dir, dest_origin;
-			VectorSubtract(bs->origin, g_entities[i].client->ps.origin, move_dir);
-			VectorAdd(bs->origin, move_dir, dest_origin);
+			vec3_t moveDir, dest_origin;
+			VectorSubtract(bs->origin, g_entities[i].client->ps.origin, moveDir);
+			VectorAdd(bs->origin, moveDir, dest_origin);
 			bot_move(bs, dest_origin, qfalse, qfalse);
 			return qtrue;
 		}
@@ -8509,14 +8510,14 @@ static void melee_combat_handling(bot_state_t* bs)
 	// -------------------------------------------------
 	// BUILD MOVEMENT VECTOR
 	// -------------------------------------------------
-	vec3_t move_dir;
-	VectorSubtract(bs->goalPosition, bs->origin, move_dir);
-	move_dir[2] = 0.0f;
+	vec3_t moveDir;
+	VectorSubtract(bs->goalPosition, bs->origin, moveDir);
+	moveDir[2] = 0.0f;
 
-	if (VectorNormalize(move_dir) > 0.001f)
+	if (VectorNormalize(moveDir) > 0.001f)
 	{
 		// Always drive movement → prevents botlib jumping
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 
 	// -------------------------------------------------
@@ -8526,7 +8527,7 @@ static void melee_combat_handling(bot_state_t* bs)
 	// This prevents the botlib “unstick jump” from firing.
 }
 
-void adjustfor_strafe(const bot_state_t* bs, vec3_t move_dir)
+void adjustfor_strafe(const bot_state_t* bs, vec3_t moveDir)
 {
 	vec3_t right;
 
@@ -8548,11 +8549,11 @@ void adjustfor_strafe(const bot_state_t* bs, vec3_t move_dir)
 	}
 
 	//We assume that moveDir has been normalized before this function.
-	VectorAdd(move_dir, right, move_dir);
-	VectorNormalize(move_dir);
+	VectorAdd(moveDir, right, moveDir);
+	VectorNormalize(moveDir);
 }
 
-static void movefor_attack_quad(const bot_state_t* bs, vec3_t move_dir, const int Quad)
+static void movefor_attack_quad(const bot_state_t* bs, vec3_t moveDir, const int Quad)
 {
 	//set the moveDir to set our attack direction to be towards this Quad.
 	vec3_t forward, right;
@@ -8562,38 +8563,38 @@ static void movefor_attack_quad(const bot_state_t* bs, vec3_t move_dir, const in
 	switch (Quad)
 	{
 	case Q_B: //down strike.
-		VectorCopy(forward, move_dir);
+		VectorCopy(forward, moveDir);
 		break;
 	case Q_BR: //down right strike
-		VectorAdd(forward, right, move_dir);
-		VectorNormalize(move_dir);
+		VectorAdd(forward, right, moveDir);
+		VectorNormalize(moveDir);
 		break;
 	case Q_R: //right strike
-		VectorCopy(right, move_dir);
+		VectorCopy(right, moveDir);
 		break;
 	case Q_TR: //up right strike
 		VectorScale(forward, -1, forward);
-		VectorAdd(forward, right, move_dir);
-		VectorNormalize(move_dir);
+		VectorAdd(forward, right, moveDir);
+		VectorNormalize(moveDir);
 		break;
 	case Q_T: //up strike
 		VectorScale(forward, -1, forward);
-		VectorCopy(forward, move_dir);
+		VectorCopy(forward, moveDir);
 		break;
 	case Q_TL: //up left strike
 		VectorScale(forward, -1, forward);
 		VectorScale(right, -1, right);
-		VectorAdd(forward, right, move_dir);
-		VectorNormalize(move_dir);
+		VectorAdd(forward, right, moveDir);
+		VectorNormalize(moveDir);
 		break;
 	case Q_L: //left strike
 		VectorScale(right, -1, right);
-		VectorCopy(right, move_dir);
+		VectorCopy(right, moveDir);
 		break;
 	case Q_BL: //down left strike.
 		VectorScale(right, -1, right);
-		VectorAdd(forward, right, move_dir);
-		VectorNormalize(move_dir);
+		VectorAdd(forward, right, moveDir);
+		VectorNormalize(moveDir);
 		break;
 	default:
 		break;
@@ -8613,7 +8614,7 @@ static qboolean bot_behave_check_backstab(bot_state_t* bs)
 	vec3_t forward;
 	vec3_t cur_org;
 	vec3_t back_org;
-	vec3_t move_dir;
+	vec3_t moveDir;
 	trace_t tr;
 
 	// Bot eye position
@@ -8685,21 +8686,21 @@ static qboolean bot_behave_check_backstab(bot_state_t* bs)
 	VectorCopy(bs->cur_ps.origin, cur_org);
 	VectorMA(cur_org, -64.0f, forward, back_org);
 
-	VectorSubtract(cur_org, bs->origin, move_dir);
+	VectorSubtract(cur_org, bs->origin, moveDir);
 
 	// Keep movement horizontal
-	move_dir[2] = 0.0f;
+	moveDir[2] = 0.0f;
 
-	VectorNormalize(move_dir);
+	VectorNormalize(moveDir);
 
 	// Adjust for strafing behaviour
-	adjustfor_strafe(bs, move_dir);
+	adjustfor_strafe(bs, moveDir);
 
 	// Trace movement path
-	trace_move(bs, move_dir, tr.entityNum);
+	trace_move(bs, moveDir, tr.entityNum);
 
 	// Perform backstab attack
-	trap->EA_Move(bs->client, move_dir, 5000);
+	trap->EA_Move(bs->client, moveDir, 5000);
 	trap->EA_Attack(bs->client);
 
 	return qtrue;
@@ -8708,13 +8709,19 @@ static qboolean bot_behave_check_backstab(bot_state_t* bs)
 // ------------------------------------------------------------------
 // Smart kata decision: bots kata when enemy is weak or vulnerable
 // ------------------------------------------------------------------
-static qboolean bot_behave_check_use_kata(const bot_state_t* bs)
+static qboolean bot_behave_check_use_kata(bot_state_t* bs)
 {
 	// Must be using a saber
 	if (bs->cur_ps.weapon != WP_SABER)
 	{
 		return qfalse;
 	}
+
+	// BOT SMASHDOWN COOLDOWN CHECK
+	// If bot is still in smashdown cooldown, do NOT allow smashdown.
+	// Bot may still do normal kata.
+	const qboolean smashdownCooling =
+		(bs->SmashdownTryTime > level.time) ? qtrue : qfalse;
 
 	vec3_t forward, cur_org, end_org;
 	trace_t tr;
@@ -8787,8 +8794,30 @@ static qboolean bot_behave_check_use_kata(const bot_state_t* bs)
 	// Add a small random chance so bots don't kata every frame
 	if (shouldKata && Q_irand(0, 4) == 0) // 20% chance
 	{
+		// Bot tries kata
 		trap->EA_Attack(bs->client);
 		trap->EA_Alt_Attack(bs->client);
+
+		// Check what kata actually happened
+		if (PM_SaberInSmashdown(bs->cur_ps.saberMove))
+		{
+			// If bot is allowed to smashdown
+			if (smashdownCooling == qfalse)
+			{
+				// Count smashdown
+				bs->SmashdownTryCount++;
+
+				// Set cooldown (30 seconds)
+				bs->SmashdownTryTime = level.time + 30000;
+			}
+			else
+			{
+				// Bot is in cooldown → force normal kata instead
+				// We simply do nothing here; PM_KataAnimationStyle will
+				// fall back to normal kata because smashdown is blocked.
+			}
+		}
+
 		return qtrue;
 	}
 
@@ -8898,7 +8927,7 @@ static qboolean bot_behave_check_use_crouch_attack(bot_state_t* bs)
 
 void bot_behave_attack_basic(bot_state_t* bs, const gentity_t* target)
 {
-	vec3_t enemy_origin, view_dir, ang, move_dir;
+	vec3_t enemy_origin, view_dir, ang, moveDir;
 
 	FindOrigin(target, enemy_origin);
 
@@ -8942,21 +8971,21 @@ void bot_behave_attack_basic(bot_state_t* bs, const gentity_t* target)
 		bs->meleeStrafeTime = level.time + Q_irand(500, 1800);
 	}
 
-	VectorSubtract(enemy_origin, bs->origin, move_dir);
+	VectorSubtract(enemy_origin, bs->origin, moveDir);
 
 	if (dist < MinimumAttackDistance[bs->virtualWeapon])
 	{
 		//move back
-		VectorScale(move_dir, -1, move_dir);
+		VectorScale(moveDir, -1, moveDir);
 	}
 	else if (dist < IdealAttackDistance[bs->virtualWeapon])
 	{
 		//we're close enough, quit moving closer
-		VectorClear(move_dir);
+		VectorClear(moveDir);
 	}
 
-	move_dir[2] = 0;
-	VectorNormalize(move_dir);
+	moveDir[2] = 0;
+	VectorNormalize(moveDir);
 
 	if (bs->virtualWeapon == WP_SABER)
 	{
@@ -8980,7 +9009,7 @@ void bot_behave_attack_basic(bot_state_t* bs, const gentity_t* target)
 	}
 
 	//adjust the moveDir to do strafing
-	adjustfor_strafe(bs, move_dir);
+	adjustfor_strafe(bs, moveDir);
 
 	if (bs->cur_ps.weapon == bs->virtualWeapon
 		&& bs->virtualWeapon == WP_SABER && in_field_of_vision(bs->viewangles, 100, ang))
@@ -8991,7 +9020,7 @@ void bot_behave_attack_basic(bot_state_t* bs, const gentity_t* target)
 			|| PM_SaberInReturn(bs->cur_ps.saberMove))
 		{
 			//we want to attack, and we need to choose a new attack swing, pick randomly.
-			movefor_attack_quad(bs, move_dir, Q_irand(Q_BR, Q_B));
+			movefor_attack_quad(bs, moveDir, Q_irand(Q_BR, Q_B));
 		}
 		else if (bs->cur_ps.userInt3 & 1 << FLAG_ATTACKFAKE)
 		{
@@ -9010,15 +9039,15 @@ void bot_behave_attack_basic(bot_state_t* bs, const gentity_t* target)
 				fake_quad = Q_irand(Q_BR, Q_B);
 			}
 			//start trying to fake
-			movefor_attack_quad(bs, move_dir, fake_quad);
+			movefor_attack_quad(bs, moveDir, fake_quad);
 			trap->EA_Alt_Attack(bs->client);
 		}
 	}
 
-	if (!VectorCompare(vec3_origin, move_dir))
+	if (!VectorCompare(vec3_origin, moveDir))
 	{
-		trace_move(bs, move_dir, target->s.clientNum);
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trace_move(bs, moveDir, target->s.clientNum);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 
 	if (bs->frame_Enemy_Vis && bs->cur_ps.weapon == bs->virtualWeapon
@@ -9386,13 +9415,13 @@ static void saber_combat_handling(bot_state_t* bs)
 	// -------------------------------------------------
 	// MOVEMENT VECTOR
 	// -------------------------------------------------
-	vec3_t move_dir;
-	VectorSubtract(bs->goalPosition, bs->origin, move_dir);
-	move_dir[2] = 0.0f;
+	vec3_t moveDir;
+	VectorSubtract(bs->goalPosition, bs->origin, moveDir);
+	moveDir[2] = 0.0f;
 
-	if (VectorNormalize(move_dir) > 0.001f)
+	if (VectorNormalize(moveDir) > 0.001f)
 	{
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 
 	// -------------------------------------------------
@@ -9590,13 +9619,13 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	// -------------------------------------------------
 	// MOVEMENT VECTOR
 	// -------------------------------------------------
-	vec3_t move_dir;
-	VectorSubtract(bs->goalPosition, bs->origin, move_dir);
-	move_dir[2] = 0.0f;
+	vec3_t moveDir;
+	VectorSubtract(bs->goalPosition, bs->origin, moveDir);
+	moveDir[2] = 0.0f;
 
-	if (VectorNormalize(move_dir) > 0.001f)
+	if (VectorNormalize(moveDir) > 0.001f)
 	{
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 
 	// -------------------------------------------------
@@ -11729,7 +11758,7 @@ void standard_bot_ai(bot_state_t* bs)
 	int forceHostile = 0;
 	gentity_t* friend_in_lof = 0;
 	vec3_t pre_frame_g_angles;
-	vec3_t move_dir = { 0 };
+	vec3_t moveDir = { 0 };
 	const saberInfo_t* saber1 = BG_MySaber(bs->client, 0);
 	const saberInfo_t* saber2 = BG_MySaber(bs->client, 1);
 	gentity_t* botEnt = &g_entities[bs->client];
@@ -13081,9 +13110,9 @@ void standard_bot_ai(bot_state_t* bs)
 		}
 	}
 
-	if (!VectorCompare(vec3_origin, move_dir))
+	if (!VectorCompare(vec3_origin, moveDir))
 	{
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 
 	if (RMG.integer)
@@ -13907,7 +13936,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 	int forceHostile = 0;
 	gentity_t* friend_in_lof = 0;
 	vec3_t pre_frame_g_angles;
-	vec3_t move_dir = { 0 };
+	vec3_t moveDir = { 0 };
 	const saberInfo_t* saber1 = BG_MySaber(bs->client, 0);
 	const saberInfo_t* saber2 = BG_MySaber(bs->client, 1);
 	qboolean highLevelThink = (qboolean)(bs->highThinkTime < level.time);
@@ -15202,9 +15231,9 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		}
 	}
 
-	if (!VectorCompare(vec3_origin, move_dir))
+	if (!VectorCompare(vec3_origin, moveDir))
 	{
-		trap->EA_Move(bs->client, move_dir, 5000);
+		trap->EA_Move(bs->client, moveDir, 5000);
 	}
 
 	if (RMG.integer)
@@ -16135,7 +16164,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 	move_toward_ideal_angles(bs);
 }
 
-static void movement_command(bot_state_t* bs, const int command, vec3_t move_dir)
+static void movement_command(bot_state_t* bs, const int command, vec3_t moveDir)
 {
 	if (!command)
 	{
@@ -16155,10 +16184,10 @@ static void movement_command(bot_state_t* bs, const int command, vec3_t move_dir
 		return;
 	}
 	//can't move!
-	VectorCopy(vec3_origin, move_dir);
+	VectorCopy(vec3_origin, moveDir);
 }
 
-static void adjust_move_direction(const bot_state_t* bs, vec3_t move_dir, const int quad)
+static void adjust_move_direction(const bot_state_t* bs, vec3_t moveDir, const int quad)
 {
 	vec3_t fwd, right;
 	vec3_t addvect;
@@ -16208,8 +16237,8 @@ static void adjust_move_direction(const bot_state_t* bs, vec3_t move_dir, const 
 		return;
 	}
 
-	VectorCopy(addvect, move_dir);
-	VectorNormalize(move_dir);
+	VectorCopy(addvect, moveDir);
+	VectorNormalize(moveDir);
 }
 
 static int adjust_quad(const int quad)
@@ -16229,14 +16258,14 @@ static int adjust_quad(const int quad)
 	return dir;
 }
 
-static int find_movement_quad(const playerState_t* ps, vec3_t move_dir)
+static int find_movement_quad(const playerState_t* ps, vec3_t moveDir)
 {
 	vec3_t viewfwd, viewright;
 	vec3_t move;
 
 	AngleVectors(ps->viewangles, viewfwd, viewright, NULL);
 
-	VectorCopy(move_dir, move);
+	VectorCopy(moveDir, move);
 
 	viewfwd[2] = 0;
 	viewright[2] = 0;
@@ -16296,7 +16325,7 @@ static int find_movement_quad(const playerState_t* ps, vec3_t move_dir)
 //   1 = jump
 //   2 = crouch
 //  -1 = blocked (caller will try strafing or evade)
-static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t move_dir, const int target_num, vec3_t hit_normal)
+static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t moveDir, const int target_num, vec3_t hit_normal)
 {
 	vec3_t mins, maxs;
 	vec3_t traceto_mod = { 0 };
@@ -16315,9 +16344,9 @@ static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t move_dir, const 
 	mins[2] += STEPSIZE;
 
 	// Predict forward movement
-	traceto_mod[0] = bs->origin[0] + move_dir[0] * 20;
-	traceto_mod[1] = bs->origin[1] + move_dir[1] * 20;
-	traceto_mod[2] = bs->origin[2] + move_dir[2] * 20;
+	traceto_mod[0] = bs->origin[0] + moveDir[0] * 20;
+	traceto_mod[1] = bs->origin[1] + moveDir[1] * 20;
+	traceto_mod[2] = bs->origin[2] + moveDir[2] * 20;
 
 	// Check for obstruction
 	trap->Trace(&tr, bs->origin, mins, maxs, traceto_mod, bs->client, MASK_PLAYERSOLID, qfalse, 0, 0);
@@ -16405,9 +16434,9 @@ static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t move_dir, const 
 	// ------------------------------------------------------------
 	if (move_command != -1)
 	{
-		traceto_mod[0] = bs->origin[0] + move_dir[0] * 45;
-		traceto_mod[1] = bs->origin[1] + move_dir[1] * 45;
-		traceto_mod[2] = bs->origin[2] + move_dir[2] * 45;
+		traceto_mod[0] = bs->origin[0] + moveDir[0] * 45;
+		traceto_mod[1] = bs->origin[1] + moveDir[1] * 45;
+		traceto_mod[2] = bs->origin[2] + moveDir[2] * 45;
 
 		VectorCopy(traceto_mod, tracefrom_mod);
 		traceto_mod[2] -= 532; // 50+ foot drop
@@ -16447,7 +16476,7 @@ static int trace_jump_crouch_fall(const bot_state_t* bs, vec3_t move_dir, const 
 	return move_command;
 }
 
-static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const int target_num, vec3_t hit_normal,
+static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t moveDir, const int target_num, vec3_t hit_normal,
 	const int try_num,
 	const qboolean check_both_ways)
 {
@@ -16482,7 +16511,7 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 		{
 			//otherwise, try to move in the direction that takes us in the direction we're
 			//trying to move.
-			const float dot = DotProduct(cross, move_dir);
+			const float dot = DotProduct(cross, moveDir);
 			if (dot < 0)
 			{
 				//going in the wrong initial direction, switch!
@@ -16490,12 +16519,12 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 			}
 		}
 
-		VectorCopy(cross, move_dir);
-		int movecom = trace_jump_crouch_fall(bs, move_dir, target_num, hit_normal);
+		VectorCopy(cross, moveDir);
+		int movecom = trace_jump_crouch_fall(bs, moveDir, target_num, hit_normal);
 
 		if (movecom != -1)
 		{
-			movement_command(bs, movecom, move_dir);
+			movement_command(bs, movecom, moveDir);
 			return qtrue;
 		}
 
@@ -16503,7 +16532,7 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 		{
 			//hit another surface while trying to trace along this one, try to move along
 			//it instead.
-			if (try_move_around_obsticle(bs, move_dir, target_num, hit_normal, try_num + 1, qfalse))
+			if (try_move_around_obsticle(bs, moveDir, target_num, hit_normal, try_num + 1, qfalse))
 			{
 				//set the evade timer because this is often where we can get stuck if
 				//tracing the wall sends us in some weird direction.
@@ -16529,12 +16558,12 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 				bs->evadeDir = 7;
 			}
 
-			VectorCopy(cross, move_dir);
-			movecom = trace_jump_crouch_fall(bs, move_dir, target_num, hit_normal);
+			VectorCopy(cross, moveDir);
+			movecom = trace_jump_crouch_fall(bs, moveDir, target_num, hit_normal);
 
 			if (movecom != -1)
 			{
-				movement_command(bs, movecom, move_dir);
+				movement_command(bs, movecom, moveDir);
 				//set the evade timer because this is often where we can get stuck if
 				//tracing the wall sends us in some weird direction.
 				bs->evadeTime = level.time + 10000;
@@ -16542,17 +16571,17 @@ static qboolean try_move_around_obsticle(bot_state_t* bs, vec3_t move_dir, const
 			}
 
 			//try recursively dealing with this.
-			return try_move_around_obsticle(bs, move_dir, target_num, hit_normal, try_num + 1, qfalse);
+			return try_move_around_obsticle(bs, moveDir, target_num, hit_normal, try_num + 1, qfalse);
 		}
 	}
 
 	return qfalse;
 }
 
-// Attempts to move the bot in move_dir.
+// Attempts to move the bot in moveDir.
 // Uses jump/crouch/fall logic first, then tries strafing and evasion.
-// move_dir is modified if a better direction is found.
-void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
+// moveDir is modified if a better direction is found.
+void trace_move(bot_state_t* bs, vec3_t moveDir, const int target_num)
 {
 	vec3_t dir;
 	vec3_t hit_normal;
@@ -16561,16 +16590,16 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	int i = 7; // number of alternative directions to try
 
 	VectorClear(hit_normal);
-	VectorCopy(move_dir, dir);
+	VectorCopy(moveDir, dir);
 
 	// ------------------------------------------------------------
 	// FIRST: Try moving directly (normal / jump / crouch)
 	// ------------------------------------------------------------
-	movecom = trace_jump_crouch_fall(bs, move_dir, target_num, hit_normal);
+	movecom = trace_jump_crouch_fall(bs, moveDir, target_num, hit_normal);
 
 	if (movecom != -1)
 	{
-		movement_command(bs, movecom, move_dir);
+		movement_command(bs, movecom, moveDir);
 		return;
 	}
 
@@ -16579,12 +16608,12 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	// ------------------------------------------------------------
 	if (try_move_around_obsticle(bs, dir, target_num, hit_normal, 0, qtrue))
 	{
-		VectorCopy(dir, move_dir);
+		VectorCopy(dir, moveDir);
 		return;
 	}
 
 	// Restore original direction
-	VectorCopy(move_dir, dir);
+	VectorCopy(moveDir, dir);
 
 	// ------------------------------------------------------------
 	// THIRD: If recently evading, try the same evade direction again
@@ -16597,7 +16626,7 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 		if (movecom != -1)
 		{
 			movement_command(bs, movecom, dir);
-			VectorCopy(dir, move_dir);
+			VectorCopy(dir, moveDir);
 			bs->evadeTime = level.time + 500; // extend evade window
 			return;
 		}
@@ -16615,7 +16644,7 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	}
 
 	// Determine the forward movement quadrant
-	const int fwdstrafe = find_movement_quad(&bs->cur_ps, move_dir);
+	const int fwdstrafe = find_movement_quad(&bs->cur_ps, moveDir);
 
 	// Pick left or right strafe first
 	quad = (Q_irand(0, 1)) ? (fwdstrafe - 2) : (fwdstrafe + 2);
@@ -16624,14 +16653,14 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	// ------------------------------------------------------------
 	// FIFTH: Try first strafe direction
 	// ------------------------------------------------------------
-	VectorCopy(move_dir, dir);
+	VectorCopy(moveDir, dir);
 	adjust_move_direction(bs, dir, quad);
 
 	movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
 	if (movecom != -1)
 	{
 		movement_command(bs, movecom, dir);
-		VectorCopy(dir, move_dir);
+		VectorCopy(dir, moveDir);
 		bs->evadeDir = quad;
 		bs->evadeTime = level.time + 100;
 		return;
@@ -16644,14 +16673,14 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 	quad += 4;
 	quad = adjust_quad(quad);
 
-	VectorCopy(move_dir, dir);
+	VectorCopy(moveDir, dir);
 	adjust_move_direction(bs, dir, quad);
 
 	movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
 	if (movecom != -1)
 	{
 		movement_command(bs, movecom, dir);
-		VectorCopy(dir, move_dir);
+		VectorCopy(dir, moveDir);
 		bs->evadeDir = quad;
 		bs->evadeTime = level.time + 100;
 		return;
@@ -16675,14 +16704,14 @@ void trace_move(bot_state_t* bs, vec3_t move_dir, const int target_num)
 			continue;
 		}
 
-		VectorCopy(move_dir, dir);
+		VectorCopy(moveDir, dir);
 		adjust_move_direction(bs, dir, quad);
 
 		movecom = trace_jump_crouch_fall(bs, dir, target_num, hit_normal);
 		if (movecom != -1)
 		{
 			movement_command(bs, movecom, dir);
-			VectorCopy(dir, move_dir);
+			VectorCopy(dir, moveDir);
 			bs->evadeDir = quad;
 			bs->evadeTime = level.time + 100;
 			return;

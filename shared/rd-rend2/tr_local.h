@@ -3811,7 +3811,7 @@ struct modelUboCache_t
 };
 
 #define MAX_GPU_TIMERS (512)
-#define MAX_SCENES (3)
+#define MAX_SCENES (6)
 
 struct gpuFrame_t
 {

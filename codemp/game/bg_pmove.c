@@ -3519,13 +3519,13 @@ static qboolean PM_AdjustAngleForWallRun(playerState_t* ps, usercmd_t* ucmd, con
 	{
 		//wall-running and not at end of anim
 		vec3_t fwd, rt, trace_to;
-		const vec3_t fwd_angles = { 0, ps->viewangles[YAW], 0 };
+		const vec3_t fwdAngles = { 0, ps->viewangles[YAW], 0 };
 		const vec3_t maxs = { ps->maxs[0], ps->maxs[1], 24 };
 		const vec3_t mins = { ps->mins[0], ps->mins[1], 0 };
 		trace_t trace;
 		float dist, yaw_adjust;
 
-		AngleVectors(fwd_angles, fwd, rt, NULL);
+		AngleVectors(fwdAngles, fwd, rt, NULL);
 
 		if (ps->legsAnim == BOTH_WALL_RUN_RIGHT)
 		{
@@ -4015,48 +4015,33 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 		break;
 
 	case BOTH_LEDGE_MERCPULL:
-		if (animationpoint > .8f && animationpoint < .925f)
+		if (animationpoint > 0.8f && animationpoint < 0.925f)
 		{
-			float t = (animationpoint - .8f) / .125f; // 0 ? 1
-			float animWeight = 1.0f - t;
-			float physWeight = t;
-
-			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwdAngles, moveDir, NULL, NULL);
-
-			vec3_t animVel, physVel = { 0 };
-
-			// animation-driven forward push
-			VectorScale(moveDir, 30, animVel);
-			animVel[2] = 154;
-
-			// physics-driven "step up"
-			physVel[0] = moveDir[0] * 20;
-			physVel[1] = moveDir[1] * 20;
-			physVel[2] = 200;
-
-			// blend them
-			ps->velocity[0] = animVel[0] * animWeight + physVel[0] * physWeight;
-			ps->velocity[1] = animVel[1] * animWeight + physVel[1] * physWeight;
-			ps->velocity[2] = animVel[2] * animWeight + physVel[2] * physWeight;
+			vec3_t fwdAngles;
+			VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, moveDir, NULL, NULL);  // moveDir is forward (z ≈ 0)
+			VectorScale(moveDir, 70.0f, moveDir);         // small forward nudge (tweak 30.0f)
+			ps->velocity[0] = moveDir[0];
+			ps->velocity[1] = moveDir[1];
+			ps->velocity[2] = 154.0f;                      // keep upward velocity
 		}
 		else if (animationpoint > .7f && animationpoint < .75f)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 26;
+			ps->velocity[0] = 0.0f;
+			ps->velocity[1] = 0.0f;
+			ps->velocity[2] = 26.0f;
 		}
-		else if (animationpoint > .375f && animationpoint < .7f)
+		else if (animationpoint > .375 && animationpoint < .7)
 		{
-			ps->velocity[0] = 0;
-			ps->velocity[1] = 0;
-			ps->velocity[2] = 140;
+			ps->velocity[0] = 0.0f;
+			ps->velocity[1] = 0.0f;
+			ps->velocity[2] = 140.0f;
 		}
-		else if (animationpoint < .375f)
+		else if (animationpoint < .375)
 		{
-			VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
-			AngleVectors(fwdAngles, moveDir, NULL, NULL);
-			VectorScale(moveDir, 140, moveDir);
+			VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0);
+			AngleVectors(fwdAngles, NULL, NULL, moveDir);
+			VectorScale(moveDir, 200.0f, moveDir);
 			VectorCopy(moveDir, ps->velocity);
 		}
 		else
@@ -5277,7 +5262,7 @@ static qboolean PM_CheckJump(void)
 
 			if (anim != -1)
 			{
-				vec3_t fwd, right, traceto, mins, maxs, fwd_angles;
+				vec3_t fwd, right, traceto, mins, maxs, fwdAngles;
 				vec3_t idealNormal = { 0 }, wallNormal = { 0 };
 				trace_t trace;
 				qboolean doTrace = qfalse;
@@ -5286,11 +5271,11 @@ static qboolean PM_CheckJump(void)
 
 				VectorSet(mins, pm->mins[0], pm->mins[1], 0);
 				VectorSet(maxs, pm->maxs[0], pm->maxs[1], 24);
-				VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
+				VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
 
 				memset(&trace, 0, sizeof trace); //to shut the compiler up
 
-				AngleVectors(fwd_angles, fwd, right, NULL);
+				AngleVectors(fwdAngles, fwd, right, NULL);
 
 				//trace-check for a wall, if necc.
 				switch (anim)
@@ -5415,15 +5400,15 @@ static qboolean PM_CheckJump(void)
 			if (legsAnim == BOTH_WALL_RUN_LEFT || legsAnim == BOTH_WALL_RUN_RIGHT)
 			{
 				//running on a wall
-				vec3_t right, traceto, mins, maxs, fwd_angles;
+				vec3_t right, traceto, mins, maxs, fwdAngles;
 				trace_t trace;
 				int anim = -1;
 
 				VectorSet(mins, pm->mins[0], pm->mins[0], 0);
 				VectorSet(maxs, pm->maxs[0], pm->maxs[0], 24);
-				VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
+				VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
 
-				AngleVectors(fwd_angles, NULL, right, NULL);
+				AngleVectors(fwdAngles, NULL, right, NULL);
 
 				if (legsAnim == BOTH_WALL_RUN_LEFT)
 				{
@@ -5492,7 +5477,7 @@ static qboolean PM_CheckJump(void)
 			//NEW JKA
 			else if (pm->ps->legsAnim == BOTH_FORCEWALLRUNFLIP_START)
 			{
-				vec3_t fwd, traceto, mins, maxs, fwd_angles;
+				vec3_t fwd, traceto, mins, maxs, fwdAngles;
 				trace_t trace;
 				int anim = -1;
 				float anim_len;
@@ -5500,8 +5485,8 @@ static qboolean PM_CheckJump(void)
 				VectorSet(mins, pm->mins[0], pm->mins[0], 0.0f);
 				VectorSet(maxs, pm->maxs[0], pm->maxs[0], 24.0f);
 				//hmm, did you mean [1] and [1]?
-				VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0.0f);
-				AngleVectors(fwd_angles, fwd, NULL, NULL);
+				VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0.0f);
+				AngleVectors(fwdAngles, fwd, NULL, NULL);
 
 				assert(pm_entSelf); //null pm_entSelf would be a Bad Thing<tm>
 				anim_len = BG_AnimLength(pm_entSelf->localAnimIndex, BOTH_FORCEWALLRUNFLIP_START);
@@ -5549,15 +5534,15 @@ static qboolean PM_CheckJump(void)
 					BOTH_INAIR1)) //not in a flip or spin or anything
 			{
 				//run up wall, flip backwards
-				vec3_t fwd, traceto, mins, maxs, fwd_angles;
+				vec3_t fwd, traceto, mins, maxs, fwdAngles;
 				trace_t trace;
 				vec3_t idealNormal;
 
 				VectorSet(mins, pm->mins[0], pm->mins[1], pm->mins[2]);
 				VectorSet(maxs, pm->maxs[0], pm->maxs[1], pm->maxs[2]);
-				VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0);
+				VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0);
 
-				AngleVectors(fwd_angles, fwd, NULL, NULL);
+				AngleVectors(fwdAngles, fwd, NULL, NULL);
 				VectorMA(pm->ps->origin, 32, fwd, traceto);
 
 				pm->trace(&trace, pm->ps->origin, mins, maxs, traceto, pm->ps->clientNum, MASK_PLAYERSOLID);
@@ -5689,37 +5674,37 @@ static qboolean PM_CheckJump(void)
 				//see if we're pushing at a wall and jump off it if so
 				if (allowWallGrabs)
 				{
-					vec3_t checkDir, mins, maxs, fwd_angles;
+					vec3_t checkDir, mins, maxs, fwdAngles;
 					trace_t trace;
 					int anim = -1;
 
 					VectorSet(mins, pm->mins[0], pm->mins[1], 0.0f);
 					VectorSet(maxs, pm->maxs[0], pm->maxs[1], 24.0f);
-					VectorSet(fwd_angles, 0, pm->ps->viewangles[YAW], 0.0f);
+					VectorSet(fwdAngles, 0, pm->ps->viewangles[YAW], 0.0f);
 
 					if (pm->cmd.rightmove)
 					{
 						if (pm->cmd.rightmove > 0)
 						{
 							anim = BOTH_FORCEWALLREBOUND_RIGHT;
-							AngleVectors(fwd_angles, NULL, checkDir, NULL);
+							AngleVectors(fwdAngles, NULL, checkDir, NULL);
 						}
 						else if (pm->cmd.rightmove < 0)
 						{
 							anim = BOTH_FORCEWALLREBOUND_LEFT;
-							AngleVectors(fwd_angles, NULL, checkDir, NULL);
+							AngleVectors(fwdAngles, NULL, checkDir, NULL);
 							VectorScale(checkDir, -1, checkDir);
 						}
 					}
 					else if (pm->cmd.forwardmove > 0)
 					{
 						anim = BOTH_FORCEWALLREBOUND_FORWARD;
-						AngleVectors(fwd_angles, checkDir, NULL, NULL);
+						AngleVectors(fwdAngles, checkDir, NULL, NULL);
 					}
 					else if (pm->cmd.forwardmove < 0)
 					{
 						anim = BOTH_FORCEWALLREBOUND_BACK;
-						AngleVectors(fwd_angles, checkDir, NULL, NULL);
+						AngleVectors(fwdAngles, checkDir, NULL, NULL);
 						VectorScale(checkDir, -1, checkDir);
 					}
 					if (anim != -1)
@@ -6051,6 +6036,7 @@ void PM_CheckGrab(void)
 	{
 		if (PM_IsGunner() == qtrue)
 		{
+			pm->ps->weapon = WP_MELEE;
 #ifdef _GAME
 			gentity_t* self = &g_entities[pm->ps->clientNum];
 			G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/change.wav"));

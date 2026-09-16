@@ -553,6 +553,8 @@ typedef struct bot_state_s
 	int DashOutTime;
 	vec3_t dashVel;
 	int Dash_BOT_Count;      // how many dashes used
+	int SmashdownTryTime;     // next time bot is allowed to attempt smashdown
+	int SmashdownTryCount;    // optional: track how many smashdowns bot has done
 
 	//end rww
 } bot_state_t;

@@ -2369,7 +2369,7 @@ int IsPressingDashButton(const gentity_t* self)
 int IsPressingKickButton(const gentity_t* self)
 {
 	if ((!(self->client->buttons & BUTTON_DASH))
-		&& (self->client->buttons & BUTTON_KICK && self->client->ps.pm_flags & PMF_KICK_HELD))
+		&& (self->client->buttons & BUTTON_KICK))
 	{
 		return qtrue;
 	}

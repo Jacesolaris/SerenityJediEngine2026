@@ -600,13 +600,13 @@ qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolea
 	{
 		//wall-running and not at end of anim
 		vec3_t fwd, rt, trace_to;
-		const vec3_t fwd_angles = { 0, ent->client->ps.viewangles[YAW], 0 };
+		const vec3_t fwdAngles = { 0, ent->client->ps.viewangles[YAW], 0 };
 		const vec3_t maxs = { ent->maxs[0], ent->maxs[1], 24 };
 		const vec3_t mins = { ent->mins[0], ent->mins[1], 0 };
 		trace_t trace;
 		float dist, yaw_adjust;
 
-		AngleVectors(fwd_angles, fwd, rt, nullptr);
+		AngleVectors(fwdAngles, fwd, rt, nullptr);
 
 		if (ent->client->ps.legsAnim == BOTH_WALL_RUN_RIGHT)
 		{
@@ -1086,13 +1086,13 @@ qboolean PM_AdjustAngleForWallRunUp(gentity_t* ent, usercmd_t* ucmd, const qbool
 		//wall-running up
 		//stick to wall, if there is one
 		vec3_t fwd, trace_to;
-		const vec3_t fwd_angles = { 0, ent->client->ps.viewangles[YAW], 0 };
+		const vec3_t fwdAngles = { 0, ent->client->ps.viewangles[YAW], 0 };
 		const vec3_t maxs = { ent->maxs[0], ent->maxs[1], 24 };
 		const vec3_t mins = { ent->mins[0], ent->mins[1], 0 };
 		trace_t trace;
 		constexpr float dist = 128;
 
-		AngleVectors(fwd_angles, fwd, nullptr, nullptr);
+		AngleVectors(fwdAngles, fwd, nullptr, nullptr);
 		VectorMA(ent->currentOrigin, dist, fwd, trace_to);
 		gi.trace(&trace, ent->currentOrigin, mins, maxs, trace_to, ent->s.number, ent->clipmask,
 			static_cast<EG2_Collision>(0), 0);

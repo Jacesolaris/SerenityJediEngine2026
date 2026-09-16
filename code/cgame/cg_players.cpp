@@ -862,7 +862,7 @@ static void CG_SetLerpFrameAnimation(clientInfo_t* ci, lerpFrame_t* lf, int new_
 #ifdef FINAL_BUILD
 		new_animation = 0;
 #else
-		CG_Error("Bad animation number: %i for ", newAnimation, ci->name);
+		CG_Error("Bad animation number: %i for %s", new_animation, ci->name);
 #endif
 	}
 
@@ -880,51 +880,67 @@ static void CG_SetLerpFrameAnimation(clientInfo_t* ci, lerpFrame_t* lf, int new_
 	animation_t* anim = &level.knownAnimFileSets[ci->animFileIndex].animations[new_animation];
 
 	lf->animation = anim;
-	lf->animationTime = lf->frameTime + abs(anim->frameLerp);
+
+	int frame_time = abs(anim->frameLerp);
+	if (frame_time <= 0)
+	{
+		frame_time = 100;
+	}
+
+	lf->animationTime = lf->frameTime + frame_time;
 }
 
 /*
-===============
+==========================
 CG_RunLerpFrame
 
-Sets cg.snap, cg.oldFrame, and cg.backlerp
-cg.time should be between oldFrameTime and frameTime after exit
-===============
+Advances a lerpFrame_t based on current time, animation data,
+and animation switching rules. Behaviour preserved exactly.
+==========================
 */
-static qboolean CG_RunLerpFrame(clientInfo_t* ci,
-	lerpFrame_t* lf,
-	const int new_animation,
-	const int entNum)
+static qboolean CG_RunLerpFrame(clientInfo_t* ci, lerpFrame_t* lf, const int new_animation, const int entNum)
 {
 	qboolean newFrame = qfalse;
 
-	// Handle animation change
-	if (new_animation != lf->animationNumber || lf->animation == NULL)
+	// If animation changed or uninitialized, reset lerp state
+	if ((new_animation != lf->animationNumber) || (lf->animation == NULL))
 	{
 		CG_SetLerpFrameAnimation(ci, lf, new_animation);
 	}
 
-	// SAFETY CHECK:
-	// If animation failed to initialize, avoid NULL dereference.
+	// SAFETY CHECK: animation pointer must be valid
 	if (lf->animation == NULL)
 	{
-#ifdef _DEBUG
-		Com_Printf("^1WARNING:^7 CG_RunLerpFrame: NULL animation for ent %d (anim %d)\n",
+		gi.Printf("^1CG_RunLerpFrame: NULL animation for ent %d anim %d\n",
 			entNum, new_animation);
-#endif
+
+		lf->backlerp = 0.0f;
 		return qfalse;
 	}
 
-	// If we have passed the current frame time, advance the frame
+	const animation_t* anim = lf->animation;
+
+	// Guard against invalid numFrames
+	if (anim->numFrames <= 0)
+	{
+		gi.Printf("^1CG_RunLerpFrame: anim %d has numFrames <= 0 for ent %d\n",
+			lf->animationNumber, entNum);
+		lf->backlerp = 0.0f;
+		return qfalse;
+	}
+
 	if (cg.time >= lf->frameTime)
 	{
 		lf->oldFrame = lf->frame;
 		lf->oldFrameTime = lf->frameTime;
 
-		const animation_t* anim = lf->animation;
 		int anim_frame_time = abs(anim->frameLerp);
+		if (anim_frame_time <= 0)
+		{
+			anim_frame_time = 100;
+		}
 
-		// Special hack for player weapon switching
+		// Special case: speed up weapon raise/drop for player entity
 		if (entNum == 0)
 		{
 			if (lf->animationNumber == TORSO_DROPWEAP1 ||
@@ -936,7 +952,7 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci,
 
 		if (cg.time < lf->animationTime)
 		{
-			lf->frameTime = lf->animationTime; // initial lerp
+			lf->frameTime = lf->animationTime;
 		}
 		else
 		{
@@ -945,22 +961,35 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci,
 
 		int f = (lf->frameTime - lf->animationTime) / anim_frame_time;
 
-		// Handle looping / end-of-animation logic
 		if (f >= anim->numFrames)
 		{
 			f -= anim->numFrames;
 
-			if (anim->loopFrames != -1)
+			int loopFrames = anim->loopFrames;
+
+			if (loopFrames != -1)
 			{
-				if (anim->numFrames - anim->loopFrames == 0)
+				if (loopFrames < 0)
+				{
+					loopFrames = 0;
+				}
+				else if (loopFrames > anim->numFrames)
+				{
+					loopFrames = anim->numFrames;
+				}
+
+				const int nonLoop = anim->numFrames - loopFrames;
+
+				if (nonLoop == 0)
 				{
 					f %= anim->numFrames;
 				}
 				else
 				{
-					f %= (anim->numFrames - anim->loopFrames);
+					f %= nonLoop;
 				}
-				f += anim->loopFrames;
+
+				f += loopFrames;
 			}
 			else
 			{
@@ -969,14 +998,14 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci,
 				{
 					f = 0;
 				}
+
 				lf->frameTime = cg.time;
 			}
 		}
 
-		// Reverse animation support
 		if (anim->frameLerp < 0)
 		{
-			lf->frame = anim->firstFrame + anim->numFrames - 1 - f;
+			lf->frame = anim->firstFrame + (anim->numFrames - 1 - f);
 		}
 		else
 		{
@@ -991,7 +1020,6 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci,
 		newFrame = qtrue;
 	}
 
-	// Clamp future times
 	if (lf->frameTime > cg.time + 200)
 	{
 		lf->frameTime = cg.time;
@@ -1002,16 +1030,15 @@ static qboolean CG_RunLerpFrame(clientInfo_t* ci,
 		lf->oldFrameTime = cg.time;
 	}
 
-	// Compute backlerp
 	if (lf->frameTime == lf->oldFrameTime)
 	{
 		lf->backlerp = 0.0f;
 	}
 	else
 	{
-		lf->backlerp =
-			1.0f - (float)(cg.time - lf->oldFrameTime) /
-			(float)(lf->frameTime - lf->oldFrameTime);
+		const float numerator = static_cast<float>(cg.time - lf->oldFrameTime);
+		const float denominator = static_cast<float>(lf->frameTime - lf->oldFrameTime);
+		lf->backlerp = 1.0f - (numerator / denominator);
 	}
 
 	return newFrame;
@@ -1387,7 +1414,7 @@ static void CG_PlayerAnimEvents(const int animFileIndex, const qboolean torso, c
 			anim = PM_LegsAnimForFrame(&g_entities[entNum], frame);
 		}
 
-		if (anim != old_anim)
+		if (anim < 0 || anim != old_anim)
 		{
 			//not in same anim
 			in_same_anim = qfalse;

@@ -851,71 +851,6 @@ qboolean G_CallSpawn(gentity_t* ent)
 }
 
 /*
-=============
-G_NewString
-
-Builds a copy of the string, translating \n to real linefeeds
-so message texts can be multi-line
-=============
-*/
-char* G_NewString(const char* string)
-{
-	char* newb;
-
-	const int len = strlen(string) + 1;
-	char* new_p = newb = (char*)G_Alloc(len);
-
-	for (int i = 0; i < len; i++)
-	{
-		// turn \n into a real linefeed
-		if (string[i] == '\\' && i < len - 1)
-		{
-			if (string[i + 1] == 'n')
-			{
-				*new_p++ = '\n';
-				i++;
-			}
-			else
-				*new_p++ = '\\';
-		}
-		else
-			*new_p++ = string[i];
-	}
-
-	return newb;
-}
-
-char* G_NewString_Safe(const char* string)
-{
-	char* newb;
-
-	const int len = strlen(string) + 1;
-	char* new_p = newb = (char*)malloc(len);
-
-	if (!new_p)
-		return NULL;
-
-	for (int i = 0; i < len; i++)
-	{
-		// turn \n into a real linefeed
-		if (string[i] == '\\' && i < len - 1)
-		{
-			if (string[i + 1] == 'n')
-			{
-				*new_p++ = '\n';
-				i++;
-			}
-			else
-				*new_p++ = '\\';
-		}
-		else
-			*new_p++ = string[i];
-	}
-
-	return newb;
-}
-
-/*
 ===============
 G_ParseField
 
@@ -931,12 +866,12 @@ static int fieldcmp(const void* a, const void* b)
 
 void Q3_SetParm(int entID, int parmNum, const char* parmValue);
 
-void G_ParseField(const char* key, const char* value, gentity_t* ent)
+static void G_ParseField(const char* key, const char* value, gentity_t* ent)
 {
 	const field_t* f = (field_t*)Q_LinearSearch(key, fields, ARRAY_LEN(fields), sizeof(field_t), fieldcmp);
 	if (f)
 	{
-		vec3_t vec;
+		vec3_t vec = { 0 };
 		float v;
 		// found it
 		byte* b = (byte*)ent;

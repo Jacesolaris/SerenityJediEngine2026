@@ -776,10 +776,10 @@ void NPC_BSHowler_Default()
 			if (Distance(NPC->enemy->currentOrigin, NPC->currentOrigin) < HOWLER_RETREAT_DIST)
 			{
 				//enemy is close
-				vec3_t move_dir;
-				AngleVectors(NPC->currentAngles, move_dir, nullptr, nullptr);
-				VectorScale(move_dir, -1, move_dir);
-				if (!NAV_DirSafe(NPC, move_dir, 8))
+				vec3_t moveDir;
+				AngleVectors(NPC->currentAngles, moveDir, nullptr, nullptr);
+				VectorScale(moveDir, -1, moveDir);
+				if (!NAV_DirSafe(NPC, moveDir, 8))
 				{
 					//enemy is backing me up against a wall or ledge!  Start to get really mad!
 					NPCInfo->stats.aggression += 2;
