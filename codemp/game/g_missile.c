@@ -93,7 +93,7 @@ extern qboolean PM_InKnockDown(const playerState_t* ps);
 extern qboolean PM_InKataAnim(const int anim);
 extern int G_PickPainAnim(const gentity_t* self, vec3_t point, int hit_loc);
 extern qboolean PM_InCartwheel(int anim);
-extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
 
 static float vector_bolt_distance(vec3_t v1, vec3_t v2)
 {

@@ -68,7 +68,7 @@ extern saberMoveName_t PM_SaberAnimTransitionMove(saberMoveName_t curmove, saber
 extern saberMoveName_t PM_AttackMoveForQuad(int quad);
 extern qboolean PM_SaberInTransition(int move);
 extern qboolean PM_SaberInTransitionAny(int move);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInAttack(int move);
 extern saberMoveName_t PM_SaberBounceForAttack(int move);
@@ -11828,6 +11828,261 @@ static void PM_FinishWeaponChange()
 	}
 }
 
+static qboolean PM_EnemyInFrontCloseRange(void)
+{
+	gentity_t* self = pm->gent;
+
+	if (!self || !self->client)
+	{
+		return qfalse;
+	}
+
+	vec3_t start;
+	VectorCopy(self->currentOrigin, start);
+	start[2] += 24.0f; // NPC eye height
+
+	// 350 units = close range
+	const float range = 350.0f;
+
+	// widen arc: trace forward, 45° left, 45° right
+	const float arcDegrees = 45.0f;
+
+	// angles to test
+	float baseAngles[3];
+	VectorCopy(self->client->ps.viewangles, baseAngles);
+
+	float testAngles[3];
+
+	// three directions: center, left, right
+	const int numTests = 3;
+	float yawOffsets[numTests] = { 0.0f, -arcDegrees, arcDegrees };
+
+	for (int i = 0; i < numTests; i++)
+	{
+		VectorCopy(baseAngles, testAngles);
+		testAngles[YAW] += yawOffsets[i];
+
+		vec3_t forward, end;
+		AngleVectors(testAngles, forward, NULL, NULL);
+		VectorMA(start, range, forward, end);
+
+		trace_t tr;
+
+		gi.trace(&tr, start, vec3_origin, vec3_origin, end, self->s.number, MASK_SHOT, static_cast<EG2_Collision>(0), 0);
+
+		if (tr.entityNum < 0 || tr.entityNum >= ENTITYNUM_MAX_NORMAL)
+		{
+			continue;
+		}
+
+		gentity_t* hit = &g_entities[tr.entityNum];
+
+		if (!hit || !hit->client)
+		{
+			continue;
+		}
+
+		if (hit->health <= 0)
+		{
+			continue;
+		}
+
+		// must be enemy
+		if (hit->client->playerTeam == self->client->playerTeam)
+		{
+			continue;
+		}
+
+		// enemy detected in widened arc
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
+static int PM_ReadyPoseForsaber_anim_levelNPC()
+{
+	int anim = BOTH_STAND2;
+
+	qboolean enemyInFront = PM_EnemyInFrontCloseRange();
+	const qboolean enemy_far = (enemyInFront == qfalse) ? qtrue : qfalse; // 3.0 meters = 300 units
+
+	if (PM_RidingVehicle())
+	{
+		return -1;
+	}
+
+	switch (pm->ps->saberAnimLevel)
+	{
+	case SS_DUAL:
+		anim = BOTH_SABERDUAL_STANCE;
+		break;
+	case SS_STAFF:
+		anim = BOTH_SABERSTAFF_STANCE;
+		break;
+	case SS_TAVION:
+		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERYODA_STANCE;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABERBACKHAND_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABEROBI_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABER_REY_STANCE;
+		}
+		else
+		{
+			anim = BOTH_SABERTAVION_STANCE;
+		}
+		break;
+	case SS_FAST:
+		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERYODA_STANCE;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABERBACKHAND_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABEROBI_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABER_REY_STANCE;
+		}
+		else
+		{
+			anim = BOTH_SABERFAST_STANCE;
+		}
+		break;
+	case SS_STRONG:
+		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERYODA_STANCE;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABERBACKHAND_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABEROBI_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABER_REY_STANCE;
+		}
+		else
+		{
+			anim = BOTH_SABERSLOW_STANCE;
+		}
+		break;
+	case SS_DESANN:
+		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERYODA_STANCE;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABERBACKHAND_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABEROBI_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABER_REY_STANCE;
+		}
+		else
+		{
+			anim = BOTH_SABERDESANN_STANCE;
+		}
+		break;
+	case SS_MEDIUM:
+		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERYODA_STANCE;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABERBACKHAND_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
+		{
+			anim = BOTH_SABERSTANCE_STANCE_ALT;
+		}
+		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
+		{
+			anim = BOTH_SABEROBI_STANCE;
+		}
+		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
+		{
+			anim = BOTH_SABER_REY_STANCE;
+		}
+		else
+		{
+			anim = BOTH_STAND2;
+		}
+		break;
+	case SS_NONE:
+	default:
+		anim = BOTH_STAND2;
+		break;
+	}
+	return anim;
+}
+
 int PM_ReadyPoseForsaber_anim_level()
 {
 	int anim;
@@ -11876,7 +12131,7 @@ int PM_IdlePoseForsaber_anim_level()
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_level();
+		anim = PM_ReadyPoseForsaber_anim_levelNPC();
 	}
 	else if (pm->ps->pm_flags & PMF_DUCKED)
 	{
@@ -11918,7 +12173,7 @@ int PM_BlockingPoseForsaber_anim_levelDual(void)
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_level();
+		anim = PM_ReadyPoseForsaber_anim_levelNPC();
 	}
 	else
 	{
@@ -12078,7 +12333,7 @@ int PM_BlockingPoseForsaber_anim_levelStaff(void)
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_level();
+		anim = PM_ReadyPoseForsaber_anim_levelNPC();
 	}
 	else
 	{
@@ -12243,7 +12498,7 @@ int PM_BlockingPoseForsaber_anim_levelSingle(void)
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_level();
+		anim = PM_ReadyPoseForsaber_anim_levelNPC();
 	}
 	else
 	{
@@ -17217,6 +17472,87 @@ saberMoveName_t PM_DoAI_Fake(const int curmove)
 Kata Animationstyles
 =================
 */
+static qboolean PM_EnemyCloseEnoughForNormalKata(void)
+{
+	gentity_t* self = pm->gent;
+
+	if (!self || !self->client)
+	{
+		return qfalse;
+	}
+
+	vec3_t start;
+	VectorCopy(self->currentOrigin, start);
+	start[2] += 24.0f; // NPC eye height
+
+	// 300 units = close range
+	const float range = 150.0f;
+
+	// widen arc: trace forward, 45° left, 45° right
+	const float arcDegrees = 45.0f;
+
+	// angles to test
+	float baseAngles[3];
+	VectorCopy(self->client->ps.viewangles, baseAngles);
+
+	float testAngles[3];
+
+	// three directions: center, left, right
+	const int numTests = 3;
+	float yawOffsets[numTests] = { 0.0f, -arcDegrees, arcDegrees };
+
+	for (int i = 0; i < numTests; i++)
+	{
+		VectorCopy(baseAngles, testAngles);
+		testAngles[YAW] += yawOffsets[i];
+
+		vec3_t forward, end;
+		AngleVectors(testAngles, forward, NULL, NULL);
+		VectorMA(start, range, forward, end);
+
+		trace_t tr;
+
+		gi.trace(
+			&tr,
+			start,
+			vec3_origin,
+			vec3_origin,
+			end,
+			self->s.number,
+			MASK_SHOT,
+			static_cast<EG2_Collision>(0),
+			0
+		);
+
+		if (tr.entityNum < 0 || tr.entityNum >= ENTITYNUM_MAX_NORMAL)
+		{
+			continue;
+		}
+
+		gentity_t* hit = &g_entities[tr.entityNum];
+
+		if (!hit || !hit->client)
+		{
+			continue;
+		}
+
+		if (hit->health <= 0)
+		{
+			continue;
+		}
+
+		// must be enemy
+		if (hit->client->playerTeam == self->client->playerTeam)
+		{
+			continue;
+		}
+
+		// enemy detected in widened arc
+		return qtrue;
+	}
+
+	return qfalse;
+}
 
 static qboolean PM_SaberSmashOnCooldown(const playerState_t* ps)
 {
@@ -17229,6 +17565,77 @@ static qboolean PM_SaberSmashOnCooldown(const playerState_t* ps)
 	{
 		return qtrue;
 	}
+	return qfalse;
+}
+
+static qboolean PM_CanDoSmashdown(const pmove_t* pm)
+{
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
+	const qboolean EnemyTooFarForSmashdown = PM_EnemyCloseEnoughForNormalKata();
+
+	// Difficulty chance
+	int roll = Q_irand(0, 99);
+	int chanceThreshold;
+
+	switch (pm->ps->saberAnimLevel)
+	{// chance based on saber style NPC is using.
+	case SS_DUAL:
+	case SS_STAFF:
+		chanceThreshold = 66;
+		break;
+	case SS_FAST:
+	case SS_TAVION:
+	case SS_STRONG:
+	case SS_DESANN:
+	case SS_MEDIUM:
+		chanceThreshold = 75;
+		break;
+	case SS_NONE:
+	default:
+		chanceThreshold = 50;
+		break;
+	}
+
+	const qboolean Chance = (roll < chanceThreshold) ? qtrue : qfalse;
+
+	// Force requirements
+	const int PlayerMustHaveForcePush = pm->ps->forcePowerLevel[FP_PUSH];
+	const int NPCMustHaveForceSaberOffense = pm->ps->forcePowerLevel[FP_SABER_OFFENSE];
+	const int forceCurrent = pm->ps->forcePower;
+	const int forceMax = pm->ps->forcePowerMax;
+
+	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.99f)) ? qtrue : qfalse;
+	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
+	const qboolean ButtonUse = (pm->cmd.buttons & BUTTON_USE) ? qtrue : qfalse;
+
+	if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer())
+	{
+		// Final combined rule
+		if (smashReady == qtrue &&                 // Not on cooldown
+			NPCMustHaveForceSaberOffense >= FORCE_LEVEL_1 &&  // Must have Force saber offense level 1
+			hasEnoughForce == qtrue &&             // Must have enough Force
+			Chance == qtrue &&                     // Difficulty chance
+			EnemyTooFarForSmashdown == qfalse)     // Enemy must be close enough
+		{
+			return qtrue;
+		}
+	}
+	else
+	{
+		// Final combined rule
+		if (smashReady == qtrue &&                 // Not on cooldown
+			PlayerMustHaveForcePush == FORCE_LEVEL_3 &&  // Must have Force Push level 3
+			hasEnoughForce == qtrue &&             // Must have enough Force power
+			ButtonUse == qtrue)
+		{
+			return qtrue;
+		}
+	}
+
 	return qfalse;
 }
 
@@ -17248,6 +17655,7 @@ static void PM_KataAnimationStyle(void)
 	const int forceMax = pm->ps->forcePowerMax;
 	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.99f)) ? qtrue : qfalse;
 	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
+	const qboolean EnemyTooFarForSmashdown = PM_EnemyCloseEnoughForNormalKata();
 
 	saberMoveName_t overrideMove = LS_INVALID;
 
@@ -17300,9 +17708,7 @@ static void PM_KataAnimationStyle(void)
 			}
 			else
 			{
-				if (smashReady == qtrue &&
-					saberOffenseLevel == FORCE_LEVEL_3 &&
-					hasEnoughForce == qtrue)
+				if (PM_CanDoSmashdown(pm) == qtrue)
 				{
 					PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 				}
@@ -17320,9 +17726,7 @@ static void PM_KataAnimationStyle(void)
 
 		case SS_MEDIUM:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -17335,9 +17739,7 @@ static void PM_KataAnimationStyle(void)
 
 		case SS_STRONG:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -17354,9 +17756,7 @@ static void PM_KataAnimationStyle(void)
 
 		case SS_DESANN:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -17373,9 +17773,7 @@ static void PM_KataAnimationStyle(void)
 
 		case SS_TAVION:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -17392,9 +17790,7 @@ static void PM_KataAnimationStyle(void)
 
 		case SS_DUAL:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_DUAL);
 			}
@@ -17417,9 +17813,7 @@ static void PM_KataAnimationStyle(void)
 		break;
 		case SS_STAFF:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_STAFF);
 			}

@@ -46,7 +46,7 @@ extern qboolean PM_KickingAnim(int anim);
 extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps);
 extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 extern qboolean PM_SaberInKnockaway(int move);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean BG_InSlowBounce(const playerState_t* ps);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
 extern qboolean PM_InKnockDown(const playerState_t* ps);

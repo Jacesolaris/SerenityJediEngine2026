@@ -44,7 +44,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 //////////Defines////////////////
 extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int AnimIndex);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean BG_InSlowBounce(const playerState_t* ps);
 extern bot_state_t* botstates[MAX_CLIENTS];
 extern qboolean PM_SaberInTransitionAny(int move);

@@ -133,7 +133,7 @@ qboolean PM_StandingAtReadyAnim(int anim);
 extern qboolean PM_WalkingOrRunningAnim(int anim);
 extern qboolean IsSurrendering(const gentity_t* self);
 extern qboolean PM_Can_Do_Kill_Move();
-extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
 
 // Silly, but I'm replacing these macros so they are shorter!
 #define AFLAG_IDLE	(SETANIM_FLAG_NORMAL)

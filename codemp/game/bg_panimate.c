@@ -60,7 +60,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 qboolean PM_SaberInTransition(int move);
 qboolean PM_SaberInDeflect(int move);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean PM_SaberInBrokenParry(int move);
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
 extern qboolean PM_InBackFlip(int anim);

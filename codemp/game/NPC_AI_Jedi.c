@@ -81,7 +81,7 @@ extern void WP_ActivateSaber(gentity_t* self);
 extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInAttack(int move);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean PM_SaberInParry(int move);
 extern qboolean PM_SaberInKnockaway(int move);
 extern qboolean PM_SaberInBrokenParry(int move);

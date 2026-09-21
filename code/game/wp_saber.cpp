@@ -119,7 +119,7 @@ extern qboolean PM_SaberInTransition(int move);
 extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInTransitionAny(int move);
 extern qboolean PM_SaberInReturn(int move);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean PM_SaberInParry(int move);
 extern qboolean PM_SaberInKnockaway(int move);
 extern qboolean PM_SaberInBrokenParry(int move);
@@ -217,7 +217,7 @@ extern qboolean PM_InGetUp(const playerState_t* ps);
 extern qboolean PM_InForceGetUp(const playerState_t* ps);
 extern qboolean npc_is_dark_jedi(const gentity_t* self);
 extern qboolean npc_is_light_jedi(const gentity_t* self);
-extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
 extern void npc_check_speak(gentity_t* speaker_npc);
 extern qboolean PM_SaberInKillMove(int move);
 //////////////////////////////////////////////////
@@ -238,7 +238,7 @@ extern qboolean PM_StaggerAnim(int anim);
 extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps);
 extern qboolean PM_InSaberAnim(int anim);
 extern qboolean BG_InFlipBack(int anim);
-extern qboolean PM_SaberInBashedAnim(int anim);
+extern qboolean PM_SaberInBashedAnim(const int anim);
 qboolean WP_SaberBouncedSaberDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean PM_DeathCinAnim(int anim);
 extern qboolean PM_InWallHoldMove(int anim);
@@ -18963,6 +18963,7 @@ int IsPressingDashButton(const gentity_t* self)
 		&& !PM_KickMove(self->client->ps.saberMove)
 		&& self->client->pers.cmd.upmove == 0
 		&& !self->client->hookhasbeenfired
+		&& self->client->ps.Dash_Count < 3
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
 		&& (self->client->buttons & BUTTON_DASH)

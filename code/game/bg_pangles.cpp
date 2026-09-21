@@ -64,8 +64,8 @@ extern qboolean PM_InLedgeMove(int anim);
 extern qboolean PM_KickingAnim(int anim);
 extern qboolean PM_InRoll(const playerState_t* ps);
 extern qboolean PM_CrouchAnim(int anim);
-extern qboolean PM_SaberInMassiveBounce(int anim);
-extern qboolean PM_SaberInBashedAnim(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
+extern qboolean PM_SaberInBashedAnim(const int anim);
 extern qboolean PM_InKataAnim(int anim);
 
 extern qboolean cg_usingInFrontOf;

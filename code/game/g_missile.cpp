@@ -102,7 +102,7 @@ extern qboolean PM_InKnockDown(const playerState_t* ps);
 extern qboolean PM_InKataAnim(const int anim);
 extern qboolean PM_InCartwheel(int anim);
 extern int G_PickPainAnim(const gentity_t* self, const vec3_t point, int hit_loc);
-extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
 
 //-------------------------------------------------------------------------
 static void G_Missile_Bounce_Effect(const gentity_t* ent, vec3_t org, vec3_t dir, const qboolean hit_world)

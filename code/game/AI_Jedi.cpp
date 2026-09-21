@@ -91,7 +91,7 @@ extern int PM_AnimLength(const int index, const animNumber_t anim);
 extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInAttack(int move);
-extern qboolean PM_SaberInBounce(int move);
+extern qboolean PM_SaberInBounce(const int move);
 extern qboolean PM_SaberInParry(int move);
 extern qboolean PM_SaberInKnockaway(int move);
 extern qboolean PM_SaberInBrokenParry(int move);
@@ -156,7 +156,7 @@ extern void Boba_FlyStart(gentity_t* self);
 extern void WP_DeactivateLightSaber(const gentity_t* self);
 extern qboolean PM_SaberInReturn(int move);
 extern qboolean PM_SaberInMassiveBounce(int move);
-extern qboolean PM_SaberInBashedAnim(int anim);
+extern qboolean PM_SaberInBashedAnim(const int anim);
 extern qboolean PM_CrouchAnim(const int anim);
 constexpr auto MELEE_DIST_SQUARED = 6400;
 qboolean Jedi_SaberBusy(const gentity_t* self);
@@ -2589,7 +2589,7 @@ static void Jedi_CombatDistance(const int enemy_dist)
 			JediDirectionalDashDodge(NPC, enemy);
 			NPC->Dash_NPC_Count++;
 
-			// Start cooldown after second dash
+			// If we just used the 2nd dash → start cooldown
 			if (NPC->Dash_NPC_Count == 2)
 			{
 				TIMER_Set(NPC, "DashOutTime", Q_irand(5000, 10000));

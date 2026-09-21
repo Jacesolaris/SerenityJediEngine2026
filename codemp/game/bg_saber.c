@@ -91,7 +91,7 @@ extern qboolean PM_IsInBlockingAnim(int move);
 extern qboolean PM_SaberDoDamageAnim(int anim);
 extern qboolean in_camera;
 extern qboolean PM_Can_Do_Kill_Move(void);
-extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
 int Next_Kill_Attack_Move_Check[MAX_CLIENTS]; // Next special move check.
 extern vmCvar_t g_attackskill;
 extern vmCvar_t bot_thinklevel;
@@ -5189,6 +5189,81 @@ static qboolean PM_SaberBlocking(void)
 Kata Animationstyles
 =================
 */
+
+static qboolean PM_EnemyCloseEnoughForNormalKata(void)
+{
+#ifdef _GAME
+	// safety checks
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
+	int selfNum = pm->ps->clientNum;
+	if (selfNum < 0 || selfNum >= MAX_GENTITIES)
+	{
+		return qfalse;
+	}
+
+	gentity_t* self = &g_entities[selfNum];
+	if (!self || !self->client)
+	{
+		return qfalse;
+	}
+
+	vec3_t start;
+	VectorCopy(pm->ps->origin, start);
+	start[2] += 24.0f; // eye height
+
+	const float range = 150.0f;    // close range
+	const float arcDegrees = 45.0f; // arc to each side
+
+	vec3_t baseAngles;
+	baseAngles[0] = pm->ps->viewangles[PITCH];
+	baseAngles[1] = pm->ps->viewangles[YAW];
+	baseAngles[2] = pm->ps->viewangles[ROLL];
+
+	float yawOffsets[3] = { 0.0f, -arcDegrees, arcDegrees };
+
+	for (int i = 0; i < 3; i++)
+	{
+		vec3_t testAngles;
+		VectorCopy(baseAngles, testAngles);
+		testAngles[YAW] += yawOffsets[i];
+
+		vec3_t forward, end;
+		AngleVectors(testAngles, forward, NULL, NULL);
+		VectorMA(start, range, forward, end);
+
+		trace_t tr;
+		// use the player's entity number as the passEntity parameter
+		pm->trace(&tr, start, vec3_origin, vec3_origin, end, selfNum, MASK_SHOT);
+
+		if (tr.fraction < 1.0f && tr.entityNum >= 0 && tr.entityNum < MAX_GENTITIES)
+		{
+			gentity_t* hit = &g_entities[tr.entityNum];
+			if (!hit)
+			{
+				continue;
+			}
+
+			// must be a client and alive
+			if (!hit->client || hit->health <= 0)
+			{
+				continue;
+			}
+
+			// must be an enemy
+			if (hit->client->playerTeam != self->client->playerTeam)
+			{
+				return qtrue;
+			}
+		}
+	}
+#endif
+
+	return qfalse;
+}
 static qboolean PM_SaberSmashOnCooldown(const playerState_t* ps)
 {
 	if (!ps)
@@ -5200,6 +5275,81 @@ static qboolean PM_SaberSmashOnCooldown(const playerState_t* ps)
 	{
 		return qtrue;
 	}
+	return qfalse;
+}
+
+static qboolean PM_CanDoSmashdown(const pmove_t* pm)
+{
+	if (!pm || !pm->ps)
+	{
+		return qfalse;
+	}
+
+	const qboolean EnemyTooFarForSmashdown = PM_EnemyCloseEnoughForNormalKata();
+
+	// Difficulty chance
+	int roll = Q_irand(0, 99);
+	int chanceThreshold;
+
+	switch (pm->ps->fd.saberAnimLevel)
+	{// chance based on saber style BOT is using.
+	case SS_DUAL:
+	case SS_STAFF:
+		chanceThreshold = 66;
+		break;
+	case SS_FAST:
+	case SS_TAVION:
+	case SS_STRONG:
+	case SS_DESANN:
+	case SS_MEDIUM:
+		chanceThreshold = 75;
+		break;
+	case SS_NONE:
+	default:
+		chanceThreshold = 50;
+		break;
+	}
+
+	const qboolean Chance = (roll < chanceThreshold) ? qtrue : qfalse;
+
+	// Force requirements
+	const int MustHaveForcePush = pm->ps->fd.forcePowerLevel[FP_PUSH];
+	const int NPCMustHaveForceSaberOffense = pm->ps->fd.forcePowerLevel[FP_SABER_OFFENSE];
+	const int forceCurrent = pm->ps->fd.forcePower;
+	const int forceMax = pm->ps->fd.forcePowerMax;
+
+	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.99f)) ? qtrue : qfalse;
+	// Cooldown
+	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
+	const qboolean ButtonUse = (pm->cmd.buttons & BUTTON_USE) ? qtrue : qfalse;
+
+
+#ifdef _GAME
+	if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT)
+	{
+		// Final combined rule
+		if (smashReady == qtrue &&                 // Not on cooldown
+			NPCMustHaveForceSaberOffense >= FORCE_LEVEL_1 &&  // Must have Force saber offense level 1
+			hasEnoughForce == qtrue &&             // Must have enough Force
+			Chance == qtrue &&                     // Difficulty chance
+			EnemyTooFarForSmashdown == qfalse)     // Enemy must be close enough
+		{
+			return qtrue;
+		}
+	}
+	else
+	{
+		// Final combined rule
+		if (smashReady == qtrue &&                 // Not on cooldown
+			MustHaveForcePush == FORCE_LEVEL_3 &&  // Must have Force Push level 3
+			hasEnoughForce == qtrue &&             // Must have enough Force power
+			ButtonUse == qtrue)
+		{
+			return qtrue;
+		}
+	}
+#endif
+
 	return qfalse;
 }
 
@@ -5217,6 +5367,7 @@ static void PM_KataAnimationStyle(void)
 	const int forceMax = pm->ps->fd.forcePowerMax;
 	const qboolean hasEnoughForce = (forceCurrent >= (int)(forceMax * 0.99f)) ? qtrue : qfalse;
 	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
+	const qboolean EnemyTooFarForSmashdown = PM_EnemyCloseEnoughForNormalKata();
 	saberInfo_t* saber0 = BG_MySaber(pm->ps->clientNum, 0); // right hand saber
 	saberInfo_t* saber1 = BG_MySaber(pm->ps->clientNum, 1); // left hand saber
 	qboolean dualSabers = qfalse;
@@ -5277,9 +5428,7 @@ static void PM_KataAnimationStyle(void)
 		{
 		case SS_FAST:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -5295,9 +5444,7 @@ static void PM_KataAnimationStyle(void)
 		break;
 		case SS_MEDIUM:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -5310,9 +5457,7 @@ static void PM_KataAnimationStyle(void)
 
 		case SS_STRONG:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -5328,9 +5473,7 @@ static void PM_KataAnimationStyle(void)
 		break;
 		case SS_DESANN:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -5346,9 +5489,7 @@ static void PM_KataAnimationStyle(void)
 		break;
 		case SS_TAVION:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
 			}
@@ -5364,9 +5505,7 @@ static void PM_KataAnimationStyle(void)
 		break;
 		case SS_DUAL:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_DUAL);
 			}
@@ -5389,9 +5528,7 @@ static void PM_KataAnimationStyle(void)
 		break;
 		case SS_STAFF:
 		{
-			if (smashReady == qtrue &&
-				saberOffenseLevel == FORCE_LEVEL_3 &&
-				hasEnoughForce == qtrue)
+			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_STAFF);
 			}

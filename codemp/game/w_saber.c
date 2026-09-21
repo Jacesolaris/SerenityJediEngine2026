@@ -106,7 +106,7 @@ extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce
 extern void AddFatigueMeleeBonus(const gentity_t* attacker, const gentity_t* victim);
 extern qboolean npc_is_dark_jedi(const gentity_t* self);
 extern qboolean npc_is_light_jedi(const gentity_t* self);
-extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInMassiveBounce(const int anim);
 extern qboolean PM_InForceGetUp(const playerState_t* ps);
 extern void sab_beh_animate_slow_bounce_blocker(gentity_t* self);
 extern void NPC_SetPainEvent(gentity_t* self);
@@ -129,7 +129,7 @@ extern qboolean PM_SaberInTransitionDamageMove(const playerState_t* ps);
 extern qboolean PM_InSlowBounce(const playerState_t* ps);
 void DebounceSaberImpact(const gentity_t* self, const gentity_t* other_saberer, int rsaber_num, int rblade_num, int sabimpactentity_num);
 extern qboolean BG_InFlipBack(int anim);
-extern qboolean PM_SaberInBashedAnim(int anim);
+extern qboolean PM_SaberInBashedAnim(const int anim);
 extern qboolean PM_SaberInReturn(int move);
 extern qboolean PM_CrouchingAnim(int anim);
 int PlayerCanAbsorbKick(const gentity_t* defender, const vec3_t push_dir);
