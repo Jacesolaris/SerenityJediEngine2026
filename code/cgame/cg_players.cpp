@@ -13266,8 +13266,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 						fx->mVerts[3].ST[1] = 0.99f;
 						fx->mVerts[3].destST[0] = 0.99f + fx->mVerts[2].ST[0];
 						fx->mVerts[3].destST[1] = 0.99f;
-
-						FX_AddPrimitive(reinterpret_cast<CEffect**>(&fx), duration);
+						CEffect* base_fx = fx;
+						FX_AddPrimitive(&base_fx, duration);
 					}
 				}
 
@@ -14047,7 +14047,8 @@ static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const in
 			fx->mVerts[3].destST[0] = 4.0f;
 			fx->mVerts[3].destST[1] = 4.0f;
 
-			FX_AddPrimitive(reinterpret_cast<CEffect**>(&fx), 0);
+			CEffect* base_fx = fx;
+			FX_AddPrimitive(&base_fx, 0);
 		}
 
 		if (client->ps.saber[saberNum].saberFlags2 & SFL2_NO_BLADE)
@@ -14081,6 +14082,23 @@ void CG_AddSaberBlade(const centity_t* cent, centity_t* scent, const int renderf
 //--------------- END SABER STUFF --------
 
 /*
+ ================
+ CG_GetSelfLegAnimPoint
+ ================
+ */
+ //Get the point in the leg animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
+// the view entity may have no gent / ghoul2 model (cameras, right after loading)
+static bool CG_ViewEntityHasModel()
+{
+	if (!cg.snap || cg.snap->ps.viewEntity < 0 || cg.snap->ps.viewEntity >= MAX_GENTITIES)
+	{
+		return false;
+	}
+	const gentity_t* gent = cg_entities[cg.snap->ps.viewEntity].gent;
+	return gent && gent->playerModel >= 0 && gent->playerModel < gent->ghoul2.size();
+}
+
+/*
 ================
 CG_GetSelfLegAnimPoint
 ================
@@ -14091,6 +14109,10 @@ static float CG_GetSelfLegAnimPoint()
 	float current = 0.0f;
 	int end = 0;
 	int start = 0;
+	if (!CG_ViewEntityHasModel())
+	{
+		return 0.0f;
+	}
 	if (!!gi.G2API_GetBoneAnimIndex(&
 		cg_entities[cg.snap->ps.viewEntity].gent->ghoul2[cg_entities[cg.snap->ps.viewEntity]
 		.gent->playerModel],
@@ -14103,7 +14125,7 @@ static float CG_GetSelfLegAnimPoint()
 		nullptr,
 		nullptr))
 	{
-		const float percent_complete = (current - start) / (end - start);
+		const float percent_complete = end != start ? (current - start) / (end - start) : 0.0f;
 
 		return percent_complete;
 	}
@@ -14123,6 +14145,10 @@ float CG_GetSelfTorsoAnimPoint()
 	float current = 0.0f;
 	int end = 0;
 	int start = 0;
+	if (!CG_ViewEntityHasModel())
+	{
+		return 0.0f;
+	}
 	if (!!gi.G2API_GetBoneAnimIndex(&
 		cg_entities[cg.snap->ps.viewEntity].gent->ghoul2[cg_entities[cg.snap->ps.viewEntity]
 		.gent->playerModel],
@@ -14135,7 +14161,7 @@ float CG_GetSelfTorsoAnimPoint()
 		nullptr,
 		nullptr))
 	{
-		const float percent_complete = (current - start) / (end - start);
+		const float percent_complete = end != start ? (current - start) / (end - start) : 0.0f;
 
 		return percent_complete;
 	}
@@ -15904,10 +15930,10 @@ void CG_Player(centity_t* cent)
 
 				if (effect)
 				{
-					if (cent->gent && cent->gent->NPC ||
+					if (cent->gent && (cent->gent->NPC ||
 						cent->gent->s.weapon == WP_BLASTER_PISTOL && cent->currentState.eFlags &
 						EF2_DUAL_WEAPONS
-						&& !G_IsRidingVehicle(cent->gent)) //PM_WeaponOkOnVehicle)
+						&& !G_IsRidingVehicle(cent->gent))) //PM_WeaponOkOnVehicle)
 					{
 						if (!VectorCompare(old_mp, vec3_origin)
 							&& !VectorCompare(old_md, vec3_origin))
@@ -15960,10 +15986,10 @@ void CG_Player(centity_t* cent)
 
 					if (effect)
 					{
-						if (cent->gent && cent->gent->NPC ||
+						if (cent->gent && (cent->gent->NPC ||
 							cent->gent->s.weapon == WP_BLASTER_PISTOL &&
 							cent->currentState.eFlags & EF2_DUAL_WEAPONS &&
-							!G_IsRidingVehicle(cent->gent)) //PM_WeaponOkOnVehicle)
+							!G_IsRidingVehicle(cent->gent))) //PM_WeaponOkOnVehicle)
 						{
 							if (!VectorCompare(old_mp, vec3_origin) && !VectorCompare(old_md, vec3_origin))
 							{

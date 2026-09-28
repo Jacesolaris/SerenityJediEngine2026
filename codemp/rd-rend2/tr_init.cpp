@@ -264,8 +264,8 @@ cvar_t* r_patchStitching;
 
 // the limits apply to the sum of all scenes in a frame --
 // the main view, all the 3D icons, etc
-#define	DEFAULT_MAX_POLYS		600
-#define	DEFAULT_MAX_POLYVERTS	3000
+#define	DEFAULT_MAX_POLYS		4096
+#define	DEFAULT_MAX_POLYVERTS	32768
 cvar_t* r_maxpolys;
 cvar_t* r_maxpolyverts;
 int		max_polys;
@@ -2046,6 +2046,7 @@ static void R_ShutdownBackEndFrameData()
 }
 
 static bool r_cacheGPUShaders = false;
+static int r_cachedGPUShadersCubeMapping = -1; // r_cubeMapping the cached GLSL programs were built with
 
 static void R_ClearTr(void)
 {
@@ -2061,6 +2062,7 @@ static void R_ClearTr(void)
 }
 
 static bool r_inited = false;
+static bool r_glContextKept = false; // RE_Shutdown kept the GL context (level change)
 
 /*
 ===============
@@ -2076,6 +2078,17 @@ void R_Init(void)
 		return;
 
 	ri->Printf(PRINT_ALL, "-----Loading MP Quality Mode-----\n");
+
+	// On a level change the server registers images and models between RE_Shutdown and
+	// here (SV_SpawnServer -> R_SVModelInit, game spawn). Their GL textures and buffers are
+	// only known in tr, so delete them before R_ClearTr, or they leak every level load.
+	if (r_glContextKept && (tr.images || tr.numVBOs || tr.numIBOs))
+	{
+		R_DeleteTextures();
+		R_DestroyGPUBuffers();
+	}
+	r_glContextKept = false;
+
 
 	// clear all our internal state
 	R_ClearTr();
@@ -2115,8 +2128,8 @@ void R_Init(void)
 	R_NoiseInit();
 	R_Register();
 
-	max_polys = Q_min(r_maxpolys->integer, DEFAULT_MAX_POLYS);
-	max_polyverts = Q_min(r_maxpolyverts->integer, DEFAULT_MAX_POLYVERTS);
+	max_polys = Q_max(r_maxpolys->integer, DEFAULT_MAX_POLYS); // default is the minimum; the cvar can only raise it
+	max_polyverts = Q_max(r_maxpolyverts->integer, DEFAULT_MAX_POLYVERTS);
 
 	ptr = (byte*)ri->Hunk_Alloc(
 		sizeof(*backEndData) +
@@ -2156,8 +2169,21 @@ void R_Init(void)
 
 	FBO_Init();
 
+	// The map command switches r_cubeMapping per map (sv_ccmds.cpp). The GLSL programs
+	// depend on it (prefilterEnvMap is only built when it is on), so programs cached from
+	// the last level must be rebuilt when it changed, or cubemap rendering uses a program
+	// that was never built and crashes.
+	if (r_cacheGPUShaders && r_cubeMapping->integer != r_cachedGPUShadersCubeMapping)
+	{
+		GLSL_ShutdownGPUShaders();
+		r_cacheGPUShaders = false;
+	}
+
 	if (!r_cacheGPUShaders)
+	{
 		GLSL_LoadGPUShaders();
+		r_cachedGPUShadersCubeMapping = r_cubeMapping->integer;
+	}
 	r_cacheGPUShaders = false;
 
 	R_InitShaders(qfalse);
@@ -2250,6 +2276,7 @@ void RE_Shutdown(qboolean destroyWindow, qboolean restarting)
 
 	tr.registered = qfalse;
 	r_inited = false;
+	r_glContextKept = !destroyWindow;
 	backEndData = NULL;
 }
 

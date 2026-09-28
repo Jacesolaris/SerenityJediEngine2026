@@ -3998,6 +3998,12 @@ void STEER::Activate(gentity_t* actor)
 			continue;
 		}
 
+		// mNeighbors has a fixed size (MAX_NEIGHBORS); push_back on a full list writes past its end
+		if (suser.mNeighbors.full())
+		{
+			break;
+		}
+
 		suser.mNeighbors.push_back(neighbor);
 	}
 

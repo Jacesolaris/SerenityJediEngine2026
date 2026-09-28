@@ -131,6 +131,7 @@ static void CL_ShutdownRef(qboolean restarting);
 void CL_InitRef();
 void CL_CheckForResend();
 extern void CL_FreeServerCommands();
+static void CL_InitRenderer();
 
 /*
 =======================================================================
@@ -433,14 +434,17 @@ void CL_Vid_Restart_f()
 	CL_ShutdownUI();
 	CL_ShutdownCGame();
 
-	cls.rendererStarted = qfalse;
+	CL_InitRef();
+
+	// Start the new renderer right away instead of in the next CL_Frame: Com_Frame
+	// runs SV_Frame first, and the game's ghoul2 calls (e.g. an NPC changing its
+	// saber model) would reach a renderer that is loaded but not initialised yet.
+	cls.rendererStarted = qtrue;
+	CL_InitRenderer();
+
 	cls.uiStarted = qfalse;
 	cls.cgameStarted = qfalse;
 	cls.soundRegistered = qfalse;
-
-	CL_InitRef();
-
-	CL_StartHunkUsers();
 
 	// unpause so the cgame definately gets a snapshot and renders a frame
 	Cvar_Set("cl_paused", "0");

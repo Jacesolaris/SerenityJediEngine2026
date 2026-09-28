@@ -1321,7 +1321,9 @@ void Boba_DoSniper(const gentity_t* self)
 		}
 	}
 
-	if (Distance(NPCS.NPC->r.currentOrigin, level.combatPoints[NPCS.NPCInfo->combatPoint].origin) < 50.0f)
+	// combatPoint is -1 when no sniper point was found (e.g. maps without combat points)
+	if (NPCS.NPCInfo->combatPoint >= 0 && NPCS.NPCInfo->combatPoint < level.numCombatPoints &&
+		Distance(NPCS.NPC->r.currentOrigin, level.combatPoints[NPCS.NPCInfo->combatPoint].origin) < 50.0f)
 	{
 		Boba_FireDecide();
 	}

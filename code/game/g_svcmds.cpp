@@ -394,7 +394,6 @@ extern qboolean PM_SaberInStart(int move);
 extern qboolean PM_SaberInTransition(int move);
 extern qboolean PM_SaberInAttack(int move);
 extern qboolean WP_SaberCanTurnOffSomeBlades(const saberInfo_t* saber);
-extern qboolean PM_ControlledByPlayer();
 extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags,
 	int i_blend = SETANIM_BLEND_DEFAULT);
 
@@ -429,7 +428,7 @@ static void Svcmd_SaberAttackCycle_f()
 	}
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
-		&& !PM_ControlledByPlayer() &&
+		&& !G_ControlledByPlayer(self) &&
 		(self->client->ps.saber[0].type == SABER_STAFF) &&
 		self->client->ps.saberAnimLevel == SS_STAFF)
 	{
@@ -437,7 +436,7 @@ static void Svcmd_SaberAttackCycle_f()
 	}
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
-		&& !PM_ControlledByPlayer() &&
+		&& !G_ControlledByPlayer(self) &&
 		self->client->ps.saber[0].type == SABER_STAFF_ELECTROSTAFF &&
 		self->client->ps.saberAnimLevel == SS_STAFF)
 	{
@@ -445,7 +444,7 @@ static void Svcmd_SaberAttackCycle_f()
 	}
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
-		&& !PM_ControlledByPlayer() &&
+		&& !G_ControlledByPlayer(self) &&
 		self->client->ps.saber[0].type == SABER_STAFF_UNSTABLE &&
 		self->client->ps.saberAnimLevel == SS_STAFF)
 	{
@@ -453,7 +452,7 @@ static void Svcmd_SaberAttackCycle_f()
 	}
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
-		&& !PM_ControlledByPlayer() &&
+		&& !G_ControlledByPlayer(self) &&
 		self->client->ps.saber[0].type == SABER_STAFF_MAUL &&
 		self->client->ps.saberAnimLevel == SS_STAFF)
 	{
@@ -461,7 +460,7 @@ static void Svcmd_SaberAttackCycle_f()
 	}
 
 	if (self->s.clientNum >= MAX_CLIENTS //not the player
-		&& !PM_ControlledByPlayer() &&
+		&& !G_ControlledByPlayer(self) &&
 		(self->client->ps.saber[0].type == SABER_SINGLE) &&
 		self->client->ps.saberAnimLevel == SS_DUAL)
 	{
@@ -655,28 +654,28 @@ static void Svcmd_SaberAttackCycle_f()
 		if (saberAnimLevel > SS_STAFF)
 		{
 			if (self->s.clientNum >= MAX_CLIENTS //not the player
-				&& !PM_ControlledByPlayer() &&
+				&& !G_ControlledByPlayer(self) &&
 				(self->client->ps.saber[0].type == SABER_STAFF) &&
 				self->client->ps.saberAnimLevel == SS_STAFF)
 			{
 				saberAnimLevel = SS_STAFF;
 			}
 			else if (self->s.clientNum >= MAX_CLIENTS //not the player
-				&& !PM_ControlledByPlayer()
+				&& !G_ControlledByPlayer(self)
 				&& self->client->ps.saber[0].type == SABER_STAFF_UNSTABLE &&
 				self->client->ps.saberAnimLevel == SS_STAFF)
 			{
 				saberAnimLevel = SS_STAFF;
 			}
 			else if (self->s.clientNum >= MAX_CLIENTS //not the player
-				&& !PM_ControlledByPlayer() &&
+				&& !G_ControlledByPlayer(self) &&
 				self->client->ps.saber[0].type == SABER_STAFF_MAUL &&
 				self->client->ps.saberAnimLevel == SS_STAFF)
 			{
 				saberAnimLevel = SS_STAFF;
 			}
 			else if (self->s.clientNum >= MAX_CLIENTS //not the player
-				&& !PM_ControlledByPlayer() &&
+				&& !G_ControlledByPlayer(self) &&
 				(self->client->ps.saber[0].type == SABER_SINGLE) &&
 				self->client->ps.saberAnimLevel == SS_DUAL)
 			{

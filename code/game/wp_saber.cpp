@@ -6452,17 +6452,19 @@ void G_Stagger(gentity_t* hitEnt)
 	if (PM_InGetUp(&hitEnt->client->ps) || PM_InForceGetUp(&hitEnt->client->ps))
 		return;
 
-	const int anim = stag_hit_sp[Q_irand(0, 6)];
+	int anim = stag_hit_sp[Q_irand(0, 6)];
 
-	G_PlayTorsoAnim_SP(hitEnt, anim);
-	G_HandleMassiveBounce_SP(hitEnt);
-
+	// Dual/staff users get their own stagger anims. The conversion used to run after the anim was
+	// played and its result was discarded, so they always got the single-saber version.
 	const int style = hitEnt->client->ps.saberAnimLevel;
 
 	if (style == SS_DUAL)
-		SabBeh_AnimateMassiveDualSlowBounce(anim);
+		anim = SabBeh_AnimateMassiveDualSlowBounce(anim);
 	else if (style == SS_STAFF)
-		SabBeh_AnimateMassiveStaffSlowBounce(anim);
+		anim = SabBeh_AnimateMassiveStaffSlowBounce(anim);
+
+	G_PlayTorsoAnim_SP(hitEnt, anim);
+	G_HandleMassiveBounce_SP(hitEnt);
 }
 
 // ============================================================

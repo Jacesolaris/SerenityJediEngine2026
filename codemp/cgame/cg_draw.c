@@ -6678,9 +6678,9 @@ void CG_DrawSiegeMessage(const char* str, const int objective_screen)
 
 void CG_DrawSiegeMessageNonMenu(const char* str)
 {
+	char text[1024]; // outside the if: str may point into it below
 	if (str[0] == '@')
 	{
-		char text[1024];
 		trap->SE_GetStringTextString(str + 1, text, sizeof text);
 		str = text;
 	}

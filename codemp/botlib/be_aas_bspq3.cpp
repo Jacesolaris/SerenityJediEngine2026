@@ -224,8 +224,7 @@ void AAS_BSPModelMinsMaxsOrigin(const int modelnum, vec3_t angles, vec3_t mins, 
 // Changes Globals:		-
 //===========================================================================
 void AAS_UnlinkFromBSPLeaves(bsp_link_t* leaves)
-{
-} //end of the function AAS_UnlinkFromBSPLeaves
+{} //end of the function AAS_UnlinkFromBSPLeaves
 //===========================================================================
 //
 // Parameter:				-

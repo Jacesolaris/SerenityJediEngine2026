@@ -1242,7 +1242,9 @@ void G_LoadAnimFileSet(gentity_t* ent, const char* pModelName)
 {
 	//load its animation config
 	char* modelName;
-	char* stripped_name;
+	const char* stripped_name;
+	// Must live for the whole function: stripped_name points into it and is used after the if/else below.
+	char anim_name[MAX_QPATH];
 
 	if (ent->playerModel == -1)
 	{
@@ -1267,7 +1269,6 @@ void G_LoadAnimFileSet(gentity_t* ent, const char* pModelName)
 	}
 	else
 	{
-		char anim_name[MAX_QPATH];
 		Q_strncpyz(anim_name, GLAName, sizeof anim_name);
 		char* slash = strrchr(anim_name, '/');
 		if (slash)

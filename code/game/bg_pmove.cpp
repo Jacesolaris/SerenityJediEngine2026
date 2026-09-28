@@ -184,6 +184,7 @@ int Flying = FLY_NONE;
 pmove_t* pm;
 pml_t pml;
 
+
 // movement parameters
 float pm_ladderScale = 0.7f;
 constexpr float pm_stopspeed = 100.0f;
@@ -6929,7 +6930,8 @@ qboolean PM_Dyinganim(const playerState_t* ps)
 
 qboolean PM_InKnockDown(const playerState_t* ps)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm (stale outside Pmove, e.g. when called from ClientThink).
+	if (!ps)
 	{
 		return qfalse;
 	}
@@ -7649,7 +7651,8 @@ qboolean PM_GettingUpFromKnockDown(const float standheight, const float crouchhe
 
 void PM_CmdForRoll(playerState_t* ps, usercmd_t* p_Cmd)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm (stale outside Pmove, e.g. when called from ClientThink).
+	if (!ps)
 	{
 		return;
 	}
@@ -7813,7 +7816,8 @@ void PM_CmdForRoll(playerState_t* ps, usercmd_t* p_Cmd)
 
 qboolean PM_InRollIgnoreTimer(const playerState_t* ps)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm (stale outside Pmove, e.g. when called from ClientThink).
+	if (!ps)
 	{
 		return qfalse;
 	}
@@ -7842,7 +7846,9 @@ qboolean PM_InRollIgnoreTimer(const playerState_t* ps)
 
 qboolean PM_InRoll(const playerState_t* ps)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm: this is also called outside Pmove (e.g. G_CheckClampUcmd),
+	// where pm still points at a finished Pmove's stack frame.
+	if (!ps)
 	{
 		return qfalse;
 	}
@@ -11900,7 +11906,7 @@ static qboolean PM_EnemyInFrontCloseRange(void)
 	return qfalse;
 }
 
-static int PM_ReadyPoseForsaber_anim_levelNPC()
+static int PM_ReadyPoseForSaberAnimLevelNPC()
 {
 	int anim = BOTH_STAND2;
 
@@ -11921,30 +11927,37 @@ static int PM_ReadyPoseForsaber_anim_levelNPC()
 		anim = BOTH_SABERSTAFF_STANCE;
 		break;
 	case SS_TAVION:
-		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		if (enemy_far == qtrue)
 		{
-			anim = BOTH_SABERYODA_STANCE;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
-			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABERBACKHAND_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABEROBI_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABER_REY_STANCE;
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
+			{
+				anim = BOTH_SABERYODA_STANCE;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)) //saber backhand
+			{
+				anim = BOTH_SABERBACKHAND_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)) //saber kylo
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN))
+			{
+				anim = BOTH_SABEROBI_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_REY) //saber backhand
+			{
+				anim = BOTH_SABER_REY_STANCE;
+			}
+			else
+			{
+				anim = BOTH_SABERSTANCE_STANCE;
+			}
 		}
 		else
 		{
@@ -11952,30 +11965,37 @@ static int PM_ReadyPoseForsaber_anim_levelNPC()
 		}
 		break;
 	case SS_FAST:
-		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		if (enemy_far == qtrue)
 		{
-			anim = BOTH_SABERYODA_STANCE;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
-			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABERBACKHAND_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABEROBI_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABER_REY_STANCE;
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
+			{
+				anim = BOTH_SABERYODA_STANCE;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)) //saber backhand
+			{
+				anim = BOTH_SABERBACKHAND_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)) //saber kylo
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN))
+			{
+				anim = BOTH_SABEROBI_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_REY) //saber backhand
+			{
+				anim = BOTH_SABER_REY_STANCE;
+			}
+			else
+			{
+				anim = BOTH_SABERSTANCE_STANCE;
+			}
 		}
 		else
 		{
@@ -11983,30 +12003,37 @@ static int PM_ReadyPoseForsaber_anim_levelNPC()
 		}
 		break;
 	case SS_STRONG:
-		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		if (enemy_far == qtrue)
 		{
-			anim = BOTH_SABERYODA_STANCE;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
-			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABERBACKHAND_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABEROBI_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABER_REY_STANCE;
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
+			{
+				anim = BOTH_SABERYODA_STANCE;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)) //saber backhand
+			{
+				anim = BOTH_SABERBACKHAND_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)) //saber kylo
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN))
+			{
+				anim = BOTH_SABEROBI_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_REY) //saber backhand
+			{
+				anim = BOTH_SABER_REY_STANCE;
+			}
+			else
+			{
+				anim = BOTH_SABERSTANCE_STANCE;
+			}
 		}
 		else
 		{
@@ -12014,30 +12041,37 @@ static int PM_ReadyPoseForsaber_anim_levelNPC()
 		}
 		break;
 	case SS_DESANN:
-		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		if (enemy_far == qtrue)
 		{
-			anim = BOTH_SABERYODA_STANCE;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
-			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABERBACKHAND_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABEROBI_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABER_REY_STANCE;
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
+			{
+				anim = BOTH_SABERYODA_STANCE;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)) //saber backhand
+			{
+				anim = BOTH_SABERBACKHAND_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)) //saber kylo
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN))
+			{
+				anim = BOTH_SABEROBI_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_REY) //saber backhand
+			{
+				anim = BOTH_SABER_REY_STANCE;
+			}
+			else
+			{
+				anim = BOTH_SABERSTANCE_STANCE;
+			}
 		}
 		else
 		{
@@ -12045,30 +12079,37 @@ static int PM_ReadyPoseForsaber_anim_levelNPC()
 		}
 		break;
 	case SS_MEDIUM:
-		if (pm->ps->saber[0].type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+		if (enemy_far == qtrue)
 		{
-			anim = BOTH_SABERYODA_STANCE;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
-			|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABERBACKHAND_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN) && (enemy_far == qtrue)) //saber kylo
-		{
-			anim = BOTH_SABERSTANCE_STANCE_ALT;
-		}
-		else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN) && (enemy_far == qtrue))
-		{
-			anim = BOTH_SABEROBI_STANCE;
-		}
-		else if (pm->ps->saber[0].type == SABER_SINGLE_REY && (enemy_far == qtrue)) //saber backhand
-		{
-			anim = BOTH_SABER_REY_STANCE;
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
+			{
+				anim = BOTH_SABERYODA_STANCE;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)) //saber backhand
+			{
+				anim = BOTH_SABERBACKHAND_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)) //saber kylo
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN))
+			{
+				anim = BOTH_SABEROBI_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_REY) //saber backhand
+			{
+				anim = BOTH_SABER_REY_STANCE;
+			}
+			else
+			{
+				anim = BOTH_SABERSTANCE_STANCE;
+			}
 		}
 		else
 		{
@@ -12077,7 +12118,42 @@ static int PM_ReadyPoseForsaber_anim_levelNPC()
 		break;
 	case SS_NONE:
 	default:
-		anim = BOTH_STAND2;
+		if (enemy_far == qtrue)
+		{
+			if (pm->ps->saber[0].type == SABER_SINGLE_YODA)
+			{
+				anim = BOTH_SABERYODA_STANCE;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_BACKHAND
+				|| pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND)) //saber backhand
+			{
+				anim = BOTH_SABERBACKHAND_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_UNSTABLE || pm->ps->saber[0].type == SABER_SINGLE_KYLO_REN)) //saber kylo
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if ((pm->ps->saber[0].type == SABER_SINGLE_OBIWAN))
+			{
+				anim = BOTH_SABEROBI_STANCE;
+			}
+			else if (pm->ps->saber[0].type == SABER_SINGLE_REY) //saber backhand
+			{
+				anim = BOTH_SABER_REY_STANCE;
+			}
+			else
+			{
+				anim = BOTH_SABERSTANCE_STANCE;
+			}
+		}
+		else
+		{
+			anim = BOTH_SABERSTANCE_STANCE;
+		}
 		break;
 	}
 	return anim;
@@ -12131,7 +12207,7 @@ int PM_IdlePoseForsaber_anim_level()
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_levelNPC();
+		anim = PM_ReadyPoseForSaberAnimLevelNPC();
 	}
 	else if (pm->ps->pm_flags & PMF_DUCKED)
 	{
@@ -12173,7 +12249,7 @@ int PM_BlockingPoseForsaber_anim_levelDual(void)
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_levelNPC();
+		anim = PM_ReadyPoseForSaberAnimLevelNPC();
 	}
 	else
 	{
@@ -12333,7 +12409,7 @@ int PM_BlockingPoseForsaber_anim_levelStaff(void)
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_levelNPC();
+		anim = PM_ReadyPoseForSaberAnimLevelNPC();
 	}
 	else
 	{
@@ -12498,7 +12574,7 @@ int PM_BlockingPoseForsaber_anim_levelSingle(void)
 
 	if (pm->ps->clientNum && !PM_ControlledByPlayer())
 	{
-		anim = PM_ReadyPoseForsaber_anim_levelNPC();
+		anim = PM_ReadyPoseForSaberAnimLevelNPC();
 	}
 	else
 	{
@@ -12830,45 +12906,57 @@ static void PM_NPCFatigue(playerState_t* ps, const int new_move)
 	}
 }
 
-void PM_SaberFakeFlagUpdate(int new_move);
-void PM_SaberPerfectBlockUpdate(int new_move);
+void PM_SaberFakeFlagUpdate(const int new_move);
+void PM_SaberPerfectBlockUpdate(const int new_move);
 
-void WP_SaberFatigueRegenerate(const int override_amt)
+// The playerState_t versions are for game code outside Pmove (g_active.cpp), where the global pm is not
+// the entity being updated (it is stale or null) - using it regenerated the wrong entity or crashed.
+void WP_SaberFatigueRegenerate(playerState_t* ps, const int override_amt)
 {
-	if (pm->ps->saberFatigueChainCount >= MISHAPLEVEL_NONE)
+	if (ps->saberFatigueChainCount >= MISHAPLEVEL_NONE)
 	{
 		if (override_amt)
 		{
-			pm->ps->saberFatigueChainCount -= override_amt;
+			ps->saberFatigueChainCount -= override_amt;
 		}
 		else
 		{
-			pm->ps->saberFatigueChainCount--;
+			ps->saberFatigueChainCount--;
 		}
-		if (pm->ps->saberFatigueChainCount > MISHAPLEVEL_MAX)
+		if (ps->saberFatigueChainCount > MISHAPLEVEL_MAX)
 		{
-			pm->ps->saberFatigueChainCount = MISHAPLEVEL_MAX;
+			ps->saberFatigueChainCount = MISHAPLEVEL_MAX;
+		}
+	}
+}
+
+void WP_SaberFatigueRegenerate(const int override_amt)
+{
+	WP_SaberFatigueRegenerate(pm->ps, override_amt);
+}
+
+void WP_BlasterFatigueRegenerate(playerState_t* ps, const int override_amt)
+{
+	if (ps->BlasterAttackChainCount >= BLASTERMISHAPLEVEL_NONE)
+	{
+		if (override_amt)
+		{
+			ps->BlasterAttackChainCount -= override_amt;
+		}
+		else
+		{
+			ps->BlasterAttackChainCount--;
+		}
+		if (ps->BlasterAttackChainCount > BLASTERMISHAPLEVEL_MAX)
+		{
+			ps->BlasterAttackChainCount = BLASTERMISHAPLEVEL_MAX;
 		}
 	}
 }
 
 void WP_BlasterFatigueRegenerate(const int override_amt)
 {
-	if (pm->ps->BlasterAttackChainCount >= BLASTERMISHAPLEVEL_NONE)
-	{
-		if (override_amt)
-		{
-			pm->ps->BlasterAttackChainCount -= override_amt;
-		}
-		else
-		{
-			pm->ps->BlasterAttackChainCount--;
-		}
-		if (pm->ps->BlasterAttackChainCount > BLASTERMISHAPLEVEL_MAX)
-		{
-			pm->ps->BlasterAttackChainCount = BLASTERMISHAPLEVEL_MAX;
-		}
-	}
+	WP_BlasterFatigueRegenerate(pm->ps, override_amt);
 }
 
 void PM_SetSaberMove(saberMoveName_t new_move)
@@ -13768,7 +13856,7 @@ extern saberMoveName_t PM_NPC_Force_Leap_Attack(void);
 extern saberMoveName_t PM_SaberFlipOverAttackMove(void);
 extern qboolean PM_Can_Do_Kill_Lunge(void);
 extern qboolean PM_Can_Do_Kill_Lunge_back(void);
-int Next_Kill_Attack_Move_Check[MAX_CLIENTS]; // Next special move check.
+int Next_Kill_Attack_Move_Check[MAX_GENTITIES]; // Next special move check. Indexed by NPC entity number: was [MAX_CLIENTS] (= 1 in SP), so every NPC wrote past the end (overwrote pm -> crash).
 saberMoveName_t PM_DoAI_Fake(const int curmove);
 
 saberMoveName_t PM_NPCSaberAttackFromQuad(const int quad)
@@ -17585,14 +17673,14 @@ static qboolean PM_CanDoSmashdown(const pmove_t* pm)
 	{// chance based on saber style NPC is using.
 	case SS_DUAL:
 	case SS_STAFF:
-		chanceThreshold = 66;
+		chanceThreshold = 75;
 		break;
 	case SS_FAST:
 	case SS_TAVION:
 	case SS_STRONG:
 	case SS_DESANN:
 	case SS_MEDIUM:
-		chanceThreshold = 75;
+		chanceThreshold = 95;
 		break;
 	case SS_NONE:
 	default:
@@ -21594,7 +21682,36 @@ static void PmoveSingle()
 	PM_AdjustAngleForWallGrab(pm->ps, &pm->cmd);
 }
 
+static void Pmove_Internal(pmove_t* pmove);
+
+// Pmove can re-enter itself (something done during one entity's move, e.g. a spawn from a script, can run
+// another entity's Pmove). The inner call repoints the globals pm/pml at its own stack data, so a nested call
+// restores them on return; otherwise the outer move would carry on with a dangling pm. A top-level call leaves
+// pm as before (pointing at the caller's pmove_t), since code after Pmove in ClientThink_real still uses it.
 void Pmove(pmove_t* pmove)
+{
+	static int depth = 0;
+
+	if (depth == 0)
+	{
+		depth++;
+		Pmove_Internal(pmove);
+		depth--;
+		return;
+	}
+
+	pmove_t* const outerPm = pm;
+	const pml_t outerPml = pml;
+
+	depth++;
+	Pmove_Internal(pmove);
+	depth--;
+
+	pm = outerPm;
+	pml = outerPml;
+}
+
+static void Pmove_Internal(pmove_t* pmove)
 {
 	Vehicle_t* p_veh = nullptr;
 
@@ -22159,11 +22276,35 @@ void PM_SaberPerfectBlockUpdate(const int new_move)
 	}
 }
 
-extern float CG_GetSelfTorsoAnimPoint();
-//saber status utility tools
-extern float CG_GetSelfTorsoAnimPoint();
+// Progress (0.0 - 1.0) of the torso animation of the entity that owns ps.
+// This used to call CG_GetSelfTorsoAnimPoint(), which reads the torso of the
+// *camera* entity (usually the player) - wrong for NPC attackers, and it
+// crashed when that entity had no gent/ghoul2 (e.g. right after loading a save).
+static float PM_GetTorsoAnimPoint(const playerState_t* ps)
+{
+	if (ps->clientNum < 0 || ps->clientNum >= MAX_GENTITIES)
+	{
+		return 0.0f;
+	}
+	const gentity_t* ent = &g_entities[ps->clientNum];
+	if (!ent->inuse || !ent->client || &ent->client->ps != ps
+		|| ent->playerModel < 0 || ent->playerModel >= ent->ghoul2.size() || ent->lowerLumbarBone < 0)
+	{
+		return 0.0f;
+	}
 
-// saber status utility tools
+	float current = 0.0f;
+	int start = 0;
+	int end = 0;
+	if (gi.G2API_GetBoneAnimIndex(const_cast<CGhoul2Info*>(&ent->ghoul2[ent->playerModel]), ent->lowerLumbarBone,
+		level.time, &current, &start, &end, nullptr, nullptr, nullptr) && end != start)
+	{
+		return (current - start) / (end - start);
+	}
+	return 0.0f;
+}
+
+//saber status utility tools
 static qboolean PM_SaberInFullDamageMove(const playerState_t* ps)
 {
 	if (ps == NULL)
@@ -22171,7 +22312,7 @@ static qboolean PM_SaberInFullDamageMove(const playerState_t* ps)
 		return qfalse;
 	}
 
-	const float torso_anim_point = CG_GetSelfTorsoAnimPoint();
+	const float torso_anim_point = PM_GetTorsoAnimPoint(ps);
 
 	// Full damage conditions
 	const qboolean inAttack = (PM_SaberInAttack(ps->saberMove) == qtrue) ? qtrue : qfalse;

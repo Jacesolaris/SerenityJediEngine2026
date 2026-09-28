@@ -5722,6 +5722,8 @@ extern void FireOverheatFail(gentity_t* ent);
 extern qboolean PM_ReloadAnim(int anim);
 extern qboolean PM_WeponRestAnim(int anim);
 extern qboolean PM_PainAnim(int anim);
+extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags);
+extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 
 void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 {

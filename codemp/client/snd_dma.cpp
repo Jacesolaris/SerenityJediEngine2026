@@ -803,53 +803,69 @@ Will allocate a new sfx if it isn't found
 */
 sfx_t* S_FindName(const char* name)
 {
-	if (!name)
+	// ------------------------------------------------------------
+	// Validate input pointer
+	// ------------------------------------------------------------
+	if (name == NULL)
 	{
-		Com_Error(ERR_FATAL, "S_FindName: NULL");
-	}
-	if (!name[0])
-	{
-		Com_Error(ERR_FATAL, "S_FindName: empty name");
+		Com_Printf(
+			S_COLOR_RED "ERROR: S_FindName: NULL name! Prevented crash from bad sound file.\n" S_COLOR_WHITE);
+		return NULL;
 	}
 
+	// ------------------------------------------------------------
+	// Validate non-empty string
+	// ------------------------------------------------------------
+	if (name[0] == '\0')
+	{
+		Com_Printf(
+			S_COLOR_RED "ERROR: S_FindName: empty name! Prevented crash from bad sound file.\n" S_COLOR_WHITE);
+		return NULL;
+	}
+
+	// ------------------------------------------------------------
+	// Validate length
+	// ------------------------------------------------------------
 	if (strlen(name) >= MAX_QPATH)
 	{
 		Com_Error(ERR_FATAL, "Sound name too long: %s", name);
+		return NULL; // unreachable, but keeps compiler happy
 	}
 
+	// ------------------------------------------------------------
+	// Strip extension
+	// ------------------------------------------------------------
 	char sSoundNameNoExt[MAX_QPATH];
-	COM_StripExtension(name, sSoundNameNoExt, sizeof sSoundNameNoExt);
+	COM_StripExtension(name, sSoundNameNoExt, sizeof(sSoundNameNoExt));
 
+	// ------------------------------------------------------------
+	// Hash lookup
+	// ------------------------------------------------------------
 	const int hash = S_HashSFXName(sSoundNameNoExt);
 
 	sfx_t* sfx = sfxHash[hash];
-	// see if already loaded
-	while (sfx)
+
+	// Check if already loaded
+	while (sfx != NULL)
 	{
-		if (!Q_stricmp(sfx->sSoundName, sSoundNameNoExt))
+		if (Q_stricmp(sfx->sSoundName, sSoundNameNoExt) == 0)
 		{
 			return sfx;
 		}
 		sfx = sfx->next;
 	}
-	/*
-		// find a free sfx
-		for (i=0 ; i < s_numSfx ; i++) {
-			if (!s_knownSfx[i].soundName[0]) {
-				break;
-			}
-		}
-	*/
-	int i = s_numSfx; //we don't clear the soundName after failed loads any more, so it'll always be the last entry
+
+	// ------------------------------------------------------------
+	// Allocate new sfx slot
+	// ------------------------------------------------------------
+	int i = s_numSfx;
 
 	if (s_numSfx == MAX_SFX)
 	{
-		// ok, no sfx's free, but are there any with defaultSound set? (which the registering ent will never
-		//	see because he gets zero returned if it's default...)
-		//
+		// Try to recycle a default sound
 		for (i = 0; i < s_numSfx; i++)
 		{
-			if (s_knownSfx[i].bDefaultSound)
+			if (s_knownSfx[i].bDefaultSound == qtrue)
 			{
 				break;
 			}
@@ -857,15 +873,23 @@ sfx_t* S_FindName(const char* name)
 
 		if (i == s_numSfx)
 		{
-			// genuinely out of handles...
+			Com_Error(ERR_FATAL, "S_FindName: out of sfx_t handles");
+			return NULL; // unreachable
+		}
 
-			// if we ever reach this, let me know and I'll either boost the array or put in a map-used-on
-			//	reference to enable sfx_t recycling. TA codebase relies on being able to have structs for every sound
-			//	used anywhere, ever, all at once (though audio bit-buffer gets recycled). SOF1 used about 1900 distinct
-			//	events, so current MAX_SFX limit should do, or only need a small boost...	-ste
-			//
-
-			Com_Error(ERR_FATAL, "S_FindName: out of sfx_t");
+		// The recycled slot is still linked into the hash chain of its OLD name.
+		// Unlink it before it is re-inserted below, otherwise the chains get
+		// crossed and can form a cycle - the next lookup of a new sound then loops
+		// forever (seen as a hang while loading a map after ~120 map loads, when
+		// the table is full: s_numSfx == MAX_SFX).
+		sfx_t* recycled = &s_knownSfx[i];
+		for (sfx_t** link = &sfxHash[S_HashSFXName(recycled->sSoundName)]; *link; link = &(*link)->next)
+		{
+			if (*link == recycled)
+			{
+				*link = recycled->next;
+				break;
+			}
 		}
 	}
 	else
@@ -873,11 +897,16 @@ sfx_t* S_FindName(const char* name)
 		s_numSfx++;
 	}
 
+	// ------------------------------------------------------------
+	// Initialize new sfx entry
+	// ------------------------------------------------------------
 	sfx = &s_knownSfx[i];
-	memset(sfx, 0, sizeof * sfx);
-	Q_strncpyz(sfx->sSoundName, sSoundNameNoExt, sizeof sfx->sSoundName);
-	Q_strlwr(sfx->sSoundName); //force it down low
+	memset(sfx, 0, sizeof(*sfx));
 
+	Q_strncpyz(sfx->sSoundName, sSoundNameNoExt, sizeof(sfx->sSoundName));
+	Q_strlwr(sfx->sSoundName);
+
+	// Insert into hash table
 	sfx->next = sfxHash[hash];
 	sfxHash[hash] = sfx;
 

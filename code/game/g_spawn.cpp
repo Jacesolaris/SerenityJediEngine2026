@@ -1117,10 +1117,16 @@ static void G_ParseField(const char* key, const char* value, gentity_t* ent)
 			{
 				vec3_t vec{};
 				const int i_fields_read = sscanf(value, "%f %f %f", &vec[0], &vec[1], &vec[2]);
-				assert(i_fields_read == 3);
 
-				if (i_fields_read != 3)
+				if (i_fields_read == 1 && f->ofs == FOFS(s.angles))
 				{
+					// Mapper wrote "angles" "90" meaning "angle" (yaw), as in TelosAtrisDuel; don't turn it into pitch.
+					vec[YAW] = vec[PITCH];
+					vec[PITCH] = 0.0f;
+				}
+				else if (i_fields_read != 3)
+				{
+					assert(i_fields_read == 3);
 					gi.Printf(
 						S_COLOR_YELLOW"G_ParseField: VEC3 sscanf() failed to read 3 floats ('angle' key bug?)\n");
 					delayedShutDown = level.time + 100;

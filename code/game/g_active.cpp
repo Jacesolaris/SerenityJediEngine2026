@@ -107,7 +107,7 @@ extern qboolean PM_InOnGroundAnim(playerState_t* ps);
 extern qboolean PM_LockedAnim(int anim);
 extern qboolean WP_SabersCheckLock2(gentity_t* attacker, gentity_t* defender, sabersLockMode_t lockMode);
 extern qboolean G_JediInNormalAI(const gentity_t* ent);
-extern void WP_SaberFatigueRegenerate(int override_amt);
+extern void WP_SaberFatigueRegenerate(playerState_t* ps, int override_amt);
 extern void bg_reduce_blaster_mishap_level_advanced(playerState_t* ps);
 extern qboolean BG_InSlowBounce(const playerState_t* ps);
 extern void WP_ForcePowerDrain(const gentity_t* self, forcePowers_t force_power, int override_amt);
@@ -1935,7 +1935,7 @@ ClientTimerActions
 Actions that happen once a second
 ==================
 */
-extern void WP_BlasterFatigueRegenerate(int override_amt);
+extern void WP_BlasterFatigueRegenerate(playerState_t* ps, int override_amt);
 static void ClientTimerActions(gentity_t* ent, const int msec)
 {
 	gclient_t* client = ent->client;
@@ -2017,9 +2017,9 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			client->ps.weaponTime < 1)
 		{
 			if (client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
-				WP_BlasterFatigueRegenerate(4);
+				WP_BlasterFatigueRegenerate(&client->ps, 4);
 			else
-				WP_BlasterFatigueRegenerate(1);
+				WP_BlasterFatigueRegenerate(&client->ps, 1);
 		}
 
 		/* ---------------------------------------------------------
@@ -2047,11 +2047,11 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			{
 				if (client->ps.saberFatigueChainCount > MISHAPLEVEL_HUDFLASH)
 				{
-					WP_SaberFatigueRegenerate(2);
+					WP_SaberFatigueRegenerate(&client->ps, 2);
 				}
 				else
 				{
-					WP_SaberFatigueRegenerate(1);
+					WP_SaberFatigueRegenerate(&client->ps, 1);
 				}
 			}
 		}
@@ -2075,7 +2075,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			// Regenerate 1 point every 2 frames instead of every frame.
 			if ((level.time & 1) == 0)  // even frame → regen
 			{
-				WP_SaberFatigueRegenerate(1);
+				WP_SaberFatigueRegenerate(&client->ps, 1);
 			}
 		}
 

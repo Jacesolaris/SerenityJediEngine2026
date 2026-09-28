@@ -2018,14 +2018,28 @@ void CTaskManager::Load(CIcarus* icarus)
 		//Get the size of the string
 		pIcarus->BufferRead(&length, sizeof length);
 
+		// Save() writes strlen(name) + 1; anything outside that range means a corrupt save.
+		// Reading it unchecked into the fixed stack buffer would overflow it.
+		if (length <= 0 || length > static_cast<int>(sizeof name))
+		{
+			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR,
+				"CTaskManager::Load: bad task group name length %d in save game\n", length);
+			return;
+		}
+
 		//Get the string
 		pIcarus->BufferRead(&name, length);
+		name[length - 1] = '\0';
 
 		//Get the id
 		pIcarus->BufferRead(&id, sizeof id);
 
 		taskGroup = GetTaskGroup(id, icarus);
 		assert(taskGroup);
+		if (taskGroup == nullptr)
+		{
+			continue;
+		}
 
 		m_taskGroupNameMap[name] = taskGroup;
 		m_taskGroupIDMap[taskGroup->GetGUID()] = taskGroup;

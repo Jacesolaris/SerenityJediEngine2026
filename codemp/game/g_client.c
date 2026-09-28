@@ -53,7 +53,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_weapons.h"
 #include "g_public.h"
 
-// g_client.c -- client functions that don't happen every frame
+// GClient.c -- client functions that don't happen every frame
 
 static vec3_t playerMins = { -15, -15, DEFAULT_MINS_2 };
 static vec3_t playerMaxs = { 15, 15, DEFAULT_MAXS_2 };
@@ -702,6 +702,7 @@ Find the spot that we DON'T want to use
 */
 #define	MAX_SPAWN_POINTS	128
 static qboolean SafeSpawn_FindOffset(const vec3_t baseOrigin, vec3_t outOrigin);
+static qboolean SafeSpawn_IsOccupied(const vec3_t origin);
 
 static gentity_t* SelectNearestDeathmatchSpawnPoint(vec3_t from)
 {

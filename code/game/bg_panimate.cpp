@@ -6323,8 +6323,12 @@ void PM_SetAnimFinal(int* torso_anim, int* legs_anim, const int setAnimParts, in
 
 	// If The Animation Is Walking Or Running, Attempt To Scale The Playback Speed To Match
 	//--------------------------------------------------------------------------------------
+	// Not when standing still: a walk/run anim started on a stationary entity is a scripted pose (e.g. JKO
+	// cinematic27 sets BOTH_WALK1TALKCOMM1 with an infinite hold before Kyle starts walking). Scaling by a
+	// resultspeed of 0 froze it at 1% speed for the whole hold, so he slid along in one frame.
 	if (g_noFootSlide->integer
 		&& anim_foot_move
+		&& gent->resultspeed >= 1.0f
 		&& animSpeed >= 0.0f
 		//FIXME: either read speed from animation.cfg or only do this for NPCs
 		//for whom we've specifically determined the proper numbers!

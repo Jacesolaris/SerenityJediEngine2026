@@ -91,6 +91,7 @@ extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern qboolean PM_WalkingAnim(int anim);
 extern qboolean PM_StandingAnim(int anim);
 extern saberMoveName_t PM_BrokenParryForParry(int move);
+extern qboolean manual_saberblocking(const gentity_t* defender);
 extern saberMoveName_t pm_broken_parry_for_attack(int move);
 extern saberMoveName_t PM_KnockawayForParry(int move);
 extern saberMoveName_t PM_KnockawayForParryOld(int move);
@@ -2012,7 +2013,7 @@ extern saberMoveData_t saberMoveData[LS_MOVE_MAX];
 
 qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 {
-	qboolean lock_quad;
+	int lock_quad;
 
 	if (g_debugSaberLocks.integer)
 	{
@@ -2147,21 +2148,21 @@ qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 
 	switch (lock_quad)
 	{
-	case (qboolean)Q_BR:
+	case Q_BR:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_BR);
-	case (qboolean)Q_R:
+	case Q_R:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_R);
-	case (qboolean)Q_TR:
+	case Q_TR:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_TR);
-	case (qboolean)Q_T:
+	case Q_T:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_TOP);
-	case (qboolean)Q_TL:
+	case Q_TL:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_TL);
-	case (qboolean)Q_L:
+	case Q_L:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_L);
-	case (qboolean)Q_BL:
+	case Q_BL:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_BL);
-	case (qboolean)Q_B:
+	case Q_B:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_TOP);
 	default:
 		//this shouldn't happen.  just wing it
@@ -9427,7 +9428,7 @@ void WP_saberBackToOwner(gentity_t* saberent)
 				WP_ForcePowerRegenerate(saber_owner, BLOCKPOINTS_TWENTYFIVE);
 
 				// Schedule delayed saber-style switch (2.5 seconds)
-				saber_owner->client->ps.userInt1 |= BOT_SABER_PENDING_MASK;
+				saber_owner->client->botPendingFlags |= BOT_SABER_PENDING_MASK;
 				saber_owner->client->ps.botPendingStyleTime = level.time + 2500;
 
 				// Reset saber state
@@ -9435,7 +9436,7 @@ void WP_saberBackToOwner(gentity_t* saberent)
 				saber_owner->client->ps.saberBlocked = BLOCKED_NONE;
 
 				// Schedule BOTH_STAND1TO2 to play 1.2 seconds later
-				saber_owner->client->ps.userInt1 |= BOT_PENDING_STAND_ANIM;
+				saber_owner->client->botPendingFlags |= BOT_PENDING_STAND_ANIM;
 				saber_owner->client->ps.botPendingStandTime = level.time + 1200;
 			}
 			else

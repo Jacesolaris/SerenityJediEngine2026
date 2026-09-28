@@ -6258,18 +6258,28 @@ void CG_ParseScriptedSaber(char* script, clientInfo_t* ci, const int snum)
 	char* p = script;
 
 	const int l = strlen(p);
+	if (l == 0)
+	{
+		ci->ScriptedNum[snum] = 0;
+		return;
+	}
 	p++; //skip the 1st ':'
 
-	while (p[0] && p - script < l && n < 10)
+	// Never step past the terminator: the old loop skipped the ':' after the last time value
+	// even when it was the end of the string, then read p[0] beyond it.
+	while (p - script < l && p[0] && n < 10)
 	{
 		ParseRGBSaber(p, ci->ScriptedColors[n][snum]);
-		while (p[0] != ':')
+		while (p[0] && p[0] != ':')
 			p++;
+		if (!p[0])
+			break;
 		p++; //skipped 1st point
 
 		ci->ScriptedTimes[n][snum] = getint(&p);
 
-		p++;
+		if (p[0] == ':')
+			p++;
 		n++;
 	}
 	ci->ScriptedNum[snum] = n;
@@ -12308,7 +12318,7 @@ void CG_AddSaberBlade(centity_t* cent, centity_t* scent, int renderfx, int saber
 						}
 						else
 						{
-							if (trace.contents & CONTENTS_WATER | CONTENTS_SLIME)
+							if (trace.contents & (CONTENTS_WATER | CONTENTS_SLIME))
 							{
 								if (Q_irand(1, client->saber[saberNum].numBlades) == 1)
 								{
@@ -12384,6 +12394,9 @@ void CG_AddSaberBlade(centity_t* cent, centity_t* scent, int renderfx, int saber
 	}
 CheckTrail:
 
+	// Set before any goto JustDoIt: the blade code after JustDoIt reads saber_trail->inAction.
+	saber_trail = &client->saber[saberNum].blade[bladeNum].trail;
+
 	if (!cg_saberTrail.integer)
 	{
 		//don't do the trail in this case
@@ -12398,8 +12411,6 @@ CheckTrail:
 		//don't actually draw the trail at all
 		goto JustDoIt;
 	}
-
-	saber_trail = &client->saber[saberNum].blade[bladeNum].trail;
 
 	if (cg_SFXSabers.integer == 0)
 	{

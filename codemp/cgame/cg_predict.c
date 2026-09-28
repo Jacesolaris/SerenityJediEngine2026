@@ -249,7 +249,7 @@ static void CG_ClipMoveToEntities(const vec3_t start, const vec3_t mins, const v
 	int skip_number, int mask, trace_t* tr, qboolean g2_check)
 {
 	int i, x, zd, zu;
-	trace_t trace, old_trace;
+	trace_t trace, old_trace = { 0 };
 	entityState_t* ent;
 	clipHandle_t cmodel;
 	vec3_t bmins, bmaxs;
@@ -929,7 +929,7 @@ void CG_PredictPlayerState(void)
 {
 	int i;
 	playerState_t old_player_state;
-	playerState_t old_vehicle_state;
+	playerState_t old_vehicle_state = { 0 };
 	usercmd_t oldest_cmd;
 	usercmd_t latest_cmd;
 

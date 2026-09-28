@@ -7173,6 +7173,7 @@ static float cg_draw_radar(const float y)
 				if (cent->currentState.clientNum >= MAX_CLIENTS //missile owned by an NPC
 					&& cg_entities[cent->currentState.clientNum].currentState.NPC_class == CLASS_VEHICLE
 					//NPC is a vehicle
+					&& cg_entities[cent->currentState.clientNum].currentState.m_iVehicleNum >= 1 // 0 = no driver, would read clientinfo[-1]
 					&& cg_entities[cent->currentState.clientNum].currentState.m_iVehicleNum <= MAX_CLIENTS
 					//Vehicle has a player driver
 					&& cgs.clientinfo[cg_entities[cent->currentState.clientNum].currentState.m_iVehicleNum - 1].

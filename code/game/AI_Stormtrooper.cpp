@@ -3318,7 +3318,7 @@ static void ST_Commander(void)
 							VectorSubtract(NPC->currentOrigin, group->enemy->currentOrigin, e_dir2_me);
 							VectorNormalize(e_dir2_me);
 
-							VectorSubtract(level.combatPoints[NPCInfo->combatPoint].origin,
+							VectorSubtract(level.combatPoints[cp].origin,
 								group->enemy->currentOrigin, e_dir2_cp);
 							VectorNormalize(e_dir2_cp);
 

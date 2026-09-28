@@ -8017,7 +8017,24 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 
 	if (iLength <= 0)
 	{
-		return SCRIPT_COULDNOTREGISTER;
+		// Maps imported from other mods reference "scripts/<path>" although the game mode keeps its
+		// scripts in its own folder (e.g. scriptskt/<path> for kotor), so retry there.
+		const size_t baseDirLen = strlen(Q3_SCRIPT_DIR);
+		const char* slash = strchr(sFilename, '/');
+
+		if (slash && !Q_stricmpn(strFileName, Q3_SCRIPT_DIR "/", baseDirLen + 1)
+			&& static_cast<size_t>(slash - sFilename) != baseDirLen)
+		{
+			Com_sprintf(newname, sizeof newname, "%.*s/%s%s", static_cast<int>(slash - sFilename), sFilename,
+				strFileName + baseDirLen + 1, IBI_EXT);
+			pBuf = nullptr;
+			iLength = gi.FS_ReadFile(newname, reinterpret_cast<void**>(&pBuf));
+		}
+
+		if (iLength <= 0)
+		{
+			return SCRIPT_COULDNOTREGISTER;
+		}
 	}
 
 	// Allocate a new pscript (Script Buffer).

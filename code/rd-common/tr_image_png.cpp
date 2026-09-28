@@ -147,18 +147,16 @@ static bool IsPowerOfTwo(const int i) { return (i & i - 1) == 0; }
 
 struct PNGFileReader
 {
-	PNGFileReader(char* buf) : buf(buf), offset(0), png_ptr(nullptr), info_ptr(nullptr) {}
+	PNGFileReader(char* buf, const size_t size) : buf(buf), size(size), offset(0), png_ptr(nullptr), info_ptr(nullptr) {}
 	~PNGFileReader()
 	{
 		ri.FS_FreeFile(buf);
 
-		if (info_ptr != nullptr && png_ptr != nullptr)
+		if (png_ptr != nullptr)
 		{
-			png_destroy_info_struct(png_ptr, &info_ptr);
-		}
-		else if (png_ptr != nullptr)
-		{
-			png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+			// Frees the read struct and (if created) the info struct.
+			// png_destroy_info_struct alone leaked the read struct for every PNG loaded.
+			png_destroy_read_struct(&png_ptr, info_ptr != nullptr ? &info_ptr : nullptr, nullptr);
 		}
 	}
 
@@ -171,6 +169,12 @@ struct PNGFileReader
 
 		// Make sure we're actually reading PNG data.
 		constexpr int signature_len = 8;
+
+		if (size < signature_len)
+		{
+			ri.Printf(PRINT_ERROR, "PNG file is too small to be valid.\n");
+			return 0;
+		}
 
 		byte ident[signature_len];
 		memcpy(ident, buf, signature_len);
@@ -287,14 +291,21 @@ struct PNGFileReader
 		return 1;
 	}
 
-	void ReadBytes(void* dest, const size_t len)
+	// Returns false (and copies nothing) if the request runs past the end of the file.
+	bool ReadBytes(void* dest, const size_t len)
 	{
+		if (len > size - offset)
+		{
+			return false;
+		}
 		memcpy(dest, buf + offset, len);
 		offset += len;
+		return true;
 	}
 
 private:
 	char* buf;
+	size_t size;
 	size_t offset;
 	png_structp png_ptr;
 	png_infop info_ptr;
@@ -303,7 +314,11 @@ private:
 void user_read_data(const png_structp png_ptr, const png_bytep data, const png_size_t length) {
 	const png_voidp r = png_get_io_ptr(png_ptr);
 	const auto reader = static_cast<PNGFileReader*>(r);
-	reader->ReadBytes(data, length);
+	if (!reader->ReadBytes(data, length))
+	{
+		// Truncated/corrupt file: png_error does not return, it longjmps to read()'s error handler.
+		png_error(png_ptr, "PNG data ends unexpectedly");
+	}
 }
 
 // Loads a PNG image from file.
@@ -316,6 +331,6 @@ void LoadPNG(const char* filename, byte** data, int* width, int* height)
 		return;
 	}
 
-	PNGFileReader reader(buf);
+	PNGFileReader reader(buf, static_cast<size_t>(len));
 	reader.read(data, width, height);
 }

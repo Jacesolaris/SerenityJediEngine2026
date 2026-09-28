@@ -229,7 +229,7 @@ gentity_t* SV_GentityNum(int num);
 svEntity_t* SV_SvEntityForGentity(gentity_t* gEnt);
 gentity_t* SV_GEntityForSvEntity(svEntity_t* svEnt);
 void SV_InitGameProgs();
-void SV_ShutdownGameProgs(qboolean shutdownCin);
+void SV_ShutdownGameProgs();
 qboolean SV_inPVS(const vec3_t p1, const vec3_t p2);
 
 //============================================================

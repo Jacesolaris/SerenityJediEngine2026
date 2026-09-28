@@ -1553,6 +1553,8 @@ void Jetpack_On(gentity_t* ent)
 // - Applies low, continuous damage and burn/throw reactions.
 // - Uses static buffers to avoid excessive stack usage.
 //-----------------------------------------------------------------------------
+extern void QDECL G_Printf(const char* msg, ...);
+
 void Flamethrower_Fire(gentity_t* self)
 {
 	static int        s_entityIndexList[MAX_GENTITIES];

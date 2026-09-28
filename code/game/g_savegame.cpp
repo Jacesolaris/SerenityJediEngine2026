@@ -112,7 +112,7 @@ static const save_field_t savefields_level_locals[] =
 	{nullptr, 0, F_IGNORE}
 };
 
-static const save_field_t savefields_g_vhic[] =
+static const save_field_t savefields_gVHIC[] =
 {
 	{strVHICOFS(m_pPilot), F_GENTITY},
 	{strVHICOFS(m_pOldPilot), F_GENTITY},
@@ -139,12 +139,15 @@ static const save_field_t savefields_gClient[] =
 	{nullptr, 0, F_IGNORE}
 };
 
-static std::list<sstring_t> strList;
+// std::string, not sstring_t: an sstring_t holds at most MAX_QPATH-1 chars, but GetStringNum() writes the
+// full strlen()+1 as chunk length. Any entity string longer than 63 chars (e.g. an NPC fullName) was saved
+// truncated and the save could never be loaded again ("SG: Not enough data").
+static std::list<std::string> strList;
 
 /////////// char * /////////////
 //
 //
-static int get_string_num(const char* psString)
+static int GetStringNum(const char* psString)
 {
 	assert(reinterpret_cast<uintptr_t>(psString) != 0xcdcdcdcd);
 
@@ -159,28 +162,28 @@ static int get_string_num(const char* psString)
 	return strlen(psString) + 1; // this gives us the chunk length for the reader later
 }
 
-static char* get_string_ptr(const int i_strlen, char* psOriginal)
+static char* GetStringPtr(const int iStrlen, char* psOriginal/*may be NULL*/)
 {
-	if (i_strlen != -1)
+	if (iStrlen != -1)
 	{
-		char s_string[768]{}; // arb, inc if nec.
-
-		s_string[0] = 0;
-
-		assert(i_strlen + 1 <= static_cast<int>(sizeof s_string));
+		// sized to the saved length - a fixed buffer overflows for long strings
+		std::vector<char> buffer(iStrlen > 0 ? iStrlen : 1, '\0');
 
 		ojk::SavedGameHelper saved_game(
 			gi.saved_game);
 
 		saved_game.read_chunk(
 			INT_ID('S', 'T', 'R', 'G'),
-			s_string,
-			i_strlen);
+			buffer.data(),
+			iStrlen);
+
+		buffer.back() = '\0';
+		const char* sString = buffer.data();
 
 		// TAG_G_ALLOC is always blown away, we can never recycle
 		if (psOriginal && gi.bIsFromZone(psOriginal, TAG_G_ALLOC))
 		{
-			if (strcmp(psOriginal, s_string) == 0)
+			if (strcmp(psOriginal, sString) == 0)
 			{
 				//it's a legal ptr and they're the same so let's just reuse it instead of free/alloc
 				return psOriginal;
@@ -188,7 +191,7 @@ static char* get_string_ptr(const int i_strlen, char* psOriginal)
 			gi.Free(psOriginal);
 		}
 
-		return G_NewString(s_string);
+		return G_NewString(sString);
 	}
 
 	return nullptr;
@@ -382,7 +385,7 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 	switch (p_field->eFieldType)
 	{
 	case F_STRING:
-		*static_cast<int*>(pv) = get_string_num(*static_cast<char**>(pv));
+		*static_cast<int*>(pv) = GetStringNum(*static_cast<char**>(pv));
 		break;
 
 	case F_GENTITY:
@@ -412,7 +415,7 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 		for (int i = 0; i < NUM_BSETS; i++)
 		{
 			pv = &p[i]; // since you can't ++ a void ptr
-			*static_cast<int*>(pv) = get_string_num(*static_cast<char**>(pv));
+			*static_cast<int*>(pv) = GetStringNum(*static_cast<char**>(pv));
 		}
 	}
 	break;
@@ -451,9 +454,9 @@ static void enumerate_field(const save_field_t* p_field, const byte* pb_base)
 				auto* ba_torso = reinterpret_cast<byteAlias_t*>(&p[i].torsoAnimEvents[j].stringData),
 					* ba_legs = reinterpret_cast<byteAlias_t*>(&p[i].legsAnimEvents[j].stringData);
 				const char* ptAnimEventStringData = p[i].torsoAnimEvents[j].stringData;
-				ba_torso->i = get_string_num(ptAnimEventStringData);
+				ba_torso->i = GetStringNum(ptAnimEventStringData);
 				const char* plAnimEventStringData = p[i].legsAnimEvents[j].stringData;
-				ba_legs->i = get_string_num(plAnimEventStringData);
+				ba_legs->i = GetStringNum(plAnimEventStringData);
 			}
 		}
 	}
@@ -526,7 +529,7 @@ static void evaluate_field(const save_field_t* p_field, byte* pb_base, byte* pb_
 	switch (p_field->eFieldType)
 	{
 	case F_STRING:
-		*static_cast<char**>(pv) = get_string_ptr(*static_cast<int*>(pv),
+		*static_cast<char**>(pv) = GetStringPtr(*static_cast<int*>(pv),
 			pb_original_ref_data ? *static_cast<char**>(pv_original) : nullptr);
 		break;
 
@@ -556,7 +559,7 @@ static void evaluate_field(const save_field_t* p_field, byte* pb_base, byte* pb_
 		auto pO = static_cast<char**>(pv_original);
 		for (int i = 0; i < NUM_BSETS; i++, p++, pO++)
 		{
-			*p = get_string_ptr(*reinterpret_cast<int*>(p), pb_original_ref_data ? *pO : nullptr);
+			*p = GetStringPtr(*reinterpret_cast<int*>(p), pb_original_ref_data ? *pO : nullptr);
 		}
 	}
 	break;
@@ -594,10 +597,10 @@ static void evaluate_field(const save_field_t* p_field, byte* pb_base, byte* pb_
 				char* p_o = pb_original_ref_data
 					? level.knownAnimFileSets[i].torsoAnimEvents[j].stringData
 					: nullptr;
-				p[i].torsoAnimEvents[j].stringData = get_string_ptr(
+				p[i].torsoAnimEvents[j].stringData = GetStringPtr(
 					reinterpret_cast<intptr_t>(p[i].torsoAnimEvents[j].stringData), p_o);
 				p_o = pb_original_ref_data ? level.knownAnimFileSets[i].legsAnimEvents[j].stringData : nullptr;
-				p[i].legsAnimEvents[j].stringData = get_string_ptr(
+				p[i].legsAnimEvents[j].stringData = GetStringPtr(
 					reinterpret_cast<intptr_t>(p[i].legsAnimEvents[j].stringData), p_o);
 			}
 		}
@@ -920,7 +923,7 @@ static void WriteGEntities(const qboolean qbAutosave)
 				Vehicle_t* vehicle = new Vehicle_t;
 				*vehicle = *ent->m_pVehicle;
 
-				enumerate_fields(savefields_g_vhic, vehicle, INT_ID('V', 'H', 'I', 'C'));
+				enumerate_fields(savefields_gVHIC, vehicle, INT_ID('V', 'H', 'I', 'C'));
 
 				delete vehicle;
 			}
@@ -950,6 +953,59 @@ static void WriteGEntities(const qboolean qbAutosave)
 	if (!qbAutosave)
 	{
 		WriteInUseBits();
+	}
+}
+
+// Only saber[].name is restored as a string (savefields_gClient). The other char*
+// fields were written as 32-bit placeholders, so after loading they hold truncated,
+// invalid pointers. G_ReloadSaberData() rebuilds them - but only for sabers that have
+// a name. Clear them first, otherwise e.g. G_FreeEntity() later calls
+// gi.bIsFromZone()/gi.Free() on a garbage saber model pointer and crashes (seen when
+// a dead NPC's body is removed after loading a save), or G_ChangePlayerModel() reads
+// the garbage holster model while a non-"player" character (e.g. boba_fett) is loaded.
+static void ClearSaberStringPointers(gclient_t* client)
+{
+	for (saberInfo_t& saber : client->ps.saber)
+	{
+		saber.fullName = nullptr;
+		saber.model = nullptr;
+		saber.skin = nullptr;
+		saber.brokenSaber1 = nullptr;
+		saber.brokenSaber2 = nullptr;
+	}
+}
+
+// Grapple hooks and stun projectiles are not safe to restore: their "parent" (the
+// shooter) is not saved, and gclient_t::hook/stun were written as 32-bit placeholders.
+// After a load the projectile has parent == NULL and G_MissileImpact_MD(),
+// Weapon_HookThink() or Weapon_HookFree() crash dereferencing it. Remove them and
+// reset the shooter state, as if the hook/stun had just been released.
+static void ClearGrappleAndStunAfterLoad()
+{
+	for (int i = 0; i < globals.num_entities; i++)
+	{
+		gentity_t* ent = &g_entities[i];
+
+		if (!ent->inuse)
+		{
+			continue;
+		}
+
+		if (ent->client)
+		{
+			ent->client->hook = nullptr;
+			ent->client->stun = nullptr;
+			ent->client->hookhasbeenfired = qfalse;
+			ent->client->stunhasbeenfired = qfalse;
+			ent->client->fireHeld = qfalse;
+			ent->client->stunHeld = qfalse;
+			ent->client->ps.pm_flags &= ~PMF_GRAPPLE_PULL;
+		}
+		else if (ent->classname
+			&& (!Q_stricmp(ent->classname, "hook") || !Q_stricmp(ent->classname, "stun")))
+		{
+			G_FreeEntity(ent);
+		}
 	}
 }
 
@@ -991,68 +1047,70 @@ static void ReadGEntities(const qboolean qbAutosave)
 		iPreviousEntRead = i_ent_index;
 
 		// Use a heap-allocated temp entity instead of a large stack object
-		gentity_t* p_ent_original = new gentity_t;
-		gentity_t* p_ent = &g_entities[i_ent_index];
-		*p_ent_original = *p_ent; // struct copy, so we can refer to original
+		gentity_t* pEntOriginal = new gentity_t;
+		gentity_t* pEnt = &g_entities[i_ent_index];
+		*pEntOriginal = *pEnt; // struct copy, so we can refer to original
 
-		p_ent_original->ghoul2.kill();
-		gi.unlinkentity(p_ent);
-		Quake3Game()->FreeEntity(p_ent);
+		pEntOriginal->ghoul2.kill();
+		gi.unlinkentity(pEnt);
+		Quake3Game()->FreeEntity(pEnt);
 
-		gi.G2API_LoadSaveCodeDestructGhoul2Info(p_ent->ghoul2);
-		p_ent->ghoul2.kill();
-		EvaluateFields(savefields_g_entity, p_ent, reinterpret_cast<byte*>(p_ent_original),
+		gi.G2API_LoadSaveCodeDestructGhoul2Info(pEnt->ghoul2);
+		pEnt->ghoul2.kill();
+		EvaluateFields(savefields_g_entity, pEnt, reinterpret_cast<byte*>(pEntOriginal),
 			INT_ID('G', 'E', 'N', 'T'));
-		p_ent->ghoul2.kill();
+		pEnt->ghoul2.kill();
 
-		if (p_ent->NPC)
+		if (pEnt->NPC)
 		{
-			gNPC_t* temp_npc = new gNPC_t;
+			gNPC_t* tempNPC = new gNPC_t;
 
-			EvaluateFields(savefields_g_npc, temp_npc,
-				reinterpret_cast<byte*>(p_ent_original->NPC),
+			EvaluateFields(savefields_g_npc, tempNPC,
+				reinterpret_cast<byte*>(pEntOriginal->NPC),
 				INT_ID('G', 'N', 'P', 'C'));
 
-			if (p_ent_original->NPC)
+			if (pEntOriginal->NPC)
 			{
-				p_ent->NPC = p_ent_original->NPC;
+				pEnt->NPC = pEntOriginal->NPC;
 			}
 			else
 			{
-				p_ent->NPC = static_cast<gNPC_t*>(G_Alloc(sizeof * p_ent->NPC));
+				pEnt->NPC = static_cast<gNPC_t*>(G_Alloc(sizeof * pEnt->NPC));
 			}
 
-			*p_ent->NPC = *temp_npc; // struct copy
-			delete temp_npc;
+			*pEnt->NPC = *tempNPC; // struct copy
+			delete tempNPC;
 		}
 
-		if (p_ent->client == reinterpret_cast<gclient_t*>(-2))
+		if (pEnt->client == reinterpret_cast<gclient_t*>(-2))
 		{
-			gclient_t* temp_g_client = new gclient_t;
+			gclient_t* tempGClient = new gclient_t;
 
-			EvaluateFields(savefields_gClient, temp_g_client,
-				reinterpret_cast<byte*>(p_ent_original->client),
+			EvaluateFields(savefields_gClient, tempGClient,
+				reinterpret_cast<byte*>(pEntOriginal->client),
 				INT_ID('G', 'C', 'L', 'I'));
 
-			if (p_ent_original->client)
+			if (pEntOriginal->client)
 			{
-				p_ent->client = p_ent_original->client;
+				pEnt->client = pEntOriginal->client;
 			}
 			else
 			{
-				p_ent->client = static_cast<gclient_t*>(G_Alloc(sizeof * p_ent->client));
+				pEnt->client = static_cast<gclient_t*>(G_Alloc(sizeof * pEnt->client));
 			}
 
-			*p_ent->client = *temp_g_client; // struct copy
-			delete temp_g_client;
+			*pEnt->client = *tempGClient; // struct copy
+			delete tempGClient;
 
-			if (p_ent->s.number)
+			ClearSaberStringPointers(pEnt->client);
+
+			if (pEnt->s.number)
 			{
-				G_ReloadSaberData(p_ent);
+				G_ReloadSaberData(pEnt);
 			}
 		}
 
-		if (p_ent->parms)
+		if (pEnt->parms)
 		{
 			parms_t* temp_parms = new parms_t;
 
@@ -1060,70 +1118,85 @@ static void ReadGEntities(const qboolean qbAutosave)
 				INT_ID('P', 'A', 'R', 'M'),
 				*temp_parms);
 
-			if (p_ent_original->parms)
+			if (pEntOriginal->parms)
 			{
-				p_ent->parms = p_ent_original->parms;
+				pEnt->parms = pEntOriginal->parms;
 			}
 			else
 			{
-				p_ent->parms = static_cast<parms_t*>(G_Alloc(sizeof * p_ent->parms));
+				pEnt->parms = static_cast<parms_t*>(G_Alloc(sizeof * pEnt->parms));
 			}
 
-			*p_ent->parms = *temp_parms; // struct copy
+			*pEnt->parms = *temp_parms; // struct copy
 			delete temp_parms;
 		}
 
-		if (p_ent->m_pVehicle)
+		// Vehicle block
+		if (pEnt->m_pVehicle)
 		{
-			Vehicle_t* temp_vehicle = new Vehicle_t;
+			Vehicle_t* tempVehicle = new Vehicle_t;
 
-			EvaluateFields(savefields_g_vhic, temp_vehicle,
-				reinterpret_cast<byte*>(p_ent_original->m_pVehicle),
+			// (re)register the vehicle type by name - the index may differ from the one
+			// that was saved, because g_vehicleInfo is rebuilt in spawn order after a load
+			const int vehicleIndex = BG_VehicleGetIndex(pEnt->NPC_type);
+
+			EvaluateFields(savefields_gVHIC, tempVehicle,
+				reinterpret_cast<byte*>(pEntOriginal->m_pVehicle),
 				INT_ID('V', 'H', 'I', 'C'));
 
-			if (p_ent_original->m_pVehicle)
+			if (pEntOriginal->m_pVehicle)
 			{
-				p_ent->m_pVehicle = p_ent_original->m_pVehicle;
+				pEnt->m_pVehicle = pEntOriginal->m_pVehicle;
 			}
 			else
 			{
-				p_ent->m_pVehicle = static_cast<Vehicle_t*>(gi.Malloc(sizeof(Vehicle_t), TAG_G_ALLOC, qfalse));
+				pEnt->m_pVehicle = static_cast<Vehicle_t*>(
+					gi.Malloc(sizeof(Vehicle_t), TAG_G_ALLOC, qfalse));
 			}
 
-			*p_ent->m_pVehicle = *temp_vehicle; // struct copy
-			delete temp_vehicle;
+			*pEnt->m_pVehicle = *tempVehicle;
+			delete tempVehicle;
+
+			// The save only stores the g_vehicleInfo index. If another vehicle type was
+			// registered before it (e.g. a swoop that no longer exists), that index now
+			// points to an empty entry whose function pointers are NULL, and
+			// ClientThink_real crashes calling m_pVehicleInfo->Inhabited(). Re-hook by name.
+			if (vehicleIndex != VEHICLE_NONE)
+			{
+				pEnt->m_pVehicle->m_pVehicleInfo = &g_vehicleInfo[vehicleIndex];
+			}
 		}
 
 		{
 			saved_game.read_chunk(
 				INT_ID('G', 'H', 'L', '2'));
 
-			gi.G2API_LoadGhoul2Models(p_ent->ghoul2, nullptr);
+			gi.G2API_LoadGhoul2Models(pEnt->ghoul2, nullptr);
 		}
 
-		if (p_ent->s.eType == ET_MOVER && p_ent->s.loopSound > 0)
+		if (pEnt->s.eType == ET_MOVER && pEnt->s.loopSound > 0)
 		{
-			if (VALIDSTRING(p_ent->soundSet))
+			if (VALIDSTRING(pEnt->soundSet))
 			{
 				extern int BMS_MID;
-				p_ent->s.loopSound = CAS_GetBModelSound(p_ent->soundSet, BMS_MID);
-				if (p_ent->s.loopSound == -1)
+				pEnt->s.loopSound = CAS_GetBModelSound(pEnt->soundSet, BMS_MID);
+				if (pEnt->s.loopSound == -1)
 				{
-					p_ent->s.loopSound = 0;
+					pEnt->s.loopSound = 0;
 				}
 			}
 		}
 
-		p_ent->waypoint = 0;
+		pEnt->waypoint = 0;
 
-		const qboolean qb_linked = p_ent->linked;
-		p_ent->linked = qfalse;
+		const qboolean qb_linked = pEnt->linked;
+		pEnt->linked = qfalse;
 		if (qb_linked)
 		{
-			gi.linkentity(p_ent);
+			gi.linkentity(pEnt);
 		}
 
-		delete p_ent_original;
+		delete pEntOriginal;
 	}
 
 	TIMER_Load();
@@ -1152,6 +1225,8 @@ static void ReadGEntities(const qboolean qbAutosave)
 	{
 		ReadInUseBits();
 	}
+
+	ClearGrappleAndStunAfterLoad();
 }
 
 extern void CG_WriteTheEvilCGHackStuff();
@@ -1218,13 +1293,16 @@ void ReadLevel(const qboolean qbAutosave, const qboolean qbLoadTransition)
 		{
 			assert(level.maxclients == 1);
 
-			gclient_t* g_client = new gclient_t;
-			EvaluateFields(savefields_gClient, g_client,
+			gclient_t* GClient = new gclient_t;
+			EvaluateFields(savefields_gClient, GClient,
 				reinterpret_cast<byte*>(&level.clients[0]),
 				INT_ID('G', 'C', 'L', 'I'));
 
-			level.clients[0] = *g_client; // struct copy
-			delete g_client;
+			level.clients[0] = *GClient; // struct copy
+			delete GClient;
+
+			// the player is not a "-2" client, so ReadGEntities() does not clear these
+			ClearSaberStringPointers(&level.clients[0]);
 
 			ReadLevelLocals();
 		}

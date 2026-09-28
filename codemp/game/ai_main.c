@@ -673,12 +673,18 @@ static qboolean AI_ComputeBallisticJump(gentity_t* bot,
 	float height = apex[2] - start[2];
 	float time;
 	vec3_t flat;
+	// ps.gravity is still 0 for a bot that has just spawned (Pmove hasn't run yet); dividing by it gave
+	// time = inf and a NaN vertical velocity, which then turned the bot's origin into NaN.
+	const float gravity = bot->client->ps.gravity > 0 ? (float)bot->client->ps.gravity : g_gravity.value;
+
+	if (gravity <= 0.0f)
+		return qfalse;
 
 	if (height <= 0.0f)
 		height = 1.0f;
 
-	time = sqrtf(height / (0.5f * bot->client->ps.gravity));
-	if (time <= 0.0f)
+	time = sqrtf(height / (0.5f * gravity));
+	if (!(time > 0.0f) || Q_isnan(time))
 		return qfalse;
 
 	VectorSubtract(apex, start, flat);
@@ -696,7 +702,10 @@ static qboolean AI_ComputeBallisticJump(gentity_t* bot,
 	}
 
 	// Vertical speed
-	outVel[2] = time * bot->client->ps.gravity;
+	outVel[2] = time * gravity;
+
+	if (Q_isnan(outVel[0]) || Q_isnan(outVel[1]) || Q_isnan(outVel[2]))
+		return qfalse;
 
 	return qtrue;
 }
@@ -5757,7 +5766,8 @@ int pass_loved_one_check(const bot_state_t* bs, const gentity_t* ent)
 
 	int i = 0;
 
-	if (!botstates[ent->s.number])
+	// ent can be an NPC (attacker, projectile owner, enemy scan); botstates only has MAX_CLIENTS entries.
+	if (ent->s.number < 0 || ent->s.number >= MAX_CLIENTS || !botstates[ent->s.number])
 	{
 		//not a bot
 		return 1;
@@ -8421,8 +8431,9 @@ static qboolean Bot_SameGroundLevel(bot_state_t* bs, const vec3_t enemyPos)
 // ---------------------------------------------------------
 // CLOSE‑RANGE MELEE COMBAT HANDLING
 // ---------------------------------------------------------
-void JediDirectionalDashDodge(bot_state_t* bs, const vec3_t enemyPos);
-void BotStartBackOff(bot_state_t* bs);
+static void JediDirectionalDashDodge(bot_state_t* bs, const vec3_t enemyPos);
+static void BotStartBackOff(bot_state_t* bs);
+static qboolean BotEnemyInKata(const playerState_t* ps);
 static void melee_combat_handling(bot_state_t* bs)
 {
 	if (!bs || !bs->currentEnemy)
@@ -10394,7 +10405,7 @@ static int saber_bot_fallback_navigation(bot_state_t* bs)
 BotTryAnotherWeapon
 ==================
 */
-static BotTryAnotherWeapon(bot_state_t* bs)
+static int BotTryAnotherWeapon(bot_state_t* bs)
 {
 	int i = 1;
 
@@ -10873,7 +10884,7 @@ static gentity_t* check_for_friend_in_lof(const bot_state_t* bs)
 				return trent;
 			}
 
-			if (botstates[trent->s.number] && get_love_level(bs, botstates[trent->s.number]) > 1)
+			if (trent->s.number < MAX_CLIENTS && botstates[trent->s.number] && get_love_level(bs, botstates[trent->s.number]) > 1)
 			{
 				return trent;
 			}
@@ -11672,6 +11683,11 @@ static qboolean bot_should_jump_to_enemy(bot_state_t* bs, float xy, qboolean wil
 
 	// Never jump if already jumping
 	if (bs->BOTjumpState > JS_WAITING)
+		return qfalse;
+
+	// Only follow an enemy that is standing somewhere higher/lower (a ledge). An enemy in mid-jump is just
+	// "above us" for a moment: don't mirror the jump, keep facing them and wait for them to land.
+	if (enemy->client->ps.groundEntityNum == ENTITYNUM_NONE)
 		return qfalse;
 
 	// Jetpack bots prefer flight, not jumps

@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-20,Month-09,Year-26,BuildNum-03" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-28,Month-09,Year-26,BuildNum-05" // build date
 
 #define	STEPSIZE		18
 
@@ -2024,6 +2024,8 @@ void PM_SaberStartTransAnim(int clientNum, int saberAnimLevel, int weapon, int a
 	fatigued);
 
 void WP_ForcePowerDrain(playerState_t* ps, forcePowers_t force_power, int override_amt);
+void WP_SaberFatigueRegenerate(playerState_t* ps, int override_amt);
+void WP_BlasterFatigueRegenerate(playerState_t* ps, int override_amt);
 void BG_ForcePowerKill(playerState_t* ps);
 
 void	BG_EvaluateTrajectory(const trajectory_t* tr, int at_time, vec3_t result);

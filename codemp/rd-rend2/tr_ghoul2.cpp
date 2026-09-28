@@ -1076,16 +1076,72 @@ static void G2_CreateMatrixFromQuaterion(mdxaBone_t* mat, vec4_t quat)
 
 	mat->matrix[0][3] = mat->matrix[1][3] = mat->matrix[2][3] = 0;
 }
-
-static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, const int iFrame, const int iBone)
+static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, const int iFrameIn, const int iBoneIn)
 {
-	assert(iFrame >= 0 && iFrame < pMDXAHeader->numFrames);
-	assert(iBone >= 0 && iBone < pMDXAHeader->numBones);
+	if (!pMDXAHeader)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - pMDXAHeader was NULL\n");
+#endif
+		return 0;
+	}
 
-	const int iOffsetToIndex = iFrame * pMDXAHeader->numBones * 3 + iBone * 3;
-	const mdxaIndex_t* pIndex = reinterpret_cast<mdxaIndex_t*>((byte*)pMDXAHeader + pMDXAHeader->ofsFrames + iOffsetToIndex);
+	int iFrame = iFrameIn;
+	int iBone = iBoneIn;
 
-	return (pIndex->iIndex[2] << 16) + (pIndex->iIndex[1] << 8) + pIndex->iIndex[0];
+	// ------------------------------------------------------------
+	// Validate and clamp iFrame
+	// ------------------------------------------------------------
+	if (iFrame < 0 || iFrame >= pMDXAHeader->numFrames)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - iFrame %d out of range (0..%d). Clamping.\n", iFrame, pMDXAHeader->numFrames - 1);
+#endif
+		if (iFrame < 0)
+		{
+			iFrame = 0;
+		}
+		else
+		{
+			iFrame = pMDXAHeader->numFrames - 1;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Validate and clamp iBone
+	// ------------------------------------------------------------
+	if (iBone < 0 || iBone >= pMDXAHeader->numBones)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - iBone %d out of range (0..%d). Clamping.\n", iBone, pMDXAHeader->numBones - 1);
+#endif
+		if (iBone < 0)
+		{
+			iBone = 0;
+		}
+		else
+		{
+			iBone = pMDXAHeader->numBones - 1;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Compute index safely
+	// ------------------------------------------------------------
+	const int iOffsetToIndex =
+		iFrame * pMDXAHeader->numBones * 3 +
+		iBone * 3;
+
+	const byte* base = reinterpret_cast<const byte*>(pMDXAHeader);
+	const mdxaIndex_t* pIndex =
+		reinterpret_cast<const mdxaIndex_t*>(base + pMDXAHeader->ofsFrames + iOffsetToIndex);
+
+	// ------------------------------------------------------------
+	// Return packed index
+	// ------------------------------------------------------------
+	return (pIndex->iIndex[2] << 16) |
+		(pIndex->iIndex[1] << 8) |
+		pIndex->iIndex[0];
 }
 
 static void UnCompressBone(float mat[3][4], const int iBoneIndex, const mdxaHeader_t* pMDXAHeader, const int iFrame)
@@ -3844,6 +3900,62 @@ int OldToNewRemapTable[72] = {
 52// Bone71:   "face_always_":			Parent: "cranium"  (index 17)
 };
 
+int NewToOldRemapTable[53] = {
+0,  // JKA Bone 00 model_root           to JK2 Bone 00 model_root
+1,  // JKA Bone 01 pelvis               to JK2 Bone 01 pelvis
+2,  // JKA Bone 02 Motion               to JK2 Bone 02 Motion
+3,  // JKA Bone 03 lfemurYZ             to JK2 Bone 03 lfemurYZ
+4,  // JKA Bone 04 lfemurX              to JK2 Bone 04 lfemurX
+5,  // JKA Bone 05 ltibia               to JK2 Bone 05 ltibia
+6,  // JKA Bone 06 ltalus               to JK2 Bone 06 ltalus
+8,  // JKA Bone 07 rfemurYZ             to JK2 Bone 08 rfemurYZ
+9,  // JKA Bone 08 rfemurX              to JK2 Bone 09 rfemurX
+10, // JKA Bone 09 rtibia               to JK2 Bone 10 rtibia
+11, // JKA Bone 10 rtalus               to JK2 Bone 11 rtalus
+13, // JKA Bone 11 lower_lumbar         to JK2 Bone 13 lower_lumbar
+14, // JKA Bone 12 upper_lumbar         to JK2 Bone 14 upper_lumbar
+15, // JKA Bone 13 thoracic             to JK2 Bone 15 thoracic
+16, // JKA Bone 14 cervical             to JK2 Bone 16 cervical
+17, // JKA Bone 15 cranium              to JK2 Bone 17 cranium
+18, // JKA Bone 16 ceyebrow             to JK2 Bone 18 ceyebrow
+19, // JKA Bone 17 jaw                  to JK2 Bone 19 jaw
+20, // JKA Bone 18 lblip2               to JK2 Bone 20 lblip2
+21, // JKA Bone 19 leye                 to JK2 Bone 21 leye
+22, // JKA Bone 20 rblip2               to JK2 Bone 22 rblip2
+23, // JKA Bone 21 ltlip2               to JK2 Bone 23 ltlip2
+24, // JKA Bone 22 rtlip2               to JK2 Bone 24 rtlip2
+25, // JKA Bone 23 reye                 to JK2 Bone 25 reye
+26, // JKA Bone 24 rclavical            to JK2 Bone 26 rclavical
+27, // JKA Bone 25 rhumerus             to JK2 Bone 27 rhumerus
+28, // JKA Bone 26 rhumerusX            to JK2 Bone 28 rhumerusX
+29, // JKA Bone 27 rradius              to JK2 Bone 29 rradius
+30, // JKA Bone 28 rradiusX             to JK2 Bone 30 rradiusX
+31, // JKA Bone 29 rhand                to JK2 Bone 31 rhand
+36, // JKA Bone 30 r_d1_j1              to JK2 Bone 36 r_d1_j1
+37, // JKA Bone 31 r_d1_j2              to JK2 Bone 37 r_d1_j2
+39, // JKA Bone 32 r_d2_j1              to JK2 Bone 39 r_d2_j1
+40, // JKA Bone 33 r_d2_j2              to JK2 Bone 40 r_d2_j2
+45, // JKA Bone 34 r_d4_j1              to JK2 Bone 45 r_d4_j1
+46, // JKA Bone 35 r_d4_j2              to JK2 Bone 46 r_d4_j2
+48, // JKA Bone 36 rhang_tag_bone       to JK2 Bone 48 rhang_tag_bone
+49, // JKA Bone 37 lclavical            to JK2 Bone 49 lclavical
+50, // JKA Bone 38 lhumerus             to JK2 Bone 50 lhumerus
+51, // JKA Bone 39 lhumerusX            to JK2 Bone 51 lhumerusX
+52, // JKA Bone 40 lradius              to JK2 Bone 52 lradius
+53, // JKA Bone 41 lradiusX             to JK2 Bone 53 lradiusX
+54, // JKA Bone 42 lhand                to JK2 Bone 54 lhand
+59, // JKA Bone 43 l_d4_j1              to JK2 Bone 59 l_d4_j1
+60, // JKA Bone 44 l_d4_j2              to JK2 Bone 60 l_d4_j2
+65, // JKA Bone 45 l_d2_j1              to JK2 Bone 65 l_d2_j1
+66, // JKA Bone 46 l_d2_j2              to JK2 Bone 66 l_d2_j2
+68, // JKA Bone 47 l_d1_j1              to JK2 Bone 68 l_d1_j1
+69, // JKA Bone 48 l_d1_j2              to JK2 Bone 69 l_d1_j2
+3,  // JKA Bone 49 ltail                to JK2 Bone 03 lfemurYZ
+8,  // JKA Bone 50 rtail                to JK2 Bone 08 rfemurYZ
+54, // JKA Bone 51 lhang_tag_bone       to JK2 Bone 54 lhand
+71  // JKA Bone 52 face                 to JK2 Bone 71 face
+};
+
 qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& bAlreadyCached)
 {
 	int					i, l, j;
@@ -3906,9 +4018,47 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		return qfalse;
 	}
 
-	// first up, go load in the animation file we need that has the skeletal
-	// animation info for this model
+	// first up, go load in the animation file we need that has the skeletal animation info for this model
 	mdxm->animIndex = RE_RegisterModel(va("%s.gla", mdxm->animName));
+
+	//char  animGLAName[MAX_QPATH];
+	//char* strippedName;
+	//char* slash = NULL;
+	//const char* mapname = sv_mapname->string;
+
+	//if (strcmp(mapname, "nomap"))
+	//{
+	//	if (strrchr(mapname, '/'))	//maps in subfolders use the root name, ( presuming only one level deep!)
+	//	{
+	//		mapname = strrchr(mapname, '/') + 1;
+	//	}
+	//	//stripped name of GLA for this model
+	//	Q_strncpyz(animGLAName, mdxm->animName, sizeof(animGLAName));
+	//	slash = strrchr(animGLAName, '/');
+	//	if (slash)
+	//	{
+	//		*slash = 0;
+	//	}
+	//	strippedName = COM_SkipPath(animGLAName);
+	//	if (VALIDSTRING(strippedName))
+	//	{
+	//		RE_RegisterModel(va("models/players/%s_%s/%s_%s.gla", strippedName, mapname, strippedName, mapname));
+	//	}
+	//}
+
+#ifndef JK2_MODE
+	bool isAnOldModelFile = false;
+	if (mdxm->numBones == 72 && strstr(mdxm->animName, "_humanoid"))
+	{
+		isAnOldModelFile = true;
+	}
+#else
+	bool isANewModelFile = false;
+	if (mdxm->numBones == 53 && strstr(mdxm->animName, "_humanoid"))
+	{
+		isANewModelFile = true;
+	}
+#endif
 
 	if (!mdxm->animIndex)
 	{
@@ -3916,13 +4066,24 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		return qfalse;
 	}
 
-	mod->numLods = mdxm->numLODs - 1;	//copy this up to the model for ease of use - it wil get inced after this.
-
-	bool isAnOldModelFile = false;
-	if (mdxm->numBones == 72 && strstr(mdxm->animName, "_humanoid"))
+#ifndef JK2_MODE
+	// Same check as rd-vanilla: a mesh whose bone count does not match its skeleton (GLA) must not be
+	// used. Its surfaces/bolts reference bones the skeleton does not have, and G2_ProcessSurfaceBolt2 ->
+	// G2_TransformBone later reads outside the bone cache (crash). Old JK2 meshes (72 bones on
+	// _humanoid) are still allowed, they are converted.
 	{
-		isAnOldModelFile = true;
+		const model_t* anim_model = R_GetModelByHandle(mdxm->animIndex);
+		if (anim_model && anim_model->data.gla && anim_model->data.gla->numBones != mdxm->numBones
+			&& !isAnOldModelFile)
+		{
+			ri->Printf(PRINT_WARNING, "R_LoadMDXM: %s has different bones than anim (%i != %i)\n", mod_name,
+				mdxm->numBones, anim_model->data.gla->numBones);
+			return qfalse;
+		}
 	}
+#endif
+
+	mod->numLods = mdxm->numLODs - 1;	//copy this up to the model for ease of use - it wil get inced after this.
 
 	surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsSurfHierarchy);
 	for (i = 0; i < mdxm->numSurfaces; i++)
@@ -3931,7 +4092,8 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		LL(surfInfo->parentIndex);
 
 		Q_strlwr(surfInfo->name);	//just in case
-		if (!strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off"))
+
+		if (strlen(surfInfo->name) >= 4 && !strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off"))
 		{
 			surfInfo->name[strlen(surfInfo->name) - 4] = 0;	//remove "_off" from name
 		}
@@ -4005,11 +4167,13 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 			surf->ident = SF_MDX;
 			// register the shaders
 
+#ifndef JK2_MODE
 			if (isAnOldModelFile)
 			{
 				auto boneRef = reinterpret_cast<int*>(reinterpret_cast<byte*>(surf) + surf->ofsBoneReferences);
 				for (j = 0; j < surf->numBoneReferences; j++)
 				{
+					assert(boneRef[j] >= 0 && boneRef[j] < 72);
 					if (boneRef[j] >= 0 && boneRef[j] < 72)
 					{
 						boneRef[j] = OldToNewRemapTable[boneRef[j]];
@@ -4020,6 +4184,24 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 					}
 				}
 			}
+#else
+			if (isANewModelFile)
+			{
+				auto boneRef = reinterpret_cast<int*>(reinterpret_cast<byte*>(surf) + surf->ofsBoneReferences);
+				for (j = 0; j < surf->numBoneReferences; j++)
+				{
+					assert(boneRef[j] >= 0 && boneRef[j] < 53);
+					if (boneRef[j] >= 0 && boneRef[j] < 53)
+					{
+						boneRef[j] = NewToOldRemapTable[boneRef[j]];
+					}
+					else
+					{
+						boneRef[j] = 0;
+					}
+				}
+			}
+#endif
 			// find the next surface
 			surf = reinterpret_cast<mdxmSurface_t*>(reinterpret_cast<byte*>(surf) + surf->ofsEnd);
 		}

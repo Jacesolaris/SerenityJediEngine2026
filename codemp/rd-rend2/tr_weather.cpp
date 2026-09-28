@@ -1270,7 +1270,7 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 
 	vec2_t zoneOffsets[9]{};
 	GLint  zoneMapping[9]{};
-	int		centerZoneIndex;
+	int		centerZoneIndex = 4; // x == 0 && y == 0 in the loop below
 	{
 		int chunkIndex = 0;
 		int currentIndex = 0;

@@ -1320,8 +1320,6 @@ ClientTimerActions
 Actions that happen once a second
 ==================
 */
-extern void WP_SaberFatigueRegenerate(int override_amt);
-extern void WP_BlasterFatigueRegenerate(int override_amt);
 extern void G_Rename_Player(gentity_t* player, const char* newname);
 extern char* PickName(void);
 
@@ -1390,9 +1388,9 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			ent->client->ps.weaponTime < 1)
 		{
 			if (ent->client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
-				WP_BlasterFatigueRegenerate(4);
+				WP_BlasterFatigueRegenerate(&client->ps, 4);
 			else
-				WP_BlasterFatigueRegenerate(1);
+				WP_BlasterFatigueRegenerate(&client->ps, 1);
 		}
 
 		/* ---------------------------------------------------------
@@ -1420,11 +1418,11 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			{
 				if (client->ps.saberFatigueChainCount > MISHAPLEVEL_HUDFLASH)
 				{
-					WP_SaberFatigueRegenerate(2);
+					WP_SaberFatigueRegenerate(&client->ps, 2);
 				}
 				else
 				{
-					WP_SaberFatigueRegenerate(1);
+					WP_SaberFatigueRegenerate(&client->ps, 1);
 				}
 			}
 		}
@@ -1447,7 +1445,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			// Regenerate 1 point every 2 frames instead of every frame.
 			if ((level.time & 1) == 0)  // even frame ? regen
 			{
-				WP_SaberFatigueRegenerate(1);
+				WP_SaberFatigueRegenerate(&client->ps, 1);
 			}
 		}
 
@@ -4723,24 +4721,30 @@ static void ClientThink_real(gentity_t* ent)
 	}
 
 	//// Delayed BOTH_STAND1TO2 animation
-	if (ps->userInt1 & BOT_PENDING_STAND_ANIM && ent->client->ps.weapon == WP_SABER)
+	if (ent->client->ps.weapon != WP_SABER)
+	{
+		// Pending saber actions are meaningless without a saber; don't let them linger.
+		client->botPendingFlags = 0;
+	}
+
+	if (client->botPendingFlags & BOT_PENDING_STAND_ANIM)
 	{
 		if (level.time >= ps->botPendingStandTime)
 		{
 			G_SetAnim(ent, NULL, SETANIM_TORSO, BOTH_STAND1TO2,
 				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 
-			ps->userInt1 &= ~BOT_PENDING_STAND_ANIM;
+			client->botPendingFlags &= ~BOT_PENDING_STAND_ANIM;
 		}
 	}
 
 	// Delayed saber-style switch
-	if (ps->userInt1 & BOT_SABER_PENDING_MASK && ent->client->ps.weapon == WP_SABER)
+	if (client->botPendingFlags & BOT_SABER_PENDING_MASK)
 	{
 		if (level.time >= ps->botPendingStyleTime)
 		{
 			Cmd_SaberAttackCycle_f(ent);
-			ps->userInt1 &= ~BOT_SABER_PENDING_MASK;
+			client->botPendingFlags &= ~BOT_SABER_PENDING_MASK;
 		}
 	}
 

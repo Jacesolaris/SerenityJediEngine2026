@@ -599,6 +599,11 @@ static void FS_CopyFile(char* fromOSPath, char* toOSPath) {
 	// we are using direct malloc instead of Z_Malloc here, so it
 	// probably won't work on a mac... Its only for developers anyway...
 	byte* buf = static_cast<unsigned char*>(malloc(len));
+	if (buf == nullptr)
+	{
+		fclose(f);
+		Com_Error(ERR_FATAL, "FS_CopyFile: out of memory (%d bytes)\n", len);
+	}
 	if (fread(buf, 1, len, f) != static_cast<unsigned>(len))
 	{
 		fclose(f);
