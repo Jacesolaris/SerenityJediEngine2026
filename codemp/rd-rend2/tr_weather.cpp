@@ -1309,6 +1309,10 @@ void RB_SurfaceWeather(srfWeather_t* surf)
 		if (!weatherObject->active)
 			continue;
 
+		// The particle VBO holds maxWeatherTypeParticles per chunk; never simulate or draw more than that.
+		if (weatherObject->particleCount > maxWeatherTypeParticles[weatherType])
+			weatherObject->particleCount = maxWeatherTypeParticles[weatherType];
+
 		if (weatherObject->vbo == nullptr)
 			GenerateRainModel(
 				tr.weatherSystem->weatherSlots[weatherType],
