@@ -496,10 +496,12 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 		ent->NPC->scriptFlags |= SCF_DONT_FLEE | SCF_IGNORE_ALERTS;
 		ent->NPC->ignorePain = qtrue;
 	}
-	if (Q_stricmp("chewie", ent->NPC_type) ||
-		Q_stricmp("chewie2", ent->NPC_type) ||
-		Q_stricmp("chewie_cin", ent->NPC_type) ||
-		Q_stricmp("chewieclass", ent->NPC_type)
+	// Q_stricmp is 0 on a match: without "== 0" this chain was true for every NPC, so all of them
+	// had heavy melee (4x punch damage + dismemberment)
+	if (Q_stricmp("chewie", ent->NPC_type) == 0 ||
+		Q_stricmp("chewie2", ent->NPC_type) == 0 ||
+		Q_stricmp("chewie_cin", ent->NPC_type) == 0 ||
+		Q_stricmp("chewieclass", ent->NPC_type) == 0
 		|| ent->client->NPC_class == CLASS_WOOKIE
 		|| ent->client->NPC_class == CLASS_GRAN
 		|| ent->client->NPC_class == CLASS_TRANDOSHAN)

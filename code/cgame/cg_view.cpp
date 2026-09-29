@@ -1773,7 +1773,7 @@ void CG_SaberClashFlare()
 		return;
 	}
 
-	vec3_t color;
+	vec4_t color; // RGBA: R_SetColor reads 4 floats (was vec3_t: ASan stack overflow)
 	int x, y;
 	float len = VectorNormalize(dif);
 
@@ -1788,6 +1788,7 @@ void CG_SaberClashFlare()
 	CG_WorldCoordToScreenCoord(g_saberFlashPos, &x, &y);
 
 	VectorSet(color, 0.8f, 0.8f, 0.8f);
+	color[3] = 1.0f;
 	cgi_R_SetColor(color);
 
 	CG_DrawPic(x - v * 300 * cgs.widthRatioCoef, y - v * 300, v * 600 * cgs.widthRatioCoef, v * 600, cgi_R_RegisterShader("gfx/effects/saberFlare"));
@@ -1823,7 +1824,7 @@ void CG_SaberBlockFlare()
 		return;
 	}
 
-	vec3_t color;
+	vec4_t color; // RGBA: R_SetColor reads 4 floats (was vec3_t: ASan stack overflow)
 	int x, y;
 	float len = VectorNormalize(dif);
 
@@ -1838,6 +1839,7 @@ void CG_SaberBlockFlare()
 	CG_WorldCoordToScreenCoord(g_saberFlashPos, &x, &y);
 
 	VectorSet(color, 0.8f, 0.8f, 0.8f);
+	color[3] = 1.0f;
 	cgi_R_SetColor(color);
 
 	CG_DrawPic(x - v * 300 * cgs.widthRatioCoef, y - v * 300,

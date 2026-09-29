@@ -3388,19 +3388,20 @@ static void Jedi_CombatDistance(const int enemy_dist)
 						else if (WP_ForcePowerUsable(NPC, FP_LIGHTNING, 0)
 							&& (NPCInfo->scriptFlags & SCF_DONT_FIRE &&
 								npc_is_sith_lord(NPC) ||
-								(Q_stricmp("md_snoke_cin", NPC->NPC_type)
-									|| Q_stricmp("md_snoke", NPC->NPC_type)
-									|| Q_stricmp("md_palpatine", NPC->NPC_type)
-									|| Q_stricmp("md_mother_talzin", NPC->NPC_type)
-									|| Q_stricmp("md_sidious_ep2", NPC->NPC_type)
-									|| Q_stricmp("md_sidious", NPC->NPC_type)
-									|| Q_stricmp("md_sidious_ep3_red", NPC->NPC_type)
-									|| Q_stricmp("md_pal_mof", NPC->NPC_type)
-									|| Q_stricmp("md_emperor", NPC->NPC_type)
-									|| Q_stricmp("md_emperor_fas", NPC->NPC_type)
-									|| Q_stricmp("md_emperor_ros", NPC->NPC_type)
-									|| Q_stricmp("md_emperor_ros_blind", NPC->NPC_type)
-									|| Q_stricmp("cultist_lightning", NPC->NPC_type)) ||
+								// these always use lightning, others half the time ("== 0" was missing: the chain was always true)
+								(Q_stricmp("md_snoke_cin", NPC->NPC_type) == 0
+									|| Q_stricmp("md_snoke", NPC->NPC_type) == 0
+									|| Q_stricmp("md_palpatine", NPC->NPC_type) == 0
+									|| Q_stricmp("md_mother_talzin", NPC->NPC_type) == 0
+									|| Q_stricmp("md_sidious_ep2", NPC->NPC_type) == 0
+									|| Q_stricmp("md_sidious", NPC->NPC_type) == 0
+									|| Q_stricmp("md_sidious_ep3_red", NPC->NPC_type) == 0
+									|| Q_stricmp("md_pal_mof", NPC->NPC_type) == 0
+									|| Q_stricmp("md_emperor", NPC->NPC_type) == 0
+									|| Q_stricmp("md_emperor_fas", NPC->NPC_type) == 0
+									|| Q_stricmp("md_emperor_ros", NPC->NPC_type) == 0
+									|| Q_stricmp("md_emperor_ros_blind", NPC->NPC_type) == 0
+									|| Q_stricmp("cultist_lightning", NPC->NPC_type) == 0) ||
 								Q_irand(0, 1)))
 						{
 							ForceLightning(NPC);
