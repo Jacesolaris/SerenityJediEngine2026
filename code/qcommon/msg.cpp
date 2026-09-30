@@ -1243,7 +1243,12 @@ static const netField_t playerStateFields[] =
 	{PSF(communicatingflags), 32},
 
 	{PSF(hyperSpaceTime), 32},
-	{PSF(hyperSpaceAngles), 32},
+	// all three angles as floats, as MP sends them (only [0] was sent, as a 32-bit int)
+	{PSF(hyperSpaceAngles[0]), 0},
+	{PSF(hyperSpaceAngles[1]), 0},
+	{PSF(hyperSpaceAngles[2]), 0},
+	// the vehicle this player rides (pilot) / the pilot number + 1 (vehicle), as in MP; cgame needs it
+	{PSF(m_iVehicleNum), GENTITYNUM_BITS},
 
 	{PSF(hackingTime), 32 },
 	{PSF(hackingBaseTime), 16 },

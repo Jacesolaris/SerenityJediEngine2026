@@ -8977,6 +8977,10 @@ static void Jedi_Combat()
 					&& Distance(NPC->enemy->currentOrigin, NPC->currentOrigin) <= 64
 					&& (NPC->client->ps.weapon == WP_SABER)
 					&& NPC->next_kick_time <= level.time
+					&& NPC->client->ps.groundEntityNum != ENTITYNUM_NONE
+					&& !PM_InKnockDown(&NPC->client->ps) //lying on the ground or getting up: finish that first
+					&& !PM_InGetUp(&NPC->client->ps)
+					&& !PM_InRoll(&NPC->client->ps)
 					&& irand(0, 100) > 75)
 				{// Close range - switch to melee... KICK!
 					if (d_JediAI->integer || g_DebugSaberCombat->integer)

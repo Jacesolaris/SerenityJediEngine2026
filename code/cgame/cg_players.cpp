@@ -3173,7 +3173,18 @@ static void CG_G2PlayerAngles(centity_t* cent, vec3_t legs[3], vec3_t angles)
 			{
 				cent->gent->client->renderInfo.legsYaw = cent->lerpAngles[YAW];
 			}
-			AnglesToAxis(cent->lerpAngles, legs);
+			if (cent->gent->m_pVehicle && cent->gent->m_pVehicle->m_pVehicleInfo
+				&& cent->gent->m_pVehicle->m_pVehicleInfo->type == VH_WALKER)
+			{
+				//a walker stands level at its yaw, only its head looks up and down (a bone, set in the vehicle's
+				//Update), as in MP. The whole model used to tip over with the pilot's view, its feet the pivot.
+				const vec3_t walker_angles = { 0.0f, cent->lerpAngles[YAW], 0.0f };
+				AnglesToAxis(walker_angles, legs);
+			}
+			else
+			{
+				AnglesToAxis(cent->lerpAngles, legs);
+			}
 			if (cent->gent->m_pVehicle)
 			{
 				if (cent->gent->m_pVehicle->m_pVehicleInfo)
@@ -5382,29 +5393,113 @@ static void CG_BoltedEffects(const centity_t* cent)
 int cg_lastHyperSpaceEffectTime = 0;
 static int lastFlyBySound[MAX_GENTITIES] = { 0 };
 constexpr auto FLYBYSOUNDTIME = 2000;
+static int vehExhaustFxTime[MAX_GENTITIES] = { 0 }; //when a ship next draws its exhaust
+constexpr auto VEH_EXHAUST_FX_DELAY = 50;
+
+/*
+===============
+CG_MyVehiclePS
+
+The playerState of the vehicle the local player rides, or nullptr. This is SP's counterpart of
+MP's cg.predictedVehicleState: hyperspace time/flags live on the VEHICLE, not on the pilot.
+===============
+*/
+const playerState_t* CG_MyVehiclePS()
+{
+	const int veh_num = cg.predictedPlayerState.m_iVehicleNum;
+	if (veh_num <= 0 || veh_num >= ENTITYNUM_WORLD)
+	{
+		return nullptr;
+	}
+	const gentity_t* veh = cg_entities[veh_num].gent;
+	if (!veh || !veh->client || !veh->m_pVehicle)
+	{
+		return nullptr;
+	}
+	return &veh->client->ps;
+}
 
 static void CG_VehicleEffects(centity_t* cent)
 {
-	const Vehicle_t* p_veh_npc = cent->gent->m_pVehicle;
-
-	if (cent->gent->client->NPC_class != CLASS_VEHICLE)
+	if (!cent->gent || !cent->gent->client || cent->gent->client->NPC_class != CLASS_VEHICLE)
 	{
 		return;
 	}
 
-	if (cent->currentState.clientNum == cg.predictedPlayerState.m_iVehicleNum //my vehicle
-		&& cent->currentState.eFlags2 & EF2_HYPERSPACE) //hyperspacing
+	const Vehicle_t* p_veh_npc = cent->gent->m_pVehicle;
+	if (!p_veh_npc || !p_veh_npc->m_pVehicleInfo)
+	{
+		//not set up (yet); MP checks this too
+		return;
+	}
+
+	const playerState_t* veh_ps = CG_MyVehiclePS();
+	if (veh_ps
+		&& cent->currentState.number == cg.predictedPlayerState.m_iVehicleNum //my vehicle
+		&& veh_ps->eFlags2 & EF2_HYPERSPACE) //hyperspacing
 	{
 		//in hyperspace!
-		if (cg.predictedPlayerState.hyperSpaceTime && cg.time - cg.predictedPlayerState.hyperSpaceTime <
-			HYPERSPACE_TIME)
+		if (veh_ps->hyperSpaceTime && cg.time - veh_ps->hyperSpaceTime < HYPERSPACE_TIME)
 		{
 			if (!cg_lastHyperSpaceEffectTime || cg.time - cg_lastHyperSpaceEffectTime > HYPERSPACE_TIME + 500)
 			{
 				//can't be from the last time we were in hyperspace, so play the effect!
-				CG_PlayEffectIDBolted(cgs.effects.mHyperspaceStars, cent->currentState.number, 0,
-					cent->currentState.clientNum, cent->lerpOrigin, 0, qtrue);
+				//bolted to the ship's model, bolt 0, as MP does. (The old call passed the entity number as
+				//the ghoul2 model index and an FX-scheduler handle as a CS_EFFECTS index.)
+				if (cent->gent && cent->gent->playerModel >= 0)
+				{
+					CG_PlayEffectBolted("ships/hyperspace_stars", cent->gent->playerModel, 0,
+						cent->currentState.number, cent->lerpOrigin, 0, qtrue);
+				}
 				cg_lastHyperSpaceEffectTime = cg.time;
+			}
+		}
+	}
+
+	//EXHAUST of a ship, drawn as MP draws it: a burst on every exhaust bolt, twenty times a second, while the ship
+	//moves; the turbo exhaust while it boosts. (The game used to start one looping effect per bolt. That repeats three
+	//times a second, which is next to nothing, and the turbo exhaust was only started by ships that also have a
+	//turboStartFX - none of the fighters has one.)
+	if (p_veh_npc->m_pVehicleInfo->type == VH_FIGHTER
+		&& cent->gent->health > 0
+		&& cent->gent->client->ps.speed > 0
+		&& cent->gent->playerModel >= 0 && cent->gent->ghoul2.size()
+		&& !cent->gent->client->ps.powerups[PW_CLOAKED])
+	{
+		int& next_time = vehExhaustFxTime[cent->currentState.number];
+		if (next_time <= cg.time || next_time > cg.time + VEH_EXHAUST_FX_DELAY)
+		{
+			const playerState_t* parent_ps = &cent->gent->client->ps;
+			int fx = p_veh_npc->m_pVehicleInfo->iExhaustFX;
+			if (parent_ps->eFlags & EF_JETPACK_ACTIVE && p_veh_npc->m_pVehicleInfo->iTurboFX)
+			{
+				//cheap way of telling us the vehicle is in "turbo" mode
+				fx = p_veh_npc->m_pVehicleInfo->iTurboFX;
+			}
+			next_time = cg.time + VEH_EXHAUST_FX_DELAY;
+
+			for (int i = 0; fx && i < MAX_VEHICLE_EXHAUSTS && p_veh_npc->m_iExhaustTag[i] != -1; i++)
+			{
+				if (parent_ps->brokenLimbs & 1 << SHIPSURF_DAMAGE_BACK_HEAVY)
+				{
+					//engine has taken heavy damage
+					if (!Q_irand(0, 1))
+					{
+						//50% chance of not drawing this engine glow this frame
+						continue;
+					}
+				}
+				else if (parent_ps->brokenLimbs & 1 << SHIPSURF_DAMAGE_BACK_LIGHT)
+				{
+					//engine has taken light damage
+					if (!Q_irand(0, 4))
+					{
+						//20% chance of not drawing this engine glow this frame
+						continue;
+					}
+				}
+				CG_PlayEffectIDBolted(fx, cent->gent->playerModel, p_veh_npc->m_iExhaustTag[i], cent->currentState.number,
+					cent->lerpOrigin, 0, true);
 			}
 		}
 	}
@@ -14904,9 +14999,15 @@ void CG_Player(centity_t* cent)
 
 			centity_t* vehEnt = &cg_entities[cent->gent->owner->s.number];
 			CG_CalcEntityLerpPositions(vehEnt);
-			// Get the driver tag.
+			// Get the driver tag. The droid unit (R2/R5) has a socket of its own: it was put on the driver tag, which a
+			// closed ship does not have, and was drawn nowhere.
 			mdxaBone_t boltMatrix;
-			gi.G2API_GetBoltMatrix(vehEnt->gent->ghoul2, vehEnt->gent->playerModel, vehEnt->gent->crotchBolt,
+			int rider_bolt = vehEnt->gent->crotchBolt;
+			if (p_veh->m_pDroidUnit == cent->gent && p_veh->m_iDroidUnitTag != -1)
+			{
+				rider_bolt = p_veh->m_iDroidUnitTag;
+			}
+			gi.G2API_GetBoltMatrix(vehEnt->gent->ghoul2, vehEnt->gent->playerModel, rider_bolt,
 				&boltMatrix, vehEnt->lerpAngles, vehEnt->lerpOrigin,
 				cg.time ? cg.time : level.time, nullptr, vehEnt->currentState.modelScale);
 			gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, ent.origin);
@@ -15700,15 +15801,22 @@ void CG_Player(centity_t* cent)
 					// Get the Position and Direction of the Tag and use that as our Muzzles Properties.
 					mdxaBone_t matrix;
 					vec3_t velocity;
+					vec3_t muzzle_angles;
 					VectorCopy(cent->gent->client->ps.velocity, velocity);
 					velocity[2] = 0;
+					VectorCopy(cent->lerpAngles, muzzle_angles);
+					if (cent->gent->m_pVehicle->m_pVehicleInfo && cent->gent->m_pVehicle->m_pVehicleInfo->type == VH_WALKER)
+					{
+						//a walker's model stands level, its guns get their pitch from the head bone (as in MP)
+						muzzle_angles[PITCH] = muzzle_angles[ROLL] = 0.0f;
+					}
 					for (int i = 0; i < MAX_VEHICLE_MUZZLES; i++)
 					{
 						if (cent->gent->m_pVehicle->m_iMuzzleTag[i] != -1)
 						{
 							gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel,
 								cent->gent->m_pVehicle->m_iMuzzleTag[i], &matrix,
-								cent->lerpAngles, ent.origin, cg.time, cgs.model_draw,
+								muzzle_angles, ent.origin, cg.time, cgs.model_draw,
 								cent->currentState.modelScale);
 							gi.G2API_GiveMeVectorFromMatrix(matrix, ORIGIN,
 								cent->gent->m_pVehicle->m_Muzzles[i].m_vMuzzlePos);

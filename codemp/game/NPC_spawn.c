@@ -1195,12 +1195,8 @@ static qboolean NPC_SpotWouldTelefrag(const gentity_t* npc)
 		return qfalse;
 	}
 
-	// Allocate large array on heap to avoid C6262 stack warning
-	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (touch == NULL)
-	{
-		return qfalse;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int touch[MAX_GENTITIES];
 
 	vec3_t mins, maxs;
 

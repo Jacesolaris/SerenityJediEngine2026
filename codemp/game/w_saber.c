@@ -6890,7 +6890,6 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 	gentity_t* hitEnt = &g_entities[tr.entityNum];
 
 	if (real_trace_result == REALTRACE_HIT_WORLD ||
-		real_trace_result == 3 ||
 		tr.entityNum == ENTITYNUM_WORLD ||
 		tr.entityNum < 0 ||
 		tr.entityNum >= MAX_GENTITIES ||

@@ -31,8 +31,8 @@ open; the speaker button next to minimise switches it off (remembered in the ini
 
 namespace
 {
-	constexpr int kWidth = 540;
-	constexpr int kHeight = 600;
+	constexpr int kWidth = 1088;
+	constexpr int kHeight = 607;
 
 	constexpr int kButtonCount = 4;
 	constexpr int kButtonW = 320;

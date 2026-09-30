@@ -1578,8 +1578,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 28/09/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 05------------------------------\n");
+	Com_Printf("---------------------Build date 30/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 06------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -10838,6 +10838,13 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 
 			free(buffer);
 
+			if (!species->SkinHead || !species->SkinTorso || !species->SkinLeg)
+			{
+				Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: out of memory for '%s' skins\n" S_COLOR_WHITE, dirptr);
+				UI_FreeSpecies(species);
+				continue;
+			}
+
 			const int numfiles = trap->FS_GetFileList(
 				va("models/players/%s", dirptr),
 				".skin",
@@ -10880,7 +10887,8 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 							if (newHead == NULL)
 							{
 								Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding SkinHead\n" S_COLOR_WHITE);
-								UI_FreeSpecies(species);
+								species->SkinHeadMax /= 2; // the array did not grow
+								// skip just this skin (freeing the species here left Max = 0 for the next skin: realloc(0) + write)
 								continue;
 							}
 
@@ -10909,7 +10917,8 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 							if (newTorso == NULL)
 							{
 								Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding SkinTorso\n" S_COLOR_WHITE);
-								UI_FreeSpecies(species);
+								species->SkinTorsoMax /= 2; // the array did not grow
+								// skip just this skin (freeing the species here left Max = 0 for the next skin: realloc(0) + write)
 								continue;
 							}
 
@@ -10938,7 +10947,8 @@ static void UI_BuildPlayerModel_List(const qboolean inGameLoad)
 							if (newLeg == NULL)
 							{
 								Com_Printf(S_COLOR_RED "UI_BuildPlayerModel_List: realloc failed expanding SkinLeg\n" S_COLOR_WHITE);
-								UI_FreeSpecies(species);
+								species->SkinLegMax /= 2; // the array did not grow
+								// skip just this skin (freeing the species here left Max = 0 for the next skin: realloc(0) + write)
 								continue;
 							}
 
@@ -11306,8 +11316,38 @@ static void UI_Refresh(int realtime)
 UI_KeyEvent
 =================
 */
+// A game controller works the menus like a mouse and keyboard: a stick moves the pointer (IN_GamepadMenuPointer),
+// A clicks, X is the right mouse button, B and Start go back (Escape), Y is Enter, the D-pad is the arrow keys
+// and the shoulder buttons scroll like the mouse wheel.
+// Not while the controls menu waits for a key to bind: it needs the real button.
+static int UI_GamepadMenuKey(const int key)
+{
+	if (Display_KeyBindPending())
+	{
+		return key;
+	}
+
+	switch (key)
+	{
+	case A_PAD0_A: return A_MOUSE1;
+	case A_PAD0_X: return A_MOUSE2;
+	case A_PAD0_B:
+	case A_PAD0_START: return A_ESCAPE;
+	case A_PAD0_Y: return A_ENTER;
+	case A_PAD0_DPAD_UP: return A_CURSOR_UP;
+	case A_PAD0_DPAD_DOWN: return A_CURSOR_DOWN;
+	case A_PAD0_DPAD_LEFT: return A_CURSOR_LEFT;
+	case A_PAD0_DPAD_RIGHT: return A_CURSOR_RIGHT;
+	case A_PAD0_LEFTSHOULDER: return A_MWHEELUP;
+	case A_PAD0_RIGHTSHOULDER: return A_MWHEELDOWN;
+	default: return key;
+	}
+}
+
 static void UI_KeyEvent(int key, qboolean down)
 {
+	key = UI_GamepadMenuKey(key);
+
 	if (Menu_Count() > 0)
 	{
 		menuDef_t* menu = Menu_GetFocused();

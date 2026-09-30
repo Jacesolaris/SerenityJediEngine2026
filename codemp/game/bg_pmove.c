@@ -19207,8 +19207,9 @@ static void PmoveSingle(pmove_t* pmove)
 	{
 		bgEntity_t* veh = pm_entVeh;
 
-		if (veh && veh->playerState &&
-			pm->cmd.serverTime - veh->playerState->hyperSpaceTime < HYPERSPACE_TIME)
+		if (veh && veh->playerState
+			&& veh->playerState->hyperSpaceTime // 0 = never hyperspaced (else the first 4 s of a map forced it)
+			&& pm->cmd.serverTime - veh->playerState->hyperSpaceTime < HYPERSPACE_TIME)
 		{
 			//going into hyperspace, turn to face the right angles
 			PM_VehFaceHyperspacePoint(veh);

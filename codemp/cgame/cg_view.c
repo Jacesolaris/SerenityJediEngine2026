@@ -1747,6 +1747,81 @@ extern qboolean in_camera;
 extern void CGCam_RenderScene(void);
 void CGCam_UpdateFade(void);
 
+/*
+===============
+CG_WalkerViewOrigin
+
+What the camera of a walker's pilot looks at. The pilot sits on the driver tag in the walker's head, and the head
+rocks from side to side and up and down with every step: a camera that looks at the pilot rocks with it. It looks
+at where the head is on average instead - the tag's place relative to the walker, smoothed over a good second.
+A walker also goes up a step all at once; the camera follows that over a moment instead of jumping with it.
+(The same as in SP.)
+===============
+*/
+#define WALKER_VIEW_SMOOTH_MSEC	1200.0f
+#define WALKER_STEP_SMOOTH_MSEC	140.0f
+#define WALKER_STEP_MAX			48.0f	// a change in height beyond this is no step (a fall, a lift): follow at once
+#define WALKER_VIEW_JUMP		64.0f	// the pilot moved this far against the walker at once: he is getting in
+#define WALKER_VIEW_RANGE		512.0f	// further than this from the walker, its position is not to be trusted
+
+static void CG_WalkerViewOrigin(const int walker_num, const vec3_t walker_org, const float walker_yaw,
+	const vec3_t pilot_org, vec3_t view_org)
+{
+	static int last_walker = ENTITYNUM_NONE;
+	static int last_time = 0;
+	static vec3_t smoothed = { 0.0f, 0.0f, 0.0f }; // the pilot from the walker's origin: forward, right, up
+	static float smoothed_height = 0.0f; // of the walker
+	vec3_t yaw_angles, fwd, right, delta, local, change;
+	const int elapsed = cg.time - last_time;
+
+	VectorSubtract(pilot_org, walker_org, delta);
+	if (VectorLength(delta) > WALKER_VIEW_RANGE)
+	{
+		last_walker = ENTITYNUM_NONE;
+		VectorCopy(pilot_org, view_org);
+		return;
+	}
+
+	VectorSet(yaw_angles, 0.0f, walker_yaw, 0.0f);
+	AngleVectors(yaw_angles, fwd, right, NULL);
+	VectorSet(local, DotProduct(delta, fwd), DotProduct(delta, right), delta[2]);
+	VectorSubtract(local, smoothed, change);
+
+	if (last_walker != walker_num || elapsed < 0 || elapsed > 500 || cg.thisFrameTeleport
+		|| VectorLength(change) > WALKER_VIEW_JUMP)
+	{
+		//just got in, or a new map: start from where the pilot is
+		VectorCopy(local, smoothed);
+		smoothed_height = walker_org[2];
+	}
+	else
+	{
+		const float frac = 1.0f - expf(-(float)elapsed / WALKER_VIEW_SMOOTH_MSEC);
+		int i;
+
+		for (i = 0; i < 3; i++)
+		{
+			smoothed[i] += (local[i] - smoothed[i]) * frac;
+		}
+
+		if (fabsf(walker_org[2] - smoothed_height) > WALKER_STEP_MAX)
+		{
+			smoothed_height = walker_org[2];
+		}
+		else
+		{
+			smoothed_height += (walker_org[2] - smoothed_height)
+				* (1.0f - expf(-(float)elapsed / WALKER_STEP_SMOOTH_MSEC));
+		}
+	}
+	last_walker = walker_num;
+	last_time = cg.time;
+
+	VectorMA(walker_org, smoothed[0], fwd, view_org);
+	VectorMA(view_org, smoothed[1], right, view_org);
+	view_org[2] = smoothed_height + smoothed[2];
+}
+
 static int CG_CalcViewValues(void)
 {
 	memset(&cg.refdef, 0, sizeof cg.refdef);
@@ -1780,6 +1855,17 @@ static int CG_CalcViewValues(void)
 	{
 		//not manning a turret on a vehicle
 		VectorCopy(ps->origin, cg.refdef.vieworg);
+		if (cg.predictedPlayerState.m_iVehicleNum && !cg.predictedPlayerState.generic1)
+		{
+			//the pilot of a walker: not the rocking driver tag, but where it is on average
+			const centity_t* walker = &cg_entities[cg.predictedPlayerState.m_iVehicleNum];
+			if (walker->m_pVehicle && walker->m_pVehicle->m_pVehicleInfo
+				&& walker->m_pVehicle->m_pVehicleInfo->type == VH_WALKER)
+			{
+				CG_WalkerViewOrigin(cg.predictedPlayerState.m_iVehicleNum, cg.predictedVehicleState.origin,
+					cg.predictedVehicleState.viewangles[YAW], ps->origin, cg.refdef.vieworg);
+			}
+		}
 #ifdef VEH_CONTROL_SCHEME_4
 		if (cg.predictedPlayerState.m_iVehicleNum)//in a vehicle
 		{

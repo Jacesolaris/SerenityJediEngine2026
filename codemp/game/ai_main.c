@@ -690,15 +690,15 @@ static qboolean AI_ComputeBallisticJump(gentity_t* bot,
 	VectorSubtract(apex, start, flat);
 	flat[2] = 0.0f;
 
-	if (VectorNormalize(flat) == 0.0f)
-		return qfalse;
-
-	// Horizontal speed
+	// VectorNormalize returns the length before normalising: that is the horizontal distance to the apex.
+	// (Measuring flat after normalising always gave 1, so bots jumped almost straight up.)
 	{
-		float dist = VectorLength(flat);
-		float forward = dist / time;
+		const float dist = VectorNormalize(flat);
+		if (dist == 0.0f)
+			return qfalse;
 
-		VectorScale(flat, forward, outVel);
+		// Horizontal speed: reach the apex (halfway to the target) at the top of the arc
+		VectorScale(flat, dist / time, outVel);
 	}
 
 	// Vertical speed

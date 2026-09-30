@@ -76,7 +76,7 @@ static void VEH_TurretCheckFire(Vehicle_t* p_veh,
 		const int nextMuzzle = curMuzzle + 1 == p_veh->m_pVehicleInfo->turret[turretNum].iMuzzle[0]
 			? p_veh->m_pVehicleInfo->turret[turretNum].iMuzzle[1]
 			: p_veh->m_pVehicleInfo->turret[turretNum].iMuzzle[0];
-		if (nextMuzzle)
+		if (nextMuzzle > 0 && nextMuzzle <= MAX_VEHICLE_MUZZLES)
 		{
 			//a valid muzzle to toggle to
 			p_veh->turretStatus[turretNum].nextMuzzle = nextMuzzle - 1;
@@ -233,15 +233,11 @@ static qboolean VEH_TurretFindEnemies(Vehicle_t* p_veh,
 	vec3_t org2;
 	qboolean foundClient = qfalse;
 
-	// FIX: move large arrays off stack (C6262)
-	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
-	trace_t* tr = (trace_t*)BG_Alloc(sizeof(trace_t));
-
-	if (!entity_list || !tr)
-	{
-		Com_Printf(S_COLOR_RED "VEH_TurretFindEnemies: BG_Alloc failed\n");
-		return qfalse;
-	}
+	// static, off the stack (C6262). This was BG_Alloc'ed on EVERY call: BG_Alloc is a bump allocator that
+	// never frees, so an AI turret used up the whole game pool in about a minute (then every BG_Alloc failed).
+	static gentity_t* entity_list[MAX_GENTITIES];
+	trace_t tr_local;
+	trace_t* tr = &tr_local;
 
 	const gentity_t* bestTarget = NULL;
 
@@ -400,8 +396,19 @@ void VEH_TurretThink(Vehicle_t* p_veh, gentity_t* parent, const int turretNum)
 		return;
 	}
 
+	// Bad .veh data must not index out of bounds: weapon slot (0 = "not found" from the loader, -1 = none),
+	// current muzzle (from turretNMuzzle1/2 - 1, unchecked at load) and the controlling passenger slot
+	if (turretStats->iWeapon <= VEH_WEAPON_BASE || turretStats->iWeapon >= numVehicleWeapons
+		|| p_veh->turretStatus[turretNum].nextMuzzle < 0
+		|| p_veh->turretStatus[turretNum].nextMuzzle >= MAX_VEHICLE_MUZZLES
+		|| p_veh->m_iMuzzleTag[p_veh->turretStatus[turretNum].nextMuzzle] == -1
+		|| turretStats->passengerNum < 0 || turretStats->passengerNum > VEH_MAX_PASSENGERS)
+	{
+		return;
+	}
+
 	if (turretStats->passengerNum
-		&& p_veh->m_iNumPassengers >= turretStats->passengerNum)
+		&& p_veh->m_ppPassengers[turretStats->passengerNum - 1]) // someone in that seat (seats can be sparse)
 	{
 		//the passenger that has control of this turret is on the ship
 		VEH_TurretObeyPassengerControl(p_veh, parent, turretNum);
@@ -426,7 +433,7 @@ void VEH_TurretThink(Vehicle_t* p_veh, gentity_t* parent, const int turretNum)
 	if (p_veh->turretStatus[turretNum].enemyEntNum < ENTITYNUM_WORLD)
 	{
 		turretEnemy = &g_entities[p_veh->turretStatus[turretNum].enemyEntNum];
-		if (turretEnemy->health < 0
+		if (turretEnemy->health <= 0 // dead (was < 0, so a 0-health enemy was kept)
 			|| !turretEnemy->inuse
 			|| turretEnemy == (gentity_t*)p_veh->m_pPilot //enemy became my pilot///?
 			|| turretEnemy == parent

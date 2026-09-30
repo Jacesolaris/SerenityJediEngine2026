@@ -213,6 +213,10 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 	}
 
 	assert(!ent || ent->renderfx >= 0);
+	if (!ent)
+	{
+		return; // the assert allows NULL, but everything below dereferences it
+	}
 
 	if (ent->reType == RT_ENT_CHAIN)
 	{ //minirefents must die.

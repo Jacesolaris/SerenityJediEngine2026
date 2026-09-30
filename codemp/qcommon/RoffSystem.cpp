@@ -847,6 +847,8 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 	trajectory_t* angleTrajectory = nullptr;
 	float* origin = nullptr;
 	float* angle = nullptr;
+	vec3_t originTemp; // function scope: origin/angle point here and are used after the if block
+	vec3_t angleTemp;
 
 	if (svs.time < roff_ent->mNextROFFTime)
 	{
@@ -857,9 +859,6 @@ qboolean CROFFSystem::ApplyROFF(SROFFEntity* roff_ent, const CROFF* roff)
 	if (roff_ent->mIsClient == qtrue)
 	{
 #ifndef DEDICATED
-		vec3_t originTemp;
-		vec3_t angleTemp;
-
 		originTrajectory = CGVM_GetOriginTrajectory(roff_ent->mEntID);
 		angleTrajectory = CGVM_GetAngleTrajectory(roff_ent->mEntID);
 
@@ -1031,11 +1030,11 @@ qboolean CROFFSystem::ClearLerp(const SROFFEntity* roff_ent)
 	trajectory_t* angleTrajectory = nullptr;
 	float* origin = nullptr;
 	float* angle = nullptr;
+	vec3_t originTemp, angleTemp; // function scope: origin/angle point here and are used after the if block
 
 	if (roff_ent->mIsClient)
 	{
 #ifndef DEDICATED
-		vec3_t originTemp, angleTemp;
 		originTrajectory = CGVM_GetOriginTrajectory(roff_ent->mEntID);
 		angleTrajectory = CGVM_GetAngleTrajectory(roff_ent->mEntID);
 		CGVM_GetOrigin(roff_ent->mEntID, originTemp);

@@ -567,6 +567,14 @@ vehField_t vehicleFields[] =
 	{"health_left", VFOFS(health_left), VF_INT},
 #else
 	{"radarIcon", 0, VF_IGNORE}, //what icon to show on radar in MP
+	{"crosshairShader", VFOFS(crosshairShader), VF_STRING}, //what image to use as the crosshair
+	{"dmgIndicFrame", VFOFS(dmgIndicFrame), VF_STRING}, //what image to use for the frame of the damage indicator
+	{"dmgIndicShield", VFOFS(dmgIndicShield), VF_STRING}, //what image to use for the shield of the damage indicator
+	{"dmgIndicBackground", VFOFS(dmgIndicBackground), VF_STRING}, //what image to use for the background of the damage indicator
+	{"icon_front", VFOFS(iconFront), VF_STRING}, //what image to use for the front of the ship on the damage indicator
+	{"icon_back", VFOFS(iconBack), VF_STRING}, //what image to use for the back of the ship on the damage indicator
+	{"icon_right", VFOFS(iconRight), VF_STRING}, //what image to use for the right of the ship on the damage indicator
+	{"icon_left", VFOFS(iconLeft), VF_STRING}, //what image to use for the left of the ship on the damage indicator
 #endif
 
 	{"soundOn", VFOFS(soundOn), VF_SOUND}, //sound to play when get on it
@@ -1116,7 +1124,7 @@ static int veh_load_vehicle(const char* vehicle_name)
 			if (!BG_ParseVehicleParm(vehicle, parm_name, value))
 			{
 #ifndef FINAL_BUILD
-				Com_Printf(S_COLOR_RED"ERROR: Unknown Vehicle key/value pair '%s', '%s'!\n", parmName, value);
+				Com_Printf(S_COLOR_RED"ERROR: Unknown Vehicle key/value pair '%s', '%s'!\n", parm_name, value);
 #endif
 			}
 		}

@@ -314,7 +314,26 @@ static shader_t* ShaderForShaderNum(int shaderNum, const int* lightmapNum, const
 		styles = vertex_styles;
 	}
 
-	shader_t* shader = R_FindShader(dsh->shader, lightmapNum, styles, qtrue);
+	// The renderer indexes styleColors[MAX_LIGHT_STYLES] with every style below LS_UNUSED, so a map
+	// with a bad style byte (64..253) read past the table. Treat such styles as the normal style.
+	byte safe_styles[MAXLIGHTMAPS];
+	for (int i = 0; i < MAXLIGHTMAPS; i++)
+	{
+		safe_styles[i] = styles[i];
+		if (safe_styles[i] >= MAX_LIGHT_STYLES && safe_styles[i] < LS_UNUSED)
+		{
+			static qboolean warned = qfalse;
+			if (!warned)
+			{
+				ri->Printf(PRINT_WARNING, "ShaderForShaderNum: light style %i out of range (max %i), using the normal style\n",
+					safe_styles[i], MAX_LIGHT_STYLES - 1);
+				warned = qtrue;
+			}
+			safe_styles[i] = LS_NORMAL;
+		}
+	}
+
+	shader_t* shader = R_FindShader(dsh->shader, lightmapNum, safe_styles, qtrue);
 
 	// if the shader had errors, just use default shader
 	if (shader->defaultShader) {
@@ -1859,7 +1878,17 @@ static void R_LoadEntities(const lump_t* l, world_t& worldData) {
 		}
 		// check for a different grid size
 		if (!Q_stricmp(keyname, "gridsize")) {
-			sscanf(value, "%f %f %f", &w->lightGridSize[0], &w->lightGridSize[1], &w->lightGridSize[2]);
+			// only accept three positive sizes: the light grid divides by them (keep the 64 64 128 default otherwise)
+			vec3_t grid_size;
+			if (sscanf(value, "%f %f %f", &grid_size[0], &grid_size[1], &grid_size[2]) == 3
+				&& grid_size[0] > 0.0f && grid_size[1] > 0.0f && grid_size[2] > 0.0f)
+			{
+				VectorCopy(grid_size, w->lightGridSize);
+			}
+			else
+			{
+				ri->Printf(PRINT_WARNING, "WARNING: bad gridsize '%s' in worldspawn, using the default\n", value);
+			}
 			continue;
 		}
 		// find the optional world ambient for arioche

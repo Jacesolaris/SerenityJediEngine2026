@@ -6252,11 +6252,15 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 		return;
 	}
 
-	if (Boba_StopKnockdown(self, attacker, push_dir))
+	//already on the ground (a kick puts them in the knockdown anim before calling this): too late to dodge it,
+	//or they would flip straight up off the floor
+	const qboolean already_down = PM_InKnockDown(&self->client->ps);
+
+	if (!already_down && Boba_StopKnockdown(self, attacker, push_dir))
 	{
 		return;
 	}
-	if (Jedi_StopKnockdown(self, push_dir))
+	if (!already_down && Jedi_StopKnockdown(self, push_dir))
 	{
 		//They can sometimes backflip instead of be knocked down
 		return;
@@ -6403,11 +6407,14 @@ void G_KnockOver(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 		return;
 	}
 
-	if (Boba_StopKnockdown(self, attacker, push_dir, qfalse))
+	//already on the ground: too late to dodge it (see G_Knockdown)
+	const qboolean already_down = PM_InKnockDown(&self->client->ps);
+
+	if (!already_down && Boba_StopKnockdown(self, attacker, push_dir, qfalse))
 	{
 		return;
 	}
-	if (Jedi_StopKnockdown(self, push_dir))
+	if (!already_down && Jedi_StopKnockdown(self, push_dir))
 	{
 		//They can sometimes backflip instead of be knocked down
 		return;

@@ -2484,7 +2484,7 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 		}
 
 		// Setup the Turrets.
-		for (i = 0; i < MAX_VEHICLE_TURRET_MUZZLES; i++)
+		for (i = 0; i < MAX_VEHICLE_TURRETS; i++) // was MAX_VEHICLE_TURRET_MUZZLES (both 2 today)
 		{
 			if (ent->m_pVehicle->m_pVehicleInfo->turret[i].gunnerViewTag)
 			{

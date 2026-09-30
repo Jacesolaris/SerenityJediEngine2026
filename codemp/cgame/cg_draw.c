@@ -7591,7 +7591,12 @@ static void CG_DrawCrosshair(vec3_t world_point, const int ch_ent_valid)
 		return;
 	}
 
-	if (cg_adaptiveCrosshair.integer == 1 &&
+	//the adaptive crosshair hides it for a saber or empty hands; not inside a ship, where those are not what is aimed
+	//(a pilot holds no weapon: he never had a crosshair)
+	const qboolean in_ship = (cg.predictedPlayerState.m_iVehicleNum
+		&& (cg.predictedPlayerState.eFlags & EF_NODRAW)) ? qtrue : qfalse;
+
+	if (cg_adaptiveCrosshair.integer == 1 && !in_ship &&
 		(cg.snap->ps.weapon == WP_SABER))
 	{
 		if ((holding_block == qfalse &&
@@ -7603,7 +7608,7 @@ static void CG_DrawCrosshair(vec3_t world_point, const int ch_ent_valid)
 		}
 	}
 
-	if (cg_adaptiveCrosshair.integer == 1 &&
+	if (cg_adaptiveCrosshair.integer == 1 && !in_ship &&
 		(cg.snap->ps.weapon == WP_MELEE || cg.snap->ps.weapon == WP_NONE))
 	{
 		if ((holding_block_button == qfalse || holding_walking_button == qfalse) ||

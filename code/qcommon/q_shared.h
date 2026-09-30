@@ -2446,6 +2446,7 @@ public:
 
 		saved_game.write<int32_t>(hyperSpaceTime);
 		saved_game.write<float>(hyperSpaceAngles);
+		saved_game.write<int32_t>(m_iVehicleNum); // SP sets it too now (the vehicle a pilot rides), savegame v2
 		saved_game.write<int32_t>(forceSpeedRecoveryTime);
 
 		saved_game.write<int32_t>(PlayerEffectFlags); // PlayerEffectFlags
@@ -2716,6 +2717,7 @@ public:
 
 		saved_game.read<int32_t>(hyperSpaceTime);
 		saved_game.read<float>(hyperSpaceAngles);
+		saved_game.read<int32_t>(m_iVehicleNum); // savegame v2
 		saved_game.read<int32_t>(forceSpeedRecoveryTime);
 
 		saved_game.read<int32_t>(PlayerEffectFlags); // PlayerEffectFlags

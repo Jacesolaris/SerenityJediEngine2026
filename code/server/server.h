@@ -304,7 +304,7 @@ void SG_TestSave();
 // What it's used for is for things like mission pack etc if we need to distinguish "street-copy" savegames from
 //	any new enhanced ones that need to ask for new chunks during loading.
 //
-constexpr auto iSAVEGAME_VERSION = 1;
+constexpr auto iSAVEGAME_VERSION = 2; // 2: playerState m_iVehicleNum saved (SP vehicle/hyperspace port)
 //
 extern SavedGameJustLoaded_e e_saved_game_just_loaded;
 extern qboolean qbLoadTransition;

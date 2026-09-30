@@ -21589,8 +21589,9 @@ static void PM_VehFaceHyperspacePoint(const gentity_t* veh)
 	{
 		return;
 	}
-	const float time_frac = static_cast<float>(pm->cmd.serverTime - veh->client->ps.hyperSpaceTime) /
-		HYPERSPACE_TIME;
+	// level.time, like hyperspace_touch and the fighter code. The rider's command time can be well behind it: then
+	// the jump looked "not teleported yet" here after the teleport, which raised EF2_HYPERSPACE again.
+	const float time_frac = static_cast<float>(level.time - veh->client->ps.hyperSpaceTime) / HYPERSPACE_TIME;
 	int matched_axes = 0;
 
 	pm->cmd.upmove = veh->m_pVehicle->m_ucmd.upmove = 127;
@@ -21648,7 +21649,10 @@ static void PM_VehFaceHyperspacePoint(const gentity_t* veh)
 		{
 			//not facing the right dir yet
 			//keep hyperspace time up to date
-			veh->client->ps.hyperSpaceTime += pml.msec;
+			//(the jump starts when it faces its course. This added pml.msec, which runs ahead of level.time here: the
+			//start moved into the future by as long as the turn took, and the ship then flew that much longer - and
+			//further - before it was sent through)
+			veh->client->ps.hyperSpaceTime = level.time;
 		}
 		else if (!(veh->client->ps.eFlags2 & EF2_HYPERSPACE))
 		{
@@ -21781,20 +21785,19 @@ static void Pmove_Internal(pmove_t* pmove)
 	}
 	else if (pm->gent && PM_RidingVehicle())
 	{
-		if ((&g_entities[pm->gent->s.m_iVehicleNum])->client &&
-			pm->cmd.serverTime - (&g_entities[pm->gent->s.m_iVehicleNum])->client->ps.hyperSpaceTime <
-			HYPERSPACE_TIME)
+		gentity_t* veh = &g_entities[pm->gent->s.m_iVehicleNum];
+		if (veh->client
+			&& veh->client->ps.hyperSpaceTime // 0 = never hyperspaced (else the first 4 s of a map forced it)
+			&& level.time - veh->client->ps.hyperSpaceTime < HYPERSPACE_TIME)
 		{
 			//going into hyperspace, turn to face the right angles
-			PM_VehFaceHyperspacePoint(&g_entities[pm->gent->s.m_iVehicleNum]);
+			PM_VehFaceHyperspacePoint(veh);
 		}
-		else if ((&g_entities[pm->gent->s.m_iVehicleNum])->client && (&g_entities[pm->gent->s.m_iVehicleNum])->
-			client->ps.vehTurnaroundIndex
-			&& (&g_entities[pm->gent->s.m_iVehicleNum])->client->ps.vehTurnaroundTime > pm->cmd.serverTime)
+		else if (veh->client && veh->client->ps.vehTurnaroundIndex
+			&& veh->client->ps.vehTurnaroundTime > pm->cmd.serverTime)
 		{
 			//riding this vehicle, turn my view too
-			Com_Printf("forced turning!\n");
-			PM_VehForcedTurning(&g_entities[pm->gent->s.m_iVehicleNum]);
+			PM_VehForcedTurning(veh);
 		}
 	}
 

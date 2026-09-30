@@ -42,6 +42,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "ai.h"
 #include <cassert>
 #include <cmath>
+#include <vector>
 
 #define JK2_RAGDOLL_GRIPNOHEALTH
 
@@ -14353,7 +14354,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 	int swing_block_quad = Q_T;
 	int closest_swing_quad = Q_T;
 	gentity_t* incoming = nullptr;
-	gentity_t* entity_list[MAX_GENTITIES];
+	static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 	vec3_t mins{}, maxs{};
 	constexpr float radius = 256;
 	vec3_t forward, fwdangles = { 0 };
@@ -16374,8 +16375,11 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 	//shove things in front of you away
 	float dist;
 	gentity_t* ent, * forward_ent = nullptr;
-	gentity_t* entity_list[MAX_GENTITIES];
-	gentity_t* push_target[MAX_GENTITIES]{};
+	//on the heap: two 64 KB lists are too big for the stack. Not static: a pushed entity's use function runs
+	//inside the loop below, and a push started from there must not share these lists.
+	std::vector<gentity_t*> entity_list_mem(MAX_GENTITIES), push_target_mem(MAX_GENTITIES);
+	gentity_t** const entity_list = entity_list_mem.data();
+	gentity_t** const push_target = push_target_mem.data();
 	int num_listed_entities = 0;
 	vec3_t mins{}, maxs{};
 	vec3_t v{};
@@ -18260,7 +18264,8 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 {
 	//shove things around you away
 	qboolean fake = qfalse;
-	gentity_t* push_target[MAX_GENTITIES]{};
+	std::vector<gentity_t*> push_target_mem(MAX_GENTITIES); //on the heap: 64 KB is too big for the stack
+	gentity_t** const push_target = push_target_mem.data();
 	int num_listed_entities = 0;
 	int ent_count = 0;
 	int radius;
@@ -18382,7 +18387,8 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 		vec3_t v{};
 		int i;
 		int e;
-		gentity_t* entity_list[MAX_GENTITIES];
+		std::vector<gentity_t*> entity_list_mem(MAX_GENTITIES); //on the heap: 64 KB is too big for the stack
+		gentity_t** const entity_list = entity_list_mem.data();
 		gentity_t* ent;
 		float dist;
 		for (i = 0; i < 3; i++)
@@ -20142,7 +20148,7 @@ void ForceGripAdvanced(gentity_t* self)
 
 			vec3_t center, mins = { 0 }, maxs = { 0 }, v = { 0 };
 			constexpr float radius = 512;
-			gentity_t* entity_list[MAX_GENTITIES];
+			static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 			int i;
 
 			VectorCopy(self->currentOrigin, center);
@@ -20322,7 +20328,7 @@ void ForceGripAdvanced(gentity_t* self)
 					maxs[i] = self->currentOrigin[i] + 512;
 				}
 
-				gentity_t* entlist[MAX_GENTITIES];
+				static gentity_t* entlist[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 				const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entlist, MAX_GENTITIES);
 				vec3_t vec2, vwangles, traceend;
 
@@ -21907,7 +21913,7 @@ extern int G_GetHitLocFromTrace(trace_t* trace, int mod);
 static void ForceShootstrike(gentity_t* self)
 {
 	trace_t tr;
-	vec3_t end, forward, right, up, dir, fx_dir; // fx_dir: the fizz effect's direction (it was built in forward, which the next target's cone check then used)
+	vec3_t end, forward, right, up, dir, fx_dir{}; // fx_dir: the fizz effect's direction (it was built in forward, which the next target's cone check then used)
 	gentity_t* traceEnt;
 	constexpr int damage_low = STRIKE_DAMAGELOW;
 	constexpr int damage_medium = STRIKE_DAMAGEMEDIUM;
@@ -23765,8 +23771,8 @@ static void force_shoot_lightning(gentity_t* self)
 	if (self->client->ps.forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_2)
 	{
 		vec3_t center;
-		vec3_t mins, maxs;
-		vec3_t v;
+		vec3_t mins{}, maxs{};
+		vec3_t v{};
 		const float radius = FORCE_LIGHTNING_RADIUS_WIDE;
 		float dot;
 
@@ -24530,7 +24536,7 @@ void ForceShootDrain(gentity_t* self)
 
 		if (self->client->ps.forcePowerLevel[FP_DRAIN] > FORCE_LEVEL_2)
 		{
-			vec3_t center, mins, maxs, v;
+			vec3_t center, mins{}, maxs{}, v{};
 			const float radius = MAX_DRAIN_DISTANCE;
 
 			// FIX: Move large array off the stack (removes C6262)
@@ -25712,7 +25718,7 @@ static void ForceStasisWide(const gentity_t* self, gentity_t* traceEnt)
 		{
 			if (g_stasistems->integer)
 			{
-				vec3_t mins, maxs;
+				vec3_t mins{}, maxs{};
 
 				for (int i = 0; i < 3; i++)
 				{
@@ -25948,12 +25954,105 @@ static void ForceStasisWide(const gentity_t* self, gentity_t* traceEnt)
 	}
 }
 
+// The caster's side of force stasis: the push anim and hand effect, the sound, the force cost and the debounce.
+static void forcestasis_anim(gentity_t* self)
+{
+	int anim, sound_index;
+
+	if (self->s.weapon == WP_MELEE ||
+		self->s.weapon == WP_NONE ||
+		self->s.weapon == WP_SABER && !self->client->ps.SaberActive())
+	{
+		//2-handed PUSH
+		if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+		{
+			anim = BOTH_SUPERPUSH;
+
+			if (self->handLBolt != -1)
+			{
+				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+					self->currentOrigin, 200, qtrue);
+			}
+
+			if (self->handRBolt != -1)
+			{
+				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
+					self->currentOrigin, 200, qtrue);
+			}
+		}
+		else
+		{
+			if (self->s.eFlags & EF_FORCE_DRAINED || self->s.eFlags & EF_FORCE_GRIPPED || self->s.eFlags &
+				EF_FORCE_GRABBED)
+			{
+				anim = BOTH_FORCEPUSH;
+
+				if (self->handLBolt != -1)
+				{
+					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+						self->currentOrigin, 200, qtrue);
+				}
+			}
+			else
+			{
+				anim = BOTH_2HANDPUSH;
+
+				if (self->handLBolt != -1)
+				{
+					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+						self->currentOrigin, 200, qtrue);
+				}
+
+				if (self->handRBolt != -1)
+				{
+					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
+						self->currentOrigin, 200, qtrue);
+				}
+			}
+		}
+	}
+	else
+	{
+		anim = BOTH_FORCEPUSH;
+
+		if (self->handLBolt != -1)
+		{
+			G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+				self->currentOrigin, 200, qtrue);
+		}
+	}
+	sound_index = G_SoundIndex("sound/weapons/force/ForceStasis.mp3");
+
+	int parts = SETANIM_TORSO;
+	if (!PM_InKnockDown(&self->client->ps))
+	{
+		if (!VectorLengthSquared(self->client->ps.velocity) && !(self->client->ps.pm_flags & PMF_DUCKED))
+		{
+			parts = SETANIM_BOTH;
+		}
+	}
+	NPC_SetAnim(self, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+	self->client->ps.saberMove = self->client->ps.saberBounceMove = LS_READY;
+	//don't finish whatever saber anim you may have been in
+	self->client->ps.saberBlocked = BLOCKED_NONE;
+
+	G_Sound(self, sound_index);
+
+	WP_ForcePowerStart(self, FP_STASIS, 0);
+
+	self->client->ps.weaponTime = 1000;
+	if (self->client->ps.forcePowersActive & 1 << FP_SPEED)
+	{
+		self->client->ps.weaponTime = floor(self->client->ps.weaponTime * g_timescale->value);
+	}
+	self->client->ps.forcePowerDebounce[FP_STASIS] = level.time + self->client->ps.torsoAnimTimer + 500;
+}
+
 void ForceStasis(gentity_t* self)
 {
 	trace_t tr;
 	vec3_t forward;
 	gentity_t* traceEnt = nullptr;
-	int anim, sound_index;
 	float currentFrame, animSpeed;
 	int radius;
 	int junk;
@@ -26013,7 +26112,7 @@ void ForceStasis(gentity_t* self)
 
 		vec3_t center, mins{}, maxs{}, v{};
 		float reach = radius, dist;
-		gentity_t* entity_list[MAX_GENTITIES];
+		static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 		int e, num_listed_entities, i;
 
 		VectorCopy(self->currentOrigin, center);
@@ -26115,6 +26214,9 @@ void ForceStasis(gentity_t* self)
 				ForceStasisWide(self, traceEnt);
 			}
 		}
+		//the caster's anim, sound and force cost: once, however many were caught
+		forcestasis_anim(self);
+
 		// Done: the targets were handled in the loop. Falling through ran the single-target code
 		// below on the last listed entity (possibly the caster), or crashed if none was listed.
 		return;
@@ -26126,6 +26228,9 @@ void ForceStasis(gentity_t* self)
 		AngleVectors(self->client->ps.viewangles, forward, nullptr, nullptr);
 		VectorNormalize(forward);
 		VectorMA(self->client->renderInfo.eyePoint, radius, forward, end);
+
+		//the caster's anim, sound and force cost: like a push, also when nothing is caught
+		forcestasis_anim(self);
 
 		if (self->enemy)
 		{
@@ -26192,7 +26297,7 @@ void ForceStasis(gentity_t* self)
 						maxs[i] = self->currentOrigin[i] + 512;
 					}
 
-					gentity_t* entlist[MAX_GENTITIES];
+					static gentity_t* entlist[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 					int num_listed_entities = gi.EntitiesInBox(mins, maxs, entlist, MAX_GENTITIES);
 					vec3_t vec2, vwangles, traceend;
 
@@ -26384,94 +26489,6 @@ void ForceStasis(gentity_t* self)
 			Player_CheckFreeze(traceEnt);
 		}
 	}
-
-	if (self->s.weapon == WP_MELEE ||
-		self->s.weapon == WP_NONE ||
-		self->s.weapon == WP_SABER && !self->client->ps.SaberActive())
-	{
-		//2-handed PUSH
-		if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
-		{
-			anim = BOTH_SUPERPUSH;
-
-			if (self->handLBolt != -1)
-			{
-				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-					self->currentOrigin, 200, qtrue);
-			}
-
-			if (self->handRBolt != -1)
-			{
-				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
-					self->currentOrigin, 200, qtrue);
-			}
-		}
-		else
-		{
-			if (self->s.eFlags & EF_FORCE_DRAINED || self->s.eFlags & EF_FORCE_GRIPPED || self->s.eFlags &
-				EF_FORCE_GRABBED)
-			{
-				anim = BOTH_FORCEPUSH;
-
-				if (self->handLBolt != -1)
-				{
-					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-						self->currentOrigin, 200, qtrue);
-				}
-			}
-			else
-			{
-				anim = BOTH_2HANDPUSH;
-
-				if (self->handLBolt != -1)
-				{
-					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-						self->currentOrigin, 200, qtrue);
-				}
-
-				if (self->handRBolt != -1)
-				{
-					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
-						self->currentOrigin, 200, qtrue);
-				}
-			}
-		}
-	}
-	else
-	{
-		anim = BOTH_FORCEPUSH;
-
-		if (self->handLBolt != -1)
-		{
-			G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-				self->currentOrigin, 200, qtrue);
-		}
-	}
-	sound_index = G_SoundIndex("sound/weapons/force/ForceStasis.mp3");
-
-	int parts = SETANIM_TORSO;
-	if (!PM_InKnockDown(&self->client->ps))
-	{
-		if (!VectorLengthSquared(self->client->ps.velocity) && !(self->client->ps.pm_flags & PMF_DUCKED))
-		{
-			parts = SETANIM_BOTH;
-		}
-	}
-	NPC_SetAnim(self, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-	self->client->ps.saberMove = self->client->ps.saberBounceMove = LS_READY;
-	//don't finish whatever saber anim you may have been in
-	self->client->ps.saberBlocked = BLOCKED_NONE;
-
-	G_Sound(self, sound_index);
-
-	WP_ForcePowerStart(self, FP_STASIS, 0);
-
-	self->client->ps.weaponTime = 1000;
-	if (self->client->ps.forcePowersActive & 1 << FP_SPEED)
-	{
-		self->client->ps.weaponTime = floor(self->client->ps.weaponTime * g_timescale->value);
-	}
-	self->client->ps.forcePowerDebounce[FP_STASIS] = level.time + self->client->ps.torsoAnimTimer + 500;
 }
 
 void ForceGrasp(gentity_t* self)
@@ -29798,7 +29815,7 @@ static void wp_force_power_run(gentity_t* self, forcePowers_t force_power, userc
 		{
 			vec3_t forward, mins{}, maxs{};
 			int e, num_listed_entities;
-			gentity_t* entity_list[MAX_GENTITIES];
+			static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 			gentity_t* check = nullptr;
 			trace_t tr;
 

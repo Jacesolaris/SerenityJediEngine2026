@@ -64,7 +64,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-28,Month-09,Year-26,BuildNum-05" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-30,Month-09,Year-26,BuildNum-06" // build date
 
 #define	STEPSIZE		18
 
@@ -2127,9 +2127,11 @@ extern int force_power_dark_light[NUM_FORCE_POWERS];
 #define MAX_BOTS			1024
 #define MAX_BOTS_TEXT		8192
 
-#define	HYPERSPACE_TIME				4000 //For hyperspace triggers
+#define	HYPERSPACE_TIME				8000 //For hyperspace triggers (was 4000)
 #define	HYPERSPACE_TELEPORT_FRAC	0.75f
-#define	HYPERSPACE_SPEED			10000.0f//was 30000
+//half of what it was (10000; 30000 before that): with twice the time the ship would fly twice as far before it is
+//teleported, out of the far end of the trigger_hyperspace boxes of the maps, and would never arrive
+#define	HYPERSPACE_SPEED			5000.0f
 #define	HYPERSPACE_TURN_RATE		45.0f
 
 extern const char* gametypeStringShort[GT_MAX_GAME_TYPE];
