@@ -34,6 +34,7 @@ set(MPGameGameFiles
 	"${MPDir}/game/ai_main.c"
 	"${MPDir}/game/ai_util.c"
 	"${MPDir}/game/ai_wpnav.c"
+	"${MPDir}/game/ai_fighter.c"
 	"${MPDir}/game/AnimalNPC.c"
 	"${MPDir}/game/bg_g2_utils.c"
 	"${MPDir}/game/bg_misc.c"

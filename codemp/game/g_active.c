@@ -4759,7 +4759,9 @@ static void ClientThink_real(gentity_t* ent)
 
 	// This code was moved here from clientThink to fix a problem with g_synchronousClients
 	// being set to 1 when in vehicles.
-	if (ent->s.number < MAX_CLIENTS && ent->client->ps.m_iVehicleNum)
+	// (an AI pilot of the space maps' ships, ai_fighter.c, drives his the same way)
+	if ((ent->s.number < MAX_CLIENTS || ent->NPC && ent->classname && !Q_stricmp(ent->classname, "fighter_pilot"))
+		&& ent->client->ps.m_iVehicleNum)
 	{
 		//driving a vehicle
 		if (g_entities[ent->client->ps.m_iVehicleNum].client)

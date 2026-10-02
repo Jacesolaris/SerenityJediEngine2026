@@ -2658,10 +2658,12 @@ static bool G2_ApplyRealBonePhysics(boneInfo_t& bone, const SRagEffector& e, con
 
 #ifdef _DEBUG_BONE_NAMES
 static void G2_RagDebugBox(vec3_t mins, vec3_t maxs, int duration)
-{}
+{
+}
 
 static void G2_RagDebugLine(vec3_t start, vec3_t end, int time, int color, int radius)
-{}
+{
+}
 #endif
 
 #ifdef _OLD_STYLE_SETTLE
@@ -3625,7 +3627,8 @@ static float AngleNormZero(const float theta)
 }
 
 static void G2_BoneSnap(CGhoul2Info_v& ghoul2_v, const boneInfo_t& bone, const CRagDollUpdateParams* params)
-{}
+{
+}
 
 static void G2_RagDollSolve(CGhoul2Info_v& ghoul2_v, const int g2_index, const float decay,
 	const bool limitAngles, const CRagDollUpdateParams* params)

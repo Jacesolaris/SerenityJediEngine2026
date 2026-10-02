@@ -155,6 +155,8 @@ void GEntity_ThinkFunc(gentity_t* self)
 
 			THINKCASE(WP_SaberBallisticsThink)
 
+			THINKCASE(G_VehicleSpawn)
+
 	default:
 		Com_Error(ERR_DROP, "GEntity_ThinkFunc: case %d not handled!\n", self->e_ThinkFunc);
 	}

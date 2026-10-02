@@ -1411,14 +1411,16 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 {
 	int dflags;
 
-	if (level.gametype == GT_SIEGE && self->team && self->team[0])
+	// a hurt for one team only (siege_destroyer2's hangar shields: they keep the Rebels out, the Empire's own ships fly
+	// through), in every game type: not only in siege, where the map's ships would die leaving their hangar
+	if (self->team && self->team[0])
 	{
 		const int team = atoi(self->team);
 
-		if (other->inuse && other->s.number < MAX_CLIENTS && other->client &&
-			other->client->sess.sessionTeam != team)
+		if (other->inuse && other->client && other->client->sess.sessionTeam != team
+			&& (other->s.number < MAX_CLIENTS || other->client->ps.m_iVehicleNum))
 		{
-			//real client don't hurt
+			//real client (or an NPC piloting a ship of the other team: ai_fighter.c) don't hurt
 			return;
 		}
 		if (other->inuse && other->client && other->s.eType == ET_NPC &&

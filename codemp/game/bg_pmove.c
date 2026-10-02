@@ -19575,7 +19575,7 @@ static void PmoveSingle(pmove_t* pmove)
 			int i = 0;
 #endif
 
-			assert(self && self->playerState && self->s.number < MAX_CLIENTS);
+			assert(self && self->playerState); // a player, or an NPC pilot (ai_fighter.c)
 
 			if (pm->ps->pm_type == PM_DEAD &&
 				veh->m_pVehicle->m_ulFlags & VEH_CRASHING)

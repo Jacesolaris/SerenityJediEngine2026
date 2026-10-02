@@ -1032,7 +1032,7 @@ destroyed, and it takes the MP keys.
   alliedTeam - team that this turret won't target and takes no damage from (teamnodmg is read the same way)
 	0 - none given: "team", else the enemy's
 	1 - red / siege team 1: the player's (the player starts at that team's spawn points, g_client.cpp
-		SelectMultiplayerSpawnPoint)
+	    SelectMultiplayerSpawnPoint)
 	2 - blue / siege team 2: the enemy's
 
   customscale - custom scaling size. 100 is normal size, 1024 is the max scaling. this will change the bounding box size, so be careful of starting in solid!

@@ -63,7 +63,8 @@ public:
 	unsigned char mRefCount;
 	std::multimap<int, SGoreSurface> mGoreRecords; // a map from surface index
 	CGoreSet(const int tag) : mMyGoreSetTag(tag), mRefCount(0)
-	{}
+	{
+	}
 
 	~CGoreSet();
 };

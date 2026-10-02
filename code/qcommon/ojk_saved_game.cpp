@@ -18,7 +18,8 @@ namespace ojk
 		is_readable_(),
 		is_writable_(),
 		is_failed_()
-	{}
+	{
+	}
 
 	SavedGame::~SavedGame()
 	{

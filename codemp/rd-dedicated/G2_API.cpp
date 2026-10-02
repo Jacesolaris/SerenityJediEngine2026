@@ -1919,7 +1919,8 @@ qboolean G2API_HaveWeGhoul2Models(CGhoul2Info_v& ghoul2)
 
 // run through the Ghoul2 models and set each of the mModel values to the correct one from the cgs.gameModel offset lsit
 void G2API_SetGhoul2model_indexes(CGhoul2Info_v& ghoul2, qhandle_t* modelList, qhandle_t* skinList)
-{}
+{
+}
 
 char* G2API_GetAnimFileNameIndex(const qhandle_t modelIndex)
 {

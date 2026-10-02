@@ -301,7 +301,8 @@ namespace ratl
 			// Constructors
 			//--------------
 			tokenizer() : mLoc(nullptr), mGap{}
-			{}
+			{
+			}
 
 			tokenizer(const char* t, const char* gap)
 			{

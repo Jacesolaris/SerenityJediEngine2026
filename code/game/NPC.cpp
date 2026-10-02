@@ -1581,7 +1581,8 @@ void NPC_BehaviorSet_Stormtrooper(const int b_state)
 }
 
 static void NPC_BehaviorSet_Object(int b_state)
-{}
+{
+}
 
 /*
 -------------------------
@@ -1868,8 +1869,15 @@ extern void npc_bsdroideka_default();
 extern qboolean droideka_npc(const gentity_t* ent);
 extern void deka_bubble_shield_update();
 
+extern qboolean NPC_FighterAI();
+
 static void NPC_RunBehavior(const int team, const int b_state)
 {
+	// flying a fighter (AI_Fighter.cpp: the MP space maps' ships)
+	if (NPC_FighterAI())
+	{
+		return;
+	}
 	//
 	if (b_state == BS_FOLLOW_OVERRIDE)
 	{

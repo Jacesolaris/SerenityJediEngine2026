@@ -54,6 +54,14 @@ void G_VehicleTrace(trace_t* results, const vec3_t start, const vec3_t tMins, co
 	trap->Trace(results, start, tMins, tMaxs, end, passEntityNum, contentmask, qfalse, 0, 0);
 }
 
+// a rider who has left the game: gone, or a player no longer connected (an NPC rider - the AI pilots of ai_fighter.c -
+// never "connects")
+static qboolean G_VehRiderGone(const gentity_t* ent)
+{
+	return !ent->inuse || !ent->client
+		|| ent->s.number < MAX_CLIENTS && ent->client->pers.connected != CON_CONNECTED;
+}
+
 Vehicle_t* G_IsRidingVehicle(const gentity_t* pEnt)
 {
 	const gentity_t* ent = pEnt;
@@ -98,6 +106,10 @@ void G_VehicleSpawn(gentity_t* self)
 		Com_Printf(S_COLOR_YELLOW "G_VehicleSpawn: '%s' did not spawn as a vehicle\n", vehEnt->NPC_type ? vehEnt->NPC_type : "?");
 		return;
 	}
+
+	// a new ship nobody has flown: one an AI pilot may take when its side has it to spare (ai_fighter.c)
+	extern void G_FighterAI_ShipSpawned(const gentity_t* ship);
+	G_FighterAI_ShipSpawned(vehEnt);
 
 	vehEnt->s.angles[YAW] = yaw;
 	if (vehEnt->m_pVehicle->m_pVehicleInfo->type != VH_ANIMAL)
@@ -628,7 +640,7 @@ static qboolean Eject(Vehicle_t* p_veh, bgEntity_t* pEnt, const qboolean forceEj
 
 	if (ent)
 	{
-		if (!ent->inuse || !ent->client || ent->client->pers.connected != CON_CONNECTED)
+		if (G_VehRiderGone(ent))
 		{
 			taintedRider = qtrue;
 			parent = (gentity_t*)p_veh->m_pParentEntity;
@@ -1040,7 +1052,8 @@ static void DeathUpdate(Vehicle_t* p_veh)
 
 // Register all the assets used by this vehicle.
 static void RegisterAssets(Vehicle_t* p_veh)
-{}
+{
+}
 
 extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 
@@ -1331,8 +1344,7 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 			//die
 			const gentity_t* oldPilot = &g_entities[p_veh->m_iPilotLastIndex];
 
-			if (!oldPilot->inuse || !oldPilot->client ||
-				oldPilot->client->pers.connected != CON_CONNECTED)
+			if (G_VehRiderGone(oldPilot))
 			{
 				//no longer in the game?
 				G_Damage(parent, parent, parent, NULL, parent->client->ps.origin, 99999, DAMAGE_NO_PROTECTION,
@@ -1364,8 +1376,7 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 		pilotEnt = (gentity_t*)p_veh->m_pPilot;
 		if (pilotEnt)
 		{
-			if (!pilotEnt->inuse || !pilotEnt->client || pilotEnt->health <= 0 ||
-				pilotEnt->client->pers.connected != CON_CONNECTED)
+			if (G_VehRiderGone(pilotEnt) || pilotEnt->health <= 0)
 			{
 				p_veh->m_pVehicleInfo->Eject(p_veh, p_veh->m_pPilot, qtrue);
 				return qfalse;
@@ -1405,8 +1416,7 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 	{
 		pilotEnt = (gentity_t*)p_veh->m_pPilot;
 
-		if (!pilotEnt->inuse || !pilotEnt->client || pilotEnt->health <= 0 ||
-			pilotEnt->client->pers.connected != CON_CONNECTED)
+		if (G_VehRiderGone(pilotEnt) || pilotEnt->health <= 0)
 		{
 			p_veh->m_pVehicleInfo->Eject(p_veh, p_veh->m_pPilot, qtrue);
 		}
@@ -1419,9 +1429,7 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 		{
 			const gentity_t* psngr = (gentity_t*)p_veh->m_ppPassengers[i];
 
-			if (psngr &&
-				(!psngr->inuse || !psngr->client || psngr->health <= 0 || psngr->client->pers.connected !=
-					CON_CONNECTED))
+			if (psngr && (G_VehRiderGone(psngr) || psngr->health <= 0))
 			{
 				// Eject removes the passenger and decrements m_iNumPassengers itself (it was counted down twice)
 				p_veh->m_pVehicleInfo->Eject(p_veh, p_veh->m_ppPassengers[i], qtrue);

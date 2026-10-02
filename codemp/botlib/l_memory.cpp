@@ -447,7 +447,8 @@ int AvailableMemory(void)
 // Changes Globals:		-
 //===========================================================================
 void PrintUsedMemorySize(void)
-{} //end of the function PrintUsedMemorySize
+{
+} //end of the function PrintUsedMemorySize
 //===========================================================================
 //
 // Parameter:			-
@@ -455,6 +456,7 @@ void PrintUsedMemorySize(void)
 // Changes Globals:		-
 //===========================================================================
 void PrintMemoryLabels(void)
-{} //end of the function PrintMemoryLabels
+{
+} //end of the function PrintMemoryLabels
 
 #endif

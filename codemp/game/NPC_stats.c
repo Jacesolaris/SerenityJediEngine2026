@@ -809,7 +809,8 @@ void NPC_Precache(gentity_t* spawner)
 }
 
 static void NPC_BuildRandom()
-{}
+{
+}
 
 #define TURN_ON				0x00000000
 #define TURN_OFF			0x00000100

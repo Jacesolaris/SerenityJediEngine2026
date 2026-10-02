@@ -668,6 +668,9 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	// general initialization
 	G_FindTeams();
 
+	extern void G_FighterRoute_Load(void);
+	G_FighterRoute_Load(); // the ships' route on a space map, the AI pilots' bookkeeping (ai_fighter.c)
+
 	// make sure we have flags for CTF, etc
 	if (level.gametype >= GT_TEAM)
 	{
@@ -4525,6 +4528,8 @@ void G_RunFrame(const int levelTime)
 	level.previousTime = level.time;
 	level.time = levelTime;
 	G_Pazaak_RunFrame();
+	extern void G_FighterRoute_Frame(void);
+	G_FighterRoute_Frame(); // AI pilots for the empty ships, ship_wp_show (ai_fighter.c)
 
 	if (level.gametype == GT_SINGLE_PLAYER && g_allowNPC.integer)
 	{

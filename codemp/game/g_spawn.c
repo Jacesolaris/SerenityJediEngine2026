@@ -488,7 +488,8 @@ void SP_misc_turretG2(gentity_t* base);
 void SP_misc_panel_turret(gentity_t* ent);
 
 void SP_item_botroam(gentity_t* ent)
-{}
+{
+}
 
 void SP_gametype_item(gentity_t* ent)
 {

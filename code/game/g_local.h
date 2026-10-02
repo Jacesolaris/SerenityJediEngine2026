@@ -132,9 +132,9 @@ public:
 	}
 }; // animFileSet_t
 
-static_assert(MAX_ANIM_EVENTS <= 0x7fffffff, "event counters in animFileSet_t are int");
-static_assert(MAX_ANIMATIONS <= 65536, "legsAnim/torsoAnim are networked with 16 bits - see code/qcommon/msg.cpp");
-static_assert(SABER_ANIM_GROUP_SIZE == 77, "G_ParseAnimationFile assumes a saber anim group stride of 77");
+static_assert(MAX_ANIM_EVENTS <= 0x7fffffff,"event counters in animFileSet_t are int");
+static_assert(MAX_ANIMATIONS <= 65536,"legsAnim/torsoAnim are networked with 16 bits - see code/qcommon/msg.cpp");
+static_assert(SABER_ANIM_GROUP_SIZE == 77,"G_ParseAnimationFile assumes a saber anim group stride of 77");
 
 extern stringID_table_t animTable[MAX_ANIMATIONS + 1];
 

@@ -19,7 +19,8 @@ namespace ojk
 	inline SavedGameHelper::SavedGameHelper(
 		ISavedGame* saved_game) :
 		saved_game_(saved_game)
-	{}
+	{
+	}
 
 	// Class stuff
 	// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

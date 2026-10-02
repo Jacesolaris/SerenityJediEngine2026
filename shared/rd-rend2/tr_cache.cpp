@@ -24,7 +24,8 @@ CachedFile::CachedFile()
 	, iLevelLastUsedOn(0)
 	, iPAKChecksum(-1)
 	, iAllocSize(0)
-{}
+{
+}
 
 CModelCacheManager::FileCache::iterator CModelCacheManager::FindFile(const char* path)
 {

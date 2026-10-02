@@ -319,7 +319,7 @@ gentity_t* TossClientItems(gentity_t* self)
 				case WP_DEMP2:          dropped->count = 10; break;
 				case WP_FLECHETTE:      dropped->count = 30; break;
 				case WP_ROCKET_LAUNCHER:dropped->count = 3;  break;
-				case WP_CONCUSSION:     dropped->count = 200; break;
+				case WP_CONCUSSION:     dropped->count = 200;break;
 				case WP_THERMAL:        dropped->count = 4;  break;
 				case WP_TRIP_MINE:      dropped->count = 3;  break;
 				case WP_DET_PACK:       dropped->count = 1;  break;
@@ -8830,6 +8830,21 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 			{
 				//just killed and didn't have an enemy before
 				targ->enemy = attacker;
+			}
+
+			if (!already_dead && g_developer && g_developer->integer && targ->client
+				&& targ->client->NPC_class == CLASS_VEHICLE && targ->m_pVehicle && targ->m_pVehicle->m_pPilot
+				&& targ->m_pVehicle->m_pPilot->classname
+				&& !Q_stricmp(targ->m_pVehicle->m_pPilot->classname, "fighter_pilot"))
+			{
+				// an AI fighter (AI_Fighter.cpp) is lost: what got it
+				const gentity_t* pilot = targ->m_pVehicle->m_pPilot;
+				gi.Printf("fighter AI: %s %d destroyed by %s %d (%s) mod %d at %s, %.0f from home, %.1f s after boarding, speed %.0f\n",
+					targ->NPC_type, targ->s.number,
+					attacker && attacker->classname ? attacker->classname : "?", attacker ? attacker->s.number : -1,
+					attacker && attacker->NPC_type ? attacker->NPC_type : "", mod, vtos(targ->currentOrigin),
+					Distance(targ->currentOrigin, pilot->pos4), (level.time - pilot->painDebounceTime) / 1000.0f,
+					VectorLength(targ->client->ps.velocity));
 			}
 
 			GEntity_DieFunc(targ, inflictor, attacker, take, mod, dflags, hit_loc);

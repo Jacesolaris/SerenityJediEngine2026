@@ -4601,7 +4601,7 @@ using animNumber_t = enum //# animNumber_e
 #include <cstdlib>
 
 // Loads an animation config through the renderer cache.
-inline qboolean AnimCFG_Load(int (*get_cfg)(const char*, char*, int), const char* path, std::vector<char>& text)
+inline qboolean AnimCFG_Load(int (*get_cfg)(const char*, char*, int),const char* path,std::vector<char>& text)
 {
 	text.clear();
 

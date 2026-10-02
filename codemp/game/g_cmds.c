@@ -4401,6 +4401,13 @@ void ClientCommand(const int clientNum)
 		return;
 	}
 
+	extern qboolean G_FighterRoute_ClientCommand(gentity_t * ent, const char* cmd);
+	if (G_FighterRoute_ClientCommand(ent, cmd))
+	{
+		// ship_wp_add, ship_wp_save... (ai_fighter.c)
+		return;
+	}
+
 	if (Q_stricmp(cmd, "EndCinematic") == 0)
 	{
 		//one of the clients just finished their cutscene, start rendering server frames again.

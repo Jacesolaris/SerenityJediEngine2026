@@ -84,10 +84,12 @@ namespace ratl
 			int mEvent;
 
 			timed_event()
-			{}
+			{
+			}
 
 			timed_event(const float time, const int event) : mTime(time), mEvent(event)
-			{}
+			{
+			}
 
 			bool operator<(const timed_event& t) const
 			{
@@ -203,7 +205,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		scheduler_vs()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY>
@@ -215,7 +218,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		scheduler_os()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY, int ARG_MAX_CLASS_SIZE>
@@ -228,7 +232,8 @@ namespace ratl
 		static const int MAX_CLASS_SIZE = ARG_MAX_CLASS_SIZE;
 
 		scheduler_is()
-		{}
+		{
+		}
 	};
 }
 #endif

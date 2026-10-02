@@ -32,25 +32,32 @@ extern qboolean G_FindClosestPointOnLineSegment(const vec3_t start, const vec3_t
 extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
 //For debug graphics
 void G_Line(vec3_t start, vec3_t end, vec3_t color, float alpha)
-{}
+{
+}
 
 void G_Cube(vec3_t mins, vec3_t maxs, vec3_t color, float alpha)
-{}
+{
+}
 
 void G_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int color, float alpha)
-{}
+{
+}
 
 void G_DrawEdge(vec3_t start, vec3_t end, int type)
-{}
+{
+}
 
 void G_DrawNode(vec3_t origin, int type)
-{}
+{
+}
 
 void G_DrawCombatPoint(vec3_t origin, int type)
-{}
+{
+}
 
 void TAG_ShowTags(int flags)
-{}
+{
+}
 
 qboolean FlyingCreature(const gentity_t* ent)
 {

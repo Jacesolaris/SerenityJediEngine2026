@@ -100,7 +100,8 @@ public:
 		: mProperties(std::move(rhs.mProperties))
 		, mName(std::move(rhs.mName))
 		, mSubGroups(std::move(rhs.mSubGroups))
-	{}
+	{
+	}
 	CGPGroup& operator=(CGPGroup&& rhs)
 	{
 		mProperties = std::move(rhs.mProperties);

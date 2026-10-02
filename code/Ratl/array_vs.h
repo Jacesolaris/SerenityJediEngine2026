@@ -58,7 +58,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		array_vs()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY>
@@ -70,7 +71,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		array_os()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY, int ARG_MAX_CLASS_SIZE>
@@ -83,7 +85,8 @@ namespace ratl
 		static const int MAX_CLASS_SIZE = ARG_MAX_CLASS_SIZE;
 
 		array_is()
-		{}
+		{
+		}
 	};
 }
 #endif

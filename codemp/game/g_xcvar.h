@@ -247,5 +247,10 @@ XCVAR_DEF(g_noIgniteTwirl, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_HitTracking, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(r_cubeMapping, "1", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(r_cubeMappingBounces, "2", NULL, CVAR_ARCHIVE, qtrue)
+// AI pilots for the space maps' empty ships (ai_fighter.c)
+XCVAR_DEF(g_spaceBattle, "1", NULL, CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(g_spaceWingmen, "3", NULL, CVAR_ARCHIVE, qtrue) // team 1 (red: the Rebels) AI ships at most
+XCVAR_DEF(g_spaceEnemies, "5", NULL, CVAR_ARCHIVE, qtrue) // team 2 (blue: the Empire) AI ships at most
+XCVAR_DEF(g_spaceAISkill, "-1", NULL, CVAR_ARCHIVE, qtrue) // 0-3, -1: medium
 
 #undef XCVAR_DEF

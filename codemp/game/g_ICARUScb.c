@@ -4236,7 +4236,8 @@ Q3_SetVampire
 ============
 */
 static void Q3_SetVampire(int entID, qboolean vampire)
-{}
+{
+}
 
 /*
 ============

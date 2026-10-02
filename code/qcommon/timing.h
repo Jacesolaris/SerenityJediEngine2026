@@ -37,7 +37,8 @@ private:
 
 public:
 	timing_c(void) : start(0), end(0), reset(0)
-	{}
+	{
+	}
 
 	void Start()
 	{

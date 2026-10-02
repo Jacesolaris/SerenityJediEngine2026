@@ -233,7 +233,8 @@ CGPObject::CGPObject(const char* initName) :
 	mNext(nullptr),
 	mInOrderNext(nullptr),
 	mInOrderPrevious(nullptr)
-{}
+{
+}
 
 bool CGPObject::WriteText(CTextPool** textPool, const char* text) const
 {
@@ -431,7 +432,8 @@ CGPGroup::CGPGroup(const char* initName, CGPGroup* initParent) :
 	mCurrentSubGroup(nullptr),
 	mParent(initParent),
 	mWriteable(false)
-{}
+{
+}
 
 CGPGroup::~CGPGroup(void)
 {
@@ -790,7 +792,8 @@ const char* CGPGroup::FindPairValue(const char* key, const char* defaultVal) con
 CGenericParser2::CGenericParser2(void) :
 	mTextPool(nullptr),
 	mWriteable(false)
-{}
+{
+}
 
 CGenericParser2::~CGenericParser2(void)
 {

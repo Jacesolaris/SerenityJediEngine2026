@@ -4590,7 +4590,8 @@ static void G_GetDismemberBolt(gentity_t* self, vec3_t bolt_point, const int lim
 }
 
 static void LimbTouch(gentity_t* self, gentity_t* other, trace_t* trace)
-{}
+{
+}
 
 void LimbThink(gentity_t* ent)
 {
@@ -7897,6 +7898,29 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 			}
 
 			targ->enemy = attacker;
+			if (targ->classname && !Q_stricmp(targ->classname, "fighter_pilot")
+				&& trap->Cvar_VariableIntegerValue("developer"))
+			{
+				// an AI pilot (ai_fighter.c) killed himself: what got him
+				Com_Printf("fighter AI: pilot %s %d killed by %s %d mod %d at %s (in vehicle %d)\n", targ->NPC_type,
+					targ->s.number, attacker && attacker->classname ? attacker->classname : "?",
+					attacker ? attacker->s.number : -1, mod, vtos(targ->r.currentOrigin),
+					targ->client ? targ->client->ps.m_iVehicleNum : -1);
+			}
+			if (targ->client && targ->client->NPC_class == CLASS_VEHICLE && targ->m_pVehicle
+				&& targ->m_pVehicle->m_pPilot && trap->Cvar_VariableIntegerValue("developer"))
+			{
+				// an AI pilot's ship (ai_fighter.c) is lost: what got it
+				const gentity_t* pilot = (const gentity_t*)targ->m_pVehicle->m_pPilot;
+				if (pilot->classname && !Q_stricmp(pilot->classname, "fighter_pilot"))
+				{
+					Com_Printf("fighter AI: %s %d destroyed by %s %d (%s) mod %d at %s, %.1f s after boarding, speed %.0f\n",
+						targ->NPC_type, targ->s.number, attacker && attacker->classname ? attacker->classname : "?",
+						attacker ? attacker->s.number : -1, attacker && attacker->NPC_type ? attacker->NPC_type : "", mod,
+						vtos(targ->r.currentOrigin), (level.time - pilot->painDebounceTime) / 1000.0f,
+						VectorLength(targ->client->ps.velocity));
+				}
+			}
 			targ->die(targ, inflictor, attacker, take, mod);
 			G_ActivateBehavior(targ, BSET_DEATH);
 			return;

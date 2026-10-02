@@ -4876,7 +4876,8 @@ void BG_InitAnimsets(void)
 
 //ALWAYS call on game/cgame shutdown
 void BG_ClearAnimsets(void)
-{}
+{
+}
 
 static animation_t* BG_AnimsetAlloc(void)
 {
@@ -4887,7 +4888,8 @@ static animation_t* BG_AnimsetAlloc(void)
 }
 
 static void BG_AnimsetFree()
-{}
+{
+}
 
 #ifdef _CGAME //none of this is actually needed server side. Could just be moved to cgame code but it's here since it used to tie in a lot with the anim loading stuff.
 
@@ -4944,7 +4946,7 @@ int CheckAnimFrameForEventType(const animevent_t* anim_events, const int key_fra
 	return -1;
 }
 
-static void ParseAnimationEvtBlock(const char* aeb_filename, animevent_t* anim_events, const animation_t* animations, const char** text_p)
+static void ParseAnimationEvtBlock(const char* aeb_filename, animevent_t* anim_events, const animation_t* animations,const char** text_p)
 {
 	const char* token;
 	int num, n, lowest_val, highest_val, cur_anim_event, last_anim_event = 0;

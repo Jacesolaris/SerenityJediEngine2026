@@ -1163,7 +1163,8 @@ NPC_SpawnEffect
 */
 
 static void NPC_SpawnEffect(gentity_t* ent)
-{}
+{
+}
 
 //--------------------------------------------------------------
 // NPC_SetFX_SpawnStates

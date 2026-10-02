@@ -1612,7 +1612,8 @@ void Boba_TacticsSelect()
 }
 
 void Boba_DoAmbushWait(gentity_t* self)
-{}
+{
+}
 
 void Boba_Tactics()
 {

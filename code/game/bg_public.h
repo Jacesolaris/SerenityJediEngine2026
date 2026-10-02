@@ -854,6 +854,7 @@ using animevent_t = struct animevent_s
 	}
 };
 
+
 using footstepType_t = enum
 {
 	FOOTSTEP_R,

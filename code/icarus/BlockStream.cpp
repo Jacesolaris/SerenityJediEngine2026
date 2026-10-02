@@ -52,7 +52,8 @@ inline CBlockMember::CBlockMember()
 }
 
 inline CBlockMember::~CBlockMember()
-{}
+{
+}
 
 /*
 -------------------------

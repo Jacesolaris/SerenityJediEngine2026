@@ -694,7 +694,8 @@ extern int PM_AnimLength(const int index, const animNumber_t anim);
 
 // This function makes sure that the vehicle is properly animated.
 static void AnimateVehicle(Vehicle_t* p_veh)
-{}
+{
+}
 
 #endif //QAGAME
 

@@ -1022,6 +1022,8 @@ static void init_game(const char* mapname, const char* spawntarget, const int ch
 
 	Rail_Initialize();
 	Troop_Initialize();
+	extern void G_FighterRoute_Load();
+	G_FighterRoute_Load(); // the ships' route on an MP space map (AI_Fighter.cpp)
 
 	player = &g_entities[0];
 
@@ -1494,10 +1496,12 @@ public:
 	}
 
 	void RagDollBegin() override
-	{}
+	{
+	}
 
 	void RagDollSettled() override
-	{}
+	{
+	}
 
 	void Collision() override
 	{
@@ -2142,6 +2146,8 @@ void G_RunFrame(const int levelTime)
 	Rail_Update();
 	Troop_Update();
 	Pilot_Update();
+	extern void G_FighterRoute_Frame();
+	G_FighterRoute_Frame(); // ship_wp_show
 
 	if (player && gi.WE_IsShaking(player->currentOrigin))
 	{

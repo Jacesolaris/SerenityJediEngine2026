@@ -67,7 +67,8 @@ CQuickSpriteSystem::CQuickSpriteSystem() :
 }
 
 CQuickSpriteSystem::~CQuickSpriteSystem()
-{}
+{
+}
 
 void CQuickSpriteSystem::Flush()
 {

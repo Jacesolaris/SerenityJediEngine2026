@@ -278,7 +278,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		handle_pool_vs()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY>
@@ -290,7 +291,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		handle_pool_os()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY, int ARG_MAX_CLASS_SIZE>
@@ -303,7 +305,8 @@ namespace ratl
 		static const int MAX_CLASS_SIZE = ARG_MAX_CLASS_SIZE;
 
 		handle_pool_is()
-		{}
+		{
+		}
 	};
 }
 #endif

@@ -1418,7 +1418,9 @@ static void ProcessOrientCommands(Vehicle_t* p_veh)
 	{
 		//no yaw control
 	}
-	else if (p_veh->m_pPilot && p_veh->m_pPilot->s.number < MAX_CLIENTS && parent_ps->speed > 0.0f)
+	else if (p_veh->m_pPilot
+		&& (p_veh->m_pPilot->s.number < MAX_CLIENTS || p_veh->m_pPilot->client) // the player or an NPC pilot (AI_Fighter.cpp)
+		&& parent_ps->speed > 0.0f)
 		//&& !( p_veh->m_ucmd.forwardmove > 0 && p_veh->m_LandTrace.fraction != 1.0f ) )
 	{
 		if (BG_UnrestrainedPitchRoll())
@@ -1706,7 +1708,8 @@ static void AnimateVehicle(Vehicle_t* p_veh)
 
 // This function makes sure that the rider's in this vehicle are properly animated.
 static void AnimateRiders(Vehicle_t* p_veh)
-{}
+{
+}
 
 #endif //game-only
 

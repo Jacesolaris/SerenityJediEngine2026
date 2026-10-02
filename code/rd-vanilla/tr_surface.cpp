@@ -2090,7 +2090,8 @@ static void RB_SurfaceDisplayList(const srfDisplayList_t* surf) {
 	qglCallList(surf->listNum);
 }
 
-static void RB_SurfaceSkip(void* surf) {}
+static void RB_SurfaceSkip(void* surf) {
+}
 
 void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])(void*) =
 {

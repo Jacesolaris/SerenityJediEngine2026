@@ -1464,9 +1464,17 @@ extern void bubble_shield_update(void);
 extern void NPC_BSSD_Default(void);
 extern void NPC_BSCivilian_Default(int b_state);
 
+extern qboolean NPC_FighterAI(void);
+
 static void NPC_RunBehavior(const npcteam_t team, const int b_state)
 {
 	qboolean dontSetAim;
+
+	// flying a fighter (ai_fighter.c: the space maps' empty ships)
+	if (NPC_FighterAI())
+	{
+		return;
+	}
 
 	if (NPCS.NPC->s.NPC_class == CLASS_VEHICLE &&
 		NPCS.NPC->m_pVehicle)

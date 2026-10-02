@@ -714,7 +714,8 @@ namespace ratl
 		// Constructor
 		////////////////////////////////////////////////////////////////////////////////////
 		tree_base() : mRoot(tree_node::NULL_NODE), mLastAdd(-1)
-		{}
+		{
+		}
 
 		////////////////////////////////////////////////////////////////////////////////////
 		// How Many Objects Are In This Map
@@ -922,12 +923,14 @@ namespace ratl
 			iterator(set_base<TStorageTraits, IS_MULTI>* owner = nullptr, const int loc = tree_node::NULL_NODE) :
 				mLoc(loc),
 				mOwner(owner)
-			{}
+			{
+			}
 
 			iterator(const iterator& o) :
 				mLoc(o.mLoc),
 				mOwner(o.mOwner)
-			{}
+			{
+			}
 
 			void operator=(const iterator& o)
 			{
@@ -996,17 +999,20 @@ namespace ratl
 				const int loc = tree_node::NULL_NODE) :
 				mLoc(loc),
 				mOwner(owner)
-			{}
+			{
+			}
 
 			const_iterator(const const_iterator& o) :
 				mLoc(o.mLoc),
 				mOwner(o.mOwner)
-			{}
+			{
+			}
 
 			const_iterator(const iterator& o) :
 				mLoc(o.mLoc),
 				mOwner(o.mOwner)
-			{}
+			{
+			}
 
 			void operator=(const const_iterator& o)
 			{
@@ -1175,7 +1181,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		set_vs()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY>
@@ -1187,7 +1194,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		set_os()
-		{}
+		{
+		}
 	};
 
 	template <class T, int ARG_CAPACITY, int ARG_MAX_CLASS_SIZE>
@@ -1200,7 +1208,8 @@ namespace ratl
 		static const int MAX_CLASS_SIZE = ARG_MAX_CLASS_SIZE;
 
 		set_is()
-		{}
+		{
+		}
 	};
 
 	template <class K, class V, int IS_MULTI>
@@ -1335,12 +1344,14 @@ namespace ratl
 			iterator(map_base<K, V, IS_MULTI>* owner = nullptr, const int loc = tree_node::NULL_NODE) :
 				mLoc(loc),
 				mOwner(owner)
-			{}
+			{
+			}
 
 			iterator(const iterator& o) :
 				mLoc(o.mLoc),
 				mOwner(o.mOwner)
-			{}
+			{
+			}
 
 			void operator=(const iterator& o)
 			{
@@ -1421,17 +1432,20 @@ namespace ratl
 			const_iterator(const map_base<K, V, IS_MULTI>* owner = nullptr, const int loc = tree_node::NULL_NODE) :
 				mLoc(loc),
 				mOwner(owner)
-			{}
+			{
+			}
 
 			const_iterator(const const_iterator& o) :
 				mLoc(o.mLoc),
 				mOwner(o.mOwner)
-			{}
+			{
+			}
 
 			const_iterator(const iterator& o) :
 				mLoc(o.mLoc),
 				mOwner(o.mOwner)
-			{}
+			{
+			}
 
 			void operator=(const const_iterator& o)
 			{
@@ -1616,7 +1630,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		map_vs()
-		{}
+		{
+		}
 	};
 
 	template <class K, class V, int ARG_CAPACITY>
@@ -1631,7 +1646,8 @@ namespace ratl
 		static const int CAPACITY = ARG_CAPACITY;
 
 		map_os()
-		{}
+		{
+		}
 	};
 
 	template <class K, class V, int ARG_CAPACITY, int ARG_MAX_CLASS_SIZE>
@@ -1647,7 +1663,8 @@ namespace ratl
 		static const int MAX_CLASS_SIZE = ARG_MAX_CLASS_SIZE;
 
 		map_is()
-		{}
+		{
+		}
 	};
 }
 
