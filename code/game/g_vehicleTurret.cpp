@@ -101,8 +101,6 @@ static void VEH_TurretCheckFire(Vehicle_t* p_veh,
 	//point, the sound stayed behind in space, and a ship going at speed left it far behind at once.)
 	if (veh_weapon->iMuzzleFX)
 	{
-		G_PlayEffect(veh_weapon->iMuzzleFX, parent->playerModel, p_veh->m_iMuzzleTag[cur_muzzle], parent->s.number,
-			p_veh->m_Muzzles[cur_muzzle].m_vMuzzlePos, 0, qtrue);
 	}
 	WP_FireVehicleWeapon(parent, p_veh->m_Muzzles[cur_muzzle].m_vMuzzlePos, p_veh->m_Muzzles[cur_muzzle].m_vMuzzleDir,
 		veh_weapon, qtrue);

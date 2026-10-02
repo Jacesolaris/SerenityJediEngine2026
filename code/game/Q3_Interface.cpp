@@ -8044,10 +8044,9 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 			iLength = gi.FS_ReadFile(newname, reinterpret_cast<void**>(&pBuf));
 		}
 
-		if (iLength <= 0)
-		{
-			return SCRIPT_COULDNOTREGISTER;
-		}
+	if (iLength <= 0)
+	{
+		return SCRIPT_COULDNOTREGISTER;
 	}
 
 	// Allocate a new pscript (Script Buffer).

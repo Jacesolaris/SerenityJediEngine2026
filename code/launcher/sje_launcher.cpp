@@ -7,7 +7,6 @@ A small window like the Jedi Academy launcher: SINGLEPLAYER, MULTIPLAYER, OPTION
 It starts SerenityJediEngine2026-SP.x86_64.exe or SerenityJediEngine2026-MP.x86_64.exe from its own
 folder, passing the options chosen on the OPTIONS page as "+set" command line values (they override
 the configs), and then closes. The options are remembered in SerenityJediEngine2026-Launcher.ini in
-Documents\STARWARS SerenityJediEngine\SerenityJediEngine2026, next to the game's own configs and saves.
 
 The background (the SP main menu art), the menu sound and the main menu music are built into the exe,
 see sje_launcher.rc. The buttons are drawn here in the SJE blue. The music loops while the launcher is
@@ -22,6 +21,7 @@ open; the speaker button next to minimise switches it off (remembered in the ini
 #include <shlwapi.h>
 #include <mmsystem.h>
 
+#include <cstdio>
 #include <memory>
 #include <string>
 
@@ -52,10 +52,6 @@ namespace
 	const wchar_t* const kSPExe = L"SerenityJediEngine2026-SP.x86_64.exe";
 	const wchar_t* const kMPExe = L"SerenityJediEngine2026-MP.x86_64.exe";
 	const wchar_t* const kIniName = L"SerenityJediEngine2026-Launcher.ini";
-	// the game's home folder in Documents, with its configs and saves (Sys_DefaultHomePath: "STARWARS SerenityJediEngine\"
-	// + HOMEPATH_NAME_WIN)
-	const wchar_t* const kHomeParent = L"STARWARS SerenityJediEngine";
-	const wchar_t* const kHomeFolder = L"SerenityJediEngine2026";
 
 	// SJE colours: the blue of the menu art and the icons
 	const Gdiplus::Color kTextColor(255, 177, 194, 220);  // the main menu's button text (.695 .760 .861)
@@ -238,8 +234,6 @@ namespace
 	}
 
 	// ------------------------------------------------------------------------------------------
-	// Settings (SerenityJediEngine2026-Launcher.ini in Documents\STARWARS SerenityJediEngine\SerenityJediEngine2026,
-	// with the game's configs and saves: a game installed under Program Files can't write next to its exe)
 	// ------------------------------------------------------------------------------------------
 
 	std::wstring IniPath()
@@ -250,24 +244,16 @@ namespace
 			wchar_t docs[MAX_PATH] = {};
 			if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PERSONAL, nullptr, 0, docs)))
 			{
-				std::wstring dir = std::wstring(docs) + L"\\" + kHomeParent;
 				CreateDirectoryW(dir.c_str(), nullptr);
 				dir += L"\\" + std::wstring(kHomeFolder);
 				CreateDirectoryW(dir.c_str(), nullptr);
 				path = dir + L"\\" + kIniName;
 
-				// the first time, take over the options from where older launchers kept them: My Games, or next to
-				// the launcher
-				const std::wstring old_inis[] = {
-					std::wstring(docs) + L"\\My Games\\" + kHomeFolder + L"\\" + kIniName,
-					g_launcher.folder + L"\\" + kIniName };
-				for (const std::wstring& old_ini : old_inis)
+				if (!PathFileExistsW(path.c_str()) && PathFileExistsW(old_ini.c_str()))
 				{
-					if (!PathFileExistsW(path.c_str()) && PathFileExistsW(old_ini.c_str()))
-					{
-						CopyFileW(old_ini.c_str(), path.c_str(), TRUE);
-					}
+					CopyFileW(old_ini.c_str(), path.c_str(), TRUE);
 				}
+			}
 			}
 			else
 			{
@@ -355,10 +341,7 @@ namespace
 		}
 	}
 
-	// the build date, the same as the game's (win32/AutoVersion.h)
-	const wchar_t* VersionText()
 	{
-		return L"" VERSION_STRING;
 	}
 
 	// ------------------------------------------------------------------------------------------
@@ -507,9 +490,6 @@ namespace
 			Gdiplus::FontFamily ui_family(L"Segoe UI");
 			const Gdiplus::Font version_font(ui_family.IsAvailable() ? &ui_family : Gdiplus::FontFamily::GenericSansSerif(), 8, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint);
 			const Gdiplus::SolidBrush grey(Gdiplus::Color(160, 200, 200, 200));
-			Gdiplus::StringFormat right;
-			right.SetAlignment(Gdiplus::StringAlignmentFar);
-			g.DrawString(VersionText(), -1, &version_font, Gdiplus::RectF(0, kHeight - 20, kWidth - 10, 20), &right, &grey);
 		}
 
 		// copy the finished frame 1:1, no filtering

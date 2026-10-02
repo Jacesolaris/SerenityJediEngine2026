@@ -1213,31 +1213,6 @@ static void IN_ProcessEvents(void)
 			}
 			break;
 
-		case SDL_JOYDEVICEADDED:
-		case SDL_CONTROLLERDEVICEADDED:
-			// a controller was plugged in while the game runs: use it, if none is in use
-			// (SDL also sends these at startup for the ones that are already there)
-			if (in_joystick && in_joystick->integer && !stick)
-			{
-				IN_InitJoystick();
-				if (stick)
-				{
-					Com_Printf("Controller connected: %s (%s)\n", SDL_JoystickName(stick), Cvar_VariableString("in_controllerType"));
-				}
-			}
-			break;
-
-		case SDL_JOYDEVICEREMOVED:
-		case SDL_CONTROLLERDEVICEREMOVED:
-			// ours was unplugged: let go of whatever it held down, and fall back to another one if there is one
-			if (stick && !SDL_JoystickGetAttached(stick))
-			{
-				Com_Printf("Controller disconnected.\n");
-				Key_ClearStates();
-				IN_InitJoystick();
-			}
-			break;
-
 		default:
 			break;
 		}

@@ -1579,8 +1579,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 02/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 01------------------------------\n");
+	Com_Printf("---------------------Build date 20/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 03------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -11356,14 +11356,6 @@ static int UI_GamepadMenuKey(const int key)
 
 static void UI_KeyEvent(int key, qboolean down)
 {
-	key = UI_GamepadMenuKey(key);
-
-	if (key == A_ESCAPE && down && UI_Pazaak_Active())
-	{
-		UI_Pazaak_OnEsc(); // the Pazaak board asks to forfeit or quit instead of closing
-		return;
-	}
-
 	if (Menu_Count() > 0)
 	{
 		menuDef_t* menu = Menu_GetFocused();

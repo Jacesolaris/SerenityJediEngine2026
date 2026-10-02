@@ -3471,8 +3471,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 02/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 01------------------------------\n");
+	Com_Printf("---------------------Build date 20/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 03------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -4585,44 +4585,8 @@ void _UI_MouseEvent(const int dx, const int dy)
 UI_KeyEvent
 =================
 */
-// A game controller works the menus like a mouse and keyboard: a stick moves the pointer (IN_GamepadMenuPointer),
-// A clicks, X is the right mouse button, B and Start go back (Escape), Y is Enter, the D-pad is the arrow keys
-// and the shoulder buttons scroll like the mouse wheel.
-// Not while the controls menu waits for a key to bind: it needs the real button.
-static int UI_GamepadMenuKey(const int key)
+void _UI_KeyEvent(const int key, const qboolean down)
 {
-	if (Display_KeyBindPending())
-	{
-		return key;
-	}
-
-	switch (key)
-	{
-	case A_PAD0_A: return A_MOUSE1;
-	case A_PAD0_X: return A_MOUSE2;
-	case A_PAD0_B:
-	case A_PAD0_START: return A_ESCAPE;
-	case A_PAD0_Y: return A_ENTER;
-	case A_PAD0_DPAD_UP: return A_CURSOR_UP;
-	case A_PAD0_DPAD_DOWN: return A_CURSOR_DOWN;
-	case A_PAD0_DPAD_LEFT: return A_CURSOR_LEFT;
-	case A_PAD0_DPAD_RIGHT: return A_CURSOR_RIGHT;
-	case A_PAD0_LEFTSHOULDER: return A_MWHEELUP;
-	case A_PAD0_RIGHTSHOULDER: return A_MWHEELDOWN;
-	default: return key;
-	}
-}
-
-void _UI_KeyEvent(const int pressed_key, const qboolean down)
-{
-	const int key = UI_GamepadMenuKey(pressed_key);
-
-	if (key == A_ESCAPE && down && UI_Pazaak_Active())
-	{
-		UI_Pazaak_OnEsc(); // the Pazaak board asks to forfeit or quit instead of closing
-		return;
-	}
-
 	if (Menu_Count() > 0)
 	{
 		menuDef_t* menu = Menu_GetFocused();

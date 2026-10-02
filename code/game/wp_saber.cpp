@@ -30483,7 +30483,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 						//regen half as fast
 						self->client->ps.BlockPointsRegenDebounceTime += 2000;
 					}
-					else if (self->client->ps.weaponTime <= 0) //slows down when idle (the swap to "> 0" made idle regen 20 times as fast)
+					else if (self->client->ps.weaponTime <= 0) //slows down
 					{
 						//regen half as fast
 						self->client->ps.BlockPointsRegenDebounceTime += 2000;
@@ -30527,7 +30527,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 					//regen half as fast
 					self->client->ps.BlockPointsRegenDebounceTime += 2000;
 				}
-				else if (self->client->ps.weaponTime <= 0) //slows down when idle (the swap to "> 0" made idle regen 20 times as fast)
+				else if (self->client->ps.weaponTime <= 0) //slows down
 				{
 					//regen half as fast
 					self->client->ps.BlockPointsRegenDebounceTime += 2000;
