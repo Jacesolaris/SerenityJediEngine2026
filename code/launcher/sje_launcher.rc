@@ -1,0 +1,10 @@
+#include "resource.h"
+
+// the Jedi emblem icon (as the GLSL and dedicated server exes) in green, so the launcher stands out
+IDI_LAUNCHER        ICON    "art/SerenityJediEngine2026-Launcher.ico"
+
+IDR_BG              RCDATA  "art/launcher_bg.png"
+
+// sound/interface/menuroam.mp3 decoded to WAV (MD-work/sje-launcher/mp3towav.ps1): PlaySound only plays WAV
+IDR_SND_MENU        RCDATA  "sound/menuroam.wav"
+IDR_MUSIC           RCDATA  "sound/MainMenuTheme.mp3"

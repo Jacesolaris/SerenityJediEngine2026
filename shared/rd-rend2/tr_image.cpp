@@ -3722,6 +3722,9 @@ void R_DeleteTextures(void) {
 		image = image->poolNext;
 	}
 
+	// the pool below is freed: don't leave tr.images pointing into it
+	tr.images = NULL;
+	tr.imagesFreeList = NULL;
 	tr.numImages = 0;
 
 	// Free pool and allocated images

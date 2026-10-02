@@ -166,6 +166,15 @@ static bool	VEH_StartStrafeRam(Vehicle_t* p_veh, bool Right, int Duration)
 #endif
 
 #ifdef QAGAME //game-only.. for now
+// One of the vehicle's 8 shift sounds at random (0 if that one isn't set).
+static int VEH_RandomShiftSound(const Vehicle_t* p_veh)
+{
+	const vehicleInfo_t* vi = p_veh->m_pVehicleInfo;
+	const int sounds[8] = { vi->soundShift1, vi->soundShift2, vi->soundShift3, vi->soundShift4,
+		vi->soundShift5, vi->soundShift6, vi->soundShift7, vi->soundShift8 };
+	return sounds[Q_irand(0, 7)];
+}
+
 // Like a think or move command, this updates various vehicle properties.
 static bool update(Vehicle_t* p_veh, const usercmd_t* p_ucmd)
 {
@@ -253,35 +262,7 @@ static bool update(Vehicle_t* p_veh, const usercmd_t* p_ucmd)
 					parent->s.number, parent->currentOrigin, 1, qtrue);
 			}
 
-			int shift_sound = Q_irand2(1, 8);
-			switch (shift_sound)
-			{
-			case 1:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift1;
-				break;
-			case 2:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift2;
-				break;
-			case 3:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift3;
-				break;
-			case 4:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift4;
-				break;
-			case 5:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift5;
-				break;
-			case 6:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift6;
-				break;
-			case 7:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift7;
-				break;
-			case 8:
-				shift_sound = p_veh->m_pVehicleInfo->soundShift8;
-				break;
-			default:;
-			}
+			const int shift_sound = VEH_RandomShiftSound(p_veh);
 			if (shift_sound)
 			{
 				G_SoundIndexOnEnt(p_veh->m_pParentEntity, CHAN_AUTO, shift_sound);
@@ -297,39 +278,12 @@ static bool update(Vehicle_t* p_veh, const usercmd_t* p_ucmd)
 			{
 				G_StopEffect(p_veh->m_pVehicleInfo->iExhaustFX, parent->playerModel, p_veh->m_iExhaustTag[i],
 					parent->s.number);
-				int shift_sound = Q_irand2(1, 8);
-				switch (shift_sound)
-				{
-				case 1:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift1;
-					break;
-				case 2:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift2;
-					break;
-				case 3:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift3;
-					break;
-				case 4:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift4;
-					break;
-				case 5:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift5;
-					break;
-				case 6:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift6;
-					break;
-				case 7:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift7;
-					break;
-				case 8:
-					shift_sound = p_veh->m_pVehicleInfo->soundShift8;
-					break;
-				default:;
-				}
-				if (shift_sound)
-				{
-					G_SoundIndexOnEnt(p_veh->m_pParentEntity, CHAN_AUTO, shift_sound);
-				}
+			}
+			// one shift sound per release (it was inside the exhaust loop: one per exhaust at once)
+			const int shift_sound = VEH_RandomShiftSound(p_veh);
+			if (shift_sound)
+			{
+				G_SoundIndexOnEnt(p_veh->m_pParentEntity, CHAN_AUTO, shift_sound);
 			}
 		}
 		else
@@ -338,35 +292,7 @@ static bool update(Vehicle_t* p_veh, const usercmd_t* p_ucmd)
 			{
 				if (p_veh->m_iSoundDebounceTimer < level.time && Q_irand(0, 1) == 0)
 				{
-					int shift_sound = Q_irand(1, 8);
-					switch (shift_sound)
-					{
-					case 1:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift1;
-						break;
-					case 2:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift2;
-						break;
-					case 3:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift3;
-						break;
-					case 4:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift4;
-						break;
-					case 5:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift5;
-						break;
-					case 6:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift6;
-						break;
-					case 7:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift7;
-						break;
-					case 8:
-						shift_sound = p_veh->m_pVehicleInfo->soundShift8;
-						break;
-					default:;
-					}
+					const int shift_sound = VEH_RandomShiftSound(p_veh);
 					if (shift_sound)
 					{
 						p_veh->m_iSoundDebounceTimer = level.time + Q_irand(1000, 4000);

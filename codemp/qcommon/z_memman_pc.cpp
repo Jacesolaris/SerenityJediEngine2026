@@ -740,7 +740,7 @@ qboolean Hunk_CheckMark(void)
 
 void CL_ShutdownCGame(void);
 void CL_ShutdownUI(void);
-void SV_ShutdownGameProgs(void);
+void SV_ShutdownGameProgs();
 
 /*
 =================

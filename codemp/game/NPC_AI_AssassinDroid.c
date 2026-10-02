@@ -63,12 +63,8 @@ static void BubbleShield_PushEnt(gentity_t* pushed, vec3_t smack_dir)
 // Behaviour preserved; only structure, safety, and stack usage improved.
 static void BubbleShield_PushRadiusEnts(void)
 {
-	// Allocate large array on heap to avoid C6262 stack warning
-	int* entity_list = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!entity_list)
-	{
-		return;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int entity_list[MAX_GENTITIES];
 
 	const float radius = ASSASSIN_SHIELD_SIZE;
 	vec3_t mins = { 0, 0, 0 }, maxs = { 0, 0, 0 };

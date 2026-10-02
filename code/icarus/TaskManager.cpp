@@ -490,7 +490,7 @@ int CTaskManager::GetVector(const int entID, CBlock* block, int& member_num, vec
 		if (icarus->GetGame()->GetTag(entID, tagName, static_cast<int>(tagLookup), value) == false)
 		{
 			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR, "Unable to find tag \"%s\"!\n", tagName);
-			assert(0 && "Unable to find tag");
+			// a script naming a tag the map doesn't have is a map / script error, not an engine one: it is reported above and the task fails
 			return TASK_FAILED;
 		}
 
@@ -626,7 +626,7 @@ int CTaskManager::Get(const int entID, CBlock* block, int& member_num, char** va
 		if (icarus->GetGame()->GetTag(entID, tagName, static_cast<int>(tagLookup), vector) == false)
 		{
 			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR, "Unable to find tag \"%s\"!\n", tagName);
-			assert(0 && "Unable to find tag");
+			// a script naming a tag the map doesn't have is a map / script error, not an engine one: it is reported above and the task fails
 			return false;
 		}
 
@@ -1231,7 +1231,7 @@ int CTaskManager::Rotate(const CTask* task, CIcarus* icarus) const
 		if (icarus->GetGame()->GetTag(m_ownerID, tagName, static_cast<int>(tagLookup), vector) == false)
 		{
 			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR, "Unable to find tag \"%s\"!\n", tagName);
-			assert(0);
+			// a script naming a tag the map doesn't have is a map / script error, not an engine one: it is reported above and the task fails
 			return TASK_FAILED;
 		}
 	}
@@ -2018,14 +2018,28 @@ void CTaskManager::Load(CIcarus* icarus)
 		//Get the size of the string
 		pIcarus->BufferRead(&length, sizeof length);
 
+		// Save() writes strlen(name) + 1; anything outside that range means a corrupt save.
+		// Reading it unchecked into the fixed stack buffer would overflow it.
+		if (length <= 0 || length > static_cast<int>(sizeof name))
+		{
+			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR,
+				"CTaskManager::Load: bad task group name length %d in save game\n", length);
+			return;
+		}
+
 		//Get the string
 		pIcarus->BufferRead(&name, length);
+		name[length - 1] = '\0';
 
 		//Get the id
 		pIcarus->BufferRead(&id, sizeof id);
 
 		taskGroup = GetTaskGroup(id, icarus);
 		assert(taskGroup);
+		if (taskGroup == nullptr)
+		{
+			continue;
+		}
 
 		m_taskGroupNameMap[name] = taskGroup;
 		m_taskGroupIDMap[taskGroup->GetGUID()] = taskGroup;

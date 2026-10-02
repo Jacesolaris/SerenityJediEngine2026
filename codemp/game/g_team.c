@@ -737,13 +737,8 @@ static int Team_TouchOurFlag(gentity_t* ent, const gentity_t* other, const int t
 	int enemy_flag;
 	vec3_t mins, maxs;
 
-	// FIX: move large array off stack (C6262)
-	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!touch)
-	{
-		Com_Printf(S_COLOR_RED "Team_TouchOurFlag: BG_Alloc failed\n");
-		return 0;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int touch[MAX_GENTITIES];
 
 	// Determine which flag is the enemy flag
 	enemy_flag = (cl->sess.sessionTeam == TEAM_RED) ? PW_BLUEFLAG : PW_REDFLAG;
@@ -901,13 +896,8 @@ int Team_TouchEnemyFlag(gentity_t* ent, const gentity_t* other, const int team)
 	vec3_t mins, maxs;
 	int ourFlag;
 
-	// FIX: move large array off stack (C6262)
-	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!touch)
-	{
-		Com_Printf(S_COLOR_RED "Team_TouchEnemyFlag: BG_Alloc failed\n");
-		return 0;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int touch[MAX_GENTITIES];
 
 	VectorSubtract(ent->s.pos.trBase, minFlagRange, mins);
 	VectorAdd(ent->s.pos.trBase, maxFlagRange, maxs);
@@ -1234,13 +1224,8 @@ qboolean BOT_FindCTFWaypointSpawnPoint_blue(gentity_t* bot, vec3_t outOrigin)
 		return qfalse;
 	}
 
-	// FIX: move large array off stack (C6262)
-	int* spawnList = (int*)BG_Alloc(MAX_WPARRAY_SIZE * sizeof(int));
-	if (!spawnList)
-	{
-		Com_Printf(S_COLOR_RED "BOT_FindCTFWaypointSpawnPoint_blue: BG_Alloc failed\n");
-		return qfalse;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int spawnList[MAX_WPARRAY_SIZE];
 
 	int spawnCount = 0;
 
@@ -1302,13 +1287,8 @@ qboolean BOT_FindCTFWaypointSpawnPoint_red(gentity_t* bot, vec3_t outOrigin)
 		return qfalse;
 	}
 
-	// FIX: move large array off stack (C6262)
-	int* spawnList = (int*)BG_Alloc(MAX_WPARRAY_SIZE * sizeof(int));
-	if (!spawnList)
-	{
-		Com_Printf(S_COLOR_RED "BOT_FindCTFWaypointSpawnPoint_red: BG_Alloc failed\n");
-		return qfalse;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int spawnList[MAX_WPARRAY_SIZE];
 
 	int spawnCount = 0;
 
@@ -1370,13 +1350,8 @@ qboolean BOT_FindFFAWaypointSpawnPoint(gentity_t* bot, vec3_t outOrigin)
 		return qfalse;
 	}
 
-	// FIX: move large array off stack (C6262)
-	int* spawnList = (int*)BG_Alloc(MAX_WPARRAY_SIZE * sizeof(int));
-	if (!spawnList)
-	{
-		Com_Printf(S_COLOR_RED "BOT_FindFFAWaypointSpawnPoint: BG_Alloc failed\n");
-		return qfalse;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int spawnList[MAX_WPARRAY_SIZE];
 
 	int spawnCount = 0;
 
@@ -1461,13 +1436,8 @@ static qboolean PointWouldTelefrag(vec3_t point)
 {
 	vec3_t mins, maxs;
 
-	// FIX: move large array off stack (C6262)
-	int* touch = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!touch)
-	{
-		Com_Printf(S_COLOR_RED "PointWouldTelefrag: BG_Alloc failed\n");
-		return qfalse;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int touch[MAX_GENTITIES];
 
 	// Compute bounding box around the point
 	VectorAdd(point, playerMins, mins);
@@ -1728,13 +1698,8 @@ void TeamplayInfoMessage(const gentity_t* ent)
 
 	// ---------------------------------------------------------
 	// Allocate large string buffer safely (fixes C6262)
-	// ---------------------------------------------------------
-	char* string = (char*)BG_Alloc(8192);
-	if (!string)
-	{
-		Com_Printf(S_COLOR_RED "TeamplayInfoMessage: BG_Alloc failed\n");
-		return;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static char string[8192];
 
 	string[0] = '\0';
 	size_t stringlength = 0;

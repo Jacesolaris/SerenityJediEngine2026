@@ -178,7 +178,7 @@ bool CParticle::Update()
 		if (mModelNum >= 0 && mBoltNum >= 0) //bolt style
 		{
 			const centity_t& cent = cg_entities[mClientID];
-			if (!cent.gent->ghoul2.IsValid())
+			if (!cent.gent || !cent.gent->ghoul2.IsValid())
 			{
 				return false;
 			}
@@ -685,7 +685,7 @@ bool COrientedParticle::Update()
 		if (mModelNum >= 0 && mBoltNum >= 0) //bolt style
 		{
 			const centity_t& cent = cg_entities[mClientID];
-			if (!cent.gent->ghoul2.IsValid())
+			if (!cent.gent || !cent.gent->ghoul2.IsValid())
 			{
 				return false;
 			}
@@ -803,7 +803,7 @@ bool CLine::Update()
 		if (mModelNum >= 0 && mBoltNum >= 0) //bolt style
 		{
 			const centity_t& cent = cg_entities[mClientID];
-			if (!cent.gent->ghoul2.IsValid())
+			if (!cent.gent || !cent.gent->ghoul2.IsValid())
 			{
 				return false;
 			}
@@ -925,7 +925,7 @@ bool CElectricity::Update()
 		if (mModelNum >= 0 && mBoltNum >= 0) //bolt style
 		{
 			const centity_t& cent = cg_entities[mClientID];
-			if (!cent.gent->ghoul2.IsValid())
+			if (!cent.gent || !cent.gent->ghoul2.IsValid())
 			{
 				return false;
 			}
@@ -1027,7 +1027,7 @@ bool CTail::Update()
 		if (mModelNum >= 0 && mBoltNum >= 0) //bolt style
 		{
 			const centity_t& cent = cg_entities[mClientID];
-			if (!cent.gent->ghoul2.IsValid())
+			if (!cent.gent || !cent.gent->ghoul2.IsValid())
 			{
 				return false;
 			}
@@ -1305,7 +1305,7 @@ bool CCylinder::Update()
 		if (mModelNum >= 0 && mBoltNum >= 0) //bolt style
 		{
 			const centity_t& cent = cg_entities[mClientID];
-			if (!cent.gent->ghoul2.IsValid())
+			if (!cent.gent || !cent.gent->ghoul2.IsValid())
 			{
 				return false;
 			}

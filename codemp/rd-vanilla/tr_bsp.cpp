@@ -314,7 +314,26 @@ static shader_t* ShaderForShaderNum(int shaderNum, const int* lightmapNum, const
 		styles = vertex_styles;
 	}
 
-	shader_t* shader = R_FindShader(dsh->shader, lightmapNum, styles, qtrue);
+	// The renderer indexes styleColors[MAX_LIGHT_STYLES] with every style below LS_UNUSED, so a map
+	// with a bad style byte (64..253) read past the table. Treat such styles as the normal style.
+	byte safe_styles[MAXLIGHTMAPS];
+	for (int i = 0; i < MAXLIGHTMAPS; i++)
+	{
+		safe_styles[i] = styles[i];
+		if (safe_styles[i] >= MAX_LIGHT_STYLES && safe_styles[i] < LS_UNUSED)
+		{
+			static qboolean warned = qfalse;
+			if (!warned)
+			{
+				ri->Printf(PRINT_WARNING, "ShaderForShaderNum: light style %i out of range (max %i), using the normal style\n",
+					safe_styles[i], MAX_LIGHT_STYLES - 1);
+				warned = qtrue;
+			}
+			safe_styles[i] = LS_NORMAL;
+		}
+	}
+
+	shader_t* shader = R_FindShader(dsh->shader, lightmapNum, safe_styles, qtrue);
 
 	// if the shader had errors, just use default shader
 	if (shader->defaultShader) {
@@ -1747,6 +1766,57 @@ static void R_LoadLightGrid(const lump_t* l, world_t& worldData) {
 
 /*
 ================
+R_FindCompilerGridSize
+
+Big maps: q3map2 makes the light grid coarser (16 units more on one axis after the other) until it
+fits, and older versions don't write the grid size they ended up with into the worldspawn
+("gridsize"). Finds that size again from the number of grid points in the map (qfalse: none fits)
+and sets the grid up with it.
+================
+*/
+static qboolean R_FindCompilerGridSize(world_t* w, const int numElements)
+{
+	vec3_t size;
+	VectorCopy(w->lightGridSize, size);
+	const float* w_mins = w->bmodels[0].bounds[0];
+	const float* w_maxs = w->bmodels[0].bounds[1];
+
+	for (int step = 0; step < 4096; step++)
+	{
+		vec3_t origin;
+		int bounds[3];
+		long long count = 1;
+		for (int i = 0; i < 3; i++)
+		{
+			origin[i] = size[i] * ceil(w_mins[i] / size[i]);
+			const float maxs = size[i] * floor(w_maxs[i] / size[i]);
+			bounds[i] = static_cast<int>((maxs - origin[i]) / size[i] + 1);
+			count *= bounds[i];
+		}
+		if (count == numElements)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				w->lightGridSize[i] = size[i];
+				w->lightGridInverseSize[i] = 1.0f / size[i];
+				w->lightGridOrigin[i] = origin[i];
+				w->lightGridBounds[i] = bounds[i];
+			}
+			w->numGridArrayElements = numElements;
+			ri->Printf(PRINT_DEVELOPER, "light grid: the map was lit with gridsize %g %g %g\n", size[0], size[1], size[2]);
+			return qtrue;
+		}
+		if (count < numElements)
+		{
+			return qfalse;
+		}
+		size[step % 3] += 16;
+	}
+	return qfalse;
+}
+
+/*
+================
 R_LoadLightGridArray
 
 ================
@@ -1761,7 +1831,8 @@ static void R_LoadLightGridArray(const lump_t* l, world_t& worldData) {
 
 	w->numGridArrayElements = w->lightGridBounds[0] * w->lightGridBounds[1] * w->lightGridBounds[2];
 
-	if (static_cast<unsigned>(l->filelen) != w->numGridArrayElements * sizeof * w->lightGridArray) {
+	if (static_cast<unsigned>(l->filelen) != w->numGridArrayElements * sizeof * w->lightGridArray
+		&& !R_FindCompilerGridSize(w, l->filelen / static_cast<int>(sizeof * w->lightGridArray))) {
 		ri->Printf(PRINT_ALL, S_COLOR_YELLOW  "WARNING: light grid array mismatch\n");
 		w->lightGridData = nullptr;
 		return;
@@ -1859,7 +1930,17 @@ static void R_LoadEntities(const lump_t* l, world_t& worldData) {
 		}
 		// check for a different grid size
 		if (!Q_stricmp(keyname, "gridsize")) {
-			sscanf(value, "%f %f %f", &w->lightGridSize[0], &w->lightGridSize[1], &w->lightGridSize[2]);
+			// only accept three positive sizes: the light grid divides by them (keep the 64 64 128 default otherwise)
+			vec3_t grid_size;
+			if (sscanf(value, "%f %f %f", &grid_size[0], &grid_size[1], &grid_size[2]) == 3
+				&& grid_size[0] > 0.0f && grid_size[1] > 0.0f && grid_size[2] > 0.0f)
+			{
+				VectorCopy(grid_size, w->lightGridSize);
+			}
+			else
+			{
+				ri->Printf(PRINT_WARNING, "WARNING: bad gridsize '%s' in worldspawn, using the default\n", value);
+			}
 			continue;
 		}
 		// find the optional world ambient for arioche

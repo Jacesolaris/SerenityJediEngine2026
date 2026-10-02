@@ -234,7 +234,7 @@ extern void ExplodeDeath_Wait(gentity_t* self, gentity_t* inflictor, gentity_t* 
 extern void GoExplodeDeath(gentity_t* self, gentity_t* other, gentity_t* activator);
 extern float ideal_distance();
 
-//g_client
+//GClient
 extern qboolean SpotWouldTelefrag(const gentity_t* spot, team_t checkteam);
 
 //g_utils

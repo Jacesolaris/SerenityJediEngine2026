@@ -1119,15 +1119,83 @@ static void G2_CreateMatrixFromQuaterion(mdxaBone_t* mat, vec4_t quat)
 	mat->matrix[0][3] = mat->matrix[1][3] = mat->matrix[2][3] = 0;
 }
 
-static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, const int iFrame, const int iBone)
+/*
+====================
+G2_GetBonePoolIndex
+
+Safe version:
+- Removes asserts
+- Adds debug prints + clamping
+- Prevents crashes when iFrame/iBone are out of range
+- Behaviour preserved for valid data
+====================
+*/
+static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, const int iFrameIn, const int iBoneIn)
 {
-	assert(iFrame >= 0 && iFrame < pMDXAHeader->numFrames);
-	assert(iBone >= 0 && iBone < pMDXAHeader->numBones);
+	if (!pMDXAHeader)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - pMDXAHeader was NULL\n");
+#endif
+		return 0;
+	}
 
-	const int iOffsetToIndex = iFrame * pMDXAHeader->numBones * 3 + iBone * 3;
-	const mdxaIndex_t* pIndex = reinterpret_cast<mdxaIndex_t*>((byte*)pMDXAHeader + pMDXAHeader->ofsFrames + iOffsetToIndex);
+	int iFrame = iFrameIn;
+	int iBone = iBoneIn;
 
-	return (pIndex->iIndex[2] << 16) + (pIndex->iIndex[1] << 8) + pIndex->iIndex[0];
+	// ------------------------------------------------------------
+	// Validate and clamp iFrame
+	// ------------------------------------------------------------
+	if (iFrame < 0 || iFrame >= pMDXAHeader->numFrames)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - iFrame %d out of range (0..%d). Clamping.\n", iFrame, pMDXAHeader->numFrames - 1);
+#endif
+		if (iFrame < 0)
+		{
+			iFrame = 0;
+		}
+		else
+		{
+			iFrame = pMDXAHeader->numFrames - 1;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Validate and clamp iBone
+	// ------------------------------------------------------------
+	if (iBone < 0 || iBone >= pMDXAHeader->numBones)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - iBone %d out of range (0..%d). Clamping.\n", iBone, pMDXAHeader->numBones - 1);
+#endif
+		if (iBone < 0)
+		{
+			iBone = 0;
+		}
+		else
+		{
+			iBone = pMDXAHeader->numBones - 1;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Compute index safely
+	// ------------------------------------------------------------
+	const int iOffsetToIndex =
+		iFrame * pMDXAHeader->numBones * 3 +
+		iBone * 3;
+
+	const byte* base = reinterpret_cast<const byte*>(pMDXAHeader);
+	const mdxaIndex_t* pIndex =
+		reinterpret_cast<const mdxaIndex_t*>(base + pMDXAHeader->ofsFrames + iOffsetToIndex);
+
+	// ------------------------------------------------------------
+	// Return packed index
+	// ------------------------------------------------------------
+	return (pIndex->iIndex[2] << 16) |
+		(pIndex->iIndex[1] << 8) |
+		pIndex->iIndex[0];
 }
 
 static void UnCompressBone(float mat[3][4], const int iBoneIndex, const mdxaHeader_t* pMDXAHeader, const int iFrame)
@@ -3993,6 +4061,23 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		return qfalse;
 	}
 
+#ifndef JK2_MODE
+	// Same check as rd-vanilla: a mesh whose bone count does not match its skeleton (GLA) must not be
+	// used. Its surfaces/bolts reference bones the skeleton does not have, and G2_ProcessSurfaceBolt2 ->
+	// G2_TransformBone later reads outside the bone cache (crash). Old JK2 meshes (72 bones on
+	// _humanoid) are still allowed, they are converted.
+	{
+		const model_t* anim_model = R_GetModelByHandle(mdxm->animIndex);
+		if (anim_model && anim_model->data.gla && anim_model->data.gla->numBones != mdxm->numBones
+			&& !isAnOldModelFile)
+		{
+			ri.Printf(PRINT_WARNING, "R_LoadMDXM: %s has different bones than anim (%i != %i)\n", mod_name,
+				mdxm->numBones, anim_model->data.gla->numBones);
+			return qfalse;
+		}
+	}
+#endif
+
 	mod->numLods = mdxm->numLODs - 1;	//copy this up to the model for ease of use - it wil get inced after this.
 
 	surfInfo = reinterpret_cast<mdxmSurfHierarchy_t*>(reinterpret_cast<byte*>(mdxm) + mdxm->ofsSurfHierarchy);
@@ -4003,7 +4088,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 
 		Q_strlwr(surfInfo->name);	//just in case
 
-		if (!strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off"))
+		if (strlen(surfInfo->name) >= 4 && !strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off"))
 		{
 			surfInfo->name[strlen(surfInfo->name) - 4] = 0;	//remove "_off" from name
 		}

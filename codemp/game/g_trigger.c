@@ -262,13 +262,8 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 		const int owning_team = ent->genericValue3;
 		int new_owning_team;
 
-		// FIX: move large array off stack (C6262)
-		int* entity_list = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-		if (!entity_list)
-		{
-			Com_Printf(S_COLOR_RED "multi_trigger: BG_Alloc for entity_list failed\n");
-			return;
-		}
+		// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+		static int entity_list[MAX_GENTITIES];
 
 		if (level.gametype != GT_SIEGE)
 		{
@@ -1695,13 +1690,8 @@ void shipboundary_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 
 void shipboundary_think(gentity_t* ent)
 {
-	// FIX: move large array off stack (C6262)
-	int* iEntityList = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!iEntityList)
-	{
-		Com_Printf(S_COLOR_RED "shipboundary_think: BG_Alloc failed\n");
-		return;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int iEntityList[MAX_GENTITIES];
 
 	int i = 0;
 

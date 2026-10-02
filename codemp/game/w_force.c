@@ -339,26 +339,11 @@ void DetermineDodgeMax(const gentity_t* ent)
 		}
 	}
 
-	//additional skills
-	for (i = 0; i < NUM_SKILLS; i++)
-	{
-		if (ent->client->skillLevel[i])
-		{
-			//has points in this skill
-			for (skillCount = FORCE_LEVEL_1; skillCount <= ent->client->skillLevel[i]; skillCount++)
-			{
-				if (i >= SK_BLUESTYLE && i <= SK_STAFFSTYLE)
-				{
-					//styles count as force powers
-					dodgeMax += bgForcePowerCost[i + NUM_FORCE_POWERS][skillCount] * SK_DP_FORFORCE;
-				}
-				else
-				{
-					dodgeMax += bgForcePowerCost[i + NUM_FORCE_POWERS][skillCount] * SK_DP_FORMERC;
-				}
-			}
-		}
-	}
+	// Additional skills (SK_*) add nothing for now. The old code read their cost from
+	// bgForcePowerCost[i + NUM_FORCE_POWERS], but that table only has NUM_FORCE_POWERS rows, so every
+	// skill read garbage from past the end of the array (into bg_itemlist).
+	// TODO: add a real skill cost table here if skills should raise max dodge
+	// (styles SK_BLUESTYLE..SK_STAFFSTYLE used SK_DP_FORFORCE, the rest SK_DP_FORMERC).
 
 	ent->client->ps.stats[STAT_MAX_DODGE] = (int)dodgeMax;
 }

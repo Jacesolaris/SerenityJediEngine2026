@@ -2196,7 +2196,7 @@ static void RB_RenderDepthOnly(drawSurf_t* drawSurfs, int numDrawSurfs)
 			glConfig.vidHeight, 0);
 	}
 
-	if (r_ssao->integer &&
+	if (R_SsaoActive() &&
 		!(backEnd.viewParms.flags & VPF_DEPTHSHADOW) &&
 		!(tr.viewParms.isSkyPortal))
 	{
@@ -2267,7 +2267,7 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t* drawSurfs, int numDrawSur
 
 	RB_RenderDepthOnly(drawSurfs, numDrawSurfs);
 
-	if (r_ssao->integer &&
+	if (R_SsaoActive() &&
 		!(backEnd.viewParms.flags & VPF_DEPTHSHADOW) &&
 		!(tr.viewParms.isSkyPortal))
 	{
@@ -3083,7 +3083,7 @@ static const void* RB_PostProcess(const void* data)
 	dstBox[3] = backEnd.viewParms.viewportHeight;
 
 #if 0
-	if (r_ssao->integer)
+	if (R_SsaoActive())
 	{
 		srcBox[0] = backEnd.viewParms.viewportX * tr.screenSsaoImage->width / (float)glConfig.vidWidth;
 		srcBox[1] = backEnd.viewParms.viewportY * tr.screenSsaoImage->height / (float)glConfig.vidHeight;
@@ -3095,7 +3095,7 @@ static const void* RB_PostProcess(const void* data)
 		srcBox[3] = -srcBox[3];
 
 		int blendMode = GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO;
-		if (r_ssao->integer == 2)
+		if (R_SsaoActive() == 2)
 			blendMode = GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO;
 
 		FBO_Blit(tr.screenSsaoFbo, srcBox, NULL, srcFbo, dstBox, NULL, NULL, blendMode);
@@ -3255,7 +3255,7 @@ static const void* RB_PostProcess(const void* data)
 		FBO_BlitFromTexture(tr.weatherDepthImage, NULL, NULL, NULL, nullptr, NULL, NULL, 0);
 	}
 
-	if (r_ssao->integer == 2)
+	if (R_SsaoActive() == 2)
 	{
 		vec4i_t dstBox{};
 		VectorSet4(dstBox, 0, glConfig.vidHeight, 512, -512);

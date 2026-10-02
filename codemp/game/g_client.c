@@ -33,6 +33,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
 #include "g_local.h"
+#include "g_pazaak.h"
 #include "ghoul2/G2.h"
 #include "bg_saga.h"
 #include <qcommon/q_string.h>
@@ -53,7 +54,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_weapons.h"
 #include "g_public.h"
 
-// g_client.c -- client functions that don't happen every frame
+// GClient.c -- client functions that don't happen every frame
 
 static vec3_t playerMins = { -15, -15, DEFAULT_MINS_2 };
 static vec3_t playerMaxs = { 15, 15, DEFAULT_MAXS_2 };
@@ -702,6 +703,7 @@ Find the spot that we DON'T want to use
 */
 #define	MAX_SPAWN_POINTS	128
 static qboolean SafeSpawn_FindOffset(const vec3_t baseOrigin, vec3_t outOrigin);
+static qboolean SafeSpawn_IsOccupied(const vec3_t origin);
 
 static gentity_t* SelectNearestDeathmatchSpawnPoint(vec3_t from)
 {
@@ -2483,7 +2485,7 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 		}
 
 		// Setup the Turrets.
-		for (i = 0; i < MAX_VEHICLE_TURRET_MUZZLES; i++)
+		for (i = 0; i < MAX_VEHICLE_TURRETS; i++) // was MAX_VEHICLE_TURRET_MUZZLES (both 2 today)
 		{
 			if (ent->m_pVehicle->m_pVehicleInfo->turret[i].gunnerViewTag)
 			{
@@ -9333,6 +9335,8 @@ void ClientDisconnect(const int clientNum)
 	// cleanup if we are kicking a bot that
 	// hasn't spawned yet
 	G_RemoveQueuedBotBegin(clientNum);
+
+	G_Pazaak_ClientDisconnect(clientNum);
 
 	gentity_t* ent = g_entities + clientNum;
 	if (!ent->client || ent->client->pers.connected == CON_DISCONNECTED)

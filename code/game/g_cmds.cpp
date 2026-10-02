@@ -26,6 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "wp_saber.h"
 #include "g_vehicles.h"
 #include "g_functions.h"
+#include "g_pazaak.h"
 #include "../cgame/cg_local.h"
 #include "b_local.h"
 
@@ -2656,6 +2657,11 @@ void ClientCommand(const int clientNum)
 	}
 
 	const char* cmd = gi.argv(0);
+
+	if (G_Pazaak_ClientCommand(ent, cmd))
+	{
+		return; // pazaak, pazaak_result
+	}
 
 	if (Q_stricmp(cmd, "spawn") == 0)
 	{

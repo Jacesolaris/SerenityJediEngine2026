@@ -72,7 +72,7 @@ extern void G_Stagger(gentity_t* hitEnt);
 extern void g_fatigue_bp_knockaway(gentity_t* blocker);
 extern void G_StaggerAttacker(gentity_t* atk);
 extern void G_BounceAttacker(gentity_t* atk);
-extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
 extern saberMoveName_t PM_SaberBounceForAttack(int move);
 extern void WP_SaberDrop(const gentity_t* self, gentity_t* saber);
 extern qboolean PM_SaberInnonblockableAttack(int anim);
@@ -85,7 +85,7 @@ extern void G_StartStasisEffect(const gentity_t* ent, int me_flags = 0, int leng
 extern void CGCam_BlockShakeSP(float intensity, int duration);
 extern int G_GetParryForBlock(int block);
 extern qboolean WP_SaberDisarmed(gentity_t* self, vec3_t throw_dir);
-extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
 // Saber Blocks
 extern qboolean WP_SaberMBlock(gentity_t* victim, gentity_t* attacker, int saberNum, int bladeNum);
 extern qboolean WP_SaberParry(gentity_t* blocker, gentity_t* attacker, int saberNum, int bladeNum);
@@ -186,8 +186,11 @@ qboolean g_accurate_blocking(const gentity_t* blocker, const gentity_t* attacker
 	if (PM_InKnockDown(&blocker->client->ps))
 		return qfalse;
 
-	// Held block too long → too slow to parry
-	if (blocker->client->ps.ManualblockStartTime >= 3000)
+	// Held block too long → too slow to parry.
+	// ManualblockStartTime is the time the block started (0 = not holding, e.g. NPCs), not a duration:
+	// comparing it with 3000 made every accurate block fail once a map had run 3 seconds.
+	if (blocker->client->ps.ManualblockStartTime > 0
+		&& level.time - blocker->client->ps.ManualblockStartTime >= 3000)
 		return qfalse;
 
 	// ------------------------------------------------------------
@@ -973,16 +976,11 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 					SabBeh_SaberShouldBeDisarmedBlocker(blocker, saberNum);
 				}
 
-				if (attacker->NPC && !G_ControlledByPlayer(attacker)) //NPC only
+				// The blocker recovers a little if he still holds his saber (a disarm already gives the disarmed
+				// fighter these points). This gave them to the attacker whenever the attacker was an NPC.
+				if (!blocker->client->ps.saberInFlight)
 				{
-					WP_BlockPointsRegenerate(attacker, BLOCKPOINTS_FATIGUE);
-				}
-				else
-				{
-					if (!blocker->client->ps.saberInFlight)
-					{
-						WP_BlockPointsRegenerate(blocker, BLOCKPOINTS_FATIGUE);
-					}
+					WP_BlockPointsRegenerate(blocker, BLOCKPOINTS_FATIGUE);
 				}
 
 				if ((d_blockinfo->integer || g_DebugSaberCombat->integer) && blocker->s.number < MAX_CLIENTS ||

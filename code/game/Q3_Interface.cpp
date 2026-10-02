@@ -36,6 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_nav.h"
 #include "../cgame/cg_camera.h"
 #include "../game/objectives.h"
+#include "g_pazaak.h"
 #include "g_roff.h"
 #include "../cgame/cg_local.h"
 #include "wp_saber.h"
@@ -634,6 +635,10 @@ stringID_table_t setTable[] =
 	ENUM2STRING(SET_RADAR_ICON),
 	ENUM2STRING(SET_RADAR_OBJECT),
 	ENUM2STRING(SET_MISSION_STATUS_SCREEN),
+	ENUM2STRING(SET_PAZAAK_PLAY),
+	ENUM2STRING(SET_PAZAAK_WAGER),
+	ENUM2STRING(SET_PAZAAK_ALLOWED),
+	ENUM2STRING(SET_PAZAAK_END),
 
 	{"", SET_}
 };
@@ -8017,7 +8022,32 @@ int CQuake3GameInterface::RegisterScript(const char* strFileName, void** ppBuf, 
 
 	if (iLength <= 0)
 	{
-		return SCRIPT_COULDNOTREGISTER;
+		// Maps imported from other mods reference "scripts/<path>" although the game mode keeps its
+		// scripts in its own folder (e.g. scriptskt/<path> for kotor), so retry there.
+		const size_t baseDirLen = strlen(Q3_SCRIPT_DIR);
+		const char* slash = strchr(sFilename, '/');
+
+		if (slash && !Q_stricmpn(strFileName, Q3_SCRIPT_DIR "/", baseDirLen + 1)
+			&& static_cast<size_t>(slash - sFilename) != baseDirLen)
+		{
+			Com_sprintf(newname, sizeof newname, "%.*s/%s%s", static_cast<int>(slash - sFilename), sFilename,
+				strFileName + baseDirLen + 1, IBI_EXT);
+			pBuf = nullptr;
+			iLength = gi.FS_ReadFile(newname, reinterpret_cast<void**>(&pBuf));
+		}
+
+		// MP maps played in singleplayer: their scripts are in the multiplayer script folder ("scriptsmp/mp/...")
+		if (iLength <= 0 && slash)
+		{
+			Com_sprintf(newname, sizeof newname, "scriptsmp/%s%s", slash + 1, IBI_EXT);
+			pBuf = nullptr;
+			iLength = gi.FS_ReadFile(newname, reinterpret_cast<void**>(&pBuf));
+		}
+
+		if (iLength <= 0)
+		{
+			return SCRIPT_COULDNOTREGISTER;
+		}
 	}
 
 	// Allocate a new pscript (Script Buffer).
@@ -10038,6 +10068,22 @@ void CQuake3GameInterface::Set(const int taskID, const int entID, const char* ty
 
 	case SET_MISSION_STATUS_SCREEN:
 		gi.cvar_set("cg_missionstatusscreen", "1");
+		break;
+
+	case SET_PAZAAK_PLAY:
+		G_Pazaak_StartScripted(data);
+		break;
+
+	case SET_PAZAAK_WAGER:
+		G_Pazaak_SetScriptWager(atoi(data));
+		break;
+
+	case SET_PAZAAK_ALLOWED:
+		gi.cvar_set("g_pazaakAllowed", Q_stricmp("false", data) == 0 || Q_stricmp("0", data) == 0 ? "0" : "1");
+		break;
+
+	case SET_PAZAAK_END:
+		G_Pazaak_SetEndScript(entID, data);
 		break;
 
 	default:

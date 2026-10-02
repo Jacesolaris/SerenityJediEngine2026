@@ -1321,7 +1321,9 @@ void Boba_DoSniper(const gentity_t* self)
 		}
 	}
 
-	if (Distance(NPCS.NPC->r.currentOrigin, level.combatPoints[NPCS.NPCInfo->combatPoint].origin) < 50.0f)
+	// combatPoint is -1 when no sniper point was found (e.g. maps without combat points)
+	if (NPCS.NPCInfo->combatPoint >= 0 && NPCS.NPCInfo->combatPoint < level.numCombatPoints &&
+		Distance(NPCS.NPC->r.currentOrigin, level.combatPoints[NPCS.NPCInfo->combatPoint].origin) < 50.0f)
 	{
 		Boba_FireDecide();
 	}
@@ -4507,6 +4509,7 @@ static evasionType_t Jedi_CheckFlipEvasions(gentity_t* self, const float rightdo
 		}
 	}
 	else if (self->client->NPC_class != CLASS_DESANN //desann doesn't do these kind of frilly acrobatics
+		&& self->NPC // also runs for players and bots, which have no NPC info
 		&& (self->NPC->rank == RANK_CREWMAN || self->NPC->rank >= RANK_LT)
 		&& Q_irand(0, 1)
 		&& !BG_InRoll(&self->client->ps, self->client->ps.legsAnim)
@@ -9871,7 +9874,11 @@ static void Jedi_Attack(void)
 		}
 	}
 
-	//If we don't have an enemy, just idle
+	//If we don't have an enemy, just idle (the code above can clear it, e.g. when the enemy died)
+	if (!NPCS.NPC->enemy)
+	{
+		return;
+	}
 	if (NPCS.NPC->enemy->s.weapon == WP_TURRET && !Q_stricmp("PAS", NPCS.NPC->enemy->classname))
 	{
 		if (NPCS.NPC->enemy->count <= 0)
@@ -10481,7 +10488,8 @@ static qboolean Jedi_InSpecialMove(void)
 				{
 					NPCS.NPC->client->leader->client->ps.fd.forcePowersKnown |= FORCE_POWERS_ROSH_FROM_TWINS;
 				}
-				if (NPCS.NPC->client->leader->client->ps.legsAnim == BOTH_FORCEHEAL_START
+				if (NPCS.NPC->client->leader->client
+					&& NPCS.NPC->client->leader->client->ps.legsAnim == BOTH_FORCEHEAL_START
 					&& TIMER_Done(NPCS.NPC, "healRoshDebounce"))
 				{
 					//our heal target is needing a heal

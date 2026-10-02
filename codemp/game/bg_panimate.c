@@ -64,6 +64,14 @@ extern qboolean PM_SaberInBounce(const int move);
 extern qboolean PM_SaberInBrokenParry(int move);
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
 extern qboolean PM_InBackFlip(int anim);
+extern qboolean PM_SaberInMassiveBounce(int anim);
+extern qboolean PM_SaberInBashedAnim(int anim);
+extern qboolean BG_IsAlreadyinTauntAnim(int anim);
+extern qboolean PM_SaberInStart(int move);
+extern qboolean PM_SaberInParry(int move);
+extern qboolean PM_SaberInKnockaway(int move);
+extern qboolean PM_SaberInReflect(int move);
+extern int PM_AnimLength(animNumber_t anim);
 /*
 ==============================================================================
 BEGIN: Animation utility functions (sequence checking)
@@ -2118,7 +2126,8 @@ int G_AnimateOldKnockBack(const int move)
 
 qboolean PM_InRollIgnoreTimer(const playerState_t* ps)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm (stale outside Pmove, e.g. when called from ClientThink).
+	if (!ps)
 	{
 		return qfalse;
 	}
@@ -2147,7 +2156,8 @@ qboolean PM_InRollIgnoreTimer(const playerState_t* ps)
 
 qboolean PM_InRoll(const playerState_t* ps)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm (stale outside Pmove, e.g. when called from ClientThink).
+	if (!ps)
 	{
 		return qfalse;
 	}
@@ -3137,7 +3147,8 @@ qboolean PM_Dyinganim(const playerState_t* ps)
 
 qboolean PM_InKnockDown(const playerState_t* ps)
 {
-	if (!pm || !pm->ps)
+	// Check the argument, not the global pm (stale outside Pmove, e.g. when called from ClientThink).
+	if (!ps)
 	{
 		return qfalse;
 	}

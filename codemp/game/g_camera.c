@@ -525,7 +525,7 @@ void EnablePlayerCameraPos(gentity_t* player)
 {
 	//set this player it be in camera mode
 
-	if (!player || !player->client || !player->inuse)
+	if (!player || !player->client || !player->inuse || player->s.number >= MAX_CLIENTS) // playerCamPos has MAX_CLIENTS entries
 	{
 		//bad player entity
 		return;

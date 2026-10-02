@@ -53,7 +53,7 @@ extern cvar_t* g_saber2_color;
 extern cvar_t* g_saberDarkSideSaberColor;
 extern void TurnBarrierOff(gentity_t* ent);
 
-// g_client.c -- client functions that don't happen every frame
+// GClient.c -- client functions that don't happen every frame
 
 float DEFAULT_MINS_0 = -16;
 float DEFAULT_MINS_1 = -16;
@@ -396,6 +396,56 @@ static gentity_t* SelectRandomDeathmatchSpawnPoint(team_t team)
 }
 
 /*
+================
+SelectMultiplayerSpawnPoint
+
+A multiplayer map played in singleplayer has no info_player_start / info_player_deathmatch, only the
+spawn points of its game type: a random one of those (the first kind the map has, one that doesn't
+telefrag if there is one; spots that are targeted, i.e. switched on later, only if there is nothing else)
+================
+*/
+static gentity_t* SelectMultiplayerSpawnPoint()
+{
+	static const char* const classnames[] =
+	{
+		"info_player_siegeteam1", "info_player_siegeteam2",
+		"team_CTF_redplayer", "team_CTF_blueplayer", "team_CTF_redspawn", "team_CTF_bluespawn",
+		"info_player_duel", "info_player_duel1", "info_player_duel2",
+		"info_player_start_red", "info_player_start_blue",
+	};
+
+	for (const char* classname : classnames)
+	{
+		gentity_t* spots[MAX_SPAWN_POINTS]{};
+		int count = 0;
+		gentity_t* fallback = nullptr;
+		gentity_t* spot = nullptr;
+
+		while ((spot = G_Find(spot, FOFS(classname), classname)) != nullptr && count < MAX_SPAWN_POINTS)
+		{
+			if (!fallback)
+			{
+				fallback = spot;
+			}
+			if (spot->targetname != nullptr || SpotWouldTelefrag(spot, TEAM_FREE))
+			{
+				continue;
+			}
+			spots[count++] = spot;
+		}
+		if (count)
+		{
+			return spots[rand() % count];
+		}
+		if (fallback)
+		{
+			return fallback;
+		}
+	}
+	return nullptr;
+}
+
+/*
 ===========
 SelectSpawnPoint
 
@@ -427,6 +477,12 @@ gentity_t* SelectSpawnPoint(vec3_t avoid_point, const team_t team, vec3_t origin
 			// roll again if it would be real close to point of death
 			spot = SelectRandomDeathmatchSpawnPoint(team);
 		}
+	}
+
+	if (!spot)
+	{
+		// a multiplayer map (siege, CTF, duel) without singleplayer / deathmatch starts: use its own spawn points
+		spot = SelectMultiplayerSpawnPoint();
 	}
 
 	// find a single player start spot
@@ -1612,6 +1668,15 @@ qboolean G_SetG2PlayerModelInfo(gentity_t* ent, const char* modelName, const cha
 						ent->m_pVehicle->m_iMuzzleTag[i] = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], str_temp);
 					}
 				}
+
+				// Setup the Turret gunner views (as MP). Was never set in SP: 0 is a real bolt, -1 means none.
+				for (int i = 0; i < MAX_VEHICLE_TURRETS; i++)
+				{
+					const char* view_tag = ent->m_pVehicle->m_pVehicleInfo->turret[i].gunnerViewTag;
+					ent->m_pVehicle->m_iGunnerViewTag[i] = view_tag && view_tag[0]
+						? gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], view_tag)
+						: -1;
+				}
 			}
 			else if (ent->client->NPC_class == CLASS_HOWLER)
 			{
@@ -2612,7 +2677,10 @@ static void G_ForceSafeModelChangeState(gentity_t* ent)
 
 	if (ent->client->ps.communicatingflags & (1u << CF_AIMINGGUN))
 	{
-		PM_RemoveGunnerAimFlag(qtrue);
+		// Clear it on this entity; PM_RemoveGunnerAimFlag works on the global pm, which is not this entity
+		// (or is null/stale) outside Pmove.
+		ent->client->ps.communicatingflags &= ~(1 << CF_AIMINGGUN);
+		ent->client->IsAiming = qfalse;
 	}
 
 	// ----------------------------------------------------------------------

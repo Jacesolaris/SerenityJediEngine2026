@@ -23,6 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/stringed_ingame.h"
 #include "qcommon/timing.h"
 #include "client.h"
+#include "qcommon/q_padnames.h"
 #include "cl_lan.h"
 #include "botlib/botlib.h"
 #include "snd_ambient.h"
@@ -236,6 +237,14 @@ static void Key_GetBindingBuf(const int keynum, char* buf, const int buflen)
 
 static void Key_KeynumToStringBuf(const int keynum, char* buf, const int buflen)
 {
+	// a controller button: its name on the controller in use
+	const char* padName = Pad_ButtonName(keynum, Cvar_VariableString("in_controllerType"));
+	if (padName)
+	{
+		Q_strncpyz(buf, padName, buflen);
+		return;
+	}
+
 	const char* psKeyName = Key_KeynumToString(keynum/*, qtrue */);
 
 	// see if there's a more friendly (or localised) name...
@@ -743,8 +752,11 @@ static void CL_G2API_SetRagDoll(void* ghoul2, sharedRagDollParams_t* params)
 	rdParams.RagPhase = static_cast<CRagDollParams::ERagPhase>(params->RagPhase);
 	rdParams.effectorsToTurnOff = static_cast<CRagDollParams::ERagEffector>(params->effectorsToTurnOff);
 
-	if (Q_isnan(rdParams.position[0]) || Q_isnan(rdParams.position[1]) || Q_isnan(rdParams.position[2])) {
+	if (Q_isnan(rdParams.position[0]) || Q_isnan(rdParams.position[1]) || Q_isnan(rdParams.position[2]))
+	{
+#ifdef _DEBUG
 		Com_Printf("^1CL_G2API_SetRagDoll: rejecting NaN position from shared params\n");
+#endif
 		return;
 	}
 

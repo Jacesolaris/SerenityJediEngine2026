@@ -425,15 +425,10 @@ static qboolean turret_find_enemies(gentity_t* self)
 	float bestDist = self->radius * self->radius;
 	vec3_t org, org2;
 
-	// FIX: move large arrays off stack (C6262)
-	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
-	trace_t* tr = (trace_t*)BG_Alloc(sizeof(trace_t));
-
-	if (!entity_list || !tr)
-	{
-		Com_Printf(S_COLOR_RED "turret_find_enemies: BG_Alloc failed\n");
-		return qfalse;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static gentity_t* entity_list[MAX_GENTITIES];
+	static trace_t tr_storage;
+	trace_t* const tr = &tr_storage;
 
 	gentity_t* bestTarget = NULL;
 

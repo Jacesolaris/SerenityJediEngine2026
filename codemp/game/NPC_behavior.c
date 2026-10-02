@@ -791,6 +791,11 @@ void NPC_BSJump(void)
 
 		//Now we have the apex, aim for it
 		height = apex[2] - NPCS.NPC->r.currentOrigin[2];
+		if (NPCS.NPC->client->ps.gravity <= 0 || height <= 0)
+		{
+			// gravity is still 0 before the NPC's first Pmove: the jump velocity below would be NaN
+			return;
+		}
 		time = sqrt(height / (.5 * NPCS.NPC->client->ps.gravity));
 		if (!time)
 		{

@@ -34,6 +34,11 @@ if(BuildSPRend2 OR BuildJK2SPRdRend2)
 	add_subdirectory("${SPDir}/rd-rend2")
 endif(BuildSPRend2 OR BuildJK2SPRdRend2)
 
+#    Add SerenityJediEngine2026 launcher project (Windows only)
+if(WIN32)
+	add_subdirectory("${SPDir}/launcher")
+endif(WIN32)
+
 #    Add Engine Project
 if(BuildSPEngine OR BuildJK2SPEngine)
 	# Libraries
@@ -79,13 +84,13 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 			set(SPEngineLibraries
 				${SPEngineLibraries}
 				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SDL2.lib
+				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SerenityJediEngine2026-SDL2.lib
 				)
 		else()
 			set(SPEngineLibraries
 				${SPEngineLibraries}
 				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SDL2.lib
+				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SerenityJediEngine2026-SDL2.lib
 				)
 		endif()
 
@@ -297,6 +302,10 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	# UI files
 	set(SPEngineUIFiles
 		"${SPDir}/ui/ui_atoms.cpp"
+		"${SPDir}/ui/ui_pazaak.cpp"
+		"${SPDir}/ui/ui_pazaak.h"
+		"${SPDir}/ui/pazaak_core.cpp"
+		"${SPDir}/ui/pazaak_core.h"
 		"${SPDir}/ui/ui_connect.cpp"
 		"${SPDir}/ui/ui_main.cpp"
 		"${SPDir}/ui/ui_saber.cpp"
@@ -392,11 +401,11 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 			if(UseInternalSDL2)
 				if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 					set(SPEngineExtraInstallFiles
-						${SerenityJediEngine2026LibDir}/SDL2/bin/x86/SDL2.dll
+						${SerenityJediEngine2026LibDir}/SDL2/bin/x86/SerenityJediEngine2026-SDL2.dll
 						)
 				else()
 					set(SPEngineExtraInstallFiles
-						${SerenityJediEngine2026LibDir}/SDL2/bin/x64/SDL2.dll
+						${SerenityJediEngine2026LibDir}/SDL2/bin/x64/SerenityJediEngine2026-SDL2.dll
 						)
 				endif()
 			endif()

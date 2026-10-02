@@ -1657,6 +1657,8 @@ Rules:
 - Maximum holocron positions enforced.
 ================
 */
+extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags);
+
 void Holocron_Add(gentity_t* ent, const char* typeName)
 {
 	if (!ent)

@@ -1241,6 +1241,7 @@ qboolean NPC_IsAlive(const gentity_t* self, const gentity_t* npc)
 }
 
 extern qboolean NPC_MoveDirClear(int forwardmove, int rightmove, qboolean reset);
+extern void G_DebugPrint(int level, const char* format, ...);
 
 // Move an NPC or bot in a given direction using usercmd logic.
 // Behaviour preserved; only safety and structure improved.
@@ -1252,7 +1253,7 @@ static qboolean SJE_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd,
 	// SAFETY FIX: self and self->client must exist
 	if (self == NULL || self->client == NULL)
 	{
-		DebugPrint(WL_WARNING, "SJE_UcmdMoveForDir: self or self->client was NULL\n");
+		G_DebugPrint(WL_WARNING, "SJE_UcmdMoveForDir: self or self->client was NULL\n");
 		return qfalse;
 	}
 
@@ -1417,10 +1418,11 @@ void G_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t dir)
 		walk = qtrue;
 	}
 
-	if (Distance(self->r.currentOrigin, self->enemy->r.currentOrigin) < 110.0
-		&& self->enemy
+	// enemy first: an NPC following its leader has no enemy (NULL dereference crash)
+	if (self->enemy
 		&& self->enemy->client
-		&& self->enemy->client->ps.weapon == WP_SABER)
+		&& self->enemy->client->ps.weapon == WP_SABER
+		&& Distance(self->r.currentOrigin, self->enemy->r.currentOrigin) < 110.0)
 	{
 		walk = qtrue;
 	}

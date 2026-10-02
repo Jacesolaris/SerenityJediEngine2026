@@ -35,6 +35,9 @@ constexpr auto CMD_BACKUP = 128;
 
 constexpr auto MAX_ENTITIES_IN_SNAPSHOT = 1024;
 
+// Last argument of CG_SETUSERCMDVALUE when the cgame also sends the key look scales (a newer addition to the call)
+constexpr auto CG_USERCMDVALUE_KEYLOOK = 0x4B4C4B31;
+
 constexpr auto SNAPFLAG_RATE_DELAYED
 
 =

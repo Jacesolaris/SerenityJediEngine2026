@@ -1663,7 +1663,9 @@ e_status CIN_RunCinematic(const int handle)
 		}
 		else
 		{
+			// RoQShutdown sets currentHandle to -1, so don't index cinTable with it afterwards.
 			RoQShutdown();
+			return FMV_EOF;
 		}
 	}
 

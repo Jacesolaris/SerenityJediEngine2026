@@ -42,6 +42,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "ai.h"
 #include <cassert>
 #include <cmath>
+#include <vector>
 
 #define JK2_RAGDOLL_GRIPNOHEALTH
 
@@ -228,8 +229,8 @@ void player_Freeze(const gentity_t* self);
 void Player_CheckFreeze(const gentity_t* self);
 extern qboolean PM_SaberInSpecial(int move);
 qboolean manual_saberblocking(const gentity_t* defender);
-void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
-void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
+void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
+void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt);
 void G_Stagger(gentity_t* hitEnt);
 extern qboolean PM_StabAnim(int anim);
 extern qboolean NPC_IsAlive(const gentity_t* self, const gentity_t* npc);
@@ -250,7 +251,7 @@ qboolean WP_SaberMBlockDirection(gentity_t* self, vec3_t hitloc, qboolean missil
 qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean BG_IsAlreadyinTauntAnim(int anim);
 extern qboolean BG_FullBodyTauntAnim(int anim);
-void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
+void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
 extern qboolean PM_WalkingOrRunningAnim(int anim);
 extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int color);
 void WP_BlockPointsDrain(const gentity_t* self, int fatigue);
@@ -639,6 +640,9 @@ static qboolean class_is_gunner(const gentity_t* self)
 
 //SABER INITIALIZATION======================================================================
 
+// Extra offset of a saber holstered on a hip, at the side or (a gun has that hip) the front (WP_SaberHolsterAvoidGuns)
+static vec3_t saberHolsterHipExtra = { 0.0f, 0.0f, 0.0f };
+
 static void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_weapon_model, const int bolt_num,
 	const int weapon_num, vec3_t angles, vec3_t offset)
 {
@@ -695,12 +699,29 @@ static void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_we
 			}
 			gi.G2API_AttachG2Model(&ent->ghoul2[ent->holsterModel[weapon_num]], &ent->ghoul2[ent->playerModel],
 				bolt_num, ent->playerModel);
-
 			if (holster_origin == -1)
 			{
 				if (ent->client->ps.saber[0].type == SABER_DAGGER)
 				{
 					//COUNT ME OUT ON THIS ONE
+				}
+				else if (!VectorCompare(saberHolsterHipExtra, vec3_origin))
+				{
+					// on a hip: the same rotation G2API_SetBoneAnglesOffset makes (its offset is not used by
+					// the renderer) plus a translation, as a matrix
+					const vec3_t g2_angles = { angles[PITCH], angles[ROLL], angles[YAW] };
+					vec3_t axis[3];
+					AnglesToAxis(g2_angles, axis);
+					mdxaBone_t matrix;
+					for (int i = 0; i < 3; i++)
+					{
+						matrix.matrix[i][0] = axis[0][i];
+						matrix.matrix[i][1] = axis[1][i];
+						matrix.matrix[i][2] = axis[2][i];
+						matrix.matrix[i][3] = saberHolsterHipExtra[i];
+					}
+					gi.G2API_SetBoneAnglesMatrix(&ent->ghoul2[ent->holsterModel[weapon_num]], "ModView internal default",
+						matrix, BONE_ANGLES_PREMULT, nullptr, 0, 0);
 				}
 				else
 				{
@@ -762,6 +783,13 @@ void G_CreateG2AttachedWeaponModel(gentity_t* ent, const char* ps_weapon_model, 
 			strcat(weapon_model, "_w");
 		}
 		strcat(weapon_model, ".glm"); //and change to ghoul2
+	}
+
+	// The Z6 rotary cannon in the hand: its model with a barrel bone, which cgame spins (CG_SpinWeaponBarrel)
+	// instead of rotary_cannon_w.glm (its barrels are fixed to the gun)
+	if (!Q_stricmp(weapon_model, "models/weapons2/z6_rotary/rotary_cannon_w.glm"))
+	{
+		Q_strncpyz(weapon_model, "models/weapons2/z6_rotary/model.glm", sizeof(weapon_model));
 	}
 
 	// give us a saber model
@@ -907,6 +935,74 @@ void WP_SaberAddG2SaberModels(gentity_t* ent, const int specific_saber_num)
 					);
 				}
 			}
+		}
+	}
+}
+
+// Holstered sabers and holstered guns (cgame/cg_holster.cpp) share the hips: a saber holstered on a hip that
+// has a gun goes to the front of that hip (the guns hang at the back of the hips).
+extern qboolean CG_HolsterHipTaken(int entNum, qboolean left);
+
+static int saberHolsterSide[MAX_GENTITIES][MAX_SABERS];	  // 0: not on a hip, 1: right hip, 2: left hip
+static qboolean saberHolsterHipGun[MAX_GENTITIES][MAX_SABERS]; // that hip had a gun when the saber was holstered
+
+static int WP_SaberHolsterAvoidGuns(gentity_t* ent, const int saberNum, const int handBolt)
+{
+	const int num = ent->s.number;
+	VectorClear(saberHolsterHipExtra);
+	saberHolsterSide[num][saberNum] = 0;
+	saberHolsterHipGun[num][saberNum] = qfalse;
+	if (handBolt == -1)
+	{
+		return handBolt;
+	}
+
+	CGhoul2Info* g2 = &ent->ghoul2[ent->playerModel];
+	int side;
+	if (handBolt == gi.G2API_AddBolt(g2, "*hip_r") || handBolt == gi.G2API_AddBolt(g2, "*hip_br"))
+	{
+		side = 1;
+	}
+	else if (handBolt == gi.G2API_AddBolt(g2, "*hip_l") || handBolt == gi.G2API_AddBolt(g2, "*hip_bl"))
+	{
+		side = 2;
+	}
+	else
+	{
+		return handBolt; // the back, the front of a hip, a hand...
+	}
+	saberHolsterSide[num][saberNum] = side;
+	// on the side of the hip: 5 down (the tag puts the hilt across the belt)
+	VectorSet(saberHolsterHipExtra, 0.0f, 0.0f, -5.0f);
+	saberHolsterHipGun[num][saberNum] = CG_HolsterHipTaken(num, side == 2 ? qtrue : qfalse);
+	if (saberHolsterHipGun[num][saberNum])
+	{
+		const int front = gi.G2API_AddBolt(g2, side == 2 ? "*hip_fl" : "*hip_fr");
+		if (front != -1)
+		{
+			// out of the leg: 2 away from the body, 2 forward, 6 down (the tag puts the hilt across the belt)
+			VectorSet(saberHolsterHipExtra, side == 1 ? -2.0f : 2.0f, -2.0f, -6.0f);
+			return front;
+		}
+	}
+	return handBolt;
+}
+
+// Every frame: a holstered saber moves when a gun takes or leaves its hip
+void WP_SaberHolsterCheckGuns(gentity_t* ent)
+{
+	if (!ent || !ent->client || ent->playerModel < 0)
+	{
+		return;
+	}
+	const int num = ent->s.number;
+	for (int i = 0; i < MAX_SABERS; i++)
+	{
+		const int side = saberHolsterSide[num][i];
+		if (side && ent->holsterModel[i] > 0
+			&& CG_HolsterHipTaken(num, side == 2 ? qtrue : qfalse) != saberHolsterHipGun[num][i])
+		{
+			wp_saber_add_holstered_g2_saber_models(ent, i);
 		}
 	}
 }
@@ -1187,7 +1283,9 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 				handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*back");
 			}
 		}
+		handBolt = WP_SaberHolsterAvoidGuns(ent, saberNum, handBolt);
 		g_create_g2_holstered_weapon_model(ent, ent->client->ps.saber[saberNum].model, handBolt, saberNum, angles, offset);
+		VectorClear(saberHolsterHipExtra);
 
 		if (ent->client->ps.saber[saberNum].skin != nullptr)
 		{
@@ -2580,6 +2678,40 @@ extern float hitLochealth_percentage[];
 extern qboolean PM_SaberInTransitionDamageMove(const playerState_t* ps);
 qboolean BG_SaberInPartialDamageMove(gentity_t* self);
 
+// Single-hit rule: the victims each attacker has already hit in the current swing.
+// This replaces client->saberHitEntityBitMask, an int shifted by entity number, which only worked
+// for entities 0..31: from 32 on the bits wrapped (undefined behaviour) and NPCs shared a bit, so a
+// hit on one blocked damage to another. That field is kept, unused, so savegames stay compatible.
+static constexpr int MAX_SWING_VICTIMS = 32;
+static short swingVictims[MAX_GENTITIES][MAX_SWING_VICTIMS];
+static unsigned char swingVictimCount[MAX_GENTITIES];
+
+static void WP_SwingHitsReset(const gentity_t* ent)
+{
+	swingVictimCount[ent->s.number] = 0;
+}
+
+static qboolean WP_SwingAlreadyHit(const gentity_t* ent, const gentity_t* victim)
+{
+	for (int i = 0; i < swingVictimCount[ent->s.number]; i++)
+	{
+		if (swingVictims[ent->s.number][i] == victim->s.number)
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+static void WP_SwingAddHit(const gentity_t* ent, const gentity_t* victim)
+{
+	unsigned char& count = swingVictimCount[ent->s.number];
+	if (count < MAX_SWING_VICTIMS && !WP_SwingAlreadyHit(ent, victim))
+	{
+		swingVictims[ent->s.number][count++] = static_cast<short>(victim->s.number);
+	}
+}
+
 static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, const int base_d_flags,
 	const qboolean broken_parry, const int saberNum, const int bladeNum,
 	const qboolean thrown_saber)
@@ -2649,18 +2781,38 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 					continue;
 				}
 
+				// Single-hit enforcement: skip if already damaged this swing.
+				// Checked first: the parry, hit-confirm and interrupt rules below must happen once per victim
+				// per swing. They ran before this check, i.e. on every frame of contact, so the hit-confirm
+				// halved weaponTime frame after frame down to its 50 ms minimum.
+				if (WP_SwingAlreadyHit(ent, victim))
+				{
+					if (!PM_SaberInKata(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) &&
+						!PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) &&
+						ent->client->ps.saberLockTime < level.time)
+					{// If we already hit this entity, and we're not in a kata or kill move, don't hit again
+						if (g_HitTracking->integer && (victim->NPC))
+						{
+							Com_Printf(S_COLOR_RED "Single-hit enforcement: skip if already damaged this swing\n");
+						}
+						continue;
+					}
+				}
+
 				// Perfect parry: defender in active block/parry state
 				qboolean perfectParry = qfalse;
 
+				// The defender's (victim's) perfect-block flag. This used m_blocking, which is the attacker's
+				// flag, so the attacker was penalised by his own block state.
 				if (victim->client &&
 					!(dflags & DAMAGE_NO_DAMAGE) &&
-					((m_blocking) == qtrue))
+					(victim->client->ps.ManualBlockingFlags & (1 << MBF_PERFECTBLOCKING)) != 0)
 				{
 					perfectParry = qtrue;
 				}
 
 				// Hit-confirm chain boost: landing a hit speeds up next chain swing
-				if (!perfectParry && !(dflags & DAMAGE_NO_DAMAGE) && victim->client)
+				if (!perfectParry && !(dflags & DAMAGE_NO_DAMAGE) && victim->client && totalDmg[i] > 0)
 				{
 					// reduce weaponTime to let the next swing chain faster
 					ent->client->ps.weaponTime = (int)(ent->client->ps.weaponTime * 0.5f);
@@ -2693,21 +2845,6 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 					victim->client->ps.saberAttackChainCount = 0;
 					victim->client->ps.saberMove = LS_READY;
 					victim->client->ps.weaponstate = WEAPON_IDLE;
-				}
-
-				// Single-hit enforcement: skip if already damaged this swing
-				if (ent->client->saberHitEntityBitMask & (1 << victim->s.number))
-				{
-					if (!PM_SaberInKata(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) &&
-						!PM_SaberInKillMove(static_cast<saberMoveName_t>(ent->client->ps.saberMove)) &&
-						ent->client->ps.saberLockTime < level.time)
-					{// If we already hit this entity, and we're not in a kata or kill move, don't hit again
-						if (g_HitTracking->integer && (victim->NPC))
-						{
-							Com_Printf(S_COLOR_RED "Single-hit enforcement: skip if already damaged this swing\n");
-						}
-						continue;
-					}
 				}
 
 				if (victim->e_DieFunc == dieF_maglock_die)
@@ -3314,7 +3451,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 							{
 								Com_Printf(S_COLOR_RED "Tracking damage to player %d\n", victim->s.number);
 							}
-							ent->client->saberHitEntityBitMask |= (1 << victim->s.number);
+							WP_SwingAddHit(ent, victim);
 						}
 						G_Damage(victim, inflictor, ent, dmgDir[i], dmgSpot[i], damage, dflags, MOD_SABER, hitDismemberLoc[i]);
 						if (damage > 0 && cg.time)
@@ -6452,17 +6589,19 @@ void G_Stagger(gentity_t* hitEnt)
 	if (PM_InGetUp(&hitEnt->client->ps) || PM_InForceGetUp(&hitEnt->client->ps))
 		return;
 
-	const int anim = stag_hit_sp[Q_irand(0, 6)];
+	int anim = stag_hit_sp[Q_irand(0, 6)];
 
-	G_PlayTorsoAnim_SP(hitEnt, anim);
-	G_HandleMassiveBounce_SP(hitEnt);
-
+	// Dual/staff users get their own stagger anims. The conversion used to run after the anim was
+	// played and its result was discarded, so they always got the single-saber version.
 	const int style = hitEnt->client->ps.saberAnimLevel;
 
 	if (style == SS_DUAL)
-		SabBeh_AnimateMassiveDualSlowBounce(anim);
+		anim = SabBeh_AnimateMassiveDualSlowBounce(anim);
 	else if (style == SS_STAFF)
-		SabBeh_AnimateMassiveStaffSlowBounce(anim);
+		anim = SabBeh_AnimateMassiveStaffSlowBounce(anim);
+
+	G_PlayTorsoAnim_SP(hitEnt, anim);
+	G_HandleMassiveBounce_SP(hitEnt);
 }
 
 // ============================================================
@@ -6858,6 +6997,14 @@ static void G_PlayerSaberSmash(gentity_t* owner)
 		}
 
 		// ------------------------------------------------------------------
+		// Allies are not hit (the smash damaged, threw and knocked down them too)
+		// ------------------------------------------------------------------
+		if (ent->client->playerTeam == owner->client->playerTeam)
+		{
+			continue;
+		}
+
+		// ------------------------------------------------------------------
 		// Compute distance from slam point
 		// ------------------------------------------------------------------
 		VectorSubtract(ent->currentOrigin, trace.endpos, entDir);
@@ -7233,6 +7380,7 @@ static void WP_SaberDamageTrace(gentity_t* ent, int saberNum, int bladeNum)
 						default:
 						case FORCE_LEVEL_5:
 							base_damage = 2.5f * static_cast<float>(attacker_power_level);
+							break; // was missing: fell through to the 2.0x case below, so 2.5x never applied
 						case FORCE_LEVEL_4: //Staff, medium, duals all do same damage
 						case FORCE_LEVEL_3:
 							base_damage = 2.0f * static_cast<float>(attacker_power_level);
@@ -8304,7 +8452,7 @@ void WP_SabersDamageTrace(gentity_t* ent, const qboolean no_effects)
 			{
 				Com_Printf(S_COLOR_RED "Reset hit tracking when a new swing begins\n");
 			}
-			ent->client->saberHitEntityBitMask = 0;
+			WP_SwingHitsReset(ent);
 			ent->client->saberLastAttackSequence = ent->client->ps.saberAttackSequence;
 		}
 	}
@@ -11509,8 +11657,11 @@ int WP_SaberBlockCost(gentity_t* defender, const gentity_t* attacker, vec3_t hit
 		}
 	}
 
-	// Too soon after bolt block
-	if (defender->client->ps.ManualblockStartTime > level.time)
+	// Active block held too long: after 3 s of holding block + attack you are no longer timing your
+	// blocks, so they cost double. Same 3 s window as g_accurate_blocking and the "good" missile block.
+	// (This tested ManualblockStartTime > level.time, a start time in the future, so it never applied.)
+	if (defender->client->ps.ManualblockStartTime > 0
+		&& level.time - defender->client->ps.ManualblockStartTime >= 3000)
 	{
 		saber_block_cost *= 2.0f;
 	}
@@ -11723,7 +11874,7 @@ int wp_saber_must_block(gentity_t* self, const gentity_t* atk, const qboolean ch
 		VectorCopy(self->client->ps.origin, body_max);
 
 		body_max[2] += self->maxs[2];
-		body_min[2] -= self->mins[2];
+		body_min[2] += self->mins[2]; // mins[2] is negative (the feet): "-=" put the segment's bottom above the origin
 
 		//find dirToBody
 		G_FindClosestPointOnLineSegment(body_min, body_max, point, closest_body_point);
@@ -12193,24 +12344,27 @@ qboolean NPC_Should_Block(const gentity_t* npc)
 	}
 
 	// Distance‑based block stance logic
-	const float distSq = DistanceSquared(npc->currentOrigin, npc->enemy->currentOrigin);
+	// Block stance only at combat range (ported from MovieDuels): the distance left once the NPC's
+	// reach is taken off, as the Jedi AI measures it (<= 0 means the enemy is within saber reach).
+	const float reach = npc->client->ps.SaberLengthMax() + npc->maxs[0] * 1.5f + 16.0f;
+	const float gap = Distance(npc->currentOrigin, npc->enemy->currentOrigin) - reach;
 
 	// Tunable thresholds
-	const float BLOCK_ENGAGE_DIST_SQ = 128.0f * 128.0f;   // enter block
-	const float BLOCK_RELEASE_DIST_SQ = 192.0f * 192.0f;   // exit block
+	constexpr float BLOCK_ENGAGE_GAP = 0.0f;    // enter block: enemy within reach
+	constexpr float BLOCK_RELEASE_GAP = 32.0f;  // exit block: a little beyond reach, so it doesn't flicker
 
 	// Current stance flag
 	const qboolean blockActive =
 		((npc->client->ps.ManualBlockingFlags & (1 << MBF_NPCBLOCKSTANCE)) != 0 ? qtrue : qfalse);
 
 	// ENTER BLOCK STANCE
-	if (blockActive == qfalse && distSq <= BLOCK_ENGAGE_DIST_SQ)
+	if (blockActive == qfalse && gap <= BLOCK_ENGAGE_GAP)
 	{
 		return qtrue;
 	}
 
 	// EXIT BLOCK STANCE
-	if (blockActive == qtrue && distSq >= BLOCK_RELEASE_DIST_SQ)
+	if (blockActive == qtrue && gap >= BLOCK_RELEASE_GAP)
 	{
 		return qfalse;
 	}
@@ -14297,7 +14451,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 	int swing_block_quad = Q_T;
 	int closest_swing_quad = Q_T;
 	gentity_t* incoming = nullptr;
-	gentity_t* entity_list[MAX_GENTITIES];
+	static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 	vec3_t mins{}, maxs{};
 	constexpr float radius = 256;
 	vec3_t forward, fwdangles = { 0 };
@@ -14879,7 +15033,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 			if (incoming->ownerNum < 0 || incoming->ownerNum >= ENTITYNUM_WORLD)
 				return;
 
-			gentity_t* blocker = &g_entities[incoming->ownerNum];
+			gentity_t* blocker = self; // was the shooter (incoming->ownerNum): wrong entity, crash for non-client owners
 
 			// Player saber activation
 			if (self->client && !self->client->ps.SaberActive())
@@ -16124,7 +16278,7 @@ static qboolean playeris_resisting_force_throw(const gentity_t* player, gentity_
 	}
 
 	//not attacking or otherwise busy
-	if (player->client->ps.weaponTime >= level.time)
+	if (player->client->ps.weaponTime > 0) // weaponTime counts down in ms: ">= level.time" was never true after the first seconds of a map
 	{
 		return qfalse;
 	}
@@ -16171,11 +16325,11 @@ static qboolean ShouldPlayerResistForceThrow(const gentity_t* player, gentity_t*
 	if ((attacker->client->NPC_class == CLASS_DESANN
 		|| attacker->client->NPC_class == CLASS_SITHLORD
 		|| attacker->client->NPC_class == CLASS_VADER
-		|| Q_stricmp("Yoda", attacker->NPC_type)
-		|| Q_stricmp("T_Yoda", attacker->NPC_type)
-		|| Q_stricmp("jedi_kdm1", attacker->NPC_type)
-		|| Q_stricmp("RebornBoss", attacker->NPC_type)
-		|| Q_stricmp("T_Palpatine_sith", attacker->NPC_type) == 0)
+		|| attacker->NPC_type && Q_stricmp("Yoda", attacker->NPC_type) == 0
+		|| attacker->NPC_type && Q_stricmp("T_Yoda", attacker->NPC_type) == 0
+		|| attacker->NPC_type && Q_stricmp("jedi_kdm1", attacker->NPC_type) == 0
+		|| attacker->NPC_type && Q_stricmp("RebornBoss", attacker->NPC_type) == 0
+		|| attacker->NPC_type && Q_stricmp("T_Palpatine_sith", attacker->NPC_type) == 0) // Q_stricmp is 0 on a match: without "== 0" every non-Yoda attacker counted
 		&& Q_irand(0, 2) > 0)
 	{
 		return qfalse;
@@ -16213,7 +16367,7 @@ static qboolean ShouldPlayerResistForceThrow(const gentity_t* player, gentity_t*
 	}
 
 	//not attacking or otherwise busy
-	if (player->client->ps.weaponTime >= level.time)
+	if (player->client->ps.weaponTime > 0) // weaponTime counts down in ms: ">= level.time" was never true after the first seconds of a map
 	{
 		return qfalse;
 	}
@@ -16259,7 +16413,7 @@ static void RepulseDamage(gentity_t* self, gentity_t* enemy, vec3_t location, co
 		break;
 	}
 
-	if (enemy->client->ps.stats[STAT_HEALTH] <= 0) // if we are dead
+	if (enemy->client && enemy->client->ps.stats[STAT_HEALTH] <= 0) // if we are dead
 	{
 		vec3_t spot;
 
@@ -16275,9 +16429,9 @@ static void RepulseDamage(gentity_t* self, gentity_t* enemy, vec3_t location, co
 		if (enemy->playerModel >= 0)
 		{
 			// don't let 'em animate
-			gi.G2API_PauseBoneAnimIndex(&enemy->ghoul2[self->playerModel], enemy->rootBone, cg.time);
-			gi.G2API_PauseBoneAnimIndex(&enemy->ghoul2[self->playerModel], enemy->motionBone, cg.time);
-			gi.G2API_PauseBoneAnimIndex(&enemy->ghoul2[self->playerModel], enemy->lowerLumbarBone, cg.time);
+			gi.G2API_PauseBoneAnimIndex(&enemy->ghoul2[enemy->playerModel], enemy->rootBone, cg.time);
+			gi.G2API_PauseBoneAnimIndex(&enemy->ghoul2[enemy->playerModel], enemy->motionBone, cg.time);
+			gi.G2API_PauseBoneAnimIndex(&enemy->ghoul2[enemy->playerModel], enemy->lowerLumbarBone, cg.time);
 		}
 
 		//not solid anymore
@@ -16285,7 +16439,10 @@ static void RepulseDamage(gentity_t* self, gentity_t* enemy, vec3_t location, co
 		enemy->maxs[2] = -8;
 
 		//need to pad deathtime some to stick around long enough for death effect to play
-		enemy->NPC->timeOfDeath = level.time + 4000;
+		if (enemy->NPC) // the player has no NPC data: a repulse that killed the player crashed here
+		{
+			enemy->NPC->timeOfDeath = level.time + 4000;
+		}
 	}
 }
 
@@ -16315,8 +16472,11 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 	//shove things in front of you away
 	float dist;
 	gentity_t* ent, * forward_ent = nullptr;
-	gentity_t* entity_list[MAX_GENTITIES];
-	gentity_t* push_target[MAX_GENTITIES]{};
+	//on the heap: two 64 KB lists are too big for the stack. Not static: a pushed entity's use function runs
+	//inside the loop below, and a push started from there must not share these lists.
+	std::vector<gentity_t*> entity_list_mem(MAX_GENTITIES), push_target_mem(MAX_GENTITIES);
+	gentity_t** const entity_list = entity_list_mem.data();
+	gentity_t** const push_target = push_target_mem.data();
 	int num_listed_entities = 0;
 	vec3_t mins{}, maxs{};
 	vec3_t v{};
@@ -17221,7 +17381,7 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 					&& InFront(self->currentOrigin, push_target[x]->currentOrigin, push_target[x]->client->ps.viewangles,
 						0.3f) //I'm in front of him
 					&& (push_target[x]->client->ps.powerups[PW_FORCE_PUSH] > level.time || //he's pushing too
-						push_target[x]->s.number != 0 && push_target[x]->client->ps.weaponTime < level.time))
+						push_target[x]->s.number != 0 && push_target[x]->client->ps.weaponTime <= 0)) // not attacking (weaponTime is a countdown; "< level.time" was always true)
 					//not the player and not attacking (NPC jedi auto-defend against pushes)
 				{
 					//Jedi don't get pushed, they resist as long as they aren't already attacking and are on the ground
@@ -17249,7 +17409,8 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 						sound_index = G_SoundIndex("sound/weapons/force/pushed.mp3");
 					}
 					int resist_chance = Q_irand(0, 2);
-					if (!push_target[x]->s.number && ((self->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
+					// the pushed player holding block resists (this read the pusher's block flags)
+					if (!push_target[x]->s.number && ((push_target[x]->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
 					{
 						resist_chance = 1;
 					}
@@ -18200,7 +18361,8 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 {
 	//shove things around you away
 	qboolean fake = qfalse;
-	gentity_t* push_target[MAX_GENTITIES]{};
+	std::vector<gentity_t*> push_target_mem(MAX_GENTITIES); //on the heap: 64 KB is too big for the stack
+	gentity_t** const push_target = push_target_mem.data();
 	int num_listed_entities = 0;
 	int ent_count = 0;
 	int radius;
@@ -18322,7 +18484,8 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 		vec3_t v{};
 		int i;
 		int e;
-		gentity_t* entity_list[MAX_GENTITIES];
+		std::vector<gentity_t*> entity_list_mem(MAX_GENTITIES); //on the heap: 64 KB is too big for the stack
+		gentity_t** const entity_list = entity_list_mem.data();
 		gentity_t* ent;
 		float dist;
 		for (i = 0; i < 3; i++)
@@ -18520,7 +18683,7 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 				&& InFront(self->currentOrigin, push_target[x]->currentOrigin, push_target[x]->client->ps.viewangles,
 					0.3f) //I'm in front of him
 				&& (push_target[x]->client->ps.powerups[PW_FORCE_PUSH] > level.time || //he's pushing too
-					push_target[x]->s.number != 0 && push_target[x]->client->ps.weaponTime < level.time))
+					push_target[x]->s.number != 0 && push_target[x]->client->ps.weaponTime <= 0)) // not attacking (weaponTime is a countdown; "< level.time" was always true)
 			{
 				//Jedi don't get pushed, they resist as long as they aren't already attacking and are on the ground
 				if (push_target[x]->client->ps.saberLockTime > level.time)
@@ -20082,7 +20245,7 @@ void ForceGripAdvanced(gentity_t* self)
 
 			vec3_t center, mins = { 0 }, maxs = { 0 }, v = { 0 };
 			constexpr float radius = 512;
-			gentity_t* entity_list[MAX_GENTITIES];
+			static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 			int i;
 
 			VectorCopy(self->currentOrigin, center);
@@ -20262,7 +20425,7 @@ void ForceGripAdvanced(gentity_t* self)
 					maxs[i] = self->currentOrigin[i] + 512;
 				}
 
-				gentity_t* entlist[MAX_GENTITIES];
+				static gentity_t* entlist[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 				const int num_listed_entities = gi.EntitiesInBox(mins, maxs, entlist, MAX_GENTITIES);
 				vec3_t vec2, vwangles, traceend;
 
@@ -21223,8 +21386,7 @@ void ForceFear(gentity_t* self)
 		&& traceEnt->health > 0)
 	{
 		//hit an organic non-player
-		if (traceEnt->client->playerTeam != self->client->playerTeam || traceEnt->client->playerTeam == self->client->
-			playerTeam)
+		if (traceEnt->client->playerTeam != self->client->playerTeam) // was "!= || ==", always true: allies were feared too
 		{
 			//an enemy
 			int override = 0;
@@ -21250,13 +21412,8 @@ void ForceFear(gentity_t* self)
 					{
 						G_ClearEnemy(traceEnt);
 					}
-					if (traceEnt->NPC)
-					{
-						if (traceEnt->s.weapon == WP_NONE)
-						{
-							CG_ChangeWeapon(WP_MELEE);
-						}
-					}
+					// (removed: "if the NPC has no weapon, CG_ChangeWeapon(WP_MELEE)". CG_ChangeWeapon is the
+					//  client's weapon switch, so fearing an unarmed NPC switched the PLAYER to melee.)
 
 					if (PM_HasAnimation(traceEnt, BOTH_SONICPAIN_HOLD))
 					{
@@ -21853,7 +22010,7 @@ extern int G_GetHitLocFromTrace(trace_t* trace, int mod);
 static void ForceShootstrike(gentity_t* self)
 {
 	trace_t tr;
-	vec3_t end, forward, right, up, dir;
+	vec3_t end, forward, right, up, dir, fx_dir{}; // fx_dir: the fizz effect's direction (it was built in forward, which the next target's cone check then used)
 	gentity_t* traceEnt;
 	constexpr int damage_low = STRIKE_DAMAGELOW;
 	constexpr int damage_medium = STRIKE_DAMAGEMEDIUM;
@@ -21868,7 +22025,7 @@ static void ForceShootstrike(gentity_t* self)
 	static gentity_t* entity_list[MAX_GENTITIES];
 	int e, num_listed_entities, i;
 
-	const int hit_loc = G_GetHitLocFromTrace(&tr, MOD_LIGHTNING_STRIKE);
+	constexpr int hit_loc = HL_NONE; // tr is not traced yet here: G_Damage works the location out per target
 
 	if (self->health <= 0)
 	{
@@ -21891,7 +22048,11 @@ static void ForceShootstrike(gentity_t* self)
 	// always render a shot beam
 
 	G_PlayEffect("env/yellow_lightning", self->client->renderInfo.handLPoint, forward);
-	gentity_t* tent = G_TempEntity(tr.endpos, EV_LIGHTNING_STRIKE);
+	// the client draws the bolt from otherentityNum's hand in the event's direction (was uninitialised tr.endpos, caster 0)
+	gentity_t* tent = G_TempEntity(self->client->renderInfo.handLPoint, EV_LIGHTNING_STRIKE);
+	tent->s.otherentityNum = self->s.number;
+	VectorCopy(self->client->ps.viewangles, tent->s.angles);
+	VectorCopy(self->client->ps.viewangles, tent->s.apos.trBase);
 	tent->svFlags |= SVF_BROADCAST;
 
 	if (self->client->ps.forcePowerLevel[FP_LIGHTNING_STRIKE] == FORCE_LEVEL_3)
@@ -22089,20 +22250,20 @@ static void ForceShootstrike(gentity_t* self)
 									&& manual_saberblocking(traceEnt)))
 							{
 								//saber can block lightning make them do a parry
-								VectorNegate(dir, forward);
+								VectorNegate(dir, fx_dir);
 
 								//randomise direction a bit
-								MakeNormalVectors(forward, right, up);
-								VectorMA(forward, Q_irand(0, 360), right, forward);
-								VectorMA(forward, Q_irand(0, 360), up, forward);
-								VectorNormalize(forward);
+								MakeNormalVectors(fx_dir, right, up);
+								VectorMA(fx_dir, Q_irand(0, 360), right, fx_dir);
+								VectorMA(fx_dir, Q_irand(0, 360), up, fx_dir);
+								VectorNormalize(fx_dir);
 
 								if (chanceOfFizz > 0)
 								{
 									VectorMA(traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].muzzlePoint,
 										traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].length * Q_flrand(0, 1),
 										traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].muzzleDir, end);
-									G_PlayEffect(G_EffectIndex("saber/fizz.efx"), end, forward);
+									G_PlayEffect(G_EffectIndex("saber/fizz.efx"), end, fx_dir);
 								}
 
 								switch (traceEnt->client->ps.saberAnimLevel)
@@ -22382,20 +22543,20 @@ static void ForceShootstrike(gentity_t* self)
 									&& manual_saberblocking(traceEnt)))
 							{
 								//saber can block lightning make them do a parry
-								VectorNegate(dir, forward);
+								VectorNegate(dir, fx_dir);
 
 								//randomise direction a bit
-								MakeNormalVectors(forward, right, up);
-								VectorMA(forward, Q_irand(0, 360), right, forward);
-								VectorMA(forward, Q_irand(0, 360), up, forward);
-								VectorNormalize(forward);
+								MakeNormalVectors(fx_dir, right, up);
+								VectorMA(fx_dir, Q_irand(0, 360), right, fx_dir);
+								VectorMA(fx_dir, Q_irand(0, 360), up, fx_dir);
+								VectorNormalize(fx_dir);
 
 								if (chanceOfFizz > 0)
 								{
 									VectorMA(traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].muzzlePoint,
 										traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].length * Q_flrand(0, 1),
 										traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].muzzleDir, end);
-									G_PlayEffect(G_EffectIndex("saber/fizz.efx"), end, forward);
+									G_PlayEffect(G_EffectIndex("saber/fizz.efx"), end, fx_dir);
 								}
 
 								switch (traceEnt->client->ps.saberAnimLevel)
@@ -22675,20 +22836,20 @@ static void ForceShootstrike(gentity_t* self)
 									&& manual_saberblocking(traceEnt)))
 							{
 								//saber can block lightning make them do a parry
-								VectorNegate(dir, forward);
+								VectorNegate(dir, fx_dir);
 
 								//randomise direction a bit
-								MakeNormalVectors(forward, right, up);
-								VectorMA(forward, Q_irand(0, 360), right, forward);
-								VectorMA(forward, Q_irand(0, 360), up, forward);
-								VectorNormalize(forward);
+								MakeNormalVectors(fx_dir, right, up);
+								VectorMA(fx_dir, Q_irand(0, 360), right, fx_dir);
+								VectorMA(fx_dir, Q_irand(0, 360), up, fx_dir);
+								VectorNormalize(fx_dir);
 
 								if (chanceOfFizz > 0)
 								{
 									VectorMA(traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].muzzlePoint,
 										traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].length * Q_flrand(0, 1),
 										traceEnt->client->ps.saber[npc_saber_num].blade[npc_blade_num].muzzleDir, end);
-									G_PlayEffect(G_EffectIndex("saber/fizz.efx"), end, forward);
+									G_PlayEffect(G_EffectIndex("saber/fizz.efx"), end, fx_dir);
 								}
 
 								switch (traceEnt->client->ps.saberAnimLevel)
@@ -23562,9 +23723,9 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						if (traceEnt->playerModel >= 0)
 						{
 							// don't let 'em animate
-							gi.G2API_PauseBoneAnimIndex(&traceEnt->ghoul2[self->playerModel], traceEnt->rootBone, cg.time);
-							gi.G2API_PauseBoneAnimIndex(&traceEnt->ghoul2[self->playerModel], traceEnt->motionBone, cg.time);
-							gi.G2API_PauseBoneAnimIndex(&traceEnt->ghoul2[self->playerModel], traceEnt->lowerLumbarBone, cg.time);
+							gi.G2API_PauseBoneAnimIndex(&traceEnt->ghoul2[traceEnt->playerModel], traceEnt->rootBone, cg.time);
+							gi.G2API_PauseBoneAnimIndex(&traceEnt->ghoul2[traceEnt->playerModel], traceEnt->motionBone, cg.time);
+							gi.G2API_PauseBoneAnimIndex(&traceEnt->ghoul2[traceEnt->playerModel], traceEnt->lowerLumbarBone, cg.time);
 						}
 
 						//not solid anymore
@@ -23572,7 +23733,10 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						traceEnt->maxs[2] = -8;
 
 						//need to pad deathtime some to stick around long enough for death effect to play
-						traceEnt->NPC->timeOfDeath = level.time + 2000;
+						if (traceEnt->NPC) // the player has no NPC data: killing the player crashed here
+						{
+							traceEnt->NPC->timeOfDeath = level.time + 2000;
+						}
 					}
 
 					if ((PM_RunningAnim(traceEnt->client->ps.legsAnim) ||
@@ -23704,8 +23868,8 @@ static void force_shoot_lightning(gentity_t* self)
 	if (self->client->ps.forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_2)
 	{
 		vec3_t center;
-		vec3_t mins, maxs;
-		vec3_t v;
+		vec3_t mins{}, maxs{};
+		vec3_t v{};
 		const float radius = FORCE_LIGHTNING_RADIUS_WIDE;
 		float dot;
 
@@ -24469,7 +24633,7 @@ void ForceShootDrain(gentity_t* self)
 
 		if (self->client->ps.forcePowerLevel[FP_DRAIN] > FORCE_LEVEL_2)
 		{
-			vec3_t center, mins, maxs, v;
+			vec3_t center, mins{}, maxs{}, v{};
 			const float radius = MAX_DRAIN_DISTANCE;
 
 			// FIX: Move large array off the stack (removes C6262)
@@ -25651,7 +25815,7 @@ static void ForceStasisWide(const gentity_t* self, gentity_t* traceEnt)
 		{
 			if (g_stasistems->integer)
 			{
-				vec3_t mins, maxs;
+				vec3_t mins{}, maxs{};
 
 				for (int i = 0; i < 3; i++)
 				{
@@ -25887,12 +26051,105 @@ static void ForceStasisWide(const gentity_t* self, gentity_t* traceEnt)
 	}
 }
 
+// The caster's side of force stasis: the push anim and hand effect, the sound, the force cost and the debounce.
+static void forcestasis_anim(gentity_t* self)
+{
+	int anim, sound_index;
+
+	if (self->s.weapon == WP_MELEE ||
+		self->s.weapon == WP_NONE ||
+		self->s.weapon == WP_SABER && !self->client->ps.SaberActive())
+	{
+		//2-handed PUSH
+		if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+		{
+			anim = BOTH_SUPERPUSH;
+
+			if (self->handLBolt != -1)
+			{
+				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+					self->currentOrigin, 200, qtrue);
+			}
+
+			if (self->handRBolt != -1)
+			{
+				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
+					self->currentOrigin, 200, qtrue);
+			}
+		}
+		else
+		{
+			if (self->s.eFlags & EF_FORCE_DRAINED || self->s.eFlags & EF_FORCE_GRIPPED || self->s.eFlags &
+				EF_FORCE_GRABBED)
+			{
+				anim = BOTH_FORCEPUSH;
+
+				if (self->handLBolt != -1)
+				{
+					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+						self->currentOrigin, 200, qtrue);
+				}
+			}
+			else
+			{
+				anim = BOTH_2HANDPUSH;
+
+				if (self->handLBolt != -1)
+				{
+					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+						self->currentOrigin, 200, qtrue);
+				}
+
+				if (self->handRBolt != -1)
+				{
+					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
+						self->currentOrigin, 200, qtrue);
+				}
+			}
+		}
+	}
+	else
+	{
+		anim = BOTH_FORCEPUSH;
+
+		if (self->handLBolt != -1)
+		{
+			G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
+				self->currentOrigin, 200, qtrue);
+		}
+	}
+	sound_index = G_SoundIndex("sound/weapons/force/ForceStasis.mp3");
+
+	int parts = SETANIM_TORSO;
+	if (!PM_InKnockDown(&self->client->ps))
+	{
+		if (!VectorLengthSquared(self->client->ps.velocity) && !(self->client->ps.pm_flags & PMF_DUCKED))
+		{
+			parts = SETANIM_BOTH;
+		}
+	}
+	NPC_SetAnim(self, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+	self->client->ps.saberMove = self->client->ps.saberBounceMove = LS_READY;
+	//don't finish whatever saber anim you may have been in
+	self->client->ps.saberBlocked = BLOCKED_NONE;
+
+	G_Sound(self, sound_index);
+
+	WP_ForcePowerStart(self, FP_STASIS, 0);
+
+	self->client->ps.weaponTime = 1000;
+	if (self->client->ps.forcePowersActive & 1 << FP_SPEED)
+	{
+		self->client->ps.weaponTime = floor(self->client->ps.weaponTime * g_timescale->value);
+	}
+	self->client->ps.forcePowerDebounce[FP_STASIS] = level.time + self->client->ps.torsoAnimTimer + 500;
+}
+
 void ForceStasis(gentity_t* self)
 {
 	trace_t tr;
 	vec3_t forward;
 	gentity_t* traceEnt = nullptr;
-	int anim, sound_index;
 	float currentFrame, animSpeed;
 	int radius;
 	int junk;
@@ -25952,7 +26209,7 @@ void ForceStasis(gentity_t* self)
 
 		vec3_t center, mins{}, maxs{}, v{};
 		float reach = radius, dist;
-		gentity_t* entity_list[MAX_GENTITIES];
+		static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 		int e, num_listed_entities, i;
 
 		VectorCopy(self->currentOrigin, center);
@@ -26054,6 +26311,12 @@ void ForceStasis(gentity_t* self)
 				ForceStasisWide(self, traceEnt);
 			}
 		}
+		//the caster's anim, sound and force cost: once, however many were caught
+		forcestasis_anim(self);
+
+		// Done: the targets were handled in the loop. Falling through ran the single-target code
+		// below on the last listed entity (possibly the caster), or crashed if none was listed.
+		return;
 	}
 	else
 	{
@@ -26062,6 +26325,9 @@ void ForceStasis(gentity_t* self)
 		AngleVectors(self->client->ps.viewangles, forward, nullptr, nullptr);
 		VectorNormalize(forward);
 		VectorMA(self->client->renderInfo.eyePoint, radius, forward, end);
+
+		//the caster's anim, sound and force cost: like a push, also when nothing is caught
+		forcestasis_anim(self);
 
 		if (self->enemy)
 		{
@@ -26128,7 +26394,7 @@ void ForceStasis(gentity_t* self)
 						maxs[i] = self->currentOrigin[i] + 512;
 					}
 
-					gentity_t* entlist[MAX_GENTITIES];
+					static gentity_t* entlist[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 					int num_listed_entities = gi.EntitiesInBox(mins, maxs, entlist, MAX_GENTITIES);
 					vec3_t vec2, vwangles, traceend;
 
@@ -26320,94 +26586,6 @@ void ForceStasis(gentity_t* self)
 			Player_CheckFreeze(traceEnt);
 		}
 	}
-
-	if (self->s.weapon == WP_MELEE ||
-		self->s.weapon == WP_NONE ||
-		self->s.weapon == WP_SABER && !self->client->ps.SaberActive())
-	{
-		//2-handed PUSH
-		if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
-		{
-			anim = BOTH_SUPERPUSH;
-
-			if (self->handLBolt != -1)
-			{
-				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-					self->currentOrigin, 200, qtrue);
-			}
-
-			if (self->handRBolt != -1)
-			{
-				G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
-					self->currentOrigin, 200, qtrue);
-			}
-		}
-		else
-		{
-			if (self->s.eFlags & EF_FORCE_DRAINED || self->s.eFlags & EF_FORCE_GRIPPED || self->s.eFlags &
-				EF_FORCE_GRABBED)
-			{
-				anim = BOTH_FORCEPUSH;
-
-				if (self->handLBolt != -1)
-				{
-					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-						self->currentOrigin, 200, qtrue);
-				}
-			}
-			else
-			{
-				anim = BOTH_2HANDPUSH;
-
-				if (self->handLBolt != -1)
-				{
-					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-						self->currentOrigin, 200, qtrue);
-				}
-
-				if (self->handRBolt != -1)
-				{
-					G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handRBolt, self->s.number,
-						self->currentOrigin, 200, qtrue);
-				}
-			}
-		}
-	}
-	else
-	{
-		anim = BOTH_FORCEPUSH;
-
-		if (self->handLBolt != -1)
-		{
-			G_PlayEffect(G_EffectIndex("force/pushblur"), self->playerModel, self->handLBolt, self->s.number,
-				self->currentOrigin, 200, qtrue);
-		}
-	}
-	sound_index = G_SoundIndex("sound/weapons/force/ForceStasis.mp3");
-
-	int parts = SETANIM_TORSO;
-	if (!PM_InKnockDown(&self->client->ps))
-	{
-		if (!VectorLengthSquared(self->client->ps.velocity) && !(self->client->ps.pm_flags & PMF_DUCKED))
-		{
-			parts = SETANIM_BOTH;
-		}
-	}
-	NPC_SetAnim(self, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-	self->client->ps.saberMove = self->client->ps.saberBounceMove = LS_READY;
-	//don't finish whatever saber anim you may have been in
-	self->client->ps.saberBlocked = BLOCKED_NONE;
-
-	G_Sound(self, sound_index);
-
-	WP_ForcePowerStart(self, FP_STASIS, 0);
-
-	self->client->ps.weaponTime = 1000;
-	if (self->client->ps.forcePowersActive & 1 << FP_SPEED)
-	{
-		self->client->ps.weaponTime = floor(self->client->ps.weaponTime * g_timescale->value);
-	}
-	self->client->ps.forcePowerDebounce[FP_STASIS] = level.time + self->client->ps.torsoAnimTimer + 500;
 }
 
 void ForceGrasp(gentity_t* self)
@@ -29065,7 +29243,7 @@ static void wp_force_power_run(gentity_t* self, forcePowers_t force_power, userc
 				return;
 			}
 			if (drain_ent->client && drain_ent->client->moveType == MT_FLYSWIM && VectorLengthSquared(
-				NPC->client->ps.velocity) > 300 * 300)
+				drain_ent->client->ps.velocity) > 300 * 300) // the drained creature, not the global NPC
 			{
 				//flying creature broke free
 				WP_ForcePowerStop(self, FP_DRAIN);
@@ -29734,7 +29912,7 @@ static void wp_force_power_run(gentity_t* self, forcePowers_t force_power, userc
 		{
 			vec3_t forward, mins{}, maxs{};
 			int e, num_listed_entities;
-			gentity_t* entity_list[MAX_GENTITIES];
+			static gentity_t* entity_list[MAX_GENTITIES]; //static: too big for the stack (64 KB)
 			gentity_t* check = nullptr;
 			trace_t tr;
 
@@ -30305,7 +30483,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 						//regen half as fast
 						self->client->ps.BlockPointsRegenDebounceTime += 2000;
 					}
-					else if (self->client->ps.weaponTime <= 0) //slows down
+					else if (self->client->ps.weaponTime <= 0) //slows down when idle (the swap to "> 0" made idle regen 20 times as fast)
 					{
 						//regen half as fast
 						self->client->ps.BlockPointsRegenDebounceTime += 2000;
@@ -30349,7 +30527,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 					//regen half as fast
 					self->client->ps.BlockPointsRegenDebounceTime += 2000;
 				}
-				else if (self->client->ps.weaponTime <= 0) //slows down
+				else if (self->client->ps.weaponTime <= 0) //slows down when idle (the swap to "> 0" made idle regen 20 times as fast)
 				{
 					//regen half as fast
 					self->client->ps.BlockPointsRegenDebounceTime += 2000;

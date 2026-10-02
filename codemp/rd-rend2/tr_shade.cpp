@@ -1718,7 +1718,7 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 			}
 		}
 
-		if (!(backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC))
+		if (!backEnd.currentEntity || !(backEnd.currentEntity->e.renderfx & RF_VOLUMETRIC)) // currentEntity is NULL-checked above too
 		{
 			vec4_t baseColor{};
 			vec4_t vertColor{};
@@ -2002,9 +2002,9 @@ static void RB_IterateStagesGeneric(shaderCommands_t* input, const VertexArraysP
 						uniformDataWriter.SetUniformVec4(UNIFORM_CUBEMAPINFO, vec);
 					}
 
-					if (r_ssao->integer && tr.world && backEnd.framePostProcessed == qfalse)
+					if (R_SsaoActive() && tr.world && backEnd.framePostProcessed == qfalse)
 						samplerBindingsWriter.AddStaticImage(tr.screenSsaoImage, TB_SSAOMAP);
-					else if (r_ssao->integer)
+					else if (R_SsaoAvailable())
 						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SSAOMAP);
 				}
 			}

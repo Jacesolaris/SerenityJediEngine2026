@@ -184,6 +184,15 @@ static void CG_CenterPrint_f()
 	CG_CenterPrint(CG_Argv(1), SCREEN_HEIGHT * 0.25);
 }
 
+// A center print that also shows during a cutscene camera (cg_draw.cpp): the Pazaak notices (g_pazaak.cpp)
+int cg_pazaakPrintTime = 0;
+
+static void CG_PazaakPrint_f()
+{
+	CG_CenterPrint(CG_Argv(1), SCREEN_HEIGHT * 0.25);
+	cg_pazaakPrintTime = cg.centerPrintTime;
+}
+
 static void CG_Print_f()
 {
 	CG_Printf("%s", CG_Argv(1));
@@ -234,6 +243,7 @@ static serverCommand_t commands[] = {
 	{"cts", CG_CaptionTextStop},
 	{"lt", CG_LCARSText_f},
 	{"print", CG_Print_f},
+	{"pzkcp", CG_PazaakPrint_f},
 	{"st", CG_ScrollText_f},
 };
 

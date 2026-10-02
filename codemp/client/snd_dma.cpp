@@ -177,6 +177,7 @@ static sfx_t* sfxHash[LOOP_HASH];
 
 cvar_t* s_volume;
 cvar_t* s_volumeVoice;
+cvar_t* s_pazaakMute; // the Pazaak board is open: only interface sounds (CHAN_LOCAL_SOUND) play
 cvar_t* s_testsound;
 cvar_t* s_khz;
 cvar_t* s_allowDynamicMusic;
@@ -457,6 +458,7 @@ void S_Init(void)
 
 	s_volume = Cvar_Get("s_volume", "0.5", CVAR_ARCHIVE, "Volume");
 	s_volumeVoice = Cvar_Get("s_volumeVoice", "1.0", CVAR_ARCHIVE, "Volume for voice channels");
+	s_pazaakMute = Cvar_Get("s_pazaakMute", "0", CVAR_TEMP);
 	s_musicVolume = Cvar_Get("s_musicvolume", "0.25", CVAR_ARCHIVE, "Music Volume");
 	s_separation = Cvar_Get("s_separation", "0.5", CVAR_ARCHIVE);
 	s_khz = Cvar_Get("s_khz", "44", CVAR_ARCHIVE | CVAR_LATCH);
@@ -803,53 +805,69 @@ Will allocate a new sfx if it isn't found
 */
 sfx_t* S_FindName(const char* name)
 {
-	if (!name)
+	// ------------------------------------------------------------
+	// Validate input pointer
+	// ------------------------------------------------------------
+	if (name == NULL)
 	{
-		Com_Error(ERR_FATAL, "S_FindName: NULL");
-	}
-	if (!name[0])
-	{
-		Com_Error(ERR_FATAL, "S_FindName: empty name");
+		Com_Printf(
+			S_COLOR_RED "ERROR: S_FindName: NULL name! Prevented crash from bad sound file.\n" S_COLOR_WHITE);
+		return NULL;
 	}
 
+	// ------------------------------------------------------------
+	// Validate non-empty string
+	// ------------------------------------------------------------
+	if (name[0] == '\0')
+	{
+		Com_Printf(
+			S_COLOR_RED "ERROR: S_FindName: empty name! Prevented crash from bad sound file.\n" S_COLOR_WHITE);
+		return NULL;
+	}
+
+	// ------------------------------------------------------------
+	// Validate length
+	// ------------------------------------------------------------
 	if (strlen(name) >= MAX_QPATH)
 	{
 		Com_Error(ERR_FATAL, "Sound name too long: %s", name);
+		return NULL; // unreachable, but keeps compiler happy
 	}
 
+	// ------------------------------------------------------------
+	// Strip extension
+	// ------------------------------------------------------------
 	char sSoundNameNoExt[MAX_QPATH];
-	COM_StripExtension(name, sSoundNameNoExt, sizeof sSoundNameNoExt);
+	COM_StripExtension(name, sSoundNameNoExt, sizeof(sSoundNameNoExt));
 
+	// ------------------------------------------------------------
+	// Hash lookup
+	// ------------------------------------------------------------
 	const int hash = S_HashSFXName(sSoundNameNoExt);
 
 	sfx_t* sfx = sfxHash[hash];
-	// see if already loaded
-	while (sfx)
+
+	// Check if already loaded
+	while (sfx != NULL)
 	{
-		if (!Q_stricmp(sfx->sSoundName, sSoundNameNoExt))
+		if (Q_stricmp(sfx->sSoundName, sSoundNameNoExt) == 0)
 		{
 			return sfx;
 		}
 		sfx = sfx->next;
 	}
-	/*
-		// find a free sfx
-		for (i=0 ; i < s_numSfx ; i++) {
-			if (!s_knownSfx[i].soundName[0]) {
-				break;
-			}
-		}
-	*/
-	int i = s_numSfx; //we don't clear the soundName after failed loads any more, so it'll always be the last entry
+
+	// ------------------------------------------------------------
+	// Allocate new sfx slot
+	// ------------------------------------------------------------
+	int i = s_numSfx;
 
 	if (s_numSfx == MAX_SFX)
 	{
-		// ok, no sfx's free, but are there any with defaultSound set? (which the registering ent will never
-		//	see because he gets zero returned if it's default...)
-		//
+		// Try to recycle a default sound
 		for (i = 0; i < s_numSfx; i++)
 		{
-			if (s_knownSfx[i].bDefaultSound)
+			if (s_knownSfx[i].bDefaultSound == qtrue)
 			{
 				break;
 			}
@@ -857,15 +875,23 @@ sfx_t* S_FindName(const char* name)
 
 		if (i == s_numSfx)
 		{
-			// genuinely out of handles...
+			Com_Error(ERR_FATAL, "S_FindName: out of sfx_t handles");
+			return NULL; // unreachable
+		}
 
-			// if we ever reach this, let me know and I'll either boost the array or put in a map-used-on
-			//	reference to enable sfx_t recycling. TA codebase relies on being able to have structs for every sound
-			//	used anywhere, ever, all at once (though audio bit-buffer gets recycled). SOF1 used about 1900 distinct
-			//	events, so current MAX_SFX limit should do, or only need a small boost...	-ste
-			//
-
-			Com_Error(ERR_FATAL, "S_FindName: out of sfx_t");
+		// The recycled slot is still linked into the hash chain of its OLD name.
+		// Unlink it before it is re-inserted below, otherwise the chains get
+		// crossed and can form a cycle - the next lookup of a new sound then loops
+		// forever (seen as a hang while loading a map after ~120 map loads, when
+		// the table is full: s_numSfx == MAX_SFX).
+		sfx_t* recycled = &s_knownSfx[i];
+		for (sfx_t** link = &sfxHash[S_HashSFXName(recycled->sSoundName)]; *link; link = &(*link)->next)
+		{
+			if (*link == recycled)
+			{
+				*link = recycled->next;
+				break;
+			}
 		}
 	}
 	else
@@ -873,11 +899,16 @@ sfx_t* S_FindName(const char* name)
 		s_numSfx++;
 	}
 
+	// ------------------------------------------------------------
+	// Initialize new sfx entry
+	// ------------------------------------------------------------
 	sfx = &s_knownSfx[i];
-	memset(sfx, 0, sizeof * sfx);
-	Q_strncpyz(sfx->sSoundName, sSoundNameNoExt, sizeof sfx->sSoundName);
-	Q_strlwr(sfx->sSoundName); //force it down low
+	memset(sfx, 0, sizeof(*sfx));
 
+	Q_strncpyz(sfx->sSoundName, sSoundNameNoExt, sizeof(sfx->sSoundName));
+	Q_strlwr(sfx->sSoundName);
+
+	// Insert into hash table
 	sfx->next = sfxHash[hash];
 	sfxHash[hash] = sfx;
 
@@ -1457,12 +1488,29 @@ Starts an ambient, 'one-shot" sound.
 ====================
 */
 
+// The Pazaak board is open (s_pazaakMute, set by the UI): everything but the interface sounds is quiet
+int Key_GetCatcher();
+
+static qboolean S_PazaakMuted(const int entchannel)
+{
+	return s_pazaakMute && s_pazaakMute->integer && entchannel != CHAN_LOCAL_SOUND ? qtrue : qfalse;
+}
+
+static float S_MusicVolume()
+{
+	return s_pazaakMute && s_pazaakMute->integer ? 0.0f : s_musicVolume->value;
+}
+
 void S_StartAmbientSound(const vec3_t origin, const int entityNum, const unsigned char volume,
 	const sfxHandle_t sfxHandle)
 {
 	channel_t* ch;
 
 	if (!s_soundStarted || s_soundMuted)
+	{
+		return;
+	}
+	if (S_PazaakMuted(-1))
 	{
 		return;
 	}
@@ -1571,6 +1619,10 @@ void S_StartSound(const vec3_t origin, const int entityNum, const int entchannel
 	channel_t* ch;
 
 	if (!s_soundStarted || s_soundMuted)
+	{
+		return;
+	}
+	if (S_PazaakMuted(entchannel))
 	{
 		return;
 	}
@@ -1968,6 +2020,10 @@ void S_AddLoopingSound(const int entityNum, const vec3_t origin, const vec3_t ve
 	{
 		return;
 	}
+	if (S_PazaakMuted(-1))
+	{
+		return;
+	}
 	if (numLoopSounds >= MAX_LOOP_SOUNDS)
 	{
 		return;
@@ -2032,6 +2088,10 @@ void S_AddAmbientLoopingSound(const vec3_t origin, const unsigned char volume, c
 	sfx_t* sfx;
 
 	if (!s_soundStarted || s_soundMuted)
+	{
+		return;
+	}
+	if (S_PazaakMuted(-1))
 	{
 		return;
 	}
@@ -2787,6 +2847,19 @@ Called once each time through the main loop
 */
 void S_Update(void)
 {
+	if (s_pazaakMute && s_pazaakMute->modified)
+	{
+		s_pazaakMute->modified = qfalse;
+		if (s_pazaakMute->integer)
+		{
+			S_StopSounds(); // the Pazaak board opened: only its sounds from now on
+		}
+	}
+	if (s_pazaakMute && s_pazaakMute->integer && !(Key_GetCatcher() & 0x0002))
+	{
+		Cvar_Set("s_pazaakMute", "0"); // no UI any more (KEYCATCH_UI): the board was closed some other way
+	}
+
 	if (!s_soundStarted || s_soundMuted)
 	{
 		return;
@@ -4170,7 +4243,10 @@ static qboolean S_StartBackgroundTrack_Actual(MusicInfo_t* pMusicInfo, const qbo
 	char dump[16];
 	char name[MAX_QPATH];
 
-	Q_strncpyz(sMusic_BackgroundLoop, loop, sizeof sMusic_BackgroundLoop);
+	if (loop != sMusic_BackgroundLoop) // restarting the loop passes this buffer itself: copying onto itself is undefined (ASan)
+	{
+		Q_strncpyz(sMusic_BackgroundLoop, loop, sizeof sMusic_BackgroundLoop);
+	}
 
 	Q_strncpyz(name, intro, sizeof name - 4); // this seems to be so that if the filename hasn't got an extension
 	//	but doesn't have the room to append on either then you'll just
@@ -5128,7 +5204,7 @@ static void S_UpdateBackgroundTrack(void)
 			if (pMusicInfoCurrent->s_backgroundFile == -1)
 			{
 				const int iRawEnd = s_rawend;
-				S_UpdateBackgroundTrack_Actual(pMusicInfoCurrent, qtrue, s_musicVolume->value);
+				S_UpdateBackgroundTrack_Actual(pMusicInfoCurrent, qtrue, S_MusicVolume());
 
 				/*			static int iPrevFrontVol = 0;
 							if (iPrevFrontVol != pMusicInfoCurrent->iXFadeVolume)
@@ -5140,7 +5216,7 @@ static void S_UpdateBackgroundTrack(void)
 				if (pMusicInfoFadeOut->bActive)
 				{
 					s_rawend = iRawEnd;
-					S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qfalse, s_musicVolume->value);
+					S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qfalse, S_MusicVolume());
 					// inactive-checked internally
 					/*
 									static int iPrevFadeVol = 0;
@@ -5204,7 +5280,7 @@ static void S_UpdateBackgroundTrack(void)
 			MusicInfo_t* pMusicInfoFadeOut = &tMusic_Info[eBGRNDTRACK_FADE];
 			if (pMusicInfoFadeOut->bActive)
 			{
-				S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qtrue, s_musicVolume->value);
+				S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qtrue, S_MusicVolume());
 				if (pMusicInfoFadeOut->iXFadeVolume == 0)
 				{
 					pMusicInfoFadeOut->bActive = qfalse;
@@ -5218,7 +5294,7 @@ static void S_UpdateBackgroundTrack(void)
 		//
 		const char* psCommand = S_Music_GetRequestedState(); // special check just for "silence" case...
 		const auto bShouldBeSilent = static_cast<qboolean>(psCommand && !Q_stricmp(psCommand, "silence"));
-		const float fDesiredVolume = bShouldBeSilent ? 0.0f : s_musicVolume->value;
+		const float fDesiredVolume = bShouldBeSilent ? 0.0f : S_MusicVolume();
 		//
 		// internal to this code is a volume-smoother...
 		//

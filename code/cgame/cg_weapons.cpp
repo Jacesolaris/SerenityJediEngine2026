@@ -1236,7 +1236,7 @@ CG_MachinegunSpinAngle
 constexpr auto SPIN_SPEED = 0.9f;
 constexpr auto COAST_TIME = 1000;
 
-static float CG_MachinegunSpinAngle(centity_t* cent)
+float CG_MachinegunSpinAngle(centity_t* cent)
 {
 	float angle;
 	int delta = cg.time - cent->pe.barrelTime;

@@ -546,7 +546,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		}
 
 		//Special case- if player is being hunted by his own people, set the player's team to team_free
-		if (self->client->playerTeam == TEAM_PLAYER
+		if (self->client && self->client->playerTeam == TEAM_PLAYER
 			&& enemy->s.number == 0
 			&& enemy->client && enemy->client->ps.weapon != WP_TURRET
 			&& enemy->client->playerTeam == TEAM_PLAYER)
@@ -3324,7 +3324,8 @@ NPC_ReserveCombatPoint
 qboolean NPC_ReserveCombatPoint(const int combatPointID)
 {
 	//Make sure it's valid
-	if (combatPointID > level.numCombatPoints)
+	// -1 means "no combat point" and is passed in by many callers; valid IDs are 0..numCombatPoints-1
+	if (combatPointID < 0 || combatPointID >= level.numCombatPoints)
 		return qfalse;
 
 	//Make sure it's not already occupied
@@ -3351,7 +3352,8 @@ qboolean NPC_FreeCombatPoint(const int combatPointID, const qboolean failed)
 		NPCInfo->lastFailedCombatPoint = combatPointID;
 	}
 	//Make sure it's valid
-	if (combatPointID > level.numCombatPoints)
+	// -1 means "no combat point" and is passed in by many callers; valid IDs are 0..numCombatPoints-1
+	if (combatPointID < 0 || combatPointID >= level.numCombatPoints)
 		return qfalse;
 
 	//Make sure it's currently occupied

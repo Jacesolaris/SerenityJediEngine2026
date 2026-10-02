@@ -553,7 +553,7 @@ void IT_LoadItemParms();
 void IT_LoadWeatherParms(void);
 
 //
-// g_client.c
+// GClient.c
 //
 void SetClientViewAngle(gentity_t* ent, vec3_t angle);
 gentity_t* SelectSpawnPoint(vec3_t avoid_point, team_t team, vec3_t origin, vec3_t angles);
@@ -613,7 +613,7 @@ extern void G_SoundIndexOnEnt(const gentity_t* ent, soundChannel_t channel, int 
 //
 
 //
-// g_client.c
+// GClient.c
 //
 char* client_connect(int clientNum, qboolean first_time, SavedGameJustLoaded_e e_saved_game_just_loaded);
 void client_userinfo_changed(int clientNum);

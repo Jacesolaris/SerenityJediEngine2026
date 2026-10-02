@@ -1881,6 +1881,18 @@ void PM_UpdateViewAngles(int saberAnimLevel, playerState_t* ps, usercmd_t* cmd, 
 			}
 		}
 	}
+	else if (gent && gent->client)
+	{
+		//the pilot of a walker looks up and down as far as its head turns (lookPitch, as in MP). The branch for riders
+		//above is never reached - a rider is not a vehicle - and would lock the yaw of every rider if it were.
+		const Vehicle_t* riding = G_IsRidingVehicle(gent);
+		if (riding && riding->m_pVehicleInfo && riding->m_pVehicleInfo->type == VH_WALKER
+			&& riding->m_pVehicleInfo->lookPitch > 0.0f && riding->m_pVehicleInfo->lookPitch < pitch_max)
+		{
+			pitch_max = riding->m_pVehicleInfo->lookPitch;
+			pitch_min = -pitch_max;
+		}
+	}
 
 	const short pitch_clamp_min = ANGLE2SHORT(root_pitch + pitch_min);
 	const short pitch_clamp_max = ANGLE2SHORT(root_pitch + pitch_max);

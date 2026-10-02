@@ -83,7 +83,7 @@ int PM_AnimLength(const animNumber_t anim);
 
 int PM_ReadyPoseForsaber_anim_level(void);
 int PM_IdlePoseForsaber_anim_level(void);
-int PM_ReadyPoseForsaber_anim_levelBOT(void);
+int PM_ReadyPoseForSaberAnimLevelBOT(void);
 int PM_ReadyPoseForsaber_anim_levelDucked(void);
 int PM_BlockingPoseForsaber_anim_levelSingle(void);
 int PM_BlockingPoseForsaber_anim_levelDual(void);

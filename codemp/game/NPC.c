@@ -151,7 +151,9 @@ qboolean G_OkayToRemoveCorpse(gentity_t* self)
 		Vehicle_t* p_veh = g_entities[self->s.m_iVehicleNum].m_pVehicle;
 		if (p_veh)
 		{
-			if (!p_veh->m_pVehicleInfo->Eject(p_veh, p_veh->m_pPilot, qtrue))
+			// eject this corpse (as SP does), not the pilot: a dead passenger/droid ejected the live pilot,
+			// and with no pilot it passed NULL
+			if (!p_veh->m_pVehicleInfo->Eject(p_veh, (bgEntity_t*)self, qtrue))
 			{
 				//dammit, still can't get off the vehicle...
 				return qfalse;

@@ -91,6 +91,7 @@ extern void PM_AddFatigue(playerState_t* ps, int fatigue);
 extern qboolean PM_WalkingAnim(int anim);
 extern qboolean PM_StandingAnim(int anim);
 extern saberMoveName_t PM_BrokenParryForParry(int move);
+extern qboolean manual_saberblocking(const gentity_t* defender);
 extern saberMoveName_t pm_broken_parry_for_attack(int move);
 extern saberMoveName_t PM_KnockawayForParry(int move);
 extern saberMoveName_t PM_KnockawayForParryOld(int move);
@@ -140,11 +141,11 @@ extern int SabBeh_AnimateMassiveStaffSlowBounce(int anim);
 extern qboolean PM_SaberInFullDamageMove(const playerState_t* ps, const int animSetIndex);
 extern void G_ClearEnemy(gentity_t* self);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
 extern void PM_AddBlockFatigue(playerState_t* ps, int fatigue);
 qboolean WP_SaberBouncedSaberDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
-extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
 extern qboolean BG_FullBodyTauntAnim(int anim);
 extern int PM_InGrappleMove(int anim);
 extern qboolean PM_SaberInKillMove(int move);
@@ -152,7 +153,7 @@ extern qboolean PM_WalkingOrRunningAnim(int anim);
 extern qboolean PM_RestAnim(int anim);
 extern qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, int saberNum, int bladeNum, vec3_t hit_loc);
 extern qboolean BG_HopAnim(int anim);
-extern void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
+extern void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt);
 extern qboolean PM_SaberInOverHeadSlash(saberMoveName_t saberMove);
 extern qboolean PM_SaberInBackAttack(saberMoveName_t saberMove);
 void WP_thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* trace);
@@ -2012,7 +2013,7 @@ extern saberMoveData_t saberMoveData[LS_MOVE_MAX];
 
 qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 {
-	qboolean lock_quad;
+	int lock_quad;
 
 	if (g_debugSaberLocks.integer)
 	{
@@ -2027,6 +2028,14 @@ qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 
 	if (!ent1->client || !ent2->client)
 	{
+		return qfalse;
+	}
+
+	if (ent1->client->ps.weapon != WP_SABER || ent2->client->ps.weapon != WP_SABER
+		|| ent1->client->ps.saberHolstered == 2 || ent2->client->ps.saberHolstered == 2)
+	{
+		//both need a lit saber in hand. A bot with a gun (or fists) still has its saber entity, and a saber that hit it
+		//and was "blocked" by it could pull it into a saberlock.
 		return qfalse;
 	}
 
@@ -2147,21 +2156,21 @@ qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 
 	switch (lock_quad)
 	{
-	case (qboolean)Q_BR:
+	case Q_BR:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_BR);
-	case (qboolean)Q_R:
+	case Q_R:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_R);
-	case (qboolean)Q_TR:
+	case Q_TR:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_TR);
-	case (qboolean)Q_T:
+	case Q_T:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_TOP);
-	case (qboolean)Q_TL:
+	case Q_TL:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_TL);
-	case (qboolean)Q_L:
+	case Q_L:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_L);
-	case (qboolean)Q_BL:
+	case Q_BL:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_DIAG_BL);
-	case (qboolean)Q_B:
+	case Q_B:
 		return WP_SabersCheckLock2(ent1, ent2, LOCK_TOP);
 	default:
 		//this shouldn't happen.  just wing it
@@ -6889,7 +6898,6 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 	gentity_t* hitEnt = &g_entities[tr.entityNum];
 
 	if (real_trace_result == REALTRACE_HIT_WORLD ||
-		real_trace_result == 3 ||
 		tr.entityNum == ENTITYNUM_WORLD ||
 		tr.entityNum < 0 ||
 		tr.entityNum >= MAX_GENTITIES ||
@@ -9427,7 +9435,7 @@ void WP_saberBackToOwner(gentity_t* saberent)
 				WP_ForcePowerRegenerate(saber_owner, BLOCKPOINTS_TWENTYFIVE);
 
 				// Schedule delayed saber-style switch (2.5 seconds)
-				saber_owner->client->ps.userInt1 |= BOT_SABER_PENDING_MASK;
+				saber_owner->client->botPendingFlags |= BOT_SABER_PENDING_MASK;
 				saber_owner->client->ps.botPendingStyleTime = level.time + 2500;
 
 				// Reset saber state
@@ -9435,7 +9443,7 @@ void WP_saberBackToOwner(gentity_t* saberent)
 				saber_owner->client->ps.saberBlocked = BLOCKED_NONE;
 
 				// Schedule BOTH_STAND1TO2 to play 1.2 seconds later
-				saber_owner->client->ps.userInt1 |= BOT_PENDING_STAND_ANIM;
+				saber_owner->client->botPendingFlags |= BOT_PENDING_STAND_ANIM;
 				saber_owner->client->ps.botPendingStandTime = level.time + 1200;
 			}
 			else

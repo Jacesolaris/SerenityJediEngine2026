@@ -778,8 +778,9 @@ static qboolean S_LoadSound_Actual(sfx_t* sfx)
 	//
 	// Ensure name has an extension (which it must have, but you never know), and get ptr to it...
 	//
-	const char* psExt = &sLoadName[strlen(sLoadName) - 4];
-	if (*psExt != '.')
+	// Names shorter than an extension would make strlen - 4 point before the buffer.
+	const char* psExt = strlen(sLoadName) >= 4 ? &sLoadName[strlen(sLoadName) - 4] : sLoadName;
+	if (strlen(sLoadName) < 4 || *psExt != '.')
 	{
 		//Com_Printf( "WARNING: soundname '%s' does not have 3-letter extension\n",sLoadName);
 		COM_DefaultExtension(sLoadName, sizeof sLoadName, ".wav");	// so psExt below is always valid

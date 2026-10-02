@@ -1145,16 +1145,72 @@ void Multiply_3x4Matrix(mdxaBone_t* out, const mdxaBone_t* in2, const mdxaBone_t
 	out->matrix[2][3] = in2->matrix[2][0] * in->matrix[0][3] + in2->matrix[2][1] * in->matrix[1][3] + in2->matrix[2][2]
 		* in->matrix[2][3] + in2->matrix[2][3];
 }
-
-static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, const int iFrame, const int iBone)
+static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, const int iFrameIn, const int iBoneIn)
 {
-	assert(iFrame >= 0 && iFrame < pMDXAHeader->numFrames);
-	assert(iBone >= 0 && iBone < pMDXAHeader->numBones);
+	if (!pMDXAHeader)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - pMDXAHeader was NULL\n");
+#endif
+		return 0;
+	}
 
-	const int iOffsetToIndex = iFrame * pMDXAHeader->numBones * 3 + iBone * 3;
-	const mdxaIndex_t* pIndex = reinterpret_cast<mdxaIndex_t*>((byte*)pMDXAHeader + pMDXAHeader->ofsFrames + iOffsetToIndex);
+	int iFrame = iFrameIn;
+	int iBone = iBoneIn;
 
-	return (pIndex->iIndex[2] << 16) + (pIndex->iIndex[1] << 8) + pIndex->iIndex[0];
+	// ------------------------------------------------------------
+	// Validate and clamp iFrame
+	// ------------------------------------------------------------
+	if (iFrame < 0 || iFrame >= pMDXAHeader->numFrames)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - iFrame %d out of range (0..%d). Clamping.\n", iFrame, pMDXAHeader->numFrames - 1);
+#endif
+		if (iFrame < 0)
+		{
+			iFrame = 0;
+		}
+		else
+		{
+			iFrame = pMDXAHeader->numFrames - 1;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Validate and clamp iBone
+	// ------------------------------------------------------------
+	if (iBone < 0 || iBone >= pMDXAHeader->numBones)
+	{
+#ifdef _DEBUG
+		Com_Printf("Debug: G2_GetBonePoolIndex - iBone %d out of range (0..%d). Clamping.\n", iBone, pMDXAHeader->numBones - 1);
+#endif
+		if (iBone < 0)
+		{
+			iBone = 0;
+		}
+		else
+		{
+			iBone = pMDXAHeader->numBones - 1;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Compute index safely
+	// ------------------------------------------------------------
+	const int iOffsetToIndex =
+		iFrame * pMDXAHeader->numBones * 3 +
+		iBone * 3;
+
+	const byte* base = reinterpret_cast<const byte*>(pMDXAHeader);
+	const mdxaIndex_t* pIndex =
+		reinterpret_cast<const mdxaIndex_t*>(base + pMDXAHeader->ofsFrames + iOffsetToIndex);
+
+	// ------------------------------------------------------------
+	// Return packed index
+	// ------------------------------------------------------------
+	return (pIndex->iIndex[2] << 16) |
+		(pIndex->iIndex[1] << 8) |
+		pIndex->iIndex[0];
 }
 
 static void UnCompressBone(float mat[3][4], const int iBoneIndex, const mdxaHeader_t* pMDXAHeader, const int iFrame)
@@ -3388,6 +3444,14 @@ void G2_GetBoltMatrixLow(CGhoul2Info& ghoul2, const int boltNum, const vec3_t sc
 	CBoneCache& boneCache = *ghoul2.mBoneCache;
 	assert(boneCache.mod);
 	boltInfo_v& boltList = ghoul2.mBltlist;
+	// a model bolted to this one can still point at a bolt index that this model no
+	// longer has (seen right after a weapon switch + vid_restart: boltNum 9, size 1);
+	// the assert does nothing in release builds, so check it like rd-rend2 does
+	if (boltNum < 0 || boltNum >= static_cast<int>(boltList.size()))
+	{
+		retMatrix = identityMatrix;
+		return;
+	}
 
 	// This was causing a client crash when rendering a model with no valid g2 bolts, such as Ragnos =]
 	if (boltList.size() < 1)
@@ -3427,6 +3491,12 @@ void G2_GetBoltMatrixLow(CGhoul2Info& ghoul2, const int boltNum, const vec3_t sc
 #endif
 	if (boltList[boltNum].boneNumber >= 0)
 	{
+		// the bone must exist in the bone cache this model uses right now
+		/*if (boltList[boltNum].boneNumber >= boneCache.mBones)
+		{
+			retMatrix = identityMatrix;
+			return;
+		}*/
 		const auto offsets = (mdxaSkelOffsets_t*)((byte*)boneCache.header + sizeof(mdxaHeader_t));
 		const auto skel = (mdxaSkel_t*)((byte*)boneCache.header + sizeof(mdxaHeader_t) + offsets->offsets[boltList[
 			boltNum]
@@ -3454,6 +3524,13 @@ void G2_GetBoltMatrixLow(CGhoul2Info& ghoul2, const int boltNum, const vec3_t sc
 		if (!surface && surfInfo && surfInfo->surface < 10000)
 		{
 			surface = static_cast<mdxmSurface_t*>(G2_FindSurface_BC(boneCache.mod, surfInfo->surface, 0));
+		}
+		// a model surface bolt needs a surface this model really has
+		// (generated surfaces find their own original surface)
+		if (!surface && !(surfInfo && surfInfo->offFlags == G2SURFACEFLAG_GENERATED))
+		{
+			retMatrix = identityMatrix;
+			return;
 		}
 		G2_ProcessSurfaceBolt2(boneCache, surface, boltNum, boltList, surfInfo, boneCache.mod, retMatrix);
 	}
@@ -4281,7 +4358,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 		LL(surfInfo->parentIndex);
 
 		Q_strlwr(surfInfo->name); //just in case
-		if (strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off") == 0)
+		if (strlen(surfInfo->name) >= 4 && strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off") == 0)
 		{
 			surfInfo->name[strlen(surfInfo->name) - 4] = 0; //remove "_off" from name
 		}

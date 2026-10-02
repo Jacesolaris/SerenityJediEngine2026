@@ -92,6 +92,13 @@ void G_VehicleSpawn(gentity_t* self)
 		return; //return NULL;
 	}
 
+	if (!vehEnt->m_pVehicle || !vehEnt->NPC)
+	{
+		//the spawn did not make it a vehicle (not a vehicle type, or the game ran out of memory): nothing to set up
+		Com_Printf(S_COLOR_YELLOW "G_VehicleSpawn: '%s' did not spawn as a vehicle\n", vehEnt->NPC_type ? vehEnt->NPC_type : "?");
+		return;
+	}
+
 	vehEnt->s.angles[YAW] = yaw;
 	if (vehEnt->m_pVehicle->m_pVehicleInfo->type != VH_ANIMAL)
 	{
@@ -331,7 +338,8 @@ static qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 		else if (p_veh->m_iNumPassengers < p_veh->m_pVehicleInfo->maxPassengers)
 		{
 			// Find an empty passenger slot
-			for (int i = 0; i < p_veh->m_pVehicleInfo->maxPassengers; i++)
+			qboolean seated = qfalse;
+			for (int i = 0; i < p_veh->m_pVehicleInfo->maxPassengers && i < VEH_MAX_PASSENGERS; i++)
 			{
 				if (p_veh->m_ppPassengers[i] == NULL)
 				{
@@ -339,8 +347,13 @@ static qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 #ifdef _GAME
 					ent->client->ps.generic1 = i + 1;
 #endif
+					seated = qtrue;
 					break;
 				}
+			}
+			if (!seated)
+			{
+				return qfalse; // no free slot: don't count a passenger that isn't aboard
 			}
 			p_veh->m_iNumPassengers++;
 		}
@@ -397,7 +410,8 @@ static qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 		}
 		else if (p_veh->m_iNumPassengers < p_veh->m_pVehicleInfo->maxPassengers)
 		{
-			for (int i = 0; i < p_veh->m_pVehicleInfo->maxPassengers; i++)
+			qboolean seated = qfalse;
+			for (int i = 0; i < p_veh->m_pVehicleInfo->maxPassengers && i < VEH_MAX_PASSENGERS; i++)
 			{
 				if (p_veh->m_ppPassengers[i] == NULL)
 				{
@@ -405,8 +419,13 @@ static qboolean Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 #ifdef _GAME
 					ent->client->ps.generic1 = i + 1;
 #endif
+					seated = qtrue;
 					break;
 				}
+			}
+			if (!seated)
+			{
+				return qfalse; // no free slot
 			}
 			p_veh->m_iNumPassengers++;
 		}
@@ -562,7 +581,11 @@ static qboolean VEH_TryEject(const Vehicle_t* p_veh,
 
 static void G_EjectDroidUnit(Vehicle_t* p_veh, const qboolean kill)
 {
-	p_veh->m_pDroidUnit->s.m_iVehicleNum = ENTITYNUM_NONE;
+	if (!p_veh->m_pDroidUnit)
+	{
+		return;
+	}
+	p_veh->m_pDroidUnit->s.m_iVehicleNum = 0; // 0 = not in a vehicle (ENTITYNUM_NONE made "!= 0" checks look up entity 1023)
 	p_veh->m_pDroidUnit->s.owner = ENTITYNUM_NONE;
 	//	p_veh->m_pDroidUnit->s.otherentityNum2 = ENTITYNUM_NONE;
 #ifdef _GAME
@@ -572,7 +595,7 @@ static void G_EjectDroidUnit(Vehicle_t* p_veh, const qboolean kill)
 		droidEnt->r.ownerNum = ENTITYNUM_NONE;
 		if (droidEnt->client)
 		{
-			droidEnt->client->ps.m_iVehicleNum = ENTITYNUM_NONE;
+			droidEnt->client->ps.m_iVehicleNum = 0;
 		}
 		if (kill)
 		{
@@ -597,7 +620,7 @@ static qboolean Eject(Vehicle_t* p_veh, bgEntity_t* pEnt, const qboolean forceEj
 	qboolean taintedRider = qfalse;
 	qboolean deadRider = qfalse;
 
-	if (pEnt == p_veh->m_pDroidUnit)
+	if (pEnt && pEnt == p_veh->m_pDroidUnit) // both NULL (no droid, no rider) crashed in G_EjectDroidUnit
 	{
 		G_EjectDroidUnit(p_veh, qfalse);
 		return qtrue;
@@ -696,7 +719,7 @@ getItOutOfMe:
 		memset(&parent->client->pers.cmd, 0, sizeof(usercmd_t));
 		memset(&p_veh->m_ucmd, 0, sizeof(usercmd_t));
 
-		while (j < p_veh->m_iNumPassengers)
+		while (j < p_veh->m_pVehicleInfo->maxPassengers && j < VEH_MAX_PASSENGERS) // seats can be sparse: scan them all
 		{
 			if (p_veh->m_ppPassengers[j])
 			{
@@ -715,7 +738,7 @@ getItOutOfMe:
 				}
 #endif
 				p_veh->m_ppPassengers[j] = NULL;
-				while (k < p_veh->m_iNumPassengers)
+				while (k < p_veh->m_pVehicleInfo->maxPassengers && k < VEH_MAX_PASSENGERS)
 				{
 					if (!p_veh->m_ppPassengers[k - 1])
 					{
@@ -1049,7 +1072,7 @@ static qboolean Initialize(Vehicle_t* p_veh)
 	}
 	for (i = 0; i < MAX_VEHICLE_TURRETS; i++)
 	{
-		p_veh->turretStatus[i].nextMuzzle = p_veh->m_pVehicleInfo->turret[i].iMuzzle[i] - 1;
+		p_veh->turretStatus[i].nextMuzzle = p_veh->m_pVehicleInfo->turret[i].iMuzzle[0] - 1; // first muzzle (was iMuzzle[i]: turret 2 started on its 2nd muzzle, -1 if unset)
 		parent->client->ps.ammo[MAX_VEHICLE_WEAPONS + i] = p_veh->turretStatus[i].ammo = p_veh->m_pVehicleInfo->turret[i].
 			iAmmoMax;
 		if (p_veh->m_pVehicleInfo->turret[i].bAI)
@@ -1215,6 +1238,7 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 		}
 		p_veh->m_iShields = parent_ps->stats[STAT_ARMOR];
 		G_VehUpdateShields(parent);
+		p_veh->lastShieldInc = pUmcd->serverTime; // was never set: shields regained +1 every frame
 	}
 
 	if (parent && parent->r.ownerNum != parent->s.owner)
@@ -1400,8 +1424,8 @@ static qboolean Update(Vehicle_t* p_veh, const usercmd_t* pUmcd)
 				(!psngr->inuse || !psngr->client || psngr->health <= 0 || psngr->client->pers.connected !=
 					CON_CONNECTED))
 			{
+				// Eject removes the passenger and decrements m_iNumPassengers itself (it was counted down twice)
 				p_veh->m_pVehicleInfo->Eject(p_veh, p_veh->m_ppPassengers[i], qtrue);
-				p_veh->m_iNumPassengers--;
 			}
 		}
 	}
@@ -1796,7 +1820,7 @@ static void AttachRiders(const Vehicle_t* p_veh)
 	}
 
 	//attach passengers
-	while (i < p_veh->m_iNumPassengers)
+	while (i < p_veh->m_pVehicleInfo->maxPassengers && i < VEH_MAX_PASSENGERS) // seats can be sparse after an Eject: scan them all
 	{
 		if (p_veh->m_ppPassengers[i])
 		{

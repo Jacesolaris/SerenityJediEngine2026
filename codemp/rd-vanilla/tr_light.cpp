@@ -223,7 +223,7 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent)
 
 		for (j = 0; j < MAXLIGHTMAPS; j++)
 		{
-			if (data->styles[j] != LS_LSNONE)
+			if (data->styles[j] != LS_LSNONE && data->styles[j] < MAX_LIGHT_STYLES) // styleColors has MAX_LIGHT_STYLES entries
 			{
 				const byte	style = data->styles[j];
 

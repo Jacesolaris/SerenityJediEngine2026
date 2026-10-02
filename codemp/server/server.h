@@ -395,7 +395,7 @@ playerState_t* SV_GameclientNum(int num);
 svEntity_t* SV_SvEntityForGentity(sharedEntity_t* gEnt);
 sharedEntity_t* SV_GEntityForSvEntity(svEntity_t* svEnt);
 void SV_InitGameProgs(void);
-void SV_ShutdownGameProgs(void);
+void SV_ShutdownGameProgs();
 qboolean SV_inPVS(const vec3_t p1, const vec3_t p2);
 
 //

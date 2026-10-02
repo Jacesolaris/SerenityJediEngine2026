@@ -58,8 +58,8 @@ int gLevelFlags = 0;
 // ------------------------------------------------------------
 static char* GetFlagStr(const int flags)
 {
-	// Permanent allocation — safe because caller keeps the string
-	char* flagstr = BG_Alloc(256);
+	// static: the caller uses the string at once. (BG_Alloc is never freed: 256 bytes were lost on every call.)
+	static char flagstr[256];
 	int i = 0;
 
 	if (flags == 0)

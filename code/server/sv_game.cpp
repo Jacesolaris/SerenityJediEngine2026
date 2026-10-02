@@ -395,10 +395,20 @@ Called when either the entire server is being killed, or
 it is changing to a different game directory.
 ===============
 */
-void SV_ShutdownGameProgs(qboolean shutdownCin)
+void SV_ShutdownGameProgs()
 {
 	if (!ge)
 	{
+		// The library can still be loaded here (e.g. quit or error during
+		// map load, before the server finished starting). Unload it now
+		// while the renderer is still alive: its static destructors (such
+		// as the g_entities Ghoul2 cleanup) call engine traps and would
+		// crash at process exit once the renderer is gone.
+		if (gameLibrary)
+		{
+			Sys_UnloadDll(gameLibrary);
+			gameLibrary = nullptr;
+		}
 		return;
 	}
 	ge->Shutdown();
@@ -407,6 +417,7 @@ void SV_ShutdownGameProgs(qboolean shutdownCin)
 	CL_ShutdownCGame(); //we have cgame burried in here.
 
 	Sys_UnloadDll(gameLibrary);
+	gameLibrary = nullptr;
 
 	ge = nullptr;
 	cgvm.entryPoint = nullptr;
@@ -912,7 +923,7 @@ void SV_InitGameProgs()
 	// unload anything we have now
 	if (ge)
 	{
-		SV_ShutdownGameProgs(qtrue);
+		SV_ShutdownGameProgs();
 	}
 
 	// load a new game dll
@@ -1080,6 +1091,7 @@ import.WE_SetTempGlobalFogColor = SV_WE_SetTempGlobalFogColor;
 	if (!ge)
 	{
 		Sys_UnloadDll(gameLibrary);
+		gameLibrary = nullptr;
 		Com_Error(ERR_DROP, "Failed to load %s library", gamename);
 	}
 
@@ -1088,6 +1100,7 @@ import.WE_SetTempGlobalFogColor = SV_WE_SetTempGlobalFogColor;
 	{
 		int apiVersion = ge->apiversion;
 		Sys_UnloadDll(gameLibrary);
+		gameLibrary = nullptr;
 		Com_Error(ERR_DROP, "game is version %i, not %i", apiVersion, GAME_API_VERSION);
 	}
 
@@ -1105,6 +1118,7 @@ import.WE_SetTempGlobalFogColor = SV_WE_SetTempGlobalFogColor;
 		// If CL_InitCGameVM can provide an error string, log it here.
 		// For now, record a helpful message to make it clear where the failure occurred.
 		Sys_UnloadDll(gameLibrary);
+		gameLibrary = nullptr;
 		Com_Error(ERR_DROP, "Failed to load client game functions (CL_InitCGameVM failed)");
 		return; // defensive, although Com_Error should not return
 	}

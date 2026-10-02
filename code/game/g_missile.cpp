@@ -2040,9 +2040,9 @@ static void G_MissileImpact(gentity_t* ent, trace_t* trace, const int hit_loc = 
 					if (other->playerModel >= 0)
 					{
 						// don't let 'em animate
-						gi.G2API_PauseBoneAnimIndex(&other->ghoul2[ent->playerModel], other->rootBone, level.time);
-						gi.G2API_PauseBoneAnimIndex(&other->ghoul2[ent->playerModel], other->motionBone, level.time);
-						gi.G2API_PauseBoneAnimIndex(&other->ghoul2[ent->playerModel], other->lowerLumbarBone,
+						gi.G2API_PauseBoneAnimIndex(&other->ghoul2[other->playerModel], other->rootBone, level.time);
+						gi.G2API_PauseBoneAnimIndex(&other->ghoul2[other->playerModel], other->motionBone, level.time);
+						gi.G2API_PauseBoneAnimIndex(&other->ghoul2[other->playerModel], other->lowerLumbarBone,
 							level.time);
 					}
 
@@ -2051,7 +2051,10 @@ static void G_MissileImpact(gentity_t* ent, trace_t* trace, const int hit_loc = 
 					other->maxs[2] = -8;
 
 					//need to pad deathtime some to stick around long enough for death effect to play
-					other->NPC->timeOfDeath = level.time + 2000;
+					if (other->NPC) // the player has no NPC data: killing the player crashed here
+					{
+						other->NPC->timeOfDeath = level.time + 2000;
+					}
 				}
 				else
 				{

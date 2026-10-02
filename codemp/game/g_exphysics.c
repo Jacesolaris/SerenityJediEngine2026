@@ -149,7 +149,7 @@ void G_RunExPhys(gentity_t* ent, float gravity, float mass, float bounce, qboole
 		vec3_t gbmAngles = { 0 };
 		vec3_t collisionRootPos;
 		mdxaBone_t matrix;
-		trace_t bestCollision;
+		trace_t bestCollision = { 0 };
 		qboolean hasFirstCollision = qfalse;
 		int i = 0;
 

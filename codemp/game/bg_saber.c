@@ -92,7 +92,7 @@ extern qboolean PM_SaberDoDamageAnim(int anim);
 extern qboolean in_camera;
 extern qboolean PM_Can_Do_Kill_Move(void);
 extern qboolean PM_SaberInMassiveBounce(const int anim);
-int Next_Kill_Attack_Move_Check[MAX_CLIENTS]; // Next special move check.
+int Next_Kill_Attack_Move_Check[MAX_GENTITIES]; // Next special move check. Indexed by entity number (NPCs too), so [MAX_CLIENTS] overflowed.
 extern vmCvar_t g_attackskill;
 extern vmCvar_t bot_thinklevel;
 saberMoveName_t PM_DoAI_Fake(const int curmove);
@@ -5295,14 +5295,14 @@ static qboolean PM_CanDoSmashdown(const pmove_t* pm)
 	{// chance based on saber style BOT is using.
 	case SS_DUAL:
 	case SS_STAFF:
-		chanceThreshold = 66;
+		chanceThreshold = 75;
 		break;
 	case SS_FAST:
 	case SS_TAVION:
 	case SS_STRONG:
 	case SS_DESANN:
 	case SS_MEDIUM:
-		chanceThreshold = 75;
+		chanceThreshold = 95;
 		break;
 	case SS_NONE:
 	default:
@@ -5322,7 +5322,6 @@ static qboolean PM_CanDoSmashdown(const pmove_t* pm)
 	// Cooldown
 	const qboolean smashReady = (PM_SaberSmashOnCooldown(pm->ps) == qfalse) ? qtrue : qfalse;
 	const qboolean ButtonUse = (pm->cmd.buttons & BUTTON_USE) ? qtrue : qfalse;
-
 
 #ifdef _GAME
 	if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT)
@@ -5509,14 +5508,14 @@ static void PM_KataAnimationStyle(void)
 			{
 				PM_SetSaberMove(LS_SMASHDOWN_DUAL);
 			}
-			else if (saber0 && saber0->type == SABER_DUAL_GRIE ||
-				saber0->type == SABER_DUAL_GRIE4)
+			else if (saber0 && (saber0->type == SABER_DUAL_GRIE ||
+				saber0->type == SABER_DUAL_GRIE4))
 			{
 				PM_SetSaberMove(LS_DUAL_SPIN_PROTECT_GRIE);
 			}
-			else if (saber0 && saber0->type == SABER_DAGGER ||
+			else if (saber0 && (saber0->type == SABER_DAGGER ||
 				saber0->type == SABER_SINGLE_BACKHAND ||
-				saber0->type == SABER_SINGLE_ASBACKHAND)
+				saber0->type == SABER_SINGLE_ASBACKHAND))
 			{
 				PM_SetSaberMove(LS_STAFF_SOULCAL);
 			}
@@ -7177,8 +7176,8 @@ static void PM_NPCFatigue(playerState_t* ps, const int new_move)
 	}
 }
 
-void PM_SaberFakeFlagUpdate(int new_move);
-void PM_SaberPerfectBlockUpdate(int new_move);
+void PM_SaberFakeFlagUpdate(const int new_move);
+void PM_SaberPerfectBlockUpdate(const int new_move);
 
 void PM_SetJumped(const float height, const qboolean force)
 {
@@ -7202,40 +7201,42 @@ void PM_SetJumped(const float height, const qboolean force)
 	}
 }
 
-void WP_SaberFatigueRegenerate(const int override_amt)
+// Takes the entity's playerState: it is called from g_active.c outside Pmove, where the global pm is not that
+// entity (it pointed at whichever entity moved last, or at a dead Pmove stack frame).
+void WP_SaberFatigueRegenerate(playerState_t* ps, const int override_amt)
 {
-	if (pm->ps->saberFatigueChainCount >= MISHAPLEVEL_NONE)
+	if (ps->saberFatigueChainCount >= MISHAPLEVEL_NONE)
 	{
 		if (override_amt)
 		{
-			pm->ps->saberFatigueChainCount -= override_amt;
+			ps->saberFatigueChainCount -= override_amt;
 		}
 		else
 		{
-			pm->ps->saberFatigueChainCount--;
+			ps->saberFatigueChainCount--;
 		}
-		if (pm->ps->saberFatigueChainCount > MISHAPLEVEL_MAX)
+		if (ps->saberFatigueChainCount > MISHAPLEVEL_MAX)
 		{
-			pm->ps->saberFatigueChainCount = MISHAPLEVEL_MAX;
+			ps->saberFatigueChainCount = MISHAPLEVEL_MAX;
 		}
 	}
 }
 
-void WP_BlasterFatigueRegenerate(const int override_amt)
+void WP_BlasterFatigueRegenerate(playerState_t* ps, const int override_amt)
 {
-	if (pm->ps->BlasterAttackChainCount >= BLASTERMISHAPLEVEL_NONE)
+	if (ps->BlasterAttackChainCount >= BLASTERMISHAPLEVEL_NONE)
 	{
 		if (override_amt)
 		{
-			pm->ps->BlasterAttackChainCount -= override_amt;
+			ps->BlasterAttackChainCount -= override_amt;
 		}
 		else
 		{
-			pm->ps->BlasterAttackChainCount--;
+			ps->BlasterAttackChainCount--;
 		}
-		if (pm->ps->BlasterAttackChainCount > BLASTERMISHAPLEVEL_MAX)
+		if (ps->BlasterAttackChainCount > BLASTERMISHAPLEVEL_MAX)
 		{
-			pm->ps->BlasterAttackChainCount = BLASTERMISHAPLEVEL_MAX;
+			ps->BlasterAttackChainCount = BLASTERMISHAPLEVEL_MAX;
 		}
 	}
 }

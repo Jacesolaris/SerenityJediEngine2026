@@ -23,6 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "g_local.h"
+#include "g_pazaak.h"
 #include "g_ICARUScb.h"
 #include "g_nav.h"
 #include "bg_saga.h"
@@ -317,6 +318,7 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	// set some level globals
 	memset(&level, 0, sizeof level);
 	level.time = levelTime;
+	G_Pazaak_Init();
 	level.startTime = levelTime;
 
 	level.follow1 = level.follow2 = -1;
@@ -1684,6 +1686,8 @@ void G_ShutdownGame(const int restart)
 	int i = 0;
 
 	G_CleanAllFakeClients(); //get rid of dynamically allocated fake client structs.
+
+	G_Pazaak_Shutdown();
 
 	BG_ClearAnimsets(); //free all dynamic allocations made through the engine
 
@@ -4520,6 +4524,7 @@ void G_RunFrame(const int levelTime)
 	level.framenum++;
 	level.previousTime = level.time;
 	level.time = levelTime;
+	G_Pazaak_RunFrame();
 
 	if (level.gametype == GT_SINGLE_PLAYER && g_allowNPC.integer)
 	{

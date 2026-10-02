@@ -1098,6 +1098,10 @@ struct gclient_s
 	int SaberSmashStartTime;
 	int SaberSmashLastStartTime;
 	int Smash_Count;
+
+	// BOT_SABER_PENDING_MASK / BOT_PENDING_STAND_ANIM. Kept out of ps.userInt1, whose bits are the LOCK_* view/move
+	// locks (any bit there also zeroes ps.speed), so a pending bot action no longer freezes the bot.
+	int botPendingFlags;
 };
 
 //animations
@@ -1653,7 +1657,7 @@ void Weapon_StunThink(gentity_t* ent);
 #define BRYAR_MAX_CHARGE					5
 
 //
-// g_client.c
+// GClient.c
 //
 int TeamCount(int ignoreclientNum, team_t team);
 int TeamLeader(int team);
@@ -1722,7 +1726,7 @@ void SendScoreboardMessageToAllClients(void);
 const char* G_GetStringEdString(char* refSection, char* refName);
 
 //
-// g_client.c
+// GClient.c
 //
 char* ClientConnect(int clientNum, qboolean firstTime, qboolean isBot);
 qboolean client_userinfo_changed(int clientNum);

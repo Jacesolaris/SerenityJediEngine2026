@@ -1081,6 +1081,22 @@ void InitMoverTrData(gentity_t* ent)
 	}
 }
 
+// MP maps: "model2scale" is the model2's size in percent (100 normal, up to 1023), e.g. the asteroids of
+// mp/siege_destroyer2 are drawn ten times their model's size; CG_Mover scales it. For InitMover and InitBBrush.
+void G_SpawnModel2Scale(gentity_t* ent)
+{
+	int model2Scale = 0;
+	G_SpawnInt("model2scale", "0", &model2Scale);
+	if (model2Scale > 0)
+	{
+		if (model2Scale > 1023)
+		{
+			model2Scale = 1023;
+		}
+		ent->s.modelScale[0] = ent->s.modelScale[1] = ent->s.modelScale[2] = model2Scale / 100.0f;
+	}
+}
+
 void InitMover(gentity_t* ent)
 {
 	float light;
@@ -1105,6 +1121,7 @@ void InitMover(gentity_t* ent)
 		else
 		{
 			ent->s.modelindex2 = G_ModelIndex(ent->model2);
+			G_SpawnModel2Scale(ent);
 		}
 	}
 
@@ -2402,9 +2419,67 @@ check either the X_AXIS or Y_AXIS box to change that.
 "dmg"		damage to inflict when blocked (2 default)
 "color"		constantLight color
 "light"		constantLight radius
+
+MP maps also give it:
+"spinangles"	how fast it turns around each axis <pitch yaw roll>, instead of speed and the axis flags; it turns from the
+				start (unless it has a targetname)
+"health"		it can be destroyed: it is a func_breakable as well ("material", "playfx", "numchunks"...), e.g. the
+				asteroids of mp/siege_destroyer2
 */
+extern void SP_func_breakable(gentity_t* self);
+
 void SP_func_rotating(gentity_t* ent)
 {
+	vec3_t spin_angles;
+	const qboolean has_spin_angles = G_SpawnVector("spinangles", "0 0 0", spin_angles);
+
+	if (ent->health)
+	{
+		// MP: with health it is a breakable that turns (MP's SP_func_rotating does the same); the func_breakable
+		// spawnflags mean other things, so it is made one without them
+		const int map_flags = ent->spawnflags;
+		ent->spawnflags = 0;
+		SP_func_breakable(ent);
+		ent->spawnflags = map_flags;
+
+		if (has_spin_angles)
+		{
+			ent->speed = VectorLength(spin_angles);
+			VectorCopy(spin_angles, ent->s.apos.trDelta);
+		}
+		else
+		{
+			if (!ent->speed)
+			{
+				ent->speed = 100;
+			}
+			if (ent->spawnflags & 4)
+			{
+				ent->s.apos.trDelta[2] = ent->speed;
+			}
+			else if (ent->spawnflags & 8)
+			{
+				ent->s.apos.trDelta[0] = ent->speed;
+			}
+			else
+			{
+				ent->s.apos.trDelta[1] = ent->speed;
+			}
+		}
+		ent->s.apos.trType = ent->targetname ? TR_STATIONARY : TR_LINEAR;
+
+		VectorCopy(ent->s.origin, ent->s.pos.trBase);
+		VectorCopy(ent->s.pos.trBase, ent->currentOrigin);
+		VectorCopy(ent->s.apos.trBase, ent->currentAngles);
+		if (ent->spawnflags & 2) //RADAR (MP)
+		{
+			ent->svFlags |= SVF_BROADCAST;
+			ent->s.eFlags2 |= EF2_RADAROBJECT;
+		}
+		gi.linkentity(ent);
+		return;
+	}
+
 	if (!ent->speed)
 	{
 		ent->speed = 100;
@@ -2427,6 +2502,16 @@ void SP_func_rotating(gentity_t* ent)
 	else
 	{
 		ent->s.apos.trDelta[1] = ent->speed;
+	}
+	if (has_spin_angles)
+	{
+		// MP: the turn around each axis, from the start unless something switches it on
+		ent->speed = VectorLength(spin_angles);
+		VectorCopy(spin_angles, ent->s.apos.trDelta);
+		if (!ent->targetname)
+		{
+			ent->s.apos.trType = TR_LINEAR;
+		}
 	}
 
 	if (!ent->damage)

@@ -358,7 +358,7 @@ static	void R_LoadLightmaps(world_t* worldData, lump_t* l, lump_t* surfs)
 			float* hdrL = NULL;
 			int lightmapWidth = tr.lightmapSize;
 			int lightmapHeight = tr.lightmapSize;
-			int bppc;
+			int bppc = 8;
 			bool foundLightmap = true;
 
 			if (!tr.worldInternalLightmapping)
@@ -815,7 +815,26 @@ static shader_t* ShaderForShaderNum(const world_t* worldData, int shaderNum, con
 		lightmapNums = lightmapsFullBright;
 	}
 
-	shader = R_FindShader(dsh->shader, lightmapNums, styles, qtrue);
+	// Lightmap stages index styleColors[MAX_LIGHT_STYLES] with the style, so a map with a bad style
+	// byte (64..253) read past the table. Treat such styles as the normal style.
+	byte safeStyles[MAXLIGHTMAPS];
+	for (int i = 0; i < MAXLIGHTMAPS; i++)
+	{
+		safeStyles[i] = styles[i];
+		if (safeStyles[i] >= MAX_LIGHT_STYLES && safeStyles[i] < LS_UNUSED)
+		{
+			static qboolean warned = qfalse;
+			if (!warned)
+			{
+				ri->Printf(PRINT_WARNING, "ShaderForShaderNum: light style %i out of range (max %i), using the normal style\n",
+					safeStyles[i], MAX_LIGHT_STYLES - 1);
+				warned = qtrue;
+			}
+			safeStyles[i] = LS_NORMAL;
+		}
+	}
+
+	shader = R_FindShader(dsh->shader, lightmapNums, safeStyles, qtrue);
 
 	// if the shader had errors, just use default shader
 	if (shader->defaultShader) {
@@ -2441,6 +2460,12 @@ static	void R_LoadSurfaces(world_t* worldData, lump_t* surfs, lump_t* verts, lum
 		switch (LittleLong(in->surfaceType)) {
 		case MST_PATCH:
 			ParseMesh(worldData, in, dv, tangentSpace, hdrVertColors, out);
+			if (*out->data == SF_SKIP)
+			{
+				// Nodraw patch (or failed alloc): data is only the 4-byte SF_SKIP marker, not a srfBspSurface_t.
+				out->cullinfo.type = CULLINFO_NONE;
+			}
+			else
 			{
 				srfBspSurface_t* surface = (srfBspSurface_t*)out->data;
 
@@ -3132,7 +3157,8 @@ static void R_LoadEntities(world_t* worldData, lump_t* l)
 		if (!Q_stricmp(keyname, "gridsize"))
 		{
 			float x = 0.0f, y = 0.0f, z = 0.0f;
-			if (sscanf(value, "%f %f %f", &x, &y, &z) == 3)
+			// the light grid divides by these, so they must be positive
+			if (sscanf(value, "%f %f %f", &x, &y, &z) == 3 && x > 0.0f && y > 0.0f && z > 0.0f)
 			{
 				w->lightGridSize[0] = x;
 				w->lightGridSize[1] = y;

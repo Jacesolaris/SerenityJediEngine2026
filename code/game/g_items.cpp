@@ -316,7 +316,8 @@ gentity_t* G_DropSaberItem(const char* saberType, const saber_colors_t saberColo
 				char rgb_color[8];
 				Com_sprintf(rgb_color, 8, "x%02x%02x%02x", saberColor & 0xff, saberColor >> 8 & 0xff,
 					saberColor >> 16 & 0xff);
-				newItem->NPC_targetname = rgb_color;
+				// Copy it: the entity keeps this string after this function returns.
+				newItem->NPC_targetname = G_NewString(rgb_color);
 			}
 			else if (saberColor >= 0 && saberColor < SABER_RGB)
 			{
@@ -1636,7 +1637,7 @@ ClearRegisteredItems
 ==============
 */
 
-extern void Player_CacheFromPrevLevel(); //g_client.cpp
+extern void Player_CacheFromPrevLevel(); //GClient.cpp
 void clear_registered_items()
 {
 	for (int i = 0; i < bg_numItems; i++)
@@ -1645,7 +1646,7 @@ void clear_registered_items()
 	}
 	itemRegistered[bg_numItems] = 0;
 
-	//these are given in g_client, ClientSpawn(), but MUST be registered HERE, BEFORE cgame starts.
+	//these are given in GClient, ClientSpawn(), but MUST be registered HERE, BEFORE cgame starts.
 
 	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{
@@ -2330,7 +2331,6 @@ qboolean droideka_npc(const gentity_t* ent)
 void RemoveBarrier(gentity_t* ent)
 {
 	static qboolean registered = qfalse;
-	const qboolean isKejim_post = (Q_stricmp(level.mapname, "kejim_post") == 0) ? qtrue : qfalse;
 
 	if (!registered)
 	{
@@ -2358,14 +2358,7 @@ void RemoveBarrier(gentity_t* ent)
 			}
 			else
 			{
-				if (isKejim_post)
-				{
-					// no sound on this map
-				}
-				else
-				{
-					G_AddEvent(ent, EV_GENERAL_SOUND, shieldDeactivateSound);
-				}
+				G_AddEvent(ent, EV_GENERAL_SOUND, shieldDeactivateSound);
 				gi.G2API_SetSurfaceOnOff(&ent->ghoul2[ent->playerModel], "torso_shield_off", TURN_OFF);
 
 				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_FORCE_DRAIN_RELEASE, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -2417,7 +2410,6 @@ void barrier_update(gentity_t* ent);
 static void PlaceBarrier(gentity_t* ent)
 {
 	static qboolean registered = qfalse;
-	const qboolean isKejim_post = (Q_stricmp(level.mapname, "kejim_post") == 0) ? qtrue : qfalse;
 
 	if (!registered)
 	{
@@ -2451,24 +2443,10 @@ static void PlaceBarrier(gentity_t* ent)
 				gi.G2API_SetSurfaceOnOff(&ent->ghoul2[ent->playerModel], "torso_shield_off", TURN_ON);
 
 				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_ATTACK11, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-				if (isKejim_post)
-				{
-					// no sound on this map
-				}
-				else
-				{
-					G_AddEvent(ent, EV_GENERAL_SOUND, shieldActivateSound);
-				}
+				G_AddEvent(ent, EV_GENERAL_SOUND, shieldActivateSound);
 			}
 		}
-		if (isKejim_post)
-		{
-			// no sound on this map
-		}
-		else
-		{
-			ent->s.loopSound = shieldLoopSound;
-		}
+		ent->s.loopSound = shieldLoopSound;
 	}
 }
 

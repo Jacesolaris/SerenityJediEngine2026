@@ -107,7 +107,7 @@ extern qboolean PM_InOnGroundAnim(playerState_t* ps);
 extern qboolean PM_LockedAnim(int anim);
 extern qboolean WP_SabersCheckLock2(gentity_t* attacker, gentity_t* defender, sabersLockMode_t lockMode);
 extern qboolean G_JediInNormalAI(const gentity_t* ent);
-extern void WP_SaberFatigueRegenerate(int override_amt);
+extern void WP_SaberFatigueRegenerate(playerState_t* ps, int override_amt);
 extern void bg_reduce_blaster_mishap_level_advanced(playerState_t* ps);
 extern qboolean BG_InSlowBounce(const playerState_t* ps);
 extern void WP_ForcePowerDrain(const gentity_t* self, forcePowers_t force_power, int override_amt);
@@ -775,7 +775,9 @@ static void P_WorldEffects(gentity_t* ent)
 			if (ent->client->inSpaceSuffocation < level.time)
 			{
 				//suffocate!
-				if (ent->health > 0)
+				//(not a vehicle: it is in space for its gravity only. In MP this runs for players alone; here it runs for
+				//every NPC, and a ship lost 20 to 40 points every second or two it spent in a trigger_space)
+				if (ent->health > 0 && ent->client->NPC_class != CLASS_VEHICLE)
 				{
 					//if they're still alive..
 					G_Damage(ent, spacetrigger, spacetrigger, nullptr, ent->client->ps.origin, Q_irand(20, 40),
@@ -1581,14 +1583,15 @@ static void G_TouchTriggersLerped(gentity_t* ent)
 #ifdef _DEBUG
 	if (dist >= 1024.0f)
 	{
-		Com_Printf(S_COLOR_RED "G_TouchTriggersLerped: insane distance (%f) — aborting.\n", dist);
+		Com_Printf(S_COLOR_RED "G_TouchTriggersLerped: insane distance (%f) — testing the end position only.\n", dist);
 	}
 #endif
 
-	// Hard safety clamp
+	// Hard safety clamp: don't step along huge moves (teleports, hitches, hyperspace at 10000 u/s),
+	// but still test the end position, so a fast vehicle can't skip a trigger (e.g. trigger_hyperspace exit)
 	if (dist > 1024.0f)
 	{
-		return;
+		dist = 0.0f;
 	}
 
 	// Reset touched flags
@@ -1935,7 +1938,7 @@ ClientTimerActions
 Actions that happen once a second
 ==================
 */
-extern void WP_BlasterFatigueRegenerate(int override_amt);
+extern void WP_BlasterFatigueRegenerate(playerState_t* ps, int override_amt);
 static void ClientTimerActions(gentity_t* ent, const int msec)
 {
 	gclient_t* client = ent->client;
@@ -2017,9 +2020,9 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			client->ps.weaponTime < 1)
 		{
 			if (client->ps.BlasterAttackChainCount > BLASTERMISHAPLEVEL_ELEVEN)
-				WP_BlasterFatigueRegenerate(4);
+				WP_BlasterFatigueRegenerate(&client->ps, 4);
 			else
-				WP_BlasterFatigueRegenerate(1);
+				WP_BlasterFatigueRegenerate(&client->ps, 1);
 		}
 
 		/* ---------------------------------------------------------
@@ -2047,11 +2050,11 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			{
 				if (client->ps.saberFatigueChainCount > MISHAPLEVEL_HUDFLASH)
 				{
-					WP_SaberFatigueRegenerate(2);
+					WP_SaberFatigueRegenerate(&client->ps, 2);
 				}
 				else
 				{
-					WP_SaberFatigueRegenerate(1);
+					WP_SaberFatigueRegenerate(&client->ps, 1);
 				}
 			}
 		}
@@ -2075,7 +2078,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 			// Regenerate 1 point every 2 frames instead of every frame.
 			if ((level.time & 1) == 0)  // even frame → regen
 			{
-				WP_SaberFatigueRegenerate(1);
+				WP_SaberFatigueRegenerate(&client->ps, 1);
 			}
 		}
 
@@ -3415,8 +3418,14 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 
 	if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) && g_saberLockCinematicCamera->integer)
 	{
+		//who the saber lock camera is on (ENTITYNUM_NONE: nobody). Its overrides are only taken back from him: this
+		//used to clear them every frame for the player and for whatever he controls - a ship he flies lost its camera
+		//range and FOV that way, and the camera sat on top of it.
+		static int saber_lock_camera_ent = ENTITYNUM_NONE;
+
 		if (ent->client->ps.communicatingflags & (1 << CF_SABERLOCKING))
 		{
+			saber_lock_camera_ent = ent->s.number;
 			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_FOV | CG_OVERRIDE_3RD_PERSON_CDP | CG_OVERRIDE_3RD_PERSON_HOF;
 
 			cg.overrides.thirdPersonRange = 82.5f;
@@ -3424,8 +3433,9 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 			cg.overrides.thirdPersonHorzOffset = -12.5f;
 			cg.overrides.fov = 40.5f;
 		}
-		else
+		else if (saber_lock_camera_ent == ent->s.number)
 		{
+			saber_lock_camera_ent = ENTITYNUM_NONE;
 			cg.overrides.active &= ~(CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_FOV | CG_OVERRIDE_3RD_PERSON_CDP | CG_OVERRIDE_3RD_PERSON_HOF);
 			cg.overrides.thirdPersonRange = cg.overrides.thirdPersonCameraDamp = cg.overrides.thirdPersonHorzOffset = 0;
 		}
@@ -8199,6 +8209,14 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			//in space, so no gravity...
 			client->ps.gravity = 0.0f;
 		}
+		else if (ent->m_pVehicle && client->ps.hyperSpaceTime
+			&& level.time - client->ps.hyperSpaceTime < HYPERSPACE_TIME)
+		{
+			//a ship going to hyperspace flies dead straight, also when the jump starts over a planet. (In MP the
+			//fighter code zeroes the gravity inside pmove; here this runs after it and put the full gravity
+			//back: the ship sank out of the bottom of the trigger_hyperspace and was never teleported.)
+			client->ps.gravity = 0.0f;
+		}
 		else
 		{
 			if (client->ps.eFlags2 & EF2_SHIP_DEATH)
@@ -8866,10 +8884,10 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 		{
 			// Vehicle Camera Overrides
 			//--------------------------
-			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_FOV | CG_OVERRIDE_3RD_PERSON_VOF |
-				CG_OVERRIDE_3RD_PERSON_POF;
+			//(not the FOV: MP does not use the .veh cameraFOV, it keeps cg_fov, and the ships are made to look right with
+			//that. With it - 100 for most fighters - the same ship at the same range looked a good deal smaller here.)
+			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_3RD_PERSON_VOF | CG_OVERRIDE_3RD_PERSON_POF;
 			cg.overrides.thirdPersonRange = pPlayerVeh->m_pVehicleInfo->cameraRange;
-			cg.overrides.fov = pPlayerVeh->m_pVehicleInfo->cameraFOV;
 			cg.overrides.thirdPersonVertOffset = pPlayerVeh->m_pVehicleInfo->cameraVertOffset;
 			cg.overrides.thirdPersonPitchOffset = pPlayerVeh->m_pVehicleInfo->cameraPitchOffset;
 

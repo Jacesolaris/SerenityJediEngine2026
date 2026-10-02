@@ -35,7 +35,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define ACT_INACTIVE	qfalse
 extern void NPC_UseResponse(gentity_t* self, const gentity_t* user, qboolean useWhenDone);
 extern qboolean PM_CrouchAnim(int anim);
-extern qboolean PM_InDeathAnim();
+extern qboolean BG_InDeathAnim(int anim);
 /*
 =========================================================================
 
@@ -889,7 +889,7 @@ static gentity_t* find_remove_able_gent(void)
 	for (i = MAX_CLIENTS; i < globals.num_entities; i++, e++)
 	{
 		if (e->NPC && e->client && e->health > 0 &&
-			PM_InDeathAnim())
+			BG_InDeathAnim(e->client->ps.legsAnim))
 		{
 			return e;
 		}

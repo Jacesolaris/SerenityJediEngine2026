@@ -1776,17 +1776,10 @@ static void DEMP2_AltRadiusDamage(gentity_t* ent)
 {
 	float frac = (level.time - ent->genericValue5) / 800.0f;
 
-	// FIX: move large arrays off stack (C6262)
-	int* iEntityList = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	gentity_t** entity_list = (gentity_t**)BG_Alloc(MAX_GENTITIES * sizeof(gentity_t*));
-
-	if (!iEntityList || !entity_list)
-	{
-		Com_Printf(S_COLOR_RED "DEMP2_AltRadiusDamage: BG_Alloc failed\n");
-		ent->think = G_FreeEntity;
-		ent->nextthink = level.time;
-		return;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int iEntityList[MAX_GENTITIES];
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static gentity_t* entity_list[MAX_GENTITIES];
 
 	gentity_t* my_owner = NULL;
 	int i;
@@ -3415,13 +3408,8 @@ static void WP_PlaceLaserTrap(gentity_t* ent, const qboolean alt_fire)
 	vec3_t dir = { 0 }, start = { 0 };
 	int trapcount = 0;
 
-	// FIX: move large array off stack (C6262)
-	int* found_laser_traps = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!found_laser_traps)
-	{
-		Com_Printf(S_COLOR_RED "WP_PlaceLaserTrap: BG_Alloc failed\n");
-		return;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int found_laser_traps[MAX_GENTITIES];
 
 	// Initialize array
 	for (int i = 0; i < MAX_GENTITIES; i++)
@@ -3854,13 +3842,8 @@ static void WP_DropDetPack(gentity_t* ent, const qboolean alt_fire)
 		return;
 	}
 
-	// FIX: move large array off stack (C6262) and initialize safely
-	int* found_det_packs = (int*)BG_Alloc(MAX_GENTITIES * sizeof(int));
-	if (!found_det_packs)
-	{
-		Com_Printf(S_COLOR_RED "WP_DropDetPack: BG_Alloc failed\n");
-		return;
-	}
+	// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
+	static int found_det_packs[MAX_GENTITIES];
 
 	// Initialize all entries to ENTITYNUM_NONE
 	for (int i = 0; i < MAX_GENTITIES; i++)
@@ -5722,6 +5705,8 @@ extern void FireOverheatFail(gentity_t* ent);
 extern qboolean PM_ReloadAnim(int anim);
 extern qboolean PM_WeponRestAnim(int anim);
 extern qboolean PM_PainAnim(int anim);
+extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags);
+extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 
 void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 {

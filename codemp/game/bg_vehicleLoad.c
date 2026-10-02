@@ -187,7 +187,10 @@ static qboolean BG_ParseVehWeaponParm(vehWeaponInfo_t* vehWeapon, const char* pa
 		{
 			//just use 1024 bytes in case we want to write over the string
 			*(char**)(b + vehWeaponField->ofs) = (char*)BG_Alloc(1024); //(char *)BG_Alloc(strlen(value));
-			strcpy(*(char**)(b + vehWeaponField->ofs), value);
+			if (*(char**)(b + vehWeaponField->ofs))
+			{
+				Q_strncpyz(*(char**)(b + vehWeaponField->ofs), value, 1024);
+			}
 		}
 
 		break;
@@ -251,7 +254,7 @@ static qboolean BG_ParseVehWeaponParm(vehWeaponInfo_t* vehWeapon, const char* pa
 	case VF_SHADER: // (cgame only) take the string, call trap_R_RegisterShader
 #ifdef UI_BUILD
 		* (int*)(b + vehWeaponField->ofs) = trap->R_RegisterShaderNoMip(value);
-#elif CGAME
+#elif defined(_CGAME) // was "CGAME", never defined in MP: the g2MarkShader of vehicle weapons never loaded
 		* (int*)(b + vehWeaponField->ofs) = trap->R_RegisterShader(value);
 #endif
 		break;
@@ -765,7 +768,11 @@ static qboolean BG_ParseVehicleParm(vehicleInfo_t* vehicle, const char* parmName
 		{
 			//just use 128 bytes in case we want to write over the string
 			*(char**)(b + vehField->ofs) = (char*)BG_Alloc(128); //(char *)BG_Alloc(strlen(value));
-			strcpy(*(char**)(b + vehField->ofs), value);
+			if (*(char**)(b + vehField->ofs))
+			{
+				// bounded: a parsed token can be up to 1024 chars (strcpy overflowed the 128-byte block)
+				Q_strncpyz(*(char**)(b + vehField->ofs), value, 128);
+			}
 		}
 
 		break;

@@ -229,7 +229,7 @@ gentity_t* SV_GentityNum(int num);
 svEntity_t* SV_SvEntityForGentity(gentity_t* gEnt);
 gentity_t* SV_GEntityForSvEntity(svEntity_t* svEnt);
 void SV_InitGameProgs();
-void SV_ShutdownGameProgs(qboolean shutdownCin);
+void SV_ShutdownGameProgs();
 qboolean SV_inPVS(const vec3_t p1, const vec3_t p2);
 
 //============================================================
@@ -304,7 +304,7 @@ void SG_TestSave();
 // What it's used for is for things like mission pack etc if we need to distinguish "street-copy" savegames from
 //	any new enhanced ones that need to ask for new chunks during loading.
 //
-constexpr auto iSAVEGAME_VERSION = 1;
+constexpr auto iSAVEGAME_VERSION = 2; // 2: playerState m_iVehicleNum saved (SP vehicle/hyperspace port)
 //
 extern SavedGameJustLoaded_e e_saved_game_just_loaded;
 extern qboolean qbLoadTransition;

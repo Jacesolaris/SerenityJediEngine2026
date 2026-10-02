@@ -2920,7 +2920,7 @@ static void ST_Commander(void)
 								VectorSubtract(NPCS.NPC->r.currentOrigin, group->enemy->r.currentOrigin, eDir2Me);
 								VectorNormalize(eDir2Me);
 
-								VectorSubtract(level.combatPoints[NPCS.NPCInfo->combatPoint].origin,
+								VectorSubtract(level.combatPoints[cp].origin,
 									group->enemy->r.currentOrigin, eDir2CP);
 								VectorNormalize(eDir2CP);
 
