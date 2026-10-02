@@ -10243,8 +10243,7 @@ Item_StopCapture
 =================
 */
 static void Item_StopCapture(itemDef_t* item)
-{
-}
+{}
 
 /*
 =================

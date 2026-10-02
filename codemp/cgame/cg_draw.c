@@ -11833,8 +11833,7 @@ static void CG_DrawMiscStaticModels(void)
 }
 
 static void CG_DrawTourneyScoreboard()
-{
-}
+{}
 
 /*
 =====================

@@ -4590,8 +4590,7 @@ static void G_GetDismemberBolt(gentity_t* self, vec3_t bolt_point, const int lim
 }
 
 static void LimbTouch(gentity_t* self, gentity_t* other, trace_t* trace)
-{
-}
+{}
 
 void LimbThink(gentity_t* ent)
 {

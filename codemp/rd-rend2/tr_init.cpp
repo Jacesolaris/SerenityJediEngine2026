@@ -2089,7 +2089,6 @@ void R_Init(void)
 	}
 	r_glContextKept = false;
 
-
 	// clear all our internal state
 	R_ClearTr();
 	Com_Memset(&backEnd, 0, sizeof(backEnd));

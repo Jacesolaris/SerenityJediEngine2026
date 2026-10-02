@@ -242,8 +242,7 @@ static void WP_FireEmplaced(gentity_t* ent, qboolean alt_fire);
 void laserTrapStick(gentity_t* ent, vec3_t endpos, vec3_t normal);
 
 static void touch_NULL(gentity_t* ent, gentity_t* other, trace_t* trace)
-{
-}
+{}
 
 void laserTrapExplode(gentity_t* self);
 void RocketDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int mod);

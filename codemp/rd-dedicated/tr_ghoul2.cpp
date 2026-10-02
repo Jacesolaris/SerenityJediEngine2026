@@ -162,8 +162,7 @@ public:
 		rootSList(initrootSList),
 		currentModel(initcurrentModel),
 		boneList(initboneList)
-	{
-	}
+	{}
 };
 
 class CTransformBone
@@ -202,8 +201,7 @@ void G2_TransformBone(int index, CBoneCache& cb);
 class CBoneCache
 {
 	static void SetRenderMatrix(CTransformBone* bone)
-	{
-	}
+	{}
 
 	void EvalLow(const int index)
 	{
@@ -778,8 +776,7 @@ public:
 #else
 		boltList(initboltList)
 #endif
-	{
-	}
+	{}
 };
 
 #ifdef _G2_GORE
@@ -3135,8 +3132,7 @@ R_AddGHOULSurfaces
 ==============
 */
 void R_AddGhoulSurfaces(trRefEntity_t* ent)
-{
-}
+{}
 
 #ifdef _G2_LISTEN_SERVER_OPT
 qboolean G2API_OverrideServerWithClientData(CGhoul2Info_v& ghoul2, int modelIndex);

@@ -38,8 +38,7 @@ class IGhoul2InfoArray
 {
 public:
 	virtual ~IGhoul2InfoArray()
-	{
-	}
+	{}
 
 	virtual int New() = 0;
 	virtual void Delete(int handle) = 0;

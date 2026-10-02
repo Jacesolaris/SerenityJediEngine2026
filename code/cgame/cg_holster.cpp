@@ -515,7 +515,6 @@ static void Hls_Render(centity_t* cent, const holsterModel_t* model, const int h
 	Hls_RotateAxis(ent.axis, YAW, h.angOffset[YAW]);
 	Hls_RotateAxis(ent.axis, ROLL, h.angOffset[ROLL]);
 
-
 	VectorCopy(boltOrg, ent.origin);
 	VectorCopy(boltOrg, ent.oldorigin);
 	VectorCopy(origin, ent.lightingOrigin); // lit like the body it hangs on
@@ -587,9 +586,9 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 	const int inventory = client->ps.stats[STAT_WEAPONS];
 	const int inHand = client->ps.weapon;
 	auto carries = [&](const int weapon)
-	{
-		return weapon != inHand && inventory & 1 << weapon ? true : false;
-	};
+		{
+			return weapon != inHand && inventory & 1 << weapon ? true : false;
+		};
 
 	// A jetpack (the classes that can fly with one) or a saber holstered on the back (the singleplayer saber
 	// holsters) keeps a gun off the back
@@ -605,11 +604,11 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 
 	// A holster type this model's holster.cfg disables (boneIndex HOLSTER_NONE / disabled) is no place for a gun
 	auto enabled = [&](const int holsterType)
-	{
-		const int bone = cg_holsterdebug.integer == holsterType ? cg_holsterdebug_boneindex.integer
-			: model->data[holsterType].boneIndex;
-		return bone > HLB_NONE && bone < HLB_NUM;
-	};
+		{
+			const int bone = cg_holsterdebug.integer == holsterType ? cg_holsterdebug_boneindex.integer
+				: model->data[holsterType].boneIndex;
+			return bone > HLB_NONE && bone < HLB_NUM;
+		};
 
 	// The places keep their gun: a gun that got a place keeps it as long as he has it (also while it is in
 	// his hand, then the place stays empty), no other gun takes it meanwhile. At most MAX_HOLSTERED guns.
@@ -628,16 +627,16 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		}
 	}
 	auto placed = [&](const int weapon)
-	{
-		for (int p = 0; p < HLP_NUM; p++)
 		{
-			if (places[p] == weapon)
+			for (int p = 0; p < HLP_NUM; p++)
 			{
-				return true;
+				if (places[p] == weapon)
+				{
+					return true;
+				}
 			}
-		}
-		return false;
-	};
+			return false;
+		};
 	for (const hlsGun_t& gun : hlsGuns)
 	{
 		if (used >= MAX_HOLSTERED)

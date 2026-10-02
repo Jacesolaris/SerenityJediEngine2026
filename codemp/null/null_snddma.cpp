@@ -39,16 +39,13 @@ int SNDDMA_GetDMAPos(void)
 }
 
 void SNDDMA_Shutdown(void)
-{
-}
+{}
 
 void SNDDMA_BeginPainting(void)
-{
-}
+{}
 
 void SNDDMA_Submit(void)
-{
-}
+{}
 
 sfxHandle_t S_RegisterSound(const char* name)
 {
@@ -56,12 +53,10 @@ sfxHandle_t S_RegisterSound(const char* name)
 }
 
 void S_StartLocalSound(sfxHandle_t sfxHandle, int channelNum)
-{
-}
+{}
 
 void S_ClearSoundBuffer(void)
-{
-}
+{}
 
 qboolean SND_RegisterAudio_LevelLoadEnd(qboolean bDeleteEverythingNotUsedThisLevel)
 {

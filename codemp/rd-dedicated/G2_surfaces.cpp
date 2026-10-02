@@ -46,8 +46,7 @@ public:
 		rootSList(initrootSList),
 		currentModel(initcurrentModel),
 		boneList(initboneList)
-	{
-	}
+	{}
 };
 
 extern void G2_ConstructUsedBoneList(CConstructBoneList& CBL);

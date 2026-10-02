@@ -9399,7 +9399,6 @@ static void saber_combat_handling(bot_state_t* bs)
 		}
 	}
 
-
 	// -------------------------------------------------
 	// SAME GROUND CHECK (UNIFIED HELPER)
 	// -------------------------------------------------
@@ -9622,7 +9621,6 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 			}
 		}
 	}
-
 
 	// -------------------------------------------------
 	// IDEAL SPACING FOR ENHANCED DUELS
@@ -17533,7 +17531,6 @@ static void bot_calm_movement(bot_state_t* bs, usercmd_t* ucmd)
 		}
 	}
 }
-
 
 int gUpdateVars = 0;
 

@@ -316,8 +316,7 @@ RED - In a Siege game, the intermission will happen here if the Red (attacking) 
 BLUE - In a Siege game, the intermission will happen here if the Blue (defending) team wins
 */
 void SP_info_player_intermission(gentity_t* ent)
-{
-}
+{}
 
 /*QUAKED info_player_intermission_red (1 0 1) (-16 -16 -24) (16 16 32)
 The intermission will be viewed from this point.  Target an info_notnull for the view direction.
@@ -327,8 +326,7 @@ target - ent to look at
 target2 - ents to use when this intermission point is chosen
 */
 void SP_info_player_intermission_red(gentity_t* ent)
-{
-}
+{}
 
 /*QUAKED info_player_intermission_blue (1 0 1) (-16 -16 -24) (16 16 32)
 The intermission will be viewed from this point.  Target an info_notnull for the view direction.
@@ -338,8 +336,7 @@ target - ent to look at
 target2 - ents to use when this intermission point is chosen
 */
 void SP_info_player_intermission_blue(gentity_t* ent)
-{
-}
+{}
 
 #define JMSABER_RESPAWN_TIME 20000 //in case it gets stuck somewhere no one can reach
 

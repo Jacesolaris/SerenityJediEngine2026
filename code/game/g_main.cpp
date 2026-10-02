@@ -1494,12 +1494,10 @@ public:
 	}
 
 	void RagDollBegin() override
-	{
-	}
+	{}
 
 	void RagDollSettled() override
-	{
-	}
+	{}
 
 	void Collision() override
 	{

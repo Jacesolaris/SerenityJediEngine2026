@@ -416,7 +416,7 @@ void UI_Init(const int apiVersion, const uiimport_t* uiimport, const qboolean in
 	uis.scaley = uis.glconfig.vidHeight * (1.0 / 480.0);
 	uis.scalex = uis.glconfig.vidWidth * (1.0 / 640.0);
 
-	Menu_Cache();Menu_Cache();
+	Menu_Cache(); Menu_Cache();
 
 	// -----------------------------
 	// REGISTER reload_strings HERE

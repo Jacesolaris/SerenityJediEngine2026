@@ -33,7 +33,7 @@ struct GoreTextureCoordinates
 	GoreTextureCoordinates()
 	{
 		int i;
-		for (i = 0;i < MAX_LODS;i++)
+		for (i = 0; i < MAX_LODS; i++)
 		{
 			tex[i] = 0;
 		}
@@ -41,7 +41,7 @@ struct GoreTextureCoordinates
 	~GoreTextureCoordinates()
 	{
 		int i;
-		for (i = 0;i < MAX_LODS;i++)
+		for (i = 0; i < MAX_LODS; i++)
 		{
 			if (tex[i])
 			{

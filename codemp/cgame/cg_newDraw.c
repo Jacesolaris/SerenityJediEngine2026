@@ -952,8 +952,7 @@ void CG_ShowResponseHead(void)
 }
 
 void CG_RunMenuScript(char** args)
-{
-}
+{}
 
 qboolean CG_DeferMenuScript(char** args)
 {

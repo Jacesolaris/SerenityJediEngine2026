@@ -2685,8 +2685,7 @@ static void CL_SetModel_f(void)
 }
 
 static void CL_SetForcePowers_f(void)
-{
-}
+{}
 
 /*
 ==================

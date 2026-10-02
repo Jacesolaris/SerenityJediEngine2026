@@ -1581,8 +1581,7 @@ void NPC_BehaviorSet_Stormtrooper(const int b_state)
 }
 
 static void NPC_BehaviorSet_Object(int b_state)
-{
-}
+{}
 
 /*
 -------------------------

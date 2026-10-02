@@ -739,8 +739,7 @@ UniformDataWriter::UniformDataWriter()
 	: failed(false)
 	, shaderProgram(nullptr)
 	, scratch(scratchBuffer, sizeof(scratchBuffer), 1)
-{
-}
+{}
 
 void UniformDataWriter::Start(shaderProgram_t* sp)
 {
@@ -939,8 +938,7 @@ UniformData* UniformDataWriter::Finish(Allocator& destHeap)
 SamplerBindingsWriter::SamplerBindingsWriter()
 	: failed(false)
 	, count(0)
-{
-}
+{}
 
 SamplerBindingsWriter& SamplerBindingsWriter::AddStaticImage(image_t* image, int unit)
 {
