@@ -16642,19 +16642,12 @@ void CG_VisualWeaponsUpdate(centity_t* cent, clientInfo_t* ci)
 				//manually render the pistol
 				CG_HolsteredWeaponRender(cent, ci, HLR_BRYARPISTOL_L);
 			}
-			left_hip_in_use = WP_BRYAR_OLD;
 		}
 
 		/*============================
 		* End Left Hip Holster code
 		*============================
 		*/
-
-		//at most 2 holstered guns: a gun on the back only while a hip is free
-		if (right_hip_in_use && left_hip_in_use)
-		{
-			back_in_use = qtrue;
-		}
 
 		/*============================
 		* Start Back Gun Holster code

@@ -400,9 +400,10 @@ Set up argc/argv for the given command
 ===================
 */qboolean CL_GetServerCommand(const int serverCommandNumber)
 {
-	// A big configstring comes in pieces over several calls (bcs0, bcs1..., bcs2): the buffer must keep
-	// what came so far. bcs0 empties it.
 	static char bigConfigString[BIG_INFO_STRING];
+
+	// Safety: ensure buffer is always zero‑terminated
+	bigConfigString[0] = '\0';
 
 	// If we have irretrievably lost a reliable command, drop the connection
 	if (serverCommandNumber <= clc.serverCommandSequence - MAX_RELIABLE_COMMANDS)

@@ -37,7 +37,6 @@ USER INTERFACE MAIN
 
 #include "ghoul2/G2.h"
 #include "ui_local.h"
-#include "ui_pazaak.h"
 #include "qcommon/qfiles.h"
 #include "qcommon/game_version.h"
 #include "ui_force.h"
@@ -1579,8 +1578,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 20/09/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 03------------------------------\n");
+	Com_Printf("---------------------Build date 30/09/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 06------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -3371,11 +3370,6 @@ static void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float
 	rect.y = y + text_y;
 	rect.w = w;
 	rect.h = h;
-
-	if (UI_Pazaak_OwnerDraw(ownerDraw, x, y, w, h, shader))
-	{
-		return;
-	}
 
 	switch (ownerDraw)
 	{
@@ -6487,10 +6481,6 @@ static void UI_RunMenuScript(char** args)
 
 	if (String_Parse(args, &name))
 	{
-		if (UI_Pazaak_Script(name, args))
-		{
-			return; // pzk_*
-		}
 		char buff[1024];
 		if (Q_stricmp(name, "StartServer") == 0)
 		{
@@ -11356,6 +11346,8 @@ static int UI_GamepadMenuKey(const int key)
 
 static void UI_KeyEvent(int key, qboolean down)
 {
+	key = UI_GamepadMenuKey(key);
+
 	if (Menu_Count() > 0)
 	{
 		menuDef_t* menu = Menu_GetFocused();

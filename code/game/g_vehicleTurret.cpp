@@ -97,10 +97,10 @@ static void VEH_TurretCheckFire(Vehicle_t* p_veh,
 	VEH_TurretCalcMuzzle(parent, cur_muzzle);
 
 	//play the weapon's muzzle effect if we have one
-	//(on the muzzle's tag, as MP does: the flash - and the firing sound in it - goes with the ship. Played at a
-	//point, the sound stayed behind in space, and a ship going at speed left it far behind at once.)
 	if (veh_weapon->iMuzzleFX)
 	{
+		G_PlayEffect(veh_weapon->iMuzzleFX, p_veh->m_Muzzles[cur_muzzle].m_vMuzzlePos,
+			p_veh->m_Muzzles[cur_muzzle].m_vMuzzleDir);
 	}
 	WP_FireVehicleWeapon(parent, p_veh->m_Muzzles[cur_muzzle].m_vMuzzlePos, p_veh->m_Muzzles[cur_muzzle].m_vMuzzleDir,
 		veh_weapon, qtrue);

@@ -35,7 +35,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "g_local.h"
 #include "bg_saga.h"
-#include "g_pazaak.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -4698,14 +4697,6 @@ static void ClientThink_real(gentity_t* ent)
 	if (client->pers.connected != CON_CONNECTED && !isNPC)
 	{
 		return;
-	}
-
-	if (!isNPC && G_Pazaak_IsPlaying(ent->s.number))
-	{
-		// he sits at a Pazaak board (g_pazaak.c): no moving, fighting or using anything until the match is over
-		ucmd->forwardmove = ucmd->rightmove = ucmd->upmove = 0;
-		ucmd->buttons = 0;
-		ucmd->generic_cmd = 0;
 	}
 
 	if (ent->client->ps.ManualMBlockingTime <= level.time && ent->client->ps.ManualMBlockingTime > 0)

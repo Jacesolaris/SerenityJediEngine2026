@@ -25,7 +25,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define	CG_PLAYERS_CPP
 #include "cg_media.h"
-#include "cg_holster.h"
 #include "FxScheduler.h"
 #include "../game/ghoul2_shared.h"
 #include "../game/anims.h"
@@ -14683,26 +14682,6 @@ extern qboolean G_GetRootSurfNameWithVariant(gentity_t* ent, const char* rootSur
 extern qboolean G_RagDoll(gentity_t* ent, vec3_t forcedAngles);
 int cg_saberOnSoundTime[MAX_GENTITIES] = { 0 };
 extern void CG_AddRadarEnt(const centity_t* cent);
-extern float CG_MachinegunSpinAngle(centity_t* cent);
-extern vmCvar_t cg_SpinningBarrels;
-
-// cg_SpinningBarrels: the gun in the hand of a Ghoul2 character spins its "bone_barrel" bone (the Z6 rotary cannon's
-// models/weapons2/z6_rotary/model.glm, G_CreateG2AttachedWeaponModel) while he fires and coasts down after.
-// Guns whose model has no such bone are not affected.
-static void CG_SpinWeaponBarrel(centity_t* cent)
-{
-	gentity_t* gent = cent->gent;
-	if (!cg_SpinningBarrels.integer || !gent || gent->weaponModel[0] < 0 || gent->weaponModel[0] >= gent->ghoul2.size()
-		|| cent->currentState.weapon == WP_SABER || cent->currentState.weapon == WP_MELEE)
-	{
-		return;
-	}
-	vec3_t angles = { 0.0f, 0.0f, 0.0f };
-	// with these orientations YAW turns the bone around the length of the barrels
-	angles[YAW] = CG_MachinegunSpinAngle(cent);
-	gi.G2API_SetBoneAngles(&gent->ghoul2[gent->weaponModel[0]], "bone_barrel", angles, BONE_ANGLES_POSTMULT,
-		POSITIVE_X, NEGATIVE_Y, NEGATIVE_Z, nullptr, 0, cg.time);
-}
 
 void CG_Player(centity_t* cent)
 {
@@ -15249,12 +15228,6 @@ void CG_Player(centity_t* cent)
 
 		mdxaBone_t boltMatrix;
 		vec3_t G2Angles = { 0, tempAngles[YAW], 0 };
-
-		// the guns he carries but is not holding, on his body (holster.cfg)
-		CG_HolsteredWeapons(cent, G2Angles, ent.origin, ent.renderfx);
-
-		// a gun in his hand with a spinning barrel (its model has a "bone_barrel" bone)
-		CG_SpinWeaponBarrel(cent);
 
 		if (cent->gent->handRBolt != -1)
 		{

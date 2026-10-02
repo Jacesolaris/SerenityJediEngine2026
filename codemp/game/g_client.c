@@ -33,7 +33,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 ///																																///
 /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// ///
 #include "g_local.h"
-#include "g_pazaak.h"
 #include "ghoul2/G2.h"
 #include "bg_saga.h"
 #include <qcommon/q_string.h>
@@ -9335,8 +9334,6 @@ void ClientDisconnect(const int clientNum)
 	// cleanup if we are kicking a bot that
 	// hasn't spawned yet
 	G_RemoveQueuedBotBegin(clientNum);
-
-	G_Pazaak_ClientDisconnect(clientNum);
 
 	gentity_t* ent = g_entities + clientNum;
 	if (!ent->client || ent->client->pers.connected == CON_DISCONNECTED)

@@ -141,11 +141,11 @@ extern int SabBeh_AnimateMassiveStaffSlowBounce(int anim);
 extern qboolean PM_SaberInFullDamageMove(const playerState_t* ps, const int animSetIndex);
 extern void G_ClearEnemy(gentity_t* self);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
 extern void PM_AddBlockFatigue(playerState_t* ps, int fatigue);
 qboolean WP_SaberBouncedSaberDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
-extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
+extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
 extern qboolean BG_FullBodyTauntAnim(int anim);
 extern int PM_InGrappleMove(int anim);
 extern qboolean PM_SaberInKillMove(int move);
@@ -153,7 +153,7 @@ extern qboolean PM_WalkingOrRunningAnim(int anim);
 extern qboolean PM_RestAnim(int anim);
 extern qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, int saberNum, int bladeNum, vec3_t hit_loc);
 extern qboolean BG_HopAnim(int anim);
-extern void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt);
+extern void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
 extern qboolean PM_SaberInOverHeadSlash(saberMoveName_t saberMove);
 extern qboolean PM_SaberInBackAttack(saberMoveName_t saberMove);
 void WP_thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* trace);
@@ -2028,14 +2028,6 @@ qboolean WP_SabersCheckLock(gentity_t* ent1, gentity_t* ent2)
 
 	if (!ent1->client || !ent2->client)
 	{
-		return qfalse;
-	}
-
-	if (ent1->client->ps.weapon != WP_SABER || ent2->client->ps.weapon != WP_SABER
-		|| ent1->client->ps.saberHolstered == 2 || ent2->client->ps.saberHolstered == 2)
-	{
-		//both need a lit saber in hand. A bot with a gun (or fists) still has its saber entity, and a saber that hit it
-		//and was "blocked" by it could pull it into a saberlock.
 		return qfalse;
 	}
 

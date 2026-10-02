@@ -54,30 +54,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_public.h"
 #include <qcommon\q_string.h>
 #include "bg_saga.h"
-#include "g_pazaak.h"
  //
 
 #define BOT_THINK_TIME (1000.0f / (float)bot_fps.integer)
 
 //bot states
 bot_state_t* botstates[MAX_CLIENTS];
-
-// bot_calm_movement: until when a jump is allowed because something is in the way, since when a bot is stuck,
-// whether the jump he is in was an allowed one
-static int bot_obstacle_jump_time[MAX_CLIENTS];
-static int bot_stuck_since[MAX_CLIENTS];
-static qboolean bot_allowed_jump[MAX_CLIENTS];
-
-// The enemy a bot is after (entity number, -1 = none): g_pazaak.c lets a bot who is fighting someone else
-// turn a Pazaak challenge down
-int Bot_CurrentEnemy(const int client)
-{
-	if (client < 0 || client >= MAX_CLIENTS || !botstates[client] || !botstates[client]->inuse || !botstates[client]->currentEnemy)
-	{
-		return -1;
-	}
-	return botstates[client]->currentEnemy->s.number;
-}
 int walktime[MAX_CLIENTS];
 int next_kick[MAX_CLIENTS];
 int next_gloat[MAX_CLIENTS];
@@ -144,8 +126,6 @@ extern qboolean PM_SaberInSmashdown(saberMoveName_t saberMove);
 vmCvar_t bot_forcepowers;
 vmCvar_t bot_forgimmick;
 vmCvar_t bot_honorableduelacceptance;
-vmCvar_t bot_obstaclejumps;	// 1: bots jump only to clear obstacles (no hopping about), 0: they jump as they like
-vmCvar_t bot_idlewalk;		// 1: bots walk while they have no enemy, like singleplayer NPCs
 vmCvar_t bot_pvstype;
 vmCvar_t bot_normgpath;
 #ifndef FINAL_BUILD
@@ -3723,7 +3703,6 @@ static void bot_move(bot_state_t* bs, vec3_t dest, const qboolean wptravel, qboo
 		// ---------------------------------------------------------
 		if (!inSaberCombat && calculate_jump(bs->origin, dest))
 		{
-			bot_obstacle_jump_time[bs->client] = level.time + 400; // the way goes up: this jump is allowed (bot_calm_movement)
 			bs->jumpTime = level.time + 100;
 		}
 	}
@@ -5510,12 +5489,6 @@ static int pass_standard_enemy_checks(const bot_state_t* bs, const gentity_t* en
 				return 0;
 			}
 		}
-	}
-
-	if (en->s.number < MAX_CLIENTS && G_Pazaak_IsPlaying(en->s.number))
-	{
-		//he sits at a Pazaak board (and can't be hurt): leave him alone
-		return 0;
 	}
 
 	if (en->client->ps.duelInProgress && en->client->ps.duelIndex != bs->client)
@@ -13722,7 +13695,6 @@ void standard_bot_ai(bot_state_t* bs)
 
 		if (bot_trace_jump(bs, bs->goalPosition))
 		{
-			bot_obstacle_jump_time[bs->client] = level.time + 400; // something in the way: this jump is allowed (bot_calm_movement)
 			bs->jumpTime = level.time + 100;
 		}
 		else if (bot_trace_duck(bs, bs->goalPosition))
@@ -15913,7 +15885,6 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		// ---------------------------------------------
 		if (bot_trace_jump(bs, bs->goalPosition))
 		{
-			bot_obstacle_jump_time[bs->client] = level.time + 400; // something in the way: this jump is allowed (bot_calm_movement)
 			bs->jumpTime = level.time + 100;
 		}
 		else if (bot_trace_duck(bs, bs->goalPosition))
@@ -17427,114 +17398,6 @@ int bot_weapon_detpack(bot_state_t* bs, const gentity_t* target)
 	return qtrue;
 }
 
-/*
-==================
-bot_calm_movement
-
-The last word on a bot's move this frame, like a singleplayer NPC moves:
-- bot_obstaclejumps: he only jumps to get somewhere - over something in the way, up to the next waypoint,
-  to an enemy on a ledge, out of a spot he is stuck in, or in water / with a jetpack - not to hop about.
-  A jump he is allowed to start he may hold (force jump); the rest of the time the jump key stays up.
-- bot_idlewalk: he walks while he has no enemy (not in CTF / Siege, where he has somewhere to be).
-==================
-*/
-static void bot_calm_movement(bot_state_t* bs, usercmd_t* ucmd)
-{
-	const int client = bs->client;
-	gentity_t* self = &g_entities[client];
-	const playerState_t* ps = &self->client->ps;
-	const qboolean on_ground = ps->groundEntityNum != ENTITYNUM_NONE ? qtrue : qfalse;
-	vec3_t hvel;
-
-	// stuck: he wants to move but hardly does
-	VectorSet(hvel, ps->velocity[0], ps->velocity[1], 0);
-	if (on_ground && (ucmd->forwardmove || ucmd->rightmove) && VectorLength(hvel) < 40)
-	{
-		if (!bot_stuck_since[client])
-		{
-			bot_stuck_since[client] = level.time;
-		}
-	}
-	else
-	{
-		bot_stuck_since[client] = 0;
-	}
-
-	if (bot_idlewalk.integer && !bs->currentEnemy && self->waterlevel < 2
-		&& level.gametype != GT_CTF && level.gametype != GT_CTY && level.gametype != GT_SIEGE)
-	{
-		ucmd->buttons |= BUTTON_WALKING;
-		if (ucmd->forwardmove > 46) ucmd->forwardmove = 46;
-		if (ucmd->forwardmove < -46) ucmd->forwardmove = -46;
-		if (ucmd->rightmove > 46) ucmd->rightmove = 46;
-		if (ucmd->rightmove < -46) ucmd->rightmove = -46;
-	}
-
-	if (!bot_obstaclejumps.integer || self->waterlevel >= 2 || ps->eFlags & EF_JETPACK_ACTIVE)
-	{
-		return;
-	}
-	if (ucmd->upmove <= 0)
-	{
-		if (on_ground)
-		{
-			bot_allowed_jump[client] = qfalse;
-		}
-		return;
-	}
-	if (!on_ground)
-	{
-		// in the air: holding the jump (force jump) only for a jump he was allowed to start
-		if (!bot_allowed_jump[client])
-		{
-			ucmd->upmove = 0;
-		}
-		return;
-	}
-
-	// on the ground and about to jump: is there a reason to?
-	{
-		qboolean allowed = qfalse;
-		vec3_t flat;
-
-		if (bot_obstacle_jump_time[client] > level.time || bs->forceMove_Up)
-		{
-			allowed = qtrue; // something in the way, or he was told to
-		}
-		else if (bot_stuck_since[client] && level.time - bot_stuck_since[client] > 700)
-		{
-			allowed = qtrue; // stuck
-		}
-		else if (bs->wpCurrent)
-		{
-			VectorSubtract(bs->wpCurrent->origin, bs->origin, flat);
-			flat[2] = 0;
-			if (bs->wpCurrent->flags & WPFLAG_JUMP
-				|| bs->wpCurrent->origin[2] - bs->origin[2] > 40 && VectorLength(flat) < 384)
-			{
-				allowed = qtrue; // the route jumps, or the next waypoint is up a ledge
-			}
-		}
-		if (!allowed && bs->currentEnemy && bs->currentEnemy->client
-			&& bs->currentEnemy->client->ps.groundEntityNum != ENTITYNUM_NONE)
-		{
-			VectorSubtract(bs->currentEnemy->r.currentOrigin, bs->origin, flat);
-			flat[2] = 0;
-			if (bs->currentEnemy->r.currentOrigin[2] - bs->origin[2] > 48 && VectorLength(flat) < 384)
-			{
-				allowed = qtrue; // his enemy stands up on a ledge
-			}
-		}
-
-		bot_allowed_jump[client] = allowed;
-		if (!allowed)
-		{
-			ucmd->upmove = 0;
-		}
-	}
-}
-
-
 int gUpdateVars = 0;
 
 /*
@@ -17556,8 +17419,6 @@ int bot_ai_startframe(const int time)
 		trap->Cvar_Update(&bot_attachments);
 		trap->Cvar_Update(&bot_forgimmick);
 		trap->Cvar_Update(&bot_honorableduelacceptance);
-		trap->Cvar_Update(&bot_obstaclejumps);
-		trap->Cvar_Update(&bot_idlewalk);
 #ifndef FINAL_BUILD
 		trap->Cvar_Update(&bot_getinthecarrr);
 #endif
@@ -17605,7 +17466,7 @@ int bot_ai_startframe(const int time)
 		{
 			botstates[i]->botthink_residual -= thinktime;
 
-			if (g_entities[i].client->pers.connected == CON_CONNECTED && !G_Pazaak_IsPlaying(i))
+			if (g_entities[i].client->pers.connected == CON_CONNECTED)
 			{
 				bot_ai(i, (float)thinktime / 1000);
 			}
@@ -17625,17 +17486,6 @@ int bot_ai_startframe(const int time)
 		}
 
 		bot_state_t* bs = botstates[i];
-
-		if (G_Pazaak_IsPlaying(i))
-		{
-			// He sits in for the AI at a Pazaak match (g_pazaak.c): he sits still, facing his opponent
-			bs->lastucmd.serverTime = time;
-			bs->lastucmd.forwardmove = bs->lastucmd.rightmove = bs->lastucmd.upmove = 0;
-			bs->lastucmd.buttons = 0;
-			bs->lastucmd.generic_cmd = 0;
-			trap->BotUserCommand(bs->client, &bs->lastucmd);
-			continue;
-		}
 
 		// UNFREEZE LOGIC GOES HERE
 		if ((bs->cur_ps.userInt3 & (1 << FLAG_FROZEN)) &&
@@ -17681,8 +17531,6 @@ int bot_ai_startframe(const int time)
 			// 4. Optional: reduces step-up impulses (helps stop micro-hops)
 			// bs->cur_ps.pm_flags |= PMF_DUCKED;
 		}
-
-		bot_calm_movement(bs, ucmd);
 
 		trap->BotUserCommand(botstates[i]->client, &botstates[i]->lastucmd);
 	}
@@ -17730,8 +17578,6 @@ int bot_ai_setup(const int restart)
 	trap->Cvar_Register(&bot_forcepowers, "bot_forcepowers", "1", CVAR_CHEAT);
 	trap->Cvar_Register(&bot_forgimmick, "bot_forgimmick", "0", CVAR_CHEAT);
 	trap->Cvar_Register(&bot_honorableduelacceptance, "bot_honorableduelacceptance", "1", CVAR_CHEAT);
-	trap->Cvar_Register(&bot_obstaclejumps, "bot_obstaclejumps", "1", CVAR_ARCHIVE);
-	trap->Cvar_Register(&bot_idlewalk, "bot_idlewalk", "1", CVAR_ARCHIVE);
 	trap->Cvar_Register(&bot_pvstype, "bot_pvstype", "1", CVAR_CHEAT);
 #ifndef FINAL_BUILD
 	trap->Cvar_Register(&bot_getinthecarrr, "bot_getinthecarrr", "0", 0);

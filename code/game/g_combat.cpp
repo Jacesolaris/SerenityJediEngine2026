@@ -102,7 +102,7 @@ extern qboolean PM_LockedAnim(int anim);
 extern qboolean PM_KnockDownAnim(int anim);
 extern void G_SpeechEvent(const gentity_t* self, int event);
 extern qboolean Rosh_BeingHealed(const gentity_t* self);
-extern void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt);
+extern void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
 extern qboolean manual_saberblocking(const gentity_t* defender);
 static int G_CheckForLedge(const gentity_t* self, vec3_t fall_check_dir, float check_dist);
 static int G_CheckSpecialDeathAnim(gentity_t* self);
@@ -114,7 +114,7 @@ void AddFatigueHurtBonus(const gentity_t* attacker, const gentity_t* victim, int
 void AddFatigueHurtBonusMax(const gentity_t* attacker, const gentity_t* victim, int mod);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
 extern void Jetpack_Off(const gentity_t* ent);
-extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
 extern qboolean NPC_IsJetpacking(const gentity_t* self);
 void AddFatigueKillBonus(const gentity_t* attacker, const gentity_t* victim, const int means_of_death);
 void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags, int i_blend);

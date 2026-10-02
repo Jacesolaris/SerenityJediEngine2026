@@ -894,72 +894,6 @@ CL_AdjustAngles
 Moves the local angle positions
 ================
 */
-/*
-================
-CL_VehicleStickLook
-
-Piloting a vehicle with a controller: how fast the stick turns the view, as a part of its speed on foot
-(cg_vehicleStickPitch / cg_vehicleStickYaw), the way singleplayer does it (cg_view.cpp CG_VehicleStickLook).
-The vehicle's mouse speeds are not made for a stick: they turned it far too fast. A stick is bound to the look
-keys, so it is either at rest or turning at full speed: to make small corrections possible, a turn starts at a
-part of its speed and comes up to all of it over cg_vehicleStickEaseIn milliseconds.
-qfalse: not piloting a vehicle with a controller (the look keys keep their normal speeds)
-================
-*/
-extern cvar_t* in_joystick;
-static cvar_t* cl_vehicleStickYaw;
-static cvar_t* cl_vehicleStickPitch;
-static cvar_t* cl_vehicleStickEaseIn;
-static constexpr float STICK_EASE_START = 0.35f; // the part of its speed a turn starts at
-static constexpr int STICK_TURN_GAP = 120; // msec without turning after which the next turn is a new one
-
-static qboolean CL_VehicleStickLook(float* pitchScale, float* yawScale)
-{
-	static int turnStart[2] = { 0, 0 };
-	static int turnTime[2] = { 0, 0 };
-
-	if (!in_joystick || !in_joystick->integer || !cl_vehicleStickYaw || !cl.snap.valid
-		|| !cl.snap.ps.m_iVehicleNum || cl.snap.ps.generic1) // in a vehicle, not as a passenger
-	{
-		return qfalse;
-	}
-
-	const qboolean turning[2] = {
-		static_cast<qboolean>(in_lookup.active || in_lookdown.active),
-		static_cast<qboolean>(in_left.active || in_right.active) };
-	const float fullSpeed[2] = { cl_vehicleStickPitch->value, cl_vehicleStickYaw->value };
-	float* const scale[2] = { pitchScale, yawScale };
-
-	for (int axis = PITCH; axis <= YAW; axis++)
-	{
-		if (cls.realtime < turnTime[axis])
-		{
-			turnTime[axis] = turnStart[axis] = 0;
-		}
-		if (turning[axis])
-		{
-			if (cls.realtime - turnTime[axis] > STICK_TURN_GAP)
-			{
-				turnStart[axis] = cls.realtime;
-			}
-			turnTime[axis] = cls.realtime;
-		}
-
-		float frac = 1.0f;
-		if (cl_vehicleStickEaseIn->value > 0.0f)
-		{
-			float eased = static_cast<float>(cls.realtime - turnStart[axis]) / cl_vehicleStickEaseIn->value;
-			if (eased > 1.0f)
-			{
-				eased = 1.0f;
-			}
-			frac = STICK_EASE_START + (1.0f - STICK_EASE_START) * eased;
-		}
-		*scale[axis] = Com_Clamp(0.02f, 2.0f, fullSpeed[axis]) * frac;
-	}
-	return qtrue;
-}
-
 static void CL_AdjustAngles(void)
 {
 	float speed;
@@ -973,19 +907,9 @@ static void CL_AdjustAngles(void)
 		speed = 0.001 * cls.frametime;
 	}
 
-	// a controller in a vehicle has a speed of its own
-	float keyPitchScale = 0.0f;
-	float keyYawScale = 0.0f;
-	const qboolean stickLook = CL_VehicleStickLook(&keyPitchScale, &keyYawScale);
-
 	if (!in_strafe.active)
 	{
-		if (stickLook)
-		{
-			cl.viewangles[YAW] -= keyYawScale * speed * cl_yawspeed->value * CL_KeyState(&in_right);
-			cl.viewangles[YAW] += keyYawScale * speed * cl_yawspeed->value * CL_KeyState(&in_left);
-		}
-		else if (cl_mYawOverride)
+		if (cl_mYawOverride)
 		{
 			if (cl_mSensitivityOverride)
 			{
@@ -1009,12 +933,7 @@ static void CL_AdjustAngles(void)
 		}
 	}
 
-	if (stickLook)
-	{
-		cl.viewangles[PITCH] -= keyPitchScale * speed * cl_pitchspeed->value * CL_KeyState(&in_lookup);
-		cl.viewangles[PITCH] += keyPitchScale * speed * cl_pitchspeed->value * CL_KeyState(&in_lookdown);
-	}
-	else if (cl_mPitchOverride)
+	if (cl_mPitchOverride)
 	{
 		if (cl_mSensitivityOverride)
 		{
@@ -2109,11 +2028,6 @@ void CL_InitInput(void)
 
 	cl_nodelta = Cvar_Get("cl_nodelta", "0", 0);
 	cl_debugMove = Cvar_Get("cl_debugMove", "0", 0);
-
-	// a controller in a vehicle (CL_VehicleStickLook): the same cvars and defaults as singleplayer
-	cl_vehicleStickYaw = Cvar_Get("cg_vehicleStickYaw", "0.3", CVAR_ARCHIVE);
-	cl_vehicleStickPitch = Cvar_Get("cg_vehicleStickPitch", "0.22", CVAR_ARCHIVE);
-	cl_vehicleStickEaseIn = Cvar_Get("cg_vehicleStickEaseIn", "400", CVAR_ARCHIVE);
 }
 
 /*

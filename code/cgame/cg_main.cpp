@@ -22,7 +22,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cg_media.h"
-#include "cg_holster.h"
 #include "FxScheduler.h"
 
 #include "../client/vmachine.h"
@@ -436,11 +435,6 @@ vmCvar_t cg_DebugSaberCombat;
 vmCvar_t cg_drawRadar;
 
 vmCvar_t cg_trueguns;
-vmCvar_t cg_holsteredweapons; // cg_holster.cpp: 0 = off, 1 = the player only, 2 = everyone
-vmCvar_t cg_holsterdebug;
-vmCvar_t cg_holsterdebug_boneindex;
-vmCvar_t cg_holsterdebug_posoffset;
-vmCvar_t cg_holsterdebug_angoffset;
 vmCvar_t cg_fpls;
 vmCvar_t cg_trueroll;
 vmCvar_t cg_trueflip;
@@ -650,11 +644,6 @@ static cvarTable_t cvarTable[] = {
 	{&cg_vehicleStickEaseIn, "cg_vehicleStickEaseIn", "400", CVAR_ARCHIVE},
 
 	{&cg_trueguns, "cg_trueguns", "1", CVAR_ARCHIVE},
-	{&cg_holsteredweapons, "cg_holsteredweapons", "2", CVAR_ARCHIVE},
-	{&cg_holsterdebug, "cg_holsterdebug", "0", 0},
-	{&cg_holsterdebug_boneindex, "cg_holsterdebug_boneindex", "0", 0},
-	{&cg_holsterdebug_posoffset, "cg_holsterdebug_posoffset", "0.0 0.0 0.0", 0},
-	{&cg_holsterdebug_angoffset, "cg_holsterdebug_angoffset", "0.0 0.0 0.0", 0},
 	{&cg_fpls, "cg_fpls", "1", CVAR_ARCHIVE},
 	{&cg_trueroll, "cg_trueroll", "0", CVAR_ARCHIVE},
 	{&cg_trueflip, "cg_trueflip", "0", CVAR_ARCHIVE},
@@ -684,7 +673,7 @@ static cvarTable_t cvarTable[] = {
 
 	{&cg_drawwidescreenmodesp, "cg_drawwidescreenmodesp", "1", CVAR_ARCHIVE},
 
-	{&cg_SpinningBarrels, "cg_SpinningBarrels", "0", CVAR_ARCHIVE},
+	{&cg_SpinningBarrels, "cg_SpinningBarrels", "1", CVAR_ARCHIVE},
 
 	{&cg_Weather, "r_weather", "0", CVAR_ARCHIVE},
 
@@ -2822,7 +2811,6 @@ void CG_Shutdown()
 {
 	in_camera = false;
 	FX_Free();
-	CG_HolsterShutdown();
 }
 
 //// DEBUG STUFF

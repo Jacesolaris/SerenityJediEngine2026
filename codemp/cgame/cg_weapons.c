@@ -35,7 +35,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // cg_weapons.c -- events and effects dealing with weapons
 #include "cg_local.h"
 #include "fx_local.h"
-#include "ghoul2/G2.h"
 #include <assert.h>
 #include <game\bg_vehicles.h>
 #include <qcommon\q_color.h>
@@ -1004,29 +1003,8 @@ void cg_add_player_weaponduals(refEntity_t* parent,
 	}
 }
 
-// cg_SpinningBarrels: the gun in a player's hand spins its "bone_barrel" bone (the Z6 rotary cannon's
-// models/weapons2/z6_rotary/model.glm, CG_InitG2Weapons) while he fires and coasts down after.
-// Guns whose model has no such bone are not affected. With these orientations YAW turns it around the barrels.
-static void CG_SpinWeaponBarrel(centity_t* cent)
-{
-	vec3_t angles = { 0.0f, 0.0f, 0.0f };
-
-	if (!cg_SpinningBarrels.integer || !cent->ghoul2 || cent->currentState.weapon == WP_SABER
-		|| cent->currentState.weapon == WP_MELEE || !trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, 1))
-	{
-		return;
-	}
-	angles[YAW] = CG_MachinegunSpinAngle(cent);
-	trap->G2API_SetBoneAngles(cent->ghoul2, 1, "bone_barrel", angles, BONE_ANGLES_POSTMULT, POSITIVE_X, NEGATIVE_Y,
-		NEGATIVE_Z, cgs.game_models, 0, cg.time);
-}
-
 void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent, vec3_t new_angles, qboolean third_person)
 {
-	if (third_person)
-	{
-		CG_SpinWeaponBarrel(cent);
-	}
 	refEntity_t gun;
 	refEntity_t barrel;
 	weapon_t weapon_num;
@@ -3472,12 +3450,8 @@ void CG_InitG2Weapons(void)
 			assert(item->giTag < MAX_WEAPONS);
 
 			// initialise model
-			// (the Z6 rotary cannon in the hand: its model with a barrel bone, which CG_SpinWeaponBarrel spins,
-			// instead of rotary_cannon_w.glm, whose barrels are fixed to the gun)
-			const char* hand_model = !Q_stricmp(item->world_model[0], "models/weapons2/z6_rotary/rotary_cannon_w.glm")
-				? "models/weapons2/z6_rotary/model.glm" : item->world_model[0];
-			trap->G2API_InitGhoul2Model(&g2WeaponInstances[item->giTag], hand_model, 0, 0, 0, 0, 0);
-			trap->G2API_InitGhoul2Model(&g2WeaponInstances2[item->giTag], hand_model, 0, 0, 0, 0, 0);
+			trap->G2API_InitGhoul2Model(&g2WeaponInstances[item->giTag], item->world_model[0], 0, 0, 0, 0, 0);
+			trap->G2API_InitGhoul2Model(&g2WeaponInstances2[item->giTag], item->world_model[0], 0, 0, 0, 0, 0);
 			trap->G2API_InitGhoul2Model(&g2HolsterWeaponInstances[item->giTag], item->world_model[0], 0, 0, 0, 0, 0);
 
 			if (g2WeaponInstances[item->giTag])

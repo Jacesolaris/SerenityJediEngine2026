@@ -59,7 +59,7 @@ extern saberMoveName_t pm_broken_parry_for_attack(int move);
 extern qboolean PM_InGetUp(const playerState_t* ps);
 extern qboolean PM_InForceGetUp(const playerState_t* ps);
 extern qboolean G_ControlledByPlayer(const gentity_t* self);
-extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
 extern void PM_AddBlockFatigue(playerState_t* ps, int fatigue);
 extern saberMoveName_t pm_block_the_attack(int move);
 extern int g_block_the_attack(int move);
@@ -75,7 +75,7 @@ extern qboolean WP_SaberMBlockDirection(gentity_t* self, vec3_t hitloc, const qb
 extern qboolean WP_SaberBlockNonRandom(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean WP_SaberBouncedSaberDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
-extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
+extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
 void sab_beh_animate_heavy_slow_bounce_attacker(gentity_t* attacker);
 extern void G_StaggerAttacker(gentity_t* atk);
 extern void G_BounceAttacker(gentity_t* atk);

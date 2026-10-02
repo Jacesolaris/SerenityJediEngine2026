@@ -869,7 +869,6 @@ spawn_t spawns[] = {
 	{"shooter_plasma", SP_shooter_plasma},
 
 	{"ref_tag", SP_reference_tag},
-	{"ref_tag_huge", SP_reference_tag}, // MP maps: the same tag, only drawn bigger in the editor
 
 	//new NPC ents
 	{"NPC_spawner", SP_NPC_spawner},

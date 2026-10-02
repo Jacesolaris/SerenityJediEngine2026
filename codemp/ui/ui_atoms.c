@@ -27,7 +27,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	User interface building blocks and support functions.
 **********************************************************************/
 #include "ui_local.h"
-#include "ui_pazaak.h"
 
 #define NUM_UI_ARGSTRS (4)
 #define UI_ARGSTR_MASK (NUM_UI_ARGSTRS-1)
@@ -105,11 +104,6 @@ Cmd_Argc() / Cmd_Argv()
 qboolean UI_ConsoleCommand(int realTime) {
 	uiInfo.uiDC.frameTime = realTime - uiInfo.uiDC.realTime;
 	uiInfo.uiDC.realTime = realTime;
-
-	if (UI_Pazaak_ConsoleCommand(UI_Argv(0)))
-	{
-		return qtrue; // uipzk
-	}
 
 	const consoleCommand_t* command = (consoleCommand_t*)Q_LinearSearch(UI_Argv(0), commands, num_commands,
 		sizeof commands[0], cmdcmp);

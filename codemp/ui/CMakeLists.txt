@@ -68,8 +68,6 @@ set(MPUIFiles ${MPUIFiles} ${MPUICommonSafeFiles})
 
 set(MPUIUIFiles
 	"${MPDir}/ui/ui_atoms.c"
-	"${MPDir}/ui/ui_pazaak.c"
-	"${MPDir}/ui/ui_pazaak.h"
 	"${MPDir}/ui/ui_cvar.c"
 	"${MPDir}/ui/ui_force.c"
 	"${MPDir}/ui/ui_gameinfo.c"

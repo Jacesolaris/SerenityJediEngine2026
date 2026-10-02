@@ -22,7 +22,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "g_local.h"
-#include "g_pazaak.h"
 #include "g_functions.h"
 #include "Q3_Interface.h"
 #include "g_roff.h"
@@ -280,7 +279,6 @@ extern void CP_FindCombatPointWaypoints();
 extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 
 void G_RunFrame(const int levelTime);
-extern void WP_SaberHolsterCheckGuns(gentity_t* ent);
 void ClearNPCGlobals();
 extern void AI_UpdateGroups();
 
@@ -992,7 +990,6 @@ static void init_game(const char* mapname, const char* spawntarget, const int ch
 	}
 	//Set up NPC init data
 	NPC_InitGame();
-	G_Pazaak_Init();
 
 	TIMER_Clear();
 	Rail_Reset();
@@ -2137,7 +2134,6 @@ void G_RunFrame(const int levelTime)
 	level.framenum++;
 	level.previousTime = level.time;
 	level.time = levelTime;
-	G_Pazaak_RunFrame(); // a Pazaak match starts once the player sits
 	g_entities[0].nearAllies = ENTITYNUM_NONE;
 
 	NAV::DecayDangerSenses();
@@ -2425,15 +2421,6 @@ void G_RunFrame(const int levelTime)
 
 		G_RunThink(ent); // be aware that ent may be free after returning from here, at least one func frees them
 		ClearNPCGlobals(); //	but these 2 funcs are ok
-	}
-
-	// holstered sabers make room for the holstered guns on the hips (wp_saber.cpp)
-	for (int i = 0; i < globals.num_entities; i++)
-	{
-		if (g_entities[i].inuse && g_entities[i].client)
-		{
-			WP_SaberHolsterCheckGuns(&g_entities[i]);
-		}
 	}
 
 	// perform final fixups on the player

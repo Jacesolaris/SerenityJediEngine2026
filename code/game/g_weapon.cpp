@@ -1245,11 +1245,10 @@ static void FireVehicleWeapon(gentity_t* ent, const qboolean alt_fire)
 					}
 
 					//play the weapon's muzzle effect if we have one
-					//(on the muzzle's tag, as MP does, so that the firing sound goes with the ship)
 					if (vehWeapon->iMuzzleFX)
 					{
-						G_PlayEffect(vehWeapon->iMuzzleFX, ent->playerModel, p_veh->m_iMuzzleTag[i], ent->s.number,
-							p_veh->m_Muzzles[i].m_vMuzzlePos, 0, qtrue);
+						G_PlayEffect(vehWeapon->iMuzzleFX, p_veh->m_Muzzles[i].m_vMuzzlePos,
+							p_veh->m_Muzzles[i].m_vMuzzleDir);
 					}
 					WP_FireVehicleWeapon(ent, start, dir, vehWeapon, qfalse);
 				}

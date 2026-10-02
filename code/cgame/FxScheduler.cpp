@@ -1928,14 +1928,6 @@ void CFxScheduler::CreateEffect(CPrimitiveTemplate* fx, const vec3_t origin, vec
 			//could orient this anyway for panning, but eh. It's going to appear to the player in the sky the same place no matter what, so just make it a local sound.
 			theFxHelper.PlayLocalSound(fx->mMediaHandles.GetHandle(), CHAN_AUTO);
 		}
-		else if (client_id >= 0 && client_id < ENTITYNUM_WORLD)
-		{
-			//an effect that sits on an entity (a relative bolted one: org is not a place in the world here). Its sound
-			//goes with the entity - and the ship the player is flying is heard from the camera, some way behind it.
-			const int chan = fx->mSpawnFlags & FX_SND_LESS_ATTENUATION
-				|| client_id == cg.predictedPlayerState.m_iVehicleNum ? CHAN_LESS_ATTEN : CHAN_AUTO;
-			theFxHelper.PlaySound(nullptr, client_id, chan, fx->mMediaHandles.GetHandle());
-		}
 		else if (fx->mSpawnFlags & FX_SND_LESS_ATTENUATION)
 		{
 			theFxHelper.PlaySound(org, ENTITYNUM_NONE, CHAN_LESS_ATTEN, fx->mMediaHandles.GetHandle());

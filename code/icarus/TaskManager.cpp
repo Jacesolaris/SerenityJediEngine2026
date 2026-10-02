@@ -490,7 +490,7 @@ int CTaskManager::GetVector(const int entID, CBlock* block, int& member_num, vec
 		if (icarus->GetGame()->GetTag(entID, tagName, static_cast<int>(tagLookup), value) == false)
 		{
 			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR, "Unable to find tag \"%s\"!\n", tagName);
-			// a script naming a tag the map doesn't have is a map / script error, not an engine one: it is reported above and the task fails
+			assert(0 && "Unable to find tag");
 			return TASK_FAILED;
 		}
 
@@ -626,7 +626,7 @@ int CTaskManager::Get(const int entID, CBlock* block, int& member_num, char** va
 		if (icarus->GetGame()->GetTag(entID, tagName, static_cast<int>(tagLookup), vector) == false)
 		{
 			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR, "Unable to find tag \"%s\"!\n", tagName);
-			// a script naming a tag the map doesn't have is a map / script error, not an engine one: it is reported above and the task fails
+			assert(0 && "Unable to find tag");
 			return false;
 		}
 
@@ -1231,7 +1231,7 @@ int CTaskManager::Rotate(const CTask* task, CIcarus* icarus) const
 		if (icarus->GetGame()->GetTag(m_ownerID, tagName, static_cast<int>(tagLookup), vector) == false)
 		{
 			icarus->GetGame()->DebugPrint(IGameInterface::WL_ERROR, "Unable to find tag \"%s\"!\n", tagName);
-			// a script naming a tag the map doesn't have is a map / script error, not an engine one: it is reported above and the task fails
+			assert(0);
 			return TASK_FAILED;
 		}
 	}

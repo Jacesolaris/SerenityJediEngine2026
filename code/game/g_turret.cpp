@@ -1003,6 +1003,41 @@ static void turretG2_set_models(gentity_t* self, qboolean dying)
 	}
 }
 
+/*QUAKED misc_turretG2 (1 0 0) (-8 -8 -22) (8 8 0) START_OFF UPSIDE_DOWN CANRESPAWN TURBO LEAD SHOWRADAR
+The turret of the MP maps, working here as it does there: it finds its own enemies (also as a turbolaser), it can be
+destroyed, and it takes the MP keys.
+
+  START_OFF - Starts off
+  UPSIDE_DOWN - make it rest on a surface/floor instead of hanging from the ceiling
+  CANRESPAWN - will respawn after being killed (use count). Not the turbolaser: that one is gone for good.
+  TURBO - Big-ass, Boxy Death Star Turbo Laser version
+  LEAD - Turret will aim ahead of moving targets ("lead" them)
+  SHOWRADAR - show on radar
+
+  radius - How far away an enemy can be for it to pick it up (default 512, turbolaser 32768)
+  wait	- Time between shots (default 150 ms, turbolaser 1000)
+  dmg	- How much damage each shot does (default 5, turbolaser 500)
+  health - How much damage it can take before exploding (default 100, turbolaser 2000)
+  count - if CANRESPAWN spawnflag, decides how long it is before gun respawns (in ms) - defaults to 20000 (20 seconds)
+  random - random error (in degrees) of projectile direction when it comes out of the muzzle (turbolaser only, default 2)
+  shotspeed - the speed of the missile a turbolaser fires (default 20000)
+
+  splashDamage - How much damage the explosion does
+  splashRadius - The radius of the explosion
+
+  targetname - Toggles it on/off
+  target - What to use when destroyed
+  target2 - What to use when it decides to start shooting at an enemy
+
+  alliedTeam - team that this turret won't target and takes no damage from (teamnodmg is read the same way)
+	0 - none given: "team", else the enemy's
+	1 - red: the enemy's
+	2 - blue: the player's
+
+  customscale - custom scaling size. 100 is normal size, 1024 is the max scaling. this will change the bounding box size, so be careful of starting in solid!
+
+"icon" - icon that represents the objective on the radar
+*/
 //-----------------------------------------------------
 void SP_misc_turretG2(gentity_t* base)
 //-----------------------------------------------------
@@ -1051,7 +1086,69 @@ void SP_misc_turretG2(gentity_t* base)
 	}
 	finish_spawning_turret(base);
 
-	if ((base->spawnflags & 1)) // Start_Off
+	base->count = respawn_time;
+
+	G_SpawnInt("alliedTeam", "0", &allied_team);
+	if (!allied_team)
+	{
+		G_SpawnInt("teamnodmg", "0", &allied_team);
+	}
+	if (allied_team == 1)
+	{
+		base->noDamageTeam = TEAM_ENEMY;
+	}
+	else if (allied_team == 2)
+	{
+		base->noDamageTeam = TEAM_PLAYER;
+	}
+
+	G_SpawnInt("customscale", "0", &custom_scale);
+	if (custom_scale > 1023)
+	{
+		custom_scale = 1023;
+	}
+	const float scale = custom_scale > 0 ? custom_scale / 100.0f : 1.0f;
+
+	if (turbo)
+	{
+		//the SP turbolaser is scenery that a script aims: twice the size, no team, can't be hurt
+		G_SpawnFloat("shotspeed", "20000", &base->mass);
+		if (!map_wait)
+		{
+			base->wait = 1000;
+		}
+		if (!map_damage)
+		{
+			base->damage = 500;
+		}
+
+		if (allied_team != 1 && allied_team != 2)
+		{
+			base->noDamageTeam = TEAM_ENEMY;
+		}
+		base->flags &= ~FL_DMG_BY_HEAVY_WEAP_ONLY;
+		base->takedamage = qtrue;
+
+		VectorSet(base->maxs, 64.0f, 64.0f, 30.0f);
+		VectorSet(base->mins, -64.0f, -64.0f, -30.0f);
+		base->s.radius = 128 * scale;
+	}
+	else
+	{
+		base->mass = 1100; //what its bolt flies at (turret_fire), for leading a target
+	}
+
+	if (custom_scale > 0 || turbo)
+	{
+		//the scale is for what is drawn (s.) and for where the muzzle is
+		VectorSet(base->s.modelScale, scale, scale, scale);
+		VectorSet(base->modelScale, scale, scale, scale);
+		VectorScale(base->mins, scale, base->mins);
+		VectorScale(base->maxs, scale, base->maxs);
+		gi.linkentity(base);
+	}
+
+	if (base->spawnflags & 1) // Start_Off
 	{
 		base->s.frame = 1; // black
 	}

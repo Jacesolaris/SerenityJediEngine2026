@@ -229,8 +229,8 @@ void player_Freeze(const gentity_t* self);
 void Player_CheckFreeze(const gentity_t* self);
 extern qboolean PM_SaberInSpecial(int move);
 qboolean manual_saberblocking(const gentity_t* defender);
-void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
-void WP_ForcePowerRegenerate(const gentity_t* self, const int override_amt);
+void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
+void WP_ForcePowerRegenerate(const gentity_t* self, int override_amt);
 void G_Stagger(gentity_t* hitEnt);
 extern qboolean PM_StabAnim(int anim);
 extern qboolean NPC_IsAlive(const gentity_t* self, const gentity_t* npc);
@@ -251,7 +251,7 @@ qboolean WP_SaberMBlockDirection(gentity_t* self, vec3_t hitloc, qboolean missil
 qboolean WP_SaberFatiguedParryDirection(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern qboolean BG_IsAlreadyinTauntAnim(int anim);
 extern qboolean BG_FullBodyTauntAnim(int anim);
-void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
+void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
 extern qboolean PM_WalkingOrRunningAnim(int anim);
 extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int color);
 void WP_BlockPointsDrain(const gentity_t* self, int fatigue);
@@ -640,9 +640,6 @@ static qboolean class_is_gunner(const gentity_t* self)
 
 //SABER INITIALIZATION======================================================================
 
-// Extra offset of a saber holstered on a hip, at the side or (a gun has that hip) the front (WP_SaberHolsterAvoidGuns)
-static vec3_t saberHolsterHipExtra = { 0.0f, 0.0f, 0.0f };
-
 static void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_weapon_model, const int bolt_num,
 	const int weapon_num, vec3_t angles, vec3_t offset)
 {
@@ -699,29 +696,12 @@ static void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_we
 			}
 			gi.G2API_AttachG2Model(&ent->ghoul2[ent->holsterModel[weapon_num]], &ent->ghoul2[ent->playerModel],
 				bolt_num, ent->playerModel);
+
 			if (holster_origin == -1)
 			{
 				if (ent->client->ps.saber[0].type == SABER_DAGGER)
 				{
 					//COUNT ME OUT ON THIS ONE
-				}
-				else if (!VectorCompare(saberHolsterHipExtra, vec3_origin))
-				{
-					// on a hip: the same rotation G2API_SetBoneAnglesOffset makes (its offset is not used by
-					// the renderer) plus a translation, as a matrix
-					const vec3_t g2_angles = { angles[PITCH], angles[ROLL], angles[YAW] };
-					vec3_t axis[3];
-					AnglesToAxis(g2_angles, axis);
-					mdxaBone_t matrix;
-					for (int i = 0; i < 3; i++)
-					{
-						matrix.matrix[i][0] = axis[0][i];
-						matrix.matrix[i][1] = axis[1][i];
-						matrix.matrix[i][2] = axis[2][i];
-						matrix.matrix[i][3] = saberHolsterHipExtra[i];
-					}
-					gi.G2API_SetBoneAnglesMatrix(&ent->ghoul2[ent->holsterModel[weapon_num]], "ModView internal default",
-						matrix, BONE_ANGLES_PREMULT, nullptr, 0, 0);
 				}
 				else
 				{
@@ -783,13 +763,6 @@ void G_CreateG2AttachedWeaponModel(gentity_t* ent, const char* ps_weapon_model, 
 			strcat(weapon_model, "_w");
 		}
 		strcat(weapon_model, ".glm"); //and change to ghoul2
-	}
-
-	// The Z6 rotary cannon in the hand: its model with a barrel bone, which cgame spins (CG_SpinWeaponBarrel)
-	// instead of rotary_cannon_w.glm (its barrels are fixed to the gun)
-	if (!Q_stricmp(weapon_model, "models/weapons2/z6_rotary/rotary_cannon_w.glm"))
-	{
-		Q_strncpyz(weapon_model, "models/weapons2/z6_rotary/model.glm", sizeof(weapon_model));
 	}
 
 	// give us a saber model
@@ -935,74 +908,6 @@ void WP_SaberAddG2SaberModels(gentity_t* ent, const int specific_saber_num)
 					);
 				}
 			}
-		}
-	}
-}
-
-// Holstered sabers and holstered guns (cgame/cg_holster.cpp) share the hips: a saber holstered on a hip that
-// has a gun goes to the front of that hip (the guns hang at the back of the hips).
-extern qboolean CG_HolsterHipTaken(int entNum, qboolean left);
-
-static int saberHolsterSide[MAX_GENTITIES][MAX_SABERS];	  // 0: not on a hip, 1: right hip, 2: left hip
-static qboolean saberHolsterHipGun[MAX_GENTITIES][MAX_SABERS]; // that hip had a gun when the saber was holstered
-
-static int WP_SaberHolsterAvoidGuns(gentity_t* ent, const int saberNum, const int handBolt)
-{
-	const int num = ent->s.number;
-	VectorClear(saberHolsterHipExtra);
-	saberHolsterSide[num][saberNum] = 0;
-	saberHolsterHipGun[num][saberNum] = qfalse;
-	if (handBolt == -1)
-	{
-		return handBolt;
-	}
-
-	CGhoul2Info* g2 = &ent->ghoul2[ent->playerModel];
-	int side;
-	if (handBolt == gi.G2API_AddBolt(g2, "*hip_r") || handBolt == gi.G2API_AddBolt(g2, "*hip_br"))
-	{
-		side = 1;
-	}
-	else if (handBolt == gi.G2API_AddBolt(g2, "*hip_l") || handBolt == gi.G2API_AddBolt(g2, "*hip_bl"))
-	{
-		side = 2;
-	}
-	else
-	{
-		return handBolt; // the back, the front of a hip, a hand...
-	}
-	saberHolsterSide[num][saberNum] = side;
-	// on the side of the hip: 5 down (the tag puts the hilt across the belt)
-	VectorSet(saberHolsterHipExtra, 0.0f, 0.0f, -5.0f);
-	saberHolsterHipGun[num][saberNum] = CG_HolsterHipTaken(num, side == 2 ? qtrue : qfalse);
-	if (saberHolsterHipGun[num][saberNum])
-	{
-		const int front = gi.G2API_AddBolt(g2, side == 2 ? "*hip_fl" : "*hip_fr");
-		if (front != -1)
-		{
-			// out of the leg: 2 away from the body, 2 forward, 6 down (the tag puts the hilt across the belt)
-			VectorSet(saberHolsterHipExtra, side == 1 ? -2.0f : 2.0f, -2.0f, -6.0f);
-			return front;
-		}
-	}
-	return handBolt;
-}
-
-// Every frame: a holstered saber moves when a gun takes or leaves its hip
-void WP_SaberHolsterCheckGuns(gentity_t* ent)
-{
-	if (!ent || !ent->client || ent->playerModel < 0)
-	{
-		return;
-	}
-	const int num = ent->s.number;
-	for (int i = 0; i < MAX_SABERS; i++)
-	{
-		const int side = saberHolsterSide[num][i];
-		if (side && ent->holsterModel[i] > 0
-			&& CG_HolsterHipTaken(num, side == 2 ? qtrue : qfalse) != saberHolsterHipGun[num][i])
-		{
-			wp_saber_add_holstered_g2_saber_models(ent, i);
 		}
 	}
 }
@@ -1283,9 +1188,7 @@ void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, const int specific_s
 				handBolt = gi.G2API_AddBolt(&ent->ghoul2[ent->playerModel], "*back");
 			}
 		}
-		handBolt = WP_SaberHolsterAvoidGuns(ent, saberNum, handBolt);
 		g_create_g2_holstered_weapon_model(ent, ent->client->ps.saber[saberNum].model, handBolt, saberNum, angles, offset);
-		VectorClear(saberHolsterHipExtra);
 
 		if (ent->client->ps.saber[saberNum].skin != nullptr)
 		{
@@ -30483,7 +30386,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 						//regen half as fast
 						self->client->ps.BlockPointsRegenDebounceTime += 2000;
 					}
-					else if (self->client->ps.weaponTime <= 0) //slows down
+					else if (self->client->ps.weaponTime > 0) //slows down while busy (was "<= 0": idle regen was the slow one)
 					{
 						//regen half as fast
 						self->client->ps.BlockPointsRegenDebounceTime += 2000;
@@ -30527,7 +30430,7 @@ void WP_BlockPointsUpdate(const gentity_t* self)
 					//regen half as fast
 					self->client->ps.BlockPointsRegenDebounceTime += 2000;
 				}
-				else if (self->client->ps.weaponTime <= 0) //slows down
+				else if (self->client->ps.weaponTime > 0) //slows down while busy (was "<= 0": idle regen was the slow one)
 				{
 					//regen half as fast
 					self->client->ps.BlockPointsRegenDebounceTime += 2000;

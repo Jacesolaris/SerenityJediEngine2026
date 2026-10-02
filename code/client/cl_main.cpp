@@ -401,23 +401,6 @@ static void CL_ForwardToServer_f()
 
 /*
 ==================
-CL_Pazaak_f
-
-The Pazaak key (bind "pazaak"): the game module starts the match (g_pazaak.cpp). Pressed while a
-level is still loading there is nothing to play yet, so it is dropped quietly instead of giving
-"Unknown command".
-==================
-*/
-static void CL_Pazaak_f()
-{
-	if (cls.state == CA_ACTIVE)
-	{
-		CL_ForwardCommandToServer();
-	}
-}
-
-/*
-==================
 CL_Disconnect_f
 ==================
 */
@@ -1557,7 +1540,6 @@ void CL_Init()
 	Cmd_AddCommand("uimenu", CL_GenericMenu_f);
 	Cmd_AddCommand("datapad", CL_DataPad_f);
 	Cmd_AddCommand("endscreendissolve", CL_EndScreenDissolve_f);
-	Cmd_AddCommand("pazaak", CL_Pazaak_f);
 
 	CL_InitRef();
 
@@ -1613,7 +1595,6 @@ void CL_Shutdown()
 	Cmd_RemoveCommand("uimenu");
 	Cmd_RemoveCommand("datapad");
 	Cmd_RemoveCommand("endscreendissolve");
-	Cmd_RemoveCommand("pazaak");
 
 	Cvar_Set("cl_running", "0");
 

@@ -38,7 +38,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "ui/menudef.h"			// for the voice chats
 #include "teams.h"
-#include "g_pazaak.h"
 #include "anims.h"
 #include "bg_weapons.h"
 
@@ -4394,12 +4393,6 @@ void ClientCommand(const int clientNum)
 	}
 
 	trap->Argv(0, cmd, sizeof cmd);
-
-	if (G_Pazaak_ClientCommand(ent, cmd))
-	{
-		// pazaak, ~pzk
-		return;
-	}
 
 	if (Q_stricmp(cmd, "EndCinematic") == 0)
 	{

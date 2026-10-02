@@ -715,11 +715,6 @@ extern vmCvar_t cg_vehicleStickEaseIn;
 extern vmCvar_t cg_drawRadar;
 
 extern vmCvar_t cg_trueguns;
-extern vmCvar_t cg_holsteredweapons;
-extern vmCvar_t cg_holsterdebug;
-extern vmCvar_t cg_holsterdebug_boneindex;
-extern vmCvar_t cg_holsterdebug_posoffset;
-extern vmCvar_t cg_holsterdebug_angoffset;
 extern vmCvar_t cg_fpls;
 extern vmCvar_t cg_trueroll;
 extern vmCvar_t cg_trueflip;
