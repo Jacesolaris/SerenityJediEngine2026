@@ -2663,7 +2663,7 @@ void ClientCommand(const int clientNum)
 		return; // pazaak, pazaak_result
 	}
 
-	extern qboolean G_FighterRoute_ClientCommand(const gentity_t* ent, const char* cmd);
+	extern qboolean G_FighterRoute_ClientCommand(const gentity_t * ent, const char* cmd);
 	if (G_FighterRoute_ClientCommand(ent, cmd))
 	{
 		return; // ship_wp_add, ship_wp_save... (AI_Fighter.cpp)

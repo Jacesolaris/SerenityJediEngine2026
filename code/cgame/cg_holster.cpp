@@ -452,7 +452,7 @@ static void Hls_RotateAxis(vec3_t axis[3], const int rotType, const float value)
 
 // Draws one gun in one holster place (multiplayer's CG_HolsteredWeaponRender)
 static void Hls_Render(centity_t* cent, const holsterModel_t* model, const int holsterType, const int weapon,
-	const vec3_t g2Angles, const vec3_t origin, const int playerRenderfx)
+	const vec3_t g2Angles, const vec3_t origin, const int playerRenderfx, const float shadowPlane)
 {
 	holster_t h = model->data[holsterType];
 
@@ -515,11 +515,13 @@ static void Hls_Render(centity_t* cent, const holsterModel_t* model, const int h
 	Hls_RotateAxis(ent.axis, YAW, h.angOffset[YAW]);
 	Hls_RotateAxis(ent.axis, ROLL, h.angOffset[ROLL]);
 
-
 	VectorCopy(boltOrg, ent.origin);
 	VectorCopy(boltOrg, ent.oldorigin);
 	VectorCopy(origin, ent.lightingOrigin); // lit like the body it hangs on
-	ent.renderfx = (playerRenderfx & RF_THIRD_PERSON) | RF_LIGHTING_ORIGIN;
+	// the body's shadow settings too: a volumetric shadow (cg_shadows 2) reaches down to shadowPlane, which left at 0
+	// (the world's origin height) cast the gun's shadow far off on any floor above or below that
+	ent.renderfx = (playerRenderfx & (RF_THIRD_PERSON | RF_SHADOW_PLANE | RF_SHADOW_ONLY)) | RF_LIGHTING_ORIGIN;
+	ent.shadowPlane = shadowPlane;
 	ent.hModel = hlsWeaponModel[weapon];
 	ent.ghoul2 = weaponG2;
 	ent.radius = 64.0f;
@@ -530,7 +532,8 @@ static void Hls_Render(centity_t* cent, const holsterModel_t* model, const int h
 	cgi_R_AddRefEntityToScene(&ent);
 }
 
-void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t origin, const int playerRenderfx)
+void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t origin, const int playerRenderfx,
+	const float shadowPlane)
 {
 	gentity_t* gent = cent->gent;
 
@@ -577,7 +580,7 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		{
 			if (gun.right == cg_holsterdebug.integer || gun.left == cg_holsterdebug.integer)
 			{
-				Hls_Render(cent, model, cg_holsterdebug.integer, gun.weapon, g2Angles, origin, playerRenderfx);
+				Hls_Render(cent, model, cg_holsterdebug.integer, gun.weapon, g2Angles, origin, playerRenderfx, shadowPlane);
 				break;
 			}
 		}
@@ -587,9 +590,9 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 	const int inventory = client->ps.stats[STAT_WEAPONS];
 	const int inHand = client->ps.weapon;
 	auto carries = [&](const int weapon)
-	{
-		return weapon != inHand && inventory & 1 << weapon ? true : false;
-	};
+		{
+			return weapon != inHand && inventory & 1 << weapon ? true : false;
+		};
 
 	// A jetpack (the classes that can fly with one) or a saber holstered on the back (the singleplayer saber
 	// holsters) keeps a gun off the back
@@ -605,11 +608,11 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 
 	// A holster type this model's holster.cfg disables (boneIndex HOLSTER_NONE / disabled) is no place for a gun
 	auto enabled = [&](const int holsterType)
-	{
-		const int bone = cg_holsterdebug.integer == holsterType ? cg_holsterdebug_boneindex.integer
-			: model->data[holsterType].boneIndex;
-		return bone > HLB_NONE && bone < HLB_NUM;
-	};
+		{
+			const int bone = cg_holsterdebug.integer == holsterType ? cg_holsterdebug_boneindex.integer
+				: model->data[holsterType].boneIndex;
+			return bone > HLB_NONE && bone < HLB_NUM;
+		};
 
 	// The places keep their gun: a gun that got a place keeps it as long as he has it (also while it is in
 	// his hand, then the place stays empty), no other gun takes it meanwhile. At most MAX_HOLSTERED guns.
@@ -628,16 +631,16 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		}
 	}
 	auto placed = [&](const int weapon)
-	{
-		for (int p = 0; p < HLP_NUM; p++)
 		{
-			if (places[p] == weapon)
+			for (int p = 0; p < HLP_NUM; p++)
 			{
-				return true;
+				if (places[p] == weapon)
+				{
+					return true;
+				}
 			}
-		}
-		return false;
-	};
+			return false;
+		};
 	for (const hlsGun_t& gun : hlsGuns)
 	{
 		if (used >= MAX_HOLSTERED)
@@ -677,7 +680,7 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		}
 		if (const hlsGun_t* gun = Hls_Gun(weapon))
 		{
-			Hls_Render(cent, model, Hls_PlaceType(gun, p), weapon, g2Angles, origin, playerRenderfx);
+			Hls_Render(cent, model, Hls_PlaceType(gun, p), weapon, g2Angles, origin, playerRenderfx, shadowPlane);
 		}
 	}
 }

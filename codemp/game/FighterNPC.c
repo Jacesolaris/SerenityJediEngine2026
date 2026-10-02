@@ -1658,8 +1658,9 @@ static void ProcessOrientCommands(Vehicle_t* p_veh)
 	}
 	else
 	{
-		//add in strafing roll
-		const float strafeRoll = parent_ps->hackingTime / MAX_STRAFE_TIME * p_veh->m_pVehicleInfo->rollLimit;
+		//add in strafing roll, banked the way it goes: a strafe to the left (m_ucmd.rightmove < 0) counts the
+		//strafe time up, and a positive roll banks to the right (turning, cur_roll -= yaw delta, banks into the turn)
+		const float strafeRoll = -parent_ps->hackingTime / MAX_STRAFE_TIME * p_veh->m_pVehicleInfo->rollLimit;
 		//p_veh->m_pVehicleInfo->bankingSpeed*
 		const float strafeDif = AngleSubtract(strafeRoll, p_veh->m_vOrientation[ROLL]);
 		p_veh->m_vOrientation[ROLL] += strafeDif * 0.1f * p_veh->m_fTimeModifier;
@@ -1780,8 +1781,7 @@ static void AnimateVehicle(Vehicle_t* p_veh)
 
 // This function makes sure that the rider's in this vehicle are properly animated.
 static void AnimateRiders(Vehicle_t* p_veh)
-{
-}
+{}
 
 #endif //game-only
 

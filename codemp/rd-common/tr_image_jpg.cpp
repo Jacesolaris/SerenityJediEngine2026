@@ -288,8 +288,7 @@ static boolean empty_output_buffer(const j_compress_ptr cinfo)
 */
 
 static void term_destination(j_compress_ptr cinfo)
-{
-}
+{}
 
 /*
 * Prepare for output to a stdio stream.

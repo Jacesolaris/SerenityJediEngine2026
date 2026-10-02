@@ -64,6 +64,7 @@ static int fighter_crew_time;
 static int fighter_out_since[MAX_GENTITIES]; // an AI ship out past the map's edges: since when
 static vec3_t fighter_launch_pos[MAX_GENTITIES]; // where a pilot got into his ship, and the way it stood
 static vec3_t fighter_launch_angles[MAX_GENTITIES];
+static int fighter_jump_wait[MAX_GENTITIES]; // a pilot turning his ship to a hyperspace jump: since when
 static vec3_t fighter_box_mins, fighter_box_maxs; // the space the ships fly in (Fighter_FindPlayBox)
 static qboolean fighter_box_set;
 
@@ -1060,6 +1061,7 @@ void G_FighterRoute_Load(void)
 	memset(fighter_side, 0, sizeof fighter_side);
 	memset(fighter_flown, 0, sizeof fighter_flown);
 	memset(fighter_out_since, 0, sizeof fighter_out_since);
+	memset(fighter_jump_wait, 0, sizeof fighter_jump_wait);
 	fighter_box_set = qfalse; // (worked out when first needed, once the map's triggers are linked)
 	fighter_crew_time = 0;
 	route_show_client = -1;
@@ -1251,14 +1253,32 @@ qboolean NPC_FighterAI(void)
 	const float speed = VectorLength(ship->client->ps.velocity);
 
 	// going into hyperspace (a trigger_hyperspace: the Rebels' hangar on siege_destroyer2 is far off, in one): the ship
-	// turns to the jump by itself (PM_VehFaceHyperspacePoint), keep the view where it puts it, and turbo as that does
-	// for a player (a ship standing still does not turn)
-	if (ship->client->ps.hyperSpaceTime && level.time - ship->client->ps.hyperSpaceTime < HYPERSPACE_TIME)
+	// follows its pilot's view, roll and all, until it faces the jump. For a player his pmove turns the view there
+	// (PM_VehFaceHyperspacePoint), an NPC rider's does not get there: the pilot turns it himself, as fast (90 degrees a
+	// second), and one still not there after a while is put there. Turbo as that does for a player (a ship standing
+	// still does not turn).
+	if (ship->client->ps.hyperSpaceTime&& level.time - ship->client->ps.hyperSpaceTime < HYPERSPACE_TIME)
 	{
 		NPCS.ucmd.upmove = 127;
+		if (!fighter_jump_wait[npc->s.number])
+		{
+			fighter_jump_wait[npc->s.number] = level.time;
+		}
+		const qboolean snap = level.time - fighter_jump_wait[npc->s.number] > 5000;
+		const float step = 90.0f * FIGHTER_THINK_SECONDS;
+		vec3_t view;
 		for (int axis = PITCH; axis <= ROLL; axis++)
 		{
-			NPCS.ucmd.angles[axis] = ANGLE2SHORT(NPCS.client->ps.viewangles[axis]) - NPCS.client->ps.delta_angles[axis];
+			const float want = ship->client->ps.hyperSpaceAngles[axis];
+			const float delta = AngleSubtract(want, NPCS.client->ps.viewangles[axis]);
+			view[axis] = snap || fabs(delta) <= step ? want
+				: NPCS.client->ps.viewangles[axis] + (delta > 0.0f ? step : -step);
+			view[axis] = axis == YAW ? AngleNormalize360(view[axis]) : AngleNormalize180(view[axis]);
+		}
+		SetClientViewAngle(npc, view);
+		for (int axis = PITCH; axis <= ROLL; axis++)
+		{
+			NPCS.ucmd.angles[axis] = ANGLE2SHORT(view[axis]) - NPCS.client->ps.delta_angles[axis];
 		}
 		// (between thinks NPC_UpdateAngles turns the view to these: the jump's, not back to where it was)
 		NPCS.NPCInfo->desiredYaw = AngleNormalize360(ship->client->ps.hyperSpaceAngles[YAW]);
@@ -1286,6 +1306,7 @@ qboolean NPC_FighterAI(void)
 		}
 		return qtrue;
 	}
+	fighter_jump_wait[npc->s.number] = 0;
 
 	// out of the hangar first: straight on the way it stood, full throttle (taking off if it stands on the floor), until
 	// it is well clear of where it got in (a ship taking off from a floor is slow to get going) or long enough

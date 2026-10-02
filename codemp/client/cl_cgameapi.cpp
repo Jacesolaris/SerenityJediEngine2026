@@ -532,8 +532,7 @@ static int CL_PrecisionTimerEnd(void* p)
 }
 
 static void CL_RMG_Init(int /* terrainID */, const char* /* terrainInfo */)
-{
-}
+{}
 
 static qboolean CGFX_PlayBoltedEffectID(const int id, vec3_t org, void* ghoul2, const int boltNum, const int entNum,
 	const int modelNum, const int iLooptime, const qboolean isRelative)
@@ -897,7 +896,7 @@ static void CL_G2API_SetRagDoll(void* ghoul2, sharedRagDollParams_t* params)
 	rdParams.RagPhase = static_cast<CRagDollParams::ERagPhase>(params->RagPhase);
 	rdParams.effectorsToTurnOff = static_cast<CRagDollParams::ERagEffector>(params->effectorsToTurnOff);
 
-	if (Q_isnan(rdParams.position[0]) || Q_isnan(rdParams.position[1]) || Q_isnan(rdParams.position[2])) 
+	if (Q_isnan(rdParams.position[0]) || Q_isnan(rdParams.position[1]) || Q_isnan(rdParams.position[2]))
 	{
 #ifdef _DEBUG
 		Com_Printf("^1CL_G2API_SetRagDoll: rejecting NaN position from shared params\n");
@@ -1959,8 +1958,7 @@ intptr_t CL_CgameSystemCalls(intptr_t* args)
 
 // Stub function for old RMG system.
 static void RE_InitRendererTerrain(const char* /*info*/)
-{
-}
+{}
 
 void CL_BindCGame(void)
 {

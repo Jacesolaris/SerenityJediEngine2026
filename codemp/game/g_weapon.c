@@ -242,8 +242,7 @@ static void WP_FireEmplaced(gentity_t* ent, qboolean alt_fire);
 void laserTrapStick(gentity_t* ent, vec3_t endpos, vec3_t normal);
 
 static void touch_NULL(gentity_t* ent, gentity_t* other, trace_t* trace)
-{
-}
+{}
 
 void laserTrapExplode(gentity_t* self);
 void RocketDie(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, int damage, int mod);
@@ -5166,6 +5165,14 @@ static void G_EstimateCamPos(vec3_t view_angles, vec3_t camera_focus_loc, const 
 
 void WP_GetVehicleCamPos(const gentity_t* ent, const gentity_t* pilot, vec3_t cam_pos)
 {
+	if (!pilot || !pilot->client)
+	{
+		// a ship still firing with nobody in it (its AI pilot - ai_fighter.c - killed with the trigger held): no
+		// pilot's camera to aim from, the ship's own place does
+		VectorCopy(ent->r.currentOrigin, cam_pos);
+		return;
+	}
+
 	float third_person_horz_offset = ent->m_pVehicle->m_pVehicleInfo->cameraHorzOffset;
 	float third_person_range = ent->m_pVehicle->m_pVehicleInfo->cameraRange;
 	float pitch_offset = ent->m_pVehicle->m_pVehicleInfo->cameraPitchOffset;

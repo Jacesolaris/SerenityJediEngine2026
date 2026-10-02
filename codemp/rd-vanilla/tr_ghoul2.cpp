@@ -164,8 +164,7 @@ public:
 		rootSList(initrootSList),
 		currentModel(initcurrentModel),
 		boneList(initboneList)
-	{
-	}
+	{}
 };
 
 class CTransformBone
@@ -204,8 +203,7 @@ void G2_TransformBone(int index, CBoneCache& cb);
 class CBoneCache
 {
 	static void SetRenderMatrix(CTransformBone* bone)
-	{
-	}
+	{}
 
 	void EvalLow(const int index)
 	{
@@ -842,8 +840,7 @@ public:
 #else
 		boltList(initboltList)
 #endif
-	{
-	}
+	{}
 };
 
 #ifdef _G2_GORE

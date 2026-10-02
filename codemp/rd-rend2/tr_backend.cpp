@@ -45,7 +45,13 @@ void GL_Bind(image_t* image)
 
 	if (!image)
 	{
-		ri->Printf(PRINT_WARNING, "GL_Bind: NULL image\n");
+		// (a shader whose image did not load, drawn every frame: named once, for developers)
+		static const shader_t* null_image_shader;
+		if (ri->Cvar_VariableIntegerValue("developer") && tess.shader != null_image_shader)
+		{
+			null_image_shader = tess.shader;
+			ri->Printf(PRINT_WARNING, S_COLOR_YELLOW "GL_Bind: NULL image in shader %s\n", tess.shader ? tess.shader->name : "?");
+		}
 		texnum = tr.defaultImage->texnum;
 	}
 	else
@@ -739,8 +745,7 @@ UniformDataWriter::UniformDataWriter()
 	: failed(false)
 	, shaderProgram(nullptr)
 	, scratch(scratchBuffer, sizeof(scratchBuffer), 1)
-{
-}
+{}
 
 void UniformDataWriter::Start(shaderProgram_t* sp)
 {
@@ -939,8 +944,7 @@ UniformData* UniformDataWriter::Finish(Allocator& destHeap)
 SamplerBindingsWriter::SamplerBindingsWriter()
 	: failed(false)
 	, count(0)
-{
-}
+{}
 
 SamplerBindingsWriter& SamplerBindingsWriter::AddStaticImage(image_t* image, int unit)
 {

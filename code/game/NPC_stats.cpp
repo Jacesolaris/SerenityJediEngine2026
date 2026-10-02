@@ -564,7 +564,7 @@ static void ParseAnimationEvtBlock(const int gla_index, const unsigned short mod
 			// this anim frame doesn't already have an event of this type on it
 			if (last_anim_event >= MAX_ANIM_EVENTS)
 			{
-				Com_Printf(S_COLOR_RED"ERROR: %s: more than %d events in one block, event ignored\n",aeb_filename, MAX_ANIM_EVENTS);
+				Com_Printf(S_COLOR_RED"ERROR: %s: more than %d events in one block, event ignored\n", aeb_filename, MAX_ANIM_EVENTS);
 				SkipRestOfLine(text_p);
 				continue;
 			}
@@ -835,7 +835,6 @@ static void ParseAnimationEvtBlock(const int gla_index, const unsigned short mod
 	}
 }
 
-
 // -----------------------------------------------------------------------------
 // G_ParseAnimationEvtFile
 // Loads animevents.cfg for a given skeleton and fills animation event tables.
@@ -956,7 +955,6 @@ static void G_ParseAnimationEvtFile(const int gla_index, const char* events_dire
 
 	COM_EndParseSession();
 }
-
 
 // -----------------------------------------------------------------------------
 // G_ParseAnimationFile
@@ -2026,8 +2024,7 @@ void CG_NPC_Precache(gentity_t* spawner)
 }
 
 static void NPC_BuildRandom()
-{
-}
+{}
 
 extern cvar_t* com_outcast;
 extern void G_MatchPlayerWeapon(gentity_t* ent);

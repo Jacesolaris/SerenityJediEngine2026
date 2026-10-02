@@ -200,8 +200,7 @@ public:
 	}
 
 	~CBlockStream()
-	{
-	}
+	{}
 
 	int Init();
 

@@ -63,8 +63,7 @@ CSequencer::CSequencer() : m_ownerID(0), m_taskManager(nullptr)
 }
 
 CSequencer::~CSequencer()
-{
-}
+{}
 
 /*
 ========================

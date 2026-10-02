@@ -90,8 +90,7 @@ public:
 	void SetNext(CCMShader* next) { mNext = next; }
 
 	static void Destroy(void)
-	{
-	}
+	{}
 };
 
 using cPatch_t = struct cPatch_s

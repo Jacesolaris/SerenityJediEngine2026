@@ -319,7 +319,7 @@ gentity_t* TossClientItems(gentity_t* self)
 				case WP_DEMP2:          dropped->count = 10; break;
 				case WP_FLECHETTE:      dropped->count = 30; break;
 				case WP_ROCKET_LAUNCHER:dropped->count = 3;  break;
-				case WP_CONCUSSION:     dropped->count = 200;break;
+				case WP_CONCUSSION:     dropped->count = 200; break;
 				case WP_THERMAL:        dropped->count = 4;  break;
 				case WP_TRIP_MINE:      dropped->count = 3;  break;
 				case WP_DET_PACK:       dropped->count = 1;  break;

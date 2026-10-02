@@ -246,7 +246,7 @@ static void R_SetupEntityLightingGrid(trRefEntity_t* ent, world_t* world)
 		}
 		else
 		{
-			for (j = 0;j < MAXLIGHTMAPS;j++)
+			for (j = 0; j < MAXLIGHTMAPS; j++)
 			{
 				if (data->styles[j] != LS_LSNONE)
 				{

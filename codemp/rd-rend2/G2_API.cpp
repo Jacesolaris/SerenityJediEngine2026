@@ -2481,7 +2481,7 @@ void G2API_CopySpecificG2Model(CGhoul2Info_v& ghoul2From,
 	if (ghoul2To.size() <= modelTo)
 	{
 #ifdef _DEBUG
-		if (modelTo >= 5)
+		if (modelTo >= 5 && ri->Cvar_VariableIntegerValue("developer")) // (the holstered weapons take more: only for developers)
 		{
 			Com_Printf("G2API_CopySpecificG2Model: WARNING — modelTo index %d exceeds expected limit (max 4)\n",
 				modelTo);

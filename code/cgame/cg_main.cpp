@@ -434,6 +434,7 @@ vmCvar_t cg_IsSaberDoingAttackDamage;
 vmCvar_t cg_DebugSaberCombat;
 
 vmCvar_t cg_drawRadar;
+vmCvar_t cg_drawVehLeadIndicator; // flying a fighter: where to aim at a moving enemy ship (CG_DrawVehicleTargets)
 
 vmCvar_t cg_trueguns;
 vmCvar_t cg_holsteredweapons; // cg_holster.cpp: 0 = off, 1 = the player only, 2 = everyone
@@ -575,6 +576,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_thirdPersonTargetDamp, "cg_thirdPersonTargetDamp", "0.5", 0},
 
 	{&cg_drawRadar, "cg_drawRadar", "1", CVAR_ARCHIVE},
+	{&cg_drawVehLeadIndicator, "cg_drawVehLeadIndicator", "1", CVAR_ARCHIVE},
 
 	{&cg_thirdPersonHorzOffset, "cg_thirdPersonHorzOffset", "0", 0},
 	{&cg_thirdPersonAlpha, "cg_thirdPersonAlpha", "1.0", CVAR_ARCHIVE},

@@ -854,12 +854,10 @@ void WIN_Shutdown()
 }
 
 static void GLimp_EnableLogging(qboolean enable)
-{
-}
+{}
 
 void GLimp_LogComment(char* comment)
-{
-}
+{}
 
 void WIN_SetGamma(const glconfig_t* glConfig, byte red[256], byte green[256], byte blue[256])
 {

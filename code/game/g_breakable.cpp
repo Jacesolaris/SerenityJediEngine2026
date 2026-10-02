@@ -36,6 +36,7 @@ extern gentity_t* G_CreateObject(gentity_t* owner, vec3_t origin, vec3_t angles,
 	trType_t tr_type, int effect_id);
 
 extern qboolean player_locked;
+extern void G_SoundAtSpot(vec3_t org, int sound_index, qboolean broadcast);
 extern void G_SpawnModel2Scale(gentity_t* ent);
 
 //---------------------------------------------------
@@ -164,6 +165,21 @@ void funcBBrushDieGo(gentity_t* ent)
 	{
 		// the map's own effect for it breaking ("playfx", MP maps)
 		G_PlayEffect(ent->fxID, org, up);
+	}
+	if (ent->classname && !Q_stricmp(ent->classname, "func_rotating") && player && player->client)
+	{
+		// a breakable turning in space (the asteroids of mp/siege_destroyer2) goes with a big bang, heard far off: its
+		// effect's own sound carries no farther than any other, and they are thousands of units away. It is played on
+		// the way to it, nearer the player the farther it is (fainter, but from where it is), out to about 25000.
+		vec3_t to_it, spot;
+		VectorSubtract(org, player->currentOrigin, to_it);
+		const float dist = VectorNormalize(to_it);
+		if (dist < 25000.0f)
+		{
+			VectorMA(player->currentOrigin, Q_min(dist, 200.0f + dist * 0.04f), to_it, spot);
+			G_SoundAtSpot(spot, G_SoundIndex(va("sound/weapons/explosions/explosion_huge%d.mp3", Q_irand(1, 4))),
+				qfalse);
+		}
 	}
 
 	if (ent->splashDamage > 0 && ent->splashRadius > 0)
@@ -337,8 +353,7 @@ static void InitBBrush(gentity_t* ent)
 }
 
 void funcBBrushTouch(gentity_t* ent, gentity_t* other, trace_t* trace)
-{
-}
+{}
 
 /*QUAKED func_breakable (0 .8 .5) ? INVINCIBLE IMPACT CRUSHER THIN SABERONLY HEAVY_WEAP USE_NOT_BREAK PLAYER_USE NO_EXPLOSION
 INVINCIBLE - can only be broken by being used

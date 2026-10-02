@@ -3519,8 +3519,7 @@ public:
 		, fade(0.0f)
 		, impactTime(0.0f)
 #endif
-	{
-	}
+	{}
 
 	void Init()
 	{

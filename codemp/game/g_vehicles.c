@@ -108,7 +108,7 @@ void G_VehicleSpawn(gentity_t* self)
 	}
 
 	// a new ship nobody has flown: one an AI pilot may take when its side has it to spare (ai_fighter.c)
-	extern void G_FighterAI_ShipSpawned(const gentity_t* ship);
+	extern void G_FighterAI_ShipSpawned(const gentity_t * ship);
 	G_FighterAI_ShipSpawned(vehEnt);
 
 	vehEnt->s.angles[YAW] = yaw;
@@ -1052,8 +1052,7 @@ static void DeathUpdate(Vehicle_t* p_veh)
 
 // Register all the assets used by this vehicle.
 static void RegisterAssets(Vehicle_t* p_veh)
-{
-}
+{}
 
 extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 

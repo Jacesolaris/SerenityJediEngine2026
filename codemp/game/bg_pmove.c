@@ -12303,7 +12303,19 @@ static qboolean PM_DoChargedWeapons(const qboolean vehicleRocketLock, const bgEn
 #ifdef _DEBUG
 				//	Com_Printf("Starting charge\n");
 #endif
-				assert(pm->ps->weapon > WP_NONE);
+#ifdef _DEBUG
+				// (not worth stopping the game for: a ship locking its homing missiles holds no weapon, and the event is
+				// harmless without one)
+				if (!vehicleRocketLock && pm->ps->weapon <= WP_NONE)
+				{
+					static qboolean warned;
+					if (!warned)
+					{
+						warned = qtrue;
+						Com_Printf(S_COLOR_YELLOW "WARNING: entity %d charges an alt fire with no weapon\n", pm->ps->clientNum);
+					}
+				}
+#endif
 				BG_AddPredictableEventToPlayerstate(EV_WEAPON_CHARGE_ALT, pm->ps->weapon, pm->ps);
 			}
 

@@ -61,8 +61,7 @@ class CEdge
 {
 public:
 	CEdge(void) : m_first(-1), m_second(-1), m_cost(-1)
-	{
-	}
+	{}
 
 	CEdge(int first, int second, int cost);
 	~CEdge(void);

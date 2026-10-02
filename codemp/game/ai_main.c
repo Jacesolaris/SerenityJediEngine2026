@@ -146,6 +146,7 @@ vmCvar_t bot_forgimmick;
 vmCvar_t bot_honorableduelacceptance;
 vmCvar_t bot_obstaclejumps;	// 1: bots jump only to clear obstacles (no hopping about), 0: they jump as they like
 vmCvar_t bot_idlewalk;		// 1: bots walk while they have no enemy, like singleplayer NPCs
+vmCvar_t bot_vehicles;		// 1: bots get on swoops (and the like) near them to go after their enemy, like singleplayer NPCs
 vmCvar_t bot_pvstype;
 vmCvar_t bot_normgpath;
 #ifndef FINAL_BUILD
@@ -9399,7 +9400,6 @@ static void saber_combat_handling(bot_state_t* bs)
 		}
 	}
 
-
 	// -------------------------------------------------
 	// SAME GROUND CHECK (UNIFIED HELPER)
 	// -------------------------------------------------
@@ -9622,7 +9622,6 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 			}
 		}
 	}
-
 
 	// -------------------------------------------------
 	// IDEAL SPACING FOR ENHANCED DUELS
@@ -11838,6 +11837,205 @@ static void Bot_CheckFallLanding(bot_state_t* bs)
 	}
 }
 
+/*
+===========================================================================
+Bots on vehicles (bot_vehicles 1), like singleplayer's NPCs (AI_Vehicle.cpp): a bot after an enemy that sees a free
+swoop (any speeder, or a tauntaun or the like) near him runs to it and gets on, then rides it at his enemy - where he
+will be in a moment - running him down and swinging at him as he passes. With nobody to go after for a while he gets
+off again. (Ships and walkers are left alone: the space maps' ships have their own pilots, ai_fighter.c.)
+===========================================================================
+*/
+
+#define BOT_VEH_SEARCH_DIST	1000.0f	// how far a bot looks for a free vehicle
+#define BOT_VEH_USE_DIST	110.0f	// close enough to get on
+#define BOT_VEH_REACH_TIME	8000	// a bot that cannot get to his vehicle in this long gives up on it
+
+static int bot_veh_target[MAX_CLIENTS]; // the vehicle a bot runs to (+1, 0: none)
+static int bot_veh_target_time[MAX_CLIENTS]; // until when he tries to get to it
+static int bot_veh_skip[MAX_CLIENTS]; // one he gave up on (+1), until bot_veh_skip_time
+static int bot_veh_skip_time[MAX_CLIENTS];
+static int bot_veh_search_time[MAX_CLIENTS]; // when he looks for one next
+static int bot_veh_idle_time[MAX_CLIENTS]; // riding with nobody to go after since when
+static qboolean bot_veh_riding[MAX_CLIENTS]; // (for the developer messages: he was riding last think)
+
+// a vehicle a bot can ride: a speeder or an animal, alive, nobody on it
+static qboolean bot_vehicle_free(const gentity_t* veh)
+{
+	if (!veh->inuse || !veh->client || veh->s.eType != ET_NPC || veh->s.NPC_class != CLASS_VEHICLE || !veh->m_pVehicle
+		|| !veh->m_pVehicle->m_pVehicleInfo || veh->health <= 0 || veh->m_pVehicle->m_pPilot
+		|| veh->m_pVehicle->m_iBoarding)
+	{
+		return qfalse;
+	}
+	const int type = veh->m_pVehicle->m_pVehicleInfo->type;
+	return type == VH_SPEEDER || type == VH_ANIMAL;
+}
+
+static qboolean bot_vehicle_ai(bot_state_t* bs)
+{
+	if (!bot_vehicles.integer)
+	{
+		return qfalse;
+	}
+	gentity_t* bot = &g_entities[bs->client];
+	const int n = bs->client;
+	if (!bot->inuse || !bot->client || bot->health <= 0)
+	{
+		bot_veh_target[n] = 0;
+		return qfalse;
+	}
+
+	if (bot->client->ps.m_iVehicleNum)
+	{
+		// riding
+		gentity_t* veh = &g_entities[bot->client->ps.m_iVehicleNum];
+		bot_veh_target[n] = 0;
+		if (!veh->inuse || !veh->client || !veh->m_pVehicle || !veh->m_pVehicle->m_pVehicleInfo
+			|| veh->m_pVehicle->m_pPilot != (bgEntity_t*)bot)
+		{
+			return qfalse; // a passenger
+		}
+		const int type = veh->m_pVehicle->m_pVehicleInfo->type;
+		if (type != VH_SPEEDER && type != VH_ANIMAL)
+		{
+			return qfalse;
+		}
+		bs->noUseTime = level.time + 5000; // no pressing use: that throws a rider off (TryUse)
+		if (!bot_veh_riding[n] && trap->Cvar_VariableIntegerValue("developer"))
+		{
+			Com_Printf("bot %s rides %s %d\n", bot->client->pers.netname, veh->NPC_type, veh->s.number);
+		}
+		bot_veh_riding[n] = qtrue;
+
+		const int e = scan_for_enemies(bs);
+		if (e != -1)
+		{
+			bs->currentEnemy = &g_entities[e];
+			bs->enemySeenTime = level.time + ENEMY_FORGET_MS;
+		}
+		const gentity_t* enemy = bs->currentEnemy;
+		if (!enemy || !enemy->inuse || !enemy->client || enemy->health <= 0)
+		{
+			// nobody to go after: coast, and after a while get off (use: a rider's use throws him off, TryUse)
+			if (!bot_veh_idle_time[n])
+			{
+				bot_veh_idle_time[n] = level.time;
+			}
+			else if (level.time - bot_veh_idle_time[n] > 4000)
+			{
+				bot_veh_idle_time[n] = 0;
+				trap->EA_Use(bs->client);
+				if (trap->Cvar_VariableIntegerValue("developer"))
+				{
+					Com_Printf("bot %s has nobody to go after: gets off\n", bot->client->pers.netname);
+				}
+			}
+			return qtrue;
+		}
+		bot_veh_idle_time[n] = 0;
+
+		// at where he will be in a moment (one on a vehicle too goes fast)
+		vec3_t ahead, dir;
+		VectorMA(enemy->client->ps.origin, 0.4f, enemy->client->ps.velocity, ahead);
+		VectorSubtract(ahead, veh->client->ps.origin, dir);
+		dir[2] = 0.0f;
+		const float dist = VectorNormalize(dir);
+		vectoangles(dir, bs->goalAngles);
+		bs->goalAngles[PITCH] = 0.0f;
+		move_toward_ideal_angles(bs);
+
+		// throttle all the time: a vehicle standing still does not turn, so one that has gone past him swings round at
+		// speed and comes back
+		trap->EA_MoveForward(bs->client);
+		// close: swing (or shoot) at him as he passes
+		if (dist < 350.0f)
+		{
+			trap->EA_Attack(bs->client);
+		}
+		return qtrue;
+	}
+	bot_veh_idle_time[n] = 0;
+	bot_veh_riding[n] = qfalse;
+
+	// on foot: only when after somebody
+	const gentity_t* enemy = bs->currentEnemy;
+	if (!enemy || !enemy->inuse || !enemy->client || enemy->health <= 0)
+	{
+		bot_veh_target[n] = 0;
+		return qfalse;
+	}
+
+	gentity_t* veh = bot_veh_target[n] ? &g_entities[bot_veh_target[n] - 1] : NULL;
+	if (veh && (!bot_vehicle_free(veh) || bot_veh_target_time[n] < level.time))
+	{
+		if (bot_vehicle_free(veh))
+		{
+			// could not get to it: not that one again for a while
+			bot_veh_skip[n] = bot_veh_target[n];
+			bot_veh_skip_time[n] = level.time + 20000;
+		}
+		bot_veh_target[n] = 0;
+		veh = NULL;
+	}
+	if (!veh && bot_veh_search_time[n] < level.time)
+	{
+		bot_veh_search_time[n] = level.time + 1000;
+		float best = BOT_VEH_SEARCH_DIST;
+		for (int i = MAX_CLIENTS; i < level.num_entities; i++)
+		{
+			gentity_t* cand = &g_entities[i];
+			if (!bot_vehicle_free(cand) || bot_veh_skip[n] == i + 1 && bot_veh_skip_time[n] > level.time)
+			{
+				continue;
+			}
+			const float d = Distance(bs->origin, cand->r.currentOrigin);
+			if (d < best && fabs(cand->r.currentOrigin[2] - bs->origin[2]) < 128.0f
+				&& org_visible(bs->eye, cand->r.currentOrigin, bs->client))
+			{
+				best = d;
+				veh = cand;
+			}
+		}
+		if (veh)
+		{
+			bot_veh_target[n] = veh->s.number + 1;
+			bot_veh_target_time[n] = level.time + BOT_VEH_REACH_TIME;
+			if (trap->Cvar_VariableIntegerValue("developer"))
+			{
+				Com_Printf("bot %s goes for %s %d to get at %s\n", bot->client->pers.netname, veh->NPC_type,
+					veh->s.number, enemy->client->pers.netname);
+			}
+		}
+	}
+	if (!veh)
+	{
+		return qfalse;
+	}
+
+	// run to it, looking at it, and get on. Use reaches only a little way from the eyes (USE_DISTANCE, TryUse), and the
+	// vehicle's own body keeps him off its middle: he goes for, and looks at, the nearest point of it
+	vec3_t near_point, dir;
+	for (int axis = 0; axis < 3; axis++)
+	{
+		near_point[axis] = Com_Clamp(veh->r.absmin[axis] + 2.0f, veh->r.absmax[axis] - 2.0f, bs->eye[axis]);
+	}
+	VectorSubtract(near_point, bs->eye, dir);
+	const float reach = VectorLength(dir);
+	vectoangles(dir, bs->goalAngles);
+	move_toward_ideal_angles(bs);
+	dir[2] = 0.0f;
+	if (VectorNormalize(dir) > 24.0f)
+	{
+		trap->EA_Move(bs->client, dir, 5000.0f);
+	}
+	if (reach < BOT_VEH_USE_DIST * 0.5f)
+	{
+		bs->noUseTime = level.time + 5000; // (no random use presses: this one is meant)
+		trap->EA_Use(bs->client);
+	}
+	return qtrue;
+}
+
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
 void bot_check_speak(gentity_t* self, const qboolean moving);
 extern void AngleClamp(vec3_t ang);
@@ -11908,6 +12106,12 @@ void standard_bot_ai(bot_state_t* bs)
 		bs->currentEnemy = NULL;
 		bs->wpDestination = NULL;
 		bs->wpDirection = 0;
+		return;
+	}
+
+	// a free swoop near and somebody to go after: get on it and ride him down
+	if (bot_vehicle_ai(bs))
+	{
 		return;
 	}
 
@@ -14088,6 +14292,12 @@ void Enhanced_bot_ai(bot_state_t* bs)
 		bs->currentEnemy = NULL;
 		bs->wpDestination = NULL;
 		bs->wpDirection = 0;
+		return;
+	}
+
+	// a free swoop near and somebody to go after: get on it and ride him down
+	if (bot_vehicle_ai(bs))
+	{
 		return;
 	}
 
@@ -17534,7 +17744,6 @@ static void bot_calm_movement(bot_state_t* bs, usercmd_t* ucmd)
 	}
 }
 
-
 int gUpdateVars = 0;
 
 /*
@@ -17558,6 +17767,7 @@ int bot_ai_startframe(const int time)
 		trap->Cvar_Update(&bot_honorableduelacceptance);
 		trap->Cvar_Update(&bot_obstaclejumps);
 		trap->Cvar_Update(&bot_idlewalk);
+		trap->Cvar_Update(&bot_vehicles);
 #ifndef FINAL_BUILD
 		trap->Cvar_Update(&bot_getinthecarrr);
 #endif
@@ -17732,6 +17942,7 @@ int bot_ai_setup(const int restart)
 	trap->Cvar_Register(&bot_honorableduelacceptance, "bot_honorableduelacceptance", "1", CVAR_CHEAT);
 	trap->Cvar_Register(&bot_obstaclejumps, "bot_obstaclejumps", "1", CVAR_ARCHIVE);
 	trap->Cvar_Register(&bot_idlewalk, "bot_idlewalk", "1", CVAR_ARCHIVE);
+	trap->Cvar_Register(&bot_vehicles, "bot_vehicles", "1", CVAR_ARCHIVE);
 	trap->Cvar_Register(&bot_pvstype, "bot_pvstype", "1", CVAR_CHEAT);
 #ifndef FINAL_BUILD
 	trap->Cvar_Register(&bot_getinthecarrr, "bot_getinthecarrr", "0", 0);

@@ -375,8 +375,7 @@ public:
 	CPrimitiveTemplate();
 
 	~CPrimitiveTemplate()
-	{
-	};
+	{};
 
 	bool ParsePrimitive(const CGPGroup* grp);
 
@@ -512,8 +511,7 @@ public:
 	PagedPoolAllocator()
 		: numPages(1)
 		, pages(new PoolAllocator<T, N>[1]())
-	{
-	}
+	{}
 
 	T* Alloc()
 	{

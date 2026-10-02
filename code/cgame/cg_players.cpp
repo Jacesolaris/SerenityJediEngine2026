@@ -15251,7 +15251,7 @@ void CG_Player(centity_t* cent)
 		vec3_t G2Angles = { 0, tempAngles[YAW], 0 };
 
 		// the guns he carries but is not holding, on his body (holster.cfg)
-		CG_HolsteredWeapons(cent, G2Angles, ent.origin, ent.renderfx);
+		CG_HolsteredWeapons(cent, G2Angles, ent.origin, ent.renderfx, ent.shadowPlane);
 
 		// a gun in his hand with a spinning barrel (its model has a "bone_barrel" bone)
 		CG_SpinWeaponBarrel(cent);

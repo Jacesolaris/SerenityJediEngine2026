@@ -141,12 +141,10 @@ public:
 	}
 
 	virtual ~CEffect()
-	{
-	}
+	{}
 
 	virtual void Die()
-	{
-	}
+	{}
 
 	virtual bool Update()
 	{
@@ -233,13 +231,11 @@ public:
 	qhandle_t mShader;
 
 	CTrail() : mVerts{}, mShader(0)
-	{
-	}
+	{}
 	;
 
 	~CTrail() override
-	{
-	};
+	{};
 
 	bool Update() override;
 };
@@ -267,12 +263,10 @@ protected:
 
 public:
 	CLight() : mSizeStart(0), mSizeEnd(0), mSizeParm(0), mRGBStart{}, mRGBEnd{}, mRGBParm(0)
-	{
-	}
+	{}
 
 	~CLight() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -303,12 +297,10 @@ protected:
 
 public:
 	CFlash()
-	{
-	}
+	{}
 
 	~CFlash() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -378,8 +370,7 @@ public:
 	}
 
 	~CParticle() override
-	{
-	}
+	{}
 
 	void Die() override;
 	bool Update() override;
@@ -452,12 +443,10 @@ public:
 	CLine() : mOrigin2{} { mRefEnt.reType = RT_LINE; }
 
 	~CLine() override
-	{
-	}
+	{}
 
 	void Die() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -482,12 +471,10 @@ public:
 	CBezier() : mControl1{}, mControl1Vel{}, mControl2{}, mControl2Vel{} { mInit = false; }
 
 	~CBezier() override
-	{
-	}
+	{}
 
 	void Die() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -518,12 +505,10 @@ public:
 	CElectricity() : mChaos(0) { mRefEnt.reType = RT_ELECTRICITY; }
 
 	~CElectricity() override
-	{
-	}
+	{}
 
 	void Die() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -547,8 +532,7 @@ public:
 	COrientedParticle() : mNormal{}, mNormalOffset{} { mRefEnt.reType = RT_ORIENTED_QUAD; }
 
 	~COrientedParticle() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -578,8 +562,7 @@ public:
 	CTail() : mOldOrigin{}, mLengthStart(0), mLengthEnd(0), mLengthParm(0), mLength(0) { mRefEnt.reType = RT_LINE; }
 
 	~CTail() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -604,8 +587,7 @@ public:
 	CCylinder() : mSize2Start(0), mSize2End(0), mSize2Parm(0) { mRefEnt.reType = RT_CYLINDER; }
 
 	~CCylinder() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -650,8 +632,7 @@ public:
 	}
 
 	~CEmitter() override
-	{
-	}
+	{}
 
 	bool Update() override;
 
@@ -711,12 +692,10 @@ public:
 	int mLastFrameTime;
 
 	CPoly() : mCount(0), mRotDelta{}, mTimeStamp(0), mOrg{}, mST{}, mRot{}, mLastFrameTime(0)
-	{
-	}
+	{}
 
 	~CPoly() override
-	{
-	}
+	{}
 
 	bool Update() override;
 

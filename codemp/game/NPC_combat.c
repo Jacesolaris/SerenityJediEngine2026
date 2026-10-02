@@ -56,7 +56,8 @@ void G_ClearEnemy(gentity_t* self)
 	if (self->enemy)
 	{
 		//don't lose locked enemies
-		if (G_ValidEnemy(self, self->enemy) && self->NPC->aiFlags & NPCAI_LOCKEDENEMY)
+		// (self may be a player or a ship, no NPC: a player shot by an AI ship of the space maps, ai_fighter.c)
+		if (self->NPC && G_ValidEnemy(self, self->enemy) && self->NPC->aiFlags & NPCAI_LOCKEDENEMY)
 		{
 			return;
 		}

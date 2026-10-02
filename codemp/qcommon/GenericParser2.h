@@ -72,8 +72,7 @@ public:
 	CGPObject(const char* initName);
 
 	virtual ~CGPObject(void)
-	{
-	}
+	{}
 
 	const char* GetName(void) const { return mName; }
 

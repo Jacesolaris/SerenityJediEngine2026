@@ -148,8 +148,7 @@ void SP_misc_camera_track(gentity_t* self)
 //-------------------------------------------------
 
 static void cam_point_link(gentity_t* ent)
-{
-}
+{}
 
 static void cam_ctrl_point_link(gentity_t* ent)
 {

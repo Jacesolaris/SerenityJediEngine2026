@@ -5435,7 +5435,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 	if (!pull && self->client->ps.saberLockTime > level.time && self->client->ps.saberLockFrame)
 	{
 		if (saber1 && saber1->type == SABER_UNSTABLE //saber kylo
-			|| saber1 && saber1->type == SABER_STAFF_UNSTABLE 
+			|| saber1 && saber1->type == SABER_STAFF_UNSTABLE
 			|| saber1 && saber1->type == SABER_SINGLE_KYLO_REN
 			|| saber1 && saber1->type == SABER_STAFF_MAUL
 			|| saber1 && saber1->type == SABER_SINGLE_BACKHAND
@@ -5517,27 +5517,27 @@ void ForceThrow(gentity_t* self, qboolean pull)
 			G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/pushyoda.mp3"));
 		}
 		else if (saber1 && saber1->type == SABER_UNSTABLE //saber kylo
-				|| saber1 && saber1->type == SABER_STAFF_UNSTABLE
-				|| saber1 && saber1->type == SABER_SINGLE_KYLO_REN
-				|| saber1 && saber1->type == SABER_STAFF_MAUL
-				|| saber1 && saber1->type == SABER_SINGLE_BACKHAND
-				|| saber1 && saber1->type == SABER_SINGLE_ASBACKHAND
-				|| saber1 && saber1->type == SABER_SINGLE_ANAKIN
-				|| saber1 && saber1->type == SABER_SINGLE_PALP
-				|| saber1 && saber1->type == SABER_SINGLE_DOOKU
-				|| saber1 && saber1->type == SABER_SINGLE_YODA) //saber yoda
+			|| saber1 && saber1->type == SABER_STAFF_UNSTABLE
+			|| saber1 && saber1->type == SABER_SINGLE_KYLO_REN
+			|| saber1 && saber1->type == SABER_STAFF_MAUL
+			|| saber1 && saber1->type == SABER_SINGLE_BACKHAND
+			|| saber1 && saber1->type == SABER_SINGLE_ASBACKHAND
+			|| saber1 && saber1->type == SABER_SINGLE_ANAKIN
+			|| saber1 && saber1->type == SABER_SINGLE_PALP
+			|| saber1 && saber1->type == SABER_SINGLE_DOOKU
+			|| saber1 && saber1->type == SABER_SINGLE_YODA) //saber yoda
+		{
+			G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/push.mp3"));
+		}
+		else
+			if (self->client->ps.fd.forcePower < 30 || PM_InKnockDown(&self->client->ps))
 			{
-				G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/push.mp3"));
+				G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/pushyoda.mp3"));
 			}
 			else
-				if (self->client->ps.fd.forcePower < 30 || PM_InKnockDown(&self->client->ps))
-				{
-					G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/pushyoda.mp3"));
-				}
-				else
-				{
-					G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/pushlow.mp3"));
-				}
+			{
+				G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/pushlow.mp3"));
+			}
 		if (self->client->ps.forceHandExtend == HANDEXTEND_NONE)
 		{
 			self->client->ps.forceHandExtend = HANDEXTEND_FORCEPUSH;
@@ -6380,7 +6380,7 @@ void ForceThrow(gentity_t* self, qboolean pull)
 						{
 							G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/pushyoda.mp3"));
 						}
-						else if(saber1&& saber1->type == SABER_UNSTABLE //saber kylo
+						else if (saber1 && saber1->type == SABER_UNSTABLE //saber kylo
 							|| saber1 && saber1->type == SABER_STAFF_UNSTABLE
 							|| saber1 && saber1->type == SABER_SINGLE_KYLO_REN
 							|| saber1 && saber1->type == SABER_STAFF_MAUL
@@ -6390,20 +6390,20 @@ void ForceThrow(gentity_t* self, qboolean pull)
 							|| saber1 && saber1->type == SABER_SINGLE_PALP
 							|| saber1 && saber1->type == SABER_SINGLE_DOOKU
 							|| saber1 && saber1->type == SABER_SINGLE_YODA) //saber yoda
+						{
+							G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/push.mp3"));
+						}
+						else
+						{
+							if (self->client->ps.fd.forcePower < 30 || PM_InKnockDown(&self->client->ps))
 							{
-								G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/push.mp3"));
+								G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/pushyoda.mp3"));
 							}
 							else
 							{
-								if (self->client->ps.fd.forcePower < 30 || PM_InKnockDown(&self->client->ps))
-								{
-									G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/pushyoda.mp3"));
-								}
-								else
-								{
-									G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/pushlow.mp3"));
-								}
+								G_Sound(push_target[x], CHAN_BODY, G_SoundIndex("sound/weapons/force/pushlow.mp3"));
 							}
+						}
 						push_target[x]->client->ps.forceHandExtendTime = level.time + 650;
 					}
 					push_target[x]->client->ps.powerups[PW_DISINT_4] = push_target[x]->client->ps.forceHandExtendTime + 200;
