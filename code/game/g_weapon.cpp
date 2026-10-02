@@ -1025,6 +1025,31 @@ static qboolean WP_VehCheckTraceFromCamPos(gentity_t* ent, const vec3_t shot_sta
 }
 
 //---------------------------------------------------------
+// The muzzle points of a vehicle are worked out in cgame (CG_Player) while it is drawn: a ship an NPC flies far
+// from the player (AI_Fighter.cpp) may not be, so for those they are worked out here, from its model.
+static void G_VehicleUpdateMuzzles(gentity_t* ent)
+//---------------------------------------------------------
+{
+	Vehicle_t* p_veh = ent->m_pVehicle;
+	if (!ent->ghoul2.size() || ent->playerModel < 0)
+	{
+		return;
+	}
+	for (int i = 0; i < MAX_VEHICLE_MUZZLES; i++)
+	{
+		if (p_veh->m_iMuzzleTag[i] == -1)
+		{
+			break;
+		}
+		mdxaBone_t matrix;
+		gi.G2API_GetBoltMatrix(ent->ghoul2, ent->playerModel, p_veh->m_iMuzzleTag[i], &matrix, p_veh->m_vOrientation,
+			ent->currentOrigin, cg.time ? cg.time : level.time, nullptr, ent->s.modelScale);
+		gi.G2API_GiveMeVectorFromMatrix(matrix, ORIGIN, p_veh->m_Muzzles[i].m_vMuzzlePos);
+		gi.G2API_GiveMeVectorFromMatrix(matrix, NEGATIVE_Y, p_veh->m_Muzzles[i].m_vMuzzleDir);
+	}
+}
+
+//---------------------------------------------------------
 static void FireVehicleWeapon(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
@@ -1033,6 +1058,11 @@ static void FireVehicleWeapon(gentity_t* ent, const qboolean alt_fire)
 	if (!p_veh)
 	{
 		return;
+	}
+
+	if (p_veh->m_pPilot && p_veh->m_pPilot->s.number >= MAX_CLIENTS)
+	{
+		G_VehicleUpdateMuzzles(ent);
 	}
 
 	if (p_veh->m_iRemovedSurfaces)
@@ -1245,10 +1275,11 @@ static void FireVehicleWeapon(gentity_t* ent, const qboolean alt_fire)
 					}
 
 					//play the weapon's muzzle effect if we have one
+					//(on the muzzle's tag, as MP does, so that the firing sound goes with the ship)
 					if (vehWeapon->iMuzzleFX)
 					{
-						G_PlayEffect(vehWeapon->iMuzzleFX, p_veh->m_Muzzles[i].m_vMuzzlePos,
-							p_veh->m_Muzzles[i].m_vMuzzleDir);
+						G_PlayEffect(vehWeapon->iMuzzleFX, ent->playerModel, p_veh->m_iMuzzleTag[i], ent->s.number,
+							p_veh->m_Muzzles[i].m_vMuzzlePos, 0, qtrue);
 					}
 					WP_FireVehicleWeapon(ent, start, dir, vehWeapon, qfalse);
 				}

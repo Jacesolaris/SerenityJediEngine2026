@@ -247,22 +247,34 @@ int SFxHelper::GetOriginAxisFromBolt(
 	}
 
 	// The exhaust effects of the ships were made for MP, where GetBoltMatrix hands the bolt out turned a quarter
-	// (column 0 = -column 1, column 1 = column 0). Do the same on a ship's exhaust bolts, or its flames leave sideways.
+	// (column 0 = -column 1, column 1 = column 0). Do the same on a ship's exhaust bolts, or its flames leave sideways,
+	// and on its muzzle bolts (the muzzle flashes, played on them as in MP).
 	const Vehicle_t* p_veh = cent.gent->m_pVehicle;
 	if (p_veh && p_veh->m_pVehicleInfo && p_veh->m_pVehicleInfo->type == VH_FIGHTER
 		&& cent.gent->client && cent.gent->client->NPC_class == CLASS_VEHICLE && modelNum == cent.gent->playerModel)
 	{
+		qboolean ship_bolt = qfalse;
 		for (int i = 0; i < MAX_VEHICLE_EXHAUSTS && p_veh->m_iExhaustTag[i] != -1; i++)
 		{
 			if (p_veh->m_iExhaustTag[i] == boltNum)
 			{
-				for (auto& row : bolt_matrix.matrix)
-				{
-					const float temp = row[0];
-					row[0] = -row[1];
-					row[1] = temp;
-				}
-				break;
+				ship_bolt = qtrue;
+			}
+		}
+		for (int i = 0; i < MAX_VEHICLE_MUZZLES; i++)
+		{
+			if (p_veh->m_iMuzzleTag[i] != -1 && p_veh->m_iMuzzleTag[i] == boltNum)
+			{
+				ship_bolt = qtrue;
+			}
+		}
+		if (ship_bolt)
+		{
+			for (auto& row : bolt_matrix.matrix)
+			{
+				const float temp = row[0];
+				row[0] = -row[1];
+				row[1] = temp;
 			}
 		}
 	}

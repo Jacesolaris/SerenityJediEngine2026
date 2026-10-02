@@ -8009,6 +8009,7 @@ CG_Draw2D
 extern void CG_SaberClashFlare();
 extern void CG_SaberBlockFlare();
 
+extern int cg_pazaakPrintTime;
 static void CG_Draw2D()
 {
 	char text[1024] = { 0 };
@@ -8066,6 +8067,10 @@ static void CG_Draw2D()
 	{
 		//still draw the saber clash flare, but nothing else
 		CG_SaberBlockFlare();
+		if (cg_pazaakPrintTime && cg.centerPrintTime == cg_pazaakPrintTime)
+		{
+			CG_DrawCenterString(); // "Pazaak is unavailable at this time"
+		}
 		return;
 	}
 

@@ -1418,10 +1418,11 @@ void G_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t dir)
 		walk = qtrue;
 	}
 
-	if (Distance(self->r.currentOrigin, self->enemy->r.currentOrigin) < 110.0
-		&& self->enemy
+	// enemy first: an NPC following its leader has no enemy (NULL dereference crash)
+	if (self->enemy
 		&& self->enemy->client
-		&& self->enemy->client->ps.weapon == WP_SABER)
+		&& self->enemy->client->ps.weapon == WP_SABER
+		&& Distance(self->r.currentOrigin, self->enemy->r.currentOrigin) < 110.0)
 	{
 		walk = qtrue;
 	}

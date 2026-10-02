@@ -4384,5 +4384,17 @@ void IT_LoadWeatherParms(void)
 
 	trap->Cvar_Register(&mapname, "mapname", "", CVAR_SERVERINFO | CVAR_ROM);
 
-	trap->SendConsoleCommand(EXEC_INSERT, va("execq Weather/%s", mapname.string, mapname.string, mapname.string));
+	// most maps have no weather file: only exec one that is there (exec prints "couldn't exec" otherwise)
+	fileHandle_t f = 0;
+	const int len = trap->FS_Open(va("Weather/%s.cfg", mapname.string), &f, FS_READ);
+	if (f)
+	{
+		trap->FS_Close(f);
+	}
+	if (len <= 0)
+	{
+		return;
+	}
+
+	trap->SendConsoleCommand(EXEC_INSERT, va("execq Weather/%s", mapname.string));
 }

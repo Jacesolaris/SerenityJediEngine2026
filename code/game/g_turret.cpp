@@ -1031,8 +1031,9 @@ destroyed, and it takes the MP keys.
 
   alliedTeam - team that this turret won't target and takes no damage from (teamnodmg is read the same way)
 	0 - none given: "team", else the enemy's
-	1 - red: the enemy's
-	2 - blue: the player's
+	1 - red / siege team 1: the player's (the player starts at that team's spawn points, g_client.cpp
+	    SelectMultiplayerSpawnPoint)
+	2 - blue / siege team 2: the enemy's
 
   customscale - custom scaling size. 100 is normal size, 1024 is the max scaling. this will change the bounding box size, so be careful of starting in solid!
 
@@ -1093,13 +1094,15 @@ void SP_misc_turretG2(gentity_t* base)
 	{
 		G_SpawnInt("teamnodmg", "0", &allied_team);
 	}
+	// the player plays for the map's team 1 (he starts at its spawn points), the other team is the enemy:
+	// e.g. mp/siege_destroyer2, team 1 the Rebels, team 2 the Imperials whose Star Destroyer's turrets fire at him
 	if (allied_team == 1)
 	{
-		base->noDamageTeam = TEAM_ENEMY;
+		base->noDamageTeam = TEAM_PLAYER;
 	}
 	else if (allied_team == 2)
 	{
-		base->noDamageTeam = TEAM_PLAYER;
+		base->noDamageTeam = TEAM_ENEMY;
 	}
 
 	G_SpawnInt("customscale", "0", &custom_scale);

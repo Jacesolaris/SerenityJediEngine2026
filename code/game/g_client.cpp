@@ -396,6 +396,56 @@ static gentity_t* SelectRandomDeathmatchSpawnPoint(team_t team)
 }
 
 /*
+================
+SelectMultiplayerSpawnPoint
+
+A multiplayer map played in singleplayer has no info_player_start / info_player_deathmatch, only the
+spawn points of its game type: a random one of those (the first kind the map has, one that doesn't
+telefrag if there is one; spots that are targeted, i.e. switched on later, only if there is nothing else)
+================
+*/
+static gentity_t* SelectMultiplayerSpawnPoint()
+{
+	static const char* const classnames[] =
+	{
+		"info_player_siegeteam1", "info_player_siegeteam2",
+		"team_CTF_redplayer", "team_CTF_blueplayer", "team_CTF_redspawn", "team_CTF_bluespawn",
+		"info_player_duel", "info_player_duel1", "info_player_duel2",
+		"info_player_start_red", "info_player_start_blue",
+	};
+
+	for (const char* classname : classnames)
+	{
+		gentity_t* spots[MAX_SPAWN_POINTS]{};
+		int count = 0;
+		gentity_t* fallback = nullptr;
+		gentity_t* spot = nullptr;
+
+		while ((spot = G_Find(spot, FOFS(classname), classname)) != nullptr && count < MAX_SPAWN_POINTS)
+		{
+			if (!fallback)
+			{
+				fallback = spot;
+			}
+			if (spot->targetname != nullptr || SpotWouldTelefrag(spot, TEAM_FREE))
+			{
+				continue;
+			}
+			spots[count++] = spot;
+		}
+		if (count)
+		{
+			return spots[rand() % count];
+		}
+		if (fallback)
+		{
+			return fallback;
+		}
+	}
+	return nullptr;
+}
+
+/*
 ===========
 SelectSpawnPoint
 
@@ -427,6 +477,12 @@ gentity_t* SelectSpawnPoint(vec3_t avoid_point, const team_t team, vec3_t origin
 			// roll again if it would be real close to point of death
 			spot = SelectRandomDeathmatchSpawnPoint(team);
 		}
+	}
+
+	if (!spot)
+	{
+		// a multiplayer map (siege, CTF, duel) without singleplayer / deathmatch starts: use its own spawn points
+		spot = SelectMultiplayerSpawnPoint();
 	}
 
 	// find a single player start spot

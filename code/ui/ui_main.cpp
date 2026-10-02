@@ -39,6 +39,7 @@ USER INTERFACE MAIN
 #include "menudef.h"
 
 #include "ui_shared.h"
+#include "ui_pazaak.h"
 
 #include "../ghoul2/G2.h"
 
@@ -609,6 +610,8 @@ void _UI_Refresh(const int realtime)
 	static int index;
 	static int previousTimes[UI_FPS_FRAMES];
 
+	UI_Pazaak_Frame(); // the singleplayer Pazaak match
+
 	if (!(Key_GetCatcher() & KEYCATCH_UI))
 	{
 		return;
@@ -1095,6 +1098,10 @@ static qboolean UI_RunMenuScript(const char** args)
 
 	if (String_Parse(args, &name))
 	{
+		if (UI_Pazaak_Script(name, args))
+		{
+			return qtrue; // pzk_*
+		}
 		if (Q_stricmp(name, "resetdefaults") == 0)
 		{
 			UI_ResetDefaults();
@@ -3464,8 +3471,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 30/09/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 06------------------------------\n");
+	Com_Printf("---------------------Build date 02/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 01------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -4355,6 +4362,11 @@ static void UI_OwnerDraw(float x, float y, float w, float h, const float text_x,
 	rect.w = w;
 	rect.h = h;
 
+	if (UI_Pazaak_OwnerDraw(ownerDraw, x, y, w, h, shader))
+	{
+		return;
+	}
+
 	switch (ownerDraw)
 	{
 	case UI_EFFECTS:
@@ -4604,6 +4616,12 @@ static int UI_GamepadMenuKey(const int key)
 void _UI_KeyEvent(const int pressed_key, const qboolean down)
 {
 	const int key = UI_GamepadMenuKey(pressed_key);
+
+	if (key == A_ESCAPE && down && UI_Pazaak_Active())
+	{
+		UI_Pazaak_OnEsc(); // the Pazaak board asks to forfeit or quit instead of closing
+		return;
+	}
 
 	if (Menu_Count() > 0)
 	{

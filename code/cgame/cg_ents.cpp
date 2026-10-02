@@ -1609,6 +1609,15 @@ static void CG_Mover(centity_t* cent)
 			AnglesToAxis(model_angles, ent.axis);
 		}
 		ent.hModel = cgs.model_draw[s1->modelindex2];
+		if (s1->modelScale[0] > 0.0f && s1->modelScale[0] != 1.0f)
+		{
+			// a model2 of its own size (an MP map's "model2scale", InitMover)
+			for (int i = 0; i < 3; i++)
+			{
+				VectorScale(ent.axis[i], s1->modelScale[i], ent.axis[i]);
+			}
+			ent.nonNormalizedAxes = qtrue;
+		}
 	}
 
 	// I changed it to always do it because nodraw seemed like it should actually do what it says. Be aware that if you change this,

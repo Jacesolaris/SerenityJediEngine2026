@@ -72,7 +72,7 @@ extern void G_Stagger(gentity_t* hitEnt);
 extern void g_fatigue_bp_knockaway(gentity_t* blocker);
 extern void G_StaggerAttacker(gentity_t* atk);
 extern void G_BounceAttacker(gentity_t* atk);
-extern void WP_BlockPointsRegenerate(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
 extern saberMoveName_t PM_SaberBounceForAttack(int move);
 extern void WP_SaberDrop(const gentity_t* self, gentity_t* saber);
 extern qboolean PM_SaberInnonblockableAttack(int anim);
@@ -85,7 +85,7 @@ extern void G_StartStasisEffect(const gentity_t* ent, int me_flags = 0, int leng
 extern void CGCam_BlockShakeSP(float intensity, int duration);
 extern int G_GetParryForBlock(int block);
 extern qboolean WP_SaberDisarmed(gentity_t* self, vec3_t throw_dir);
-extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, int override_amt);
+extern void WP_BlockPointsRegenerate_over_ride(const gentity_t* self, const int override_amt);
 // Saber Blocks
 extern qboolean WP_SaberMBlock(gentity_t* victim, gentity_t* attacker, int saberNum, int bladeNum);
 extern qboolean WP_SaberParry(gentity_t* blocker, gentity_t* attacker, int saberNum, int bladeNum);

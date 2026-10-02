@@ -29,6 +29,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_functions.h"
 #include "Q3_Interface.h"
 #include "g_vehicles.h"
+#include "g_pazaak.h"
 
 extern vec3_t playerMins;
 extern vec3_t playerMaxs;
@@ -2460,6 +2461,15 @@ void NPC_Think(gentity_t* self)
 	}
 	if (debugNPCFreeze->integer || NPC->svFlags & SVF_ICARUS_FREEZE || self && self->client && self->client->ps.
 		stasisJediTime > level.time)
+	{
+		NPC_UpdateAngles(qtrue, qtrue);
+		ClientThink(self->s.number, &ucmd);
+		VectorCopy(self->s.origin, self->s.origin2);
+		return;
+	}
+
+	// sits at a Pazaak match with the player (g_pazaak.cpp): his AI and scripts rest, he keeps facing the player
+	if (G_Pazaak_IsNPCPlaying(self))
 	{
 		NPC_UpdateAngles(qtrue, qtrue);
 		ClientThink(self->s.number, &ucmd);

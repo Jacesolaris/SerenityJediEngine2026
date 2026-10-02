@@ -23,6 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/stringed_ingame.h"
 #include "qcommon/timing.h"
 #include "client.h"
+#include "qcommon/q_padnames.h"
 #include "cl_lan.h"
 #include "botlib/botlib.h"
 #include "snd_ambient.h"
@@ -236,6 +237,14 @@ static void Key_GetBindingBuf(const int keynum, char* buf, const int buflen)
 
 static void Key_KeynumToStringBuf(const int keynum, char* buf, const int buflen)
 {
+	// a controller button: its name on the controller in use
+	const char* padName = Pad_ButtonName(keynum, Cvar_VariableString("in_controllerType"));
+	if (padName)
+	{
+		Q_strncpyz(buf, padName, buflen);
+		return;
+	}
+
 	const char* psKeyName = Key_KeynumToString(keynum/*, qtrue */);
 
 	// see if there's a more friendly (or localised) name...

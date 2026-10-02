@@ -30,6 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../server/exe_headers.h"
 
 #include "ui_local.h"
+#include "ui_pazaak.h"
 #include "gameinfo.h"
 #include "../qcommon/stv_version.h"
 
@@ -345,6 +346,11 @@ void UI_Load(); //in UI_main.cpp
 
 qboolean UI_ConsoleCommand()
 {
+	if (UI_Pazaak_ConsoleCommand(UI_Argv(0)))
+	{
+		return qtrue; // uipzk_start, uipzk_stop
+	}
+
 	if (!ui.SG_GameAllowedToSaveHere(qtrue)) //only check if incamera
 	{
 		return qfalse;

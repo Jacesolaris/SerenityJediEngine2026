@@ -5343,6 +5343,7 @@ void Menus_Activate(menuDef_t* menu)
 
 static const char* g_bindCommands[] =
 {
+	"pazaak",
 	"+altattack",
 	"+attack",
 	"+back",

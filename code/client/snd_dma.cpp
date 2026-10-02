@@ -175,6 +175,7 @@ static sfx_t* sfxHash[LOOP_HASH];
 
 cvar_t* s_volume;
 cvar_t* s_volumeVoice;
+cvar_t* s_pazaakMute; // the Pazaak board is open: only interface sounds (CHAN_LOCAL_SOUND) play
 cvar_t* s_testsound;
 cvar_t* s_khz;
 cvar_t* s_allowDynamicMusic;
@@ -451,6 +452,7 @@ void S_Init()
 
 	s_volume = Cvar_Get("s_volume", "0.5", CVAR_ARCHIVE);
 	s_volumeVoice = Cvar_Get("s_volumeVoice", "1.0", CVAR_ARCHIVE);
+	s_pazaakMute = Cvar_Get("s_pazaakMute", "0", CVAR_TEMP);
 	s_musicVolume = Cvar_Get("s_musicvolume", "0.25", CVAR_ARCHIVE);
 	s_separation = Cvar_Get("s_separation", "0.5", CVAR_ARCHIVE);
 	s_khz = Cvar_Get("s_khz", "44", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1482,12 +1484,29 @@ Starts an ambient, 'one-shot" sound.
 ====================
 */
 
+// The Pazaak board is open (s_pazaakMute, set by the UI): everything but the interface sounds is quiet
+int Key_GetCatcher();
+
+static qboolean S_PazaakMuted(const int entchannel)
+{
+	return s_pazaakMute && s_pazaakMute->integer && entchannel != CHAN_LOCAL_SOUND ? qtrue : qfalse;
+}
+
+static float S_MusicVolume()
+{
+	return s_pazaakMute && s_pazaakMute->integer ? 0.0f : s_musicVolume->value;
+}
+
 void S_StartAmbientSound(const vec3_t origin, const int entityNum, const unsigned char volume,
 	const sfxHandle_t sfxHandle)
 {
 	channel_t* ch;
 
 	if (!s_soundStarted || s_soundMuted)
+	{
+		return;
+	}
+	if (S_PazaakMuted(-1))
 	{
 		return;
 	}
@@ -1569,6 +1588,10 @@ void S_StartSound(const vec3_t origin, const int entityNum, soundChannel_t entch
 	channel_t* ch;
 
 	if (!s_soundStarted || s_soundMuted)
+	{
+		return;
+	}
+	if (S_PazaakMuted(entchannel))
 	{
 		return;
 	}
@@ -1945,6 +1968,10 @@ void S_AddLoopingSound(const int entityNum, const vec3_t origin, const vec3_t ve
 	{
 		return;
 	}
+	if (S_PazaakMuted(-1))
+	{
+		return;
+	}
 	if (numLoopSounds >= MAX_LOOP_SOUNDS)
 	{
 		//assert(numLoopSounds<MAX_LOOP_SOUNDS);
@@ -1991,6 +2018,10 @@ void S_AddAmbientLoopingSound(const vec3_t origin, const unsigned char volume, c
 	sfx_t* sfx;
 
 	if (!s_soundStarted || s_soundMuted)
+	{
+		return;
+	}
+	if (S_PazaakMuted(-1))
 	{
 		return;
 	}
@@ -2786,6 +2817,19 @@ Called once each time through the main loop
 */
 void S_Update()
 {
+	if (s_pazaakMute && s_pazaakMute->modified)
+	{
+		s_pazaakMute->modified = qfalse;
+		if (s_pazaakMute->integer)
+		{
+			S_StopSounds(); // the Pazaak board opened: only its sounds from now on
+		}
+	}
+	if (s_pazaakMute && s_pazaakMute->integer && !(Key_GetCatcher() & 0x0002))
+	{
+		Cvar_Set("s_pazaakMute", "0"); // no UI any more (KEYCATCH_UI): the board was closed some other way
+	}
+
 	if (!s_soundStarted || s_soundMuted)
 	{
 		return;
@@ -5107,7 +5151,7 @@ static void S_UpdateBackgroundTrack()
 			if (pMusicInfoCurrent->s_backgroundFile == -1)
 			{
 				const int iRawEnd = s_rawend;
-				S_UpdateBackgroundTrack_Actual(pMusicInfoCurrent, qtrue, s_musicVolume->value);
+				S_UpdateBackgroundTrack_Actual(pMusicInfoCurrent, qtrue, S_MusicVolume());
 
 				/*			static int iPrevFrontVol = 0;
 							if (iPrevFrontVol != pMusicInfoCurrent->iXFadeVolume)
@@ -5119,7 +5163,7 @@ static void S_UpdateBackgroundTrack()
 				if (pMusicInfoFadeOut->bActive)
 				{
 					s_rawend = iRawEnd;
-					S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qfalse, s_musicVolume->value);
+					S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qfalse, S_MusicVolume());
 					// inactive-checked internally
 					/*
 									static int iPrevFadeVol = 0;
@@ -5183,7 +5227,7 @@ static void S_UpdateBackgroundTrack()
 			MusicInfo_t* pMusicInfoFadeOut = &tMusic_Info[eBGRNDTRACK_FADE];
 			if (pMusicInfoFadeOut->bActive)
 			{
-				S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qtrue, s_musicVolume->value);
+				S_UpdateBackgroundTrack_Actual(pMusicInfoFadeOut, qtrue, S_MusicVolume());
 				if (pMusicInfoFadeOut->iXFadeVolume == 0)
 				{
 					pMusicInfoFadeOut->bActive = qfalse;
@@ -5197,7 +5241,7 @@ static void S_UpdateBackgroundTrack()
 		//
 		const char* psCommand = S_Music_GetRequestedState(); // special check just for "silence" case...
 		const auto bShouldBeSilent = static_cast<qboolean>(psCommand && !Q_stricmp(psCommand, "silence"));
-		const float fDesiredVolume = bShouldBeSilent ? 0.0f : s_musicVolume->value;
+		const float fDesiredVolume = bShouldBeSilent ? 0.0f : S_MusicVolume();
 		//
 		// internal to this code is a volume-smoother...
 		//

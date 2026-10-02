@@ -386,13 +386,13 @@ if(BuildMPEngine)
 			set(MPEngineLibraries
 				${MPEngineLibraries}
 				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SDL2.lib
+				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SerenityJediEngine2026-SDL2.lib
 				)
 		else()
 			set(MPEngineLibraries
 				${MPEngineLibraries}
 				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SDL2.lib
+				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SerenityJediEngine2026-SDL2.lib
 				)
 		endif()
 
@@ -570,11 +570,11 @@ if(BuildMPEngine)
 		if(UseInternalSDL2)
 			if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 				set(MPEngineExtraInstallFiles
-					${SerenityJediEngine2026LibDir}/SDL2/bin/x86/SDL2.dll
+					${SerenityJediEngine2026LibDir}/SDL2/bin/x86/SerenityJediEngine2026-SDL2.dll
 					)
 			else()
 				set(MPEngineExtraInstallFiles
-					${SerenityJediEngine2026LibDir}/SDL2/bin/x64/SDL2.dll
+					${SerenityJediEngine2026LibDir}/SDL2/bin/x64/SerenityJediEngine2026-SDL2.dll
 					)
 			endif()
 		endif()
