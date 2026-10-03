@@ -1579,8 +1579,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 02/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 02------------------------------\n");
+	Com_Printf("---------------------Build date 03/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 03------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -1710,9 +1710,9 @@ static const char* UI_GetGameTypeName(int gtEnum)
 	case GT_HOLOCRON:
 		return UI_GetStringEdString("MENUS", "HOLOCRON_FFA"); //"Holocron FFA";
 	case GT_JEDIMASTER:
-		return UI_GetStringEdString("OJP_MENUS", "JEDIMASTER"); //"Jedi Master";??
+		return UI_GetStringEdString("SJE_MENUS", "JEDIMASTER"); //"Jedi Master";??
 	case GT_SINGLE_PLAYER:
-		return UI_GetStringEdString("OJP_MENUS", "COOP"); //"Team FFA";
+		return UI_GetStringEdString("SJE_MENUS", "COOP"); //"Team FFA";
 	case GT_DUEL:
 		return UI_GetStringEdString("MENUS", "DUEL"); //"Team FFA";
 	case GT_POWERDUEL:
@@ -3148,8 +3148,8 @@ static void UI_DrawRedBlue(rectDef_t* rect, float scale, vec4_t color, int textS
 		//print different team names for CoOp
 		Text_Paint(rect->x, rect->y, scale, color,
 			uiInfo.redBlue == 0
-			? UI_GetStringEdString("OJP_MENUS", "ENEMYTEAM")
-			: UI_GetStringEdString("OJP_MENUS", "PLAYERTEAM"), 0, 0, textStyle, i_menu_font);
+			? UI_GetStringEdString("SJE_MENUS", "ENEMYTEAM")
+			: UI_GetStringEdString("SJE_MENUS", "PLAYERTEAM"), 0, 0, textStyle, i_menu_font);
 	}
 	else
 	{

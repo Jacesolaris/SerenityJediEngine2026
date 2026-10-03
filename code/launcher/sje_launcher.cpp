@@ -348,7 +348,7 @@ namespace
 		const Settings& s = g_launcher.settings;
 		switch (index)
 		{
-		case 0: return s.rend2 ? L"RENDERER: REND2" : L"RENDERER: VANILLA";
+		case 0: return s.rend2 ? L"GRAPHIC MODE: QUALITY" : L"GRAPHIC MODE: PERFORMANCE";
 		case 1: return s.windowed ? L"DISPLAY: WINDOWED" : L"DISPLAY: FULLSCREEN";
 		case 2: return s.controller ? L"CONTROLLER: ON" : L"CONTROLLER: OFF";
 		default: return L"BACK";

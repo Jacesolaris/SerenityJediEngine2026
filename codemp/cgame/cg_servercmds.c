@@ -1252,13 +1252,13 @@ static void CG_CheckSVStringEdRef(char* buf, const char* str)
 
 					if (buf[0] && buf[0] == '?' && buf[1] && buf[1] == '?')
 					{
-						//couldn't find the string in MP_SVGAME, try the OJP_MENUS.str
+						//couldn't find the string in MP_SVGAME, try the SJE_MENUS.str
 						buf[b] = 0;
-						Q_strcat(buf, MAX_STRINGED_SV_STRING, CG_GetStringEdString("OJP_MENUS", stringRef));
+						Q_strcat(buf, MAX_STRINGED_SV_STRING, CG_GetStringEdString("SJE_MENUS", stringRef));
 					}
 					if (buf[0] && buf[0] == '?' && buf[1] && buf[1] == '?')
 					{
-						//couldn't find the string in MP_SVGAME or OJP_MENUS, try the OJP_MENUS.str
+						//couldn't find the string in MP_SVGAME or SJE_MENUS, try the SJE_INGAME.str
 						buf[b] = 0;
 						Q_strcat(buf, MAX_STRINGED_SV_STRING, CG_GetStringEdString("SP_INGAME", stringRef));
 					}

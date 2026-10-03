@@ -4850,6 +4850,10 @@ static void CG_DrawGenericTimerBar(void)
 	{
 		return;
 	}
+	if (cg.predictedPlayerState.m_iVehicleNum)
+	{
+		return;
+	}
 
 	if (percent < 0.1f)
 	{
@@ -4907,6 +4911,10 @@ static void CG_DrawSlamTimerBar(void)
 	{
 		percent = 0.1f;
 	}
+	if (cg.predictedPlayerState.m_iVehicleNum)
+	{
+		return;
+	}
 
 	// background
 	CG_DrawRect(x, y, CGSLAMTIMERBAR_W, CGSLAMTIMERBAR_H, 1.0f, colorTable[CT_BLACK]);
@@ -4951,6 +4959,10 @@ static void CG_DrawDashTimerBar(void)
 		return;
 	}
 	if (percent > CGDASHTIMERBAR_H)
+	{
+		return;
+	}
+	if (cg.predictedPlayerState.m_iVehicleNum)
 	{
 		return;
 	}
