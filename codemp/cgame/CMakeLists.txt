@@ -50,7 +50,7 @@ set(MPCGameGameFiles
 	"${MPDir}/game/bg_public.h"
 	"${MPDir}/game/bg_saga.h"
 	"${MPDir}/game/bg_weapons.h"
-	"${MPDir}/game/surfaceflags.h"
+	"${SharedDir}/game/surfaceflags.h"
 	)
 source_group("game" FILES ${MPCGameGameFiles})
 set(MPCGameFiles ${MPCGameFiles} ${MPCGameGameFiles})
@@ -93,7 +93,7 @@ set(MPCGameCgameFiles
 	"${MPDir}/cgame/fx_force.c"
 	"${MPDir}/cgame/fx_heavyrepeater.c"
 	"${MPDir}/cgame/fx_rocketlauncher.c"
-	"${MPDir}/cgame/animtable.h"
+	"${SharedDir}/cgame/animtable.h"
 	"${MPDir}/cgame/cg_camera.h"
 	"${MPDir}/cgame/cg_holster.h"
 	"${MPDir}/cgame/cg_local.h"

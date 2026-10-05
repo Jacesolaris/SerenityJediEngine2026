@@ -26,8 +26,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "q_shared.h"
 #include "qcommon.h"
-#include "sstring.h"	// to get Gil's string class, because MS's doesn't compile properly in here
-#include "stringed_ingame.h"
+#include "qcommon/sstring.h"	// to get Gil's string class, because MS's doesn't compile properly in here
+#include "qcommon/stringed_ingame.h"
 #include "stv_version.h"
 #include "../shared/sys/sys_local.h"
 #if defined(_WIN32)

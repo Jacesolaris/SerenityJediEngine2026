@@ -34,7 +34,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define UI_SHARED_CPP
 
 #include "../game/anims.h"
-#include "../cgame/animtable.h"
+#include "cgame/animtable.h"
 
 #include "ui_shared.h"
 #include "menudef.h"
@@ -5277,14 +5277,14 @@ menuDef_t* Menus_ActivateByName(const char* p)
 		}
 	}
 
-	// Force select help
-	if (!Q_stricmp(p, "ingameForceSelect"))
+	// Force select help (p is already the NINA name in Nina mode, see the override above)
+	if (!Q_stricmp(p, "ingameForceSelect") || !Q_stricmp(p, "ingameForceSelectNINA"))
 	{
 		if (Cvar_VariableIntegerValue("tier_storyinfo") == 1)
 		{
 			if (ui_com_outcast.integer == 7)
 			{
-				Menus_OpenByName("ingameForceHelp_nina");
+				Menus_OpenByName("ingameForceHelpNINA");
 			}
 			else
 			{
@@ -5294,13 +5294,13 @@ menuDef_t* Menus_ActivateByName(const char* p)
 	}
 
 	// Weapon select help (Nina override already handled above)
-	if (!Q_stricmp(p, "ingameWpnSelect"))
+	if (!Q_stricmp(p, "ingameWpnSelect") || !Q_stricmp(p, "ingameWpnSelectNINA"))
 	{
 		if (Cvar_VariableIntegerValue("tier_storyinfo") == 1)
 		{
 			if (ui_com_outcast.integer == 7)
 			{
-				Menus_OpenByName("ingameWpnSelectHelp_nina");
+				Menus_OpenByName("ingameWpnSelectHelpNINA");
 			}
 			else
 			{
@@ -5370,6 +5370,8 @@ static const char* g_bindCommands[] =
 	"cg_thirdperson !",
 	"datapad",
 	"exitview",
+	"recorddemo", // video recording (Controls binds)
+	"stoprecord",
 #ifndef JK2_MODE
 	"force_absorb",
 #endif

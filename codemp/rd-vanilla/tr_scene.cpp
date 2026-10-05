@@ -130,7 +130,7 @@ void RE_AddPolyToScene(const qhandle_t hShader, const int numVerts, const polyVe
 	}
 
 	if (!hShader) {
-		ri->Printf(PRINT_ALL, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: NULL poly shader\n");
+		ri.Printf(PRINT_ALL, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: NULL poly shader\n");
 		return;
 	}
 
@@ -142,7 +142,7 @@ void RE_AddPolyToScene(const qhandle_t hShader, const int numVerts, const polyVe
 			since we don't plan on changing the const and making for room for those effects
 			simply cut this message to developer only
 			*/
-			ri->Printf(PRINT_DEVELOPER, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: r_max_polys or r_max_polyverts reached\n");
+			ri.Printf(PRINT_DEVELOPER, S_COLOR_YELLOW  "WARNING: RE_AddPolyToScene: r_max_polys or r_max_polyverts reached\n");
 			return;
 		}
 
@@ -208,7 +208,7 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 	}
 
 	if (r_numentities >= MAX_REFENTITIES) {
-		ri->Printf(PRINT_DEVELOPER, "RE_AddRefEntityToScene: Dropping refEntity, reached MAX_REFENTITIES\n");
+		ri.Printf(PRINT_DEVELOPER, "RE_AddRefEntityToScene: Dropping refEntity, reached MAX_REFENTITIES\n");
 		return;
 	}
 
@@ -244,7 +244,7 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 
 		if (!ghoul2[0].mModel)
 		{
-			ri->Printf(PRINT_ALL, "Your ghoul2 instance has no model!\n");
+			ri.Printf(PRINT_ALL, "Your ghoul2 instance has no model!\n");
 		}
 	}
 	refEntParent = -1;
@@ -362,7 +362,7 @@ void RE_RenderScene(const refdef_t* fd) {
 		return;
 	}
 
-	const int startTime = ri->Milliseconds() * ri->Cvar_VariableValue("timescale");
+	const int startTime = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
 
 	if (!tr.world && !(fd->rdflags & RDF_NOWORLDMODEL)) {
 		Com_Error(ERR_DROP, "R_RenderScene: NULL worldmodel");
@@ -505,7 +505,7 @@ void RE_RenderScene(const refdef_t* fd) {
 
 	refEntParent = -1;
 
-	tr.frontEndMsec += ri->Milliseconds() * ri->Cvar_VariableValue("timescale") - startTime;
+	tr.frontEndMsec += ri.Milliseconds() * ri.Cvar_VariableValue("timescale") - startTime;
 
 	RE_RenderWorldEffects();
 

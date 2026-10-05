@@ -535,6 +535,17 @@ typedef struct centity_s {
 
 	int				unoverloading;
 	qboolean		overloaded;
+
+	// the body's shadow settings of the last frame, for the holstered weapons (CG_HolsteredWeaponRender runs
+	// before CG_Player works them out)
+	float			bodyShadowPlane;
+	int				bodyShadowRenderfx;
+
+	// a thrown saber stuck in a body (CG_SaberBodyStickPlace): the hilt and the blade direction in the body's chest
+	// bone axes, taken on the first frame it is seen stuck
+	qboolean		saberBodyStickSet;
+	vec3_t			saberBodyStickOfs;
+	vec3_t			saberBodyStickDir;
 } centity_t;
 
 //======================================================================
@@ -1969,6 +1980,7 @@ void CG_TestModelPrevFrame_f(void);
 void CG_TestModelNextSkin_f(void);
 void CG_TestModelPrevSkin_f(void);
 void CG_AddBufferedSound(sfxHandle_t sfx);
+float CG_CameraBlendAlpha(float alpha);
 
 void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, const qboolean demoPlayback);
 /*

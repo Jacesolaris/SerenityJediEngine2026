@@ -105,10 +105,10 @@ static qhandle_t RE_RegisterIndividualSkin(const char* name, const qhandle_t hSk
 	char			surfName[MAX_QPATH];
 
 	// load and parse the skin file
-	ri->FS_ReadFile(name, (void**)&text);
+	ri.FS_ReadFile(name, (void**)&text);
 	if (!text) {
 #ifndef FINAL_BUILD
-		ri->Printf(PRINT_ALL, "WARNING: RE_RegisterSkin( '%s' ) failed to load!\n", name);
+		ri.Printf(PRINT_ALL, "WARNING: RE_RegisterSkin( '%s' ) failed to load!\n", name);
 #endif
 		return 0;
 	}
@@ -151,7 +151,7 @@ static qhandle_t RE_RegisterIndividualSkin(const char* name, const qhandle_t hSk
 		if (static_cast<unsigned>(skin->numSurfaces) >= std::size(skin->surfaces))
 		{
 			assert(ARRAY_LEN(skin->surfaces) > static_cast<unsigned>(skin->numSurfaces));
-			ri->Printf(PRINT_ALL, "WARNING: RE_RegisterSkin( '%s' ) more than %u surfaces!\n", name, std::size(skin->surfaces));
+			ri.Printf(PRINT_ALL, "WARNING: RE_RegisterSkin( '%s' ) more than %u surfaces!\n", name, std::size(skin->surfaces));
 			break;
 		}
 		const auto surf = static_cast<skinSurface_t*>(Hunk_Alloc(sizeof * skin->surfaces[0], h_low));
@@ -164,7 +164,7 @@ static qhandle_t RE_RegisterIndividualSkin(const char* name, const qhandle_t hSk
 		skin->numSurfaces++;
 	}
 
-	ri->FS_FreeFile(text);
+	ri.FS_FreeFile(text);
 
 	// never let a skin have 0 shaders
 	if (skin->numSurfaces == 0) {
@@ -180,13 +180,13 @@ qhandle_t RE_RegisterSkin(const char* name)
 	skin_t* skin;
 
 	if (!name || !name[0]) {
-		ri->Printf(PRINT_ALL, "Empty name passed to RE_RegisterSkin\n");
+		ri.Printf(PRINT_ALL, "Empty name passed to RE_RegisterSkin\n");
 		return 0;
 	}
 
 	if (strlen(name) >= MAX_QPATH)
 	{
-		ri->Printf(PRINT_ALL, "Skin name exceeds MAX_QPATH\n");
+		ri.Printf(PRINT_ALL, "Skin name exceeds MAX_QPATH\n");
 		return 0;
 	}
 
@@ -207,7 +207,7 @@ qhandle_t RE_RegisterSkin(const char* name)
 	// allocate a new skin
 	if (tr.numSkins == MAX_SKINS)
 	{
-		ri->Printf(PRINT_ALL, "WARNING: RE_RegisterSkin( '%s' ) MAX_SKINS hit\n", name);
+		ri.Printf(PRINT_ALL, "WARNING: RE_RegisterSkin( '%s' ) MAX_SKINS hit\n", name);
 		return 0;
 	}
 	tr.numSkins++;
@@ -366,8 +366,8 @@ Mangled version of the above function to load .skin files on the server.
 ===============
 */
 qhandle_t RE_RegisterServerSkin(const char* name) {
-	if (ri->Cvar_VariableIntegerValue("cl_running") &&
-		ri->Com_TheHunkMarkHasBeenMade() &&
+	if (ri.Cvar_VariableIntegerValue("cl_running") &&
+		ri.Com_TheHunkMarkHasBeenMade() &&
 		ShaderHashTableExists())
 	{ //If the client is running then we can go straight into the normal registerskin func
 		return RE_RegisterSkin(name);
@@ -389,10 +389,10 @@ void	R_InitSkins(void) {
 	tr.numSkins = 1;
 
 	// make the default skin have all default shaders
-	skin_t* skin = tr.skins[0] = static_cast<skin_s*>(ri->Hunk_Alloc(sizeof(skin_t), h_low));
+	skin_t* skin = tr.skins[0] = static_cast<skin_s*>(ri.Hunk_Alloc(sizeof(skin_t), h_low));
 	Q_strncpyz(skin->name, "<default skin>", sizeof skin->name);
 	skin->numSurfaces = 1;
-	skin->surfaces[0] = static_cast<_skinSurface_t*>(ri->Hunk_Alloc(sizeof(skinSurface_t), h_low));
+	skin->surfaces[0] = static_cast<_skinSurface_t*>(ri.Hunk_Alloc(sizeof(skinSurface_t), h_low));
 	skin->surfaces[0]->shader = tr.defaultShader;
 }
 
@@ -415,16 +415,16 @@ R_SkinList_f
 */
 void R_SkinList_f(void)
 {
-	ri->Printf(PRINT_ALL, "------------------\n");
+	ri.Printf(PRINT_ALL, "------------------\n");
 
 	for (int i = 0; i < tr.numSkins; i++) {
 		skin_t* skin = tr.skins[i];
 
-		ri->Printf(PRINT_ALL, "%3i:%s\n", i, skin->name);
+		ri.Printf(PRINT_ALL, "%3i:%s\n", i, skin->name);
 		for (int j = 0; j < skin->numSurfaces; j++) {
-			ri->Printf(PRINT_ALL, "       %s = %s\n",
+			ri.Printf(PRINT_ALL, "       %s = %s\n",
 				skin->surfaces[j]->name, static_cast<shader_t*>(skin->surfaces[j]->shader)->name);
 		}
 	}
-	ri->Printf(PRINT_ALL, "------------------\n");
+	ri.Printf(PRINT_ALL, "------------------\n");
 }

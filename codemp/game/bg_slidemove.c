@@ -49,6 +49,7 @@ output: origin, velocity, impacts, stairup boolean
 #ifdef _GAME
 extern void G_FlyVehicleSurfaceDestruction(gentity_t* veh, trace_t* trace, int magnitude, qboolean force); //g_vehicle.c
 extern qboolean G_CanBeEnemy(gentity_t* self, gentity_t* enemy); //w_saber.c
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock); //g_combat.c
 #endif
 
 extern qboolean BG_UnrestrainedPitchRoll(const playerState_t* ps, Vehicle_t* p_veh);
@@ -588,12 +589,15 @@ static void PM_VehicleImpact(bgEntity_t* pEnt, trace_t* trace)
 						BG_KnockDownable(&hitEnt->client->ps) &&
 						G_CanBeEnemy((gentity_t*)pEnt, hitEnt))
 					{
-						// Smash and knock down
-						if (hitEnt->client->ps.forceHandExtend != HANDEXTEND_KNOCKDOWN)
+						// Smash and knock down, the same as SP (DoImpact, g_active.cpp): throw them along the
+						// impact direction and play the SP knockdown and getup.
+						vec3_t push_dir;
+						float push = VectorNormalize2(pm->ps->velocity, push_dir) / 50.0f;
+
+						if (hitEnt->s.number < MAX_CLIENTS)
 						{
-							hitEnt->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-							hitEnt->client->ps.forceHandExtendTime = pm->cmd.serverTime + 1100;
-							hitEnt->client->ps.forceDodgeAnim = 0;
+							// If a player was hit don't make it so bad...
+							push *= 0.5f;
 						}
 
 						hitEnt->client->ps.otherKiller = pEnt->s.number;
@@ -603,13 +607,11 @@ static void PM_VehicleImpact(bgEntity_t* pEnt, trace_t* trace)
 						hitEnt->client->otherKillerVehWeapon = 0;
 						hitEnt->client->otherKillerWeaponType = WP_NONE;
 
-						// Add our velocity to theirs to push them along impact direction
-						VectorAdd(hitEnt->client->ps.velocity,
-							pm->ps->velocity,
-							hitEnt->client->ps.velocity);
-
-						// Upward thrust
-						hitEnt->client->ps.velocity[2] += 200.0f;
+						if (!(hitEnt->flags & FL_NO_KNOCKBACK))
+						{
+							G_Throw(hitEnt, push_dir, push);
+						}
+						G_Knockdown(hitEnt, (gentity_t*)pEnt, push_dir, push, qtrue);
 					}
 				}
 

@@ -4662,6 +4662,11 @@ void G_RunFrame(const int levelTime)
 
 		G_CheckSpecialPersistentEvents(ent);
 
+		if (ent->corpsePushUntil > level.time)
+		{// ragdoll: walking into the body pushes it
+			G_CorpseTouchPush(ent);
+		}
+
 		if (ent->s.eType == ET_MISSILE)
 		{
 			g_run_missile(ent);

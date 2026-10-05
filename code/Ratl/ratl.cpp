@@ -28,14 +28,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #if 0
 #include "array_vs.h"
-#include "bits_vs.h"
+#include "Ratl/bits_vs.h"
 #include "heap_vs.h"
 #include "pool_vs.h"
 #include "list_vs.h"
 #include "queue_vs.h"
 #include "stack_vs.h"
 #include "string_vs.h"
-#include "vector_vs.h"
+#include "Ratl/vector_vs.h"
 #include "handle_pool_vs.h"
 #include "hash_pool_vs.h"
 #include "map_vs.h"

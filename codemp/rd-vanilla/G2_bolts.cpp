@@ -191,7 +191,7 @@ int G2_Add_Bolt(const CGhoul2Info* ghlInfo, boltInfo_v& bltlist, surfaceInfo_v& 
 		// didn't find it? Error
 		//assert(0&&x == mod_a->mdxa->numBones);
 #ifdef _DEBUG
-//		ri->Printf( PRINT_ALL, "WARNING: %s not found on skeleton\n", boneName);
+//		ri.Printf( PRINT_ALL, "WARNING: %s not found on skeleton\n", boneName);
 #endif
 		return -1;
 	}

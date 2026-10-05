@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define __B_LOCAL_H__
 
 #include "g_local.h"
-#include "say.h"
+#include "game/say.h"
 
 #include "ai.h"
 #include <qcommon\q_math.h>

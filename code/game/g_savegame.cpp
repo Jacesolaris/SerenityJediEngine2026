@@ -27,7 +27,7 @@
 #include "fields.h"
 #include "objectives.h"
 #include "../cgame/cg_camera.h"
-#include "../qcommon/sstring.h"
+#include "qcommon/sstring.h"
 #include "qcommon/ojk_saved_game_helper.h"
 #include "b_public.h"
 

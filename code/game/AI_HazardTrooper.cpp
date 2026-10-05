@@ -45,7 +45,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../Ratl/array_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 #endif
 #if !defined(RATL_HANDLE_POOL_VS_INC)
 #include "../Ratl/handle_pool_vs.h"
@@ -56,7 +56,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <Ratl/pool_vs.h>
 #include "bstate.h"
 #include "ai.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "ghoul2_shared.h"
 #include "anims.h"
 #include <qcommon/q_platform.h>

@@ -450,8 +450,10 @@ srfBspSurface_t* R_SubdividePatchToGrid(int width, int height,
 	float		len, maxLen;
 	int			dir;
 	int			t;
-	srfVert_t	ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]{};
+	// static: this grid is ~660 KB, too big for the 1 MB main-thread stack (map load only, never re-entered)
+	static srfVert_t	ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE];
 	float		errorTable[2][MAX_GRID_SIZE]{};
+	Com_Memset(ctrl, 0, sizeof(ctrl));
 	int			numIndexes;
 	static glIndex_t indexes[(MAX_GRID_SIZE - 1) * (MAX_GRID_SIZE - 1) * 2 * 3];
 	int consecutiveComplete;
@@ -627,8 +629,10 @@ R_GridInsertColumn
 srfBspSurface_t* R_GridInsertColumn(srfBspSurface_t* grid, int column, int row, vec3_t point, float loderror) {
 	int i, j;
 	int width, height, oldwidth;
-	srfVert_t ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]{};
+	// static: this grid is ~660 KB, too big for the 1 MB main-thread stack (map load only, never re-entered)
+	static srfVert_t ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE];
 	float errorTable[2][MAX_GRID_SIZE]{};
+	Com_Memset(ctrl, 0, sizeof(ctrl));
 	float lodRadius;
 	vec3_t lodOrigin;
 	int    numIndexes;
@@ -687,8 +691,10 @@ R_GridInsertRow
 srfBspSurface_t* R_GridInsertRow(srfBspSurface_t* grid, int row, int column, vec3_t point, float loderror) {
 	int i, j;
 	int width, height, oldheight;
-	srfVert_t ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]{};
+	// static: this grid is ~660 KB, too big for the 1 MB main-thread stack (map load only, never re-entered)
+	static srfVert_t ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE];
 	float errorTable[2][MAX_GRID_SIZE]{};
+	Com_Memset(ctrl, 0, sizeof(ctrl));
 	float lodRadius;
 	vec3_t lodOrigin;
 	int             numIndexes;

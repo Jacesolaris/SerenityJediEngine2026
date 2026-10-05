@@ -2712,6 +2712,164 @@ void AddFatigueKillBonus(const gentity_t* attacker, const gentity_t* victim, con
 extern void BubbleShield_TurnOff(gentity_t* self);
 void G_CheckForblowingup(gentity_t* ent, const gentity_t* enemy, int damage);
 
+#define CORPSE_PUSH_TIME 5000 // ragdoll: a body can be pushed this long after the death (as SJE SP)
+
+// a body in its ragdoll window: a dead client (player, bot, NPC) or the body que copy of a respawned player
+qboolean G_CorpsePushable(const gentity_t* ent)
+{
+	if (!ent || !ent->inuse || ent->corpsePushUntil <= level.time)
+	{
+		return qfalse;
+	}
+	if (ent->client)
+	{
+		return ent->health <= 0 ? qtrue : qfalse;
+	}
+	return ent->s.eType == ET_BODY ? qtrue : qfalse;
+}
+
+// adds push to the body's velocity (the client ragdoll follows the body and takes its speed in the air)
+void G_PushCorpse(gentity_t* ent, const vec3_t push)
+{
+	if (!G_CorpsePushable(ent))
+	{
+		return;
+	}
+	if (ent->client)
+	{
+		VectorAdd(ent->client->ps.velocity, push, ent->client->ps.velocity);
+		if (push[2] > 0.0f)
+		{
+			ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
+		}
+		ent->client->ps.eFlags |= EF_RAG;
+		return;
+	}
+	// the body que copy is a physics object (G_RunItem): start a new arc from where it is
+	{
+		vec3_t vel;
+		if (ent->s.pos.trType == TR_STATIONARY)
+		{
+			VectorClear(vel);
+		}
+		else
+		{
+			BG_EvaluateTrajectoryDelta(&ent->s.pos, level.time, vel);
+		}
+		VectorAdd(vel, push, ent->s.pos.trDelta);
+		VectorCopy(ent->r.currentOrigin, ent->s.pos.trBase);
+		ent->s.pos.trTime = level.time;
+		ent->s.pos.trType = TR_GRAVITY;
+		ent->s.groundEntityNum = ENTITYNUM_NONE;
+	}
+}
+
+// somebody walking or running into the body pushes it along (at most once per 100 ms)
+void G_CorpseTouchPush(gentity_t* corpse)
+{
+	int touch[MAX_GENTITIES];
+	vec3_t mins, maxs, cur;
+	int i, num;
+
+	if (!G_CorpsePushable(corpse) || corpse->corpseTouchTime > level.time)
+	{
+		return;
+	}
+	VectorSet(mins, corpse->r.absmin[0] - 8, corpse->r.absmin[1] - 8, corpse->r.absmin[2]);
+	VectorSet(maxs, corpse->r.absmax[0] + 8, corpse->r.absmax[1] + 8, corpse->r.absmax[2] + 8);
+	if (corpse->client)
+	{
+		VectorCopy(corpse->client->ps.velocity, cur);
+	}
+	else if (corpse->s.pos.trType == TR_STATIONARY)
+	{
+		VectorClear(cur);
+	}
+	else
+	{
+		BG_EvaluateTrajectoryDelta(&corpse->s.pos, level.time, cur);
+	}
+	num = trap->EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
+	for (i = 0; i < num; i++)
+	{
+		gentity_t* other = &g_entities[touch[i]];
+		vec3_t move, push;
+		float speed;
+
+		if (other == corpse || !other->client || other->health <= 0)
+		{
+			continue;
+		}
+		VectorSet(move, other->client->ps.velocity[0], other->client->ps.velocity[1], 0.0f);
+		speed = VectorLength(move);
+		if (speed < 60.0f)
+		{
+			continue;
+		}
+		if ((cur[0] * move[0] + cur[1] * move[1]) / speed >= speed * 0.6f)
+		{
+			continue; // already going along with him
+		}
+		VectorScale(move, 0.6f, push);
+		push[2] = 60.0f;
+		G_PushCorpse(corpse, push);
+		corpse->corpseTouchTime = level.time + 100;
+		return;
+	}
+}
+
+// force push / pull on the bodies in their ragdoll window: in the push arc (narrow for the aimed level 1 push), in
+// reach and in sight - stronger with the force level, weaker with the distance
+void G_ForceThrowCorpses(gentity_t* self, const qboolean pull, const int radius, const float arc)
+{
+	int list[MAX_GENTITIES];
+	vec3_t eye, mins, maxs;
+	int i, num;
+	const int level_ = self->client->ps.fd.forcePowerLevel[pull ? FP_PULL : FP_PUSH];
+	const float strength = 250.0f + 150.0f * level_;
+
+	VectorCopy(self->client->ps.origin, eye);
+	eye[2] += self->client->ps.viewheight;
+	for (i = 0; i < 3; i++)
+	{
+		mins[i] = eye[i] - radius;
+		maxs[i] = eye[i] + radius;
+	}
+	num = trap->EntitiesInBox(mins, maxs, list, MAX_GENTITIES);
+	for (i = 0; i < num; i++)
+	{
+		gentity_t* ent = &g_entities[list[i]];
+		vec3_t dir, ang, push;
+		trace_t tr;
+		float dist, s;
+
+		if (ent == self || !G_CorpsePushable(ent))
+		{
+			continue;
+		}
+		VectorSubtract(ent->r.currentOrigin, eye, dir);
+		dist = VectorNormalize(dir);
+		if (dist > radius)
+		{
+			continue;
+		}
+		vectoangles(dir, ang);
+		if (!in_field_of_vision(self->client->ps.viewangles, arc > 0.0f ? arc : 30.0f, ang))
+		{
+			continue;
+		}
+		trap->Trace(&tr, eye, NULL, NULL, ent->r.currentOrigin, self->s.number, MASK_SOLID, qfalse, 0, 0);
+		if (tr.fraction < 1.0f && tr.entityNum != ent->s.number)
+		{
+			continue;
+		}
+		s = strength * (1.0f - 0.5f * dist / radius);
+		VectorScale(dir, pull ? -s : s, push);
+		push[2] = pull ? 100.0f : 150.0f;
+		G_PushCorpse(ent, push);
+	}
+}
+
 void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker, const int damage, const int means_of_death)
 {
 	int killer;
@@ -3573,6 +3731,11 @@ void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker
 	// don't allow respawn until the death anim is done
 	// g_forcerespawn may force spawning at some later time
 	self->client->respawnTime = level.time + 1700;
+
+	// ragdoll (as SJE SP): the body can be pushed for a while (G_PushCorpse sets EF_RAG when it is pushed).
+	// EF_RAG is not set here: a ragdoll started from the standing pose sinks into the floor, so the death anim
+	// plays first and the normal ragdoll check (CG_RagDoll) takes over once the body has dropped
+	self->corpsePushUntil = level.time + CORPSE_PUSH_TIME;
 	ScalePlayer(self, self->client->pers.botmodelscale);
 
 	// remove powerups
@@ -6363,6 +6526,16 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 
 	if (!targ)
 		return;
+
+	if (dir && damage > 0 && G_CorpsePushable(targ))
+	{// ragdoll: hits push the body (saber, shots, explosions, kicks)
+		vec3_t push;
+		const float strength = damage * 6.0f < 150.0f ? 150.0f : damage * 6.0f > 450.0f ? 450.0f : damage * 6.0f;
+		VectorNormalize2(dir, push);
+		VectorScale(push, strength, push);
+		push[2] += strength * 0.3f;
+		G_PushCorpse(targ, push);
+	}
 
 	if (targ && targ->damageRedirect)
 	{

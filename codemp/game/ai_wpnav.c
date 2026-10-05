@@ -34,7 +34,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_weapons.h"
 #include <stdlib.h>
 #include <qcommon\q_string.h>
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 
 float gWPRenderTime = 0;
 float gDeactivated = 0;

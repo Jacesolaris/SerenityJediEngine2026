@@ -39,7 +39,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #ifdef _DEBUG
 #include <float.h>
 #endif
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 
 extern int eventClearTime;
 /*

@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	User interface building blocks and support functions.
 **********************************************************************/
 #include "ui_local.h"
-#include "ui_pazaak.h"
+#include "ui/ui_pazaak.h"
 
 #define NUM_UI_ARGSTRS (4)
 #define UI_ARGSTR_MASK (NUM_UI_ARGSTRS-1)

@@ -31,7 +31,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 #include "g_local.h"
 #include "bg_saga.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include <qcommon\q_math.h>
 #include "g_public.h"
 #include <assert.h>

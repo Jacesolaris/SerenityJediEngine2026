@@ -32,7 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <cassert>
 #include "ghoul2_shared.h"
 #include <qcommon\q_shared.h>
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include <qcommon\q_color.h>
 #include "g_local.h"
 #include <qcommon\q_string.h>

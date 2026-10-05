@@ -42,7 +42,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../Ratl/handle_pool_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 #endif
 #if !defined(RUFL_HSTRING_INC)
 #include "hstring.h"

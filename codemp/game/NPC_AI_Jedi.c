@@ -9702,8 +9702,8 @@ static void Jedi_Attack(void)
 		//saber is not in hand
 		if (!NPCS.NPC->client->ps.saberEntityNum && NPCS.NPC->client->saberStoredIndex)
 		{
-			//
-			if (g_entities[NPCS.NPC->client->ps.saberEntityNum].s.pos.trType == TR_STATIONARY)
+			//the stored saber: ps.saberEntityNum is 0 while the saber is out of the hand (that read entity 0)
+			if (g_entities[NPCS.NPC->client->saberStoredIndex].s.pos.trType == TR_STATIONARY)
 			{
 				//fell to the ground, try to pick it up
 				if (Jedi_CanPullBackSaber(NPCS.NPC))

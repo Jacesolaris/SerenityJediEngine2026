@@ -40,7 +40,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include "g_team.h"
 #include "b_public.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "bg_vehicles.h"
 #include "bg_weapons.h"
 #include <string.h>
@@ -1629,6 +1629,13 @@ void WP_ForcePowerStart(const gentity_t* self, const forcePowers_t forcePower, i
 
 	self->client->ps.fd.forcePowerDebounce[forcePower] = 0;
 
+	if ((int)forcePower == FP_SPEED && self->client->ps.fd.forcePowerLevel[FP_SPEED] > FORCE_LEVEL_2)
+	{
+		// The same as SP: remember when force speed 3 started, a force long leap must start within 500ms of it
+		// (bg_pmove.c). Sent to the client too (msg.cpp), so the leap is predicted.
+		self->client->ps.fd.forcePowerDebounce[FP_SPEED] = level.time;
+	}
+
 	if ((int)forcePower == FP_SPEED && overrideAmt)
 	{
 		WP_ForcePowerDrain(&self->client->ps, forcePower, overrideAmt * 0.025);
@@ -2495,7 +2502,78 @@ void ForceDashAnimDash(gentity_t* self)
 	}
 }
 
-static void ForceSpeedDash(gentity_t* self)
+// Dashing off a ledge flings the player very far (exploited to cross big distances): check the path the dash would
+// cover and refuse the dash if the floor drops away before it ends, or if a wall is close ahead.
+#define DASH_LEDGE_DROP		64.0f	// a floor further down than this (below a normal step) counts as a ledge
+#define DASH_CHECK_STEP		16.0f
+extern float pm_friction;
+
+static qboolean Dash_PathRefused(const gentity_t* self)
+{
+	vec3_t dir, mins, maxs, wallMins, point, down;
+	trace_t tr;
+
+	VectorSet(dir, self->client->ps.velocity[0], self->client->ps.velocity[1], 0);
+	const float speed = VectorNormalize(dir);
+	if (speed < 1.0f)
+	{
+		return qfalse;
+	}
+
+	// the boost is x4; ground friction (pm_friction per second) takes the extra 3x speed off over this distance,
+	// plus the running speed meanwhile and the player's width
+	const float dashDist = 3.0f * speed / pm_friction + speed / pm_friction + self->r.maxs[0];
+
+	VectorCopy(self->r.mins, mins);
+	VectorCopy(self->r.maxs, maxs);
+	VectorCopy(mins, wallMins);
+	wallMins[2] += STEPSIZE; // steps and small bumps don't stop the dash
+
+	// the floor under the player (he can be just above it, running down steps)
+	float floorZ = self->client->ps.origin[2];
+	if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+	{
+		VectorCopy(self->client->ps.origin, down);
+		down[2] -= AIR_DASH_MIN_HEIGHT;
+		trap->Trace(&tr, self->client->ps.origin, mins, maxs, down, self->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+		if (!tr.startsolid && tr.fraction < 1.0f)
+		{
+			floorZ = tr.endpos[2];
+		}
+	}
+
+	for (float d = DASH_CHECK_STEP; d < dashDist + DASH_CHECK_STEP; d += DASH_CHECK_STEP)
+	{
+		const float dist = d < dashDist ? d : dashDist;
+
+		VectorMA(self->client->ps.origin, dist, dir, point);
+
+		// a wall: close ahead (first half of the dash) = no dash (no dashing into walls or sliding along them);
+		// further away the dash just ends there, nothing further to check
+		trap->Trace(&tr, self->client->ps.origin, wallMins, maxs, point, self->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+		if (tr.startsolid || tr.allsolid || tr.fraction < 1.0f)
+		{
+			return (qboolean)(dist * tr.fraction < dashDist * 0.5f);
+		}
+
+		// the floor along the way may go down a step at a time (down stairs): no floor (a ledge), or more than a step
+		// below the floor at the last check, = no dash - else a dash off a ledge carried the player straight out over it
+		VectorCopy(point, down);
+		down[2] = floorZ - (STEPSIZE + DASH_LEDGE_DROP);
+		trap->Trace(&tr, point, mins, maxs, down, self->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+		if (!tr.startsolid && (tr.fraction >= 1.0f || floorZ - tr.endpos[2] > STEPSIZE))
+		{
+			return qtrue;
+		}
+		if (!tr.startsolid)
+		{
+			floorZ = tr.endpos[2];
+		}
+	}
+	return qfalse;
+}
+
+void ForceSpeedDash(gentity_t* self)
 {
 	// Must be alive
 	if (self->health <= 0)
@@ -2508,10 +2586,21 @@ static void ForceSpeedDash(gentity_t* self)
 		return;
 	}
 
-	// Must be on the ground
-	if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+	// Must be on the ground - or just above it (running down steps): higher up is the air dash (PM_CheckAirDash)
+	qboolean on_ground = self->client->ps.groundEntityNum != ENTITYNUM_NONE ? qtrue : qfalse;
+	if (!on_ground)
 	{
-		return;
+		trace_t tr;
+		vec3_t down;
+
+		VectorCopy(self->client->ps.origin, down);
+		down[2] -= AIR_DASH_MIN_HEIGHT;
+		trap->Trace(&tr, self->client->ps.origin, self->r.mins, self->r.maxs, down, self->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+		if (tr.fraction == 1.0f || tr.startsolid || tr.allsolid)
+		{
+			return;
+		}
+		on_ground = qtrue;
 	}
 
 	// Cannot dash during ledge moves
@@ -2605,9 +2694,23 @@ static void ForceSpeedDash(gentity_t* self)
 		return;
 	}
 
-	if (self->client->ps.groundEntityNum != ENTITYNUM_NONE)
+	if (on_ground)
 	{// animate and give the speed boost
 		vec3_t dir;
+
+		// One boost per dash, as SP. MP thinks once per user command (the client's frame rate), but level.time only
+		// moves every server frame, so CF_DASHING stays set for all the commands of that frame: x4, x16, x64...
+		// at a high frame rate = blasted across the map.
+		if (self->client->dashBoostTime == self->client->ps.dashstartTime)
+		{
+			return;
+		}
+
+		if (Dash_PathRefused(self))
+		{// no dashing off ledges or into walls
+			return;
+		}
+		self->client->dashBoostTime = self->client->ps.dashstartTime;
 
 		AngleVectors(self->client->ps.viewangles, dir, NULL, NULL);
 		self->client->ps.velocity[0] = self->client->ps.velocity[0] * 4;
@@ -2617,7 +2720,7 @@ static void ForceSpeedDash(gentity_t* self)
 
 		G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/dash.mp3"));
 	}
-	else if (self->client->ps.groundEntityNum == ENTITYNUM_NONE)
+	else
 	{
 		G_SetAnim(self, &self->client->pers.cmd, SETANIM_BOTH, BOTH_FORCEINAIR1, SETANIM_AFLAG_PACE, 0);
 	}
@@ -5732,6 +5835,12 @@ void ForceThrow(gentity_t* self, qboolean pull)
 			if (ent)
 			{
 				vec3_t a;
+				if (G_CorpsePushable(ent))
+				{// a body in its ragdoll window: G_ForceThrowCorpses
+					entity_list[e] = ENTITYNUM_NONE;
+					e++;
+					continue;
+				}
 				//not in the arc, don't consider it
 				VectorCopy(self->client->ps.origin, tto);
 				tto[2] += self->client->ps.viewheight;
@@ -5765,6 +5874,9 @@ void ForceThrow(gentity_t* self, qboolean pull)
 			e++;
 		}
 	}
+
+	// the bodies in their ragdoll window
+	G_ForceThrowCorpses(self, pull, radius, vision_arc);
 
 	//REPULSE ########################################################################## IN THE AIR PUSH
 	if (self->client->ps.groundEntityNum == ENTITYNUM_NONE

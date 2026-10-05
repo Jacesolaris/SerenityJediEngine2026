@@ -337,7 +337,8 @@ static qboolean Pzk_CanPlay(gentity_t* ent, const qboolean tell)
 		return qfalse;
 	}
 	if (ent->client->sess.sessionTeam == TEAM_SPECTATOR || ent->health <= 0
-		|| ent->client->ps.stats[STAT_HEALTH] <= 0 || ent->client->ps.pm_type == PM_DEAD)
+		|| ent->client->ps.stats[STAT_HEALTH] <= 0 || ent->client->ps.pm_type == PM_DEAD
+		|| ent->client->ps.pm_type == PM_SPECTATOR || ent->client->tempSpectate >= level.time) // waiting to respawn
 	{
 		if (tell)
 		{

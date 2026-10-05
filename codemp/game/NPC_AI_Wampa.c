@@ -255,17 +255,15 @@ void Wampa_Slash(const int boltIndex, const qboolean backhand)
 				AngleVectors(angs, push_dir, NULL, NULL);
 				if (radius_ent->client->NPC_class != CLASS_WAMPA
 					&& radius_ent->client->NPC_class != CLASS_RANCOR
-					&& radius_ent->client->NPC_class != CLASS_ATST)
+					&& radius_ent->client->NPC_class != CLASS_ATST
+					&& !(radius_ent->flags & FL_NO_KNOCKBACK))
 				{
 					G_Throw(radius_ent, push_dir, 65);
 					if (BG_KnockDownable(&radius_ent->client->ps) &&
 						radius_ent->health > 0 && Q_irand(0, 1))
 					{
-						//do pain on enemy
-						radius_ent->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-						radius_ent->client->ps.forceDodgeAnim = 0;
-						radius_ent->client->ps.forceHandExtendTime = level.time + 1100;
-						radius_ent->client->ps.quickerGetup = qfalse;
+						//do pain on enemy (SP knockdown and getup, the same as SP)
+						G_Knockdown(radius_ent, NPCS.NPC, push_dir, 300, qtrue);
 					}
 				}
 			}

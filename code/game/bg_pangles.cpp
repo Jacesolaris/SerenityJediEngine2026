@@ -579,7 +579,7 @@ qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolea
 	if (levitationLevel == FORCE_LEVEL_2)
 	{
 		// Level 2: longer + faster
-		minWallRunTime = 300;       // longer usable window
+		minWallRunTime = 500;       // longer usable window (~1.9 s with the slower wall-run anim, level 3 ~2.35 s)
 		wallRunSpeedBase = 225.0f;    // faster
 		wallRunSpeedRun = 300.0f;    // faster
 	}
@@ -703,6 +703,19 @@ qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolea
 						zVel = forceJumpStrength[FORCE_LEVEL_2] / 2.0f;
 					}
 
+					// Fallen Order style: hold the height (no falling down the wall), only a slight sink at the end
+					if (ent->client->ps.legsAnimTimer - minWallRunTime > WALL_RUN_SINK_TIME)
+					{
+						if (zVel < 0.0f)
+						{
+							zVel = 0.0f;
+						}
+					}
+					else if (zVel > -WALL_RUN_SINK_SPEED)
+					{
+						zVel = -WALL_RUN_SINK_SPEED;
+					}
+
 					//pull toward wall
 					VectorScale(trace.plane.normal, -128.0f, ent->client->ps.velocity);
 
@@ -753,6 +766,62 @@ qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, const qboolea
 }
 
 extern int PM_AnimLength(const int index, const animNumber_t anim);
+
+// Wall-to-wall jump (Fallen Order style): after jumping off a wall-run (the WALL_RUN_*_FLIP), a wall close on the side
+// the player flies to starts a new wall-run on it, so wall-runs can be chained across a corridor.
+void PM_WallRunChain(gentity_t* ent, const usercmd_t* ucmd)
+{
+	if (!ent || !ent->client)
+	{
+		return;
+	}
+
+	const int legs_anim = ent->client->ps.legsAnim;
+	if (legs_anim != BOTH_WALL_RUN_LEFT_FLIP && legs_anim != BOTH_WALL_RUN_RIGHT_FLIP)
+	{
+		return;
+	}
+
+	if (ent->client->ps.groundEntityNum != ENTITYNUM_NONE
+		|| ent->client->ps.forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_2
+		|| ucmd->forwardmove <= 0)
+	{
+		return;
+	}
+
+	// not while still pushing off the old wall
+	const int flip_len = PM_AnimLength(ent->client->clientInfo.animFileIndex, static_cast<animNumber_t>(legs_anim));
+	if (ent->client->ps.legsAnimTimer > flip_len - 150)
+	{
+		return;
+	}
+
+	vec3_t right, trace_to;
+	const vec3_t fwd_angles = { 0, ent->client->ps.viewangles[YAW], 0 };
+	const vec3_t maxs = { ent->maxs[0], ent->maxs[1], 24 };
+	const vec3_t mins = { ent->mins[0], ent->mins[1], 0 };
+	trace_t trace;
+
+	AngleVectors(fwd_angles, nullptr, right, nullptr);
+
+	// jumped off a wall on the left = flying to the right, and the other way round
+	const qboolean wall_on_right = static_cast<qboolean>(legs_anim == BOTH_WALL_RUN_LEFT_FLIP);
+	VectorMA(ent->currentOrigin, wall_on_right ? WALL_RUN_CHAIN_DIST : -WALL_RUN_CHAIN_DIST, right, trace_to);
+
+	gi.trace(&trace, ent->currentOrigin, mins, maxs, trace_to, ent->s.number, ent->clipmask, static_cast<EG2_Collision>(0), 0);
+
+	if (trace.fraction < 1.0f && trace.plane.normal[2] >= 0.0f && trace.plane.normal[2] <= 0.4f)
+	{
+		NPC_SetAnim(ent, SETANIM_BOTH, wall_on_right ? BOTH_WALL_RUN_RIGHT : BOTH_WALL_RUN_LEFT,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		if (ent->client->ps.velocity[2] < 0.0f)
+		{
+			ent->client->ps.velocity[2] = 0.0f;
+		}
+		G_SoundOnEnt(ent, CHAN_BODY, "sound/weapons/force/jumpsmall.mp3");
+	}
+}
+
 
 qboolean PM_AdjustAnglesForSpinningFlip(gentity_t* ent, usercmd_t* ucmd, const qboolean angles_only)
 {

@@ -1615,6 +1615,7 @@ typedef struct {
 //=================================================================================
 
 // skins allow models to be retextured without modifying the model file
+#ifdef REND2_SP
 typedef struct {
 	char		name[MAX_QPATH];
 	shader_t* shader;
@@ -1625,6 +1626,10 @@ typedef struct skin_s {
 	int			numSurfaces;
 	skinSurface_t* surfaces[128];
 } skin_t;
+#else
+// MP: skin_t and _skinSurface_t come from rd-common/tr_types.h (shared with the ghoul2 code)
+typedef _skinSurface_t skinSurface_t;
+#endif
 
 typedef struct {
 	int			originalBrushNumber;
@@ -3910,10 +3915,8 @@ void RE_SetColor(const float* rgba);
 void RE_StretchPic(const float x, const float y, const float w, const float h, const float s1, const float t1, const float s2, const float t2, const qhandle_t hShader);
 void RE_RotatePic(const float x, const float y, const float w, const float h, const float s1, const float t1, const float s2, const float t2, const float a, const qhandle_t hShader);
 void RE_RotatePic2(const float x, const float y, const float w, const float h, const float s1, const float t1, const float s2, const float t2, const float a, const qhandle_t hShader);
-#ifdef REND2_SP
 void RE_LAGoggles(void);
 void RE_Scissor(const float x, const float y, const float w, const float h);
-#endif
 void RE_BeginFrame(const stereoFrame_t stereoFrame);
 void R_NewFrameSync();
 void RE_EndFrame(int* frontEndMsec, int* backEndMsec);

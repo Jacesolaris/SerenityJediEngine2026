@@ -40,6 +40,120 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MASK_CAMERACLIP (MASK_SOLID|CONTENTS_PLAYERCLIP)
 #define CAMERA_SIZE	4
 
+#define LONG_LEAP_CAMERA_RANGE	70.0f	// force long leap: this much further back
+#define LONG_LEAP_CAMERA_DROP	16.0f	// and aimed this much lower (the body, not above the head)
+#define LONG_LEAP_CAMERA_SPEED	4.0f	// easing in and out: 1 / 4 s
+
+/*
+===============
+CG_LongLeapCameraBlend
+
+0..1: how far the third person camera has eased into the force long leap view (the leap and its landing slide).
+In the flying pose the body lies below the usual (head height) camera, so the camera moves back and aims lower.
+===============
+*/
+static float CG_LongLeapCameraBlend(void)
+{
+	static float blend = 0.0f;
+	static int lastTime = 0;
+	const int anim = cg.predictedPlayerState.legsAnim;
+	const qboolean leaping = (qboolean)(cg.renderingThirdPerson
+		&& (anim == BOTH_FORCELONGLEAP_START || anim == BOTH_FORCELONGLEAP_ATTACK || anim == BOTH_FORCELONGLEAP_ATTACK2
+			|| anim == BOTH_FORCELONGLEAP_LAND || anim == BOTH_FORCELONGLEAP_LAND2));
+
+	if (cg.time != lastTime)
+	{
+		float step = (cg.time - lastTime) * 0.001f * LONG_LEAP_CAMERA_SPEED;
+
+		if (step < 0.0f || step > 1.0f)
+		{// map change, pause
+			step = 1.0f;
+		}
+		lastTime = cg.time;
+		blend += leaping ? step : -step;
+		if (blend < 0.0f)
+		{
+			blend = 0.0f;
+		}
+		else if (blend > 1.0f)
+		{
+			blend = 1.0f;
+		}
+	}
+	return blend;
+}
+
+#define MEDITATE_CAMERA_RETURN	6.0f	// after meditating the camera swings back behind the player in about 1 / 6 s
+
+/*
+===============
+CG_MeditateCameraOrbit
+
+While meditating (the meditate anims, not their ends) the mouse orbits the third person camera around the player:
+pmove holds the view angles there (the body keeps facing), so the orbit is the mouse movement since the meditation
+began, read from the user commands. Afterwards the camera swings back behind the player.
+===============
+*/
+static void CG_MeditateCameraOrbit(float* yaw, float* pitch)
+{
+	static qboolean active = qfalse;
+	static short startYaw, startPitch;
+	static float orbitYaw = 0.0f, orbitPitch = 0.0f;
+	static int lastTime = 0;
+	const int anim = cg.predictedPlayerState.legsAnim;
+	const qboolean meditating = (qboolean)(cg.renderingThirdPerson
+		&& cg.predictedPlayerState.stats[STAT_HEALTH] > 0
+		&& (anim == BOTH_MEDITATE || anim == BOTH_MEDITATE1 || anim == BOTH_MEDITATE_SABER));
+	usercmd_t cmd;
+
+	trap->GetUserCmd(trap->GetCurrentCmdNumber(), &cmd);
+
+	if (meditating)
+	{
+		if (!active)
+		{
+			active = qtrue;
+			startYaw = (short)(cmd.angles[YAW] - ANGLE2SHORT(orbitYaw));
+			startPitch = (short)(cmd.angles[PITCH] - ANGLE2SHORT(orbitPitch));
+		}
+		orbitYaw = SHORT2ANGLE((short)(cmd.angles[YAW] - startYaw));
+		orbitPitch = SHORT2ANGLE((short)(cmd.angles[PITCH] - startPitch));
+		// keep the camera between below the chin and above the head
+		if (orbitPitch + cg.predictedPlayerState.viewangles[PITCH] > 70.0f)
+		{
+			orbitPitch = 70.0f - cg.predictedPlayerState.viewangles[PITCH];
+			startPitch = (short)(cmd.angles[PITCH] - ANGLE2SHORT(orbitPitch));
+		}
+		else if (orbitPitch + cg.predictedPlayerState.viewangles[PITCH] < -60.0f)
+		{
+			orbitPitch = -60.0f - cg.predictedPlayerState.viewangles[PITCH];
+			startPitch = (short)(cmd.angles[PITCH] - ANGLE2SHORT(orbitPitch));
+		}
+	}
+	else
+	{
+		float step = (cg.time - lastTime) * 0.001f * MEDITATE_CAMERA_RETURN;
+
+		if (step < 0.0f || step > 1.0f)
+		{// map change, pause
+			step = 1.0f;
+		}
+		active = qfalse;
+		orbitYaw = AngleNormalize180(orbitYaw);
+		orbitYaw -= orbitYaw * step;
+		orbitPitch -= orbitPitch * step;
+		if (fabs(orbitYaw) < 0.1f && fabs(orbitPitch) < 0.1f)
+		{
+			orbitYaw = orbitPitch = 0.0f;
+		}
+	}
+	lastTime = cg.time;
+
+	*yaw += orbitYaw;
+	*pitch += orbitPitch;
+}
+
+
 /*
 =============================================================================
 
@@ -259,7 +373,6 @@ static void CG_StepOffset(void)
 }
 
 #define CAMERA_DAMP_INTERVAL	50
-#define CAMERA_DAMP_INTERVAL_AIMING	30
 
 static vec3_t cameramins = { -CAMERA_SIZE, -CAMERA_SIZE, -CAMERA_SIZE };
 static vec3_t cameramaxs = { CAMERA_SIZE, CAMERA_SIZE, CAMERA_SIZE };
@@ -290,6 +403,119 @@ cg.refdef.viewangles
 
 extern qboolean gCGHasFallVector;
 extern vec3_t gCGFallVector;
+
+/*
+===============
+Cinematic camera blends (from MovieDuels SP): the gunner aim camera (CF_AIMINGGUN) and the saber lock camera
+(CF_SABERLOCKING). Each blend goes from 0 = normal third-person camera to 1 = cinematic camera over
+CAMERA_BLEND_MS (eased in and out) instead of switching in one frame. The camera is not damped while a blend
+is above 0: the blend already eases it, and damping on top made it trail behind and then snap into place.
+===============
+*/
+#define CAMERA_BLEND_MS			250.0f
+
+#define AIM_CAMERA_ANGLE		0.0f	// yaw inward
+#define AIM_CAMERA_PITCH		0.0f	// no pitch offset
+#define AIM_CAMERA_HORZ			-20.0f	// shoulder shift
+#define AIM_CAMERA_VERT			4.0f	// slight upward shift
+#define AIM_CAMERA_RANGE		50.0f	// closer to the player
+#define AIM_CAMERA_FOV			60.0f	// closer FOV
+#define AIM_CAMERA_ALPHA		1.0f	// fully visible player
+
+#define SABERLOCK_CAMERA_ANGLE	0.0f
+#define SABERLOCK_CAMERA_PITCH	0.0f
+#define SABERLOCK_CAMERA_HORZ	-25.5f
+#define SABERLOCK_CAMERA_VERT	-15.5f	// the FOV is cg_saberlockfov, the range stays
+
+static float cg_aimBlend = 0.0f;
+static float cg_saberLockBlend = 0.0f;
+static int cg_cameraBlendLastTime = 0;
+
+static float CG_StepCameraBlend(float blend, const qboolean wanted, const float step)
+{
+	if (wanted)
+	{
+		blend += step;
+		if (blend > 1.0f)
+		{
+			blend = 1.0f;
+		}
+		else if (blend <= 0.0f)
+		{
+			blend = 0.001f; // start blending on the first frame
+		}
+	}
+	else
+	{
+		blend -= step;
+		if (blend < 0.0f)
+		{
+			blend = 0.0f;
+		}
+	}
+	return blend;
+}
+
+static void CG_UpdateCameraBlends(void)
+{
+	// clamp the step so a time jump (map load, pause) doesn't skip the blend
+	int msec = cg.time - cg_cameraBlendLastTime;
+	if (msec < 0 || msec > 100)
+	{
+		msec = 0;
+	}
+	cg_cameraBlendLastTime = cg.time;
+	const float step = msec / CAMERA_BLEND_MS;
+	const qboolean can_blend = cg.predictedPlayerState.stats[STAT_HEALTH] > 0 && !cg.predictedPlayerState.m_iVehicleNum;
+
+	if (!cg.renderingThirdPerson || !g_AimingCinematicCamera.integer)
+	{
+		cg_aimBlend = 0.0f; // first person or camera option off: no blending
+	}
+	else
+	{
+		cg_aimBlend = CG_StepCameraBlend(cg_aimBlend,
+			can_blend && cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN), step);
+	}
+
+	if (!cg.renderingThirdPerson || !g_saberLockCinematicCamera.integer)
+	{
+		cg_saberLockBlend = 0.0f;
+	}
+	else
+	{
+		cg_saberLockBlend = CG_StepCameraBlend(cg_saberLockBlend,
+			can_blend && cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING), step);
+	}
+}
+
+static qboolean CG_CameraBlending(void)
+{
+	return cg_aimBlend > 0.0f || cg_saberLockBlend > 0.0f;
+}
+
+static float CG_CameraBlendEase(const float blend)
+{
+	return blend * blend * (3.0f - 2.0f * blend); // smoothstep: eases in and out
+}
+
+// from the normal camera value to the aiming camera value
+static float CG_AimBlendValue(const float normal, const float aimed)
+{
+	return normal + (aimed - normal) * CG_CameraBlendEase(cg_aimBlend);
+}
+
+// from the (normal or aiming) camera value to the saber lock camera value
+static float CG_SaberLockBlendValue(const float value, const float locked)
+{
+	return value + (locked - value) * CG_CameraBlendEase(cg_saberLockBlend);
+}
+
+// the player's own third-person alpha (cg_players.c)
+float CG_CameraBlendAlpha(const float alpha)
+{
+	return CG_AimBlendValue(alpha, AIM_CAMERA_ALPHA);
+}
 
 /*
 ===============
@@ -384,39 +610,22 @@ static void CG_CalcIdealThirdPersonViewTarget(void)
 		localVertOffset = 0.0f;
 	}
 	// ----------------------------------------------------------------------
-	// Saber lock cinematic camera
+	// Saber lock / aiming cinematic camera (also while it blends in or out)
 	// ----------------------------------------------------------------------
-	else if (cg.renderingThirdPerson == qtrue &&
-		(cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING)) &&
-		g_saberLockCinematicCamera.integer)
+	else if (CG_CameraBlending())
 	{
-		localVertOffset = -15.5f;
-	}
-
-	// ----------------------------------------------------------------------
-	// CF_AIMINGGUN — MP aiming cinematic camera
-	// ----------------------------------------------------------------------
-	else if (cg.renderingThirdPerson == qtrue &&
-		(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
-		g_AimingCinematicCamera.integer)
-	{
-		vec3_t forward;
-		AngleVectors(cg.refdef.viewangles, forward, NULL, NULL);
-
-		// Short forward distance so we don't zoom into the back of the head
-		VectorMA(cameraFocusLoc, 48.0f, forward, cameraIdealTarget);
-
-		// Apply vertical offset AFTER aiming forward shift
+		localVertOffset = CG_SaberLockBlendValue(CG_AimBlendValue(
+			localVertOffset - CG_LongLeapCameraBlend() * LONG_LEAP_CAMERA_DROP, AIM_CAMERA_VERT), SABERLOCK_CAMERA_VERT);
+		VectorCopy(cameraFocusLoc, cameraIdealTarget);
 		cameraIdealTarget[2] += localVertOffset;
-
-		return; // aiming branch fully handled
+		return;
 	}
 
 	// ----------------------------------------------------------------------
 	// Default vertical offset
 	// ----------------------------------------------------------------------
 	VectorCopy(cameraFocusLoc, cameraIdealTarget);
-	cameraIdealTarget[2] += localVertOffset;
+	cameraIdealTarget[2] += localVertOffset - CG_LongLeapCameraBlend() * LONG_LEAP_CAMERA_DROP;
 }
 
 /*
@@ -452,6 +661,14 @@ static void CG_CalcIdealThirdPersonViewLocation(void)
 	{
 		//stay back
 		thirdPersonRange = 120.0f;
+	}
+
+	// force long leap: further back, so the whole (flying) body is seen
+	thirdPersonRange += CG_LongLeapCameraBlend() * LONG_LEAP_CAMERA_RANGE;
+
+	if (CG_CameraBlending())
+	{
+		thirdPersonRange = CG_AimBlendValue(thirdPersonRange, AIM_CAMERA_RANGE);
 	}
 
 	VectorMA(cameraIdealTarget, -thirdPersonRange, camerafwd, cameraIdealLoc);
@@ -517,7 +734,8 @@ static void CG_UpdateThirdPersonTargetDamp(void)
 		//hyperspacing, no damp
 		VectorCopy(cameraIdealTarget, cameraCurTarget);
 	}
-	else if (cg_thirdPersonTargetDamp.value >= 1.0 || cg.thisFrameTeleport || cg.predictedPlayerState.m_iVehicleNum)
+	else if (cg_thirdPersonTargetDamp.value >= 1.0 || cg.thisFrameTeleport || cg.predictedPlayerState.m_iVehicleNum
+		|| CG_CameraBlending())
 	{
 		// No damping.
 		VectorCopy(cameraIdealTarget, cameraCurTarget);
@@ -534,32 +752,15 @@ static void CG_UpdateThirdPersonTargetDamp(void)
 		const float dampfactor = 1.0 - cg_thirdPersonTargetDamp.value;
 		// We must exponent the amount LEFT rather than the amount bled off
 
-		if (cg.renderingThirdPerson &&
-			(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
-			g_AimingCinematicCamera.integer)
-		{
-			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL_AIMING);
-			// Our dampfactor is geared towards a time interval equal to "1".
+		const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
+		// Our dampfactor is geared towards a time interval equal to "1".
 
-			// Note that since there are a finite number of "practical" delta millisecond values possible,
-			// the ratio should be initialized into a chart ultimately.
-			if (cg_smoothCamera.integer)
-				ratio = powf(dampfactor, dtime);
-			else
-				ratio = Q_powf(dampfactor, dtime);
-		}
+		// Note that since there are a finite number of "practical" delta millisecond values possible,
+		// the ratio should be initialized into a chart ultimately.
+		if (cg_smoothCamera.integer)
+			ratio = powf(dampfactor, dtime);
 		else
-		{
-			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
-			// Our dampfactor is geared towards a time interval equal to "1".
-
-			// Note that since there are a finite number of "practical" delta millisecond values possible,
-			// the ratio should be initialized into a chart ultimately.
-			if (cg_smoothCamera.integer)
-				ratio = powf(dampfactor, dtime);
-			else
-				ratio = Q_powf(dampfactor, dtime);
-		}
+			ratio = Q_powf(dampfactor, dtime);
 
 		// This value is how much distance is "left" from the ideal.
 		VectorMA(cameraIdealTarget, -ratio, targetdiff, cameraCurTarget);
@@ -597,6 +798,11 @@ static void CG_UpdateThirdPersonCameraDamp(void)
 		&& cg.time - cg.predictedVehicleState.hyperSpaceTime < HYPERSPACE_TIME)
 	{
 		//hyperspacing - don't damp camera
+		dampfactor = 1.0f;
+	}
+	else if (CG_CameraBlending())
+	{
+		//saber lock / aiming camera: the blend eases it
 		dampfactor = 1.0f;
 	}
 	else if (cg_thirdPersonCameraDamp.value != 0.0)
@@ -644,16 +850,6 @@ static void CG_UpdateThirdPersonCameraDamp(void)
 		thirdPersonCameraDamp = 1;
 	}
 
-	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
-	{
-		thirdPersonCameraDamp = 1;
-	}
-
-	if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN) && g_AimingCinematicCamera.integer)
-	{
-		thirdPersonCameraDamp = 1;
-	}
-
 	if (dampfactor >= 1.0 || cg.thisFrameTeleport)
 	{
 		// No damping.
@@ -670,32 +866,15 @@ static void CG_UpdateThirdPersonCameraDamp(void)
 		// The equation is (Damp)^(time)
 		dampfactor = 1.0 - dampfactor; // We must exponent the amount LEFT rather than the amount bled off
 
-		if (cg.renderingThirdPerson &&
-			(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
-			g_AimingCinematicCamera.integer)
-		{
-			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL_AIMING);
-			// Our dampfactor is geared towards a time interval equal to "1".
+		const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
+		// Our dampfactor is geared towards a time interval equal to "1".
 
-			// Note that since there are a finite number of "practical" delta millisecond values possible,
-			// the ratio should be initialized into a chart ultimately.
-			if (cg_smoothCamera.integer)
-				ratio = powf(dampfactor, dtime);
-			else
-				ratio = Q_powf(dampfactor, dtime);
-		}
+		// Note that since there are a finite number of "practical" delta millisecond values possible,
+		// the ratio should be initialized into a chart ultimately.
+		if (cg_smoothCamera.integer)
+			ratio = powf(dampfactor, dtime);
 		else
-		{
-			const float dtime = (float)(cg.time - cameraLastFrame) * (1.0 / (float)CAMERA_DAMP_INTERVAL);
-			// Our dampfactor is geared towards a time interval equal to "1".
-
-			// Note that since there are a finite number of "practical" delta millisecond values possible,
-			// the ratio should be initialized into a chart ultimately.
-			if (cg_smoothCamera.integer)
-				ratio = powf(dampfactor, dtime);
-			else
-				ratio = Q_powf(dampfactor, dtime);
-		}
+			ratio = Q_powf(dampfactor, dtime);
 
 		// This value is how much distance is "left" from the ideal.
 		VectorMA(cameraIdealLoc, -ratio, locdiff, cameraCurLoc);
@@ -816,21 +995,12 @@ static void CG_OffsetThirdPersonView(void)
 	{
 		cameraFocusAngles[YAW] = cg.snap->ps.stats[STAT_DEAD_YAW];
 	}
-	else if (cg.renderingThirdPerson &&
-		cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) &&
-		g_saberLockCinematicCamera.integer)
+	// Saber lock / aiming cinematic camera (also while it blends in or out)
+	else if (CG_CameraBlending())
 	{
-		thirdPersonHorzOffset = -25.5f;
-		thirdPersonAngle = 40.5f;
-	}
-	// Aiming cinematic
-	else if (cg.renderingThirdPerson &&
-		(cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN)) &&
-		g_AimingCinematicCamera.integer)
-	{
-		thirdPersonAngle = 0.0f;
-		thirdPersonPitchOffset = -10.0f;
-		thirdPersonHorzOffset = -10.0f;
+		thirdPersonAngle = CG_SaberLockBlendValue(CG_AimBlendValue(thirdPersonAngle, AIM_CAMERA_ANGLE), SABERLOCK_CAMERA_ANGLE);
+		thirdPersonPitchOffset = CG_SaberLockBlendValue(CG_AimBlendValue(thirdPersonPitchOffset, AIM_CAMERA_PITCH),
+			SABERLOCK_CAMERA_PITCH);
 
 		cameraFocusAngles[YAW] += thirdPersonAngle;
 		cameraFocusAngles[PITCH] += thirdPersonPitchOffset;
@@ -839,6 +1009,7 @@ static void CG_OffsetThirdPersonView(void)
 	{
 		// Add in the third Person Angle.
 		cameraFocusAngles[YAW] += cg_thirdPersonAngle.value;
+		CG_MeditateCameraOrbit(&cameraFocusAngles[YAW], &cameraFocusAngles[PITCH]);
 		{
 			float pitchOffset = cg_thirdPersonPitchOffset.value;
 			if (cg.snap && cg.snap->ps.m_iVehicleNum)
@@ -965,13 +1136,11 @@ static void CG_OffsetThirdPersonView(void)
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
 		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
 	}
-	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
+	else if (CG_CameraBlending())
 	{
-		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
-		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
-	}
-	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN) && g_AimingCinematicCamera.integer)
-	{
+		//saber lock / aiming camera
+		thirdPersonHorzOffset = CG_SaberLockBlendValue(CG_AimBlendValue(thirdPersonHorzOffset, AIM_CAMERA_HORZ),
+			SABERLOCK_CAMERA_HORZ);
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
 		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
 	}
@@ -1384,15 +1553,10 @@ static int CG_CalcFov(void)
 		thirdPersonRange = 100.0f;
 		cgFov = cg_oversizedview.value;
 	}
-	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
+	else if (cg.renderingThirdPerson && CG_CameraBlending())
 	{
-		thirdPersonPitchOffset = -11.25f;
-		thirdPersonRange = 82.5f;
-		cgFov = cg_saberlockfov.value;
-	}
-	else if (cg.renderingThirdPerson && cg.predictedPlayerState.communicatingflags & (1 << CF_AIMINGGUN) && g_AimingCinematicCamera.integer)
-	{
-		cgFov = cg_fov.value;
+		//saber lock / aiming camera (also while it blends in or out)
+		cgFov = CG_SaberLockBlendValue(CG_AimBlendValue(cg_fov.value, AIM_CAMERA_FOV), cg_saberlockfov.value);
 	}
 	else
 	{
@@ -1932,6 +2096,8 @@ static int CG_CalcViewValues(void)
 		//constrain the view properly for emplaced guns
 		CG_EmplacedView(cg_entities[cg.snap->ps.emplacedIndex].currentState.angles);
 	}
+
+	CG_UpdateCameraBlends();
 
 	//if (!manningTurret)
 	{
@@ -2905,6 +3071,8 @@ static int cg_siegeClassIndex = -2;
 extern qboolean InCinematic;
 extern int CinematicNum;
 
+void CG_ClearHeadBarEnts(void);
+
 void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, const qboolean demoPlayback)
 {
 	const char* cstr;
@@ -2928,6 +3096,8 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 
 	cg.time = serverTime;
 	cg.demoPlayback = demoPlayback;
+
+	CG_ClearHeadBarEnts(); // the bars over the heads: CG_Player adds this frame's (cg_draw.c)
 
 	if (cg.snap && ui_myteam.integer != cg.snap->ps.persistant[PERS_TEAM])
 	{

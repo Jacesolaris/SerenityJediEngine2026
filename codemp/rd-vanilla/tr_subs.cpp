@@ -33,7 +33,7 @@ void QDECL Com_Printf(const char* msg, ...)
 	Q_vsnprintf(text, sizeof text, msg, argptr);
 	va_end(argptr);
 
-	ri->Printf(PRINT_ALL, "%s", text);
+	ri.Printf(PRINT_ALL, "%s", text);
 }
 
 void QDECL Com_OPrintf(const char* msg, ...)
@@ -45,7 +45,7 @@ void QDECL Com_OPrintf(const char* msg, ...)
 	Q_vsnprintf(text, sizeof text, msg, argptr);
 	va_end(argptr);
 
-	ri->OPrintf("%s", text);
+	ri.OPrintf("%s", text);
 }
 
 void QDECL Com_Error(const int level, const char* error, ...)
@@ -57,47 +57,47 @@ void QDECL Com_Error(const int level, const char* error, ...)
 	Q_vsnprintf(text, sizeof text, error, argptr);
 	va_end(argptr);
 
-	ri->Error(level, "%s", text);
+	ri.Error(level, "%s", text);
 }
 
 // HUNK
 void* Hunk_AllocateTempMemory(const int size)
 {
-	return ri->Hunk_AllocateTempMemory(size);
+	return ri.Hunk_AllocateTempMemory(size);
 }
 
 void Hunk_FreeTempMemory(void* buf)
 {
-	ri->Hunk_FreeTempMemory(buf);
+	ri.Hunk_FreeTempMemory(buf);
 }
 
 void* Hunk_Alloc(const int size, const ha_pref preference)
 {
-	return ri->Hunk_Alloc(size, preference);
+	return ri.Hunk_Alloc(size, preference);
 }
 
 int Hunk_MemoryRemaining(void)
 {
-	return ri->Hunk_MemoryRemaining();
+	return ri.Hunk_MemoryRemaining();
 }
 
 // ZONE
 void* Z_Malloc(const int iSize, const memtag_t eTag, const qboolean bZeroit, const int iUnusedAlign)
 {
-	return ri->Z_Malloc(iSize, eTag, bZeroit, iUnusedAlign);
+	return ri.Z_Malloc(iSize, eTag, bZeroit, iUnusedAlign);
 }
 
 void Z_Free(void* pvAddress)
 {
-	ri->Z_Free(pvAddress);
+	ri.Z_Free(pvAddress);
 }
 
 int Z_MemSize(const memtag_t eTag)
 {
-	return ri->Z_MemSize(eTag);
+	return ri.Z_MemSize(eTag);
 }
 
 void Z_MorphMallocTag(void* pvAddress, const memtag_t eDesiredTag)
 {
-	ri->Z_MorphMallocTag(pvAddress, eDesiredTag);
+	ri.Z_MorphMallocTag(pvAddress, eDesiredTag);
 }

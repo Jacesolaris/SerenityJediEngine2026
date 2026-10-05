@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon.h"
 
 #ifdef DEBUG_ZONE_ALLOCS
-#include "sstring.h"
+#include "qcommon/sstring.h"
 int giZoneSnaphotNum = 0;
 #define DEBUG_ZONE_ALLOC_OPTIONAL_LABEL_SIZE 256
 typedef sstring<DEBUG_ZONE_ALLOC_OPTIONAL_LABEL_SIZE> sDebugString_t;

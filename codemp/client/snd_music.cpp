@@ -32,7 +32,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/GenericParser2.h"
 
 #include "snd_local.h"
-#include "snd_music.h"
+#include "client/snd_music.h"
 #include "snd_ambient.h"
 
 extern qboolean S_FileExists(const char* psFilename);

@@ -100,11 +100,11 @@ int G2_Add_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName)
 		// didn't find it? Error
 		//assert(0);
 #ifdef _DEBUG
-		//ri->Printf(PRINT_ALL, "WARNING: Failed to add bone %s\n", boneName);
+		//ri.Printf(PRINT_ALL, "WARNING: Failed to add bone %s\n", boneName);
 #endif
 
 #ifdef _RAG_PRINT_TEST
-		ri->Printf(PRINT_ALL, "WARNING: Failed to add bone %s\n", boneName);
+		ri.Printf(PRINT_ALL, "WARNING: Failed to add bone %s\n", boneName);
 #endif
 		return -1;
 	}
@@ -132,7 +132,7 @@ int G2_Add_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName)
 	}
 
 #ifdef _RAG_PRINT_TEST
-	ri->Printf(PRINT_ALL, "New bone added for %s\n", boneName);
+	ri.Printf(PRINT_ALL, "New bone added for %s\n", boneName);
 #endif
 	// ok, we didn't find an existing bone of that name, or an empty slot. Lets add an entry
 	tempBone.boneNumber = x;
@@ -2551,11 +2551,11 @@ int ragTraceCount = 0;
 void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int passEntityNum, const int contentmask)
 {
 #ifdef _DEBUG
-	const int rag_pre_trace = ri->Milliseconds();
+	const int rag_pre_trace = ri.Milliseconds();
 #endif
-	if (ri->CGVMLoaded())
+	if (ri.CGVMLoaded())
 	{
-		const auto call_data = reinterpret_cast<ragCallbackTraceLine_t*>(ri->GetSharedMemory());
+		const auto call_data = reinterpret_cast<ragCallbackTraceLine_t*>(ri.GetSharedMemory());
 
 		VectorCopy(start, call_data->start);
 		VectorCopy(end, call_data->end);
@@ -2564,7 +2564,7 @@ void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const ve
 		call_data->ignore = passEntityNum;
 		call_data->mask = contentmask;
 
-		ri->CGVM_RagCallback(RAG_CALLBACK_TRACELINE);
+		ri.CGVM_RagCallback(RAG_CALLBACK_TRACELINE);
 
 		*results = call_data->tr;
 	}
@@ -2572,12 +2572,12 @@ void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const ve
 	{
 		results->entityNum = ENTITYNUM_NONE;
 		//SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
-		ri->CM_BoxTrace(results, start, end, mins, maxs, 0, contentmask, 0);
+		ri.CM_BoxTrace(results, start, end, mins, maxs, 0, contentmask, 0);
 		results->entityNum = results->fraction != 1.0 ? ENTITYNUM_WORLD : ENTITYNUM_NONE;
 	}
 
 #ifdef _DEBUG
-	const int rag_post_trace = ri->Milliseconds();
+	const int rag_post_trace = ri.Milliseconds();
 
 	ragTraceTime += rag_post_trace - rag_pre_trace;
 	if (results->startsolid)
@@ -2592,7 +2592,7 @@ void Rag_Trace(trace_t* results, const vec3_t start, const vec3_t mins, const ve
 //an adaption of my "exphys" custom game physics model
 #define MAX_GRAVITY_PULL 256//512
 
-static bool G2_BoneOnGround(const vec3_t org, const vec3_t mins, const vec3_t maxs)
+static bool G2_BoneOnGround(const vec3_t org, const vec3_t mins, const vec3_t maxs, const int ignoreNum)
 {
 	trace_t tr;
 	vec3_t g_spot;
@@ -2600,7 +2600,7 @@ static bool G2_BoneOnGround(const vec3_t org, const vec3_t mins, const vec3_t ma
 	VectorCopy(org, g_spot);
 	g_spot[2] -= 1.0f; //seems reasonable to me
 
-	Rag_Trace(&tr, org, mins, maxs, g_spot, RAG_MASK, G2_NOCOLLIDE);
+	Rag_Trace(&tr, org, mins, maxs, g_spot, ignoreNum, RAG_MASK);
 
 	if (tr.fraction != 1.0f && !tr.startsolid && !tr.allsolid)
 	{ //not in solid, and hit something. Guess it's ground.
@@ -2632,7 +2632,7 @@ static bool G2_ApplyRealBonePhysics(boneInfo_t& bone, const SRagEffector& e, con
 		VectorCopy(e.currentOrigin, ground);
 		ground[2] -= 1.0f;
 
-		Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, ground, RAG_MASK, G2_NOCOLLIDE);
+		Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, ground, params->me, RAG_MASK);
 
 		if (tr.entityNum == ENTITYNUM_NONE)
 		{
@@ -2664,7 +2664,7 @@ static bool G2_ApplyRealBonePhysics(boneInfo_t& bone, const SRagEffector& e, con
 	}
 	else
 	{
-		bone_on_ground = G2_BoneOnGround(e.currentOrigin, test_mins, test_maxs);
+		bone_on_ground = G2_BoneOnGround(e.currentOrigin, test_mins, test_maxs, params->me);
 	}
 
 	if (!bone.epVelocity[0] && !bone.epVelocity[1] && !bone.epVelocity[2])
@@ -2690,7 +2690,7 @@ static bool G2_ApplyRealBonePhysics(boneInfo_t& bone, const SRagEffector& e, con
 		return true;
 	}
 
-	Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, projected_origin, RAG_MASK, G2_NOCOLLIDE);
+	Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, projected_origin, params->me, RAG_MASK);
 
 	if (tr.startsolid || tr.allsolid)
 	{ //can't go anywhere from here
@@ -2747,24 +2747,24 @@ static bool G2_ApplyRealBonePhysics(boneInfo_t& bone, const SRagEffector& e, con
 #ifdef _DEBUG_BONE_NAMES
 static void G2_RagDebugBox(vec3_t mins, vec3_t maxs, const int duration)
 {
-	if (!ri->CGVMLoaded())
+	if (!ri.CGVMLoaded())
 		return;
 
-	const auto call_data = reinterpret_cast<ragCallbackDebugBox_t*>(ri->GetSharedMemory());
+	const auto call_data = reinterpret_cast<ragCallbackDebugBox_t*>(ri.GetSharedMemory());
 
 	call_data->duration = duration;
 	VectorCopy(mins, call_data->mins);
 	VectorCopy(maxs, call_data->maxs);
 
-	ri->CGVM_RagCallback(RAG_CALLBACK_DEBUGBOX);
+	ri.CGVM_RagCallback(RAG_CALLBACK_DEBUGBOX);
 }
 
 static void G2_RagDebugLine(vec3_t start, vec3_t end, const int time, const int color, const int radius)
 {
-	if (!ri->CGVMLoaded())
+	if (!ri.CGVMLoaded())
 		return;
 
-	const auto call_data = reinterpret_cast<ragCallbackDebugLine_t*>(ri->GetSharedMemory());
+	const auto call_data = reinterpret_cast<ragCallbackDebugLine_t*>(ri.GetSharedMemory());
 
 	VectorCopy(start, call_data->start);
 	VectorCopy(end, call_data->end);
@@ -2772,7 +2772,7 @@ static void G2_RagDebugLine(vec3_t start, vec3_t end, const int time, const int 
 	call_data->color = color;
 	call_data->radius = radius;
 
-	ri->CGVM_RagCallback(RAG_CALLBACK_DEBUGLINE);
+	ri.CGVM_RagCallback(RAG_CALLBACK_DEBUGLINE);
 }
 #endif
 
@@ -2904,15 +2904,15 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, const v
 					{
 						//SRagDollEffectorCollision args(e.currentOrigin,tr);
 						//params->EffectorCollision(args);
-						if (ri->CGVMLoaded())
+						if (ri.CGVMLoaded())
 						{ //make a callback and see if the cgame wants to help us out
-							ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri->GetSharedMemory();
+							ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri.GetSharedMemory();
 
 							VectorCopy(e.currentOrigin, callData->bonePos);
 							callData->entNum = params->me;
 							callData->solidCount = bone.solidCount;
 
-							ri->CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
+							ri.CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
 						}
 					}
 				}
@@ -2931,15 +2931,15 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, const v
 					//SRagDollEffectorCollision args(e.currentOrigin,tr);
 					//args.useTracePlane=true;
 					//params->EffectorCollision(args);
-					if (ri->CGVMLoaded())
+					if (ri.CGVMLoaded())
 					{ //make a callback and see if the cgame wants to help us out
-						ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri->GetSharedMemory();
+						ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri.GetSharedMemory();
 
 						VectorCopy(e.currentOrigin, callData->bonePos);
 						callData->entNum = params->me;
 						callData->solidCount = bone.solidCount;
 
-						ri->CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
+						ri.CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
 					}
 				}
 			}
@@ -3023,15 +3023,15 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, const v
 						//SRagDollEffectorCollision args(e.currentOrigin,tr);
 						//args.useTracePlane=true;
 						//params->EffectorCollision(args);
-						if (ri->CGVMLoaded())
+						if (ri.CGVMLoaded())
 						{ //make a callback and see if the cgame wants to help us out
-							ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri->GetSharedMemory();
+							ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri.GetSharedMemory();
 
 							VectorCopy(e.currentOrigin, callData->bonePos);
 							callData->entNum = params->me;
 							callData->solidCount = bone.solidCount;
 
-							ri->CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
+							ri.CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
 						}
 					}
 				}
@@ -3058,15 +3058,15 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, const v
 							//SRagDollEffectorCollision args(e.currentOrigin,tr);
 							//args.useTracePlane=true;
 							//params->EffectorCollision(args);
-							if (ri->CGVMLoaded())
+							if (ri.CGVMLoaded())
 							{ //make a callback and see if the cgame wants to help us out
-								ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri->GetSharedMemory();
+								ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri.GetSharedMemory();
 
 								VectorCopy(e.currentOrigin, callData->bonePos);
 								callData->entNum = params->me;
 								callData->solidCount = bone.solidCount;
 
-								ri->CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
+								ri.CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
 							}
 						}
 					}
@@ -3208,7 +3208,7 @@ void G2_RagPrintMatrix(mdxaBone_t* mat)
 		n++;
 	}
 	strcat(x, "\n");
-	ri->Printf(PRINT_ALL, x);
+	ri.Printf(PRINT_ALL, x);
 }
 #endif
 
@@ -3527,12 +3527,12 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, CRagDol
 		//Are we in solid?
 		if (has_daddy)
 		{
-			Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, parent_origin, RAG_MASK, G2_NOCOLLIDE);
+			Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, parent_origin, params->me, RAG_MASK);
 			//Rag_Trace(&tr, parentOrigin, testMins, testMaxs, e.currentOrigin, ignoreNum, RAG_MASK, G2_NOCOLLIDE, 0);
 		}
 		else
 		{
-			Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, params->position, RAG_MASK, G2_NOCOLLIDE);
+			Rag_Trace(&tr, e.currentOrigin, test_mins, test_maxs, params->position, params->me, RAG_MASK);
 		}
 
 		if (tr.startsolid || tr.allsolid || tr.fraction != 1.0f)
@@ -3560,7 +3560,7 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, CRagDol
 				VectorCopy(base_pos, goal_spot);
 				goal_spot[2] = params->position[2] - 23 - test_mins[2];
 #endif
-				//ri->Printf( PRINT_ALL, "%i: %f %f %f\n", bone.boneNumber, basePos[0], basePos[1], basePos[2]);
+				//ri.Printf( PRINT_ALL, "%i: %f %f %f\n", bone.boneNumber, basePos[0], basePos[1], basePos[2]);
 			}
 			else
 			{
@@ -3576,7 +3576,7 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, CRagDol
 
 			//Trace from the entity origin in the direction between the origin and current bone position to
 			//find a good eventual goal position
-			Rag_Trace(&tr, params->position, test_mins, test_maxs, goal_spot, RAG_MASK, G2_NOCOLLIDE);
+			Rag_Trace(&tr, params->position, test_mins, test_maxs, goal_spot, params->me, RAG_MASK);
 			VectorCopy(tr.endpos, goal_spot);
 		}
 		else
@@ -3658,7 +3658,7 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, CRagDol
 		{
 			bone.solidCount++;
 #if 0
-			if (ri->CGVMLoaded() && bone.solidCount > 8)
+			if (ri.CGVMLoaded() && bone.solidCount > 8)
 			{ //make a callback and see if the cgame wants to help us out
 				Rag_Trace(&solidTr, params->position, testMins, testMaxs, e.currentOrigin, ignoreNum, RAG_MASK, G2_NOCOLLIDE, 0);
 
@@ -3667,13 +3667,13 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, CRagDol
 					(solidTr.plane.normal[2] < 0.1f || solidTr.plane.normal[2] > -0.1f))// && //don't do anything against flat around
 					//	e.currentOrigin[2] > pelvisPos[2])
 				{
-					ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri->GetSharedMemory();
+					ragCallbackBoneInSolid_t* callData = (ragCallbackBoneInSolid_t*)ri.GetSharedMemory();
 
 					VectorCopy(e.currentOrigin, callData->bonePos);
 					callData->entNum = params->me;
 					callData->solidCount = bone.solidCount;
 
-					ri->CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
+					ri.CGVM_RagCallback(RAG_CALLBACK_BONEINSOLID);
 				}
 			}
 #endif
@@ -3686,7 +3686,7 @@ static bool G2_RagDollSettlePositionNumeroTrois(CGhoul2Info_v& ghoul2_v, CRagDol
 
 				assert(debug_bone_name);
 
-				//ri->Printf(PRINT_ALL, "High bone (%s, %i) solid count: %i\n", debugBoneName, bone.boneNumber, bone.solidCount);
+				//ri.Printf(PRINT_ALL, "High bone (%s, %i) solid count: %i\n", debugBoneName, bone.boneNumber, bone.solidCount);
 
 				VectorAdd(e.currentOrigin, test_mins, absmin);
 				VectorAdd(e.currentOrigin, test_maxs, absmax);
@@ -3783,17 +3783,17 @@ static float AngleNormZero(const float theta)
 
 static void G2_BoneSnap(CGhoul2Info_v& ghoul2_v, const boneInfo_t& bone, const CRagDollUpdateParams* params)
 {
-	if (!ri->CGVMLoaded() || !params)
+	if (!ri.CGVMLoaded() || !params)
 	{
 		return;
 	}
 
-	const auto call_data = reinterpret_cast<ragCallbackBoneSnap_t*>(ri->GetSharedMemory());
+	const auto call_data = reinterpret_cast<ragCallbackBoneSnap_t*>(ri.GetSharedMemory());
 
 	call_data->entNum = params->me;
 	strcpy(call_data->boneName, G2_Get_Bone_Name(&ghoul2_v[0], ghoul2_v[0].mBlist, bone.boneNumber));
 
-	ri->CGVM_RagCallback(RAG_CALLBACK_BONESNAP);
+	ri.CGVM_RagCallback(RAG_CALLBACK_BONESNAP);
 }
 
 static void G2_RagDollSolve(CGhoul2Info_v& ghoul2_v, const int g2_index, const float decay, const bool limitAngles, const CRagDollUpdateParams

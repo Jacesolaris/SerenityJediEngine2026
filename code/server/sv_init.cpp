@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "../server/exe_headers.h"
 
-#include "../client/snd_music.h"	// didn't want to put this in snd_local because of rebuild times etc.
+#include "client/snd_music.h"	// didn't want to put this in snd_local because of rebuild times etc.
 #include "server.h"
 
 #if !defined (MINIHEAP_H_INC)

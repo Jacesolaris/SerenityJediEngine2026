@@ -39,7 +39,7 @@ USER INTERFACE MAIN
 #include "menudef.h"
 
 #include "ui_shared.h"
-#include "ui_pazaak.h"
+#include "ui/ui_pazaak.h"
 
 #include "../ghoul2/G2.h"
 
@@ -47,7 +47,7 @@ USER INTERFACE MAIN
 #include "../game/anims.h"
 extern stringID_table_t animTable[MAX_ANIMATIONS + 1];
 
-#include "../qcommon/stringed_ingame.h"
+#include "qcommon/stringed_ingame.h"
 #include "../qcommon/stv_version.h"
 #include "../qcommon/q_shared.h"
 
@@ -1425,13 +1425,22 @@ static qboolean UI_RunMenuScript(const char** args)
 			Cvar_Set("cg_updatedDataPadForcePower3", "0");
 			Cvar_Set("cg_updatedDataPadObjective", "0");
 		}
-		else if (Q_stricmp(name, "closesabermenu") == 0)
+		else if (Q_stricmpn(name, "closesaber", 10) == 0)
 		{
-			// if we're in the saber menu when creating a character, close this down
+			// closesaberMenu / closesaberjkaMenu / closesaberkotorMenu / closesaberNINAMenu:
+			// if we're in that saber menu when creating a character, close it and go back to its character menu
 			if (!Cvar_VariableIntegerValue("saber_menu"))
 			{
-				Menus_CloseByName("saberMenu");
-				Menus_OpenByName("characterMenu");
+				const char* suffix = name + 10;
+				Menus_CloseByName(va("saber%s", suffix));
+				if (Menus_FindByName(va("character%s", suffix)))
+				{
+					Menus_OpenByName(va("character%s", suffix));
+				}
+				else
+				{
+					Menus_OpenByName("characterMenu");
+				}
 			}
 		}
 		else if (Q_stricmp(name, "clearmouseover") == 0)
@@ -3089,6 +3098,9 @@ UI_Shutdown
 void UI_Shutdown()
 {
 	UI_FreeAllSpecies();
+
+	// UI_Init adds it again on the next UI start ("Cmd_AddCommand: reload_strings already defined")
+	Cmd_RemoveCommand("reload_strings");
 }
 
 /*
@@ -3471,8 +3483,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 03/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 03------------------------------\n");
+	Com_Printf("---------------------Build date 05/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 04------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

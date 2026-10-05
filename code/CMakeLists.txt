@@ -72,8 +72,8 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		endif(UseInternalOpenAL)
 
 		set(SPEngineEAXFiles
-			"${SPDir}/client/eax/eax.h"
-			"${SPDir}/client/eax/EaxMan.h"
+			"${SharedDir}/client/eax/eax.h"
+			"${SharedDir}/client/eax/EaxMan.h"
 			)
 		source_group("eax" FILES ${SPEngineEAXFiles})
 		set(SPEngineFiles ${SPEngineFiles} ${SPEngineEAXFiles})
@@ -122,6 +122,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		"${SPDir}/client/cl_input.cpp"
 		"${SPDir}/client/cl_keys.cpp"
 		"${SPDir}/client/cl_main.cpp"
+		"${SPDir}/client/cl_avi.cpp"
 		"${SPDir}/client/cl_mp3.cpp"
 		"${SPDir}/client/cl_parse.cpp"
 		"${SPDir}/client/cl_scrn.cpp"
@@ -137,7 +138,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		"${SPDir}/client/snd_music.cpp"
 		"${SPDir}/client/snd_ambient.h"
 		"${SPDir}/client/snd_local.h"
-		"${SPDir}/client/snd_music.h"
+		"${SharedDir}/client/snd_music.h"
 		"${SPDir}/client/snd_public.h"
 
 		"${SPDir}/client/vmachine.cpp"
@@ -151,12 +152,12 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	set(SPEngineCommonFiles
 		"${SPDir}/qcommon/cm_load.cpp"
 		"${SPDir}/qcommon/cm_patch.cpp"
-		"${SPDir}/qcommon/cm_polylib.cpp"
+		"${SharedDir}/qcommon/cm_polylib.cpp"
 		"${SPDir}/qcommon/cm_test.cpp"
 		"${SPDir}/qcommon/cm_trace.cpp"
 		"${SPDir}/qcommon/cm_local.h"
 		"${SPDir}/qcommon/cm_patch.h"
-		"${SPDir}/qcommon/cm_polylib.h"
+		"${SharedDir}/qcommon/cm_polylib.h"
 		"${SPDir}/qcommon/cm_public.h"
 
 		"${SPDir}/qcommon/cmd.cpp"
@@ -165,27 +166,27 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 
 		"${SPDir}/qcommon/files.cpp"
 
-		"${SPDir}/qcommon/md4.cpp"
+		"${SharedDir}/qcommon/md4.cpp"
 		"${SPDir}/qcommon/msg.cpp"
 		"${SPDir}/qcommon/net_chan.cpp"
 
 		"${SPDir}/qcommon/q_shared.cpp"
 		"${SPDir}/qcommon/q_shared.h"
 
-		"${SPDir}/qcommon/sstring.h"
+		"${SharedDir}/qcommon/sstring.h"
 		"${SPDir}/qcommon/stringed_ingame.cpp"
-		"${SPDir}/qcommon/stringed_interface.cpp"
-		"${SPDir}/qcommon/stringed_ingame.h"
-		"${SPDir}/qcommon/stringed_interface.h"
+		"${SharedDir}/qcommon/stringed_interface.cpp"
+		"${SharedDir}/qcommon/stringed_ingame.h"
+		"${SharedDir}/qcommon/stringed_interface.h"
 
 		"${SPDir}/qcommon/strip.cpp"
-		"${SPDir}/qcommon/persistence.cpp"
+		"${SharedDir}/qcommon/persistence.cpp"
 		"${SPDir}/qcommon/tags.h"
 		"${SPDir}/qcommon/z_memman_pc.cpp"
 		"${SPDir}/qcommon/qfiles.h"
 		"${SPDir}/qcommon/qcommon.h"
 		"${SPDir}/qcommon/stv_version.h"
-		"${SPDir}/qcommon/timing.h"
+		"${SharedDir}/qcommon/timing.h"
 		"${SPDir}/qcommon/MiniHeap.h"
 
 		"${SPDir}/qcommon/ojk_i_saved_game.h"
@@ -248,7 +249,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		"${SPDir}/game/statindex.h"
 		"${SPDir}/game/teams.h"
 		"${SPDir}/game/weapons.h"
-		"${SPDir}/game/surfaceflags.h"
+		"${SharedDir}/game/surfaceflags.h"
 		"${SPDir}/game/ghoul2_shared.h"
 		)
 	source_group("game" FILES ${SPEngineGameFiles})
@@ -257,36 +258,36 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 
 	# MP3 files
 	set(SPEngineMP3Files
-		"${SPDir}/mp3code/cdct.c"
-		"${SPDir}/mp3code/csbt.c"
-		"${SPDir}/mp3code/csbtb.c"
-		"${SPDir}/mp3code/csbtl3.c"
-		"${SPDir}/mp3code/cup.c"
-		"${SPDir}/mp3code/cupini.c"
-		"${SPDir}/mp3code/cupl1.c"
-		"${SPDir}/mp3code/cupl3.c"
-		"${SPDir}/mp3code/cwin.c"
-		"${SPDir}/mp3code/cwinb.c"
-		"${SPDir}/mp3code/cwinm.c"
-		"${SPDir}/mp3code/hwin.c"
-		"${SPDir}/mp3code/l3dq.c"
-		"${SPDir}/mp3code/l3init.c"
-		"${SPDir}/mp3code/mdct.c"
-		"${SPDir}/mp3code/mhead.c"
-		"${SPDir}/mp3code/msis.c"
-		"${SPDir}/mp3code/towave.c"
-		"${SPDir}/mp3code/uph.c"
-		"${SPDir}/mp3code/upsf.c"
-		"${SPDir}/mp3code/wavep.c"
-		"${SPDir}/mp3code/config.h"
-		"${SPDir}/mp3code/htable.h"
-		"${SPDir}/mp3code/jdw.h"
-		"${SPDir}/mp3code/l3.h"
-		"${SPDir}/mp3code/mhead.h"
-		"${SPDir}/mp3code/mp3struct.h"
-		"${SPDir}/mp3code/port.h"
-		"${SPDir}/mp3code/small_header.h"
-		"${SPDir}/mp3code/tableawd.h"
+		"${SharedDir}/mp3code/cdct.c"
+		"${SharedDir}/mp3code/csbt.c"
+		"${SharedDir}/mp3code/csbtb.c"
+		"${SharedDir}/mp3code/csbtl3.c"
+		"${SharedDir}/mp3code/cup.c"
+		"${SharedDir}/mp3code/cupini.c"
+		"${SharedDir}/mp3code/cupl1.c"
+		"${SharedDir}/mp3code/cupl3.c"
+		"${SharedDir}/mp3code/cwin.c"
+		"${SharedDir}/mp3code/cwinb.c"
+		"${SharedDir}/mp3code/cwinm.c"
+		"${SharedDir}/mp3code/hwin.c"
+		"${SharedDir}/mp3code/l3dq.c"
+		"${SharedDir}/mp3code/l3init.c"
+		"${SharedDir}/mp3code/mdct.c"
+		"${SharedDir}/mp3code/mhead.c"
+		"${SharedDir}/mp3code/msis.c"
+		"${SharedDir}/mp3code/towave.c"
+		"${SharedDir}/mp3code/uph.c"
+		"${SharedDir}/mp3code/upsf.c"
+		"${SharedDir}/mp3code/wavep.c"
+		"${SharedDir}/mp3code/config.h"
+		"${SharedDir}/mp3code/htable.h"
+		"${SharedDir}/mp3code/jdw.h"
+		"${SharedDir}/mp3code/l3.h"
+		"${SharedDir}/mp3code/mhead.h"
+		"${SharedDir}/mp3code/mp3struct.h"
+		"${SharedDir}/mp3code/port.h"
+		"${SharedDir}/mp3code/small_header.h"
+		"${SharedDir}/mp3code/tableawd.h"
 		)
 	source_group("mp3" FILES ${SPEngineMP3Files})
 	set(SPEngineFiles ${SPEngineFiles} ${SPEngineMP3Files})
@@ -303,7 +304,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	set(SPEngineUIFiles
 		"${SPDir}/ui/ui_atoms.cpp"
 		"${SPDir}/ui/ui_pazaak.cpp"
-		"${SPDir}/ui/ui_pazaak.h"
+		"${SharedDir}/ui/ui_pazaak.h"
 		"${SPDir}/ui/pazaak_core.cpp"
 		"${SPDir}/ui/pazaak_core.h"
 		"${SPDir}/ui/ui_connect.cpp"
@@ -333,7 +334,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	# Server files
 	set(SPEngineCGameFiles
 		"${SPDir}/cgame/cg_public.h"
-		"${SPDir}/cgame/animtable.h"
+		"${SharedDir}/cgame/animtable.h"
 		)
 	source_group("cgame" FILES ${SPEngineCGameFiles})
 	set(SPEngineFiles ${SPEngineFiles} ${SPEngineCGameFiles})

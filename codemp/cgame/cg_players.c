@@ -3199,12 +3199,12 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 	{
 		if (lf == &cent->pe.legs)
 		{
-			trap->Print("%d: %d TORSO Anim: %i, '%s'\n", cg.time, cent->currentState.clientNum, new_animation,
+			trap->Print("%d: %d LEGS Anim: %i, '%s'\n", cg.time, cent->currentState.clientNum, new_animation,
 				GetStringForID(animTable, new_animation));
 		}
 		else
 		{
-			trap->Print("%d: %d LEGS Anim: %i, '%s'\n", cg.time, cent->currentState.clientNum, new_animation,
+			trap->Print("%d: %d TORSO Anim: %i, '%s'\n", cg.time, cent->currentState.clientNum, new_animation,
 				GetStringForID(animTable, new_animation));
 		}
 	}
@@ -3333,9 +3333,11 @@ static void CG_SetLerpFrameAnimation(centity_t* cent, clientInfo_t* ci, lerpFram
 				begin_frame = gb_ac_frame;
 			}
 
-			if (first_frame > last_frame || ci->torsoAnim == new_animation)
+			if (first_frame > last_frame || (ci->torsoAnim == new_animation && !resume_frame))
 			{
 				//don't resume on backwards playing animations.. I guess.
+				//a speed change on the same anim (no foot slide scaling) must resume, or the torso - and the legs,
+				//which pick up the torso's frame - restart at frame 0 every time the speed steps while speeding up
 				begin_frame = -1;
 			}
 
@@ -3685,6 +3687,79 @@ static void CG_ClearLerpFrame(centity_t* cent, clientInfo_t* ci, lerpFrame_t* lf
 	}
 }
 
+// SP g_noFootSlide (code/game/bg_panimate.cpp PM_SetAnimFinal): a walk / run animation plays at the speed the
+// character really moves, so the feet don't slide over the floor (SP: on by default). 1.0 for other anims.
+static float CG_NoFootSlideScale(const centity_t* cent, const int anim)
+{
+	const qboolean crouchWalk = anim == BOTH_CROUCH1WALK || anim == BOTH_CROUCH1WALKBACK ? qtrue : qfalse;
+	const int npcClass = cent->currentState.NPC_class;
+	const int saberStyle = cent->currentState.fireflag; // MP keeps the saber style here
+	const float* velocity = cent->currentState.number == cg.predictedPlayerState.clientNum && !cg.demoPlayback
+		? cg.predictedPlayerState.velocity : cent->currentState.pos.trDelta;
+	const float speed = sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
+	float moveSpeedOfAnim;
+
+	if (!crouchWalk && !PM_WalkingAnim(anim) && !PM_RunningAnim(anim))
+	{
+		return 1.0f;
+	}
+	if (npcClass == CLASS_HOWLER || npcClass == CLASS_WAMPA || npcClass == CLASS_GONK || npcClass == CLASS_MOUSE ||
+		npcClass == CLASS_PROBE || npcClass == CLASS_PROTOCOL || npcClass == CLASS_R2D2 || npcClass == CLASS_R5D2 ||
+		npcClass == CLASS_SEEKER)
+	{
+		return 1.0f;
+	}
+
+	if (crouchWalk)
+	{
+		moveSpeedOfAnim = 75.0f;
+	}
+	else if (npcClass == CLASS_HAZARD_TROOPER)
+	{
+		moveSpeedOfAnim = 50.0f;
+	}
+	else if (npcClass == CLASS_RANCOR)
+	{
+		moveSpeedOfAnim = 173.0f;
+	}
+	else if (PM_WalkingAnim(anim))
+	{
+		moveSpeedOfAnim = saberStyle == SS_DUAL || saberStyle == SS_STAFF ? 100.0f : 50.0f;
+	}
+	else
+	{
+		moveSpeedOfAnim = saberStyle == SS_STAFF ? 250.0f : 150.0f;
+	}
+
+	// SP: playback = (50 / frameLerp) * speed / moveSpeedOfAnim, and that WHOLE playback speed is kept between
+	// 0.01 and 1.5 (1.5 = 30 frames a second). The anim code here multiplies the anim's own 50 / frameLerp by the
+	// value returned, so return playback / base.
+	{
+		const animation_t* anims = bgAllAnims[cent->localAnimIndex].anims;
+		const float frameLerp = anims ? fabsf((float)anims[anim].frameLerp) : 50.0f;
+		const float base = 50.0f / (frameLerp > 0.0f ? frameLerp : 50.0f);
+		// force speed: SP runs the world slower (the player's anims faster by 1 / timescale), MP the player 1.7x
+		const float maxPlayback = cent->currentState.forcePowersActive & 1 << FP_SPEED ? 1.5f * 1.7f : 1.5f;
+		float playback = base * speed / moveSpeedOfAnim;
+
+		if (playback < 0.01f)
+		{
+			playback = 0.01f;
+		}
+		if (playback > maxPlayback)
+		{
+			playback = maxPlayback;
+		}
+		// in steps of 0.05: a new speed makes the animation code resume the anim at the new speed
+		playback = floorf(playback * 20.0f + 0.5f) / 20.0f;
+		if (playback < 0.01f)
+		{
+			playback = 0.01f;
+		}
+		return playback / base;
+	}
+}
+
 /*
 ===============
 CG_PlayerAnimation
@@ -3708,20 +3783,8 @@ static void CG_PlayerAnimation(centity_t* cent, int* legs_old, int* legs, float*
 		return;
 	}
 
-	if (!PM_RunningAnim(cent->currentState.legsAnim) &&
-		!PM_WalkingAnim(cent->currentState.legsAnim))
-	{
-		//if legs are not in a walking/running anim then just animate at standard speed
-		speed_scale = 1.0f;
-	}
-	else if (cent->currentState.forcePowersActive & 1 << FP_SPEED)
-	{
-		speed_scale = 1.7f;
-	}
-	else
-	{
-		speed_scale = 1.0f;
-	}
+	// walk / run anims at the speed the character moves (SP g_noFootSlide), everything else at standard speed
+	speed_scale = CG_NoFootSlideScale(cent, cent->currentState.legsAnim);
 
 	if (cent->currentState.eType == ET_NPC)
 	{
@@ -3736,16 +3799,10 @@ static void CG_PlayerAnimation(centity_t* cent, int* legs_old, int* legs, float*
 	CG_RunLerpFrame(cent, ci, &cent->pe.legs, cent->currentState.legsFlip, cent->currentState.legsAnim, speed_scale,
 		qfalse);
 
-	if (!(cent->currentState.forcePowersActive & 1 << FP_RAGE))
-	{
-		//don't affect torso anim speed unless raged
-		speed_scale = 1.0f;
-	}
-	else
-	{
-		//speedScale = 1.7f;
-		speed_scale = 1.0f;
-	}
+	// the torso at standard speed, but a torso playing the same walk / run as the legs keeps step with them (SP
+	// scales every walk / run anim it sets, torso included)
+	speed_scale = cent->currentState.torsoAnim == cent->currentState.legsAnim
+		? CG_NoFootSlideScale(cent, cent->currentState.torsoAnim) : 1.0f;
 
 	*legs_old = cent->pe.legs.oldFrame;
 	*legs = cent->pe.legs.frame;
@@ -6530,6 +6587,9 @@ void CG_DoSaberLight(const saberInfo_t* saber, const int cnum, const int bnum)
 	}
 }
 
+// set by CG_AddSaberBlade for the blade it is drawing: no ignition flare (a thrown saber stuck in a wall or body)
+static qboolean cg_saberNoIgniteFlare = qfalse;
+
 static void CG_DoCustomSaber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, vec3_t trail_muz, float length_max,
 	float radius, saber_colors_t color, int rfx, qboolean do_light, int cnum,
 	int bnum)
@@ -7018,7 +7078,7 @@ static void CG_DoCustomSaber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_ti
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -7234,7 +7294,7 @@ static void CG_DoCloakedSaber(vec3_t origin, vec3_t dir, float length, float len
 	//--------------------
 	//GR - Do the flares
 
-	if (length <= ignite_len)
+	if (length <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -7458,7 +7518,7 @@ static void CG_DoSaber(vec3_t origin, vec3_t dir, float length, float length_max
 	trap->R_AddRefEntityToScene(&saber);
 
 	// Ignition flare
-	if (length <= ignite_len)
+	if (length <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		int i;
 
@@ -8023,7 +8083,7 @@ static void CG_DoTFASaber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, 
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -8239,7 +8299,7 @@ static void CG_DoSaberUnstable(vec3_t origin, vec3_t dir, float length, float le
 	//--------------------
 	//GR - Do the flares
 
-	if (length <= ignite_len)
+	if (length <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -8772,7 +8832,7 @@ static void CG_DoBattlefrontSaber(vec3_t blade_muz, vec3_t blade_tip, vec3_t tra
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -9308,7 +9368,7 @@ static void CG_DoEp1Saber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, 
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -9844,7 +9904,7 @@ static void CG_DoEp2Saber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, 
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -10380,7 +10440,7 @@ static void CG_DoEp3Saber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, 
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -10947,7 +11007,7 @@ static void CG_DoOTSaber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, v
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -11483,7 +11543,7 @@ static void CG_DoSFXSaber(vec3_t blade_muz, vec3_t blade_tip, vec3_t trail_tip, 
 		}
 	}
 
-	if (blade_len <= ignite_len)
+	if (blade_len <= ignite_len && !cg_saberNoIgniteFlare)
 	{
 		saber.renderfx = rfx;
 		saber.radius = ignite_radius;
@@ -12133,6 +12193,9 @@ void CG_AddSaberBlade(centity_t* cent, centity_t* scent, int renderfx, int saber
 	{
 		client = &cgs.clientinfo[cent->currentState.number];
 	}
+
+	// a thrown saber stuck in a wall or a body: the wall / body cuts the blade short, that's no ignition
+	cg_saberNoIgniteFlare = scent && scent != cent && (scent->currentState.eFlags & EF_MISSILE_STICK) ? qtrue : qfalse;
 
 	saberEnt = &cg_entities[cent->currentState.saberEntityNum];
 	saber_len = client->saber[saberNum].blade[bladeNum].length;
@@ -15414,9 +15477,9 @@ void CG_CheckThirdPersonAlpha(const centity_t* cent, refEntity_t* legs)
 		//it's me
 		//reset this
 		cg_vehThirdPersonAlpha = 1.0f;
-		//use the cvar
+		//use the cvar (the aiming camera blends it to fully visible)
 		set_flags = RF_FORCE_ENT_ALPHA;
-		alpha = cg_thirdPersonAlpha.value;
+		alpha = CG_CameraBlendAlpha(cg_thirdPersonAlpha.value);
 	}
 
 	if (alpha < 1.0f)
@@ -16108,6 +16171,14 @@ static void CG_HolsteredWeaponRender(centity_t* cent, const clientInfo_t* ci, co
 	ApplyAxisRotation(ent.axis, ROLL, ang_offset[ROLL]);
 
 	VectorCopy(bolt_org, ent.origin);
+	VectorCopy(bolt_org, ent.oldorigin);
+
+	/* Lit like the body it hangs on, and the body's shadow settings too (as SP cg_holster.cpp): a volumetric
+	   shadow (cg_shadows 2) reaches down to shadowPlane, which left at 0 (the world's origin height) cast the
+	   weapon's shadow far off on any floor above or below that. */
+	VectorCopy(cent->lerpOrigin, ent.lightingOrigin);
+	ent.renderfx = (cent->bodyShadowRenderfx & (RF_THIRD_PERSON | RF_SHADOW_PLANE | RF_SHADOW_ONLY)) | RF_LIGHTING_ORIGIN;
+	ent.shadowPlane = cent->bodyShadowPlane;
 
 	/* Attach the ghoul2 weapon instance to the render entity.
 	   CG_G2HolsterWeaponInstance may return NULL; handle that gracefully. */
@@ -17982,6 +18053,8 @@ void CG_Player(centity_t* cent)
 	VectorCopy(cent->lerpOrigin, legs.lightingOrigin);
 	legs.shadowPlane = shadowPlane;
 	legs.renderfx = renderfx;
+	cent->bodyShadowPlane = shadowPlane;
+	cent->bodyShadowRenderfx = renderfx;
 	if (cg_shadows.integer == 2 && renderfx & RF_THIRD_PERSON)
 	{
 		//can see own shadow
@@ -18025,22 +18098,24 @@ void CG_Player(centity_t* cent)
 		}
 	}
 
-	//if (cg_debugHealthBars.integer)
-	//{
-	//	if (cent && cg.snap->ps.stats[STAT_HEALTH] > 0 && cg.snap->ps.stats[STAT_MAX_HEALTH] > 0)
-	//	{
-	//		//draw a health bar over them
-	//		CG_AddHealthBarEnt(cent->currentState.clientNum);
-	//	}
-	//}
-	//if (cg_drawblockpointbar.integer)
-	//{
-	//	if (cent && cg.snap->ps.fd.blockPoints > 0)
-	//	{
-	//		//draw a bp bar over them
-	//		CG_AddBlockPointBarEnt(cent->currentState.clientNum);
-	//	}
-	//}
+	// the bars over the heads, as SP (CG_DrawHealthBars / CG_DrawBlockPointBars, cg_draw.c): the values are the
+	// server's, in the entity state (BG_PlayerStateToEntityState)
+	if (cg_debugHealthBars.integer || cg.snap->ps.fd.forcePowerLevel[FP_SEE] > FORCE_LEVEL_2)
+	{//level 3 sight shows health while it's on
+		if (cent->currentState.health > 0 && cent->currentState.maxhealth > 0)
+		{
+			//draw a health bar over them
+			CG_AddHealthBarEnt(cent->currentState.number);
+		}
+	}
+	if (cg_drawblockpointbar.integer)
+	{
+		if (cent->currentState.blockPoints > 0)
+		{
+			//draw a bp bar over them
+			CG_AddBlockPointBarEnt(cent->currentState.number);
+		}
+	}
 
 	//This call is mainly just to reconstruct the skeleton. But we'll get the left hand matrix while we're at it.
 	//If we don't reconstruct the skeleton after setting the bone angles, we will get bad bolt points on the model
@@ -18173,8 +18248,10 @@ SkipTrueView:
 
 	memset(&torso, 0, sizeof torso);
 
-	//rww - force speed "trail" effect
-	if (!(cent->currentState.powerups & 1 << PW_SPEED) || do_alpha || !cg_speedTrail.integer)
+	//rww - force speed "trail" effect (also during a force long leap, the same as SP)
+	if (!(cent->currentState.powerups & 1 << PW_SPEED
+		|| cent->currentState.legsAnim == BOTH_FORCELONGLEAP_START
+		|| cent->currentState.legsAnim == BOTH_FORCELONGLEAP_ATTACK) || do_alpha || !cg_speedTrail.integer)
 	{
 		cent->frame_minus1_refreshed = 0;
 		cent->frame_minus2_refreshed = 0;

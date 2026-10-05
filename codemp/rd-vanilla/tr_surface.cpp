@@ -2026,7 +2026,7 @@ static void RB_SurfaceEntity(surfaceType_t* surfType)
 
 static void RB_SurfaceBad(surfaceType_t* surfType)
 {
-	ri->Printf(PRINT_ALL, "Bad surface tesselated.\n");
+	ri.Printf(PRINT_ALL, "Bad surface tesselated.\n");
 }
 
 /*

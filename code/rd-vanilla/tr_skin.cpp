@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include <map>
 
-#include "../qcommon/sstring.h"
+#include "qcommon/sstring.h"
 
 /*
 ============================================================================

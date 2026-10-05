@@ -95,11 +95,12 @@ set(SPRend2RdCommonFiles
 	"${SPDir}/rd-common/tr_common.h"
 	"${SPDir}/rd-common/tr_font.cpp"
 	"${SPDir}/rd-common/tr_font.h"
-	"${SPDir}/rd-common/tr_image_load.cpp"
+	"${SharedDir}/rd-common/tr_image_load.cpp"
 	"${SPDir}/rd-common/tr_image_jpg.cpp"
-	"${SPDir}/rd-common/tr_image_tga.cpp"
-	"${SPDir}/rd-common/tr_image_png.cpp"
-	"${SPDir}/rd-common/tr_noise.cpp"
+	"${SPDir}/rd-common/tr_video_encoder.cpp"
+	"${SharedDir}/rd-common/tr_image_tga.cpp"
+	"${SharedDir}/rd-common/tr_image_png.cpp"
+	"${SharedDir}/rd-common/tr_noise.cpp"
 	"${SPDir}/rd-common/tr_public.h"
 	"${SPDir}/rd-common/tr_types.h")
 source_group("rd-common" FILES ${SPRend2RdCommonFiles})

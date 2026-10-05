@@ -93,7 +93,7 @@ static qhandle_t RE_RegisterIndividualSkin(const char* name, const qhandle_t hSk
 	char surfName[MAX_QPATH];
 
 	// load and parse the skin file
-	ri->FS_ReadFile(name, reinterpret_cast<void**>(&text));
+	ri.FS_ReadFile(name, reinterpret_cast<void**>(&text));
 	if (!text)
 	{
 #ifndef FINAL_BUILD
@@ -158,7 +158,7 @@ static qhandle_t RE_RegisterIndividualSkin(const char* name, const qhandle_t hSk
 		skin->numSurfaces++;
 	}
 
-	ri->FS_FreeFile(text);
+	ri.FS_FreeFile(text);
 
 	// never let a skin have 0 shaders
 	if (skin->numSurfaces == 0)
@@ -369,8 +369,8 @@ Mangled version of the above function to load .skin files on the server.
 */
 qhandle_t RE_RegisterServerSkin(const char* name)
 {
-	if (ri->Cvar_VariableIntegerValue("cl_running") &&
-		ri->Com_TheHunkMarkHasBeenMade() &&
+	if (ri.Cvar_VariableIntegerValue("cl_running") &&
+		ri.Com_TheHunkMarkHasBeenMade() &&
 		ShaderHashTableExists())
 	{
 		//If the client is running then we can go straight into the normal registerskin func
@@ -394,10 +394,10 @@ void R_InitSkins(void)
 	tr.numSkins = 1;
 
 	// make the default skin have all default shaders
-	skin_t* skin = tr.skins[0] = static_cast<skin_s*>(ri->Hunk_Alloc(sizeof(skin_t), h_low));
+	skin_t* skin = tr.skins[0] = static_cast<skin_s*>(ri.Hunk_Alloc(sizeof(skin_t), h_low));
 	Q_strncpyz(skin->name, "<default skin>", sizeof skin->name);
 	skin->numSurfaces = 1;
-	skin->surfaces[0] = static_cast<_skinSurface_t*>(ri->Hunk_Alloc(sizeof(skinSurface_t), h_low));
+	skin->surfaces[0] = static_cast<_skinSurface_t*>(ri.Hunk_Alloc(sizeof(skinSurface_t), h_low));
 	skin->surfaces[0]->shader = tr.defaultShader;
 }
 

@@ -47,7 +47,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "b_public.h"
 #include "teams.h"
 #include "anims.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include <qcommon\q_platform.h>
 #include <qcommon\q_math.h>
 #include <qcommon\q_color.h>
@@ -129,6 +129,7 @@ void trace_move(bot_state_t* bs, vec3_t moveDir, int target_num);
 extern qboolean G_NameInTriggerClassList(const char* list, const char* str);
 void bot_behave_defend_basic(bot_state_t* bs, vec3_t defpoint);
 int bot_select_choice_weapon(bot_state_t* bs, int weapon, int doselection);
+static qboolean bot_is_boba_class(const bot_state_t* bs);
 void adjustfor_strafe(const bot_state_t* bs, vec3_t moveDir);
 void bot_behave_attack(bot_state_t* bs);
 extern const gbuyable_t bg_buylist[];
@@ -1411,6 +1412,8 @@ static void bot_unapply_delta_angles(bot_state_t* bs)
 		bs->viewangles[j] = AngleMod(bs->viewangles[j] - SHORT2ANGLE(bs->cur_ps.delta_angles[j]));
 }
 
+#define BOT_TIMED_ACTION_HOLD	250		// ms a timed action (kick) holds its button
+#define BOT_MELEE_SWING_RANGE	80.0f	// melee bots punch only this close
 static qboolean bot_try_timed_action(
 	bot_state_t* bs,
 	int* next_time,
@@ -1422,45 +1425,38 @@ static qboolean bot_try_timed_action(
 		return qfalse;
 
 	const int now = level.time;
+	int check_val = bot_thinklevel.integer;
+	if (check_val <= 0)
+		check_val = 1;
+	const int interval = base_ms / check_val;
 
-	// Cooldown active ? allow continuation
-	if (*next_time > now)
-		return qtrue;
-
-	// No enemy ? reset
+	// No enemy ? nothing to do (the cooldown keeps running)
 	if (!bs->currentEnemy ||
 		!bs->currentEnemy->client ||
 		bs->currentEnemy->health <= 0 ||
 		bs->currentEnemy->client->ps.groundEntityNum == ENTITYNUM_NONE)
 	{
-		*next_time = 0;
 		return qfalse;
 	}
 
-	// Distance check
+	// Distance and visibility, every frame: the action (a kick, a slap with the saber thrown) only within range.
+	// The cooldown used to return true for the whole interval without these checks, so after one kick the bot kept
+	// kicking from any distance.
 	const float dist = VectorDistance(
 		g_entities[bs->cur_ps.clientNum].r.currentOrigin,
 		bs->currentEnemy->r.currentOrigin);
 
-	if (dist >= range)
+	if (dist >= range || !visible(&g_entities[bs->cur_ps.clientNum], bs->currentEnemy))
 	{
-		*next_time = 0;
 		return qfalse;
 	}
 
-	// Visibility check
-	if (!visible(&g_entities[bs->cur_ps.clientNum], bs->currentEnemy))
-	{
-		*next_time = 0;
-		return qfalse;
-	}
+	// Cooldown: hold the button only for the start of it (long enough to register the press)
+	if (*next_time > now)
+		return (now < *next_time - interval + BOT_TIMED_ACTION_HOLD) ? qtrue : qfalse;
 
 	// Passed all checks ? schedule next time
-	int check_val = bot_thinklevel.integer;
-	if (check_val <= 0)
-		check_val = 1;
-
-	*next_time = now + base_ms / check_val;
+	*next_time = now + interval;
 	return qtrue;
 }
 
@@ -9306,6 +9302,43 @@ static void JediDirectionalDashAttack(bot_state_t* bs, const vec3_t enemyPos)
 	}
 }
 
+// How far a bot's saber swing reaches (origin to origin): its longest blade plus arm and bodies. The attack triggers of
+// the saber combat handlers swing only inside it - they ran for anything within SABER_ATTACK_RANGE (300, x3 in
+// GT_SINGLE_PLAYER) and swung whenever the enemy was in view, so bots swung at the air from far away.
+// bots: force lightning at most every 6-12 s (it was cast whenever possible, so dark side bots kept their enemy at bay
+// with it instead of fighting)
+#define BOT_LIGHTNING_MIN_DELAY	6000
+#define BOT_LIGHTNING_MAX_DELAY	12000
+static int s_botNextLightning[MAX_CLIENTS];
+
+#define BOT_SABER_SWING_EXTRA	40.0f	// blade + this: about 80 (90 was out of contact)
+#define BOT_SABER_IDEAL_MIN		50.0f	// the distance the saber combat handlers keep (was 85-130: the blades rarely touched)
+#define BOT_SABER_IDEAL_MAX		75.0f
+static float Bot_SaberReach(const bot_state_t* bs)
+{
+	const gclient_t* client = g_entities[bs->client].client;
+	float blade = 0.0f;
+
+	if (client)
+	{
+		for (int s = 0; s < MAX_SABERS; s++)
+		{
+			for (int b = 0; b < client->saber[s].numBlades && b < MAX_BLADES; b++)
+			{
+				if (client->saber[s].blade[b].lengthMax > blade)
+				{
+					blade = client->saber[s].blade[b].lengthMax;
+				}
+			}
+		}
+	}
+	if (blade <= 0.0f)
+	{
+		blade = 40.0f;
+	}
+	return blade + BOT_SABER_SWING_EXTRA;
+}
+
 static void saber_combat_handling(bot_state_t* bs)
 {
 	/* Defensive: ensure bot state and enemy exist before any dereference */
@@ -9446,8 +9479,8 @@ static void saber_combat_handling(bot_state_t* bs)
 	// -------------------------------------------------
 	// IDEAL SPACING FOR DUELS
 	// -------------------------------------------------
-	const float idealMin = 85.0f;
-	const float idealMax = 130.0f;
+	const float idealMin = BOT_SABER_IDEAL_MIN; // was 85: saber contact needs closer
+	const float idealMax = BOT_SABER_IDEAL_MAX; // was 130
 	const float MaxDashDist = 256.0f;
 
 	if (bs->frame_Enemy_Len < idealMin)
@@ -9524,7 +9557,8 @@ static void saber_combat_handling(bot_state_t* bs)
 
 	if (bs->frame_Enemy_Vis &&
 		bs->cur_ps.weapon == bs->virtualWeapon &&
-		enemyInFOV == qtrue)
+		enemyInFOV == qtrue &&
+		(bs->virtualWeapon != WP_SABER || bs->frame_Enemy_Len <= Bot_SaberReach(bs))) // only within reach
 	{
 		trap->EA_Attack(bs->client);
 	}
@@ -9626,8 +9660,8 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	// -------------------------------------------------
 	// IDEAL SPACING FOR ENHANCED DUELS
 	// -------------------------------------------------
-	const float idealMin = 85.0f;
-	const float idealMax = 130.0f;
+	const float idealMin = BOT_SABER_IDEAL_MIN; // was 85: saber contact needs closer
+	const float idealMax = BOT_SABER_IDEAL_MAX; // was 130
 	const float MaxDashDist = 256.0f;
 
 	if (bs->frame_Enemy_Len < idealMin)
@@ -9746,7 +9780,8 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 
 	if (bs->frame_Enemy_Vis == qtrue &&
 		bs->cur_ps.weapon == bs->virtualWeapon &&
-		enemyInFOV == qtrue)
+		enemyInFOV == qtrue &&
+		(bs->virtualWeapon != WP_SABER || bs->frame_Enemy_Len <= Bot_SaberReach(bs))) // only within reach
 	{
 		bot_behave_attack(bs);
 	}
@@ -10094,7 +10129,7 @@ static int combat_bot_ai(bot_state_t* bs)
 	}
 	else if (weaponRange == BWEAPONRANGE_MELEE)
 	{
-		if (bs->frame_Enemy_Len <= MELEE_ATTACK_RANGE)
+		if (bs->frame_Enemy_Len <= BOT_MELEE_SWING_RANGE) // punches only within reach (MELEE_ATTACK_RANGE is the approach range)
 		{
 			bs->doAttack = 1;
 		}
@@ -11432,7 +11467,8 @@ static int bot_use_inventory_item(bot_state_t* bs)
 		}
 	}
 
-	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && bs->cur_ps.jetpackFuel > 30)
+	// The Boba Fett classes use their jetpack and flamethrower in bot_boba_think / bot_boba_flight_cmd
+	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && bs->cur_ps.jetpackFuel > 30 && !bot_is_boba_class(bs))
 	{
 		if (bs->currentEnemy && bs->frame_Enemy_Vis && bs->runningToEscapeThreat)
 		{
@@ -11460,7 +11496,8 @@ static int bot_use_inventory_item(bot_state_t* bs)
 			goto wantuseitem;
 		}
 	}
-	else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_FLAMETHROWER)
+	// (an "if", not "else if": a bot with a jetpack too can still use the flamethrower)
+	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_FLAMETHROWER && !bot_is_boba_class(bs))
 	{
 		if (bs->currentEnemy && bs->frame_Enemy_Len <= MELEE_ATTACK_RANGE)
 		{
@@ -11470,12 +11507,12 @@ static int bot_use_inventory_item(bot_state_t* bs)
 		if (bs->currentEnemy && bs->frame_Enemy_Len <= MELEE_ATTACK_RANGE && bs->cur_ps.groundEntityNum ==
 			ENTITYNUM_NONE)
 		{
-			bs->cur_ps.stats[STAT_HOLDABLE_ITEM] = BG_GetItemIndexByTag(IT_HOLDABLE, IT_HOLDABLE);
+			bs->cur_ps.stats[STAT_HOLDABLE_ITEM] = BG_GetItemIndexByTag(HI_FLAMETHROWER, IT_HOLDABLE);
 			goto wantuseitem;
 		}
 		if (bs->currentEnemy && bs->frame_Enemy_Len <= MELEE_ATTACK_RANGE && g_entities[bs->client].health <= 50)
 		{
-			bs->cur_ps.stats[STAT_HOLDABLE_ITEM] = BG_GetItemIndexByTag(IT_HOLDABLE, IT_HOLDABLE);
+			bs->cur_ps.stats[STAT_HOLDABLE_ITEM] = BG_GetItemIndexByTag(HI_FLAMETHROWER, IT_HOLDABLE);
 			goto wantuseitem;
 		}
 	}
@@ -11784,7 +11821,14 @@ static void Bot_CheckFallLanding(bot_state_t* bs)
 	// --------------------------------------------------------
 	// 3. Determine fall speed
 	// --------------------------------------------------------
-	float speed = VectorLength(bs->cur_ps.velocity);
+	// the falling speed (down) - the full speed counted running and dashing too, so a bot running or dashing down
+	// stairs crouched for a roll landing at every step
+	const float speed = -bs->cur_ps.velocity[2];
+
+	if (speed <= 0.0f)
+	{// not falling
+		return;
+	}
 
 	// Dynamic danger threshold:
 	// speed >= (100 + health) AND not using saber
@@ -12034,6 +12078,473 @@ static qboolean bot_vehicle_ai(bot_state_t* bs)
 		trap->EA_Use(bs->client);
 	}
 	return qtrue;
+}
+
+/*
+==================
+Boba Fett AI for the jetpack bot classes (BCLASS_BOBAFETT and the Mandalorians)
+
+The SP Boba Fett AI (code/game/AI_BobaFett.cpp, flight from AI_Seeker.cpp) for MP bots:
+- tactics every 8-15 seconds: flamethrower when the enemy is close, otherwise the blaster, or rockets at range
+  (more likely the more he has been hurt)
+- he takes off when he chases an enemy that is near or above him, and sometimes a jump turns into a flight
+- in the air he keeps to the enemy's eye level and strafes around him (the SP seeker pushes, every 100ms),
+  advances when further than 200, and lands when the flight time is up (or he touches the ground)
+- the flamethrower burns for BOBA_FLAMEDURATION, then waits twice as long; rockets only from more than 400
+MP bots fly with the normal jetpack (Jetpack_On, PM_JETPACK, upmove for height), standard_bot_ai still aims.
+==================
+*/
+#define BOBA_FLAMEDURATION			3000	// AI_BobaFett.cpp
+#define BOBA_FLAMETHROWRANGE		128
+#define BOBA_ROCKETRANGEMIN			300
+#define BOBA_ROCKETRANGEMAX			2000
+#define BOBA_ROCKET_MIN_FIRE_DIST	400		// Boba_FireDecide: no rockets closer than this
+#define BOBA_SEEKER_THINK			100		// SP NPCs think every 100ms: the seeker pushes below are per think
+#define BOBA_VELOCITY_DECAY			0.7f	// AI_Seeker.cpp
+#define BOBA_STRAFE_VEL				(100 * 3)	// SEEKER_STRAFE_VEL, x3 for Boba
+#define BOBA_STRAFE_DIS				200		// SEEKER_STRAFE_DIS
+#define BOBA_UPWARD_PUSH			(32 * 4)	// SEEKER_UPWARD_PUSH, x4 for Boba
+#define BOBA_FORWARD_BASE_SPEED		10		// SEEKER_FORWARD_BASE_SPEED
+#define BOBA_FORWARD_MULTIPLIER		2		// SEEKER_FORWARD_MULTIPLIER
+#define BOBA_ADVANCE_DIST			200		// Seeker_Attack: Boba advances when further than this
+
+typedef enum
+{
+	BOBA_FLY_NONE,
+	BOBA_FLY_TAKEOFF,	// jumping up, the jetpack goes on in the air
+	BOBA_FLY_AIR,		// flying (seeker movement)
+	BOBA_FLY_LAND		// going down to land
+} bobaFly_t;
+
+typedef enum
+{
+	BOBA_TAC_RIFLE,
+	BOBA_TAC_MISSILE,
+	BOBA_TAC_FLAME
+} bobaTactic_t;
+
+typedef struct
+{
+	int fly;			// bobaFly_t
+	int flyStart;
+	int flyUntil;		// SP jetPackTime
+	int jetRecharge;	// SP "jetRecharge": no new take off before this
+	int jumpChase;		// SP "jumpChaseDebounce"
+	int heightChange;	// SP "heightChange"
+	float targetZ;
+	int standTime;		// SP NPCInfo->standTime: strafe again after this
+	int nextSeekerThink;
+	int tactic;			// bobaTactic_t
+	int tacticTime;		// SP "Boba_TacticsSelect"
+	int flameUntil;		// SP "flameTime"
+	int nextFlame;		// SP "nextFlameDelay"
+	int nextFlameCmd;
+} bobaBot_t;
+
+static bobaBot_t bobaBots[MAX_CLIENTS];
+
+static qboolean bot_is_boba_class(const bot_state_t* bs)
+{
+	const int bc = g_entities[bs->client].client->pers.botclass;
+
+	return bc == BCLASS_BOBAFETT || bc == BCLASS_MANDOLORIAN || bc == BCLASS_MANDOLORIAN1 || bc == BCLASS_MANDOLORIAN2
+		? qtrue : qfalse;
+}
+
+static qboolean bot_boba_has_weapon(const bot_state_t* bs, const int wp)
+{
+	if (!(bs->cur_ps.stats[STAT_WEAPONS] & 1 << wp))
+	{
+		return qfalse;
+	}
+	return weaponData[wp].ammoIndex == AMMO_NONE
+		|| bs->cur_ps.ammo[weaponData[wp].ammoIndex] >= weaponData[wp].energyPerShot ? qtrue : qfalse;
+}
+
+// The rifle tactic's weapon (SP: WP_BLASTER)
+static int bot_boba_rifle(const bot_state_t* bs)
+{
+	if (bot_boba_has_weapon(bs, WP_BLASTER))
+	{
+		return WP_BLASTER;
+	}
+	if (bot_boba_has_weapon(bs, WP_BRYAR_PISTOL))
+	{
+		return WP_BRYAR_PISTOL;
+	}
+	return WP_NONE;
+}
+
+static void bot_boba_fly_stop(bobaBot_t* bb)
+{
+	// Boba_FlyStop
+	bb->fly = BOBA_FLY_NONE;
+	bb->jetRecharge = level.time + Q_irand(1000, 5000);
+	bb->jumpChase = level.time + Q_irand(500, 2000);
+}
+
+// Boba_TacticsSelect
+static void bot_boba_tactics_select(const bot_state_t* bs, bobaBot_t* bb, const float enemy_dist)
+{
+	const gentity_t* enemy = bs->currentEnemy;
+	const qboolean has_flame = bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_FLAMETHROWER ? qtrue : qfalse;
+	const qboolean in_rocket_range = enemy_dist > BOBA_ROCKETRANGEMIN && enemy_dist < BOBA_ROCKETRANGEMAX ? qtrue : qfalse;
+	// SP: the more times he has been driven away (NPC->count), the more he goes for the rockets
+	int driven_away = (100 - g_entities[bs->client].health) / 25;
+	int tactic;
+
+	if (driven_away < 0)
+	{
+		driven_away = 0;
+	}
+
+	bb->tacticTime = level.time + Q_irand(8000, 15000);
+
+	if (enemy->health <= 0)
+	{
+		tactic = BOBA_TAC_RIFLE;
+	}
+	else if (enemy_dist < BOBA_FLAMETHROWRANGE)
+	{
+		// close: torch him if the last blast was long enough ago, otherwise get clear of him
+		tactic = has_flame && bb->nextFlame < level.time ? BOBA_TAC_FLAME : BOBA_TAC_RIFLE;
+	}
+	else
+	{
+		tactic = !in_rocket_range || Q_irand(0, driven_away) < 1 ? BOBA_TAC_RIFLE : BOBA_TAC_MISSILE;
+	}
+
+	if (tactic == BOBA_TAC_MISSILE && !bot_boba_has_weapon(bs, WP_ROCKET_LAUNCHER))
+	{
+		tactic = BOBA_TAC_RIFLE;
+	}
+
+	if (tactic == BOBA_TAC_FLAME && bb->tactic != BOBA_TAC_FLAME)
+	{
+		// Boba_StartFlameThrower
+		bb->flameUntil = level.time + BOBA_FLAMEDURATION;
+		bb->nextFlame = level.time + BOBA_FLAMEDURATION * 2;
+		bb->tacticTime = level.time + BOBA_FLAMEDURATION;
+		bb->nextFlameCmd = 0;
+		G_Sound(&g_entities[bs->client], CHAN_WEAPON, G_SoundIndex("sound/weapons/boba/bf_flame.mp3"));
+	}
+	bb->tactic = tactic;
+}
+
+// The weapon for the tactic. Returns 1 when he is switching weapons (like bot_select_ideal_weapon).
+static int bot_boba_select_weapon(bot_state_t* bs)
+{
+	const int wp = bobaBots[bs->client].tactic == BOBA_TAC_MISSILE ? WP_ROCKET_LAUNCHER : bot_boba_rifle(bs);
+
+	if (wp == WP_NONE || !bot_boba_has_weapon(bs, wp))
+	{
+		return bot_select_ideal_weapon(bs);
+	}
+	return bot_select_choice_weapon(bs, wp, 1) == 2 ? 1 : 0;
+}
+
+// Seeker_Strafe (Boba version)
+static void bot_boba_strafe(const bot_state_t* bs, bobaBot_t* bb, playerState_t* ps)
+{
+	const gentity_t* enemy = bs->currentEnemy;
+	trace_t tr;
+	vec3_t end, right, dir;
+	const int side = rand() & 1 ? -1 : 1;
+
+	if (flrand(0.0f, 1.0f) > 0.7f || !enemy->client)
+	{
+		// a regular strafe, if there is room for it
+		AngleVectors(ps->viewangles, NULL, right, NULL);
+		VectorMA(ps->origin, BOBA_STRAFE_DIS * side, right, end);
+		trap->Trace(&tr, ps->origin, NULL, NULL, end, bs->client, MASK_SOLID, qfalse, 0, 0);
+		if (tr.fraction > 0.9f)
+		{
+			VectorMA(ps->velocity, BOBA_STRAFE_VEL * side, right, ps->velocity);
+			ps->velocity[2] += BOBA_UPWARD_PUSH;
+			bb->standTime = level.time + 1000 + (int)(flrand(0.0f, 1.0f) * 500);
+		}
+	}
+	else
+	{
+		// strafe to keep on the side of the enemy
+		AngleVectors(enemy->client->ps.viewangles, dir, right, NULL);
+		VectorMA(enemy->r.currentOrigin, BOBA_STRAFE_DIS * 2.0f * side, right, end);
+		VectorMA(end, flrand(-1.0f, 1.0f) * 25, dir, end);
+		trap->Trace(&tr, ps->origin, NULL, NULL, end, bs->client, MASK_SOLID, qfalse, 0, 0);
+		if (tr.fraction > 0.9f)
+		{
+			VectorSubtract(tr.endpos, ps->origin, dir);
+			dir[2] *= 0.25f; // less upward change
+			const float dis = VectorNormalize(dir);
+			VectorMA(ps->velocity, dis, dir, ps->velocity);
+			ps->velocity[2] += BOBA_UPWARD_PUSH;
+			bb->standTime = level.time + 2500 + (int)(flrand(0.0f, 1.0f) * 500);
+		}
+	}
+}
+
+// Seeker_MaintainHeight + Seeker_Attack/Seeker_Hunt (Boba version), one SP think
+static void bot_boba_seeker_think(const bot_state_t* bs, bobaBot_t* bb, playerState_t* ps, const float xy_dist)
+{
+	const gentity_t* enemy = bs->currentEnemy;
+
+	// hover at, or a little above, the enemy's eye level
+	if (bb->heightChange < level.time)
+	{
+		const float dif_factor = bb->flameUntil < level.time ? 10.0f : 1.0f; // flamethrower ready: big moves
+		float dif;
+
+		bb->heightChange = level.time + Q_irand(1000, 3000);
+		bb->targetZ = enemy->r.currentOrigin[2] + flrand(enemy->r.maxs[2] / 2.0f, enemy->r.maxs[2] + 8.0f);
+		dif = bb->targetZ - ps->origin[2];
+		if (fabs(dif) > 2.0f * dif_factor)
+		{
+			if (fabs(dif) > 24.0f * dif_factor)
+			{
+				dif = dif < 0.0f ? -24.0f * dif_factor : 24.0f * dif_factor;
+			}
+			ps->velocity[2] = (ps->velocity[2] + dif) * 0.5f;
+		}
+		ps->velocity[2] *= flrand(0.85f, 3.0f); // jet movement jitter
+	}
+
+	ps->velocity[0] *= BOBA_VELOCITY_DECAY;
+	ps->velocity[1] *= BOBA_VELOCITY_DECAY;
+
+	if (!bs->frame_Enemy_Vis)
+	{
+		return; // can't see him: the bot's own route finding moves him (bot_boba_flight_cmd)
+	}
+	if (bb->standTime < level.time)
+	{
+		bot_boba_strafe(bs, bb, ps);
+		return;
+	}
+	if (xy_dist > BOBA_ADVANCE_DIST)
+	{
+		vec3_t forward, end;
+		trace_t tr;
+		int skill = (bs->settings.skill - 1) / 2; // the bot skill 1-5 as SP's g_spskill 0-2
+		if (skill > 2)
+		{
+			skill = 2;
+		}
+		VectorSubtract(enemy->r.currentOrigin, ps->origin, forward);
+		VectorNormalize(forward);
+
+		// don't fly into a wall on the way (SP has no check here, its NPC navigation steers around)
+		VectorMA(ps->origin, 64, forward, end);
+		trap->Trace(&tr, ps->origin, NULL, NULL, end, bs->client, MASK_SOLID, qfalse, 0, 0);
+		if (tr.fraction == 1.0f && !tr.startsolid)
+		{
+			VectorMA(ps->velocity, BOBA_FORWARD_BASE_SPEED + BOBA_FORWARD_MULTIPLIER * skill, forward, ps->velocity);
+		}
+	}
+}
+
+// Called every AI think, before the weapon choice and the item use (standard_bot_ai).
+static void bot_boba_think(bot_state_t* bs)
+{
+	bobaBot_t* bb = &bobaBots[bs->client];
+	gentity_t* self = &g_entities[bs->client];
+	playerState_t* ps = &self->client->ps;
+	const qboolean on_ground = ps->groundEntityNum != ENTITYNUM_NONE ? qtrue : qfalse;
+	const qboolean has_jet = ps->stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK ? qtrue : qfalse;
+	const gentity_t* enemy = bs->currentEnemy;
+	vec3_t diff;
+
+	if (self->health <= 0 || ps->pm_type == PM_DEAD)
+	{
+		memset(bb, 0, sizeof * bb);
+		return;
+	}
+
+	if ((bb->fly == BOBA_FLY_AIR || bb->fly == BOBA_FLY_LAND) && on_ground)
+	{
+		bot_boba_fly_stop(bb); // landed (touching the ground turns the jetpack off)
+	}
+
+	if (!enemy || !enemy->inuse || enemy->health <= 0)
+	{
+		bb->tactic = BOBA_TAC_RIFLE;
+		bb->flameUntil = 0;
+		if (bb->fly == BOBA_FLY_AIR || bb->fly == BOBA_FLY_TAKEOFF)
+		{
+			bb->fly = BOBA_FLY_LAND;
+		}
+		return;
+	}
+
+	VectorSubtract(enemy->r.currentOrigin, ps->origin, diff);
+	const float enemy_dist = VectorLength(diff);
+	const float z_diff = diff[2];
+	diff[2] = 0;
+	const float xy_dist = VectorLength(diff);
+
+	// tactics
+	if (bb->tacticTime < level.time)
+	{
+		bot_boba_tactics_select(bs, bb, enemy_dist);
+	}
+	if (bb->tactic == BOBA_TAC_FLAME && bb->flameUntil < level.time)
+	{
+		// Boba_StopFlameThrower: think about the next tactic straight away
+		bb->tactic = BOBA_TAC_RIFLE;
+		bb->tacticTime = 0;
+	}
+
+	// take off
+	if (has_jet && bb->fly == BOBA_FLY_NONE && bb->jetRecharge < level.time && bb->tactic != BOBA_TAC_FLAME)
+	{
+		qboolean take_off = qfalse;
+
+		if (!on_ground)
+		{
+			// Boba_Update: occasionally a jump turns into a rocket fly
+			take_off = ps->fd.forceJumpZStart && !Q_irand(0, 10) ? qtrue : qfalse;
+		}
+		else if (bb->jumpChase < level.time)
+		{
+			// Jedi_TryJump: chase an enemy that isn't far away (and not much lower) with the jetpack
+			bb->jumpChase = level.time + Q_irand(500, 2000);
+			if (xy_dist < 550 && z_diff > -400 && !(z_diff < 32 && xy_dist < 200))
+			{
+				take_off = z_diff > 64 || !Q_irand(0, 2) ? qtrue : qfalse;
+			}
+		}
+
+		if (take_off)
+		{
+			bb->fly = BOBA_FLY_TAKEOFF;
+			bb->flyStart = level.time;
+			bb->flyUntil = level.time + Q_irand(3000, 10000); // Boba_FlyStart
+			bb->heightChange = 0;
+			bb->standTime = 0;
+			bb->targetZ = enemy->r.currentOrigin[2] + enemy->r.maxs[2];
+			G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/boba/jeton.wav"));
+		}
+	}
+
+	if (bb->fly == BOBA_FLY_TAKEOFF && !on_ground)
+	{
+		// in the air: jetpack on
+		Jetpack_On(self);
+		if (self->client->jetPackOn)
+		{
+			bb->fly = BOBA_FLY_AIR;
+		}
+	}
+	if (bb->fly == BOBA_FLY_TAKEOFF && level.time - bb->flyStart > 1500)
+	{
+		bot_boba_fly_stop(bb); // couldn't get off the ground
+	}
+	if (bb->fly == BOBA_FLY_AIR && !self->client->jetPackOn)
+	{
+		Jetpack_On(self); // something turned it off in the air
+	}
+	if (bb->fly == BOBA_FLY_AIR && bb->flyUntil < level.time)
+	{
+		bb->fly = BOBA_FLY_LAND; // flight time is up
+	}
+
+	// SP seeker flight, one push per SP think
+	if (bb->fly == BOBA_FLY_AIR && bb->nextSeekerThink <= level.time)
+	{
+		bb->nextSeekerThink = level.time + BOBA_SEEKER_THINK;
+		bot_boba_seeker_think(bs, bb, ps, xy_dist);
+	}
+}
+
+// Called every frame with the finished usercmd (bot_ai_startframe): flight controls, flamethrower and rockets.
+static void bot_boba_flight_cmd(bot_state_t* bs, usercmd_t* ucmd)
+{
+	bobaBot_t* bb;
+	gentity_t* self;
+	const playerState_t* ps;
+	float enemy_dist = 0.0f;
+	float xy_dist = 0.0f;
+
+	if (!bot_is_boba_class(bs))
+	{
+		return;
+	}
+	bb = &bobaBots[bs->client];
+	self = &g_entities[bs->client];
+	ps = &self->client->ps;
+	if (self->health <= 0)
+	{
+		return;
+	}
+
+	if (bs->currentEnemy && bs->currentEnemy->inuse)
+	{
+		vec3_t diff;
+		VectorSubtract(bs->currentEnemy->r.currentOrigin, ps->origin, diff);
+		enemy_dist = VectorLength(diff);
+		diff[2] = 0;
+		xy_dist = VectorLength(diff);
+	}
+
+	// flamethrower: burn for the whole blast (SP), no shooting meanwhile
+	if (bb->tactic == BOBA_TAC_FLAME && bb->flameUntil > level.time && bs->currentEnemy)
+	{
+		ucmd->buttons &= ~(BUTTON_ATTACK | BUTTON_ALT_ATTACK);
+		if (bb->nextFlameCmd <= level.time)
+		{
+			ucmd->generic_cmd = GENCMD_FLAMETHROWER; // keeps it burning for 300ms (ItemUse_FlameThrower)
+			bb->nextFlameCmd = level.time + 200;
+		}
+		if (ps->groundEntityNum != ENTITYNUM_NONE)
+		{
+			// on foot: close in while further than 50 (Jedi_CombatDistance)
+			ucmd->forwardmove = xy_dist > 50 ? 127 : 0;
+			ucmd->rightmove = 0;
+			ucmd->upmove = 0;
+		}
+	}
+
+	// rockets only from further away (Boba_FireDecide)
+	if (ps->weapon == WP_ROCKET_LAUNCHER && bs->currentEnemy && enemy_dist <= BOBA_ROCKET_MIN_FIRE_DIST)
+	{
+		ucmd->buttons &= ~(BUTTON_ATTACK | BUTTON_ALT_ATTACK);
+	}
+
+	switch (bb->fly)
+	{
+	case BOBA_FLY_TAKEOFF:
+		ucmd->upmove = 127; // jump, the jetpack goes on in the air (bot_boba_think)
+		break;
+
+	case BOBA_FLY_AIR:
+	{
+		const float dz = bb->targetZ - ps->origin[2];
+		if (fabs(dz) < 16.0f)
+		{
+			ucmd->upmove = 0; // hover (PM_JETPACK holds the height while falling)
+		}
+		else
+		{
+			const float up = dz * 2.0f;
+			ucmd->upmove = up > 127.0f ? 127 : up < -127.0f ? -127 : (signed char)up;
+		}
+		if (bs->frame_Enemy_Vis)
+		{
+			// the seeker pushes move him (bot_boba_seeker_think), not the route finding
+			ucmd->forwardmove = 0;
+			ucmd->rightmove = 0;
+		}
+		break;
+	}
+
+	case BOBA_FLY_LAND:
+		ucmd->upmove = -127; // down until he touches the ground, which turns the jetpack off
+		ucmd->forwardmove = 0;
+		ucmd->rightmove = 0;
+		break;
+
+	default:
+		break;
+	}
 }
 
 extern saberInfo_t* BG_MySaber(int clientNum, int saberNum);
@@ -12484,20 +12995,24 @@ void standard_bot_ai(bot_state_t* bs)
 			}
 			// Lightning
 			else if (forceOnlyDark && Q_irand(0, 3) && (bs->cur_ps.fd.forcePowersKnown & (1 << FP_LIGHTNING)) &&
+				level.time >= s_botNextLightning[bs->client] && // cooldown between uses
 				bs->frame_Enemy_Len < FORCE_BCLASS_FORCE_NO_SABER &&
 				level.clients[bs->client].ps.fd.forcePower > 50 &&
 				in_field_of_vision(bs->viewangles, 50, toEnemyAngles))
 			{
 				level.clients[bs->client].ps.fd.forcePowerSelected = FP_LIGHTNING;
+				s_botNextLightning[bs->client] = level.time + Q_irand(BOT_LIGHTNING_MIN_DELAY, BOT_LIGHTNING_MAX_DELAY);
 				use_the_force = 1;
 				forceHostile = 1;
 			}
 			else if ((bs->cur_ps.fd.forcePowersKnown & (1 << FP_LIGHTNING)) &&
+				level.time >= s_botNextLightning[bs->client] && // cooldown between uses
 				bs->frame_Enemy_Len < FORCE_LIGHTNING_RADIUS &&
 				level.clients[bs->client].ps.fd.forcePower > 50 &&
 				in_field_of_vision(bs->viewangles, 50, toEnemyAngles))
 			{
 				level.clients[bs->client].ps.fd.forcePowerSelected = FP_LIGHTNING;
+				s_botNextLightning[bs->client] = level.time + Q_irand(BOT_LIGHTNING_MIN_DELAY, BOT_LIGHTNING_MAX_DELAY);
 				use_the_force = 1;
 				forceHostile = 1;
 			}
@@ -12752,6 +13267,11 @@ void standard_bot_ai(bot_state_t* bs)
 
 	bs->deathActivitiesDone = 0;
 
+	if (bot_is_boba_class(bs))
+	{
+		bot_boba_think(bs); // SP Boba Fett: tactics, jetpack flight, flamethrower
+	}
+
 	if (bot_use_inventory_item(bs))
 	{
 		if (rand() % 10 < 5)
@@ -12888,7 +13408,7 @@ void standard_bot_ai(bot_state_t* bs)
 				return;
 			}
 		}
-		else if (bot_select_ideal_weapon(bs))
+		else if (bot_is_boba_class(bs) && bs->currentEnemy ? bot_boba_select_weapon(bs) : bot_select_ideal_weapon(bs))
 		{
 			return;
 		}
@@ -13377,7 +13897,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 				VectorCopy(bs->currentEnemy->r.currentOrigin, jumpPos[bs->cur_ps.clientNum]);
 			}
-			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK
+			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && !bot_is_boba_class(bs) // Boba flies instead (bot_boba_think)
 				&& bs->BOTjumpState <= JS_WAITING // Not in a jump right now.
 				&& xy < 300
 				&& bs->currentEnemy->r.currentOrigin[2] > bs->origin[2] + 32
@@ -13391,7 +13911,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 				VectorCopy(bs->currentEnemy->r.currentOrigin, jumpPos[bs->cur_ps.clientNum]);
 			}
-			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK
+			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && !bot_is_boba_class(bs) // Boba flies instead (bot_boba_think)
 				&& bs->BOTjumpState <= JS_WAITING // Not in a jump right now.
 				&& xy > 1400
 				&& bs->currentEnemy->r.currentOrigin[2] < bs->origin[2] - 32
@@ -14660,20 +15180,24 @@ void Enhanced_bot_ai(bot_state_t* bs)
 			}
 			// Lightning
 			else if (forceOnlyDark && Q_irand(0, 3) && (bs->cur_ps.fd.forcePowersKnown & (1 << FP_LIGHTNING)) &&
+				level.time >= s_botNextLightning[bs->client] && // cooldown between uses
 				bs->frame_Enemy_Len < FORCE_BCLASS_FORCE_NO_SABER &&
 				level.clients[bs->client].ps.fd.forcePower > 50 &&
 				in_field_of_vision(bs->viewangles, 50, toEnemyAngles))
 			{
 				level.clients[bs->client].ps.fd.forcePowerSelected = FP_LIGHTNING;
+				s_botNextLightning[bs->client] = level.time + Q_irand(BOT_LIGHTNING_MIN_DELAY, BOT_LIGHTNING_MAX_DELAY);
 				use_the_force = 1;
 				forceHostile = 1;
 			}
 			else if ((bs->cur_ps.fd.forcePowersKnown & (1 << FP_LIGHTNING)) &&
+				level.time >= s_botNextLightning[bs->client] && // cooldown between uses
 				bs->frame_Enemy_Len < FORCE_LIGHTNING_RADIUS &&
 				level.clients[bs->client].ps.fd.forcePower > 50 &&
 				in_field_of_vision(bs->viewangles, 50, toEnemyAngles))
 			{
 				level.clients[bs->client].ps.fd.forcePowerSelected = FP_LIGHTNING;
+				s_botNextLightning[bs->client] = level.time + Q_irand(BOT_LIGHTNING_MIN_DELAY, BOT_LIGHTNING_MAX_DELAY);
 				use_the_force = 1;
 				forceHostile = 1;
 			}
@@ -14954,6 +15478,11 @@ void Enhanced_bot_ai(bot_state_t* bs)
 
 	bs->deathActivitiesDone = 0;
 
+	if (bot_is_boba_class(bs))
+	{
+		bot_boba_think(bs); // SP Boba Fett: tactics, jetpack flight, flamethrower
+	}
+
 	if (bot_use_inventory_item(bs))
 	{
 		if (rand() % 10 < 5)
@@ -15090,7 +15619,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 				return;
 			}
 		}
-		else if (bot_select_ideal_weapon(bs))
+		else if (bot_is_boba_class(bs) && bs->currentEnemy ? bot_boba_select_weapon(bs) : bot_select_ideal_weapon(bs))
 		{
 			return;
 		}
@@ -17648,6 +18177,7 @@ The last word on a bot's move this frame, like a singleplayer NPC moves:
 - bot_idlewalk: he walks while he has no enemy (not in CTF / Siege, where he has somewhere to be).
 ==================
 */
+#define BOT_IDLEWALK_STAIRS_HEIGHT	20.0f	// bot_idlewalk: a next waypoint this much higher / lower = stairs, run them
 static void bot_calm_movement(bot_state_t* bs, usercmd_t* ucmd)
 {
 	const int client = bs->client;
@@ -17671,7 +18201,9 @@ static void bot_calm_movement(bot_state_t* bs, usercmd_t* ucmd)
 	}
 
 	if (bot_idlewalk.integer && !bs->currentEnemy && self->waterlevel < 2
-		&& level.gametype != GT_CTF && level.gametype != GT_CTY && level.gametype != GT_SIEGE)
+		&& level.gametype != GT_CTF && level.gametype != GT_CTY && level.gametype != GT_SIEGE
+		// stairs / ramps (the next waypoint well above or below): he runs up and down them
+		&& !(bs->wpCurrent && fabs(bs->wpCurrent->origin[2] - bs->origin[2]) > BOT_IDLEWALK_STAIRS_HEIGHT))
 	{
 		ucmd->buttons |= BUTTON_WALKING;
 		if (ucmd->forwardmove > 46) ucmd->forwardmove = 46;
@@ -17893,6 +18425,7 @@ int bot_ai_startframe(const int time)
 		}
 
 		bot_calm_movement(bs, ucmd);
+		bot_boba_flight_cmd(bs, ucmd); // Boba Fett classes: jetpack flight, flamethrower (after the jump filters)
 
 		trap->BotUserCommand(botstates[i]->client, &botstates[i]->lastucmd);
 	}

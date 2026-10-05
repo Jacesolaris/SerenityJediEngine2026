@@ -84,7 +84,7 @@ extern vec3_t playerMaxs;
 #include "../Ragl/graph_region.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 #endif
 #if !defined(RUFL_HSTRING_INC)
 #include "../Rufl/hstring.h"

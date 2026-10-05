@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "rd-common/tr_public.h"
 #include "rd-common/tr_common.h"
 #include "ghoul2/ghoul2_shared.h" //rwwRMG - added
-#include "qgl.h"
+#include "rd-vanilla/qgl.h"
 
 #define GL_INDEX_TYPE		GL_UNSIGNED_INT
 using glIndex_t = unsigned int;
@@ -1847,6 +1847,6 @@ void R_AddDecals(void);
 // tr_surfacesprites
 void RB_DrawSurfaceSprites(shaderStage_t* stage, shaderCommands_t* input);
 
-extern refimport_t* ri;
+extern refimport_t ri;
 
 qboolean ShaderHashTableExists();

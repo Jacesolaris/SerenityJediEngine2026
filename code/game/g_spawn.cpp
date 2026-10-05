@@ -40,7 +40,7 @@ char spawnVarChars[MAX_SPAWN_VARS_CHARS];
 
 int delayedShutDown = 0;
 
-#include "../qcommon/sstring.h"
+#include "qcommon/sstring.h"
 
 //NOTENOTE: Be sure to change the mirrored code in cgmain.cpp
 using namePrecache_m = std::map<sstring_t, unsigned char>;

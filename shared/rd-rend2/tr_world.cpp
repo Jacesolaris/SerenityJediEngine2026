@@ -773,12 +773,14 @@ R_inPVS
 qboolean R_inPVS(const vec3_t p1, const vec3_t p2, byte* mask)
 {
 	mnode_t* leaf = R_PointInLeaf(p1);
+	if (!leaf)
+		return qtrue;	// no world loaded
 
 	//agh, the damn snapshot mask doesn't work for this
 	mask = (byte*)ri.CM_ClusterPVS(leaf->cluster);
 
 	leaf = R_PointInLeaf(p2);
-	if (!(mask[leaf->cluster >> 3] & (1 << (leaf->cluster & 7))))
+	if (mask && leaf && !(mask[leaf->cluster >> 3] & (1 << (leaf->cluster & 7))))
 		return qfalse;
 
 	return qtrue;

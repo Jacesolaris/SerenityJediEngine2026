@@ -30,7 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../server/exe_headers.h"
 
 #include "ui_local.h"
-#include "ui_pazaak.h"
+#include "ui/ui_pazaak.h"
 #include "gameinfo.h"
 #include "../qcommon/stv_version.h"
 

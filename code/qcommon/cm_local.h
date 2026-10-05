@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "q_shared.h"
 #include "qcommon.h"
-#include "cm_polylib.h"
+#include "qcommon/cm_polylib.h"
 
 #ifndef CM_LOCAL_H
 #define CM_LOCAL_H

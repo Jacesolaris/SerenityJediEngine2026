@@ -123,6 +123,9 @@ typedef struct {
 	qboolean* (*gbUsingCachedMapDataRightNow)();
 	qboolean* (*gbAlreadyDoingLoad)();
 	int (*com_frameTime)();
+
+	// video recording (as MP): the renderer hands each captured frame back to the AVI writer
+	void (*CL_WriteAVIVideoFrame)(const byte* imageBuffer, int size);
 } refimport_t;
 
 extern refimport_t ri;
@@ -389,6 +392,10 @@ using refexport_t = struct
 	// Performance analysis (perform anal)
 	void (*G2Time_ResetTimers)(void);
 	void (*G2Time_ReportTimers)(void);
+
+	// video recording (as MP)
+	void (*TakeVideoFrame)(int width, int height, byte* captureBuffer, byte* encodeBuffer, qboolean motionJpeg);
+	void (*FlushVideoFrames)(void); // writes the frames still being compressed (before the AVI file is closed)
 };
 
 // this is the only function actually exported at the linker level

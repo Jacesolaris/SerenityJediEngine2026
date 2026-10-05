@@ -56,6 +56,7 @@ extern qboolean PM_LockAngles(gentity_t* ent, usercmd_t* ucmd);
 extern qboolean PM_AdjustAnglesToGripper(gentity_t* gent, usercmd_t* cmd);
 extern qboolean PM_AdjustAnglesToPuller(gentity_t* ent, const gentity_t* puller, usercmd_t* ucmd, qboolean face_away);
 extern qboolean PM_AdjustAngleForWallRun(gentity_t* ent, usercmd_t* ucmd, qboolean doMove);
+extern void PM_WallRunChain(gentity_t* ent, const usercmd_t* ucmd);
 extern qboolean PM_AdjustAngleForWallRunUp(gentity_t* ent, usercmd_t* ucmd, qboolean doMove);
 extern qboolean PM_AdjustAnglesForSpinningFlip(gentity_t* ent, usercmd_t* ucmd, qboolean angles_only);
 extern qboolean PM_AdjustAnglesForBackAttack(gentity_t* ent, usercmd_t* ucmd);
@@ -3425,30 +3426,7 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 		}
 	}
 
-	if ((ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent)) && g_saberLockCinematicCamera->integer)
-	{
-		//who the saber lock camera is on (ENTITYNUM_NONE: nobody). Its overrides are only taken back from him: this
-		//used to clear them every frame for the player and for whatever he controls - a ship he flies lost its camera
-		//range and FOV that way, and the camera sat on top of it.
-		static int saber_lock_camera_ent = ENTITYNUM_NONE;
-
-		if (ent->client->ps.communicatingflags & (1 << CF_SABERLOCKING))
-		{
-			saber_lock_camera_ent = ent->s.number;
-			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_FOV | CG_OVERRIDE_3RD_PERSON_CDP | CG_OVERRIDE_3RD_PERSON_HOF;
-
-			cg.overrides.thirdPersonRange = 82.5f;
-			cg.overrides.thirdPersonCameraDamp = 1;
-			cg.overrides.thirdPersonHorzOffset = -12.5f;
-			cg.overrides.fov = 40.5f;
-		}
-		else if (saber_lock_camera_ent == ent->s.number)
-		{
-			saber_lock_camera_ent = ENTITYNUM_NONE;
-			cg.overrides.active &= ~(CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_FOV | CG_OVERRIDE_3RD_PERSON_CDP | CG_OVERRIDE_3RD_PERSON_HOF);
-			cg.overrides.thirdPersonRange = cg.overrides.thirdPersonCameraDamp = cg.overrides.thirdPersonHorzOffset = 0;
-		}
-	}
+	//the saber lock camera (range, FOV, offsets) is set in cgame now (CG_UpdateCameraBlends), so it can blend in and out
 
 	//check force drain
 	if (ent->client->ps.forcePowersActive & 1 << FP_DRAIN)
@@ -6018,6 +5996,7 @@ qboolean G_CheckClampUcmd(gentity_t* ent, usercmd_t* ucmd)
 	overridAngles = PM_AdjustAngleForWallJump(ent, ucmd, qtrue) ? qtrue : overridAngles;
 	overridAngles = PM_AdjustAngleForWallRunUp(ent, ucmd, qtrue) ? qtrue : overridAngles;
 	overridAngles = PM_AdjustAngleForWallRun(ent, ucmd, qtrue) ? qtrue : overridAngles;
+	PM_WallRunChain(ent, ucmd); // wall-to-wall jump: a new wall-run on the far wall
 	overridAngles = PM_AdjustAnglesForKnockdown(ent, ucmd, qfalse) ? qtrue : overridAngles;
 
 	return overridAngles;

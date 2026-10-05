@@ -45,13 +45,30 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_shared.h>
 #include <qcommon\q_math.h>
 #include <qcommon\q_platform.h>
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 
 //these two defs are shared now because we do clientside ent parsing
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
 
 #define	GAME_VERSION		"SerenityJediEngine2026"
+
+// Wall-run (Fallen Order style): the run lasts as long as its animation, which plays at this speed (slower = longer)
+#define WALL_RUN_ANIM_SCALE	0.75f
+#define LONG_LEAP_START_ANIM_SCALE	4.0f	// force long leap start anim speed: SP plays it under force speed 3 (timescale 0.25) - see PM_SaberStartTransAnim
+#define WALL_RUN_SINK_TIME	600		// ms before the end of the run: from here the player sinks slowly
+#define WALL_RUN_SINK_SPEED	60.0f		// (units per second)
+#define WALL_RUN_CHAIN_DIST	40.0f		// wall-to-wall jump: a wall this close on the far side starts a new wall-run
+#define WALL_RUN_FLIP_PUSH	250.0f		// jumping off a wall-run: sideways push (was 150)
+#define WALL_RUN_FLIP_LIFT	120.0f		// and at least this upward speed
+#define DOUBLE_JUMP_VELOCITY	300.0f		// double jump (Fallen Order style): upward speed of the second jump
+#define DOUBLE_JUMP_MAX_RISE	(JUMP_VELOCITY * 0.5f)	// double jump: only while rising slower than this (second half of the rise, never falling)
+#define AIR_DASH_SPEED			600.0f		// air dash (Jedi Survivor style): horizontal speed of the dash
+#define AIR_DASH_TIME			350			// air dash: ms it holds that speed and the height (then falls normally)
+#define AIR_DASH_MIN_HEIGHT		64.0f		// air dash: only this high above the ground (else running down steps air dashes)
+#define AIR_WALL_RUN_REACH		28.0f		// wall-run from the air: a wall this close to the side catches the player
+#define AIR_WALL_RUN_MIN_SPEED	150.0f		// wall-run from the air: horizontal speed needed
+#define AIR_WALL_RUN_MAX_FALL	300.0f		// wall-run from the air: not when falling faster than this
 
 #define DEFAULT_SABER			"Kyle"
 #define DEFAULT_SABER_NAME		"lightsaber"
@@ -64,7 +81,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-03,Month-10,Year-26,BuildNum-03" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-05,Month-10,Year-26,BuildNum-04" // build date
 
 #define	STEPSIZE		18
 
@@ -549,6 +566,9 @@ extern int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS];
 #define	PMF_KICK_HELD		33554432
 #define	PMF_ACCURATE_MISSILE_BLOCK_HELD		67108864
 #define	PMF_WALKING_HELD		134217728
+#define	PMF_DOUBLE_JUMPED	268435456	// used the double jump (Fallen Order style) in this jump; cleared on landing
+#define	PMF_AIR_DASHED		536870912	// used the air dash (Jedi Survivor style) in this jump; cleared on landing
+#define	PMF_AIR_WALL_RAN	1073741824	// started a wall-run from the air (Fallen Order style) in this jump; cleared on landing
 
 #define	PMF_ALL_TIMES	(PMF_TIME_WATERJUMP|PMF_TIME_LAND|PMF_TIME_KNOCKBACK)
 

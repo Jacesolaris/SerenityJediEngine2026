@@ -22,11 +22,11 @@ for their scripts.
 #include "menudef.h"
 #include "ui_shared.h"
 #include "pazaak_core.h"
-#include "ui_pazaak.h"
+#include "ui/ui_pazaak.h"
 #else
 #include "ui_local.h"
 #include "../game/pazaak_core.h"
-#include "ui_pazaak.h"
+#include "ui/ui_pazaak.h"
 #endif
 
 /*

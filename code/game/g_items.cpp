@@ -42,7 +42,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "teams.h"
 #include "b_public.h"
 #include "ai.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "g_public.h"
 #include <cgame\cg_camera.h>
 

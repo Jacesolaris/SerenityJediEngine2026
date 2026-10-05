@@ -636,6 +636,28 @@ qboolean PC_Script_Parse(const int handle, const char** out)
 			return qtrue;
 		}
 
+		// the precompiler reads "-204" as "-" and "204": put negative numbers back together (as SP reads them),
+		// else e.g. "transition2 character -204 114 900 1000" runs as "0 204 114 900"
+		if (token.string[0] == '-' && token.string[1] == '\0')
+		{
+			if (!trap->PC_ReadToken(handle, &token))
+				return qfalse;
+
+			if (token.type == TT_NUMBER)
+			{
+				Q_strcat(script, 2048, va("\"-%s\" ", token.string));
+				continue;
+			}
+
+			Q_strcat(script, 2048, "- ");
+
+			if (Q_stricmp(token.string, "}") == 0)
+			{
+				*out = String_Alloc(script);
+				return qtrue;
+			}
+		}
+
 		if (token.string[1] != '\0')
 		{
 			Q_strcat(script, 2048, va("\"%s\"", token.string));
@@ -4528,6 +4550,8 @@ static void Display_CloseCinematics()
 void Menus_Activate(menuDef_t* menu)
 {
 	menu->window.flags |= WINDOW_HASFOCUS | WINDOW_VISIBLE;
+	// every page opens with the character preview facing the front (the model_angle 180 of the menus)
+	DC->setCVar("ui_char_model_angle", "180");
 	if (menu->onOpen)
 	{
 		itemDef_t item;
@@ -4558,6 +4582,28 @@ int Display_VisibleMenuCount()
 	return count;
 }
 
+// Close a popup clicked outside of: as Menus_CloseByName, give the focus back to the menu below it. Only hiding it
+// left no menu with the focus (e.g. password popup -> New Favorite -> Add Favorite), and the next key event then
+// dropped the UI key catcher: the menus went "crazy".
+static void Menus_CloseOOB(menuDef_t* menu)
+{
+	if (!(menu->window.flags & WINDOW_VISIBLE))
+	{
+		return;
+	}
+
+	Menu_RunCloseScript(menu);
+
+	if (menu->window.flags & WINDOW_HASFOCUS && openMenuCount)
+	{
+		openMenuCount -= 1;
+		menuStack[openMenuCount]->window.flags |= WINDOW_HASFOCUS;
+		menuStack[openMenuCount] = NULL;
+	}
+
+	menu->window.flags &= ~(WINDOW_HASFOCUS | WINDOW_VISIBLE);
+}
+
 static void Menus_HandleOOBClick(menuDef_t* menu, const int key, const qboolean down)
 {
 	if (menu)
@@ -4567,16 +4613,14 @@ static void Menus_HandleOOBClick(menuDef_t* menu, const int key, const qboolean 
 		// key on.. force a mouse move to activate focus and script stuff
 		if (down && menu->window.flags & WINDOW_OOB_CLICK)
 		{
-			Menu_RunCloseScript(menu);
-			menu->window.flags &= ~(WINDOW_HASFOCUS | WINDOW_VISIBLE);
+			Menus_CloseOOB(menu);
 		}
 
 		for (int i = 0; i < menuCount; i++)
 		{
 			if (Menu_OverActiveItem(&Menus[i], DC->cursorx, DC->cursory))
 			{
-				Menu_RunCloseScript(menu);
-				menu->window.flags &= ~(WINDOW_HASFOCUS | WINDOW_VISIBLE);
+				Menus_CloseOOB(menu);
 				//	Menus_Activate(&Menus[i]);
 				Menu_HandleMouseMove(&Menus[i], DC->cursorx, DC->cursory);
 				Menu_HandleKey(&Menus[i], key, down);
@@ -5354,6 +5398,8 @@ static const char* g_bindCommands[] = {
 	"use_seeker",
 	"use_sentry",
 	"voicechat",
+	"recorddemo",	// controls menu "Record Demo" (the engine command is recorddemo, there is no "record")
+	"stoprecord",	// controls menu "Stop Recording"
 	"weapnext",
 	"weapon 1",
 	"weapon 10",
@@ -5940,25 +5986,24 @@ static void Item_Model_Paint(itemDef_t* item)
 	memset(&ent, 0, sizeof ent);
 
 	// use item storage to track
+	// as SP: the yaw comes from the item's cvar (set by the ITEM_TYPE_SLIDER_ROTATE item when the player drags the model)
+	float curYaw = modelPtr->angle;
+	if (item->cvar)
+	{
+		curYaw = DC->getCVarValue(item->cvar);
+	}
+	if (modelPtr->rotationSpeed)
+	{
+		curYaw += (float)refdef.time / modelPtr->rotationSpeed;
+	}
 	if (item->flags & ITF_ISANYSABER && !(item->flags & ITF_ISCHARACTER))
 	{
 		//hack to put saber on it's side
-		if (modelPtr->rotationSpeed)
-		{
-			VectorSet(angles, modelPtr->angle + (float)refdef.time / modelPtr->rotationSpeed, 0, 90); // rotate saber
-		}
-		else
-		{
-			VectorSet(angles, modelPtr->angle, 0, 90);
-		}
-	}
-	else if (modelPtr->rotationSpeed)
-	{
-		VectorSet(angles, 0, modelPtr->angle + (float)refdef.time / modelPtr->rotationSpeed, 0);
+		VectorSet(angles, curYaw, 0, 90);
 	}
 	else
 	{
-		VectorSet(angles, 0, modelPtr->angle, 0);
+		VectorSet(angles, 0, curYaw, 0);
 	}
 
 	AnglesToAxis(angles, ent.axis);
@@ -6262,16 +6307,6 @@ static void Item_ListBox_Paint(itemDef_t* item)
 		{
 			//
 		}
-
-#ifdef	_DEBUG
-		// Show pic name
-		text = DC->feederItemText(item->special, item->cursorPos, 0, &optionalImage1, &optionalImage2, &optionalImage3);
-		if (text)
-		{
-			DC->drawText(item->window.rect.x, item->window.rect.y + item->window.rect.h, item->textscale,
-				item->window.foreColor, text, 0, 0, item->textStyle, item->i_menu_font);
-		}
-#endif
 	}
 	// A vertical list box
 	else

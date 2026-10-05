@@ -46,7 +46,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bg_weapons.h"
 #include "b_public.h"
 #include "g_public.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "teams.h"
 #include <qcommon\q_shared.h>
 #include <qcommon\q_math.h>
@@ -76,6 +76,8 @@ extern qboolean manual_meleeblocking(const gentity_t* defender);
 extern qboolean manual_melee_dodging(const gentity_t* defender);
 extern qboolean PM_SaberInAttackPure(int move);
 extern int IsPressingDashButton(const gentity_t* self);
+extern void ForceSpeedDash(gentity_t* self);
+static qboolean s_dashHeld[MAX_CLIENTS]; // the dash button is still held since the last dash (one dash per press)
 extern qboolean PM_StandingAnim(int anim);
 extern qboolean PM_InKnockDownOnly(int anim);
 extern qboolean PM_SaberInTransitionAny(int move);
@@ -2960,7 +2962,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 		return;
 	}
 
-	if (ent->client->ps.weapon == WP_MELEE)
+	if (ent->client->ps.weapon == WP_MELEE && taunt != TAUNT_MEDITATE) // as SP: meditate works with melee too
 	{
 		G_AddEvent(ent, EV_TAUNT, taunt);
 		return;
@@ -5909,7 +5911,7 @@ static void ClientThink_real(gentity_t* ent)
 
 	if (manual_meleeblocking(ent))
 	{
-		if (client->ps.MeleeblockStartTime <= 0 && level.time - client->ps.MeleeblockLastStartTime >= 1300)
+		if (client->ps.MeleeblockStartTime <= 0 && level.time - client->ps.MeleeblockLastStartTime >= 1000)
 		{
 			// They just pressed block. Mark the time... 3000 wait between allowed presses.
 			client->ps.MeleeblockStartTime = level.time; //Blocking 2
@@ -5922,7 +5924,7 @@ static void ClientThink_real(gentity_t* ent)
 		}
 		else
 		{
-			if (level.time - client->ps.MeleeblockStartTime >= 220) //Blocking 3
+			if (level.time - client->ps.MeleeblockStartTime >= 800) //Blocking 3 // as SP: the stance lasts 800 ms
 			{
 				// When block was pressed, wait 200 before letting go of block.
 				client->ps.MeleeblockStartTime = 0; //Blocking 2
@@ -6045,13 +6047,27 @@ static void ClientThink_real(gentity_t* ent)
 			client->ps.Smash_Count = 0;
 			client->ps.communicatingflags &= ~(1 << CF_SABERSMASHING);
 		}
+		// one dash per press: holding the dash button doesn't dash again until it is released and pressed again
+		if (!(client->buttons & BUTTON_DASH))
+		{
+			s_dashHeld[ent->s.number] = qfalse;
+			// MP thinks once per server frame (SP every frame), so a quick tap is often one think only: clear the start
+			// time on release, else the next press spent its only think clearing it and no dash started
+			client->ps.dashstartTime = 0;
+			if (client->ps.Dash_Count >= 2 && level.time - client->ps.dashlaststartTime >= 2500)
+			{// cooldown over
+				client->ps.Dash_Count = 0;
+			}
+		}
 		if (IsPressingDashButton(ent) == qtrue)
 		{
 			if (client->ps.Dash_Count < 2)
 			{
 				if ((client->ps.dashstartTime <= 0) &&
-					((level.time - client->ps.dashlaststartTime) >= 100))
+					((level.time - client->ps.dashlaststartTime) >= 100) &&
+					!s_dashHeld[ent->s.number])
 				{
+					s_dashHeld[ent->s.number] = qtrue;
 					client->ps.dashstartTime = level.time;
 					client->ps.dashlaststartTime = level.time;
 					client->ps.Dash_Count++;
@@ -6077,6 +6093,7 @@ static void ClientThink_real(gentity_t* ent)
 					{
 						client->ps.communicatingflags |= (1 << CF_DASHING);
 					}
+					ForceSpeedDash(ent); // boost now, as SP: a tap is often released before the next force update
 				}
 				else if ((level.time - client->ps.dashlaststartTime) >= 10)
 				{
@@ -6087,8 +6104,10 @@ static void ClientThink_real(gentity_t* ent)
 			else
 			{
 				if ((client->ps.dashstartTime <= 0) &&
-					((level.time - client->ps.dashlaststartTime) >= 2500))
+					((level.time - client->ps.dashlaststartTime) >= 2500) &&
+					!s_dashHeld[ent->s.number])
 				{
+					s_dashHeld[ent->s.number] = qtrue;
 					client->ps.dashstartTime = level.time;
 					client->ps.dashlaststartTime = level.time;
 
@@ -6096,6 +6115,7 @@ static void ClientThink_real(gentity_t* ent)
 					{
 						client->ps.communicatingflags |= (1 << CF_DASHING);
 					}
+					ForceSpeedDash(ent); // boost now, as SP: a tap is often released before the next force update
 				}
 				else if ((level.time - client->ps.dashlaststartTime) >= 2500)
 				{
@@ -7481,15 +7501,13 @@ static void ClientThink_real(gentity_t* ent)
 				{
 					if (face_kicked->health > 0 &&
 						face_kicked->client->ps.stats[STAT_HEALTH] > 0 &&
-						face_kicked->client->ps.forceHandExtend != HANDEXTEND_KNOCKDOWN)
+						!PM_InKnockDown(&face_kicked->client->ps))
 					{
 						if (BG_KnockDownable(&face_kicked->client->ps) && Q_irand(1, 10) <= 3)
 						{
 							//only actually knock over sometimes, but always do velocity hit
-							face_kicked->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-							face_kicked->client->ps.forceHandExtendTime = level.time + 1100;
-							face_kicked->client->ps.forceDodgeAnim = 0;
-							//this toggles between 1 and 0, when it's 1 we should play the get up anim
+							//SP knockdown and getup, with the strength of the SP kicks
+							G_Knockdown(face_kicked, ent, oppDir, 80, qtrue);
 						}
 
 						face_kicked->client->ps.otherKiller = ent->s.number;

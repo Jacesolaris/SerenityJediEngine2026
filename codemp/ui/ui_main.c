@@ -37,7 +37,7 @@ USER INTERFACE MAIN
 
 #include "ghoul2/G2.h"
 #include "ui_local.h"
-#include "ui_pazaak.h"
+#include "ui/ui_pazaak.h"
 #include "qcommon/qfiles.h"
 #include "qcommon/game_version.h"
 #include "ui_force.h"
@@ -1579,8 +1579,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 03/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 03------------------------------\n");
+	Com_Printf("---------------------Build date 05/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 04------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

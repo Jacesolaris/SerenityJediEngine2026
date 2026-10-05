@@ -545,7 +545,7 @@ COLLISION DETECTION
 ==============================================================
 */
 
-#include "../game/surfaceflags.h"			// shared with the q3map utility
+#include "game/surfaceflags.h"			// shared with the q3map utility
 
 /*
 Ghoul2 Insert Start

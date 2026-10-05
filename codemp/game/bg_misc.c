@@ -1531,9 +1531,9 @@ A small lizard carried on the player, which prevents the possessor from using an
 */
 {
 	"item_ysalimari",
-	"sound/player/ysalimari->wav",
+	"sound/player/ysalimari.wav",
 	{
-		"models/map_objects/mp/ysalimari->md3",
+		"models/map_objects/mp/ysalimari.md3",
 		0, 0, 0
 	},
 	/* view */ NULL,
@@ -3709,6 +3709,17 @@ void BG_PlayerStateToEntityState(playerState_t* ps, entityState_t* s, const qboo
 
 	s->userInt3 = ps->userInt3;
 
+	// the bars over the heads (cgame cg_debugHealthBars / cg_drawblockpointbar): the clients only get the other
+	// players' and NPCs' health, block points and saber fatigue from here
+	if (ps->stats[STAT_MAX_HEALTH] > 0 && ps->stats[STAT_MAX_HEALTH] < 1000)
+	{//bigger ones (vehicles) are scaled down by G_ScaleNetHealth
+		s->health = ps->stats[STAT_HEALTH] > 0 ? ps->stats[STAT_HEALTH] : 0;
+		s->maxhealth = ps->stats[STAT_MAX_HEALTH];
+	}
+	s->blockPoints = ps->fd.blockPoints;
+	s->blockPointsMax = ps->fd.blockPointsMax;
+	s->userInt2 = ps->saberFatigueChainCount < 0 ? 0 : ps->saberFatigueChainCount > 255 ? 255 : ps->saberFatigueChainCount;
+
 	//NOT INCLUDED IN ENTITYSTATETOPLAYERSTATE:
 	s->model_index2 = ps->weaponstate;
 	s->constantLight = ps->weaponChargeTime;
@@ -3922,6 +3933,17 @@ void BG_PlayerStateToEntityStateExtraPolate(playerState_t* ps, entityState_t* s,
 	s->generic1 = ps->generic1;
 
 	s->userInt3 = ps->userInt3;
+
+	// the bars over the heads (cgame cg_debugHealthBars / cg_drawblockpointbar): the clients only get the other
+	// players' and NPCs' health, block points and saber fatigue from here
+	if (ps->stats[STAT_MAX_HEALTH] > 0 && ps->stats[STAT_MAX_HEALTH] < 1000)
+	{//bigger ones (vehicles) are scaled down by G_ScaleNetHealth
+		s->health = ps->stats[STAT_HEALTH] > 0 ? ps->stats[STAT_HEALTH] : 0;
+		s->maxhealth = ps->stats[STAT_MAX_HEALTH];
+	}
+	s->blockPoints = ps->fd.blockPoints;
+	s->blockPointsMax = ps->fd.blockPointsMax;
+	s->userInt2 = ps->saberFatigueChainCount < 0 ? 0 : ps->saberFatigueChainCount > 255 ? 255 : ps->saberFatigueChainCount;
 
 	//NOT INCLUDED IN ENTITYSTATETOPLAYERSTATE:
 	s->model_index2 = ps->weaponstate;

@@ -53,7 +53,7 @@ class CRailMover;
 #include "../Ratl/array_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 #endif
 #if !defined(RAVL_VEC_INC)
 #include "../Ravl/CVec.h"

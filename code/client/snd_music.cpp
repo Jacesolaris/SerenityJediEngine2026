@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //Anything above this #include will be ignored by the compiler
 #include "../server/exe_headers.h"
 
-#include "../qcommon/sstring.h"
+#include "qcommon/sstring.h"
 #include <algorithm>
 #include <string>
 #include <sstream>
@@ -36,7 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "cl_mp3.h"
 
 //
-#include "snd_music.h"
+#include "client/snd_music.h"
 
 #include "../game/genericparser2.h"
 

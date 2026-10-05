@@ -1885,6 +1885,6 @@ using decalPoly_t = struct decalPoly_s
 	polyVert_t verts[MAX_VERTS_ON_DECAL_POLY];
 };
 
-extern refimport_t* ri;
+extern refimport_t ri;
 
 qboolean ShaderHashTableExists();

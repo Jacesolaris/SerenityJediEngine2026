@@ -37,7 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_vehicles.h"
 #include "g_functions.h"
 #if !defined(RATL_VECTOR_VS_INC)
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////

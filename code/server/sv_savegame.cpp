@@ -25,7 +25,7 @@
 constexpr auto JPEG_IMAGE_QUALITY = 95;
 
 #include "server.h"
-#include "../qcommon/stringed_ingame.h"
+#include "qcommon/stringed_ingame.h"
 #include "../game/statindex.h"
 
 #include "qcommon/ojk_saved_game.h"

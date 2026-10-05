@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define __SND_AMBIENT__
 
 // Includes
-#include "../qcommon/sstring.h"	// #include <string>
+#include "qcommon/sstring.h"	// #include <string>
 #include <vector>
 #include <map>
 

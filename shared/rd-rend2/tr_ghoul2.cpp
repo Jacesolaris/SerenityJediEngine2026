@@ -521,7 +521,11 @@ public:
 	}
 };
 
+#ifdef REND2_SP
 void RemoveBoneCache(CBoneCache* boneCache)
+#else
+void RemoveBoneCache(const CBoneCache* boneCache)	// MP: declared const in ghoul2/g2_local.h
+#endif
 {
 #ifdef _FULL_G2_LEAK_CHECKING
 	g_Ghoul2Allocations -= sizeof(*boneCache);
@@ -1527,7 +1531,11 @@ void G2_RagPrintMatrix(mdxaBone_t* mat);
 // off which will give us the desired settling position given the frame in the skeleton
 // that should be used -rww
 int G2_Add_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName);
+#ifdef REND2_SP
 int G2_Find_Bone(const model_t* mod, boneInfo_v& blist, const char* boneName);
+#else
+int G2_Find_Bone(const model_t* mod, const boneInfo_v& blist, const char* boneName);	// MP G2_bones.cpp
+#endif
 
 void G2_RagGetAnimMatrix(CGhoul2Info& ghoul2, const int boneNum, mdxaBone_t& matrix, const int frame)
 {
@@ -2509,7 +2517,11 @@ static void RenderSurfaces(CRenderSurface& RS, const trRefEntity_t* ent, int ent
 			int		j;
 
 			// match the surface name to something in the skin file
+#ifdef REND2_SP
 			shader = R_GetShaderByHandle(surfInfo->shaderIndex);
+#else
+			shader = tr.defaultShader;
+#endif
 			for (j = 0; j < RS.skin->numSurfaces; j++)
 			{
 				// the names have both been lowercased
@@ -2596,6 +2608,7 @@ static void RenderSurfaces(CRenderSurface& RS, const trRefEntity_t* ent, int ent
 								float(curTime - kcur->second.mGoreGrowStartTime) /
 								float(magicFactor42);  // linear
 						}
+#ifdef REND2_SP
 						if (curTime < (*kcur).second.mGoreGrowEndTime)
 						{
 							newSurf2->scale = 1.0f / ((curTime - (*kcur).second.mGoreGrowStartTime) * (*kcur).second.mGoreGrowFactor + (*kcur).second.mGoreGrowOffset);
@@ -2604,6 +2617,7 @@ static void RenderSurfaces(CRenderSurface& RS, const trRefEntity_t* ent, int ent
 								newSurf2->scale = 1.0f;
 							}
 						}
+#endif
 						shader_t* gshader;
 						if (kcur->second.shader)
 						{
@@ -4013,6 +4027,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	// first up, go load in the animation file we need that has the skeletal animation info for this model
 	mdxm->animIndex = RE_RegisterModel(va("%s.gla", mdxm->animName));
 
+#ifdef REND2_SP // per-map GLA override (sv_mapname is an SP renderer cvar)
 	char  animGLAName[MAX_QPATH];
 	char* strippedName;
 	char* slash = NULL;
@@ -4037,6 +4052,7 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 			RE_RegisterModel(va("models/players/%s_%s/%s_%s.gla", strippedName, mapname, strippedName, mapname));
 		}
 	}
+#endif
 
 #ifndef JK2_MODE
 	bool isAnOldModelFile = false;

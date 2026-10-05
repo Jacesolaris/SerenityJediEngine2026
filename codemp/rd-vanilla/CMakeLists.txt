@@ -33,8 +33,8 @@ set(MPVanillaRendererIncludeDirectories
 	)
 
 set(MPVanillaRendererFiles
-	"${MPDir}/rd-vanilla/glext.h"
-	"${MPDir}/rd-vanilla/qgl.h"
+	"${SharedDir}/rd-vanilla/glext.h"
+	"${SharedDir}/rd-vanilla/qgl.h"
 	"${MPDir}/rd-vanilla/G2_API.cpp"
 	"${MPDir}/rd-vanilla/G2_bolts.cpp"
 	"${MPDir}/rd-vanilla/G2_bones.cpp"
@@ -55,8 +55,8 @@ set(MPVanillaRendererFiles
 	"${MPDir}/rd-vanilla/tr_marks.cpp"
 	"${MPDir}/rd-vanilla/tr_mesh.cpp"
 	"${MPDir}/rd-vanilla/tr_model.cpp"
-	"${MPDir}/rd-vanilla/tr_quicksprite.cpp"
-	"${MPDir}/rd-vanilla/tr_quicksprite.h"
+	"${SharedDir}/rd-vanilla/tr_quicksprite.cpp"
+	"${SharedDir}/rd-vanilla/tr_quicksprite.h"
 	"${MPDir}/rd-vanilla/tr_scene.cpp"
 	"${MPDir}/rd-vanilla/tr_shade.cpp"
 	"${MPDir}/rd-vanilla/tr_shade_calc.cpp"
@@ -86,11 +86,11 @@ set(MPVanillaRendererRdCommonFiles
 	"${MPDir}/rd-common/tr_common.h"
 	"${MPDir}/rd-common/tr_font.cpp"
 	"${MPDir}/rd-common/tr_font.h"
-	"${MPDir}/rd-common/tr_image_load.cpp"
+	"${SharedDir}/rd-common/tr_image_load.cpp"
 	"${MPDir}/rd-common/tr_image_jpg.cpp"
-	"${MPDir}/rd-common/tr_image_tga.cpp"
-	"${MPDir}/rd-common/tr_image_png.cpp"
-	"${MPDir}/rd-common/tr_noise.cpp"
+	"${SharedDir}/rd-common/tr_image_tga.cpp"
+	"${SharedDir}/rd-common/tr_image_png.cpp"
+	"${SharedDir}/rd-common/tr_noise.cpp"
 	"${MPDir}/rd-common/tr_public.h"
 	"${MPDir}/rd-common/tr_types.h")
 source_group("rd-common" FILES ${MPVanillaRendererRdCommonFiles})

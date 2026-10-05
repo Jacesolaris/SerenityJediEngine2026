@@ -42,7 +42,7 @@ set(MPUIGameFiles
 	"${MPDir}/game/bg_public.h"
 	"${MPDir}/game/bg_saga.h"
 	"${MPDir}/game/bg_weapons.h"
-	"${MPDir}/game/surfaceflags.h"
+	"${SharedDir}/game/surfaceflags.h"
 	)
 source_group("game" FILES ${MPUIGameFiles})
 set(MPUIFiles ${MPUIFiles} ${MPUIGameFiles})
@@ -69,7 +69,7 @@ set(MPUIFiles ${MPUIFiles} ${MPUICommonSafeFiles})
 set(MPUIUIFiles
 	"${MPDir}/ui/ui_atoms.c"
 	"${MPDir}/ui/ui_pazaak.c"
-	"${MPDir}/ui/ui_pazaak.h"
+	"${SharedDir}/ui/ui_pazaak.h"
 	"${MPDir}/ui/ui_cvar.c"
 	"${MPDir}/ui/ui_force.c"
 	"${MPDir}/ui/ui_gameinfo.c"

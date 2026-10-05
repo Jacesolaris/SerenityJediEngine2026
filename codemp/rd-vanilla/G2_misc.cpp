@@ -271,13 +271,13 @@ void G2_List_Model_Surfaces(const char* fileName)
 
 	for (int x = 0; x < mod_m->mdxm->numSurfaces; x++)
 	{
-		ri->Printf(PRINT_ALL, "Surface %i Name %s\n", x, surf->name);
+		ri.Printf(PRINT_ALL, "Surface %i Name %s\n", x, surf->name);
 		if (r_verbose->integer)
 		{
-			ri->Printf(PRINT_ALL, "Num Descendants %i\n", surf->numChildren);
+			ri.Printf(PRINT_ALL, "Num Descendants %i\n", surf->numChildren);
 			for (int i = 0; i < surf->numChildren; i++)
 			{
-				ri->Printf(PRINT_ALL, "Descendant %i\n", surf->childIndexes[i]);
+				ri.Printf(PRINT_ALL, "Descendant %i\n", surf->childIndexes[i]);
 			}
 		}
 		// find the next surface
@@ -299,17 +299,17 @@ void G2_List_Model_Bones(const char* fileName)
 	for (int x = 0; x < mod_a->mdxa->numBones; x++)
 	{
 		const auto skel = (mdxaSkel_t*)((byte*)header + sizeof(mdxaHeader_t) + offsets->offsets[x]);
-		ri->Printf(PRINT_ALL, "Bone %i Name %s\n", x, skel->name);
+		ri.Printf(PRINT_ALL, "Bone %i Name %s\n", x, skel->name);
 
-		ri->Printf(PRINT_ALL, "X pos %f, Y pos %f, Z pos %f\n", skel->BasePoseMat.matrix[0][3], skel->BasePoseMat.matrix[1][3], skel->BasePoseMat.matrix[2][3]);
+		ri.Printf(PRINT_ALL, "X pos %f, Y pos %f, Z pos %f\n", skel->BasePoseMat.matrix[0][3], skel->BasePoseMat.matrix[1][3], skel->BasePoseMat.matrix[2][3]);
 
 		// if we are in verbose mode give us more details
 		if (r_verbose->integer)
 		{
-			ri->Printf(PRINT_ALL, "Num Descendants %i\n", skel->numChildren);
+			ri.Printf(PRINT_ALL, "Num Descendants %i\n", skel->numChildren);
 			for (int i = 0; i < skel->numChildren; i++)
 			{
-				ri->Printf(PRINT_ALL, "Num Descendants %i\n", skel->numChildren);
+				ri.Printf(PRINT_ALL, "Num Descendants %i\n", skel->numChildren);
 			}
 		}
 	}
@@ -530,7 +530,7 @@ void G2_TransformModel(CGhoul2Info_v& ghoul2, const int frameNum, vec3_t scale, 
 #ifdef _G2_GORE
 	if (cg_g2MarksAllModels == nullptr)
 	{
-		cg_g2MarksAllModels = ri->Cvar_Get("cg_g2MarksAllModels", "0", 0, "Render marks on all G2 models");
+		cg_g2MarksAllModels = ri.Cvar_Get("cg_g2MarksAllModels", "0", 0, "Render marks on all G2 models");
 	}
 
 	if (cg_g2MarksAllModels == nullptr
@@ -1131,7 +1131,7 @@ static bool G2_TracePolys(const mdxmSurface_t* surface, const mdxmSurfHierarchy_
 												newCol.mLocation = *(hitMatReg[shader->hitLocation].loc +
 																	((int)(y_pos * hitMatReg[shader->hitLocation].height) * hitMatReg[shader->hitLocation].width) +
 																	((int)(x_pos * hitMatReg[shader->hitLocation].width)));
-												ri->Printf( PRINT_ALL, "G2_TracePolys hit location: %d\n", newCol.mLocation);
+												ri.Printf( PRINT_ALL, "G2_TracePolys hit location: %d\n", newCol.mLocation);
 											}
 
 											if (shader->hitMaterial)
@@ -1462,7 +1462,7 @@ void G2_TraceModels(CGhoul2Info_v& ghoul2, vec3_t rayStart, vec3_t rayEnd, Colli
 #ifdef _G2_GORE
 	if (cg_g2MarksAllModels == nullptr)
 	{
-		cg_g2MarksAllModels = ri->Cvar_Get("cg_g2MarksAllModels", "0", 0, "Render marks on all G2 models");
+		cg_g2MarksAllModels = ri.Cvar_Get("cg_g2MarksAllModels", "0", 0, "Render marks on all G2 models");
 	}
 
 	if (cg_g2MarksAllModels == nullptr

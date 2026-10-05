@@ -1663,7 +1663,7 @@ extern gentity_t g_entities[];
 #endif
 #include "teams.h"
 #include "bg_weapons.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include <math.h>
 
 static int PM_SaberLockLoseAnim(playerState_t* genemy, const qboolean victory, const qboolean super_break)
@@ -4351,7 +4351,7 @@ void PM_SetMeleeBlock(void)
 			}
 			else
 			{
-				PM_SetAnim(SETANIM_LEGS, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+				PM_SetAnim(SETANIM_LEGS, anim, SETANIM_FLAG_NORMAL); // as SP: in the air
 				pm->cmd.forwardmove = 0;
 				pm->cmd.rightmove = 0;
 				pm->cmd.upmove = 0;
@@ -6590,30 +6590,19 @@ weapChecks:
 				return;
 			}
 
-			// Special MP leap attack: ATTACK pressed during FORCELONGLEAP_START.
-			if ((pm->cmd.buttons & BUTTON_ATTACK) &&
-				pm->ps->torsoAnim == BOTH_FORCELONGLEAP_START)
-			{
-				// Only one attack you can do from this anim.
-				if (pm->ps->saberHolstered == 2)
-				{
-					pm->ps->saberHolstered = 0;
-					PM_AddEvent(EV_SABER_UNHOLSTER);
-				}
-
-				// Use the MP-specific leap attack variant.
-				PM_SetSaberMove(LS_LEAP_ATTACK2);
-				return;
-			}
-
-			// Generic leap attack timing from FORCELONGLEAP_START.
+			// Leap attack from FORCELONGLEAP_START, the same as SP.
 			if (pm->ps->torsoAnim == BOTH_FORCELONGLEAP_START)
 			{
-				// Only one attack you can do from this anim.
+				// Only one attack you can do from this anim, and only if timed correctly.
 				if (pm->ps->torsoTimer >= 200 &&
 					(pm->cmd.buttons & BUTTON_ATTACK))
 				{
-					// Hit it early enough to do the attack.
+					// Hit it early enough to do the leap attack.
+					if (pm->ps->saberHolstered == 2)
+					{
+						pm->ps->saberHolstered = 0;
+						PM_AddEvent(EV_SABER_UNHOLSTER);
+					}
 					PM_SetSaberMove(LS_LEAP_ATTACK);
 				}
 				return;

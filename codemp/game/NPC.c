@@ -25,7 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
 #include "b_local.h"
 #include "anims.h"
-#include "say.h"
+#include "game/say.h"
 #include "icarus/Q3_Interface.h"
 
 extern vec3_t playerMins;

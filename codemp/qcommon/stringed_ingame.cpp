@@ -36,8 +36,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon.h"
 //
 //////////////////////////////////////////////////
-#include "stringed_ingame.h"
-#include "stringed_interface.h"
+#include "qcommon/stringed_ingame.h"
+#include "qcommon/stringed_interface.h"
 
 ///////////////////////////////////////////////
 //

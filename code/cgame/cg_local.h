@@ -321,6 +321,7 @@ constexpr auto CG_OVERRIDE_3RD_PERSON_CDP = 0x00000020; // override the 3rd pers
 constexpr auto CG_OVERRIDE_3RD_PERSON_APH = 0x00000040; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random alpha
 constexpr auto CG_OVERRIDE_3RD_PERSON_HOF = 0x00000080; // override the 3rd person entity for this frame, but only for a random number of frames, and with a random horizontal offset
 constexpr auto CG_OVERRIDE_FOV = 0x00000100;
+constexpr auto CG_OVERRIDE_3RD_PERSON_TDP = 0x00000200; // override the 3rd person target damp
 
 using overrides_t = struct
 {

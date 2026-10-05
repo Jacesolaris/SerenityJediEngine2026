@@ -6101,6 +6101,20 @@ void BG_SetTorsoAnimTimer(playerState_t* ps, const int time)
 
 void PM_SaberStartTransAnim(const int clientNum, const int saberAnimLevel, const int weapon, const int anim, float* animSpeed, const int fatigued)
 {
+	// Wall-run (Fallen Order style): the run lasts as long as its animation, so it plays slower and longer (in MP the
+	// server timers and every client's playback both come through here, so they stay the same)
+	if (anim == BOTH_WALL_RUN_LEFT || anim == BOTH_WALL_RUN_RIGHT)
+	{
+		*animSpeed *= WALL_RUN_ANIM_SCALE;
+		return;
+	}
+	// Force long leap: SP starts it under force speed 3 (timescale 0.25) and its PM_SetAnimFinal times the start anim
+	// with that speed-up (1 / 0.25), so the leap (held while this anim runs) lasts 2.65 s / 4. MP has no timescale.
+	if (anim == BOTH_FORCELONGLEAP_START)
+	{
+		*animSpeed *= LONG_LEAP_START_ANIM_SCALE;
+		return;
+	}
 	char buf[128];
 
 	// Read global saber animation speed multiplier
@@ -6360,6 +6374,10 @@ static void BG_SetAnimFinal(playerState_t* ps, const animation_t* animations, co
 			else
 			{
 				ps->torsoTimer = animations[anim].numFrames * fabs(animations[anim].frameLerp);
+				if (anim == BOTH_FORCELONGLEAP_START && editAnimSpeed > 0)
+				{// the long leap start anim is timed at its played speed (SP: under force speed)
+					ps->torsoTimer = (int)(ps->torsoTimer / editAnimSpeed);
+				}
 			}
 		}
 	}
@@ -6402,6 +6420,10 @@ setAnimLegs:
 			else
 			{
 				ps->legsTimer = animations[anim].numFrames * fabs(animations[anim].frameLerp);
+				if (anim == BOTH_FORCELONGLEAP_START && editAnimSpeed > 0)
+				{// the long leap start anim is timed at its played speed (SP: under force speed)
+					ps->legsTimer = (int)(ps->legsTimer / editAnimSpeed);
+				}
 			}
 
 			if (PM_RunningAnim(anim) ||

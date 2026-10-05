@@ -179,11 +179,11 @@ set(SPGameGameFiles
 	"${SPDir}/game/genericparser2.h"
 	"${SPDir}/game/ghoul2_shared.h"
 	"${SPDir}/game/hitlocs.h"
-	"${SPDir}/game/npc_headers.h"
+	"${SharedDir}/game/npc_headers.h"
 	"${SPDir}/game/objectives.h"
-	"${SPDir}/game/say.h"
+	"${SharedDir}/game/say.h"
 	"${SPDir}/game/statindex.h"
-	"${SPDir}/game/surfaceflags.h"
+	"${SharedDir}/game/surfaceflags.h"
 	"${SPDir}/game/teams.h"
 	"${SPDir}/game/weapons.h"
 	"${SPDir}/game/w_local.h"
@@ -241,7 +241,7 @@ set(SPGameCGameFiles
 	"${SPDir}/cgame/FxTemplate.cpp"
 	"${SPDir}/cgame/FxUtil.cpp"
 	"${SPDir}/cgame/cg_camera.h"
-	"${SPDir}/cgame/animtable.h"
+	"${SharedDir}/cgame/animtable.h"
 	"${SPDir}/cgame/cg_headers.h"
 	"${SPDir}/cgame/cg_holster.h"
 	"${SPDir}/cgame/cg_local.h"
@@ -266,9 +266,9 @@ set(SPGameFiles ${SPGameFiles} ${SPGameUIFiles})
 
 set(SPGameCommonFiles
 	"${SPDir}/qcommon/tri_coll_test.cpp"
-	"${SPDir}/qcommon/sstring.h"
+	"${SharedDir}/qcommon/sstring.h"
 	"${SPDir}/qcommon/tags.h"
-	"${SPDir}/qcommon/timing.h"
+	"${SharedDir}/qcommon/timing.h"
 	"${SPDir}/qcommon/q_shared.cpp"
 	"${SPDir}/qcommon/q_shared.h"
 	"${SPDir}/qcommon/ojk_i_saved_game.h"
@@ -310,7 +310,7 @@ set(SPGameFiles ${SPGameFiles} ${SPGameIcarusFiles})
 set(SPGameRatlFiles
 	"${SPDir}/Ratl/ratl.cpp"
 	"${SPDir}/Ratl/array_vs.h"
-	"${SPDir}/Ratl/bits_vs.h"
+	"${SharedDir}/Ratl/bits_vs.h"
 	"${SPDir}/Ratl/grid_vs.h"
 	"${SPDir}/Ratl/handle_pool_vs.h"
 	"${SPDir}/Ratl/hash_pool_vs.h"
@@ -323,7 +323,7 @@ set(SPGameRatlFiles
 	"${SPDir}/Ratl/scheduler_vs.h"
 	"${SPDir}/Ratl/stack_vs.h"
 	"${SPDir}/Ratl/string_vs.h"
-	"${SPDir}/Ratl/vector_vs.h"
+	"${SharedDir}/Ratl/vector_vs.h"
 	)
 source_group("ratl" FILES ${SPGameRatlFiles})
 set(SPGameFiles ${SPGameFiles} ${SPGameRatlFiles})

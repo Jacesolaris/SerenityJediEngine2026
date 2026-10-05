@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "client.h"
 #include "cl_mp3.h"					// only included directly by a few snd_xxxx.cpp files plus this one
-#include "../mp3code/mp3struct.h"	// keep this rather awful file secret from the rest of the program
+#include "mp3code/mp3struct.h"	// keep this rather awful file secret from the rest of the program
 
 // expects data already loaded, filename arg is for error printing only
 //

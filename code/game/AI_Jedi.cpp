@@ -39,7 +39,7 @@
 #include "g_shared.h"
 #include "hitlocs.h"
 #include "statindex.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "teams.h"
 #include "weapons.h"
 #include <rd-common/mdx_format.h>

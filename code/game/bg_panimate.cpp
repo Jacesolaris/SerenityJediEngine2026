@@ -53,7 +53,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_platform.h>
 #include <qcommon\q_math.h>
 #include "ghoul2_shared.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "ai.h"
 #include "teams.h"
 #include "b_local.h"
@@ -5899,6 +5899,13 @@ void PM_SetTorsoAnimTimer(gentity_t* ent, int* torsoAnimTimer, const int time)
 
 void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent, const int fatigued)
 {
+	// Wall-run (Fallen Order style): the run lasts as long as its animation, so it plays slower and longer (in MP the
+	// server timers and every client's playback both come through here, so they stay the same)
+	if (anim == BOTH_WALL_RUN_LEFT || anim == BOTH_WALL_RUN_RIGHT)
+	{
+		*animSpeed *= WALL_RUN_ANIM_SCALE;
+		return;
+	}
 	char buf[128];
 
 	// Read global saber animation speed multiplier

@@ -112,10 +112,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../Ratl/array_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 #endif
 #if !defined(RATL_BITS_INC)
-#include "../Ratl/bits_vs.h"
+#include "Ratl/bits_vs.h"
 #endif
 #if !defined(RATL_QUEUE_VS_INC)
 #include "../Ratl/queue_vs.h"

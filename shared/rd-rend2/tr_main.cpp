@@ -2533,7 +2533,11 @@ static void R_SetupViewParms(const trRefdef_t* refdef)
 	tr.viewParms.viewportX = refdef->x;
 
 	// Shoud be just refef->y but this flips the menu orientation for models, so its actually needed like this
+#ifdef REND2_SP
 	if (!tr.world || refdef->rdflags & RDF_NOWORLDMODEL)
+#else
+	if (!tr.world)
+#endif
 		tr.viewParms.viewportY = glConfig.vidHeight - (refdef->y + refdef->height);
 	else
 		tr.viewParms.viewportY = refdef->y;
@@ -2786,11 +2790,23 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 					shadowParms.targetFbo = tr.shadowCubeFbo[i * 6 + j];
 					shadowParms.targetFboLayer = 0;
 
+#ifdef REND2_SP
 					R_RenderView(&shadowParms);
 
 					R_IssuePendingRenderCommands();
 
 					tr.refdef.numDrawSurfs = 0;
+#else
+					shadowParms.currentViewParm = tr.numCachedViewParms;
+					shadowParms.viewParmType = VPT_POINT_SHADOWS;
+
+					R_RotateForViewer(&shadowParms.world, &shadowParms);
+					R_SetupProjection(&shadowParms, shadowParms.zNear, shadowParms.zFar, qtrue);
+					R_SetupProjectionZ(&shadowParms);
+
+					Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &shadowParms, sizeof(viewParms_t));
+					tr.numCachedViewParms++;
+#endif
 				}
 			}
 		}
@@ -2895,7 +2911,9 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 					}
 
 					tr.viewParms.currentViewParm = tr.numCachedViewParms;
+#ifdef REND2_SP
 					tr.viewParms.viewParmType = VPT_PLAYER_SHADOWS;
+#endif
 					Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &tr.viewParms, sizeof(viewParms_t));
 					tr.numCachedViewParms++;
 				}
@@ -3052,6 +3070,9 @@ void R_GatherFrameViews(trRefdef_t* refdef)
 				Com_Memcpy(&tr.cachedViewParms[tr.numCachedViewParms], &tr.viewParms, sizeof(viewParms_t));
 				tr.numCachedViewParms++;
 			}
+#ifndef REND2_SP
+			mainFlags |= VPF_USESUNLIGHT;
+#endif
 		}
 	}
 

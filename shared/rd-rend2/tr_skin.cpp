@@ -1,7 +1,7 @@
 #include "tr_local.h"
 
 #ifdef REND2_SP
-#include "../qcommon/sstring.h"
+#include "qcommon/sstring.h"
 #endif
 /*
 ============================================================================

@@ -26,7 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #if !defined(RAVL_VEC_INC)
 #include "../Ravl/CVec.h"
 #endif
-#include "../Ratl/vector_vs.h"
+#include "Ratl/vector_vs.h"
 
 constexpr auto MAX_PACKS = 10;
 

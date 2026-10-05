@@ -131,7 +131,7 @@ void RE_LoadWorldMap_Actual(const char* name, world_t& worldData, const int inde
 // returns qtrue if loaded, and sets the supplied qbool to true if it was from cache (instead of disk)
 //   (which we need to know to avoid LittleLong()ing everything again (well, the Mac needs to know anyway)...
 //
-// don't use ri->xxx functions in case running on dedicated...
+// don't use ri.xxx functions in case running on dedicated...
 //
 static qboolean RE_RegisterModels_GetDiskFile(const char* psModelFileName, void** ppvBuffer, qboolean* pqbAlreadyCached)
 {
@@ -162,13 +162,13 @@ static qboolean RE_RegisterModels_GetDiskFile(const char* psModelFileName, void*
 			return qtrue;
 		}
 
-		ri->FS_ReadFile(sModelName, ppvBuffer);
+		ri.FS_ReadFile(sModelName, ppvBuffer);
 		*pqbAlreadyCached = qfalse;
 		const qboolean bSuccess = !!*ppvBuffer ? qtrue : qfalse;
 
 		if (bSuccess)
 		{
-			ri->Printf(PRINT_DEVELOPER, "RE_RegisterModels_GetDiskFile(): Disk-loading \"%s\"\n", psModelFileName);
+			ri.Printf(PRINT_DEVELOPER, "RE_RegisterModels_GetDiskFile(): Disk-loading \"%s\"\n", psModelFileName);
 		}
 
 		return bSuccess;
@@ -180,7 +180,7 @@ static qboolean RE_RegisterModels_GetDiskFile(const char* psModelFileName, void*
 
 // if return == true, no further action needed by the caller...
 //
-// don't use ri->xxx functions in case running on dedicated
+// don't use ri.xxx functions in case running on dedicated
 //
 void* RE_RegisterModels_Malloc(const int iSize, void* pvDiskBufferIfJustLoaded, const char* psModelFileName, qboolean* pqbAlreadyFound, const memtag_t eTag)
 {
@@ -215,7 +215,7 @@ void* RE_RegisterModels_Malloc(const int iSize, void* pvDiskBufferIfJustLoaded, 
 		ModelBin.iAllocSize = iSize;
 
 		int iCheckSum;
-		if (ri->FS_FileIsInPAK(sModelName, &iCheckSum) == 1)
+		if (ri.FS_FileIsInPAK(sModelName, &iCheckSum) == 1)
 		{
 			ModelBin.iPAKFileCheckSum = iCheckSum;	// else ModelBin's constructor will leave it as -1
 		}
@@ -286,7 +286,7 @@ static void* RE_RegisterServerModels_Malloc(const int iSize, void* pvDiskBufferI
 		ModelBin.iAllocSize = iSize;
 
 		int iCheckSum;
-		if (ri->FS_FileIsInPAK(sModelName, &iCheckSum) == 1)
+		if (ri.FS_FileIsInPAK(sModelName, &iCheckSum) == 1)
 		{
 			ModelBin.iPAKFileCheckSum = iCheckSum;	// else ModelBin's constructor will leave it as -1
 		}
@@ -345,11 +345,11 @@ qboolean RE_RegisterModels_LevelLoadEnd(const qboolean bDeleteEverythingNotUsedT
 
 	assert(CachedModels);
 
-	ri->Printf(PRINT_DEVELOPER, S_COLOR_RED "RE_RegisterModels_LevelLoadEnd():\n");
+	ri.Printf(PRINT_DEVELOPER, S_COLOR_RED "RE_RegisterModels_LevelLoadEnd():\n");
 
 	if (gbInsideRegisterModel)
 	{
-		ri->Printf(PRINT_DEVELOPER, "(Inside RE_RegisterModel (z_malloc recovery?), exiting...\n");
+		ri.Printf(PRINT_DEVELOPER, "(Inside RE_RegisterModel (z_malloc recovery?), exiting...\n");
 	}
 	else
 	{
@@ -376,10 +376,10 @@ qboolean RE_RegisterModels_LevelLoadEnd(const qboolean bDeleteEverythingNotUsedT
 			if (b_delete_this)
 			{
 				const char* psModelName = (*itModel).first.c_str();
-				ri->Printf(PRINT_DEVELOPER, S_COLOR_RED "Dumping \"%s\"", psModelName);
+				ri.Printf(PRINT_DEVELOPER, S_COLOR_RED "Dumping \"%s\"", psModelName);
 
 #ifdef _DEBUG
-				ri->Printf(PRINT_DEVELOPER, S_COLOR_RED ", used on lvl %d\n", CachedModel.iLastLevelUsedOn);
+				ri.Printf(PRINT_DEVELOPER, S_COLOR_RED ", used on lvl %d\n", CachedModel.iLastLevelUsedOn);
 #endif
 
 				if (CachedModel.pModelDiskImage) {
@@ -398,7 +398,7 @@ qboolean RE_RegisterModels_LevelLoadEnd(const qboolean bDeleteEverythingNotUsedT
 		}
 	}
 
-	ri->Printf(PRINT_DEVELOPER, S_COLOR_RED "RE_RegisterModels_LevelLoadEnd(): Ok\n");
+	ri.Printf(PRINT_DEVELOPER, S_COLOR_RED "RE_RegisterModels_LevelLoadEnd(): Ok\n");
 
 	return bAtLeastoneModelFreed;
 }
@@ -406,11 +406,11 @@ qboolean RE_RegisterModels_LevelLoadEnd(const qboolean bDeleteEverythingNotUsedT
 // scan through all loaded models and see if their PAK checksums are still valid with the current pure PAK lists,
 //	dump any that aren't (so people can't cheat by using models with huge spikes that show through walls etc)
 //
-// (avoid using ri->xxxx stuff here in case running on dedicated)
+// (avoid using ri.xxxx stuff here in case running on dedicated)
 //
 static void RE_RegisterModels_DumpNonPure(void)
 {
-	ri->Printf(PRINT_DEVELOPER, "RE_RegisterModels_DumpNonPure():\n");
+	ri.Printf(PRINT_DEVELOPER, "RE_RegisterModels_DumpNonPure():\n");
 
 	if (!CachedModels)
 	{
@@ -425,7 +425,7 @@ static void RE_RegisterModels_DumpNonPure(void)
 		const CachedEndianedModelBinary_t& CachedModel = (*itModel).second;
 
 		int iCheckSum = -1;
-		const int iInPak = ri->FS_FileIsInPAK(psModelName, &iCheckSum);
+		const int iInPak = ri.FS_FileIsInPAK(psModelName, &iCheckSum);
 
 		if (iInPak == -1 || iCheckSum != CachedModel.iPAKFileCheckSum)
 		{
@@ -433,7 +433,7 @@ static void RE_RegisterModels_DumpNonPure(void)
 			{
 				// either this is not from a PAK, or it's from a non-pure one, so ditch it...
 				//
-				ri->Printf(PRINT_DEVELOPER, "Dumping none pure model \"%s\"", psModelName);
+				ri.Printf(PRINT_DEVELOPER, "Dumping none pure model \"%s\"", psModelName);
 
 				if (CachedModel.pModelDiskImage) {
 					Z_Free(CachedModel.pModelDiskImage);
@@ -450,14 +450,14 @@ static void RE_RegisterModels_DumpNonPure(void)
 		}
 	}
 
-	ri->Printf(PRINT_DEVELOPER, "RE_RegisterModels_DumpNonPure(): Ok\n");
+	ri.Printf(PRINT_DEVELOPER, "RE_RegisterModels_DumpNonPure(): Ok\n");
 }
 
 void RE_RegisterModels_Info_f(void)
 {
 	int iTotalBytes = 0;
 	if (!CachedModels) {
-		ri->Printf(PRINT_ALL, "%d bytes total (%.2fMB)\n", iTotalBytes, static_cast<float>(iTotalBytes) / 1024.0f / 1024.0f);
+		ri.Printf(PRINT_ALL, "%d bytes total (%.2fMB)\n", iTotalBytes, static_cast<float>(iTotalBytes) / 1024.0f / 1024.0f);
 		return;
 	}
 
@@ -468,18 +468,18 @@ void RE_RegisterModels_Info_f(void)
 	{
 		const CachedEndianedModelBinary_t& CachedModel = (*itModel).second;
 
-		ri->Printf(PRINT_ALL, "%d/%d: \"%s\" (%d bytes)", iModel, iModels, (*itModel).first.c_str(), CachedModel.iAllocSize);
+		ri.Printf(PRINT_ALL, "%d/%d: \"%s\" (%d bytes)", iModel, iModels, (*itModel).first.c_str(), CachedModel.iAllocSize);
 
 #ifdef _DEBUG
-		ri->Printf(PRINT_ALL, ", lvl %d\n", CachedModel.iLastLevelUsedOn);
+		ri.Printf(PRINT_ALL, ", lvl %d\n", CachedModel.iLastLevelUsedOn);
 #endif
 
 		iTotalBytes += CachedModel.iAllocSize;
 	}
-	ri->Printf(PRINT_ALL, "%d bytes total (%.2fMB)\n", iTotalBytes, static_cast<float>(iTotalBytes) / 1024.0f / 1024.0f);
+	ri.Printf(PRINT_ALL, "%d bytes total (%.2fMB)\n", iTotalBytes, static_cast<float>(iTotalBytes) / 1024.0f / 1024.0f);
 }
 
-// (don't use ri->xxx functions since the renderer may not be running here)...
+// (don't use ri.xxx functions since the renderer may not be running here)...
 //
 static void RE_RegisterModels_DeleteAll(void)
 {
@@ -499,7 +499,7 @@ static void RE_RegisterModels_DeleteAll(void)
 	}
 }
 
-// do not use ri->xxx functions in here, the renderer may not be running (ie. if on a dedicated server)...
+// do not use ri.xxx functions in here, the renderer may not be running (ie. if on a dedicated server)...
 //
 static int giRegisterMedia_CurrentLevel = 0;
 void RE_RegisterMedia_LevelLoadBegin(const char* psMapName, const ForceReload_e eForceReload)
@@ -515,7 +515,7 @@ void RE_RegisterMedia_LevelLoadBegin(const char* psMapName, const ForceReload_e 
 	}
 	else
 	{
-		if (ri->Cvar_VariableIntegerValue("sv_pure"))
+		if (ri.Cvar_VariableIntegerValue("sv_pure"))
 		{
 			RE_RegisterModels_DumpNonPure();
 		}
@@ -558,9 +558,9 @@ void RE_RegisterMedia_LevelLoadEnd(void)
 	RE_RegisterModels_LevelLoadEnd(qfalse);
 
 	RE_RegisterImages_LevelLoadEnd();
-	ri->SND_RegisterAudio_LevelLoadEnd(qfalse);
+	ri.SND_RegisterAudio_LevelLoadEnd(qfalse);
 	//	RE_InitDissolve();
-	ri->S_RestartMusic();
+	ri.S_RestartMusic();
 }
 
 /*
@@ -635,7 +635,7 @@ Ghoul2 Insert End
 */
 
 //rww - Please forgive me for all of the below. Feel free to destroy it and replace it with something better.
-//You obviously can't touch anything relating to shaders or ri-> functions here in case a dedicated
+//You obviously can't touch anything relating to shaders or ri. functions here in case a dedicated
 //server is running, which is the entire point of having these seperate functions. If anything major
 //is changed in the non-server-only versions of these functions it would be wise to incorporate it
 //here as well.
@@ -1021,7 +1021,7 @@ qhandle_t RE_RegisterServerModel(const char* name) {
 
 	if (!r_noServerGhoul2)
 	{ //keep it from choking when it gets to these checks in the g2 code. Registering all r_ cvars for the server would be a Bad Thing though.
-		r_noServerGhoul2 = ri->Cvar_Get("r_noserverghoul2", "0", 0, "");
+		r_noServerGhoul2 = ri.Cvar_Get("r_noserverghoul2", "0", 0, "");
 	}
 
 	if (!name || !name[0]) {
@@ -1110,7 +1110,7 @@ qhandle_t RE_RegisterServerModel(const char* name) {
 		}
 
 		if (!bAlreadyCached) {	// important to check!!
-			ri->FS_FreeFile(buf);
+			ri.FS_FreeFile(buf);
 		}
 
 		if (!loaded) {
@@ -1173,12 +1173,12 @@ static qhandle_t RE_RegisterModel_Actual(const char* name) {
 	*/
 
 	if (!name || !name[0]) {
-		ri->Printf(PRINT_WARNING, "RE_RegisterModel: NULL name\n");
+		ri.Printf(PRINT_WARNING, "RE_RegisterModel: NULL name\n");
 		return 0;
 	}
 
 	if (strlen(name) >= MAX_QPATH) {
-		ri->Printf(PRINT_DEVELOPER, S_COLOR_RED "Model name exceeds MAX_QPATH\n");
+		ri.Printf(PRINT_DEVELOPER, S_COLOR_RED "Model name exceeds MAX_QPATH\n");
 		return 0;
 	}
 
@@ -1186,7 +1186,7 @@ static qhandle_t RE_RegisterModel_Actual(const char* name) {
 	Ghoul2 Insert Start
 	*/
 	//	if (!tr.registered) {
-	//		ri->Printf( PRINT_ALL, S_COLOR_YELLOW  "RE_RegisterModel (%s) called before ready!\n",name );
+	//		ri.Printf( PRINT_ALL, S_COLOR_YELLOW  "RE_RegisterModel (%s) called before ready!\n",name );
 	//		return 0;
 	//	}
 		//
@@ -1237,7 +1237,7 @@ static qhandle_t RE_RegisterModel_Actual(const char* name) {
 	// allocate a new model_t
 
 	if ((mod = R_AllocModel()) == nullptr) {
-		ri->Printf(PRINT_ALL, S_COLOR_YELLOW  "RE_RegisterModel: R_AllocModel() failed for '%s'\n", name);
+		ri.Printf(PRINT_ALL, S_COLOR_YELLOW  "RE_RegisterModel: R_AllocModel() failed for '%s'\n", name);
 		return 0;
 	}
 
@@ -1309,12 +1309,12 @@ static qhandle_t RE_RegisterModel_Actual(const char* name) {
 			break;
 
 		default:
-			ri->Printf(PRINT_ALL, S_COLOR_YELLOW"RE_RegisterModel: unknown fileid for %s\n", filename);
+			ri.Printf(PRINT_ALL, S_COLOR_YELLOW"RE_RegisterModel: unknown fileid for %s\n", filename);
 			goto fail;
 		}
 
 		if (!bAlreadyCached) {	// important to check!!
-			ri->FS_FreeFile(buf);
+			ri.FS_FreeFile(buf);
 		}
 
 		if (!loaded) {
@@ -1348,7 +1348,7 @@ static qhandle_t RE_RegisterModel_Actual(const char* name) {
 		*/
 	}
 #ifdef _DEBUG
-	ri->Printf(PRINT_ALL, S_COLOR_YELLOW"RE_RegisterModel: couldn't load %s\n", name);
+	ri.Printf(PRINT_ALL, S_COLOR_YELLOW"RE_RegisterModel: couldn't load %s\n", name);
 #endif
 
 fail:
@@ -1409,7 +1409,7 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 	}
 
 	if (version != MD3_VERSION) {
-		ri->Printf(PRINT_ALL, S_COLOR_YELLOW  "R_LoadMD3: %s has wrong version (%i should be %i)\n",
+		ri.Printf(PRINT_ALL, S_COLOR_YELLOW  "R_LoadMD3: %s has wrong version (%i should be %i)\n",
 			name, version, MD3_VERSION);
 		return qfalse;
 	}
@@ -1442,7 +1442,7 @@ static qboolean R_LoadMD3(model_t* mod, int lod, void* buffer, const char* name,
 	}
 
 	if (mod->md3[lod]->numFrames < 1) {
-		ri->Printf(PRINT_ALL, S_COLOR_YELLOW  "R_LoadMD3: %s has no frames\n", name);
+		ri.Printf(PRINT_ALL, S_COLOR_YELLOW  "R_LoadMD3: %s has no frames\n", name);
 		return qfalse;
 	}
 
@@ -1644,14 +1644,14 @@ void R_Modellist_f(void) {
 				lods++;
 			}
 		}
-		ri->Printf(PRINT_ALL, "%8i : (%i) %s\n", mod->dataSize, lods, mod->name);
+		ri.Printf(PRINT_ALL, "%8i : (%i) %s\n", mod->dataSize, lods, mod->name);
 		total += mod->dataSize;
 	}
-	ri->Printf(PRINT_ALL, "%8i : Total models\n", total);
+	ri.Printf(PRINT_ALL, "%8i : Total models\n", total);
 
 #if	0		// not working right with new hunk
 	if (tr.world) {
-		ri->Printf(PRINT_ALL, "\n%8i : %s\n", tr.world->dataSize, tr.world->name);
+		ri.Printf(PRINT_ALL, "\n%8i : %s\n", tr.world->dataSize, tr.world->name);
 	}
 #endif
 }

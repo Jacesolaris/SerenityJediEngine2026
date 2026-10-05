@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "FxUtil.h"
 #endif
 
-#include "../qcommon/sstring.h"
+#include "qcommon/sstring.h"
 using fxString_t = sstring_t;
 
 #include "../game/genericparser2.h"

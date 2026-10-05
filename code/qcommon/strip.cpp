@@ -25,7 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../server/server.h"
 #include "q_shared.h"
 #include "qcommon.h"
-#include "stringed_ingame.h"
+#include "qcommon/stringed_ingame.h"
 
 #include <string>
 #include <list>

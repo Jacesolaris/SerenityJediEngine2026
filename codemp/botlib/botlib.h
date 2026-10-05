@@ -103,7 +103,7 @@ struct weaponinfo_s;
 #define ACTION_WALK				0x0080000
 #define ACTION_FORCEPOWER		0x0100000
 #define ACTION_ALT_ATTACK		0x0200000
-#define ACTION_KICK     		0x0800000
+#define ACTION_KICK     		0x4000000	// was 0x0800000 = the engine botlib's ACTION_JUMPEDLASTFRAME (be_ea.cpp): every jump pressed kick
 #define ACTION_BLOCK     		0x10000000
 #define ACTION_GLOAT     		0x20000000
 #define ACTION_FLOURISH   		0x80000000

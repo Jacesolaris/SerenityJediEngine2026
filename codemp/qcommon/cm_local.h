@@ -23,7 +23,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "cm_polylib.h"
+#include "qcommon/cm_polylib.h"
 #include "cm_public.h"
 #include "qcommon/qcommon.h"
 

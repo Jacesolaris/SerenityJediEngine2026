@@ -47,7 +47,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	LF(x) x=LittleFloat(x)
 
 #ifdef G2_PERFORMANCE_ANALYSIS
-#include "../qcommon/timing.h"
+#include "qcommon/timing.h"
 timing_c G2PerformanceTimer_RB_SurfaceGhoul;
 
 int G2PerformanceCounter_G2_TransformGhoulBones = 0;

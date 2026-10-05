@@ -42,7 +42,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <qcommon\q_math.h>
 #include <assert.h>
 #include "bg_weapons.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "bg_public.h"
 #include "g_public.h"
 
@@ -51,6 +51,7 @@ static vec3_t muzzle;
 static vec3_t muzzle2;
 
 extern qboolean PM_InKnockDown(const playerState_t* ps);
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, const qboolean breakSaberLock);
 qboolean PM_RunningAnim(int anim);
 qboolean PM_WalkingAnim(int anim);
 float Distance2(const vec3_t p1, const vec3_t p2);
@@ -4112,32 +4113,22 @@ static void WP_FireConcussionAlt(gentity_t* ent)
 							push_dir[2] = 0.2f;
 						} //hmm, re-normalize?  nah...
 
+						// The same as SP (wp_concussion.cpp): throw, then the SP knockdown and getup.
+						if (!no_knock_back)
+						{
+							//knock-backable
+							G_Throw(traceEnt, push_dir, 200);
+							if (traceEnt->client->NPC_class == CLASS_ROCKETTROOPER)
+							{
+								traceEnt->client->ps.pm_time = Q_irand(1500, 3000);
+							}
+						}
 						if (traceEnt->health > 0)
 						{
 							//alive
-							//if ( G_HasKnockdownAnims( traceEnt ) )
-							if (!no_knock_back && !traceEnt->localAnimIndex && traceEnt->client->ps.forceHandExtend !=
-								HANDEXTEND_KNOCKDOWN &&
-								BG_KnockDownable(&traceEnt->client->ps)) //just check for humanoids..
+							if (!traceEnt->localAnimIndex && BG_KnockDownable(&traceEnt->client->ps))
 							{
-								//knock-downable
-								vec3_t pl_p_dif;
-
-								//cap it and stuff, base the strength and whether or not we can knockdown on the distance
-								//from the shooter to the target
-								VectorSubtract(traceEnt->client->ps.origin, ent->client->ps.origin, pl_p_dif);
-								float p_str = 500.0f - VectorLength(pl_p_dif);
-								if (p_str < 150.0f)
-								{
-									p_str = 150.0f;
-								}
-								if (p_str > 200.0f)
-								{
-									traceEnt->client->ps.forceHandExtend = HANDEXTEND_KNOCKDOWN;
-									traceEnt->client->ps.forceHandExtendTime = level.time + 1100;
-									traceEnt->client->ps.forceDodgeAnim = 0;
-									//this toggles between 1 and 0, when it's 1 we should play the get up anim
-								}
+								//knock-downable (humanoids)
 								traceEnt->client->ps.otherKiller = ent->s.number;
 								traceEnt->client->ps.otherKillerTime = level.time + 5000;
 								traceEnt->client->ps.otherKillerDebounceTime = level.time + 100;
@@ -4145,9 +4136,7 @@ static void WP_FireConcussionAlt(gentity_t* ent)
 								traceEnt->client->otherKillerVehWeapon = 0;
 								traceEnt->client->otherKillerWeaponType = WP_NONE;
 
-								traceEnt->client->ps.velocity[0] += push_dir[0] * p_str;
-								traceEnt->client->ps.velocity[1] += push_dir[1] * p_str;
-								traceEnt->client->ps.velocity[2] = p_str;
+								G_Knockdown(traceEnt, ent, push_dir, 400, qtrue);
 							}
 						}
 					}

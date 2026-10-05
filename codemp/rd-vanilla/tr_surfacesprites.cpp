@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "tr_local.h"
 
-#include "tr_quicksprite.h"
+#include "rd-vanilla/tr_quicksprite.h"
 #include "tr_WorldEffects.h"
 
 /////===== Part of the VERTIGON system =====/////
@@ -309,7 +309,7 @@ static void R_SurfaceSpriteFrameUpdate(void)
 
 	if (r_surfaceSprites->integer >= 2)
 	{
-		ri->Printf(PRINT_ALL, "Surfacesprites Drawn: %d, on %d surfaces\n", totalsurfsprites, sssurfaces);
+		ri.Printf(PRINT_ALL, "Surfacesprites Drawn: %d, on %d surfaces\n", totalsurfsprites, sssurfaces);
 	}
 
 	totalsurfsprites = 0;

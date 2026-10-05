@@ -159,6 +159,7 @@ qboolean waterForceJump;
 extern cvar_t* g_timescale;
 extern cvar_t* g_speederControlScheme;
 extern cvar_t* d_slowmodeath;
+extern cvar_t* g_longLeapCinematic;
 extern cvar_t* d_slowmoaction;
 extern cvar_t* g_saberNewControlScheme;
 extern cvar_t* g_stepSlideFix;
@@ -1360,9 +1361,10 @@ static qboolean PM_CheckJump()
 		if (pm->ps->gravity > 0)
 		{
 			//can't do this in zero-G
-			if (pm->ps->legsAnim == BOTH_FORCELONGLEAP_START
+			if ((pm->ps->legsAnim == BOTH_FORCELONGLEAP_START
 				|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK
 				|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_LAND)
+				&& !(pm->ps->pm_flags & PMF_AIR_DASHED)) // the air dash uses the leap poses, but not their physics
 			{
 				//in the middle of a force long-jump
 				if ((pm->ps->legsAnim == BOTH_FORCELONGLEAP_START || pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK)
@@ -1467,7 +1469,10 @@ static qboolean PM_CheckJump()
 				}
 				WP_ForcePowerStop(pm->gent, FP_SPEED);
 				WP_ForcePowerDrain(pm->gent, FP_LEVITATION, FORCE_LONGJUMP_POWER); //drain the required force power
-				G_StartMatrixEffect(pm->gent, 0, pm->ps->legsAnimTimer + 500);
+				if (g_longLeapCinematic && g_longLeapCinematic->integer)
+				{// SP's spinning slow motion camera (default off: the camera eases back as MP, CG_LongLeapCameraBlend)
+					G_StartMatrixEffect(pm->gent, 0, pm->ps->legsAnimTimer + 500);
+				}
 				return qtrue;
 			}
 			if (PM_InCartwheel(pm->ps->legsAnim)
@@ -2419,7 +2424,7 @@ static qboolean PM_CheckJump()
 					if (pm->ps->legsAnimTimer > 400)
 					{
 						//not at the end of the anim
-						float anim_len = PM_AnimLength(pm->gent->client->clientInfo.animFileIndex, BOTH_WALL_RUN_LEFT);
+						float anim_len = PM_AnimLength(pm->gent->client->clientInfo.animFileIndex, BOTH_WALL_RUN_LEFT) / WALL_RUN_ANIM_SCALE; // the wall-run anim plays slower
 						if (pm->ps->legsAnimTimer < anim_len - 400)
 						{
 							//not at start of anim
@@ -2433,7 +2438,7 @@ static qboolean PM_CheckJump()
 					if (pm->ps->legsAnimTimer > 400)
 					{
 						//not at the end of the anim
-						float anim_len = PM_AnimLength(pm->gent->client->clientInfo.animFileIndex, BOTH_WALL_RUN_RIGHT);
+						float anim_len = PM_AnimLength(pm->gent->client->clientInfo.animFileIndex, BOTH_WALL_RUN_RIGHT) / WALL_RUN_ANIM_SCALE; // the wall-run anim plays slower
 						if (pm->ps->legsAnimTimer < anim_len - 400)
 						{
 							//not at start of anim
@@ -2453,13 +2458,17 @@ static qboolean PM_CheckJump()
 						{
 							pm->ps->velocity[0] *= 0.5f;
 							pm->ps->velocity[1] *= 0.5f;
-							VectorMA(pm->ps->velocity, 150, right, pm->ps->velocity);
+							VectorMA(pm->ps->velocity, WALL_RUN_FLIP_PUSH, right, pm->ps->velocity); // far enough to reach the opposite wall (wall-to-wall jump)
 						}
 						else if (anim == BOTH_WALL_RUN_RIGHT_FLIP)
 						{
 							pm->ps->velocity[0] *= 0.5f;
 							pm->ps->velocity[1] *= 0.5f;
-							VectorMA(pm->ps->velocity, -150, right, pm->ps->velocity);
+							VectorMA(pm->ps->velocity, -WALL_RUN_FLIP_PUSH, right, pm->ps->velocity); // far enough to reach the opposite wall (wall-to-wall jump)
+						}
+						if (pm->ps->velocity[2] < WALL_RUN_FLIP_LIFT)
+						{//a little lift for the wall-to-wall jump
+							pm->ps->velocity[2] = WALL_RUN_FLIP_LIFT;
 						}
 						PM_SetAnim(pm, SETANIM_BOTH, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
 						pm->ps->pm_flags |= PMF_JUMPING | PMF_SLOW_MO_FALL;
@@ -3330,6 +3339,275 @@ PM_AirMove
 */
 void PM_CheckGrab();
 
+// Wall-run from the air (Fallen Order style): jumping at a wall at an angle while holding forward starts the wall-run
+// on it (the ground start is jump + strafe + forward next to a wall, PM_CheckJump). Player only (like the long leap),
+// once per airtime. Same wall rules as the ground start (flat wall, Force Jump 2+, saber flags), same lift, cost, sound.
+static qboolean s_airWallRan[MAX_CLIENTS]; // started one in this airtime (cleared on landing; not worth saving)
+static void PM_CheckAirWallRun()
+{
+	if (pm->ps->clientNum >= MAX_CLIENTS && !PM_ControlledByPlayer() || !pm->gent || !pm->gent->client)
+	{
+		return;
+	}
+	const int idx = pm->ps->clientNum < MAX_CLIENTS ? pm->ps->clientNum : 0;
+
+	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
+	{
+		s_airWallRan[idx] = qfalse;
+		return;
+	}
+
+	if (s_airWallRan[idx]
+		|| pm->ps->pm_flags & (PMF_STUCK_TO_WALL | PMF_RESPAWNED | PMF_TRIGGER_PUSHED)
+		|| pm->cmd.forwardmove <= 0
+		|| pm->ps->forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_2
+		|| pm->ps->pm_type != PM_NORMAL
+		|| pm->waterlevel > 1
+		|| pm->gent->s.m_iVehicleNum != 0
+		|| pm->ps->velocity[2] < -AIR_WALL_RUN_MAX_FALL // falling fast: too late to catch the wall
+		|| PM_InSpecialJump(pm->ps->legsAnim) // wall-runs, flips, the long leap...
+		|| PM_InKnockDown(pm->ps)
+		|| PM_InRoll(pm->ps)
+		|| PM_InLedgeMove(pm->ps->legsAnim)
+		|| !WP_ForcePowerAvailable(pm->gent, FP_LEVITATION, 0))
+	{
+		return;
+	}
+
+	if (pm->ps->weapon == WP_SABER
+		&& (pm->ps->saber[0].saberFlags & SFL_NO_WALL_RUNS || pm->ps->dualSabers && pm->ps->saber[1].saberFlags & SFL_NO_WALL_RUNS))
+	{
+		return;
+	}
+
+	vec3_t hvel;
+	VectorSet(hvel, pm->ps->velocity[0], pm->ps->velocity[1], 0.0f);
+	const float hspeed = VectorNormalize(hvel);
+	if (hspeed < AIR_WALL_RUN_MIN_SPEED)
+	{
+		return;
+	}
+
+	vec3_t fwd, right, fwd_angles, trace_to, mins, maxs;
+	trace_t trace;
+	VectorSet(fwd_angles, 0.0f, pm->ps->viewangles[YAW], 0.0f);
+	AngleVectors(fwd_angles, fwd, right, nullptr);
+	VectorSet(mins, pm->mins[0], pm->mins[1], 0.0f);
+	VectorSet(maxs, pm->maxs[0], pm->maxs[1], 24.0f);
+
+	for (int side = 0; side < 2; side++)
+	{
+		const float sign = side == 0 ? 1.0f : -1.0f; // right, then left
+		VectorMA(pm->ps->origin, sign * AIR_WALL_RUN_REACH, right, trace_to);
+		pm->trace(&trace, pm->ps->origin, mins, maxs, trace_to, pm->ps->clientNum, MASK_PLAYERSOLID,
+			static_cast<EG2_Collision>(0), 0);
+
+		if (trace.startsolid || trace.allsolid || trace.fraction >= 1.0f || trace.entityNum < MAX_CLIENTS)
+		{
+			continue;
+		}
+		if (trace.plane.normal[2] < 0.0f || trace.plane.normal[2] > 0.4f)
+		{// wall-runs only on (near) vertical walls, as the ground start
+			continue;
+		}
+		if (DotProduct(trace.plane.normal, right) * sign > -0.7f)
+		{// not a wall on that side
+			continue;
+		}
+		if (fabs(DotProduct(fwd, trace.plane.normal)) > 0.75f || fabs(DotProduct(hvel, trace.plane.normal)) > 0.8f)
+		{// heading straight into it: that's not running along it
+			continue;
+		}
+
+		// along the wall at least as fast as now, and the ground start's lift
+		vec3_t along;
+		VectorMA(pm->ps->velocity, -DotProduct(pm->ps->velocity, trace.plane.normal), trace.plane.normal, along);
+		along[2] = 0.0f;
+		if (VectorNormalize(along) > 0.0f)
+		{
+			pm->ps->velocity[0] = along[0] * hspeed;
+			pm->ps->velocity[1] = along[1] * hspeed;
+		}
+		if (pm->ps->velocity[2] < forceJumpStrength[FORCE_LEVEL_2] / 2.0f)
+		{
+			pm->ps->velocity[2] = forceJumpStrength[FORCE_LEVEL_2] / 2.0f;
+		}
+		pm->ps->forcePowersActive |= 1 << FP_LEVITATION;
+
+		PM_SetAnim(pm, pm->ps->weaponTime ? SETANIM_LEGS : SETANIM_BOTH, side == 0 ? BOTH_WALL_RUN_RIGHT : BOTH_WALL_RUN_LEFT,
+			SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+		pm->ps->forceJumpZStart = pm->ps->origin[2]; //so we don't take damage if we land at same height
+		pm->ps->pm_flags |= PMF_JUMPING | PMF_SLOW_MO_FALL | PMF_JUMP_HELD;
+		s_airWallRan[idx] = qtrue;
+		G_SoundOnEnt(pm->gent, CHAN_BODY, "sound/weapons/force/jump.mp3");
+		WP_ForcePowerDrain(pm->gent, FP_LEVITATION, 0);
+		return;
+	}
+}
+
+// Air dash (Jedi Survivor style): the dash button in the air dashes in the move direction (forward if none), once until
+// landing; the flying pose is the long leap start anim (attack with the saber: its leap attack). Rules: the double jump's (Force Jump 3, jump more than half
+// done (rising or falling) - so jump, double jump, air dash chain) and the floor dash's count and timer. Holds the height
+// while it lasts (AIR_DASH_TIME), then falls in the pose; the landing slides like the long leap (PM_GetLandingAnim).
+static void PM_CheckAirDash()
+{
+	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
+	{
+		pm->ps->pm_flags &= ~PMF_AIR_DASHED;
+		return;
+	}
+
+	if (pm->ps->pm_flags & PMF_AIR_DASHED)
+	{
+		if (level.time - pm->ps->dashlaststartTime < AIR_DASH_TIME)
+		{// dashing: keep the speed and the height
+			vec3_t dir;
+			VectorSet(dir, pm->ps->velocity[0], pm->ps->velocity[1], 0.0f);
+			if (VectorNormalize(dir) > 1.0f)
+			{
+				pm->ps->velocity[0] = dir[0] * AIR_DASH_SPEED;
+				pm->ps->velocity[1] = dir[1] * AIR_DASH_SPEED;
+			}
+			if (pm->ps->velocity[2] < 0.0f)
+			{
+				pm->ps->velocity[2] = 0.0f;
+			}
+			if (pm->ps->legsAnim == BOTH_FORCELONGLEAP_START
+				&& pm->ps->torsoAnim == BOTH_FORCELONGLEAP_START
+				&& pm->cmd.buttons & BUTTON_ATTACK
+				&& pm->ps->weapon == WP_SABER)
+			{// attack during the dash: the long leap's attack (BOTH_FORCELONGLEAP_ATTACK)
+				if (!pm->ps->SaberActive())
+				{
+					pm->ps->SaberActivate();
+				}
+				PM_SetSaberMove(LS_LEAP_ATTACK);
+			}
+		}
+		if (pm->ps->legsAnim == BOTH_FORCELONGLEAP_START)
+		{// the pose is held until the landing, which goes into BOTH_FORCELONGLEAP_LAND and its slide (as the long leap)
+			if (pm->ps->legsAnimTimer < 100)
+			{
+				pm->ps->legsAnimTimer = 100;
+			}
+			if (pm->ps->torsoAnim == BOTH_FORCELONGLEAP_START && pm->ps->torsoAnimTimer < 100)
+			{
+				pm->ps->torsoAnimTimer = 100;
+			}
+		}
+		return;
+	}
+
+	if (pm->ps->Dash_Count >= 2 && level.time - pm->ps->dashlaststartTime >= 2500)
+	{// the floor dash cooldown is over
+		pm->ps->Dash_Count = 0;
+	}
+
+	if (!(pm->cmd.buttons & BUTTON_DASH)
+		|| pm->ps->pm_flags & (PMF_DASH_HELD | PMF_RESPAWNED | PMF_STUCK_TO_WALL | PMF_TRIGGER_PUSHED) // one press = one dash
+		// the same rules as the double jump: Force Jump 3, the jump more than half done (rising or already falling)
+		|| pm->ps->forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3
+		|| pm->ps->velocity[2] > DOUBLE_JUMP_MAX_RISE
+		// and the floor dash's count and timer (g_active.cpp): two dashes, then the 2.5 s cooldown
+		|| pm->ps->Dash_Count >= 2
+		|| level.time - pm->ps->dashlaststartTime < 100
+		|| pm->ps->pm_type != PM_NORMAL
+		|| pm->waterlevel > 1
+		|| pm->gent && pm->gent->s.m_iVehicleNum != 0
+		|| PM_InKnockDown(pm->ps)
+		|| PM_InRoll(pm->ps)
+		|| PM_InLedgeMove(pm->ps->legsAnim)
+		|| pm->ps->legsAnim == BOTH_WALL_RUN_LEFT
+		|| pm->ps->legsAnim == BOTH_WALL_RUN_RIGHT
+		|| PM_SaberInAttack(pm->ps->saberMove)
+		|| PM_KickMove(pm->ps->saberMove))
+	{
+		return;
+	}
+
+	vec3_t fwd_angles, fwd, right, dir;
+	VectorSet(fwd_angles, 0.0f, pm->ps->viewangles[YAW], 0.0f);
+	AngleVectors(fwd_angles, fwd, right, nullptr);
+	VectorScale(fwd, pm->cmd.forwardmove, dir);
+	VectorMA(dir, pm->cmd.rightmove, right, dir);
+	dir[2] = 0.0f;
+	if (VectorNormalize(dir) < 1.0f)
+	{
+		VectorCopy(fwd, dir);
+	}
+
+	pm->ps->velocity[0] = dir[0] * AIR_DASH_SPEED;
+	pm->ps->velocity[1] = dir[1] * AIR_DASH_SPEED;
+	if (pm->ps->velocity[2] < 0.0f)
+	{
+		pm->ps->velocity[2] = 0.0f;
+	}
+	pm->ps->pm_flags |= PMF_AIR_DASHED;
+	pm->ps->Dash_Count++;
+	pm->ps->dashlaststartTime = level.time;
+	if (pm->ps->Dash_Count == 2 && pm->gent)
+	{// the dash timer on the HUD, as the floor dash (g_active.cpp)
+		gentity_t* te = G_TempEntity(pm->ps->origin, EV_DASHTIMER);
+		te->s.time = level.time;
+		te->s.time2 = 2500;
+		te->owner = pm->gent;
+		te->s.otherentityNum = pm->ps->clientNum;
+		gi.linkentity(te);
+	}
+
+	PM_SetAnim(pm, pm->ps->weaponTime ? SETANIM_LEGS : SETANIM_BOTH, BOTH_FORCELONGLEAP_START, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	pm->ps->legsAnimTimer = AIR_DASH_TIME;
+	if (pm->ps->torsoAnim == BOTH_FORCELONGLEAP_START)
+	{
+		pm->ps->torsoAnimTimer = AIR_DASH_TIME;
+	}
+	if (pm->gent)
+	{
+		G_Sound(pm->gent, G_SoundIndex("sound/weapons/force/dash.mp3"));
+	}
+}
+
+// Double jump (Fallen Order style): a second jump press in the air jumps again, once until landing (Force Jump 3).
+// Runs after the normal in-air jump checks; anything they started (wall flips, wall-run jump-off...) comes first.
+static void PM_CheckDoubleJump(const int legs_anim_before)
+{
+	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
+	{
+		pm->ps->pm_flags &= ~PMF_DOUBLE_JUMPED;
+		return;
+	}
+
+	if (pm->ps->pm_flags & (PMF_DOUBLE_JUMPED | PMF_JUMP_HELD | PMF_RESPAWNED | PMF_TRIGGER_PUSHED)
+		|| pm->cmd.upmove <= 0
+		|| pm->ps->velocity[2] <= 0.0f // not while falling: then the jump button is force fall
+		|| pm->ps->velocity[2] > DOUBLE_JUMP_MAX_RISE // the first jump must be more than half done (rising slower than half a jump)
+		|| pm->ps->legsAnim != legs_anim_before // an in-air jump move was just started
+		|| pm->ps->pm_type != PM_NORMAL
+		|| pm->ps->forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3
+		|| pm->waterlevel > 1
+		|| pm->gent && pm->gent->s.m_iVehicleNum != 0
+		|| PM_InKnockDown(pm->ps)
+		|| PM_InRoll(pm->ps)
+		|| PM_InLedgeMove(pm->ps->legsAnim)
+		|| PM_InSpecialJump(pm->ps->legsAnim)) // flips, wall-runs, wall-flips...
+	{
+		return;
+	}
+
+	// always the force jump pose: it ends where the air dash's pose (BOTH_FORCELONGLEAP_START) begins
+	const int anim = BOTH_FORCEJUMP1;
+
+	if (pm->ps->velocity[2] < DOUBLE_JUMP_VELOCITY)
+	{
+		pm->ps->velocity[2] = DOUBLE_JUMP_VELOCITY;
+	}
+	pm->ps->forceJumpZStart = pm->ps->origin[2]; // a force jump height limit counts from here
+	pm->ps->pm_flags |= PMF_DOUBLE_JUMPED | PMF_JUMP_HELD | PMF_JUMPING;
+
+	PM_SetAnim(pm, pm->ps->weaponTime ? SETANIM_LEGS : SETANIM_BOTH, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	PM_AddEvent(EV_JUMP);
+}
+
 static void PM_AirMove()
 {
 	vec3_t wishvel;
@@ -3350,7 +3628,13 @@ static void PM_AirMove()
 	}
 
 #if METROID_JUMP
-	PM_CheckJump();
+	{
+		const int legs_anim_before = pm->ps->legsAnim;
+		PM_CheckJump();
+		PM_CheckDoubleJump(legs_anim_before);
+		PM_CheckAirDash();
+		PM_CheckAirWallRun();
+	}
 #endif
 	PM_CheckGrab();
 
@@ -4607,7 +4891,8 @@ static void PM_CrashLand()
 
 	PM_CrashLandEffect();
 
-	if (pm->ps->pm_flags & PMF_DUCKED && level.time - pm->ps->lastOnGround > 500)
+	if (pm->ps->pm_flags & PMF_DUCKED && level.time - pm->ps->lastOnGround > 500
+		&& pm->ps->legsAnim != BOTH_FORCELONGLEAP_START && pm->ps->legsAnim != BOTH_FORCELONGLEAP_ATTACK) // the leap lands in its slide
 	{
 		//must be crouched and have been inthe air for half a second minimum
 		if (!PM_InOnGroundAnim(pm->ps) && !PM_InKnockDown(pm->ps))
@@ -4627,6 +4912,16 @@ static void PM_CrashLand()
 		delta *= 0.4f;
 	}
 
+	if (pm->ps->legsAnim == BOTH_FORCELONGLEAP_START || pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK)
+	{// the long leap / air dash pose always lands in BOTH_FORCELONGLEAP_LAND and its slide, however short the drop
+		// (the air dash holds the height, so its drop is often too short for a landing anim)
+		force_landing = qtrue;
+		if (delta < 1)
+		{
+			delta = 1;
+		}
+	}
+
 	if (delta < 1)
 	{
 		AddSoundEvent(pm->gent, pm->ps->origin, 32, AEL_MINOR, qfalse, qtrue);
@@ -4636,7 +4931,16 @@ static void PM_CrashLand()
 	qboolean dead_fall_sound = qfalse;
 	if (!PM_InDeathAnim())
 	{
-		if (PM_InAirKickingAnim(pm->ps->legsAnim)
+		if (pm->ps->legsAnim == BOTH_FORCELONGLEAP_START || pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK)
+		{// the long leap / air dash pose always lands in BOTH_FORCELONGLEAP_LAND and its slide (as MP), crouched or not
+			if (pm->gent)
+			{
+				G_SoundOnEnt(pm->gent, CHAN_AUTO, "sound/player/slide.wav");
+			}
+			PM_SetAnim(pm, SETANIM_BOTH, BOTH_FORCELONGLEAP_LAND, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 100);
+			// Only blend over 100ms
+		}
+		else if (PM_InAirKickingAnim(pm->ps->legsAnim)
 			&& pm->ps->torsoAnim == pm->ps->legsAnim)
 		{
 			const int anim = PM_GetLandingAnim();
@@ -4933,6 +5237,16 @@ static void PM_CrashLand()
 
 	if (PM_InForceFall())
 	{
+		return;
+	}
+
+	if (pm->ps->legsAnim == BOTH_FORCELONGLEAP_LAND || pm->ps->legsAnim == BOTH_FORCELONGLEAP_LAND2)
+	{// the force long leap (and the air dash) lands sliding (PM_Friction: reduced friction, dust): keep the speed
+		pm->ps->bobCycle = 0;
+		if (pm->gent && pm->gent->client)
+		{
+			pm->gent->forcePushTime = 0;
+		}
 		return;
 	}
 
@@ -21811,6 +22125,12 @@ static void Pmove_Internal(pmove_t* pmove)
 	{
 		// not holding jump
 		pm->ps->pm_flags &= ~PMF_JUMP_HELD;
+	}
+
+	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
+	{
+		// landed: the double jump and the air dash can be used again
+		pm->ps->pm_flags &= ~(PMF_DOUBLE_JUMPED | PMF_AIR_DASHED);
 	}
 
 	// disable attacks when using grappling hook

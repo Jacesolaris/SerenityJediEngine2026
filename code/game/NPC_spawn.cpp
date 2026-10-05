@@ -43,7 +43,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_vehicles.h"
 #include <qcommon\q_platform.h>
 #include <qcommon\q_shared.h>
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include "g_local.h"
 
 extern qboolean G_CheckInSolid(gentity_t* self, qboolean fix);

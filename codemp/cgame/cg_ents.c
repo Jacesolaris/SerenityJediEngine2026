@@ -2770,6 +2770,78 @@ extern void CG_AddSaberBlade(centity_t* cent, centity_t* scent, int renderfx,
 	qboolean dont_draw);
 extern void CG_DoSaberLight(const saberInfo_t* saber, int cnum, int bnum);
 
+// a thrown saber stuck in the body of the enemy it killed (server: EF_MISSILE_STICK, otherentityNum2 = the body,
+// angles2 = the throw direction): put it on the body's chest bone every frame, so it follows the ragdoll - the hilt
+// at the entry wound, the blade the way it flew, out the back
+static void CG_SaberBodyStickPlace(centity_t* cent)
+{
+	const entityState_t* s1 = &cent->currentState;
+	mdxaBone_t matrix;
+	vec3_t org, axis[3], hilt, dir;
+	int i;
+
+	if (!(s1->eFlags & EF_MISSILE_STICK) || VectorCompare(s1->angles2, vec3_origin)
+		|| s1->otherentityNum2 < 0 || s1->otherentityNum2 >= ENTITYNUM_WORLD)
+	{
+		cent->saberBodyStickSet = qfalse;
+		return;
+	}
+	centity_t* body = &cg_entities[s1->otherentityNum2];
+	if (!body->ghoul2)
+	{
+		return;
+	}
+	int bolt = trap->G2API_AddBolt(body->ghoul2, 0, "thoracic");
+	if (bolt < 0)
+	{
+		bolt = trap->G2API_AddBolt(body->ghoul2, 0, "lower_lumbar");
+		if (bolt < 0)
+		{
+			return;
+		}
+	}
+	// the same angles and origin the ragdoll and the player model use (CG_RagDoll)
+	trap->G2API_GetBoltMatrix(body->ghoul2, 0, bolt, &matrix, body->turAngles, body->lerpOrigin, cg.time,
+		cgs.game_models, body->modelScale);
+	BG_GiveMeVectorFromMatrix(&matrix, ORIGIN, org);
+	BG_GiveMeVectorFromMatrix(&matrix, POSITIVE_X, axis[0]);
+	BG_GiveMeVectorFromMatrix(&matrix, POSITIVE_Y, axis[1]);
+	BG_GiveMeVectorFromMatrix(&matrix, POSITIVE_Z, axis[2]);
+	for (i = 0; i < 3; i++)
+	{
+		VectorNormalize(axis[i]);
+	}
+
+	if (!cent->saberBodyStickSet)
+	{
+		vec3_t rel;
+		VectorNormalize2(s1->angles2, dir);
+		VectorMA(org, -10.0f, dir, hilt);
+		VectorSubtract(hilt, org, rel);
+		for (i = 0; i < 3; i++)
+		{
+			cent->saberBodyStickOfs[i] = DotProduct(rel, axis[i]);
+			cent->saberBodyStickDir[i] = DotProduct(dir, axis[i]);
+		}
+		cent->saberBodyStickSet = qtrue;
+	}
+
+	VectorCopy(org, hilt);
+	VectorClear(dir);
+	for (i = 0; i < 3; i++)
+	{
+		VectorMA(hilt, cent->saberBodyStickOfs[i], axis[i], hilt);
+		VectorMA(dir, cent->saberBodyStickDir[i], axis[i], dir);
+	}
+	VectorNormalize(dir);
+
+	// the blade comes out of the hilt along the saber's up axis (as the wall stick): angles with up = dir
+	VectorCopy(hilt, cent->lerpOrigin);
+	cent->lerpAngles[PITCH] = atan2(sqrt(dir[0] * dir[0] + dir[1] * dir[1]), dir[2]) * (180.0f / M_PI);
+	cent->lerpAngles[YAW] = atan2(dir[1], dir[0]) * (180.0f / M_PI);
+	cent->lerpAngles[ROLL] = 0;
+}
+
 static void CG_Missile(centity_t* cent)
 {
 	refEntity_t ent = { 0 };
@@ -3092,6 +3164,11 @@ static void CG_Missile(centity_t* cent)
 		}
 	}
 
+	if (s1->weapon == WP_SABER)
+	{//stuck in a body: on its chest bone
+		CG_SaberBodyStickPlace(cent);
+	}
+
 	// create the render entity
 	memset(&ent, 0, sizeof ent);
 	VectorCopy(cent->lerpOrigin, ent.origin);
@@ -3221,7 +3298,7 @@ static void CG_Missile(centity_t* cent)
 	// add to refresh list, possibly with quad glow
 	CG_AddRefEntityWithPowerups(&ent, s1);
 
-	if (s1->weapon == WP_SABER
+	if (s1->weapon == WP_SABER && !cent->saberBodyStickSet //not while it's stuck in a body
 		&& (cgs.gametype == GT_JEDIMASTER || //playing JediMaster
 			s1->owner == cg.snap->ps.clientNum)) //or it's our saber and we've dropped it.
 	{

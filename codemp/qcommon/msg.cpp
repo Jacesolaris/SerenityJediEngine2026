@@ -955,7 +955,7 @@ netField_t entityStateFields[] =
 	{NETF(angles[0]), 0},
 	{NETF(solid), 24},
 	// flag states barely used - could be moved elsewhere
-	{NETF(fireflag), 2},
+	{NETF(fireflag), 4}, // was 2: also carries the saber style (SS_NONE..SS_STAFF = 0..7)
 	{NETF(event), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
 	// used mostly for players and npcs - appears to be static / never changing
 	{NETF(customRGBA[3]), 8}, //0-255
@@ -1102,8 +1102,8 @@ netField_t entityStateFields[] =
 
 	//rww - for use by mod authors only
 	{NETF(userInt1), 1},
-	{NETF(userInt2), 1},
-	{NETF(userInt3), 1},
+	{NETF(userInt2), 8}, // was 1: saber fatigue, for the bars over the heads (BG_PlayerStateToEntityState)
+	{NETF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22) go to the clients
 	{NETF(userFloat1), 1},
 	{NETF(userFloat2), 1},
 	{NETF(userFloat3), 1},
@@ -1545,7 +1545,7 @@ netField_t playerStateFields[] =
 	{PSF(standheight), 10},
 	{PSF(crouchheight), 10},
 	{PSF(basespeed), -16},
-	{PSF(pm_flags), 16},
+	{PSF(pm_flags), 32}, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
 	{PSF(jetpackFuel), 8},
 	{PSF(sprintFuel), 8},
 	{PSF(cloakFuel), 8},
@@ -1661,7 +1661,7 @@ netField_t playerStateFields[] =
 	//rww - for use by mod authors only
 	{PSF(userInt1), 1},
 	{PSF(userInt2), 1},
-	{PSF(userInt3), 1},
+	{PSF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
 	{PSF(userFloat1), 1},
 	{PSF(userFloat2), 1},
 	{PSF(userFloat3), 1},
@@ -1677,6 +1677,8 @@ netField_t playerStateFields[] =
 	{PSF(fd.blockPoints), 16},
 	{PSF(fd.blockPointsMax), 16},
 	{PSF(fd.forceSpeedRecoveryTime), 32},
+	{PSF(fd.forcePowerLevel[FP_SPEED]), 2}, //force long leap needs force speed 3 (bg_pmove, predicted by the client)
+	{PSF(fd.forcePowerDebounce[FP_SPEED]), 32}, //force long leap: force speed must have just started
 	{PSF(PlayerEffectFlags), 16},
 
 	{PSF(ManualBlockingFlags), 32},
@@ -1743,7 +1745,7 @@ netField_t pilotPlayerStateFields[] =
 	{PSF(events[0]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
 	{PSF(events[1]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
 	{PSF(weaponstate), 4},
-	{PSF(pm_flags), 16},
+	{PSF(pm_flags), 32}, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
 	{PSF(pm_time), -16},
 	{PSF(clientNum), GENTITYNUM_BITS},
 	{PSF(weapon), 8},
@@ -1892,7 +1894,7 @@ netField_t pilotPlayerStateFields[] =
 	//rww - for use by mod authors only
 	{PSF(userInt1), 1},
 	{PSF(userInt2), 1},
-	{PSF(userInt3), 1},
+	{PSF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
 	{PSF(userFloat1), 1},
 	{PSF(userFloat2), 1},
 	{PSF(userFloat3), 1},
@@ -1908,6 +1910,8 @@ netField_t pilotPlayerStateFields[] =
 	{PSF(fd.blockPoints), 16},
 	{PSF(fd.blockPointsMax), 16},
 	{PSF(fd.forceSpeedRecoveryTime), 32},
+	{PSF(fd.forcePowerLevel[FP_SPEED]), 2}, //force long leap needs force speed 3 (bg_pmove, predicted by the client)
+	{PSF(fd.forcePowerDebounce[FP_SPEED]), 32}, //force long leap: force speed must have just started
 	{PSF(PlayerEffectFlags), 16},
 
 	{PSF(ManualBlockingFlags), 32},
@@ -1986,7 +1990,7 @@ netField_t vehPlayerStateFields[] =
 	//{ PSF(customRGBA[3]), 8 }, //0-255
 	{PSF(weaponstate), 4},
 	//{ PSF(basespeed), -16 },
-	{PSF(pm_flags), 16},
+	{PSF(pm_flags), 32}, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
 	{PSF(pm_time), -16},
 	//{ PSF(customRGBA[1]), 8 }, //0-255
 	{PSF(clientNum), GENTITYNUM_BITS},
@@ -2031,7 +2035,7 @@ netField_t vehPlayerStateFields[] =
 	//rww - for use by mod authors only
 	{PSF(userInt1), 1},
 	{PSF(userInt2), 1},
-	{PSF(userInt3), 1},
+	{PSF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
 	{PSF(userFloat1), 1},
 	{PSF(userFloat2), 1},
 	{PSF(userFloat3), 1},
@@ -2141,7 +2145,7 @@ netField_t	playerStateFields[] =
 { PSF(standheight), 10 },
 { PSF(crouchheight), 10 },
 { PSF(basespeed), -16 },
-{ PSF(pm_flags), 16 },
+{ PSF(pm_flags), 32 }, // all 32 bits (client prediction)
 { PSF(jetpackFuel), 8 },
 { PSF(sprintFuel), 8 },
 { PSF(cloakFuel), 8 },
@@ -2250,7 +2254,7 @@ netField_t	playerStateFields[] =
 //rww - for use by mod authors only
 { PSF(userInt1), 1 },
 { PSF(userInt2), 1 },
-{ PSF(userInt3), 1 },
+{ PSF(userInt3), 32 }, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
 { PSF(userFloat1), 1 },
 { PSF(userFloat2), 1 },
 { PSF(userFloat3), 1 },

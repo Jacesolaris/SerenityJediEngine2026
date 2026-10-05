@@ -30,7 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_public.h"
 #include "bg_weapons.h"
 #include "anims.h"
-#include "surfaceflags.h"
+#include "game/surfaceflags.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>

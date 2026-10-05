@@ -2136,7 +2136,7 @@ static qboolean ParseShader(const char** text)
 		{
 			if (s >= MAX_SHADER_STAGES)
 			{
-				ri->Printf(PRINT_WARNING, "WARNING: too many stages in shader %s (max is %i)\n", shader.name,
+				ri.Printf(PRINT_WARNING, "WARNING: too many stages in shader %s (max is %i)\n", shader.name,
 					MAX_SHADER_STAGES);
 				return qfalse;
 			}
@@ -2449,7 +2449,7 @@ static shader_t* GeneratePermanentShader(void)
 		return tr.defaultShader;
 	}
 
-	const auto newShader = static_cast<shader_s*>(ri->Hunk_Alloc(sizeof(shader_t), h_low));
+	const auto newShader = static_cast<shader_s*>(ri.Hunk_Alloc(sizeof(shader_t), h_low));
 
 	*newShader = shader;
 
@@ -3175,7 +3175,7 @@ shader_t* R_FindShader(const char* name, const int* lightmapIndexes, const byte*
 	else if (lightmapIndexes[0] < LIGHTMAP_2D)
 	{
 		// negative lightmap indexes cause stray pointers (think tr.lightmaps[lightmapIndex])
-		ri->Printf(PRINT_WARNING, "WARNING: shader '%s' has invalid lightmap index of %d\n", name, lightmapIndexes[0]);
+		ri.Printf(PRINT_WARNING, "WARNING: shader '%s' has invalid lightmap index of %d\n", name, lightmapIndexes[0]);
 		lightmapIndexes = lightmapsVertex;
 	}
 

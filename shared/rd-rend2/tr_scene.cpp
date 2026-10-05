@@ -196,7 +196,9 @@ void RE_AddRefEntityToScene(const refEntity_t* ent)
 		static qboolean firstTime = qtrue;
 		if (firstTime) {
 			firstTime = qfalse;
-			ri.Printf(PRINT_WARNING, "RE_AddRefEntityToScene passed a refEntity which has an origin with a NaN component\n");
+			const model_t* model = R_GetModelByHandle(ent->hModel);
+			ri.Printf(PRINT_WARNING, "RE_AddRefEntityToScene passed a refEntity which has an origin with a NaN component (reType %i, model '%s')\n",
+				ent->reType, model ? model->name : "");
 		}
 		return;
 	}

@@ -22,7 +22,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "tr_local.h"
-#include "glext.h"
+#include "rd-vanilla/glext.h"
 #include "tr_WorldEffects.h"
 
 backEndData_t* backEndData;
@@ -63,10 +63,10 @@ void GL_Bind(image_t* image) {
 	if (!image) {
 		// (a shader whose image did not load, drawn every frame: named once, for developers)
 		static const shader_t* null_image_shader;
-		if (ri->Cvar_VariableIntegerValue("developer") && tess.shader != null_image_shader)
+		if (ri.Cvar_VariableIntegerValue("developer") && tess.shader != null_image_shader)
 		{
 			null_image_shader = tess.shader;
-			ri->Printf(PRINT_ALL, S_COLOR_YELLOW "GL_Bind: NULL image in shader %s\n", tess.shader ? tess.shader->name : "?");
+			ri.Printf(PRINT_ALL, S_COLOR_YELLOW "GL_Bind: NULL image in shader %s\n", tess.shader ? tess.shader->name : "?");
 		}
 		texnum = tr.defaultImage->texnum;
 	}
@@ -1058,7 +1058,7 @@ void RB_SetGL2D(void) {
 	qglDisable(GL_CLIP_PLANE0);
 
 	// set time for 2D shaders
-	backEnd.refdef.time = ri->Milliseconds() * ri->Cvar_VariableValue("timescale");
+	backEnd.refdef.time = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
 	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
 }
 
@@ -1089,7 +1089,7 @@ void RE_StretchRaw(const int x, const int y, const int w, const int h, const int
 
 	int start = end = 0;
 	if (r_speeds->integer) {
-		start = ri->Milliseconds() * ri->Cvar_VariableValue("timescale");
+		start = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
 	}
 
 	// make sure rows and cols are powers of 2
@@ -1119,8 +1119,8 @@ void RE_StretchRaw(const int x, const int y, const int w, const int h, const int
 	}
 
 	if (r_speeds->integer) {
-		end = ri->Milliseconds() * ri->Cvar_VariableValue("timescale");
-		ri->Printf(PRINT_ALL, "qglTexSubImage2D %i, %i: %i msec\n", cols, rows, end - start);
+		end = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
+		ri.Printf(PRINT_ALL, "qglTexSubImage2D %i, %i: %i msec\n", cols, rows, end - start);
 	}
 
 	RB_SetGL2D();
@@ -1616,7 +1616,7 @@ void RB_ShowImages(void) {
 
 	qglFinish();
 
-	//	start = ri->Milliseconds()*ri->Cvar_VariableValue( "timescale" );
+	//	start = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
 
 	int i = 0;
 	R_Images_StartIteration();
@@ -1649,8 +1649,8 @@ void RB_ShowImages(void) {
 
 	qglFinish();
 
-	//	end = ri->Milliseconds()*ri->Cvar_VariableValue( "timescale" );
-	//	ri->Printf( PRINT_ALL, "%i msec to draw all images\n", end - start );
+	//	end = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
+	//	ri.Printf( PRINT_ALL, "%i msec to draw all images\n", end - start );
 }
 
 static void RB_GammaCorrectRender()
@@ -1745,7 +1745,7 @@ static const void* RB_SwapBuffers(const void* data)
 
 	GLimp_LogComment("***************** RB_SwapBuffers *****************\n\n\n");
 
-	ri->WIN_Present(&window);
+	ri.WIN_Present(&window);
 
 	backEnd.projection2D = qfalse;
 
@@ -1778,7 +1778,7 @@ RB_ExecuteRenderCommands
 */
 extern const void* R_DrawWireframeAutomap(const void* data); //tr_world.cpp
 void RB_ExecuteRenderCommands(const void* data) {
-	const int t1 = ri->Milliseconds() * ri->Cvar_VariableValue("timescale");
+	const int t1 = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
 
 	while (true) {
 		data = PADP(data, sizeof(void*));
@@ -1817,7 +1817,7 @@ void RB_ExecuteRenderCommands(const void* data) {
 		case RC_END_OF_LIST:
 		default:
 			// stop rendering
-			const int t2 = ri->Milliseconds() * ri->Cvar_VariableValue("timescale");
+			const int t2 = ri.Milliseconds() * ri.Cvar_VariableValue("timescale");
 			backEnd.pc.msec = t2 - t1;
 			return;
 		}

@@ -154,9 +154,9 @@ set(MPGameGameFiles
 	"${MPDir}/game/g_xcvar.h"
 	"${MPDir}/game/inv.h"
 	"${MPDir}/game/match.h"
-	"${MPDir}/game/npc_headers.h"
-	"${MPDir}/game/say.h"
-	"${MPDir}/game/surfaceflags.h"
+	"${SharedDir}/game/npc_headers.h"
+	"${SharedDir}/game/say.h"
+	"${SharedDir}/game/surfaceflags.h"
 	"${MPDir}/game/teams.h"
 	"${MPDir}/game/w_saber.h"
 	)
@@ -181,7 +181,7 @@ source_group("common/safe" FILES ${MPGameCommonSafeFiles})
 set(MPGameFiles ${MPGameFiles} ${MPGameCommonSafeFiles})
 
 set(MPGameCgameFiles
-	"${MPDir}/cgame/animtable.h"
+	"${SharedDir}/cgame/animtable.h"
 	"${MPDir}/cgame/cg_public.h"
 	)
 source_group("cgame" FILES ${MPGameCgameFiles})
