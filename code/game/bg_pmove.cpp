@@ -433,7 +433,7 @@ qboolean PM_CheckGrabWall(const trace_t* trace)
 		vec3_t moveDir;
 		VectorCopy(pm->ps->velocity, moveDir);
 		VectorNormalize(moveDir);
-		if (DotProduct(moveDir, trace->plane.normal) > -0.65f)
+		if (DotProduct(moveDir, trace->plane.normal) > (pm->ps->pm_flags & PMF_AIR_DASHED ? -0.9f : -0.65f)) // air dash: only a near head-on hit (~25 deg) sticks; shallower hits are the wall-run's (PM_CheckAirWallRun)
 		{
 			//not enough of a direct impact, just slide off
 			return qfalse;
@@ -503,7 +503,7 @@ qboolean PM_CheckGrabWall(const trace_t* trace)
 	vec3_t moveDir;
 	VectorCopy(pm->ps->velocity, moveDir);
 	VectorNormalize(moveDir);
-	if (DotProduct(moveDir, trace->plane.normal) > -0.65f)
+	if (DotProduct(moveDir, trace->plane.normal) > (pm->ps->pm_flags & PMF_AIR_DASHED ? -0.9f : -0.65f)) // air dash: only a near head-on hit (~25 deg) sticks; shallower hits are the wall-run's (PM_CheckAirWallRun)
 	{
 		//not enough of a direct impact, just slide off
 		return qfalse;
@@ -3365,7 +3365,8 @@ static void PM_CheckAirWallRun()
 		|| pm->waterlevel > 1
 		|| pm->gent->s.m_iVehicleNum != 0
 		|| pm->ps->velocity[2] < -AIR_WALL_RUN_MAX_FALL // falling fast: too late to catch the wall
-		|| PM_InSpecialJump(pm->ps->legsAnim) // wall-runs, flips, the long leap...
+		|| (PM_InSpecialJump(pm->ps->legsAnim) // wall-runs, flips, the long leap...
+			&& !(pm->ps->pm_flags & PMF_AIR_DASHED && pm->ps->legsAnim == BOTH_FORCELONGLEAP_START)) // but the air dash pose can catch a wall
 		|| PM_InKnockDown(pm->ps)
 		|| PM_InRoll(pm->ps)
 		|| PM_InLedgeMove(pm->ps->legsAnim)
@@ -3388,6 +3389,13 @@ static void PM_CheckAirWallRun()
 		return;
 	}
 
+	// Coming out of an air dash (dash pose): easier limits, since the dash meets the wall fast and at a sharper angle.
+	// Every other case keeps the normal limits.
+	const qboolean from_air_dash = pm->ps->pm_flags & PMF_AIR_DASHED && pm->ps->legsAnim == BOTH_FORCELONGLEAP_START ? qtrue : qfalse;
+	const float wall_reach = from_air_dash ? 40.0f : AIR_WALL_RUN_REACH; // side reach (normal 28)
+	const float max_face_into = from_air_dash ? 0.9f : 0.75f; // facing into the wall: ~65 deg (normal ~49)
+	const float max_move_into = from_air_dash ? 0.9f : 0.8f; // moving into the wall: ~65 deg (normal ~53)
+
 	vec3_t fwd, right, fwd_angles, trace_to, mins, maxs;
 	trace_t trace;
 	VectorSet(fwd_angles, 0.0f, pm->ps->viewangles[YAW], 0.0f);
@@ -3398,7 +3406,7 @@ static void PM_CheckAirWallRun()
 	for (int side = 0; side < 2; side++)
 	{
 		const float sign = side == 0 ? 1.0f : -1.0f; // right, then left
-		VectorMA(pm->ps->origin, sign * AIR_WALL_RUN_REACH, right, trace_to);
+		VectorMA(pm->ps->origin, sign * wall_reach, right, trace_to);
 		pm->trace(&trace, pm->ps->origin, mins, maxs, trace_to, pm->ps->clientNum, MASK_PLAYERSOLID,
 			static_cast<EG2_Collision>(0), 0);
 
@@ -3414,7 +3422,7 @@ static void PM_CheckAirWallRun()
 		{// not a wall on that side
 			continue;
 		}
-		if (fabs(DotProduct(fwd, trace.plane.normal)) > 0.75f || fabs(DotProduct(hvel, trace.plane.normal)) > 0.8f)
+		if (fabs(DotProduct(fwd, trace.plane.normal)) > max_face_into || fabs(DotProduct(hvel, trace.plane.normal)) > max_move_into)
 		{// heading straight into it: that's not running along it
 			continue;
 		}
@@ -3459,8 +3467,9 @@ static void PM_CheckAirDash()
 
 	if (pm->ps->pm_flags & PMF_AIR_DASHED)
 	{
-		if (level.time - pm->ps->dashlaststartTime < AIR_DASH_TIME)
-		{// dashing: keep the speed and the height
+		if (level.time - pm->ps->dashlaststartTime < AIR_DASH_TIME
+			&& (pm->ps->legsAnim == BOTH_FORCELONGLEAP_START || pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK))
+		{// dashing: keep the speed and the height (only in the dash poses: a wall-run caught out of the dash takes over)
 			vec3_t dir;
 			VectorSet(dir, pm->ps->velocity[0], pm->ps->velocity[1], 0.0f);
 			if (VectorNormalize(dir) > 1.0f)
