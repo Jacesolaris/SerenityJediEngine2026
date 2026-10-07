@@ -31,6 +31,8 @@ constexpr auto JPEG_IMAGE_QUALITY = 95;
 #include "qcommon/ojk_saved_game.h"
 #include "qcommon/ojk_saved_game_helper.h"
 
+extern void SCR_PrecacheScreenshot(); // JKO save game screenshots (cl_scrn.cpp)
+
 static char save_game_comment[iSG_COMMENT_SIZE];
 
 //#define SG_PROFILE	// enable for debug save stats if you want
@@ -311,6 +313,13 @@ void SV_SaveGame_f()
 
 	if (!SG_GameAllowedToSaveHere(qfalse)) //full check
 		return; // this prevents people saving via quick-save now during cinematic.
+
+	if (com_outcast && com_outcast->integer == 1)
+	{
+		// JKO save game screenshot: grab the game view now (does nothing while a menu is up - the menu
+		// grabbed it when it opened, before covering the screen)
+		SCR_PrecacheScreenshot();
+	}
 
 	if (!Q_stricmp(filename, "auto"))
 	{
@@ -726,25 +735,22 @@ int SG_GetSaveGameComment(
 		}
 	}
 
-#ifdef JK2_MODE
-	// Read screenshot
+	// Read screenshot - only JKO saves (com_outcast 1) have one
 	//
-
-	if (is_succeed)
+	if (is_succeed && saved_game.is_next_chunk(INT_ID('S', 'H', 'L', 'N')))
 	{
 		size_t iScreenShotLength;
 
 		is_succeed = sgh.try_read_chunk<uint32_t>(
 			INT_ID('S', 'H', 'L', 'N'),
 			iScreenShotLength);
-	}
 
-	if (is_succeed)
-	{
-		is_succeed = sgh.try_read_chunk(
-			INT_ID('S', 'H', 'O', 'T'));
+		if (is_succeed)
+		{
+			is_succeed = sgh.try_read_chunk(
+				INT_ID('S', 'H', 'O', 'T'));
+		}
 	}
-#endif
 
 	// Read mapname
 	//
@@ -796,8 +802,13 @@ static char* SG_GetSaveGameMapName(const char* ps_pathless_base_name)
 }
 
 // pass in qtrue to set as loading screen, else pass in pvDest to read it into there...
+// (JK2 / JKO save game screenshot: only saves made with com_outcast 1 have one - check SG_SaveHasScreenshot first)
 //
-#ifdef JK2_MODE
+static bool SG_SaveHasScreenshot()
+{
+	return ojk::SavedGame::get_instance().is_next_chunk(INT_ID('S', 'H', 'L', 'N')) ? true : false;
+}
+
 static bool SG_ReadScreenshot(
 	bool set_as_loading_screen,
 	void* screenshot_ptr)
@@ -928,7 +939,7 @@ qboolean SG_GetSaveImage(
 
 	if (is_succeed)
 	{
-		is_succeed = SG_ReadScreenshot(
+		is_succeed = SG_SaveHasScreenshot() && SG_ReadScreenshot(
 			false,
 			image_ptr);
 	}
@@ -945,6 +956,7 @@ static void SG_WriteScreenshot(qboolean qbAutosave, const char* psMapName)
 
 	byte* pbRawScreenShot = nullptr;
 	byte* byBlank = nullptr;
+	byte* src, * dst;
 
 	if (qbAutosave)
 	{
@@ -953,10 +965,10 @@ static void SG_WriteScreenshot(qboolean qbAutosave, const char* psMapName)
 		int iWidth = SG_SCR_WIDTH;
 		int iHeight = SG_SCR_HEIGHT;
 		const size_t	bySize = SG_SCR_WIDTH * SG_SCR_HEIGHT * 4;
-		byte* src, * dst;
 
 		byBlank = new byte[bySize];
-		pbRawScreenShot = SCR_TempRawImage_ReadFromFile(va("levelshots/%s.tga", psMapName), &iWidth, &iHeight, byBlank, qtrue);
+		// qfalse = no vertical flip (OpenJK e791a477: the renderers' GetScreenShot already stores the shot the right way up)
+		pbRawScreenShot = SCR_TempRawImage_ReadFromFile(va("levelshots/%s.tga", psMapName), &iWidth, &iHeight, byBlank, qfalse);
 
 		if (pbRawScreenShot)
 		{
@@ -1009,15 +1021,10 @@ static void SG_WriteScreenshot(qboolean qbAutosave, const char* psMapName)
 	size_t bufSize = SG_SCR_WIDTH * SG_SCR_HEIGHT * 3;
 	byte* pJPGData = (byte*)Z_Malloc(static_cast<int>(bufSize), TAG_TEMP_WORKSPACE, qfalse, 4);
 
-#ifdef JK2_MODE
-	bool flip_vertical = true;
-#else
-	bool flip_vertical = false;
-#endif // JK2_MODE
+	constexpr bool flip_vertical = false; // OpenJK e791a477
 
 	iJPGDataSize = re.SaveJPGToBuffer(pJPGData, bufSize, JPEG_IMAGE_QUALITY, SG_SCR_WIDTH, SG_SCR_HEIGHT, pbRawScreenShot, 0, flip_vertical);
-	if (qbAutosave)
-		delete[] byBlank;
+	delete[] byBlank; // both paths allocate it (OpenJK e791a477)
 
 	saved_game.write_chunk<uint32_t>(
 		INT_ID('S', 'H', 'L', 'N'),
@@ -1031,7 +1038,6 @@ static void SG_WriteScreenshot(qboolean qbAutosave, const char* psMapName)
 	Z_Free(pJPGData);
 	SCR_TempRawImage_CleanUp();
 }
-#endif
 
 qboolean SG_GameAllowedToSaveHere(const qboolean inCamera)
 {
@@ -1105,9 +1111,10 @@ qboolean SG_WriteSavegame(const char* psPathlessBaseName, qboolean qbAutosave)
 	Q_strncpyz(sMap_Cmd, psMapName, sizeof sMap_Cmd);
 
 	SG_WriteComment(qbAutosave, sMap_Cmd);
-#ifdef JK2_MODE
-	SG_WriteScreenshot(qbAutosave, sMap_Cmd);
-#endif
+	if (com_outcast && com_outcast->integer == 1) // JKO (as JK2): the save shows a picture of where you saved when it loads
+	{
+		SG_WriteScreenshot(qbAutosave, sMap_Cmd);
+	}
 
 	sgh.write_chunk(
 		INT_ID('M', 'P', 'C', 'M'),
@@ -1219,11 +1226,11 @@ qboolean SG_ReadSavegame
 	sgh.read_chunk(
 		INT_ID('C', 'M', 'T', 'M'));
 
-#ifdef JK2_MODE
-	::SG_ReadScreenshot(
-		true,
-		nullptr);
-#endif
+	// JKO saves (com_outcast 1) have a screenshot: show it on the loading screen. Other saves: clear any old one.
+	if (!SG_SaveHasScreenshot() || !::SG_ReadScreenshot(true, nullptr))
+	{
+		::SCR_SetScreenshot(nullptr, 0, 0);
+	}
 
 	sgh.read_chunk(
 		INT_ID('M', 'P', 'C', 'M'),

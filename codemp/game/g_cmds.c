@@ -2253,7 +2253,7 @@ static const char* gameNames[] = {
 	"Jedi Master",
 	"Duel",
 	"Power Duel",
-	"Single Player",
+	"Missions", // GT_SINGLE_PLAYER (as the menus' gameinfo.txt)
 	"Team FFA",
 	"Siege",
 	"Capture the Flag",
@@ -2331,12 +2331,8 @@ static qboolean G_VoteGametype(const gentity_t* ent, int num_args, const char* a
 		gt = GT_FFA;
 	}
 
-	// logically invalid gametypes, or gametypes not fully implemented in MP
-	if (gt == GT_SINGLE_PLAYER)
-	{
-		trap->SendServerCommand(ent - g_entities, va("print \"This gametype is not supported (%s).\n\"", arg2));
-		return qfalse;
-	}
+	// GT_SINGLE_PLAYER ("Missions", the SP maps in co-op) can be voted for, as it can be chosen in the menus
+	// (gameinfo.txt): the next map comes from the arenas typed "missions" (G_RefreshNextMap)
 
 	level.votingGametype = qtrue;
 	level.votingGametypeTo = gt;

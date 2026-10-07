@@ -74,7 +74,6 @@ extern void G_StaggerAttacker(gentity_t* atk);
 extern void G_BounceAttacker(gentity_t* atk);
 extern void WP_BlockPointsRegenerate(const gentity_t* self, const int override_amt);
 extern saberMoveName_t PM_SaberBounceForAttack(int move);
-extern void WP_SaberDrop(const gentity_t* self, gentity_t* saber);
 extern qboolean PM_SaberInnonblockableAttack(int anim);
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInKata(saberMoveName_t saberMove);

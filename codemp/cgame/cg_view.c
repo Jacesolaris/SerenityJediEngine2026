@@ -59,7 +59,8 @@ static float CG_LongLeapCameraBlend(void)
 	const int anim = cg.predictedPlayerState.legsAnim;
 	const qboolean leaping = (qboolean)(cg.renderingThirdPerson
 		&& (anim == BOTH_FORCELONGLEAP_START || anim == BOTH_FORCELONGLEAP_ATTACK || anim == BOTH_FORCELONGLEAP_ATTACK2
-			|| anim == BOTH_FORCELONGLEAP_LAND || anim == BOTH_FORCELONGLEAP_LAND2));
+			|| anim == BOTH_FORCELONGLEAP_LAND || anim == BOTH_FORCELONGLEAP_LAND2
+			|| anim == BOTH_FORCEJUMPDASH_START || anim == BOTH_FORCEJUMPDASH_ATTACK || anim == BOTH_FORCEJUMPDASH_LAND));
 
 	if (cg.time != lastTime)
 	{
@@ -92,6 +93,9 @@ CG_MeditateCameraOrbit
 While meditating (the meditate anims, not their ends) the mouse orbits the third person camera around the player:
 pmove holds the view angles there (the body keeps facing), so the orbit is the mouse movement since the meditation
 began, read from the user commands. Afterwards the camera swings back behind the player.
+The same while spectating and following a player in third person (PMF_FOLLOW): the view angles are the followed
+player's, so the spectator's own mouse orbits the camera around him (and the orbit stays while following, also when
+switching to the next player). When the follow ends the camera swings back as after meditating.
 ===============
 */
 static void CG_MeditateCameraOrbit(float* yaw, float* pitch)
@@ -101,7 +105,9 @@ static void CG_MeditateCameraOrbit(float* yaw, float* pitch)
 	static float orbitYaw = 0.0f, orbitPitch = 0.0f;
 	static int lastTime = 0;
 	const int anim = cg.predictedPlayerState.legsAnim;
-	const qboolean meditating = (qboolean)(cg.renderingThirdPerson
+	const qboolean following = (qboolean)(cg.renderingThirdPerson && cg.snap
+		&& cg.snap->ps.pm_flags & PMF_FOLLOW); // spectator following a player
+	const qboolean meditating = (qboolean)(following || cg.renderingThirdPerson
 		&& cg.predictedPlayerState.stats[STAT_HEALTH] > 0
 		&& (anim == BOTH_MEDITATE || anim == BOTH_MEDITATE1 || anim == BOTH_MEDITATE_SABER));
 	usercmd_t cmd;
@@ -152,7 +158,6 @@ static void CG_MeditateCameraOrbit(float* yaw, float* pitch)
 	*yaw += orbitYaw;
 	*pitch += orbitPitch;
 }
-
 
 /*
 =============================================================================
@@ -3335,6 +3340,13 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 	if (cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR)
 	{
 		cg.renderingThirdPerson = 0;
+	}
+
+	if (cg.snap->ps.pm_flags & PMF_FOLLOW && !cg.snap->ps.zoomMode)
+	{
+		//spectator following a player: always third person, so the mouse can orbit the camera around him
+		//(CG_MeditateCameraOrbit), also with cg_thirdPerson 0 (a zoomed player is still seen through his scope)
+		cg.renderingThirdPerson = 1;
 	}
 
 	//cutscene camera renderer

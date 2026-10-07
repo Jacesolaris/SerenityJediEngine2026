@@ -712,7 +712,7 @@ static void SJE_Pazaak_DrawCardSlot(const int slot, const float x, const float y
 static void SJE_Pazaak_DrawSelCardSlot(const int slot, const float x, const float y, const float w, const float h)
 {
 	qhandle_t sh;
-	vec4_t color;
+	vec4_t color = { 0 };
 	const char* text;
 
 	if (!PzkState.active || slot < 0 || slot > 22 || !PzkState.playercards[slot].amount)
@@ -744,7 +744,7 @@ static void SJE_Pazaak_DrawSelCardSlot(const int slot, const float x, const floa
 static void SJE_Pazaak_DrawSideDeckSlot(const int slot, const float x, const float y, const float w, const float h)
 {
 	qhandle_t sh;
-	vec4_t color;
+	vec4_t color = { 0 };
 
 	if (!PzkState.active || slot < 0 || slot > 9)
 	{
@@ -771,7 +771,7 @@ static void SJE_Pazaak_DrawSideDeckSlot(const int slot, const float x, const flo
 
 static void SJE_Pazaak_DrawHandSlot(const int slot, const float x, const float y, const float w, const float h)
 {
-	vec4_t color;
+	vec4_t color = { 0 };
 	qhandle_t sh;
 
 	if (!PzkState.active || slot < 1 || slot > 8)
@@ -1951,7 +1951,7 @@ static void Pazaak_SendAction(const char* text)
 qboolean UI_Pazaak_ConsoleCommand(const char* cmd)
 {
 	static char args[64][128];
-	const char* argv[64];
+	const char* argv[64] = { 0 };
 	int argc, i;
 
 	if (Q_stricmp(cmd, "uipzk"))

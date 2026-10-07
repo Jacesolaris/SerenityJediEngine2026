@@ -347,6 +347,7 @@ stringID_table_t saber_moveTable[] =
 
 	ENUM2STRING(LS_KNOCK_RIGHT),
 	ENUM2STRING(LS_KNOCK_LEFT),
+	ENUM2STRING(LS_JUMPDASH_ATTACK),
 
 	{"", -1}
 };

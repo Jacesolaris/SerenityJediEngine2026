@@ -623,6 +623,7 @@ qboolean RE_InitDissolve(const qboolean bForceCircularExtroWipe)
 		{
 			// read current screen image...  (GL_RGBA should work even on 3DFX in that the RGB parts will be valid at least)
 			//
+			qglReadBuffer(GL_FRONT_LEFT); // rend2 4d3177e5: read the front buffer (the last shown frame)
 			qglReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBuffer);
 			//
 			// now expand the pic over the top of itself so that it has a stride value of {PowerOf2(glConfig.vidWidth)}

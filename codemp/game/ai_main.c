@@ -8798,13 +8798,42 @@ static qboolean bot_behave_check_use_kata(bot_state_t* bs)
 		MASK_SHOT,
 		0, 0, 0);
 
-	// Validate trace hit
-	if (tr.entityNum < 0 || tr.entityNum > ENTITYNUM_MAX_NORMAL)
+	gentity_t* enemy = NULL;
+
+	if (tr.entityNum >= 0 && tr.entityNum <= ENTITYNUM_MAX_NORMAL)
+	{
+		enemy = &g_entities[tr.entityNum];
+	}
+	else if (bs->currentEnemy && bs->currentEnemy->client)
+	{
+		// Nobody right in front: the current enemy a bit further away, in smashdown reach (a kata can't reach him
+		// there, PM_CanDoSmashdown turns the kata into a smashdown), in front, roughly level and in sight
+		vec3_t diff;
+		VectorSubtract(bs->currentEnemy->r.currentOrigin, bs->cur_ps.origin, diff);
+		const float dz = diff[2];
+		diff[2] = 0.0f;
+		const float dist = VectorNormalize(diff);
+		vec3_t flat_fwd;
+		VectorSet(flat_fwd, forward[0], forward[1], 0.0f);
+		VectorNormalize(flat_fwd);
+		// beyond kata reach it is only worth it as a smashdown, so not while that cools down
+		if (dist <= PM_SMASHDOWN_REACH && fabs(dz) <= 72.0f && DotProduct(flat_fwd, diff) >= 0.7f
+			&& (dist <= PM_KATA_REACH || !smashdownCooling))
+		{
+			trace_t sight;
+			trap->Trace(&sight, cur_org, NULL, NULL, bs->currentEnemy->r.currentOrigin, bs->client, MASK_SOLID,
+				0, 0, 0);
+			if (sight.fraction >= 1.0f || sight.entityNum == bs->currentEnemy->s.number)
+			{
+				enemy = bs->currentEnemy;
+			}
+		}
+	}
+
+	if (!enemy)
 	{
 		return qfalse;
 	}
-
-	gentity_t* enemy = &g_entities[tr.entityNum];
 
 	// Validate enemy
 	if (!enemy ||
@@ -9311,9 +9340,9 @@ static void JediDirectionalDashAttack(bot_state_t* bs, const vec3_t enemyPos)
 #define BOT_LIGHTNING_MAX_DELAY	12000
 static int s_botNextLightning[MAX_CLIENTS];
 
-#define BOT_SABER_SWING_EXTRA	40.0f	// blade + this: about 80 (90 was out of contact)
-#define BOT_SABER_IDEAL_MIN		50.0f	// the distance the saber combat handlers keep (was 85-130: the blades rarely touched)
-#define BOT_SABER_IDEAL_MAX		75.0f
+#define BOT_SABER_SWING_EXTRA	50.0f	// blade + this: about 80 (90 was out of contact)
+#define BOT_SABER_IDEAL_MIN		65.0f	// the distance the saber combat handlers keep (was 85-130: the blades rarely touched)
+#define BOT_SABER_IDEAL_MAX		100.0f
 static float Bot_SaberReach(const bot_state_t* bs)
 {
 	const gclient_t* client = g_entities[bs->client].client;
@@ -9480,7 +9509,7 @@ static void saber_combat_handling(bot_state_t* bs)
 	// IDEAL SPACING FOR DUELS
 	// -------------------------------------------------
 	const float idealMin = BOT_SABER_IDEAL_MIN; // was 85: saber contact needs closer
-	const float idealMax = BOT_SABER_IDEAL_MAX; // was 130
+	const float idealMax = BOT_SABER_IDEAL_MAX; // was 150
 	const float MaxDashDist = 256.0f;
 
 	if (bs->frame_Enemy_Len < idealMin)
@@ -9661,7 +9690,7 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	// IDEAL SPACING FOR ENHANCED DUELS
 	// -------------------------------------------------
 	const float idealMin = BOT_SABER_IDEAL_MIN; // was 85: saber contact needs closer
-	const float idealMax = BOT_SABER_IDEAL_MAX; // was 130
+	const float idealMax = BOT_SABER_IDEAL_MAX; // was 150
 	const float MaxDashDist = 256.0f;
 
 	if (bs->frame_Enemy_Len < idealMin)

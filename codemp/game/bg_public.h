@@ -81,7 +81,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-05,Month-10,Year-26,BuildNum-04" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-07,Month-10,Year-26,BuildNum-05" // build date
 
 #define	STEPSIZE		18
 
@@ -569,6 +569,13 @@ extern int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS];
 #define	PMF_DOUBLE_JUMPED	268435456	// used the double jump (Fallen Order style) in this jump; cleared on landing
 #define	PMF_AIR_DASHED		536870912	// used the air dash (Jedi Survivor style) in this jump; cleared on landing
 #define	PMF_AIR_WALL_RAN	1073741824	// started a wall-run from the air (Fallen Order style) in this jump; cleared on landing
+#define	PMF_LEAP_CANCELLED	((int)0x80000000)	// the long leap / air dash was cancelled with +back: only falls until landing (the last free bit)
+
+// Kata or smashdown (bots and NPCs, bg_saber.c PM_CanDoSmashdown, ai_main.c): distances between the two origins,
+// horizontally. A kata only hits an enemy within PM_KATA_REACH; beyond that, up to PM_SMASHDOWN_REACH, the
+// smashdown is used instead (tune here).
+#define PM_KATA_REACH		100.0f
+#define PM_SMASHDOWN_REACH	240.0f
 
 #define	PMF_ALL_TIMES	(PMF_TIME_WATERJUMP|PMF_TIME_LAND|PMF_TIME_KNOCKBACK)
 
@@ -1671,6 +1678,8 @@ typedef enum {
 
 	LS_KNOCK_RIGHT,
 	LS_KNOCK_LEFT,
+
+	LS_JUMPDASH_ATTACK, // the force jump dash's attack (BOTH_FORCEJUMPDASH_ATTACK)
 
 	LS_MOVE_MAX
 } saberMoveName_t;

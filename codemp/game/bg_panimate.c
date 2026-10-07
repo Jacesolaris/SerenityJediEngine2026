@@ -269,6 +269,8 @@ qboolean PM_InSpecialJump(const int anim)
 	case BOTH_FORCELONGLEAP_START:
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_START:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 	case BOTH_FORCEWALLRUNFLIP_START:
 	case BOTH_FORCEWALLRUNFLIP_END:
 	case BOTH_FORCEWALLRUNFLIP_ALT:
@@ -460,6 +462,7 @@ qboolean PM_SaberInAttack(const int move)
 	case LS_SPINATTACK:
 	case LS_LEAP_ATTACK:
 	case LS_LEAP_ATTACK2:
+	case LS_JUMPDASH_ATTACK:
 	case LS_SWOOP_ATTACK_RIGHT:
 	case LS_SWOOP_ATTACK_LEFT:
 	case LS_TAUNTAUN_ATTACK_RIGHT:
@@ -713,6 +716,7 @@ qboolean PM_InAnimForSaberMove(int anim, const int saberMove)
 	case BOTH_VT_ATL_S:
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 	case BOTH_A7_KICK_F:
 	case BOTH_A7_KICK_F2:
 	case BOTH_A7_KICK_B:
@@ -874,6 +878,7 @@ qboolean PM_SaberInDamageMove(const int move)
 	case LS_SPINATTACK:
 	case LS_LEAP_ATTACK:
 	case LS_LEAP_ATTACK2:
+	case LS_JUMPDASH_ATTACK:
 	case LS_SWOOP_ATTACK_RIGHT:
 	case LS_SWOOP_ATTACK_LEFT:
 	case LS_TAUNTAUN_ATTACK_RIGHT:
@@ -938,6 +943,7 @@ qboolean PM_SaberDoDamageAnim(const int anim)
 	case BOTH_SPINATTACKGRIEVOUS:
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 	case BOTH_VS_ATR_S:
 	case BOTH_VS_ATL_S:
 	case BOTH_VT_ATR_S:
@@ -1198,6 +1204,7 @@ qboolean PM_SaberInKillMove(const int move)
 	case LS_A_FLIP_SLASH:
 	case LS_LEAP_ATTACK:
 	case LS_LEAP_ATTACK2:
+	case LS_JUMPDASH_ATTACK:
 	case LS_STABDOWN:
 	case LS_STABDOWN_STAFF:
 	case LS_STABDOWN_DUAL:
@@ -1251,6 +1258,7 @@ qboolean PM_SaberInSpecial(const int move)
 	case LS_SPINATTACK:
 	case LS_LEAP_ATTACK:
 	case LS_LEAP_ATTACK2:
+	case LS_JUMPDASH_ATTACK:
 	case LS_SWOOP_ATTACK_RIGHT:
 	case LS_SWOOP_ATTACK_LEFT:
 	case LS_TAUNTAUN_ATTACK_RIGHT:
@@ -1565,6 +1573,7 @@ qboolean PM_SaberInSpecialAttack(const int anim)
 	case BOTH_SPINATTACKGRIEVOUS:
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 	case BOTH_VS_ATR_S:
 	case BOTH_VS_ATL_S:
 	case BOTH_VT_ATR_S:
@@ -1645,6 +1654,7 @@ qboolean PM_SaberInnonblockableAttack(const int anim)
 	case BOTH_SPINATTACKGRIEVOUS:
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 	case BOTH_STABDOWN:
 	case BOTH_STABDOWN_BACKHAND:
 	case BOTH_STABDOWN_STAFF:
@@ -1802,6 +1812,7 @@ qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 		case LS_SPINATTACK:
 		case LS_LEAP_ATTACK:
 		case LS_LEAP_ATTACK2:
+		case LS_JUMPDASH_ATTACK:
 		case LS_SWOOP_ATTACK_RIGHT:
 		case LS_SWOOP_ATTACK_LEFT:
 		case LS_TAUNTAUN_ATTACK_RIGHT:
@@ -1902,6 +1913,7 @@ qboolean PM_SaberCanInterruptMove(const int move, const int anim)
 	case BOTH_SPINATTACKGRIEVOUS:
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 	case BOTH_VS_ATR_S:
 	case BOTH_VS_ATL_S:
 	case BOTH_VT_ATR_S:
@@ -3510,6 +3522,7 @@ int pm_power_level_for_saber_anims(const playerState_t* ps)
 	return FORCE_LEVEL_3;
 	case BOTH_FORCELONGLEAP_ATTACK:
 	case BOTH_FORCELONGLEAP_ATTACK2:
+	case BOTH_FORCEJUMPDASH_ATTACK:
 		if (anim_time_elapsed <= 200)
 		{
 			//1st four frames of anim
@@ -4133,6 +4146,7 @@ qboolean PM_LandingAnim(const int anim)
 	case BOTH_FORCELANDLEFT1: //# Landing left(from in air loop)
 	case BOTH_FORCELANDRIGHT1: //# Landing right(from in air loop)
 	case BOTH_FORCELONGLEAP_LAND: //# Landing right(from in air loop)
+	case BOTH_FORCEJUMPDASH_LAND:
 		return qtrue;
 	default:;
 	}
@@ -6110,7 +6124,7 @@ void PM_SaberStartTransAnim(const int clientNum, const int saberAnimLevel, const
 	}
 	// Force long leap: SP starts it under force speed 3 (timescale 0.25) and its PM_SetAnimFinal times the start anim
 	// with that speed-up (1 / 0.25), so the leap (held while this anim runs) lasts 2.65 s / 4. MP has no timescale.
-	if (anim == BOTH_FORCELONGLEAP_START)
+	if (anim == BOTH_FORCELONGLEAP_START || anim == BOTH_FORCEJUMPDASH_START) // the jump dash pose plays as the leap's
 	{
 		*animSpeed *= LONG_LEAP_START_ANIM_SCALE;
 		return;
@@ -6374,7 +6388,7 @@ static void BG_SetAnimFinal(playerState_t* ps, const animation_t* animations, co
 			else
 			{
 				ps->torsoTimer = animations[anim].numFrames * fabs(animations[anim].frameLerp);
-				if (anim == BOTH_FORCELONGLEAP_START && editAnimSpeed > 0)
+				if ((anim == BOTH_FORCELONGLEAP_START || anim == BOTH_FORCEJUMPDASH_START) && editAnimSpeed > 0)
 				{// the long leap start anim is timed at its played speed (SP: under force speed)
 					ps->torsoTimer = (int)(ps->torsoTimer / editAnimSpeed);
 				}
@@ -6420,7 +6434,7 @@ setAnimLegs:
 			else
 			{
 				ps->legsTimer = animations[anim].numFrames * fabs(animations[anim].frameLerp);
-				if (anim == BOTH_FORCELONGLEAP_START && editAnimSpeed > 0)
+				if ((anim == BOTH_FORCELONGLEAP_START || anim == BOTH_FORCEJUMPDASH_START) && editAnimSpeed > 0)
 				{// the long leap start anim is timed at its played speed (SP: under force speed)
 					ps->legsTimer = (int)(ps->legsTimer / editAnimSpeed);
 				}

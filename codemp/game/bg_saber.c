@@ -537,6 +537,9 @@ saberMoveData_t saberMoveData[LS_MOVE_MAX] = {
 	// LS_KNOCK_RIGHT,
 	{"Knock Full_L", BOTH_K1_S1_TL_OLD, Q_R, Q_TL, AFLAG_ACTIVE, 50, BLK_WIDE, LS_R_BL2TR, LS_A_TR2BL, 150},
 	// LS_KNOCK_LEFT,
+
+	{"JumpDashAtk", BOTH_FORCEJUMPDASH_ATTACK, Q_R, Q_L, AFLAG_ACTIVE, 100, BLK_TIGHT, LS_READY, LS_READY, 200},
+	// LS_JUMPDASH_ATTACK (the force jump dash's attack, as LS_LEAP_ATTACK)
 };
 
 saberMoveName_t transitionMove[Q_NUM_QUADS][Q_NUM_QUADS] =
@@ -5278,14 +5281,67 @@ static qboolean PM_SaberSmashOnCooldown(const playerState_t* ps)
 	return qfalse;
 }
 
+// Kata or smashdown (bots and NPCs): the kata only hits an enemy close by; the smashdown reaches further
+// (PM_KATA_REACH / PM_SMASHDOWN_REACH in bg_public.h, also used by the bots' kata choice in ai_main.c).
+#ifdef _GAME
+extern int Bot_CurrentEnemy(int client);
+#endif
+
+// The bot's / NPC's enemy: horizontal distance, height difference and how much in front (dot); qfalse = none known
+static qboolean PM_KataEnemyDistance(float* dist, float* dz, float* dot)
+{
+#ifdef _GAME
+	const gentity_t* self = &g_entities[pm->ps->clientNum];
+	const gentity_t* enemy = NULL;
+	vec3_t diff, fwd, yaw_angles;
+
+	if (self->r.svFlags & SVF_BOT)
+	{
+		const int e = Bot_CurrentEnemy(pm->ps->clientNum);
+		if (e >= 0 && e < ENTITYNUM_WORLD)
+		{
+			enemy = &g_entities[e];
+		}
+	}
+	else
+	{
+		enemy = self->enemy;
+	}
+	if (!enemy || !enemy->inuse || !enemy->client || enemy->health <= 0)
+	{
+		return qfalse;
+	}
+	VectorSubtract(enemy->r.currentOrigin, pm->ps->origin, diff);
+	*dz = diff[2];
+	diff[2] = 0.0f;
+	*dist = VectorNormalize(diff);
+	VectorSet(yaw_angles, 0.0f, pm->ps->viewangles[YAW], 0.0f);
+	AngleVectors(yaw_angles, fwd, NULL, NULL);
+	*dot = DotProduct(fwd, diff);
+	return qtrue;
+#else
+	return qfalse;
+#endif
+}
+
+// A bot / NPC wants a kata: the smashdown is the better choice when the kata can't reach the enemy but the smashdown
+// can (in front, roughly level). No enemy known: the old check (no enemy in the kata's arc).
+static qboolean PM_SmashdownBetterThanKata(void)
+{
+	float dist, dz, dot;
+	if (!PM_KataEnemyDistance(&dist, &dz, &dot))
+	{
+		return PM_EnemyCloseEnoughForNormalKata() ? qfalse : qtrue;
+	}
+	return dist > PM_KATA_REACH && dist <= PM_SMASHDOWN_REACH && fabs(dz) <= 72.0f && dot >= 0.7f ? qtrue : qfalse;
+}
+
 static qboolean PM_CanDoSmashdown(const pmove_t* pm)
 {
 	if (!pm || !pm->ps)
 	{
 		return qfalse;
 	}
-
-	const qboolean EnemyTooFarForSmashdown = PM_EnemyCloseEnoughForNormalKata();
 
 	// Difficulty chance
 	int roll = Q_irand(0, 99);
@@ -5324,14 +5380,13 @@ static qboolean PM_CanDoSmashdown(const pmove_t* pm)
 	const qboolean ButtonUse = (pm->cmd.buttons & BUTTON_USE) ? qtrue : qfalse;
 
 #ifdef _GAME
-	if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT)
+	if (g_entities[pm->ps->clientNum].r.svFlags & SVF_BOT || pm->ps->clientNum >= MAX_CLIENTS) // bots and NPCs
 	{
 		// Final combined rule
 		if (smashReady == qtrue &&                 // Not on cooldown
 			NPCMustHaveForceSaberOffense >= FORCE_LEVEL_1 &&  // Must have Force saber offense level 1
 			hasEnoughForce == qtrue &&             // Must have enough Force
-			Chance == qtrue &&                     // Difficulty chance
-			EnemyTooFarForSmashdown == qfalse)     // Enemy must be close enough
+			PM_SmashdownBetterThanKata() == qtrue) // the kata can't reach the enemy, the smashdown can
 		{
 			return qtrue;
 		}
@@ -5706,7 +5761,10 @@ void PM_WeaponLightsaber(void)
 	// Long-leap land/start restrictions.
 	if (pm->ps->torsoAnim == BOTH_FORCELONGLEAP_LAND ||
 		pm->ps->torsoAnim == BOTH_FORCELONGLEAP_LAND2 ||
+		pm->ps->torsoAnim == BOTH_FORCEJUMPDASH_LAND ||
 		(pm->ps->torsoAnim == BOTH_FORCELONGLEAP_START &&
+			!(pm->cmd.buttons & BUTTON_ATTACK)) ||
+		(pm->ps->torsoAnim == BOTH_FORCEJUMPDASH_START &&
 			!(pm->cmd.buttons & BUTTON_ATTACK)))
 	{
 		// If you're in the long-jump and you're not attacking (or are landing), you're not doing anything.
@@ -5794,12 +5852,16 @@ void PM_WeaponLightsaber(void)
 			PM_SetSaberMove(LS_READY);
 		}
 
+		// the torso follows the legs - also while sprinting (= block held while running), or it flicked to the idle
+		// pose and back every frame and the torso restarted its anim, out of step with the legs
+		const qboolean torso_follows_run = is_holding_block_button && PM_RunningAnim(pm->ps->legsAnim) ? qtrue : qfalse;
+
 		if ((pm->ps->legsAnim) != (pm->ps->torsoAnim) && !PM_InSlopeAnim(pm->ps->legsAnim) &&
-			pm->ps->torsoTimer <= 0 && !(is_holding_block_button))
+			pm->ps->torsoTimer <= 0 && (!is_holding_block_button || torso_follows_run))
 		{
 			PM_SetAnim(SETANIM_TORSO, (pm->ps->legsAnim), SETANIM_FLAG_OVERRIDE);
 		}
-		else if ((PM_InSlopeAnim(pm->ps->legsAnim) || is_holding_block_button) && pm->ps->torsoTimer <= 0 &&
+		else if ((PM_InSlopeAnim(pm->ps->legsAnim) || is_holding_block_button) && !torso_follows_run && pm->ps->torsoTimer <= 0 &&
 			!PM_SaberInParry(pm->ps->saberMove) && !PM_SaberInKnockaway(pm->ps->saberMove) &&
 			!PM_SaberInBrokenParry(pm->ps->saberMove) && !PM_SaberInReflect(pm->ps->saberMove))
 		{
@@ -6584,7 +6646,9 @@ weapChecks:
 			if (pm->ps->torsoAnim == BOTH_FORCELONGLEAP_ATTACK ||
 				pm->ps->torsoAnim == BOTH_FORCELONGLEAP_ATTACK2 ||
 				pm->ps->torsoAnim == BOTH_FORCELONGLEAP_LAND ||
-				pm->ps->torsoAnim == BOTH_FORCELONGLEAP_LAND2)
+				pm->ps->torsoAnim == BOTH_FORCELONGLEAP_LAND2 ||
+				pm->ps->torsoAnim == BOTH_FORCEJUMPDASH_ATTACK ||
+				pm->ps->torsoAnim == BOTH_FORCEJUMPDASH_LAND)
 			{
 				// Can't attack in these anims.
 				return;
@@ -6604,6 +6668,22 @@ weapChecks:
 						PM_AddEvent(EV_SABER_UNHOLSTER);
 					}
 					PM_SetSaberMove(LS_LEAP_ATTACK);
+				}
+				return;
+			}
+
+			// The force jump dash: its own one attack, the same timing as the leap attack.
+			if (pm->ps->torsoAnim == BOTH_FORCEJUMPDASH_START)
+			{
+				if (pm->ps->torsoTimer >= 200 &&
+					(pm->cmd.buttons & BUTTON_ATTACK))
+				{
+					if (pm->ps->saberHolstered == 2)
+					{
+						pm->ps->saberHolstered = 0;
+						PM_AddEvent(EV_SABER_UNHOLSTER);
+					}
+					PM_SetSaberMove(LS_JUMPDASH_ATTACK);
 				}
 				return;
 			}
@@ -8206,6 +8286,7 @@ qboolean PM_SaberInFullDamageMove(const playerState_t* ps, const int animSetInde
 			break;
 
 		case BOTH_FORCELONGLEAP_ATTACK:
+		case BOTH_FORCEJUMPDASH_ATTACK:
 			if (torso_anim_point >= 0.20f && torso_anim_point <= 0.80f) { return qtrue; }
 			break;
 
@@ -8368,7 +8449,8 @@ qboolean BG_SaberInPartialDamageMove(const playerState_t* ps, const int animSetI
 	case BOTH_JUMPATTACK7:          return ((torso_anim_point < 0.35f) || (torso_anim_point > 0.90f)) ? qtrue : qfalse;
 	case BOTH_SPINATTACK6:          return ((torso_anim_point < 0.35f) || (torso_anim_point > 0.80f)) ? qtrue : qfalse;
 	case BOTH_SPINATTACK7:          return ((torso_anim_point < 0.45f) || (torso_anim_point > 0.85f)) ? qtrue : qfalse;
-	case BOTH_FORCELONGLEAP_ATTACK: return ((torso_anim_point < 0.20f) || (torso_anim_point > 0.80f)) ? qtrue : qfalse;
+	case BOTH_FORCELONGLEAP_ATTACK:
+	case BOTH_FORCEJUMPDASH_ATTACK: return ((torso_anim_point < 0.20f) || (torso_anim_point > 0.80f)) ? qtrue : qfalse;
 	case BOTH_STABDOWN:             return ((torso_anim_point < 0.50f) || (torso_anim_point > 0.80f)) ? qtrue : qfalse;
 	case BOTH_STABDOWN_STAFF:       return ((torso_anim_point < 0.50f) || (torso_anim_point > 0.80f)) ? qtrue : qfalse;
 	case BOTH_STABDOWN_DUAL:        return ((torso_anim_point < 0.50f) || (torso_anim_point > 0.80f)) ? qtrue : qfalse;

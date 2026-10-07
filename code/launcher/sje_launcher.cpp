@@ -52,6 +52,10 @@ namespace
 	const wchar_t* const kSPExe = L"SerenityJediEngine2026-SP.x86_64.exe";
 	const wchar_t* const kMPExe = L"SerenityJediEngine2026-MP.x86_64.exe";
 	const wchar_t* const kIniName = L"SerenityJediEngine2026-Launcher.ini";
+	// Release builds of the game only start when this is set on their process (shared/sys/sys_main.cpp
+	// Sys_RequireLauncher: SJE_LAUNCHER_ENV / SJE_LAUNCHER_TOKEN); keep the two the same.
+	const wchar_t* const kLauncherEnv = L"SJE_LAUNCHER";
+	const wchar_t* const kLauncherToken = L"sje-launcher-4b8e2d6a";
 	// the game's home folder in Documents, with its configs and saves (Sys_DefaultHomePath: "STARWARS SerenityJediEngine\"
 	// + HOMEPATH_NAME_WIN)
 	const wchar_t* const kHomeParent = L"STARWARS SerenityJediEngine";
@@ -546,6 +550,8 @@ namespace
 		cmd += s.rend2 ? L" +set com_rend2 1" : L" +set com_rend2 0";
 		cmd += s.windowed ? L" +set r_fullscreen 0" : L" +set r_fullscreen 1";
 		cmd += s.controller ? L" +set in_joystick 1" : L" +set in_joystick 0";
+
+		SetEnvironmentVariableW(kLauncherEnv, kLauncherToken); // the game inherits it: lets a release build start
 
 		STARTUPINFOW si = { sizeof(si) };
 		PROCESS_INFORMATION pi = {};

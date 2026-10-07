@@ -605,9 +605,10 @@ UI_SaveMenu_f
 */
 static void UI_SaveMenu_f()
 {
-#ifdef JK2_MODE
-	ui.PrecacheScreenshot();
-#endif
+	if (com_outcast && com_outcast->integer == 1) // JKO: grab the game view for the save game screenshot
+	{
+		ui.PrecacheScreenshot();
+	}
 
 	trap_Key_SetCatcher(KEYCATCH_UI);
 	if (ui_com_outcast.integer == 0)

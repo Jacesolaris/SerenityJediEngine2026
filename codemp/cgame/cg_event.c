@@ -777,7 +777,7 @@ clientkilled:
 
 		if (message)
 		{
-			if (veh_message)	
+			if (veh_message)
 			{
 				message = (char*)CG_GetStringEdString("SJE_INGAMEVEH", message);
 			}

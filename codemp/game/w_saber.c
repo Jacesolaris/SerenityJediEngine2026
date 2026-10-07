@@ -6519,6 +6519,8 @@ static void G_PlayerSaberSmash(gentity_t* owner)
 // ------------------------------------------------------------
 
 qboolean WP_SaberTryStickInBody(gentity_t* owner, gentity_t* victim);
+static qboolean WP_SaberTryStickInBodyDmg(gentity_t* owner, gentity_t* victim, int damage);
+static qboolean WP_SaberThrowerIsYoda(const gentity_t* owner);
 static qboolean WP_SaberStuckInBody(const gentity_t* saberEnt);
 
 static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, const int rBladeNum, vec3_t saber_start, vec3_t saber_end, const int trMask)
@@ -6541,6 +6543,12 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 	// Adding these checks prevents crashes without changing gameplay.
 	if (!self || !self->client)
 	{
+		return qfalse;
+	}
+
+	if (rSaberNum == 0 && self->client->ps.saberInFlight && self->client->ps.saberEntityNum
+		&& WP_SaberStuckInBody(&g_entities[self->client->ps.saberEntityNum]))
+	{//the thrown saber is stuck in a body: its blade does no damage (Yoda's repeats its hit by itself, WP_SaberBallisticsThink)
 		return qfalse;
 	}
 
@@ -7307,12 +7315,13 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 		// APPLY DAMAGE
 		// --------------------------------------------------------
 		const qboolean vic_was_alive = victim->health > 0 ? qtrue : qfalse;
+		const int vic_health_before = victim->health;
 		G_Damage(victim, self, self, dir, tr.endpos, dmg, dflags, MOD_SABER);
 
-		if (vic_was_alive && victim->health <= 0 && rSaberNum == 0
-			&& self->client->ps.saberInFlight && self->client->ps.saberEntityNum)
-		{// the thrown saber killed: it sticks in the body
-			WP_SaberTryStickInBody(self, victim);
+		if (vic_was_alive && rSaberNum == 0 && self->client->ps.saberInFlight && self->client->ps.saberEntityNum
+			&& (victim->health <= 0 || (victim->health < vic_health_before && WP_SaberThrowerIsYoda(self))))
+		{// the thrown saber killed (or Yoda's throw did damage): it sticks in the body
+			WP_SaberTryStickInBodyDmg(self, victim, dmg);
 		}
 
 		// Saber-specific hit behaviour
@@ -8164,10 +8173,12 @@ static QINLINE qboolean WP_CheckThrownSaberDamaged(gentity_t* saberent,
 						: saberent->damage;
 
 					const qboolean vic_was_alive = ent->health > 0 ? qtrue : qfalse;
+					const int vic_health_before = ent->health;
 					G_Damage(ent, saber_owner, saber_owner, dir, tr.endpos, dmg, dflags, MOD_SABER);
-					// the throw killed: the saber sticks in the body (and doesn't go back to the owner below)
-					const qboolean stuck_in_body = vic_was_alive && ent->health <= 0 && !returning
-						? WP_SaberTryStickInBody(saber_owner, ent) : qfalse;
+					// the throw killed (or Yoda's throw did damage): the saber sticks in the body (and doesn't go back to the owner below)
+					const qboolean stuck_in_body = vic_was_alive && !returning
+						&& (ent->health <= 0 || (ent->health < vic_health_before && WP_SaberThrowerIsYoda(saber_owner)))
+						? WP_SaberTryStickInBodyDmg(saber_owner, ent, dmg) : qfalse;
 
 					te = G_TempEntity(tr.endpos, EV_SABER_HIT);
 					te->s.otherentityNum = ent->s.number;
@@ -9583,6 +9594,39 @@ void WP_thrownSaberTouch(gentity_t* saberent, gentity_t* other, const trace_t* t
 
 #define SABER_MAX_THROW_DISTANCE 1000
 
+// The saber throw release rule, as SP (WP_SaberReleaseThrow): letting go of the throw button while the saber is still
+// flying free (hits are handled by the impact code), saber throw level 1 always comes back (its throw is so short it's
+// past the drop distance almost at once); at levels 2 and 3 it falls to the ground if it has flown more than
+// SABER_THROW_DROP_FRACTION (85%) of SP's max throw distance (400, so 340) from where it left the hand, otherwise it
+// comes back. Bots keep their own retrieve rules.
+#define SABER_THROW_DROP_FRACTION	0.85f
+#define SABER_THROW_SP_DIST			400.0f	// SP saberThrowDist at saber throw levels 2 and 3
+
+static vec3_t s_saberThrowOrigin[MAX_GENTITIES]; // where each thrown saber left its owner's hand
+
+static qboolean WP_SaberThrowShouldDrop(const gentity_t* saberent, const gentity_t* saber_own)
+{
+	if (saber_own->client->ps.fd.forcePowerLevel[FP_SABERTHROW] <= FORCE_LEVEL_1)
+	{
+		return qfalse;
+	}
+	return Distance(saberent->r.currentOrigin, s_saberThrowOrigin[saber_own->s.number])
+		> SABER_THROW_SP_DIST * SABER_THROW_DROP_FRACTION ? qtrue : qfalse;
+}
+
+// Send the thrown saber back to its owner's hand (as the bots' release below, without their retrieve delay).
+static void WP_SaberThrowComeBack(gentity_t* saberent, gentity_t* saber_own)
+{
+	saberent->s.eFlags &= ~EF_MISSILE_STICK;
+	WP_saberReactivate(saberent, saber_own);
+	saberent->touch = WP_SaberGotHit;
+	saberent->think = WP_saberBackToOwner;
+	saberent->speed = 0;
+	saberent->genericValue5 = 0;
+	saberent->nextthink = level.time;
+	saberent->r.contents = CONTENTS_LIGHTSABER;
+}
+
 static void WP_saberFirstThrown(gentity_t* saberent)
 {
 	vec3_t v_sub;
@@ -9656,6 +9700,12 @@ static void WP_saberFirstThrown(gentity_t* saberent)
 
 	if (v_len >= 300 && saber_own->client->ps.fd.forcePowerLevel[FP_SABERTHROW] == FORCE_LEVEL_1)
 	{
+		if (!(saber_own->r.svFlags & SVF_BOT))
+		{
+			// saber throw level 1 at its full distance: it comes back (as SP)
+			WP_SaberThrowComeBack(saberent, saber_own);
+			goto runMin;
+		}
 		thrownSaberBallistics(saberent, saber_own, qfalse);
 		goto runMin;
 	}
@@ -9692,10 +9742,16 @@ static void WP_saberFirstThrown(gentity_t* saberent)
 
 			saberent->r.contents = CONTENTS_LIGHTSABER;
 		}
-		else
+		else if (WP_SaberThrowShouldDrop(saberent, saber_own))
 		{
+			// let go past 85% of the max throw distance: it falls to the ground
 			G_RunObject(saberent);
 			thrownSaberBallistics(saberent, saber_own, qfalse);
+		}
+		else
+		{
+			// let go closer than that (or saber throw level 1): it comes back
+			WP_SaberThrowComeBack(saberent, saber_own);
 		}
 	}
 
@@ -12435,6 +12491,7 @@ nextStep:
 				saberent->r.svFlags &= ~SVF_NOCLIENT;
 				VectorCopy(startorg, saberent->s.pos.trBase);
 				VectorCopy(startang, saberent->s.apos.trBase);
+				VectorCopy(startorg, s_saberThrowOrigin[self->s.number]); // where the throw started
 
 				VectorCopy(startorg, saberent->s.origin);
 				VectorCopy(startang, saberent->s.angles);
@@ -15038,7 +15095,6 @@ qboolean WP_SaberParryNonRandom(gentity_t* self, vec3_t hitloc, const qboolean m
 	return qtrue;
 }
 
-
 qboolean WP_SaberBouncedSaberDirection(gentity_t* self, vec3_t hitloc, const qboolean missileBlock)
 {
 	vec3_t diff, fwdangles = { 0, 0, 0 }, right;
@@ -15705,7 +15761,7 @@ qboolean G_CanKickEntity(const gentity_t* self, const gentity_t* target)
 	return qfalse;
 }
 
-static void SaberBallisticsTouch(gentity_t* saberent, const gentity_t* other, trace_t* trace)
+static void WP_SaberBallisticsTouch(gentity_t* saberent, const gentity_t* other, trace_t* trace)
 {
 	//touch function for sabers in ballistics mode
 	gentity_t* saber_own = &g_entities[saberent->r.ownerNum];
@@ -15727,8 +15783,24 @@ static void SaberBallisticsTouch(gentity_t* saberent, const gentity_t* other, tr
 //===========================
 // Thrown saber stuck in the body of the enemy it killed: s.otherentityNum2 = the body, s.angles2 = the throw
 // direction (the clients put the saber on the body's chest bone, CG_SaberBodyStickPlace), genericValue14 = when it
-// falls out (2-5 s). Retrieve as the wall stick (SaberBallisticsThink); falls out early when the body respawns.
+// falls out (2-5 s). Retrieve as the wall stick (WP_SaberBallisticsThink); falls out early when the body respawns.
 //===========================
+#define SABER_BODY_DAMAGE_INTERVAL 500 // Yoda's throw stuck in a living target: its hit repeats this often (ms)
+static int s_saberBodyDamage[MAX_GENTITIES]; // by saber entity: the damage that repeats (0 = none, a corpse)
+static int s_saberBodyNextDamage[MAX_GENTITIES]; // by saber entity: when it next repeats
+static qboolean s_saberBodyAlive[MAX_GENTITIES]; // by saber entity: the target was alive when it stuck
+static int s_saberBodySpawnCount[MAX_GENTITIES]; // by saber entity: the target client's spawn count then
+
+// Yoda's throw sticks in the target on every hit that does damage (not only a kill), and keeps hurting it
+static qboolean WP_SaberThrowerIsYoda(const gentity_t* owner)
+{
+	if (!owner || !owner->client)
+	{
+		return qfalse;
+	}
+	return owner->client->pers.botclass == BCLASS_YODA ? qtrue : qfalse;
+}
+
 static qboolean WP_SaberStuckInBody(const gentity_t* saberEnt)
 {
 	return (saberEnt->s.eFlags & EF_MISSILE_STICK) && !VectorCompare(saberEnt->s.angles2, vec3_origin) ? qtrue : qfalse;
@@ -15752,6 +15824,13 @@ static void WP_SaberFallFromBody(gentity_t* saberEnt, gentity_t* saber_owner)
 
 // the player's throw killed victim: the saber sticks in the body
 qboolean WP_SaberTryStickInBody(gentity_t* owner, gentity_t* victim)
+{
+	return WP_SaberTryStickInBodyDmg(owner, victim, 0);
+}
+
+// as above; Yoda's throw (still the player's, Saber Throw 3) also sticks on a hit that did damage without killing:
+// that hit (damage) then repeats until the saber falls out or is taken back (WP_SaberBodyStuckDamage)
+static qboolean WP_SaberTryStickInBodyDmg(gentity_t* owner, gentity_t* victim, const int damage)
 {
 	vec3_t flight;
 
@@ -15793,6 +15872,11 @@ qboolean WP_SaberTryStickInBody(gentity_t* owner, gentity_t* victim)
 	saberEnt->s.otherentityNum2 = victim->s.number;
 	VectorCopy(flight, saberEnt->s.angles2);
 	saberEnt->genericValue14 = level.time + Q_irand(2000, 5000);
+	// still alive (Yoda's throw): the hit repeats while it is stuck
+	s_saberBodyAlive[saberEnt->s.number] = victim->health > 0 ? qtrue : qfalse;
+	s_saberBodyDamage[saberEnt->s.number] = victim->health > 0 && damage > 0 ? damage : 0;
+	s_saberBodyNextDamage[saberEnt->s.number] = level.time + SABER_BODY_DAMAGE_INTERVAL;
+	s_saberBodySpawnCount[saberEnt->s.number] = victim->s.number < MAX_CLIENTS ? victim->client->ps.persistant[PERS_SPAWN_COUNT] : 0;
 	G_SetOrigin(saberEnt, victim->r.currentOrigin);
 	trap->LinkEntity((sharedEntity_t*)saberEnt);
 
@@ -15803,7 +15887,50 @@ qboolean WP_SaberTryStickInBody(gentity_t* owner, gentity_t* victim)
 	return qtrue;
 }
 
-static void SaberBallisticsThink(gentity_t* saberEnt)
+// the body the saber is stuck in respawned: a client with a new spawn, or a corpse that is alive again
+static qboolean WP_SaberBodyRespawned(const gentity_t* saberEnt, const gentity_t* body)
+{
+	const int n = saberEnt->s.number;
+	if (body->s.number < MAX_CLIENTS&& body->client->ps.persistant[PERS_SPAWN_COUNT] != s_saberBodySpawnCount[n])
+	{
+		return qtrue;
+	}
+	return !s_saberBodyAlive[n] && body->health > 0 ? qtrue : qfalse;
+}
+
+// Yoda's throw stuck in a living target: the hit that stuck repeats every SABER_BODY_DAMAGE_INTERVAL until the
+// saber falls out or is taken back; once the target is dead it is a corpse stick (no more damage)
+static void WP_SaberBodyStuckDamage(gentity_t* saberEnt, gentity_t* saber_owner, gentity_t* body)
+{
+	const int n = saberEnt->s.number;
+	vec3_t dir;
+
+	if (s_saberBodyDamage[n] <= 0 || body->health <= 0)
+	{
+		s_saberBodyDamage[n] = 0;
+		return;
+	}
+	if (level.time < s_saberBodyNextDamage[n])
+	{
+		return;
+	}
+	s_saberBodyNextDamage[n] = level.time + SABER_BODY_DAMAGE_INTERVAL;
+
+	VectorCopy(saberEnt->s.angles2, dir); // the throw direction
+	if (VectorNormalize(dir) < 0.1f)
+	{
+		VectorSet(dir, 0, 0, -1);
+	}
+	G_Damage(body, saberEnt, saber_owner, dir, body->r.currentOrigin, s_saberBodyDamage[n],
+		DAMAGE_NO_KNOCKBACK | DAMAGE_NO_DISMEMBER, MOD_SABER);
+	if (g_DebugSaberCombat.integer)
+	{
+		Com_Printf("SABER BODY STICK: stuck saber hurts %s for %d, health now %d\n", body->classname,
+			s_saberBodyDamage[n], body->health);
+	}
+}
+
+static void WP_SaberBallisticsThink(gentity_t* saberEnt)
 {
 	//think function for sabers in ballistics mode
 	//G_RunObject(saberEnt);
@@ -15825,7 +15952,7 @@ static void SaberBallisticsThink(gentity_t* saberEnt)
 		gentity_t* body = &g_entities[saberEnt->s.otherentityNum2];
 
 		if (saber_owner->health <= 0 || level.time >= saberEnt->genericValue14
-			|| !body->inuse || !body->client || body->health > 0) // gone, or respawned
+			|| !body->inuse || !body->client || WP_SaberBodyRespawned(saberEnt, body)) // gone, or respawned
 		{
 			WP_SaberFallFromBody(saberEnt, saber_owner);
 			return;
@@ -15833,6 +15960,8 @@ static void SaberBallisticsThink(gentity_t* saberEnt)
 		// the server keeps it at the body (pickup range); the clients draw it on the chest bone
 		G_SetOrigin(saberEnt, body->r.currentOrigin);
 		trap->LinkEntity((sharedEntity_t*)saberEnt);
+		// Yoda's throw in a living target: keeps hurting it
+		WP_SaberBodyStuckDamage(saberEnt, saber_owner, body);
 	}
 
 	if (saberEnt->s.eFlags & EF_MISSILE_STICK)
@@ -15964,8 +16093,8 @@ void thrownSaberBallistics(gentity_t* saberEnt, const gentity_t* saber_own, cons
 		//don't actually bounce on impact with walls.
 		saberEnt->bounceCount = 0;
 
-		// Make sure SaberBallisticsThink runs again
-		saberEnt->think = SaberBallisticsThink;
+		// Make sure WP_SaberBallisticsThink runs again
+		saberEnt->think = WP_SaberBallisticsThink;
 		saberEnt->nextthink = level.time + 50;
 	}
 	else
@@ -16025,8 +16154,8 @@ void thrownSaberBallistics(gentity_t* saberEnt, const gentity_t* saber_own, cons
 	saber_own->client->ps.saberEntityNum = 0;
 
 	//set the appropriate function pointer stuff
-	saberEnt->think = SaberBallisticsThink;
-	saberEnt->touch = SaberBallisticsTouch;
+	saberEnt->think = WP_SaberBallisticsThink;
+	saberEnt->touch = WP_SaberBallisticsTouch;
 	saberEnt->nextthink = level.time + FRAMETIME;
 
 	trap->LinkEntity((sharedEntity_t*)saberEnt);

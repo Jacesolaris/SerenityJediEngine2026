@@ -340,6 +340,7 @@ static consoleCommand_t commands[] = {
 	{"tell_target", CG_TellTarget_f},
 	{"testgun", CG_TestGun_f},
 	{"testmodel", CG_TestModel_f},
+	{"trueview_save", CG_TrueViewSave_f}, // saves the player's model with cg_trueeyeposition in trueview.cfg
 	{"viewpos", CG_Viewpos_f},
 	{"weapnext", CG_NextWeapon_f},
 	{"weapon", CG_Weapon_f},

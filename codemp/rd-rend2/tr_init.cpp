@@ -1280,6 +1280,14 @@ void GL_SetDefaultState(void)
 
 	// set default vertex color
 	qglVertexAttrib4f(ATTR_INDEX_COLOR, 1.0f, 1.0f, 1.0f, 1.0f);
+
+	// rend2 93e23510: invalidate all vertex step rates
+	// this ensures that attributes that have a set divisor will have a
+	// correct divisor set after GL_SetDefaultState is called
+	for (int i = 0; i < ATTR_INDEX_MAX; i++)
+	{
+		glState.currentVaoAttribs[i].stepRate = -1;
+	}
 }
 
 /*
@@ -1502,6 +1510,8 @@ static void R_Register(void)
 	r_ext_texture_float = ri.Cvar_Get("r_ext_texture_float", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable floating-point textures");
 	r_arb_half_float_pixel = ri.Cvar_Get("r_arb_half_float_pixel", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable ARB_half_float GL extension");
 	r_ext_framebuffer_multisample = ri.Cvar_Get("r_ext_multisample", "8", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable framebuffer MSAA");
+	// rend2 6e3d3eaa: we do MSAA resolving manually in rend2, so don't bother with the default framebuffer
+	ri.Cvar_Set("r_ext_multisample_default_fb", "0");
 	r_arb_seamless_cube_map = ri.Cvar_Get("r_arb_seamless_cube_map", "0", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable seamless cube map filtering GL extension");
 	r_arb_vertex_type_2_10_10_10_rev = ri.Cvar_Get("r_arb_vertex_type_2_10_10_10_rev", "1", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable 1010102 UI data type");
 	r_arb_buffer_storage = ri.Cvar_Get("r_arb_buffer_storage", "0", CVAR_ARCHIVE | CVAR_LATCH, "Disable/enable buffer storage GL extension");

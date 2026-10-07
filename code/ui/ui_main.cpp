@@ -460,6 +460,7 @@ vmCvar_t ui_g_newgameplusJKA;
 vmCvar_t ui_g_newgameplusJKO;
 vmCvar_t ui_com_rend2;
 vmCvar_t ui_r_AdvancedsurfaceSprites;
+vmCvar_t ui_dynamicHud; // cg_dynamicHud, registered here too so the Game Options menu shows On before cgame has loaded
 
 static void UI_UpdateScreenshot()
 {
@@ -592,6 +593,8 @@ static cvarTable_t cvarTable[] =
 	{&ui_com_rend2, "com_rend2", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME},
 
 	{&ui_r_AdvancedsurfaceSprites, "r_advancedlod", "1", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME},
+
+	{&ui_dynamicHud, "cg_dynamicHud", "1", nullptr, CVAR_ARCHIVE},
 };
 
 constexpr auto FP_UPDATED_NONE = -1;
@@ -3483,8 +3486,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 05/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 04------------------------------\n");
+	Com_Printf("---------------------Build date 07/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 05------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -4629,6 +4632,11 @@ void _UI_KeyEvent(const int pressed_key, const qboolean down)
 {
 	const int key = UI_GamepadMenuKey(pressed_key);
 
+	if (down && UI_Pazaak_ChallengeKey(key))
+	{
+		return; // the pazaak challenge question: escape / N = no, Y = yes
+	}
+
 	if (key == A_ESCAPE && down && UI_Pazaak_Active())
 	{
 		UI_Pazaak_OnEsc(); // the Pazaak board asks to forfeit or quit instead of closing
@@ -4702,9 +4710,10 @@ UI_InGameMenu
 */
 void UI_InGameMenu(const char* menuID)
 {
-#ifdef JK2_MODE
-	ui.PrecacheScreenshot();
-#endif
+	if (com_outcast && com_outcast->integer == 1) // JKO: grab the game view (before the menu covers it) for the save game screenshot
+	{
+		ui.PrecacheScreenshot();
+	}
 	Menus_CloseByName("mainhud");
 
 	if (menuID)

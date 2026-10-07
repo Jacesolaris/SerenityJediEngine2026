@@ -65,6 +65,9 @@ XCVAR_DEF(cg_drawFriend, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_drawGun, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_drawIcons, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_drawRadar, "1", NULL, CVAR_ARCHIVE)
+XCVAR_DEF(cg_dynamicHud, "1", NULL, CVAR_ARCHIVE) // the HUD fades out when the player is not in action (CG_DynamicHudAlpha)
+XCVAR_DEF(cg_dynamicHudTime, "15000", NULL, CVAR_ARCHIVE) // ms the HUD stays after the last action before it fades out
+XCVAR_DEF(cg_dynamicHudRange, "1024", NULL, CVAR_ARCHIVE) // an enemy in sight within this range keeps the HUD on
 XCVAR_DEF(cg_drawRewards, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_drawScores, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_drawSnapshot, "0", NULL, CVAR_ARCHIVE)

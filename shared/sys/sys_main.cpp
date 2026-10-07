@@ -746,9 +746,70 @@ static char* Sys_StripAppBundle(char* dir)
 #	endif
 #endif
 
+#if defined(_WIN32) && defined(NDEBUG) && !defined(_DEBUG) && !defined(DEDICATED) && !defined(JK2_MODE)
+// Release builds only start from the SerenityJediEngine2026 launcher: it sets SJE_LAUNCHER_ENV on the game process. Started any
+// other way (the exe directly, a shortcut), the game starts the launcher from its own folder and quits.
+// Debug builds (and the dedicated server and the JO exe, which the launcher doesn't start) start as normal. Keep SJE_LAUNCHER_ENV / SJE_LAUNCHER_TOKEN the same as
+// kLauncherEnv / kLauncherToken in code/launcher/sje_launcher.cpp.
+#include <process.h>
+#include <SDL_messagebox.h>
+
+#define SJE_LAUNCHER_EXE		"SerenityJediEngine2026-Launcher.exe"
+#define SJE_LAUNCHER_ENV		"SJE_LAUNCHER"
+#define SJE_LAUNCHER_TOKEN	"sje-launcher-4b8e2d6a"
+
+static void Sys_RequireLauncher(void)
+{
+	const char* token = getenv(SJE_LAUNCHER_ENV);
+	if (token && !strcmp(token, SJE_LAUNCHER_TOKEN))
+	{// started by the launcher
+		return;
+	}
+
+	// the launcher sits next to the game exe
+	char folder[MAX_OSPATH] = { 0 };
+	char* pgm = nullptr;
+	if (_get_pgmptr(&pgm) == 0 && pgm)
+	{
+		Q_strncpyz(folder, pgm, sizeof(folder));
+	}
+	char* slash = strrchr(folder, '\\');
+	char* slash2 = strrchr(folder, '/');
+	if (slash2 > slash)
+	{
+		slash = slash2;
+	}
+	if (slash)
+	{
+		slash[1] = '\0';
+	}
+	else
+	{
+		folder[0] = '\0';
+	}
+
+	char launcher[MAX_OSPATH];
+	char launcherArg[MAX_OSPATH + 2];
+	Com_sprintf(launcher, sizeof(launcher), "%s%s", folder, SJE_LAUNCHER_EXE);
+	Com_sprintf(launcherArg, sizeof(launcherArg), "\"%s\"", launcher);
+
+	if (_spawnl(_P_NOWAIT, launcher, launcherArg, (char*)nullptr) == -1)
+	{
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SerenityJediEngine2026",
+			"Please start SerenityJediEngine2026 with " SJE_LAUNCHER_EXE ".\n\n"
+			SJE_LAUNCHER_EXE " was not found in the game folder.", nullptr);
+	}
+	exit(0);
+}
+#endif
+
 int main(int argc, char* argv[])
 {
 	char commandLine[MAX_STRING_CHARS] = { 0 };
+
+#if defined(_WIN32) && defined(NDEBUG) && !defined(_DEBUG) && !defined(DEDICATED) && !defined(JK2_MODE)
+	Sys_RequireLauncher(); // release builds: only from the SerenityJediEngine2026 launcher
+#endif
 
 	Sys_PlatformInit();
 	CON_Init();

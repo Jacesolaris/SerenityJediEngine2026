@@ -588,6 +588,8 @@ using saberMoveName_t = enum
 	LS_KNOCK_RIGHT,
 	LS_KNOCK_LEFT,
 
+	LS_JUMPDASH_ATTACK, // the force jump dash's attack (BOTH_FORCEJUMPDASH_ATTACK)
+
 	LS_MOVE_MAX
 };
 

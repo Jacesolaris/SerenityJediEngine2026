@@ -2135,7 +2135,7 @@ static void Upload32(byte* data, int width, int height, imgType_t type, int flag
 		}
 		Com_Memcpy(scaledBuffer, data, width * height * 4);
 	}
-	else if (!r_simpleMipMaps->integer || (r_picmip->integer && (flags & IMGFLAG_PICMIP)))
+	else // rend2 78a610a6: always scale down to the clamped size (picmip / max texture size)
 	{
 		// use the normal mip-mapping function to go down from here
 		while (width > scaled_width || height > scaled_height) {
@@ -3660,7 +3660,7 @@ void R_SetColorMappings(void) {
 		else {
 			inf = 255 * pow(i / 255.0f, 1.0f / g) + 0.5f;
 		}
-		inf <<= tr.overbrightBits;
+		// inf <<= tr.overbrightBits; // rend2 792feb58: overbright is applied through the exposure in post process now
 		if (inf < 0) {
 			inf = 0;
 		}

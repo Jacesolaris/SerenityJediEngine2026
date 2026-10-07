@@ -748,13 +748,8 @@ void CG_NewClientinfo(const int clientNum)
 	);
 
 	ci->infoValid = qfalse;
-	if (cg.snap && cg.snap->ps.clientNum == clientNum)
-	{
-		constexpr clientInfo_t new_info{};
-		//adjust our True View position for this new model since this model is for this client
-		//Set the eye position based on the trueviewmodel.cfg if it has a position for this model.
-		CG_AdjustEyePos(new_info.modelName);
-	}
+	// True View: the player's eye position for this model is set by CG_TrueViewCheckModel (cg_trueview.cpp)
+	// from the True View camera code (this passed the empty model name of a new clientInfo_t: always 0)
 }
 
 /*
@@ -6300,7 +6295,9 @@ void CG_AddRefEntityWithPowerups(refEntity_t* ent, int powerups, centity_t* cent
 		&& (gent->client->ps.forcePowersActive & 1 << FP_SPEED //in force speed
 			|| cent->gent->client->ps.legsAnim == BOTH_FORCELONGLEAP_START
 			//or force long jump - FIXME: only 1st half of that anim?
-			|| cent->gent->client->ps.legsAnim == BOTH_FORCELONGLEAP_ATTACK) //or force long jump attack
+			|| cent->gent->client->ps.legsAnim == BOTH_FORCELONGLEAP_ATTACK //or force long jump attack
+			|| cent->gent->client->ps.legsAnim == BOTH_FORCEJUMPDASH_START //or the force jump dash
+			|| cent->gent->client->ps.legsAnim == BOTH_FORCEJUMPDASH_ATTACK)
 		&& (gent->s.number || cg.renderingThirdPerson)) // looks dumb doing this with first peron mode on
 	{
 		localEntity_t* ex;
@@ -15300,6 +15297,9 @@ void CG_Player(centity_t* cent)
 		//Restrict True View Model changes to the player and do the True View camera view work.
 		if (cg.snap && cent->currentState.number == cg.snap->ps.viewEntity && cg_truebobbing.integer)
 		{
+			// this model's eye position from trueview.cfg (looked up again when the model changes)
+			CG_TrueViewCheckModel(cent->gent && cent->gent->client ? cent->gent->client->renderInfo.legsModelName : "");
+
 			if (!cg.renderingThirdPerson && (cg_trueguns.integer || cent->currentState.weapon == WP_SABER
 				|| cent->currentState.weapon == WP_MELEE) && !cg.zoomMode)
 			{

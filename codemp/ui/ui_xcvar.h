@@ -37,6 +37,7 @@ XCVAR_DEF(capturelimit, "0", NULL, CVAR_ARCHIVE | CVAR_NORESTART | CVAR_SERVERIN
 XCVAR_DEF(cg_drawCrosshair, "2", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_drawCrosshairNames, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_DrawCrosshairItem, "1", NULL, CVAR_ARCHIVE)
+XCVAR_DEF(cg_dynamicHud, "1", NULL, CVAR_ARCHIVE) // registered here too so the Game Options menu shows On before cgame has loaded
 XCVAR_DEF(cg_marks, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_selectedPlayer, "0", NULL, CVAR_ARCHIVE | CVAR_INTERNAL)
 XCVAR_DEF(cg_selectedPlayerName, "", NULL, CVAR_ARCHIVE | CVAR_INTERNAL)

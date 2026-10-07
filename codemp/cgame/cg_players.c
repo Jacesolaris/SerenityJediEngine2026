@@ -18131,6 +18131,9 @@ void CG_Player(centity_t* cent)
 	//Restrict True View Model changes to the player and do the True View camera view work.
 	if (cg.snap && cent->currentState.number == cg.snap->ps.clientNum && cg_truebobbing.integer)
 	{
+		// this model's eye position from trueview.cfg (looked up again when the model changes)
+		CG_TrueViewCheckModel(ci->modelName);
+
 		if (!cg.renderingThirdPerson && (cg_trueguns.integer || cent->currentState.weapon == WP_SABER
 			|| cent->currentState.weapon == WP_MELEE) && !cg.predictedPlayerState.zoomMode)
 		{
@@ -18251,7 +18254,9 @@ SkipTrueView:
 	//rww - force speed "trail" effect (also during a force long leap, the same as SP)
 	if (!(cent->currentState.powerups & 1 << PW_SPEED
 		|| cent->currentState.legsAnim == BOTH_FORCELONGLEAP_START
-		|| cent->currentState.legsAnim == BOTH_FORCELONGLEAP_ATTACK) || do_alpha || !cg_speedTrail.integer)
+		|| cent->currentState.legsAnim == BOTH_FORCELONGLEAP_ATTACK
+		|| cent->currentState.legsAnim == BOTH_FORCEJUMPDASH_START // and the force jump dash
+		|| cent->currentState.legsAnim == BOTH_FORCEJUMPDASH_ATTACK) || do_alpha || !cg_speedTrail.integer)
 	{
 		cent->frame_minus1_refreshed = 0;
 		cent->frame_minus2_refreshed = 0;

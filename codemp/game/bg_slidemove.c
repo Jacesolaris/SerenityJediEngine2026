@@ -684,6 +684,9 @@ qboolean PM_GroundSlideOkay(const float z_normal)
 				|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK2
 				|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_LAND
 				|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_LAND2
+				|| pm->ps->legsAnim == BOTH_FORCEJUMPDASH_START
+				|| pm->ps->legsAnim == BOTH_FORCEJUMPDASH_ATTACK
+				|| pm->ps->legsAnim == BOTH_FORCEJUMPDASH_LAND
 				|| PM_InReboundJump(pm->ps->legsAnim))
 			{
 				return qfalse;

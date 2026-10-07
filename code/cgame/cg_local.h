@@ -714,6 +714,9 @@ extern vmCvar_t cg_vehicleStickYaw;
 extern vmCvar_t cg_vehicleStickPitch;
 extern vmCvar_t cg_vehicleStickEaseIn;
 extern vmCvar_t cg_drawRadar;
+extern vmCvar_t cg_dynamicHud;
+extern vmCvar_t cg_dynamicHudTime;
+extern vmCvar_t cg_dynamicHudRange;
 extern vmCvar_t cg_drawVehLeadIndicator;
 
 extern vmCvar_t cg_trueguns;
@@ -1132,6 +1135,7 @@ void cgi_R_RenderScene(const refdef_t* fd);
 void cgi_R_SetColor(const float* rgba); // NULL = 1,1,1,1
 void cgi_R_DrawStretchPic(float x, float y, float w, float h,
 	float s1, float t1, float s2, float t2, qhandle_t hShader);
+void cgi_R_DrawScreenShot(float x, float y, float w, float h); // JKO save game screenshot
 
 void cgi_R_ModelBounds(qhandle_t model, vec3_t mins, vec3_t maxs);
 void cgi_R_LerpTag(orientation_t* tag, qhandle_t mod, int startFrame, int endFrame, float frac, const char* tagName);
@@ -1341,5 +1345,7 @@ void CG_SetLightstyle(int i);
 
 void CG_TrueViewInit();
 void CG_AdjustEyePos(const char* modelName);
+void CG_TrueViewCheckModel(const char* model_name); // the player's model changed: its trueview.cfg eye position
+void CG_TrueViewSave_f(); // "trueview_save [value]": saves the player's model with its eye position in trueview.cfg
 
 #endif	//__CG_LOCAL_H__

@@ -2273,6 +2273,8 @@ void CG_SiegeRoundOver(centity_t* ent, int won);
 void CG_SiegeObjectiveCompleted(centity_t* ent, const int won, const int objectivenum);
 void CG_TrueViewInit(void);
 void CG_AdjustEyePos(const char* modelName);
+void CG_TrueViewCheckModel(const char* modelName); // the player's model changed: its trueview.cfg eye position
+void CG_TrueViewSave_f(void); // "trueview_save [value]": saves the player's model with its eye position in trueview.cfg
 
 //===============================================
 
