@@ -527,140 +527,137 @@ void g_reflect_missile_auto(const gentity_t* ent, gentity_t* missile, vec3_t for
 	}
 }
 
+/*
+-------------------------
+Force Stasis on a missile (as the singleplayer g_missile.cpp)
+
+The missile stops dead where it is, for STASIS_MISSILE_TIME. Its flight is kept (its velocity, its kind of
+trajectory, its think - fuse, homing, life time - and how long that had left, its loop sound). When the time is up it
+flies on along its old path at its old speed, its think going on where it stopped. Someone (a player, a bot or an NPC)
+touching it while it hangs there sets it off: a small blast (STASIS_MISSILE_TOUCH_DAMAGE within
+STASIS_MISSILE_TOUCH_RADIUS). Stasis on a missile already held only gives it the full time again.
+While held its think is wp_stasis_missile_blow (-> G_StasisMissileThink, every frame) and it neither moves nor hits
+anything (the missile run only runs that think).
+-------------------------
+*/
 static qhandle_t stasisLoopSound = 0;
 gentity_t* tgt_list[MAX_GENTITIES];
 
+#define STASIS_MISSILE_TIME 10000
+#define STASIS_MISSILE_TOUCH_DAMAGE 15
+#define STASIS_MISSILE_TOUCH_RADIUS 96.0f
+
+static int stasis_missile_until[MAX_GENTITIES]; // (0: not held)
+static vec3_t stasis_missile_delta[MAX_GENTITIES];
+static int stasis_missile_trtype[MAX_GENTITIES];
+static void (*stasis_missile_think[MAX_GENTITIES])(gentity_t* self);
+static int stasis_missile_think_left[MAX_GENTITIES]; // ms its think had left (-1: none)
+static int stasis_missile_loopsound[MAX_GENTITIES];
+
 void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward)
 {
-	vec3_t bounce_dir = { 0 };
-	vec3_t dir;
 	static qboolean registered = qfalse;
-
-	//
-	// 1. UNFREEZE CHECK — after 10 seconds, restore full speed
-	//
-	if (missile->s.userFloat1 > 0 && level.time >= missile->s.userFloat1)
-	{
-		// Get direction from current velocity
-		VectorNormalize2(missile->s.pos.trDelta, dir);
-
-		// Full speed (normalized)
-		VectorScale(dir, 1.0f, missile->s.pos.trDelta);
-
-		// Reset trajectory so movement resumes
-		missile->s.pos.trTime = level.time;
-		VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
-
-		missile->s.userFloat1 = 0; // clear flag
-		return;
-	}
-
-	//
-	// Register looping stasis sound once
-	//
 	if (!registered)
 	{
 		stasisLoopSound = G_SoundIndex("sound/effects/blaster_stasis_loop.wav");
 		registered = qtrue;
 	}
-
-	//
-	// 2. STASIS START — set unfreeze timer and extend lifetime
-	//
-	if (missile->s.userFloat1 == 0)
+	if (!missile || !missile->inuse)
 	{
-		missile->s.userFloat1 = level.time + 10000;      // unfreeze after 10 seconds
-
-		missile->nextthink = level.time + 20000;         // explode after 20 seconds
-		missile->think = wp_stasis_missile_blow;         // your custom blow effect
+		return;
+	}
+	const int n = missile->s.number;
+	if (missile->think == wp_stasis_missile_blow && stasis_missile_until[n])
+	{
+		stasis_missile_until[n] = level.time + STASIS_MISSILE_TIME; // held again: the full time
+		return;
 	}
 
-	//
-	// 3. Compute direction once
-	//
-	VectorNormalize2(missile->s.pos.trDelta, dir);
+	// its flight, to go on with later
+	VectorCopy(missile->s.pos.trDelta, stasis_missile_delta[n]);
+	stasis_missile_trtype[n] = missile->s.pos.trType;
+	stasis_missile_think[n] = missile->think;
+	stasis_missile_think_left[n] = missile->think && missile->nextthink > level.time
+		? missile->nextthink - level.time
+		: -1;
+	stasis_missile_loopsound[n] = missile->s.loopSound;
 
-	//
-	// 4. Slow-motion speed during stasis
-	//
-	float slowSpeed = 1.0f / 200.0f;   // your slow-motion factor
-	float fullSpeed = 1.0f;            // normalized full speed
-
-	//
-	// 5. Apply correct speed depending on timer
-	//
-	if (level.time < missile->s.userFloat1)
-	{
-		// Still in stasis → slow speed
-		VectorScale(dir, slowSpeed, missile->s.pos.trDelta);
-	}
-	else
-	{
-		// After 10 seconds → full speed
-		VectorScale(dir, fullSpeed, missile->s.pos.trDelta);
-	}
-
-	//
-	// Looping stasis sound
-	//
+	// held where it is
+	BG_EvaluateTrajectory(&missile->s.pos, level.time, missile->r.currentOrigin);
+	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
+	// trDelta kept as the unit direction (the saved velocity is in stasis_missile_delta): the client draws
+	// the bolt along trDelta, a zero one stood it upright. TR_STATIONARY does not move it.
+	VectorNormalize(missile->s.pos.trDelta);
+	missile->s.pos.trType = TR_STATIONARY;
+	missile->s.pos.trTime = level.time;
+	trap->LinkEntity((sharedEntity_t*)missile);
 	missile->s.loopSound = stasisLoopSound;
 
-	//
-	// Update trajectory base
-	//
-	missile->s.pos.trTime = level.time;
+	stasis_missile_until[n] = level.time + STASIS_MISSILE_TIME;
+	missile->think = wp_stasis_missile_blow;
+	missile->nextthink = level.time + FRAMETIME;
+}
+
+// someone touched it while held: a small blast
+static void G_StasisMissileTouchBlow(gentity_t* missile)
+{
+	vec3_t up = { 0.0f, 0.0f, 1.0f };
+	gentity_t* attacker = missile->parent ? missile->parent
+		: missile->r.ownerNum < ENTITYNUM_WORLD ? &g_entities[missile->r.ownerNum] : missile;
+
+	stasis_missile_until[missile->s.number] = 0;
+	missile->takedamage = qfalse;
+	g_radius_damage(missile->r.currentOrigin, attacker, STASIS_MISSILE_TOUCH_DAMAGE, STASIS_MISSILE_TOUCH_RADIUS, missile,
+		missile, MOD_BRYAR_PISTOL);
+	G_PlayEffect(EFFECT_SPARK_EXPLOSION, missile->r.currentOrigin, up);
+	G_FreeEntity(missile);
+}
+
+// a held missile, every frame: touched (it goes off), or its time up (it flies on)
+void G_StasisMissileThink(gentity_t* missile)
+{
+	const int n = missile->s.number;
+	if (!stasis_missile_until[n])
+	{
+		G_FreeEntity(missile); // (nothing kept of its flight)
+		return;
+	}
+
+	vec3_t mins, maxs;
+	int touch[MAX_GENTITIES];
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = missile->r.absmin[i] - 8.0f;
+		maxs[i] = missile->r.absmax[i] + 8.0f;
+	}
+	const int num = trap->EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
+	for (int i = 0; i < num; i++)
+	{
+		const gentity_t* hit = &g_entities[touch[i]];
+		if (hit != missile && hit->inuse && hit->client && hit->health > 0)
+		{
+			G_StasisMissileTouchBlow(missile);
+			return;
+		}
+	}
+
+	if (level.time < stasis_missile_until[n])
+	{
+		missile->nextthink = level.time + FRAMETIME;
+		return;
+	}
+
+	// the time is up: on along its old path, at its old speed
+	stasis_missile_until[n] = 0;
 	VectorCopy(missile->r.currentOrigin, missile->s.pos.trBase);
-
-	//
-	// Transfer ownership
-	//
-	if (missile->s.weapon != WP_SABER &&
-		missile->s.weapon != G2_MODEL_PART)
-	{
-		missile->r.ownerNum = ent->s.number;
-	}
-
-	//
-	// 6. Rocket/Thermal proximity logic preserved
-	//
-	if (missile->s.weapon == WP_ROCKET_LAUNCHER ||
-		missile->s.weapon == WP_THERMAL)
-	{
-		qboolean blow = qfalse;
-
-		if (ent->delay > level.time)
-		{
-			const int count = G_RadiusList(ent->r.currentOrigin,
-				200,
-				ent,
-				qtrue,
-				tgt_list);
-
-			for (int i = 0; i < count; i++)
-			{
-				gentity_t* tgt = tgt_list[i];
-
-				if (tgt->client &&
-					tgt->health > 0 &&
-					ent->activator &&
-					tgt->s.number != ent->activator->s.number)
-				{
-					blow = qtrue;
-					break;
-				}
-			}
-		}
-		else
-		{
-			blow = qtrue;
-		}
-
-		if (blow)
-		{
-			missile->think = wp_flechette_alt_blow;
-			missile->nextthink = 0;
-		}
-	}
+	VectorCopy(stasis_missile_delta[n], missile->s.pos.trDelta);
+	missile->s.pos.trType = (trType_t)stasis_missile_trtype[n];
+	missile->s.pos.trTime = level.time;
+	missile->s.loopSound = stasis_missile_loopsound[n];
+	missile->think = stasis_missile_think[n];
+	missile->nextthink = missile->think && stasis_missile_think_left[n] >= 0
+		? level.time + stasis_missile_think_left[n]
+		: 0;
 }
 
 void g_reflect_missile_bot(const gentity_t* ent, gentity_t* missile, vec3_t forward)
@@ -1995,6 +1992,13 @@ extern int g_real_trace(
 
 void g_run_missile(gentity_t* ent)
 {
+	if (ent->think == wp_stasis_missile_blow)
+	{
+		// held by Force Stasis (G_StasisMissile): it neither moves nor hits anything, its think does it all
+		G_RunThink(ent);
+		return;
+	}
+
 	vec3_t origin, ground_spot;
 	trace_t tr;
 	int passent;

@@ -766,6 +766,11 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 	{
 		//load in all the manually added savepoints
 		Load_Autosaves();
+		// a map changed during a cutscene skipped at timescale 100 (g_ICARUScb.c G_MissionCutsceneSkip): back to normal
+		if (trap->Cvar_VariableIntegerValue("timescale") != 1)
+		{
+			trap->Cvar_Set("timescale", "1");
+		}
 	}
 
 	if (level.gametype == GT_JEDIMASTER)

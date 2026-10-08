@@ -103,6 +103,10 @@ extern qboolean player_locked;
 extern char cinematicSkipScript[1024];
 extern qboolean skippingCutscene;
 extern qboolean inGameCinematic;
+extern qboolean G_MissionSkipsCutscenes(void);
+extern void G_MissionCutsceneSkip(void);
+extern qboolean G_MissionInCutscene(void);
+extern void G_MissionGatherThink(void);
 extern qboolean IsSurrendering(const gentity_t* self);
 
 static void P_SetTwitchInfo(gclient_t* client)
@@ -4879,6 +4883,15 @@ static void ClientThink_real(gentity_t* ent)
 	if (client && client->ps.clientNum < MAX_CLIENTS)
 	{
 		//player stuff
+		if (G_MissionSkipsCutscenes())
+		{
+			G_MissionGatherThink(); // the players come along with the lead after a cutscene / a script's move
+		}
+		if (G_MissionInCutscene())
+		{
+			// a mission's cutscene plays out unseen while the players go on (g_ICARUScb.c G_MissionCutsceneSkip)
+			G_MissionCutsceneSkip();
+		}
 		if (in_camera)
 		{
 			// watch the code here, you MUST "return" within this IF(), *unless* you're stopping the cinematic skip.
@@ -4912,7 +4925,7 @@ static void ClientThink_real(gentity_t* ent)
 			}
 		}
 
-		if (player_locked)
+		if (player_locked && !G_MissionInCutscene()) // (not kept while a mission's cutscene plays out unseen)
 		{
 			//players' controls are locked, a scripting thingy
 			ucmd->forwardmove = 0;

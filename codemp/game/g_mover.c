@@ -701,12 +701,19 @@ void ReturnToPos1(gentity_t* ent)
 	G_PlayDoorSound(ent, BMS_START); //??
 }
 
+// Missions (GT_SINGLE_PLAYER): a door that has opened stays open (it does not go back after its wait), so no player
+// is shut out behind it once it has opened for someone or for a script (t1_fatal). Toggle doors (8) as before.
+static qboolean G_MissionDoorStaysOpen(const gentity_t* ent)
+{
+	return level.gametype == GT_SINGLE_PLAYER && !(ent->spawnflags & 8)
+		&& ent->classname && !Q_stricmp(ent->classname, "func_door") ? qtrue : qfalse;
+}
+
 /*
 ================
 Reached_BinaryMover
 ================
 */
-
 void Reached_BinaryMover(gentity_t* ent)
 {
 	// stop the looping sound
@@ -732,6 +739,12 @@ void Reached_BinaryMover(gentity_t* ent)
 			ent->think = 0;
 			ent->nextthink = 0;
 			ent->use = 0;
+		}
+		else if (G_MissionDoorStaysOpen(ent))
+		{
+			// a mission: open for good (still usable by a script)
+			ent->think = 0;
+			ent->nextthink = 0;
 		}
 		else
 		{
@@ -822,6 +835,14 @@ void Use_BinaryMover_Go(gentity_t* ent)
 	// if all the way up, just delay before coming down
 	if (ent->moverState == MOVER_POS2)
 	{
+		if (G_MissionDoorStaysOpen(ent))
+		{
+			// a mission: it stays open (Reached_BinaryMover), using it again does not send it back
+			ent->think = 0;
+			ent->nextthink = 0;
+			G_UseTargets2(ent, ent->activator, ent->target2);
+			return;
+		}
 		//have to do this because the delay sets our think to Use_BinaryMover_Go
 		ent->think = ReturnToPos1;
 		if (ent->spawnflags & 8)

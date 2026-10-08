@@ -553,6 +553,23 @@ local function to set globals used throughout the AI code
 */
 void SetNPCGlobals(gentity_t* ent)
 {
+	if (!ent)
+	{
+		return;
+	}
+
+	// require the entity to be an NPC with client and NPC info
+	if (!ent->NPC || !ent->client)
+	{
+		// optionally log an error for debugging builds
+#ifdef _DEBUG
+		G_Printf("SetNPCGlobals: entity %d has no NPC or client\n", ent ? ent->s.number : -1);
+#endif
+		NPCS.NPC = NULL;
+		NPCS.NPCInfo = NULL;
+		NPCS.client = NULL;
+		return;
+	}
 	NPCS.NPC = ent;
 	NPCS.NPCInfo = ent->NPC;
 	NPCS.client = ent->client;
@@ -1822,6 +1839,20 @@ NPC Behavior state thinking
 */
 static void NPC_ExecuteBState(const gentity_t* self) //, int msec )
 {
+	if (!self)
+	{
+		return;
+	}
+
+	if (!NPCS.NPC || !NPCS.NPCInfo || !NPCS.client)
+	{
+		// debug log with entity id so you can locate caller/sequence
+#ifdef _DEBUG
+		G_Printf("NPC_ExecuteBState: NPCS not initialized for entity %d\n", self->s.number);
+#endif
+		return;
+	}
+
 	if (self->enemy && self->enemy->client && self->enemy->client->ps.duelInProgress)
 	{
 		G_ClearEnemy(NPCS.NPC);

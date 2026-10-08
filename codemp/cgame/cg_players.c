@@ -2626,6 +2626,55 @@ static void CG_PlayerFootsteps(centity_t* cent, const footstepType_t foot_step_t
 	}
 }
 
+// A Darksaber (saberType SABER_CUSTOMSFX) or a sword (SABER_SITH_SWORD) makes no saber swing sound: the saber moves'
+// "sound/weapons/saber/lowswing%d" animevents (animevents.cfg) play silent with it, the moves themselves as before.
+static qboolean CG_NoSaberSwingSounds(const centity_t* cent)
+{
+	const clientInfo_t* ci;
+
+	if (cent->currentState.weapon != WP_SABER)
+	{
+		return qfalse;
+	}
+	if (cent->currentState.eType == ET_NPC)
+	{
+		ci = cent->npcClient;
+	}
+	else
+	{
+		ci = cent->currentState.clientNum < MAX_CLIENTS ? &cgs.clientinfo[cent->currentState.clientNum] : NULL;
+	}
+	if (!ci)
+	{
+		return qfalse;
+	}
+	return ci->saber[0].type == SABER_CUSTOMSFX || ci->saber[0].type == SABER_SITH_SWORD ? qtrue : qfalse;
+}
+
+// the animevent sound is a saber swing (lowswing1-7; the same handles the animevents registered)
+static qboolean CG_IsSaberSwingSound(const int snd)
+{
+	static qhandle_t lowswing[8];
+	static qboolean registered = qfalse;
+
+	if (!registered)
+	{
+		for (int i = 1; i < 8; i++)
+		{
+			lowswing[i] = trap->S_RegisterSound(va("sound/weapons/saber/lowswing%d.wav", i));
+		}
+		registered = qtrue;
+	}
+	for (int i = 1; i < 8; i++)
+	{
+		if (snd == lowswing[i])
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
 static void CG_PlayerAnimEventDo(centity_t* cent, animevent_t* anim_event)
 {
 	soundChannel_t channel = CHAN_AUTO;
@@ -2653,6 +2702,10 @@ static void CG_PlayerAnimEventDo(centity_t* cent, animevent_t* anim_event)
 			if (anim_event->stringData && anim_event->stringData[0])
 			{
 				const char* soundName = va(anim_event->stringData, n);
+				if (CG_NoSaberSwingSounds(cent) && strstr(anim_event->stringData, "saber/lowswing"))
+				{
+					break; // (no swing sound with a Darksaber / sword)
+				}
 				trap->S_StartSound(NULL, cent->currentState.number, channel, CG_CustomSound(cent->currentState.number, soundName));
 			}
 			else
@@ -2664,7 +2717,7 @@ static void CG_PlayerAnimEventDo(centity_t* cent, animevent_t* anim_event)
 		else
 		{
 			const int hold_snd = anim_event->eventData[AED_SOUNDINDEX_START + Q_irand(0, anim_event->eventData[AED_SOUND_NUMRANDOMSNDS])];
-			if (hold_snd > 0)
+			if (hold_snd > 0 && !(CG_NoSaberSwingSounds(cent) && CG_IsSaberSwingSound(hold_snd)))
 			{
 				trap->S_StartSound(NULL, cent->currentState.number, channel, hold_snd);
 			}

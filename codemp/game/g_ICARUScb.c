@@ -61,6 +61,8 @@ extern qboolean in_camera;
 qboolean player_locked = qfalse;
 extern qboolean WinterGear;
 qboolean inGameCinematic = qfalse;
+qboolean G_MissionSkipsCutscenes(void); // a mission skips cutscenes and videos (below)
+void G_MissionPlayerMoved(const gentity_t* ent); // a script moved a player: the others may have to come along
 
 void ToggleNPCWinterGear(gentity_t* ent);
 void GCam_Enable(void);
@@ -3153,6 +3155,7 @@ static void Q3_SetOrigin(const int entID, vec3_t origin)
 		ent->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
 
 		ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		G_MissionPlayerMoved(ent);
 	}
 	else
 	{
@@ -7854,6 +7857,10 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 			//the players are currently in a cutscene.  This means that we need to change the player's stored origin.
 			UpdatePlayerCameraOrigin(ent, vector_data);
 		}
+		if (ent->client)
+		{
+			G_MissionPlayerMoved(ent);
+		}
 
 		//SP Code
 		if (ent->client)
@@ -8820,7 +8827,8 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 		break;
 
 	case SET_VIDEO_PLAY:
-		if (g_allowROQ.integer)
+		// (never in a mission: a video would stop everybody's game; it is skipped)
+		if (g_allowROQ.integer && !G_MissionSkipsCutscenes())
 		{
 			trap->SendServerCommand(-1, va("inGameCinematic %s", (char*)data));
 			inGameCinematic = qtrue;
@@ -8828,12 +8836,18 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 		break;
 
 	case SET_VIDEO_FADE_IN:
-		ICam_Fade(colorClear, colorBlack, 2000);
+		if (!G_MissionSkipsCutscenes()) // (the video is skipped in a mission: no fade to black for it)
+		{
+			ICam_Fade(colorClear, colorBlack, 2000);
+		}
 		break;
 
 	case SET_VIDEO_FADE_OUT:
 		//uh for now we're just going to use the camera fade code.
-		ICam_Fade(colorBlack, colorClear, 2000);
+		if (!G_MissionSkipsCutscenes())
+		{
+			ICam_Fade(colorBlack, colorClear, 2000);
+		}
 		break;
 	case SET_REMOVE_TARGET:
 		Q3_SetRemoveTarget(entID, data);
@@ -8848,28 +8862,43 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 		//UI_SetActiveMenu( (const char *) data );
 		break;
 
+	// the mission's objectives: the objective's text (strings OBJECTIVES_<name>, as the SP datapad) is looked up by
+	// each client in his own language ("@@@" in a centre print, CG_CheckSVStringEdRef)
 	case SET_OBJECTIVE_SHOW:
-		if (trap->SE_GetStringTextString)
+		if (data && data[0])
 		{
-			trap->SE_GetStringTextString(va("OBJECTIVES_%s", data), char_data, sizeof(char_data));
+			trap->SendServerCommand(-1, va("cp \"" S_COLOR_CYAN "New Mission Objective:\n" S_COLOR_WHITE
+				"@@@OBJECTIVES_%s\n\"", (char*)data));
 		}
-		else {
-			// Fallback: use data key or empty string if localization API isn't available
-			//Q_strncpyz(char_data, va("OBJECTIVES_%s", data), sizeof(char_data));
+		else
+		{
 			ObjectivePrint_Line();
 		}
-		trap->SendServerCommand(-1, va("cp \"" S_COLOR_BLUE "New Mission Objective:\n%s\"", char_data));
-		break;
-		//ObjectivePrint_Line();
 		break;
 	case SET_OBJECTIVE_HIDE:
 		//G_DebugPrint(WL_WARNING, "SET_OBJECTIVE_HIDE: NOT SUPPORTED IN MP\n");
 		break;
 	case SET_OBJECTIVE_SUCCEEDED:
-		trap->SendServerCommand(-1, "cp \"^1You have sucsessfully compleated your objective.\n\"");
+		if (data && data[0])
+		{
+			trap->SendServerCommand(-1, va("cp \"" S_COLOR_GREEN "Objective Completed:\n" S_COLOR_WHITE
+				"@@@OBJECTIVES_%s\n\"", (char*)data));
+		}
+		else
+		{
+			trap->SendServerCommand(-1, "cp \"" S_COLOR_GREEN "Objective Completed.\n\"");
+		}
 		break;
 	case SET_OBJECTIVE_FAILED:
-		trap->SendServerCommand(-1, "cp \"^1You have failed your objective.\n\"");
+		if (data && data[0])
+		{
+			trap->SendServerCommand(-1, va("cp \"" S_COLOR_RED "Objective Failed:\n" S_COLOR_WHITE
+				"@@@OBJECTIVES_%s\n\"", (char*)data));
+		}
+		else
+		{
+			trap->SendServerCommand(-1, "cp \"" S_COLOR_RED "Objective Failed.\n\"");
+		}
 		break;
 
 	case SET_OBJECTIVE_CLEARALL:
@@ -8877,7 +8906,16 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 		break;
 
 	case SET_MISSIONFAILED:
-		trap->SendServerCommand(-1, "cp \"^1You have failed your mission.\n\"");
+		// with the reason the SP mission failed screen gives (SP_INGAME_MISSIONFAILED_*), looked up by each client
+		if (data && data[0])
+		{
+			trap->SendServerCommand(-1, va("cp \"" S_COLOR_RED "Mission Failed\n" S_COLOR_WHITE "@@@SP_INGAME_%s\n\"",
+				(char*)data));
+		}
+		else
+		{
+			trap->SendServerCommand(-1, "cp \"^1You have failed your mission.\n\"");
+		}
 		LogExit("Co-Op Mission Failed.");
 		//we want the intermission to activate a little slower than normal.
 		level.intermissionQueued = level.time + 5000;
@@ -9066,9 +9104,95 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 	return qtrue;
 }
 
+/*
+-------------------------
+Missions (GT_SINGLE_PLAYER): cutscenes are skipped
+
+A cutscene never takes the players' view or stops their game in a mission: its camera commands are not sent to the
+clients and in_camera stays off, so the players (and the NPCs) go on as normal while the cutscene's script plays out
+unseen, in its own time. No timescale: at timescale 100 a camera script that waits a long time (a console's camera
+view, t1_fatal) froze the game ("Connection Interrupted"). As the SP skip key does it (G_StartCinematicSkip), the
+cutscene's skip script (SET_CINEMATIC_SKIPSCRIPT) runs at once, which usually takes the script to its end. A script's
+player lock is not kept while a cutscene runs (g_active.c). A camera still on after MISSION_CUTSCENE_MAX_TIME is taken
+as over (the script itself goes on).
+-------------------------
+*/
+#define MISSION_CUTSCENE_MAX_TIME 30000
+void ICam_Disable(void);
+static int mission_cutscene_start;
+static qboolean mission_cutscene; // a mission's cutscene camera is on (unseen)
+
+qboolean G_MissionSkipsCutscenes(void)
+{
+	return level.gametype == GT_SINGLE_PLAYER ? qtrue : qfalse;
+}
+
+// a mission's cutscene is running (unseen)
+qboolean G_MissionInCutscene(void)
+{
+	return G_MissionSkipsCutscenes() && mission_cutscene ? qtrue : qfalse;
+}
+
+// the player the skip script runs on (the SP skip runs it on the player): the first one in the game
+static gentity_t* G_MissionCutscenePlayer(void)
+{
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		gentity_t* ent = &g_entities[i];
+		if (ent->inuse && ent->client && ent->client->pers.connected == CON_CONNECTED
+			&& ent->client->sess.sessionTeam != TEAM_SPECTATOR)
+		{
+			return ent;
+		}
+	}
+	return NULL;
+}
+
+// the skip of the running cutscene: run at the camera's start and every player think while it is on
+void G_MissionCutsceneSkip(void)
+{
+	if (!mission_cutscene)
+	{
+		return;
+	}
+	if (cinematicSkipScript[0])
+	{
+		// (a skip script set after the camera came on runs as soon as it is set)
+		gentity_t* player = G_MissionCutscenePlayer();
+		if (player)
+		{
+			trap->ICARUS_RunScript((sharedEntity_t*)player, cinematicSkipScript);
+			cinematicSkipScript[0] = 0;
+		}
+	}
+	if (level.time - mission_cutscene_start > MISSION_CUTSCENE_MAX_TIME)
+	{
+		Com_Printf(S_COLOR_YELLOW "Missions: a cutscene's camera was not turned off, it is taken as over\n");
+		ICam_Disable();
+	}
+}
+
 //server side camera enable
 void ICam_Enable(void)
 {
+	if (G_MissionSkipsCutscenes())
+	{
+		// a mission: unseen, in_camera stays off (above)
+		if (!mission_cutscene)
+		{
+			mission_cutscene = qtrue;
+			mission_cutscene_start = level.time;
+			if (trap->Cvar_VariableIntegerValue("developer"))
+			{
+				Com_Printf("Missions: a cutscene plays out unseen (skip script: %s)\n",
+					cinematicSkipScript[0] ? cinematicSkipScript : "none");
+			}
+		}
+		GCam_Enable();
+		G_MissionCutsceneSkip();
+		return;
+	}
+
 	trap->SetConfigstring(CS_CAMERA, "enable");
 
 	in_camera = qtrue;
@@ -9076,10 +9200,154 @@ void ICam_Enable(void)
 	GCam_Enable();
 }
 
+// a camera command goes to the clients (never in a mission)
+static qboolean ICam_SendToClients(void)
+{
+	return G_MissionSkipsCutscenes() ? qfalse : qtrue;
+}
+
+/*
+-------------------------
+Missions: the players come along with the lead (as JACoop's G_CoopFollowHostTeleport / G_CoopPlaceBeside)
+
+The SP scripts move only "player" (the lead, UpdatePlayerScriptTarget): at the end of a cutscene, which a mission
+skips, or when a script puts him somewhere else (SET_ORIGIN, SET_COPY_ORIGIN). The others would be left in the wrong
+room, often behind a door the script has locked. So after a cutscene and after such a move, every player in the game
+who is far from the lead (or out of his sight) is put next to him: around him in rings (64 to 176 out, 8 ways, a
+different start for each), on a free spot he can see, dropped to the floor. Not one in a vehicle or at a gun.
+-------------------------
+*/
+#define MISSION_GATHER_DIST 768.0f
+static int mission_gather_time;
+static vec3_t mission_lead_pos;
+
+static gentity_t* G_MissionLead(void)
+{
+	gentity_t* lead = G_Find(NULL, FOFS(script_targetname), "player");
+	if (lead && lead->inuse && lead->client && lead->s.number < MAX_CLIENTS && lead->health > 0)
+	{
+		return lead;
+	}
+	return NULL;
+}
+
+void G_MissionPlayerMoved(const gentity_t* ent)
+{
+	if (!G_MissionSkipsCutscenes() || !ent || !ent->client || ent != G_MissionLead())
+	{
+		return;
+	}
+	if (Distance(ent->client->ps.origin, mission_lead_pos) > 128.0f)
+	{
+		mission_gather_time = level.time + 300; // (once the script has finished moving him)
+	}
+}
+
+static qboolean G_MissionPlaceBeside(const gentity_t* lead, gentity_t* ent, const int slot)
+{
+	static const float radii[] = { 64.0f, 96.0f, 128.0f, 176.0f };
+	vec3_t eye;
+	VectorCopy(lead->client->ps.origin, eye);
+	eye[2] += lead->client->ps.viewheight;
+
+	for (int r = 0; r < 4; r++)
+	{
+		for (int k = 0; k < 8; k++)
+		{
+			const float yaw = DEG2RAD(k * 45.0f + slot * 20.0f);
+			vec3_t spot, down;
+			trace_t tr;
+			VectorCopy(lead->client->ps.origin, spot);
+			spot[0] += cos(yaw) * radii[r];
+			spot[1] += sin(yaw) * radii[r];
+			spot[2] += 16.0f;
+
+			// room for him there, and the lead can see it
+			trap->Trace(&tr, spot, ent->r.mins, ent->r.maxs, spot, ent->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+			if (tr.startsolid || tr.allsolid)
+			{
+				continue;
+			}
+			trap->Trace(&tr, eye, NULL, NULL, spot, lead->s.number, MASK_SOLID, qfalse, 0, 0);
+			if (tr.fraction < 1.0f)
+			{
+				continue;
+			}
+			// on the floor (not over a drop)
+			VectorCopy(spot, down);
+			down[2] -= 96.0f;
+			trap->Trace(&tr, spot, ent->r.mins, ent->r.maxs, down, ent->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+			if (tr.startsolid || tr.allsolid || tr.fraction >= 1.0f || tr.plane.normal[2] < 0.7f)
+			{
+				continue;
+			}
+			VectorCopy(tr.endpos, spot);
+
+			ent->client->ps.eFlags ^= EF_TELEPORT_BIT; // no lerp across the map
+			VectorClear(ent->client->ps.velocity);
+			G_SetOrigin(ent, spot);
+			VectorCopy(spot, ent->client->ps.origin);
+			SetClientViewAngle(ent, lead->client->ps.viewangles);
+			trap->LinkEntity((sharedEntity_t*)ent);
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+// run from ClientThink: brings the others to the lead when one is due
+void G_MissionGatherThink(void)
+{
+	if (!mission_gather_time || level.time < mission_gather_time || mission_cutscene)
+	{
+		return;
+	}
+	mission_gather_time = 0;
+	const gentity_t* lead = G_MissionLead();
+	if (!lead)
+	{
+		return;
+	}
+	VectorCopy(lead->client->ps.origin, mission_lead_pos);
+
+	int slot = 0;
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		gentity_t* ent = &g_entities[i];
+		if (ent == lead || !ent->inuse || !ent->client || ent->client->pers.connected != CON_CONNECTED
+			|| ent->client->sess.sessionTeam == TEAM_SPECTATOR || ent->health <= 0
+			|| ent->client->ps.m_iVehicleNum || ent->client->ps.emplacedIndex)
+		{
+			continue;
+		}
+		if (Distance(ent->client->ps.origin, lead->client->ps.origin) < MISSION_GATHER_DIST
+			&& trap->InPVS(ent->client->ps.origin, lead->client->ps.origin))
+		{
+			continue; // with him already
+		}
+		if (G_MissionPlaceBeside(lead, ent, slot++))
+		{
+			trap->SendServerCommand(i, "cp \"" S_COLOR_CYAN "Rejoined the party.\n\"");
+		}
+		else if (trap->Cvar_VariableIntegerValue("developer"))
+		{
+			Com_Printf("Missions: no room next to the lead for %s\n", ent->client->pers.netname);
+		}
+	}
+}
+
 //camera disable
 void ICam_Disable(void)
 {
-	trap->SetConfigstring(CS_CAMERA, "disable");
+	if (!G_MissionSkipsCutscenes())
+	{
+		trap->SetConfigstring(CS_CAMERA, "disable");
+	}
+	else if (mission_cutscene)
+	{
+		mission_cutscene = qfalse;
+		mission_gather_time = level.time + 500; // the cutscene is over: the others come to the lead
+	}
 
 	in_camera = qfalse;
 
@@ -9095,28 +9363,40 @@ void ICam_Disable(void)
 //move camera
 void ICam_Move(vec3_t dest, const float duration)
 {
-	trap->SetConfigstring(CS_CAMERA, va("move %f %f %f %f", dest[0], dest[1], dest[2], duration));
+	if (ICam_SendToClients())
+	{
+		trap->SetConfigstring(CS_CAMERA, va("move %f %f %f %f", dest[0], dest[1], dest[2], duration));
+	}
 
 	GCam_Move(dest, duration);
 }
 
 void ICam_Pan(vec3_t dest, vec3_t panDirection, const float duration)
 {
-	trap->SetConfigstring(CS_CAMERA, va("pan %f %f %f %f %f %f %f", dest[0], dest[1],
-		dest[2], panDirection[0], panDirection[1], panDirection[2], duration));
+	if (ICam_SendToClients())
+	{
+		trap->SetConfigstring(CS_CAMERA, va("pan %f %f %f %f %f %f %f", dest[0], dest[1],
+			dest[2], panDirection[0], panDirection[1], panDirection[2], duration));
+	}
 
 	GCam_Pan(dest, panDirection, duration);
 }
 
 void ICam_Zoom(const float FOV, const float duration)
 {
-	trap->SetConfigstring(CS_CAMERA, va("zoom %f %f", FOV, duration));
+	if (ICam_SendToClients())
+	{
+		trap->SetConfigstring(CS_CAMERA, va("zoom %f %f", FOV, duration));
+	}
 }
 
 void ICam_Fade(vec4_t source, vec4_t dest, const float duration)
 {
-	trap->SetConfigstring(CS_CAMERA, va("fade %f %f %f %f %f %f %f %f %f", source[0],
-		source[1], source[2], source[3], dest[0], dest[1], dest[2], dest[3], duration));
+	if (ICam_SendToClients())
+	{
+		trap->SetConfigstring(CS_CAMERA, va("fade %f %f %f %f %f %f %f %f %f", source[0],
+			source[1], source[2], source[3], dest[0], dest[1], dest[2], dest[3], duration));
+	}
 }
 
 void ICam_Follow(const char* cameraGroup, const float speed, const float initLerp)
@@ -9156,10 +9436,13 @@ void ICam_Follow(const char* cameraGroup, const float speed, const float initLer
 		}
 	}
 
-	trap->SetConfigstring(CS_CAMERA, va("follow %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %f %f",
-		CGroup[0], CGroup[1], CGroup[2], CGroup[3], CGroup[4], CGroup[5], CGroup[6],
-		CGroup[7], CGroup[8], CGroup[9], CGroup[10], CGroup[11], CGroup[12], CGroup[13],
-		CGroup[14], CGroup[15], speed, initLerp));
+	if (ICam_SendToClients())
+	{
+		trap->SetConfigstring(CS_CAMERA, va("follow %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %f %f",
+			CGroup[0], CGroup[1], CGroup[2], CGroup[3], CGroup[4], CGroup[5], CGroup[6],
+			CGroup[7], CGroup[8], CGroup[9], CGroup[10], CGroup[11], CGroup[12], CGroup[13],
+			CGroup[14], CGroup[15], speed, initLerp));
+	}
 
 	GCam_Follow(CGroup, speed, initLerp);
 }
@@ -9227,7 +9510,10 @@ void ParseTags(const int entID, const char* data)
 
 void ICam_Shake(const float intensity, const int duration)
 {
-	trap->SetConfigstring(CS_CAMERA, va("shake %f %i", intensity, duration));
+	if (ICam_SendToClients())
+	{
+		trap->SetConfigstring(CS_CAMERA, va("shake %f %i", intensity, duration));
+	}
 }
 
 //move the "player" script_targetname to whoever is in the lead

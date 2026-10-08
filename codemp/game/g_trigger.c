@@ -1766,6 +1766,8 @@ void SP_trigger_shipboundary(gentity_t* self)
 	trap->LinkEntity((sharedEntity_t*)self);
 }
 
+extern qboolean G_PointInBounds(vec3_t point, vec3_t mins, vec3_t maxs);
+
 void hyperspace_touch(const gentity_t* self, gentity_t* other, trace_t* trace)
 {
 	gentity_t* ent;
@@ -1785,7 +1787,17 @@ void hyperspace_touch(const gentity_t* self, gentity_t* other, trace_t* trace)
 		{
 			//they've started the hyperspace but haven't been teleported yet
 			const float time_frac = (float)(level.time - other->client->ps.hyperSpaceTime) / HYPERSPACE_TIME;
-			if (time_frac >= HYPERSPACE_TELEPORT_FRAC)
+			// (as SP) a ship is only sent through while it is in here: one about to fly out of the far side before its
+			// time (it came in deep, or the jump is long for the size of this box) is sent now, its clock moved on
+			vec3_t next_org;
+			VectorMA(other->client->ps.origin, 0.15f, other->client->ps.velocity, next_org);
+			const qboolean leaving = time_frac < HYPERSPACE_TELEPORT_FRAC
+				&& !G_PointInBounds(next_org, (float*)self->r.absmin, (float*)self->r.absmax);
+			if (leaving)
+			{
+				other->client->ps.hyperSpaceTime = level.time - (int)(HYPERSPACE_TIME * HYPERSPACE_TELEPORT_FRAC);
+			}
+			if (time_frac >= HYPERSPACE_TELEPORT_FRAC || leaving)
 			{
 				//half-way, now teleport them!
 				vec3_t diff, fwd, right, up, newOrg;
@@ -1818,6 +1830,16 @@ void hyperspace_touch(const gentity_t* self, gentity_t* other, trace_t* trace)
 				VectorMA(newOrg, f_diff * self->radius, fwd, newOrg);
 				VectorMA(newOrg, r_diff * self->radius, right, newOrg);
 				VectorMA(newOrg, u_diff * self->radius, up, newOrg);
+				// one that is short of the target (or wide of it) could be put past the map's edge, out of the world
+				// (deathstar_trench: the exit is near a corner): then it comes out at the exit point itself
+				{
+					trace_t tr;
+					trap->Trace(&tr, ent->s.origin, other->r.mins, other->r.maxs, newOrg, other->s.number, MASK_SOLID, qfalse, 0, 0);
+					if (tr.startsolid || tr.allsolid || tr.fraction < 1.0f)
+					{
+						VectorCopy(ent->s.origin, newOrg);
+					}
+				}
 				//now put them in the offset position, facing the angles that position wants them to be facing
 				TeleportPlayer(other, newOrg, ent->s.angles);
 				if (other->m_pVehicle && other->m_pVehicle->m_pPilot)

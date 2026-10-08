@@ -185,43 +185,14 @@ void Use_Target_Print(gentity_t* ent, gentity_t* other, const gentity_t* activat
 		ent->genericValue14 = level.time + ent->wait;
 	}
 
-#ifndef FINAL_BUILD
-	if (!ent || !ent->inuse)
-	{
-		//	Com_Error(ERR_DROP, "Bad ent in Use_Target_Print");
-		return;
-	}
-	else if (!activator || !activator->inuse)
-	{
-		//	Com_Error(ERR_DROP, "Bad activator in Use_Target_Print");
-		return;
-	}
-
-	if (ent->genericValue15 > level.time)
-	{
-		Com_Printf("TARGET PRINT ERRORS:\n");
-		if (activator && activator->classname && activator->classname[0])
-		{
-			Com_Printf("activator classname: %s\n", activator->classname);
-		}
-		if (activator && activator->target && activator->target[0])
-		{
-			Com_Printf("activator target: %s\n", activator->target);
-		}
-		if (activator && activator->targetname && activator->targetname[0])
-		{
-			Com_Printf("activator targetname: %s\n", activator->targetname);
-		}
-		if (ent->targetname && ent->targetname[0])
-		{
-			Com_Printf("print targetname: %s\n", ent->targetname);
-		}
-		Com_Error(ERR_DROP, "target_print used in quick succession, fix it! See the console for details.");
-	}
-	ent->genericValue15 = level.time + 5000;
-#endif
+	// (the debug build's checks - no activator: nothing printed; two prints within 5 s: ERR_DROP - are gone: the SP
+	// maps' scripts fire prints with no activator and close together, and a mission's messages must show)
 
 	G_ActivateBehavior(ent, BSET_USE);
+	if (!ent->message || !ent->message[0])
+	{
+		return; // nothing to print
+	}
 	if (ent->spawnflags & 4)
 	{
 		//private, to one client only
@@ -1200,24 +1171,19 @@ extern qboolean SPSpawnpointCheck(vec3_t spawnloc);
 
 void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 {
-	// SAFETY: prevent NULL dereference (fixes C6011)
-	if (activator == NULL)
-	{
-		Com_Printf(S_COLOR_YELLOW "Use_Autosave: activator is NULL\n");
-		return;
-	}
+	// (no activator - a script or a relay fired it: the checkpoint is where the target_autosave stands)
 
 	gentity_t* oldspawn = NULL;
 	vec3_t spawnloc;
 	vec3_t spawnang;
 
-	if (activator->client && activator->NPC)
+	if (activator && activator->client && activator->NPC)
 	{
 		// NPCs should not trigger autosaves
 		return;
 	}
 
-	if (activator->client)
+	if (activator && activator->client && activator->health > 0)
 	{
 		VectorCopy(activator->client->ps.origin, spawnloc);
 		VectorSet(spawnang, 0, activator->client->ps.viewangles[YAW], 0);
@@ -1226,6 +1192,24 @@ void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 	{
 		VectorCopy(ent->s.origin, spawnloc);
 		VectorSet(spawnang, 0, ent->s.angles[YAW], 0);
+	}
+
+	// (as JACoop: a checkpoint is on the floor, not where its activator was in the air)
+	{
+		const vec3_t box_mins = { -15.0f, -15.0f, -24.0f };
+		const vec3_t box_maxs = { 15.0f, 15.0f, 40.0f };
+		vec3_t up, down;
+		trace_t tr;
+		VectorCopy(spawnloc, up);
+		up[2] += 8.0f;
+		VectorCopy(spawnloc, down);
+		down[2] -= 512.0f;
+		trap->Trace(&tr, up, box_mins, box_maxs, down, activator ? activator->s.number : ENTITYNUM_NONE,
+			MASK_PLAYERSOLID, qfalse, 0, 0);
+		if (!tr.startsolid && !tr.allsolid && tr.fraction < 1.0f && tr.plane.normal[2] >= 0.7f)
+		{
+			VectorCopy(tr.endpos, spawnloc);
+		}
 	}
 
 	while ((oldspawn = G_Find(oldspawn, FOFS(classname), "info_player_deathmatch")) != NULL)
@@ -1248,7 +1232,7 @@ void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 		VectorCopy(spawnloc, spawn->s.origin);
 	}
 
-	if (activator->client && activator->client->pers.netname)
+	if (activator && activator->client && activator->client->pers.netname)
 	{
 		trap->SendServerCommand(-1,
 			va("cp \"%s^1 Reached Checkpoint.\n\"", activator->client->pers.netname));
@@ -1271,7 +1255,7 @@ void Use_Autosave(gentity_t* ent, gentity_t* other, const gentity_t* activator)
 				player->client->pers.connected != CON_CONNECTED ||
 				player->client->sess.sessionTeam == TEAM_SPECTATOR ||
 				player->health <= 0 ||
-				(activator->client && activator->s.number == player->s.number))
+				(activator && activator->client && activator->s.number == player->s.number))
 			{
 				continue;
 			}

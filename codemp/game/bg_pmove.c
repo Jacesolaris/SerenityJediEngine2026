@@ -11745,7 +11745,8 @@ static void PM_Footsteps(void)
 							PM_SetAnim(SETANIM_BOTH, BOTH_RUN4, setAnimFlags);
 							bobmove = 0.2f;
 						}
-						else if (pm->ps->weapon == WP_STUN_BATON)
+						else if (pm->ps->weapon == WP_STUN_BATON &&
+							(pm_entSelf->s.NPC_class == CLASS_JAWA || pm_entSelf->s.botclass == BCLASS_JAWA))
 						{
 							PM_SetAnim(SETANIM_BOTH, BOTH_RUN4, setAnimFlags);
 						}
@@ -11761,6 +11762,10 @@ static void PM_Footsteps(void)
 						else if ((pm->ps->fd.forcePowersActive & (1 << FP_RAGE)) != 0)
 						{
 							PM_SetAnim(SETANIM_BOTH, BOTH_RUN7, setAnimFlags);
+						}
+						else
+						{
+							PM_SetAnim(SETANIM_BOTH, BOTH_RUN1, setAnimFlags);
 						}
 					}
 					else

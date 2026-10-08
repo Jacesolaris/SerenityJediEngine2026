@@ -16844,6 +16844,7 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 	int anim, hold, sound_index, cost;
 	qboolean no_resist = qfalse;
 	int damage_level = FORCE_LEVEL_0;
+	qboolean i_grip = qfalse;
 
 	if (self->health <= 0)
 	{
@@ -16942,6 +16943,12 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 	{
 		//we're face-down, so we'd only be force-push/pulling the floor
 		return;
+	}
+
+	if (self->client->ps.forcePowersActive & 1 << FP_GRIP)
+	{
+		WP_ForcePowerStop(self, FP_GRIP);
+		i_grip = qtrue;
 	}
 
 	if (pull)
@@ -17646,6 +17653,12 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 					}
 					continue;
 				}
+
+				if (i_grip)
+				{
+					power_level *= 4;
+				}
+
 				if (!push_target[x]->s.number)
 				{
 					//player

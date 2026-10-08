@@ -1413,10 +1413,8 @@ void G_UcmdMoveForDir(const gentity_t* self, usercmd_t* cmd, vec3_t dir)
 
 	qboolean walk = qfalse;
 
-	if (self->client->pers.cmd.buttons & BUTTON_WALKING)
-	{
-		walk = qtrue;
-	}
+	// (not last frame's BUTTON_WALKING from pers.cmd: ClientThink sets it on every standing / slowing NPC, so it latched
+	// on and a chasing NPC moved at walkSpeed with the run anim - "NPCs move very slowly". SP has no such carry-over.)
 
 	// enemy first: an NPC following its leader has no enemy (NULL dereference crash)
 	if (self->enemy

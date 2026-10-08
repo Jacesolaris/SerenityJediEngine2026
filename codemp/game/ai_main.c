@@ -11944,8 +11944,99 @@ static qboolean bot_vehicle_free(const gentity_t* veh)
 	return type == VH_SPEEDER || type == VH_ANIMAL;
 }
 
+/*
+===========================================================================
+Bots in the space ships (ai_fighter.c): on a map with the ships' walk file (deathstar_trench_v1 / v2) a bot on foot
+walks to a free ship standing in a hangar (his team's, or with no teams the nearest), along the hangar's walk
+points, and gets in. From then on the fighter AI flies the ship for him (G_FighterAI_BotCmd, where his moves are
+sent) and his own AI does nothing, until the ship is destroyed. With no free ship he plays on foot as usual.
+===========================================================================
+*/
+#define BOT_FIGHTER_REACH_TIME	30000	// a bot that cannot get to his ship in this long is put in it
+
+extern qboolean G_FighterAI_BotFighterMap(void);
+extern gentity_t* G_FighterAI_BotShip(const gentity_t* bot, gentity_t* current);
+extern void G_FighterAI_WalkGoal(const vec3_t pos, const gentity_t* ship, vec3_t goal);
+extern qboolean G_FighterAI_BotAtShip(const gentity_t* bot, const gentity_t* ship);
+extern qboolean G_FighterAI_BotBoard(gentity_t* bot, gentity_t* ship);
+extern qboolean G_FighterAI_BotFlying(const gentity_t* bot);
+extern void G_FighterAI_BotCmd(gentity_t* bot, usercmd_t* cmd);
+
+static int bot_fighter_ship[MAX_CLIENTS]; // the ship a bot walks to (+1, 0: none)
+static int bot_fighter_since[MAX_CLIENTS]; // since when
+
+static qboolean bot_fighter_ai(bot_state_t* bs)
+{
+	gentity_t* bot = &g_entities[bs->client];
+	const int n = bs->client;
+	if (!G_FighterAI_BotFighterMap() || !bot->inuse || !bot->client || bot->health <= 0)
+	{
+		bot_fighter_ship[n] = 0;
+		return qfalse;
+	}
+	if (bot->client->ps.m_iVehicleNum)
+	{
+		// in a ship the fighter AI flies for him: his own AI rests (G_FighterAI_BotCmd sends the ship's moves)
+		bot_fighter_ship[n] = 0;
+		if (G_FighterAI_BotFlying(bot))
+		{
+			bs->noUseTime = level.time + 5000; // (use would throw him out)
+			return qtrue;
+		}
+		return qfalse;
+	}
+
+	gentity_t* current = bot_fighter_ship[n] ? &g_entities[bot_fighter_ship[n] - 1] : NULL;
+	gentity_t* ship = G_FighterAI_BotShip(bot, current);
+	if (!ship)
+	{
+		bot_fighter_ship[n] = 0;
+		return qfalse; // no free ship: on foot as usual
+	}
+	if (ship != current)
+	{
+		bot_fighter_ship[n] = ship->s.number + 1;
+		bot_fighter_since[n] = level.time;
+		if (trap->Cvar_VariableIntegerValue("developer"))
+		{
+			Com_Printf("bot %s walks to %s %d\n", bot->client->pers.netname, ship->NPC_type, ship->s.number);
+		}
+	}
+
+	// next to it (or too long on the way): in
+	if (G_FighterAI_BotAtShip(bot, ship) || level.time - bot_fighter_since[n] > BOT_FIGHTER_REACH_TIME)
+	{
+		if (G_FighterAI_BotBoard(bot, ship))
+		{
+			bot_fighter_ship[n] = 0;
+			bs->noUseTime = level.time + 5000;
+			return qtrue;
+		}
+	}
+
+	// walk there along the hangar's walk points
+	vec3_t goal, dir;
+	G_FighterAI_WalkGoal(bs->origin, ship, goal);
+	VectorSubtract(goal, bs->origin, dir);
+	dir[2] = 0.0f;
+	vectoangles(dir, bs->goalAngles);
+	bs->goalAngles[PITCH] = 0.0f;
+	move_toward_ideal_angles(bs);
+	if (VectorNormalize(dir) > 8.0f)
+	{
+		trap->EA_Move(bs->client, dir, 5000.0f);
+	}
+	bs->noUseTime = level.time + 5000;
+	return qtrue;
+}
+
 static qboolean bot_vehicle_ai(bot_state_t* bs)
 {
+	// the space ships first (bot_fighter_ai: on the maps with the ships' walk)
+	if (bot_fighter_ai(bs))
+	{
+		return qtrue;
+	}
 	if (!bot_vehicles.integer)
 	{
 		return qfalse;
@@ -18455,6 +18546,7 @@ int bot_ai_startframe(const int time)
 
 		bot_calm_movement(bs, ucmd);
 		bot_boba_flight_cmd(bs, ucmd); // Boba Fett classes: jetpack flight, flamethrower (after the jump filters)
+		G_FighterAI_BotCmd(&g_entities[bs->client], ucmd); // in a ship the fighter AI flies: its moves, not his own
 
 		trap->BotUserCommand(botstates[i]->client, &botstates[i]->lastucmd);
 	}

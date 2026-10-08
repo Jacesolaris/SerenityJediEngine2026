@@ -1150,7 +1150,10 @@ static void WP_HandleBoltBlock(gentity_t* ent, gentity_t* missile, vec3_t forwar
 	//--------------------------------------------------------------------------
 	if (reflected == qfalse)
 	{
-		// Use generic saber bounce logic (this sets missile->s.pos.trDelta itself)
+		// Use generic saber bounce logic (this sets missile->s.pos.trDelta itself). The velocity was made unit length
+		// above: back to its speed first, or the bounce took a speed of 1 and the bolt hung in the air where it was
+		// blocked
+		VectorScale(missile->s.pos.trDelta, speed, missile->s.pos.trDelta);
 		g_missile_bouncedoff_saber(blocker, missile, forward);
 
 		// Punish the failed/weak block
@@ -1162,7 +1165,12 @@ static void WP_HandleBoltBlock(gentity_t* ent, gentity_t* missile, vec3_t forwar
 			gi.Printf(S_COLOR_YELLOW "only randomly deflect away the bolt\n");
 		}
 	}
-	// Only in the explicit reflection paths do we use bounce_dir + speed
+	// Only in the explicit reflection paths do we use bounce_dir + speed (the bounce above has set the missile's
+	// whole flight: bounce_dir is not set then, and scaling it stopped the bolt dead - "frozen as in stasis")
+	if (reflected == qfalse)
+	{
+		return;
+	}
 	VectorNormalize(bounce_dir);
 	VectorScale(bounce_dir, speed, missile->s.pos.trDelta);
 
@@ -2610,6 +2618,13 @@ void g_run_missile(gentity_t* ent)
 		return;
 	}
 
+	if (ent->e_ThinkFunc == thinkF_wp_stasis_missile_blow)
+	{
+		// held by Force Stasis (G_StasisMissile): it neither moves nor hits anything, its think does it all
+		G_RunThink(ent);
+		return;
+	}
+
 	VectorCopy(ent->currentOrigin, old_org);
 
 	// get current position
@@ -2884,192 +2899,141 @@ gentity_t* fire_stun(gentity_t* self, vec3_t start, vec3_t dir)
 	return stun;
 }
 
+/*
+-------------------------
+Force Stasis on a missile
+
+The missile stops dead where it is, for STASIS_MISSILE_TIME. Its flight is kept (its velocity, its kind of
+trajectory, its think - fuse, homing, life time - and how long that had left, its loop sound). When the time is up it
+flies on along its old path at its old speed, its think going on where it stopped. Someone (a player or an NPC)
+touching it while it hangs there sets it off: a small blast (STASIS_MISSILE_TOUCH_DAMAGE within
+STASIS_MISSILE_TOUCH_RADIUS). Stasis on a missile already held only gives it the full time again.
+While held its think is wp_stasis_missile_blow (-> G_StasisMissileThink, every frame). Not saved in savegames: a
+missile held at a save is gone after the load.
+-------------------------
+*/
 static qhandle_t stasisLoopSound = 0;
 gentity_t* tgt_list[MAX_GENTITIES];
 
+static constexpr int STASIS_MISSILE_TIME = 10000;
+static constexpr int STASIS_MISSILE_TOUCH_DAMAGE = 15;
+static constexpr float STASIS_MISSILE_TOUCH_RADIUS = 96.0f;
+
+static int stasis_missile_until[MAX_GENTITIES]; // (0: not held)
+static vec3_t stasis_missile_delta[MAX_GENTITIES];
+static int stasis_missile_trtype[MAX_GENTITIES];
+static int stasis_missile_think[MAX_GENTITIES]; // (thinkFunc_t)
+static int stasis_missile_think_left[MAX_GENTITIES]; // ms its think had left (-1: none)
+static int stasis_missile_loopsound[MAX_GENTITIES];
+
+static qboolean G_MissileInStasis(const gentity_t* missile)
+{
+	return missile->e_ThinkFunc == thinkF_wp_stasis_missile_blow && stasis_missile_until[missile->s.number]
+		? qtrue
+		: qfalse;
+}
+
 void G_StasisMissile(gentity_t* ent, gentity_t* missile)
 {
-	vec3_t	bounce_dir;
-	gentity_t* blocker = ent;
 	static qboolean registered = qfalse;
-
 	if (!registered)
 	{
 		stasisLoopSound = G_SoundIndex("sound/effects/blaster_stasis_loop.wav");
 		registered = qtrue;
 	}
-
-	if (ent->owner)
+	if (!missile || !missile->inuse)
 	{
-		blocker = ent->owner;
+		return;
+	}
+	const int n = missile->s.number;
+	if (G_MissileInStasis(missile))
+	{
+		stasis_missile_until[n] = level.time + STASIS_MISSILE_TIME; // held again: the full time
+		return;
 	}
 
-	qboolean missile_in_stasis = qfalse;
+	// its flight, to go on with later
+	VectorCopy(missile->s.pos.trDelta, stasis_missile_delta[n]);
+	stasis_missile_trtype[n] = missile->s.pos.trType;
+	stasis_missile_think[n] = missile->e_ThinkFunc;
+	stasis_missile_think_left[n] = missile->e_ThinkFunc != thinkF_NULL && missile->nextthink > level.time
+		? missile->nextthink - level.time
+		: -1;
+	stasis_missile_loopsound[n] = missile->s.loopSound;
 
-	if (missile->userFloat1 == 0)
-	{
-		missile->userFloat1 = level.time + 10000;   // unfreeze at t+10s
-		missile->nextthink = level.time + 20000;   // explode at t+20s
-		missile->e_ThinkFunc = thinkF_wp_stasis_missile_blow;
-
-		missile_in_stasis = qtrue;
-	}
-	else if (level.time < missile->userFloat1)
-	{
-		missile_in_stasis = qtrue;
-	}
-
-	//
-	// PHASE 2 — Unfreeze at 10 seconds
-	//
-	if (!missile_in_stasis && missile->userFloat1 > 0 && level.time >= missile->userFloat1)
-	{
-		missile->userFloat1 = 0;
-
-		// resume normal physics
-		missile->s.pos.trTime = level.time;
-	}
-
-	//save the original speed
-	const float stasisspeed = VectorNormalize(missile->s.pos.trDelta) / 150;
-	const float normalspeed = VectorNormalize(missile->s.pos.trDelta) / 25;
-
-	if (ent &&
-		blocker &&
-		blocker->client)
-	{
-		gentity_t* enemy;
-
-		if (blocker->enemy && Q_irand(0, 3))
-		{//toward current enemy 75% of the time
-			enemy = blocker->enemy;
-		}
-		else
-		{//find another enemy
-			enemy = jedi_find_enemy_in_cone(blocker, blocker->enemy, 0.3f);
-		}
-		if (enemy)
-		{
-			vec3_t	bullseye;
-			CalcEntitySpot(enemy, SPOT_CHEST, bullseye);
-			bullseye[0] += Q_irand(-4, 4);
-			bullseye[1] += Q_irand(-4, 4);
-			bullseye[2] += Q_irand(-16, 4);
-			VectorSubtract(bullseye, missile->currentOrigin, bounce_dir);
-			VectorNormalize(bounce_dir);
-
-			for (int i = 0; i < 3; i++)
-			{
-				bounce_dir[i] += Q_flrand(-0.1f, 0.1f);
-			}
-
-			VectorNormalize(bounce_dir);
-		}
-	}
-	VectorNormalize(bounce_dir);
+	// held where it is
+	EvaluateTrajectory(&missile->s.pos, level.time, missile->currentOrigin);
+	VectorCopy(missile->currentOrigin, missile->s.pos.trBase);
+	// trDelta kept as the unit direction (the saved velocity is in stasis_missile_delta): the client draws
+	// the bolt along trDelta, a zero one stood it upright. TR_STATIONARY does not move it.
+	VectorNormalize(missile->s.pos.trDelta);
+	missile->s.pos.trType = TR_STATIONARY;
+	missile->s.pos.trTime = level.time;
+	gi.linkentity(missile);
 	missile->s.loopSound = stasisLoopSound;
 
-	if (missile_in_stasis)
+	stasis_missile_until[n] = level.time + STASIS_MISSILE_TIME;
+	missile->e_ThinkFunc = thinkF_wp_stasis_missile_blow;
+	missile->nextthink = level.time + FRAMETIME;
+}
+
+// someone touched it while held: a small blast
+static void G_StasisMissileTouchBlow(gentity_t* missile)
+{
+	stasis_missile_until[missile->s.number] = 0;
+	gentity_t* attacker = missile->owner ? missile->owner : missile;
+	G_RadiusDamage(missile->currentOrigin, attacker, STASIS_MISSILE_TOUCH_DAMAGE, STASIS_MISSILE_TOUCH_RADIUS, nullptr,
+		MOD_BRYAR);
+	G_PlayEffect("sparks/spark_explosion", missile->currentOrigin);
+	G_FreeEntity(missile);
+}
+
+// a held missile, every frame: touched (it goes off), or its time up (it flies on)
+void G_StasisMissileThink(gentity_t* missile)
+{
+	const int n = missile->s.number;
+	if (!stasis_missile_until[n])
 	{
-		VectorScale(bounce_dir, stasisspeed, missile->s.pos.trDelta);
+		// (held at a save, loaded: nothing kept of its flight) it goes
+		G_FreeEntity(missile);
+		return;
+	}
 
-#ifdef _DEBUG
-		assert(!Q_isnan(missile->s.pos.trDelta[0]) && !Q_isnan(missile->s.pos.trDelta[1]) && !Q_isnan(missile->s.pos.trDelta[2]));
-#endif// _DEBUG
-		missile->s.pos.trTime = level.time - 10;		// move a bit on the very first frame
-		VectorCopy(missile->currentOrigin, missile->s.pos.trBase);
-		if (missile->s.weapon != WP_SABER)
-		{//you are mine, now!
-			if (!missile->lastEnemy)
-			{//remember who originally shot this missile
-				missile->lastEnemy = missile->owner;
-			}
-			missile->owner = blocker;
-		}
-
-		if (missile->s.weapon == WP_ROCKET_LAUNCHER || missile->s.weapon == WP_THERMAL)
-		{//stop homing
-			qboolean	blow = qfalse;
-			if (missile->delay > level.time)
-			{
-				const int count = G_RadiusList(missile->currentOrigin, 200, missile, qtrue, tgt_list);
-
-				for (int i = 0; i < count; i++)
-				{
-					if (tgt_list[i]->client && tgt_list[i]->health > 0 && missile->activator && tgt_list[i]->s.number != missile->activator->s.number)
-					{
-						blow = qtrue;
-						break;
-					}
-				}
-			}
-			else
-			{
-				// well, we must die now
-				blow = qtrue;
-			}
-
-			if (blow)
-			{
-				missile->e_ThinkFunc = thinkF_WP_flechette_alt_blow;
-				missile->nextthink = level.time + 2000;
-			}
-			else
-			{
-				//stop homing
-				missile->e_ThinkFunc = thinkF_NULL;
-			}
+	vec3_t mins{}, maxs{};
+	gentity_t* touch[MAX_GENTITIES];
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = missile->absmin[i] - 8.0f;
+		maxs[i] = missile->absmax[i] + 8.0f;
+	}
+	const int num = gi.EntitiesInBox(mins, maxs, touch, MAX_GENTITIES);
+	for (int i = 0; i < num; i++)
+	{
+		const gentity_t* hit = touch[i];
+		if (hit != missile && hit->inuse && hit->client && hit->health > 0)
+		{
+			G_StasisMissileTouchBlow(missile);
+			return;
 		}
 	}
-	else
+
+	if (level.time < stasis_missile_until[n])
 	{
-		VectorScale(bounce_dir, normalspeed, missile->s.pos.trDelta);
+		missile->nextthink = level.time + FRAMETIME;
+		return;
+	}
 
-#ifdef _DEBUG
-		assert(!Q_isnan(missile->s.pos.trDelta[0]) && !Q_isnan(missile->s.pos.trDelta[1]) && !Q_isnan(missile->s.pos.trDelta[2]));
-#endif// _DEBUG
-		missile->s.pos.trTime = level.time - 10;		// move a bit on the very first frame
-		VectorCopy(missile->currentOrigin, missile->s.pos.trBase);
-		if (missile->s.weapon != WP_SABER)
-		{//you are mine, now!
-			if (!missile->lastEnemy)
-			{//remember who originally shot this missile
-				missile->lastEnemy = missile->owner;
-			}
-			missile->owner = blocker;
-		}
-		if (missile->s.weapon == WP_ROCKET_LAUNCHER || missile->s.weapon == WP_THERMAL)
-		{//stop homing
-			qboolean	blow = qfalse;
-			if (missile->delay > level.time)
-			{
-				const int count = G_RadiusList(missile->currentOrigin, 200, missile, qtrue, tgt_list);
-
-				for (int i = 0; i < count; i++)
-				{
-					if (tgt_list[i]->client && tgt_list[i]->health > 0 && missile->activator && tgt_list[i]->s.number != missile->activator->s.number)
-					{
-						blow = qtrue;
-						break;
-					}
-				}
-			}
-			else
-			{
-				// well, we must die now
-				blow = qtrue;
-			}
-
-			if (blow)
-			{
-				missile->e_ThinkFunc = thinkF_WP_flechette_alt_blow;
-				missile->nextthink = level.time + 2000;
-			}
-			else
-			{
-				//stop homing
-				missile->e_ThinkFunc = thinkF_NULL;
-			}
-		}
+	// the time is up: on along its old path, at its old speed
+	stasis_missile_until[n] = 0;
+	VectorCopy(missile->currentOrigin, missile->s.pos.trBase);
+	VectorCopy(stasis_missile_delta[n], missile->s.pos.trDelta);
+	missile->s.pos.trType = static_cast<trType_t>(stasis_missile_trtype[n]);
+	missile->s.pos.trTime = level.time;
+	missile->s.loopSound = stasis_missile_loopsound[n];
+	missile->e_ThinkFunc = static_cast<thinkFunc_t>(stasis_missile_think[n]);
+	missile->nextthink = stasis_missile_think_left[n] >= 0 ? level.time + stasis_missile_think_left[n] : 0;
+	if (missile->e_ThinkFunc == thinkF_NULL)
+	{
+		missile->nextthink = 0;
 	}
 }

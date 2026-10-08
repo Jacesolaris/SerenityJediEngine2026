@@ -2229,6 +2229,7 @@ void wp_flechette_alt_blow(gentity_t* ent)
 	laserTrapExplode(ent);
 }
 
+#if 0 // (the old stasis end: a full blast after 20 s; a held missile now flies on, see g_missile.c)
 static void StasismissileExplode(gentity_t* self)
 {
 	vec3_t v;
@@ -2254,16 +2255,16 @@ static void StasismissileExplode(gentity_t* self)
 	self->think = G_FreeEntity;
 	self->nextthink = level.time;
 }
+#endif
 
 //----------------------------------------------
 void wp_stasis_missile_blow(gentity_t* ent)
 //----------------------------------------------
 {
-	ent->s.pos.trDelta[0] = 1;
-	ent->s.pos.trDelta[1] = 0;
-	ent->s.pos.trDelta[2] = 0;
-
-	StasismissileExplode(ent);
+	// a missile held by Force Stasis, every frame (g_missile.c G_StasisMissile): touched it goes off, its time up it
+	// flies on
+	extern void G_StasisMissileThink(gentity_t * missile);
+	G_StasisMissileThink(ent);
 }
 
 //------------------------------------------------------------------------------
