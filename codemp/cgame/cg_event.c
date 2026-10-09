@@ -1551,6 +1551,7 @@ static void CG_G2MarkEvent(entityState_t* es)
 	case WP_CONCUSSION:
 	case WP_BRYAR_OLD:
 	case WP_BLASTER:
+	case WP_DROIDEKA:
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:

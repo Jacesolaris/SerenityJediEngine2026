@@ -3469,6 +3469,24 @@ static void PM_CheckAirWallRun()
 	}
 }
 
+// Air dash chain (dash / jump / dash): a jump in the dash pose flips (BOTH_FLIP_F, the force jump's forward flip) and allows one more dash, still
+// limited by Dash_Count (2, then the 2.5 s cooldown): with no dash left the flip just ends in a fall or landing. Once per
+// jump (s_dashFlipped, cleared on landing). A dash that ends more than AIR_DASH_HIGH above the floor drops into
+// BOTH_FORCEINAIR1 (normal landing); lower, the pose is held into BOTH_FORCEJUMPDASH_LAND and its slide.
+static qboolean s_dashFlipped[MAX_GENTITIES];
+#define AIR_DASH_HIGH	96.0f
+
+static qboolean PM_AirDashTooHigh()
+{
+	trace_t tr;
+	vec3_t end;
+	VectorCopy(pm->ps->origin, end);
+	end[2] -= AIR_DASH_HIGH;
+	pm->trace(&tr, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, MASK_PLAYERSOLID,
+		static_cast<EG2_Collision>(0), 0);
+	return tr.fraction >= 1.0f && !tr.startsolid && !tr.allsolid ? qtrue : qfalse;
+}
+
 // Air dash (Jedi Survivor style): the dash button in the air dashes in the move direction (forward if none), once until
 // landing; the flying pose is the long leap start anim (attack with the saber: its leap attack). Rules: the double jump's (Force Jump 3, jump more than half
 // done (rising or falling) - so jump, double jump, air dash chain) and the floor dash's count and timer. Holds the height
@@ -3509,7 +3527,14 @@ static void PM_CheckAirDash()
 				PM_SetSaberMove(LS_JUMPDASH_ATTACK);
 			}
 		}
-		if (pm->ps->legsAnim == BOTH_FORCEJUMPDASH_START)
+		if (pm->ps->legsAnim == BOTH_FORCEJUMPDASH_START
+			&& level.time - pm->ps->dashlaststartTime >= AIR_DASH_TIME
+			&& PM_AirDashTooHigh())
+		{// the boost is over and the floor is far below: fall in BOTH_FORCEINAIR1 (normal landing, not the dash slide)
+			PM_SetAnim(pm, pm->ps->torsoAnim == BOTH_FORCEJUMPDASH_START ? SETANIM_BOTH : SETANIM_LEGS, BOTH_FORCEINAIR1,
+				SETANIM_FLAG_OVERRIDE, 100);
+		}
+		else if (pm->ps->legsAnim == BOTH_FORCEJUMPDASH_START)
 		{// the pose is held until the landing, which goes into BOTH_FORCEJUMPDASH_LAND and its slide (as the long leap)
 			if (pm->ps->legsAnimTimer < 100)
 			{
@@ -3534,9 +3559,8 @@ static void PM_CheckAirDash()
 		|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_START
 		|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_ATTACK
 		|| pm->ps->legsAnim == BOTH_FORCELONGLEAP_LAND
-		// the same rules as the double jump: Force Jump 3, the jump more than half done (rising or already falling)
+		// Force Jump 3; any time in the air (rising or falling)
 		|| pm->ps->forcePowerLevel[FP_LEVITATION] < FORCE_LEVEL_3
-		|| pm->ps->velocity[2] > DOUBLE_JUMP_MAX_RISE
 		// and the floor dash's count and timer (g_active.cpp): two dashes, then the 2.5 s cooldown
 		|| pm->ps->Dash_Count >= 2
 		|| level.time - pm->ps->dashlaststartTime < 100
@@ -3601,6 +3625,10 @@ static void PM_CheckAirDash()
 
 // Double jump (Fallen Order style): a second jump press in the air jumps again, once until landing (Force Jump 3).
 // Runs after the normal in-air jump checks; anything they started (wall flips, wall-run jump-off...) comes first.
+// the double jump's flip plays DOUBLE_JUMP_FLIP_ANIM_SCALE times as fast (bg_panimate.cpp PM_SaberStartTransAnim):
+// set only while PM_CheckDoubleJump starts it
+qboolean pm_doubleJumpFlipAnim = qfalse;
+
 static void PM_CheckDoubleJump(const int legs_anim_before)
 {
 	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
@@ -3626,8 +3654,8 @@ static void PM_CheckDoubleJump(const int legs_anim_before)
 		return;
 	}
 
-	// always the force jump pose: it ends where the jump dash's pose (BOTH_FORCEJUMPDASH_START) begins
-	const int anim = BOTH_FORCEJUMP1;
+	// the forward flip (BOTH_FLIP_F, as the jump dash's flip); the air dash can still follow it
+	const int anim = BOTH_FLIP_F;
 
 	if (pm->ps->velocity[2] < DOUBLE_JUMP_VELOCITY)
 	{
@@ -3636,7 +3664,9 @@ static void PM_CheckDoubleJump(const int legs_anim_before)
 	pm->ps->forceJumpZStart = pm->ps->origin[2]; // a force jump height limit counts from here
 	pm->ps->pm_flags |= PMF_DOUBLE_JUMPED | PMF_JUMP_HELD | PMF_JUMPING;
 
+	pm_doubleJumpFlipAnim = qtrue; // the flip plays faster (PM_SaberStartTransAnim)
 	PM_SetAnim(pm, pm->ps->weaponTime ? SETANIM_LEGS : SETANIM_BOTH, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	pm_doubleJumpFlipAnim = qfalse;
 	PM_AddEvent(EV_JUMP);
 }
 
@@ -3695,6 +3725,48 @@ static void PM_CheckLeapCancel()
 	}
 }
 
+// The dash chain's flip (see s_dashFlipped): jump in the dash pose (or falling out of it, BOTH_FORCEINAIR1) before landing.
+static void PM_CheckAirDashFlip()
+{
+	const int idx = pm->ps->clientNum;
+
+	if (pm->ps->groundEntityNum != ENTITYNUM_NONE)
+	{
+		s_dashFlipped[idx] = qfalse;
+		return;
+	}
+	if (s_dashFlipped[idx])
+	{
+		if (pm->ps->legsAnim == BOTH_FLIP_F && pm->ps->legsAnimTimer <= 50)
+		{// the flip is over and no second dash: fall
+			PM_SetAnim(pm, pm->ps->weaponTime ? SETANIM_LEGS : SETANIM_BOTH, BOTH_FORCEINAIR1, SETANIM_FLAG_OVERRIDE, 100);
+		}
+		return;
+	}
+	if (!(pm->ps->pm_flags & PMF_AIR_DASHED)
+		|| pm->ps->legsAnim != BOTH_FORCEJUMPDASH_START && pm->ps->legsAnim != BOTH_FORCEINAIR1
+		|| pm->cmd.upmove <= 0
+		|| pm->ps->pm_flags & PMF_JUMP_HELD
+		|| idx < MAX_CLIENTS && s_leapCancelled[idx] // cancelled with +back: only falls
+		|| pm->ps->pm_type != PM_NORMAL
+		|| pm->waterlevel > 1
+		|| PM_SaberInAttack(pm->ps->saberMove))
+	{
+		return;
+	}
+
+	s_dashFlipped[idx] = qtrue;
+	pm->ps->pm_flags &= ~PMF_AIR_DASHED; // one more dash, if Dash_Count allows it
+	pm->ps->pm_flags |= PMF_DOUBLE_JUMPED | PMF_JUMP_HELD | PMF_JUMPING;
+	if (pm->ps->velocity[2] < DOUBLE_JUMP_VELOCITY * 0.5f)
+	{// a small hop
+		pm->ps->velocity[2] = DOUBLE_JUMP_VELOCITY * 0.5f;
+	}
+	pm->ps->forceJumpZStart = pm->ps->origin[2]; // fall damage counts from here
+	PM_SetAnim(pm, pm->ps->weaponTime ? SETANIM_LEGS : SETANIM_BOTH, BOTH_FLIP_F, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	PM_AddEvent(EV_JUMP);
+}
+
 static void PM_AirMove()
 {
 	vec3_t wishvel;
@@ -3718,6 +3790,7 @@ static void PM_AirMove()
 
 #if METROID_JUMP
 	{
+		PM_CheckAirDashFlip(); // dash / jump (flip) / dash
 		const int legs_anim_before = pm->ps->legsAnim;
 		PM_CheckJump();
 		PM_CheckDoubleJump(legs_anim_before);
@@ -9885,6 +9958,51 @@ static qboolean PM_AdjustStandAnimForSlope()
 extern qboolean PM_Bobaspecialanim(int anim);
 static qhandle_t flyLoopSound = 0;
 
+// Two-handed guns keep their aim pose while jetpacking (as MD): only the legs play the jetpack anims,
+// the side and back anims swung the arms around with the gun.
+static qboolean PM_JetpackGunPose()
+{
+	switch (pm->ps->weapon)
+	{
+	case WP_BLASTER:
+	case WP_DISRUPTOR:
+	case WP_BOWCASTER:
+	case WP_REPEATER:
+	case WP_DEMP2:
+	case WP_FLECHETTE:
+	case WP_ROCKET_LAUNCHER:
+	case WP_CONCUSSION:
+	case WP_TUSKEN_RIFLE:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// The guns the player can aim (walk + block) on the ground, as PM_CanAimGun in bg_panimate: aiming works while
+// jetpacking too (the aim camera zooms in as on the ground)
+static qboolean PM_JetpackCanAimGun()
+{
+	switch (pm->ps->weapon)
+	{
+	case WP_BLASTER_PISTOL:
+	case WP_BLASTER:
+	case WP_DISRUPTOR:
+	case WP_BOWCASTER:
+	case WP_REPEATER:
+	case WP_DEMP2:
+	case WP_FLECHETTE:
+	case WP_ROCKET_LAUNCHER:
+	case WP_CONCUSSION:
+	case WP_BRYAR_PISTOL:
+	case WP_TUSKEN_RIFLE:
+	case WP_SBD_PISTOL:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
 static void PM_JetPackAnim()
 {
 	int anim = BOTH_FORCEJUMP1;
@@ -9973,7 +10091,7 @@ static void PM_JetPackAnim()
 			}
 			else
 			{
-				anim = BOTH_INAIRBACK1;
+				anim = BOTH_FORCEJUMP1; // was BOTH_INAIRBACK1: that crouched jump-back pose looked bad flying backwards (as MD)
 			}
 		}
 		else
@@ -9996,6 +10114,52 @@ static void PM_JetPackAnim()
 		if (pm->ps->weaponTime)
 		{
 			parts = SETANIM_LEGS;
+		}
+
+		// aiming while jetpacking (walk + block with a gun, as on the ground): the aim flag zooms the camera in
+		const qboolean is_player = pm->ps->clientNum < MAX_CLIENTS || PM_ControlledByPlayer() ? qtrue : qfalse;
+		const qboolean jet_aiming = is_player
+			&& pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_BLOCK
+			&& PM_JetpackCanAimGun() ? qtrue : qfalse;
+
+		if (jet_aiming)
+		{
+			if (!(pm->ps->communicatingflags & 1u << CF_AIMINGGUN))
+			{
+				pm->ps->communicatingflags |= 1u << CF_AIMINGGUN;
+				if (pm->gent && pm->gent->client)
+				{
+					pm->gent->client->IsAiming = qtrue;
+				}
+			}
+		}
+		else if (is_player && pm->ps->communicatingflags & 1u << CF_AIMINGGUN)
+		{
+			PM_RemoveGunnerAimFlag(qtrue);
+		}
+
+		if (PM_JetpackGunPose() || jet_aiming)
+		{
+			// two-handed gun (or aiming any gun): legs only, the torso holds the gun's ready pose (shots still play
+			// their own anim)
+			parts = SETANIM_LEGS;
+
+			if (is_player
+				&& pm->ps->weaponTime <= 0
+				&& pm->ps->torsoAnim != BOTH_FLAMETHROWER)
+			{
+				const int pose = PM_JetpackGunPose() ? TORSO_WEAPONREADY3 : TORSO_WEAPONREADY2;
+
+				if (pm->ps->torsoAnim != pose
+					&& (pm->ps->torsoAnimTimer <= 0 || pm->ps->torsoAnim == pm->ps->legsAnim))
+				{
+					PM_SetAnim(pm, SETANIM_TORSO, pose, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+				}
+				if (pm->ps->torsoAnim == pose && pm->ps->torsoAnimTimer < 100)
+				{
+					pm->ps->torsoAnimTimer = 100; // keep the torso-from-legs code from putting the flying anim back on the torso
+				}
+			}
 		}
 
 		PM_SetAnim(pm, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -22293,6 +22457,7 @@ static void Pmove_Internal(pmove_t* pmove)
 	{
 		// landed: the double jump and the air dash can be used again
 		pm->ps->pm_flags &= ~(PMF_DOUBLE_JUMPED | PMF_AIR_DASHED);
+		s_dashFlipped[pm->ps->clientNum] = qfalse; // the dash chain's flip can be used again
 		if (pm->ps->clientNum < MAX_CLIENTS)
 		{
 			s_leapCancelled[pm->ps->clientNum] = qfalse; // the +back leap cancel ends on landing

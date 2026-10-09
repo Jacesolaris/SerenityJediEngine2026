@@ -292,7 +292,7 @@ extern void G_CreateG2AttachedWeaponModel(gentity_t* ent, const char* ps_weapon_
 extern void WP_SaberAddG2SaberModels(gentity_t* ent, int specific_saber_num = -1);
 extern void wp_saber_add_holstered_g2_saber_models(gentity_t* ent, int specific_saber_num = -1);
 extern qboolean WP_SaberParseParms(const char* SaberName, saberInfo_t* saber, qboolean setColors = qtrue);
-extern qboolean WP_BreakSaber(gentity_t* ent, const char* surfName, saberType_t saberType = SABER_NONE);
+extern qboolean WP_BreakSaber(gentity_t* ent, const char* surfName, const saberType_t saberType = SABER_NONE);
 extern void ForceThrow(gentity_t* self, qboolean pull, qboolean fake = qfalse);
 extern qboolean G_GetHitLocFromSurfName(gentity_t* ent, const char* surfName, int* hit_loc, vec3_t point, vec3_t dir,
 	vec3_t blade_dir, int mod, saberType_t saber_type = SABER_NONE);

@@ -125,6 +125,7 @@ XCVAR_DEF(g_privateDuel, "1", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_randFix, "1", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_restarted, "0", NULL, CVAR_ROM, qfalse)
 XCVAR_DEF(g_saberDamageScale, "1", NULL, CVAR_SERVERINFO | CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(g_saberBreaking, "2", NULL, CVAR_ARCHIVE, qtrue)
 #ifndef FINAL_BUILD
 XCVAR_DEF(g_saberDebugPrint, "0", NULL, CVAR_CHEAT, qfalse)
 #endif

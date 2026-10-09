@@ -3038,6 +3038,7 @@ ItemParse_asset_model
 	asset_model <string>
 ===============
 */
+
 qboolean ItemParse_asset_model_go(itemDef_t* item, const char* name)
 {
 	Item_ValidateTypeData(item);

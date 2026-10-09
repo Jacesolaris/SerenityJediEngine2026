@@ -61,6 +61,25 @@ void FX_BlasterAltFireThink(centity_t* cent, const struct weaponInfo_s* weapon)
 
 /*
 -------------------------
+FX_DroidekaProjectileThink
+
+the droideka's bolts (WP_DROIDEKA, from MovieDuels SP)
+-------------------------
+*/
+void FX_DroidekaProjectileThink(centity_t* cent, const struct weaponInfo_s* weapon)
+{
+	vec3_t forward;
+
+	if (VectorNormalize2(cent->currentState.pos.trDelta, forward) == 0.0f)
+	{
+		forward[2] = 1.0f;
+	}
+
+	trap->FX_PlayEffectID(cgs.effects.droidekaShotEffect, cent->lerpOrigin, forward, -1, -1, qfalse);
+}
+
+/*
+-------------------------
 FX_BlasterWeaponHitWall
 -------------------------
 */

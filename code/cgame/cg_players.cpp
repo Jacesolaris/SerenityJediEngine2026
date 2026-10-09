@@ -246,6 +246,7 @@ static void CG_PlayerFootsteps(const centity_t* cent, footstepType_t foot_step_t
 static void CG_PlayerAnimEvents(int animFileIndex, qboolean torso, int old_frame, int frame, int entNum);
 extern void BG_G2SetBoneAngles(const centity_t* cent, int boneIndex, const vec3_t angles, int flags,
 	Eorientations up, Eorientations left, Eorientations forward, qhandle_t* modelList);
+
 extern qboolean PM_SaberInSpecialAttack(int anim);
 extern qboolean PM_SaberInAttack(int move);
 extern qboolean PM_SaberInTransitionAny(int move);

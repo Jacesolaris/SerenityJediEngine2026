@@ -777,6 +777,11 @@ struct gclient_s
 	saberInfo_t saber[MAX_SABERS];
 	void* weaponGhoul2[MAX_SABERS];
 
+	// breakable saber staffs (ps.stats[STAT_SABER_WEAR] holds the wear)
+	int saberWearTimer;			// ms until the next point of wear recovers
+	int saberBreakSafeTime;		// saber damage is halved until this time after a break
+	int saberWearHiltDebounce;	// one hilt hit per 500 ms
+
 	int tossableItemDebounce;
 
 	int bodyGrabTime;

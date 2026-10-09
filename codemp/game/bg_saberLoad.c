@@ -981,6 +981,8 @@ static void wp_saber_set_defaults(saberInfo_t* saber)
 	Q_strncpyz(saber->name, DEFAULT_SABER, sizeof saber->name);
 	Q_strncpyz(saber->fullName, DEFAULT_SABER_NAME, sizeof saber->fullName);
 	Q_strncpyz(saber->model, DEFAULT_SABER_MODEL, sizeof saber->model);
+	saber->brokenSaber1[0] = 0;
+	saber->brokenSaber2[0] = 0;
 	saber->skin = 0;
 	saber->soundOn = BG_SoundIndex("sound/weapons/saber/enemy_saber_on");
 	saber->soundLoop = BG_SoundIndex("sound/weapons/saber/saberhum3");
@@ -1678,7 +1680,7 @@ static void Saber_ParseBrokenSaber1(saberInfo_t* saber, const char** p)
 	const char* value;
 	if (COM_ParseString(p, &value))
 		return;
-	//saber->brokenSaber1 = G_NewString( value );
+	Q_strncpyz(saber->brokenSaber1, Q_stricmp(value, "none") ? value : "", sizeof saber->brokenSaber1);
 }
 
 static void Saber_ParseBrokenSaber2(saberInfo_t* saber, const char** p)
@@ -1686,7 +1688,7 @@ static void Saber_ParseBrokenSaber2(saberInfo_t* saber, const char** p)
 	const char* value;
 	if (COM_ParseString(p, &value))
 		return;
-	//saber->brokenSaber2 = G_NewString( value );
+	Q_strncpyz(saber->brokenSaber2, Q_stricmp(value, "none") ? value : "", sizeof saber->brokenSaber2);
 }
 
 static void Saber_ParseReturnDamage(saberInfo_t* saber, const char** p)
@@ -2091,6 +2093,12 @@ static void Saber_ParseOnInWater(saberInfo_t* saber, const char** p)
 }
 
 static void Saber_ParseNotInMP(saberInfo_t* saber, const char** p)
+{
+	SkipRestOfLine(p);
+}
+
+// the saber builder: read with WP_SaberParseParm (BG_SaberIsCustomBuilt)
+static void Saber_ParseIsCustomSaber(saberInfo_t* saber, const char** p)
 {
 	SkipRestOfLine(p);
 }
@@ -2894,6 +2902,7 @@ static keywordHash_t saberParseKeywords[] = {
 	{"noMirrorAttacks", Saber_ParseNoMirrorAttacks, NULL},
 	{"onInWater", Saber_ParseOnInWater, NULL},
 	{"notInMP", Saber_ParseNotInMP, NULL},
+	{"isCustomSaber", Saber_ParseIsCustomSaber, NULL},
 	{"bladeStyle2Start", Saber_ParseBladeStyle2Start, NULL},
 	{"noWallMarks", Saber_ParseNoWallMarks, NULL},
 	{"noWallMarks2", Saber_ParseNoWallMarks2, NULL},
@@ -3154,6 +3163,17 @@ static qboolean WP_SaberValidForPlayerInMP(const char* saber_name)
 	return atoi(allowed) == 0;
 }
 
+// notInMP 1: never for a player; notInMP 2: not in the menus, but a player can be given it (the pieces of a broken saber staff)
+static qboolean WP_SaberNotForPlayerInMP(const char* saber_name)
+{
+	char allowed[8] = { 0 };
+	if (!WP_SaberParseParm(saber_name, "notInMP", allowed) || !allowed[0])
+	{
+		return qfalse;
+	}
+	return atoi(allowed) == 1;
+}
+
 void WP_RemoveSaber(saberInfo_t* sabers, const int saberNum)
 {
 	if (!sabers)
@@ -3169,6 +3189,50 @@ void WP_RemoveSaber(saberInfo_t* sabers, const int saberNum)
 	//ent->client->ps.dualSabers = qfalse;
 	BG_SI_Deactivate(&sabers[saberNum]);
 	BG_SI_SetLength(&sabers[saberNum], 0.0f);
+}
+
+// the saber builder (from JA Enhanced): a hilt built from part skins - its name has "saberbuilder" or its .sab has
+// isCustomSaber 1
+qboolean BG_SaberIsCustomBuilt(const char* saber_name)
+{
+	char isCustom[8] = { 0 };
+
+	if (!saber_name || !saber_name[0] || !Q_stricmp(saber_name, "none"))
+	{
+		return qfalse;
+	}
+	if (Q_stristr(saber_name, "saberbuilder"))
+	{
+		return qtrue;
+	}
+	return WP_SaberParseParm(saber_name, "isCustomSaber", isCustom) && atoi(isCustom) ? qtrue : qfalse;
+}
+
+// the skin of a built hilt: "models/weapons2/<folder>/|_|p1|p2|p3|p4|p5" from its model and its parts "p1|p2|..."
+qboolean BG_SaberBuiltSkin(const char* saber_name, const char* saberModel, const char* parts, char* skinOut,
+	const int skinOutSize)
+{
+	if (!parts || !parts[0] || !saberModel || !saberModel[0] || !BG_SaberIsCustomBuilt(saber_name))
+	{
+		return qfalse;
+	}
+
+	const char* slash = strrchr(saberModel, '/');
+	if (!slash)
+	{
+		return qfalse;
+	}
+
+	const int folderLen = (int)(slash - saberModel) + 1;
+	if (folderLen + 3 + (int)strlen(parts) >= skinOutSize || folderLen + 3 + (int)strlen(parts) >= MAX_QPATH)
+	{
+		return qfalse;
+	}
+
+	Q_strncpyz(skinOut, saberModel, folderLen + 1);
+	Q_strcat(skinOut, skinOutSize, "|_|");
+	Q_strcat(skinOut, skinOutSize, parts);
+	return qtrue;
 }
 
 void WP_SetSaber(const int entNum, saberInfo_t* sabers, const int saberNum, const char* saber_name)
@@ -3188,7 +3252,7 @@ void WP_SetSaber(const int entNum, saberInfo_t* sabers, const int saberNum, cons
 	}
 
 	if (entNum < MAX_CLIENTS &&
-		!WP_SaberValidForPlayerInMP(saber_name))
+		WP_SaberNotForPlayerInMP(saber_name))
 	{
 		WP_SaberParseParms(DEFAULT_SABER, &sabers[saberNum]); //get saber info
 	}

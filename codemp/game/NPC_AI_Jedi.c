@@ -7480,6 +7480,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 				}
 				break;
 			case WP_BLASTER:
+			case WP_DROIDEKA:
 			case WP_BRYAR_PISTOL:
 			case WP_DISRUPTOR:
 			case WP_BOWCASTER:

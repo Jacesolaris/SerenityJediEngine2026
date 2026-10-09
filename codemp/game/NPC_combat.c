@@ -350,6 +350,7 @@ static void G_AttackDelay(const gentity_t* self, const gentity_t* enemy)
 		case WP_BRYAR_PISTOL:
 			break;
 		case WP_BLASTER:
+		case WP_DROIDEKA:
 			if (self->NPC->scriptFlags & SCF_ALT_FIRE)
 			{
 				//rapid-fire blasters
@@ -940,6 +941,7 @@ void ChangeWeapon(const gentity_t* ent, int new_weapon)
 		*/
 
 	case WP_BLASTER:
+	case WP_DROIDEKA:
 		if (ent->NPC->scriptFlags & SCF_ALT_FIRE)
 		{
 			ent->NPC->aiFlags |= NPCAI_BURST_WEAPON;
@@ -1469,6 +1471,7 @@ float NPC_MaxDistSquaredForWeapon(void)
 	switch (NPCS.NPC->s.weapon)
 	{
 	case WP_BLASTER: //scav rifle
+	case WP_DROIDEKA:
 		return 1024 * 1024; //should be shorter?
 
 	case WP_BRYAR_PISTOL: //prifle

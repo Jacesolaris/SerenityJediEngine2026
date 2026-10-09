@@ -131,6 +131,28 @@ using skinName_t = struct
 	char name[SKIN_LENGTH];
 };
 
+// the saber builder (from JA Enhanced): a hilt built from part skins, listed in ext_data/sabers/*.csab
+constexpr auto MAX_CUSTOM_SABER_PARTS = 5;
+
+using saberPartSkin_t = struct
+{
+	char name[32]; // the header shown in the menu (@SPMOD_EMITTER...)
+	char desc[64]; // its description
+	char root[16]; // the skin file prefix, e.g. "em_"
+	int count;
+	int max;
+	skinName_t* skins; // em_1, em_2...
+};
+
+using customSaberInfo_t = struct
+{
+	char SaberName[64]; // the .sab entry
+	char SaberLongName[64]; // shown in the hilt lists
+	char FolderName[MAX_QPATH]; // models/weapons2/<FolderName>/
+	saberPartSkin_t Skin[MAX_CUSTOM_SABER_PARTS];
+	qboolean isStaff;
+};
+
 using playerColor_t = struct
 {
 	char shader[MAX_QPATH];
@@ -169,6 +191,12 @@ using uiInfo_t = struct
 	int playerSpeciesCount;
 	playerSpeciesInfo_t* playerSpecies;
 	int playerSpeciesIndex;
+
+	int customSabersMax; // the saber builder
+	int customSabersCount;
+	customSaberInfo_t* customSabers;
+	int customSabersIndex;
+	int customSabers2Index;
 
 	char deferredScript[MAX_DEFERRED_SCRIPT];
 	itemDef_t* deferredScriptItem;

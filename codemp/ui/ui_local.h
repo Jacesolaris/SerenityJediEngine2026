@@ -271,6 +271,26 @@ typedef struct {
 	char actionText[ACTION_BUFFER_SIZE];
 } playerColor_t;
 
+// the saber builder (from JA Enhanced): a hilt built from part skins, listed in ext_data/sabers/*.csab
+#define MAX_CUSTOM_SABER_PARTS	5
+
+typedef struct saberPartSkin_s {
+	char name[32]; // the header shown in the menu (@SPMOD_EMITTER...)
+	char desc[64]; // its description
+	char root[16]; // the skin file prefix, e.g. "em_"
+	int count;
+	int max;
+	skinName_t* skins; // em_1, em_2...
+} saberPartSkin_t;
+
+typedef struct customSaberInfo_s {
+	char SaberName[64]; // the .sab entry
+	char SaberLongName[64]; // shown in the hilt lists
+	char FolderName[MAX_QPATH]; // models/weapons2/<FolderName>/
+	saberPartSkin_t Skin[MAX_CUSTOM_SABER_PARTS];
+	qboolean isStaff;
+} customSaberInfo_t;
+
 typedef struct playerSpeciesInfo_s {
 	char		Name[MAX_QPATH];
 	int			SkinHeadCount;
@@ -391,6 +411,13 @@ typedef struct uiInfo_s {
 	int                     holocronIndex;
 	const char* holocronNames[MAX_HOLOCRON_TYPES];
 	int                     holocronCount;
+
+	// the saber builder (from JA Enhanced)
+	int						customSabersMax;
+	int						customSabersCount;
+	customSaberInfo_t*		customSabers;
+	int						customSabersIndex;
+	int						customSabers2Index;
 } uiInfo_t;
 extern uiInfo_t uiInfo;
 

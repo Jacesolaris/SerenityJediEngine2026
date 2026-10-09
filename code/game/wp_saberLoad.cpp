@@ -1826,6 +1826,11 @@ static void Saber_ParseNotInMP(saberInfo_t* saber, const char** p)
 	SkipRestOfLine(p);
 }
 
+static void Saber_ParseIsCustomSaber(saberInfo_t* saber, const char** p)
+{// the saber builder: read by WP_SaberIsCustomBuilt (no saberInfo_t field, so the player state stays the same)
+	SkipRestOfLine(p);
+}
+
 static void Saber_ParseBladeStyle2Start(saberInfo_t* saber, const char** p)
 {
 	int n;
@@ -2632,6 +2637,7 @@ static keywordHash_t saberParseKeywords[] = {
 	{"noKicks", Saber_ParseNoKicks, nullptr},
 	{"noMirrorAttacks", Saber_ParseNoMirrorAttacks, nullptr},
 	{"notInMP", Saber_ParseNotInMP, nullptr},
+	{"isCustomSaber", Saber_ParseIsCustomSaber, nullptr},
 	{"bladeStyle2Start", Saber_ParseBladeStyle2Start, nullptr},
 	{"noWallMarks", Saber_ParseNoWallMarks, nullptr},
 	{"noWallMarks2", Saber_ParseNoWallMarks2, nullptr},
@@ -2715,6 +2721,59 @@ static void WP_SaberSetupKeywordHash()
 		KeywordHash_Add(saberParseKeywordHash, &saberParseKeywords[i]);
 
 	hashSetup = qtrue;
+}
+
+// The saber builder (from JA Enhanced): this saber's hilt is built from part skins (.csab) - "saberbuilder" in its name
+// or "isCustomSaber 1" in its .sab
+qboolean WP_SaberIsCustomBuilt(const char* saberName)
+{
+	if (!VALIDSTRING(saberName))
+	{
+		return qfalse;
+	}
+	if (Q_stristr(saberName, "saberbuilder"))
+	{
+		return qtrue;
+	}
+	const char* token;
+	const char* p = SaberParms;
+	COM_ParseSession ps;
+
+	while (p)
+	{
+		token = COM_ParseExt(&p, qtrue);
+		if (!token[0])
+		{
+			return qfalse;
+		}
+		if (!Q_stricmp(token, saberName))
+		{
+			break;
+		}
+		SkipBracedSection(&p);
+	}
+	if (!p || G_ParseLiteral(&p, "{"))
+	{
+		return qfalse;
+	}
+	while (true)
+	{
+		token = COM_ParseExt(&p, qtrue);
+		if (!token[0] || !Q_stricmp(token, "}"))
+		{
+			return qfalse;
+		}
+		if (!Q_stricmp(token, "isCustomSaber"))
+		{
+			int n;
+			if (COM_ParseInt(&p, &n))
+			{
+				return qfalse;
+			}
+			return n ? qtrue : qfalse;
+		}
+		SkipRestOfLine(&p);
+	}
 }
 
 qboolean WP_SaberParseParms(const char* SaberName, saberInfo_t* saber, const qboolean setColors)
@@ -3075,6 +3134,80 @@ qboolean WP_BreakSaber(gentity_t* ent, const char* surfName, const saberType_t s
 			}
 			broken = qtrue;
 		}
+	}
+	return broken;
+}
+
+// the staff breaks into its brokenSaber1 (right hand) / brokenSaber2 (left hand; "none": one half), blade colours kept
+// (the swap of WP_BreakSaber, used by the saber wear: wp_saberblocking.cpp WP_SaberWearBreak)
+qboolean WP_SaberDoBreak(gentity_t* ent)
+{
+	if (!ent || !ent->client || !ent->client->ps.saber[0].brokenSaber1 || !ent->client->ps.saber[0].brokenSaber1[0])
+	{
+		return qfalse;
+	}
+	//break it
+	const char* replacementSaber1 = G_NewString(ent->client->ps.saber[0].brokenSaber1);
+	const char* replacementSaber2 = ent->client->ps.saber[0].brokenSaber2 ? G_NewString(ent->client->ps.saber[0].brokenSaber2) : nullptr;
+	int i;
+	const int originalNumBlades = ent->client->ps.saber[0].numBlades;
+	qboolean broken = qfalse;
+	saber_colors_t colors[MAX_BLADES]{};
+
+	//store the colors
+	for (i = 0; i < MAX_BLADES; i++)
+	{
+		colors[i] = ent->client->ps.saber[0].blade[i].color;
+	}
+
+
+	//remove saber[0], replace with replacementSaber1
+	if (replacementSaber1)
+	{
+		WP_RemoveSaber(ent, 0);
+		WP_SetSaber(ent, 0, replacementSaber1);
+		for (i = 0; i < ent->client->ps.saber[0].numBlades; i++)
+		{
+			ent->client->ps.saber[0].blade[i].color = colors[i];
+		}
+		broken = qtrue;
+		//change my saberent's model and skin to match my new right-hand saber
+		wp_set_saber_ent_model_skin(ent, &g_entities[ent->client->ps.saberEntityNum]);
+	}
+
+	if (originalNumBlades <= 1)
+	{
+		//nothing to split off
+		//FIXME: handle this?
+	}
+	else
+	{
+		//remove saber[1], replace with replacementSaber2
+		if (replacementSaber2)
+		{
+			//FIXME: 25% chance that it just breaks - just spawn the second saber piece and toss it away immediately, can't be picked up.
+			//shouldn't be one in this hand, but just in case, remove it
+			WP_RemoveSaber(ent, 1);
+			WP_SetSaber(ent, 1, replacementSaber2);
+
+			//put the remainder of the original saber's blade colors onto this saber's blade(s)
+			for (i = ent->client->ps.saber[0].numBlades; i < MAX_BLADES; i++)
+			{
+				ent->client->ps.saber[1].blade[i - ent->client->ps.saber[0].numBlades].color = colors[i];
+			}
+			broken = qtrue;
+		}
+	}
+	if (broken && ent->client->ps.dualSabers)
+	{
+		// two hilts now: dual style
+		ent->client->ps.saberStylesKnown |= 1 << SS_DUAL;
+		ent->client->ps.saberAnimLevel = SS_DUAL;
+	}
+	else if (broken && !WP_SaberStyleValidForSaber(ent, ent->client->ps.saberAnimLevel))
+	{
+		// one half left (brokenSaber2 none): a single saber style
+		WP_UseFirstValidSaberStyle(ent, &ent->client->ps.saberAnimLevel);
 	}
 	return broken;
 }

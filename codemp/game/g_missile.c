@@ -930,6 +930,7 @@ static void G_Missile_Bounce_Effect(gentity_t* ent, vec3_t org, vec3_t dir, cons
 	case WP_BLASTER:
 	case WP_BRYAR_PISTOL:
 	case WP_BRYAR_OLD:
+	case WP_DROIDEKA:
 		G_PlayEffectID(G_EffectIndex("blaster/deflect"), ent->r.currentOrigin, dir);
 		break;
 	case WP_REPEATER:
@@ -958,6 +959,7 @@ void G_MissileReflectEffect(gentity_t* ent, vec3_t dir)
 	case WP_BLASTER:
 	case WP_BRYAR_PISTOL:
 	case WP_BRYAR_OLD:
+	case WP_DROIDEKA:
 		G_PlayEffectID(G_EffectIndex("blaster/deflect"), ent->r.currentOrigin, dir);
 		break;
 	case WP_REPEATER:
@@ -1791,6 +1793,27 @@ killProj:
 					TASER_DAMAGE,
 					DAMAGE_NO_KNOCKBACK,
 					MOD_CRUSH);
+
+				// the hook yanks him off his feet towards the grappler, as force pull does (as MD and SP)
+				if (other->health > 0 && ent->parent && ent->parent->client && other != ent->parent
+					&& BG_KnockDownable(&other->client->ps))
+				{
+					vec3_t pull_dir;
+					VectorSubtract(ent->parent->r.currentOrigin, other->r.currentOrigin, pull_dir);
+					pull_dir[2] = 0;
+					VectorNormalize(pull_dir);
+
+					G_Knockdown(other, ent->parent, pull_dir, 300, qtrue);
+
+					if (PM_InKnockDown(&other->client->ps))
+					{
+						// dragged about 5 feet (~60 units) towards the grappler: no ground friction while pm_time runs
+						VectorScale(pull_dir, 240.0f, other->client->ps.velocity);
+						other->client->ps.velocity[2] = 100.0f;
+						other->client->ps.pm_time = 250;
+						other->client->ps.pm_flags |= PMF_TIME_KNOCKBACK;
+					}
+				}
 			}
 
 			nent->s.otherentityNum2 = other->s.number;

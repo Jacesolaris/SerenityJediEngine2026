@@ -136,6 +136,17 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define FEEDER_SABER_SINGLE_INFO			0x2b			// saber single
 #define FEEDER_SABER_STAFF_INFO				0x2c			// saber staff
 #define FEEDER_HOLOCRON_LIST                0x2d
+// the saber builder (from JA Enhanced): a built hilt's part lists (saber_custom.menu / saber_custom2.menu)
+#define FEEDER_SABER_SKIN_1					0x2e
+#define FEEDER_SABER_SKIN_2					0x2f
+#define FEEDER_SABER_SKIN_3					0x30
+#define FEEDER_SABER_SKIN_4					0x31
+#define FEEDER_SABER_SKIN_5					0x32
+#define FEEDER_SABER2_SKIN_1				0x33
+#define FEEDER_SABER2_SKIN_2				0x34
+#define FEEDER_SABER2_SKIN_3				0x35
+#define FEEDER_SABER2_SKIN_4				0x36
+#define FEEDER_SABER2_SKIN_5				0x37
 
 // Xbox specific, hope no one minds
 #define FEEDER_XBL_ACCOUNTS					0xA0			// list of available XBL accounts

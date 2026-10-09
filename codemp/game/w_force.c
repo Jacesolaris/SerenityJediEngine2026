@@ -1158,6 +1158,7 @@ static qboolean class_is_gunner(const gentity_t* self)
 	case WP_TRIP_MINE:
 	case WP_DET_PACK:
 	case WP_CONCUSSION:
+	case WP_DROIDEKA:
 	case WP_EMPLACED_GUN:
 	case WP_TURRET:
 		// Is Gunner...
@@ -2352,7 +2353,7 @@ int IsPressingDashButton(const gentity_t* self)
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
 		&& (self->client->buttons & BUTTON_DASH)
-		&& (!(self->client->pers.botclass == BCLASS_SBD)))
+		&& (self->client->ps.fd.forcePowerLevel[FP_SPEED] >= FORCE_LEVEL_1))
 	{
 		return qtrue;
 	}

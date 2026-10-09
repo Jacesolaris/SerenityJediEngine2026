@@ -303,6 +303,8 @@ qboolean UI_SaberModelForSaber(const char* saber_name, char* saberModel)
 	return UI_SaberParseParm(saber_name, "saberModel", saberModel);
 }
 
+extern qboolean UI_CustomSaberSkin(const char* saberName, char* saberSkin, int saberNum); // ui_main.cpp, the saber builder
+
 qboolean UI_SaberSkinForSaber(const char* saber_name, char* saberSkin)
 {
 	return UI_SaberParseParm(saber_name, "customSkin", saberSkin);
@@ -2925,8 +2927,8 @@ void UI_SaberAttachToChar(itemDef_t* item)
 			if (g2Saber)
 			{
 				char skinPath[MAX_QPATH];
-				//get the customSkin, if any
-				if (UI_SaberSkinForSaber(saber, skinPath))
+				//get the customSkin, if any (a built saber's part skins first - the saber builder)
+				if (UI_CustomSaberSkin(saber, skinPath, saberNum) || UI_SaberSkinForSaber(saber, skinPath))
 				{
 					const int g2skin = DC->registerSkin(skinPath);
 					DC->g2_SetSkin(&item->ghoul2[g2Saber], 0, g2skin);

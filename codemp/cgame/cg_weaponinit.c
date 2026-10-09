@@ -413,6 +413,39 @@ void CG_RegisterWeapon(const int weapon_num)
 		cgs.effects.blasterDroidImpactEffect = trap->FX_RegisterEffect("blaster/droid_impact");
 		break;
 
+	case WP_DROIDEKA: // the droideka's twin arm blasters (from MovieDuels SP)
+		weaponInfo->selectSound = trap->S_RegisterSound("sound/weapons/bryar/select.wav");
+
+		weaponInfo->flashSound[0] = NULL_SOUND; // the muzzle effect plays the droideka_laser fire sounds
+		weaponInfo->firingSound = NULL_SOUND;
+		weaponInfo->chargeSound = NULL_SOUND;
+		weaponInfo->muzzleEffect = trap->FX_RegisterEffect("droideka/muzzle_flash");
+		weaponInfo->missileModel = NULL_HANDLE;
+		weaponInfo->missileSound = trap->S_RegisterSound("sound/weapons/blaster/BlasterBoltLoop.wav");
+		weaponInfo->missileDlight = 0;
+		weaponInfo->missilehit_sound = NULL_SOUND;
+		weaponInfo->missileTrailFunc = FX_DroidekaProjectileThink;
+
+		weaponInfo->altFlashSound[0] = NULL_SOUND;
+		weaponInfo->altFiringSound = NULL_SOUND;
+		weaponInfo->altChargeSound = NULL_SOUND;
+		weaponInfo->altMuzzleEffect = trap->FX_RegisterEffect("droideka/muzzle_flash");
+		weaponInfo->altMissileModel = NULL_HANDLE;
+		weaponInfo->altMissileSound = trap->S_RegisterSound("sound/weapons/blaster/BlasterBoltLoop.wav");
+		weaponInfo->altMissileDlight = 0;
+		weaponInfo->altMissilehit_sound = NULL_SOUND;
+		weaponInfo->altMissileTrailFunc = FX_DroidekaProjectileThink;
+
+		weaponInfo->mOverloadMuzzleEffect = trap->FX_RegisterEffect("blaster/smokin_hot_muzzle");
+
+		trap->FX_RegisterEffect("blaster/deflect");
+		trap->FX_RegisterEffect("blaster/deflect_passthrough");
+		cgs.effects.droidekaShotEffect = trap->FX_RegisterEffect("droideka/shot");
+		cgs.effects.blasterWallImpactEffect = trap->FX_RegisterEffect("blaster/wall_impact");
+		cgs.effects.blasterFleshImpactEffect = trap->FX_RegisterEffect("blaster/flesh_impact");
+		cgs.effects.blasterDroidImpactEffect = trap->FX_RegisterEffect("blaster/droid_impact");
+		break;
+
 	case WP_EMPLACED_GUN:
 		weaponInfo->selectSound = trap->S_RegisterSound("sound/weapons/blaster/select.wav");
 

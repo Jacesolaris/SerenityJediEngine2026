@@ -19497,7 +19497,7 @@ int IsPressingDashButton(const gentity_t* self)
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
 		&& (self->client->buttons & BUTTON_DASH)
-		&& (!(self->client->NPC_class == CLASS_SBD)))
+		&& (self->client->ps.forcePowerLevel[FP_SPEED] >= FORCE_LEVEL_1))
 	{
 		return qtrue;
 	}

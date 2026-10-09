@@ -3169,6 +3169,7 @@ void cg_missile_hit_wall(const int weapon, vec3_t origin, vec3_t dir, const qboo
 		break;
 
 	case WP_BLASTER:
+	case WP_DROIDEKA:
 		FX_BlasterWeaponHitWall(origin, dir);
 		break;
 
@@ -3282,6 +3283,7 @@ void cg_missile_hit_player(const int weapon, vec3_t origin, vec3_t dir, const qb
 		break;
 
 	case WP_BLASTER:
+	case WP_DROIDEKA:
 		FX_BlasterWeaponHitPlayer(origin, dir, humanoid);
 		break;
 
@@ -3775,7 +3777,7 @@ void CG_CopyG2WeaponInstance(const centity_t* cent, const int weapon_num, void* 
 				trap->G2API_CopySpecificGhoul2Model(weapG2, 0, to_ghoul2, 1);
 
 				if ((cent->currentState.eFlags & EF3_DUAL_WEAPONS) &&
-					cent->currentState.weapon == WP_BRYAR_PISTOL)
+					weapon_num == WP_BRYAR_PISTOL) // the weapon being copied: the snapshot can still say pistol after a switch
 				{
 					void* weapG2_2 = CG_G2WeaponInstance2(cent, weapon_num);
 					if (weapG2_2 != NULL)
@@ -3875,14 +3877,14 @@ void CG_CheckPlayerG2Weapons(const playerState_t* ps, centity_t* cent)
 		ps->clientNum == cent->currentState.number)
 	{
 		void* curWeapG2 = CG_G2WeaponInstance(cent, ps->weapon);
-		void* curWeapG2_2 = CG_G2WeaponInstance2(cent, cent->currentState.weapon);
+		void* curWeapG2_2 = CG_G2WeaponInstance2(cent, ps->weapon); // the predicted weapon, as the update below uses
 
 		qboolean dualFlagSet = (((cent->currentState.eFlags & EF3_DUAL_WEAPONS) != 0) ? qtrue : qfalse);
 		qboolean isSaberWeapon = (cent->currentState.weapon == WP_SABER ? qtrue : qfalse);
 		qboolean hasSecondWeap = (cent->ghoul2weapon2 != NULL ? qtrue : qfalse);
 
 		qboolean weaponChanged = (cent->ghoul2weapon != curWeapG2 ? qtrue : qfalse);
-		qboolean dualWeapNeeded = (dualFlagSet == qtrue && isSaberWeapon == qfalse ? qtrue : qfalse);
+		qboolean dualWeapNeeded = (dualFlagSet == qtrue && isSaberWeapon == qfalse && ps->weapon == WP_BRYAR_PISTOL ? qtrue : qfalse);
 		qboolean dualWeapActive = (curWeapG2_2 != NULL ? qtrue : qfalse);
 		qboolean dualMismatch = qfalse;
 		qboolean extraDualActive = qfalse;
@@ -3896,6 +3898,14 @@ void CG_CheckPlayerG2Weapons(const playerState_t* ps, centity_t* cent)
 		// extraDualActive: we have a second weapon but shouldn't (no dual flag or saber)
 		if (hasSecondWeap == qtrue &&
 			(dualFlagSet == qfalse || isSaberWeapon == qtrue))
+		{
+			extraDualActive = qtrue;
+		}
+
+		// a second gun left on the model: switching away from the dual pistols while the snapshot still had the dual flag
+		// copied the new weapon's second instance too (dual blasters), and nothing removed it afterwards
+		if (ps->weapon != WP_SABER && dualWeapNeeded == qfalse &&
+			trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, 2))
 		{
 			extraDualActive = qtrue;
 		}

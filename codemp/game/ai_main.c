@@ -277,6 +277,7 @@ int MinimumAttackDistance[WP_NUM_WEAPONS] =
 	100, //WP_TRIP_MINE,
 	0, //WP_DET_PACK,
 	0, //WP_CONCUSSION,
+	0, //WP_DROIDEKA,
 	0, //WP_BRYAR_OLD,
 	0, //WP_EMPLACED_GUN,
 	0 //WP_TURRET,
@@ -301,6 +302,7 @@ int MaximumAttackDistance[WP_NUM_WEAPONS] =
 	9999, //WP_TRIP_MINE,
 	9999, //WP_DET_PACK,
 	9999, //WP_CONCUSSION,
+	9999, //WP_DROIDEKA,
 	9999, //WP_BRYAR_OLD,
 	9999, //WP_EMPLACED_GUN,
 	9999 //WP_TURRET,
@@ -325,6 +327,7 @@ int IdealAttackDistance[WP_NUM_WEAPONS] =
 	1000, //WP_TRIP_MINE,
 	1000, //WP_DET_PACK,
 	1000, //WP_CONCUSSION,
+	1000, //WP_DROIDEKA,
 	1000, //WP_BRYAR_OLD,
 	1000, //WP_EMPLACED_GUN,
 	1000 //WP_TURRET,
@@ -1931,6 +1934,7 @@ int bot_ai_setup_client(const int client, const struct bot_settings_s* settings)
 	bs->botWeaponWeights[WP_TRIP_MINE] = 0;
 	bs->botWeaponWeights[WP_DET_PACK] = 0;
 	bs->botWeaponWeights[WP_CONCUSSION] = 15;
+	bs->botWeaponWeights[WP_DROIDEKA] = 12;
 	bs->botWeaponWeights[WP_BRYAR_OLD] = 19;
 
 	BotUtilizePersonality(bs);
@@ -6339,6 +6343,7 @@ int bot_get_weapon_range(const bot_state_t* bs)
 	case WP_BLASTER:
 	case WP_DISRUPTOR:
 	case WP_REPEATER:
+	case WP_DROIDEKA:
 		return BWEAPONRANGE_MID;
 	case WP_BOWCASTER:
 	case WP_DEMP2:
@@ -9825,6 +9830,7 @@ float bot_weapon_can_lead(const bot_state_t* bs)
 	case WP_BRYAR_PISTOL:
 		return 0.95f;
 	case WP_BLASTER:
+	case WP_DROIDEKA:
 		return 0.95f;
 	case WP_BOWCASTER:
 		return 0.95f;

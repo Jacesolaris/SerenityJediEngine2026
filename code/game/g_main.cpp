@@ -192,6 +192,7 @@ cvar_t* g_saberAutoAim;
 cvar_t* g_saberNewControlScheme;
 cvar_t* g_debugSaberLock;
 cvar_t* g_saberLockRandomNess;
+cvar_t* g_saberBreaking; // breakable saber staffs: 0 off, 1 NPCs only, 2 everyone
 cvar_t* g_saberRestrictForce;
 cvar_t* g_saberPickuppableDroppedSabers;
 cvar_t* g_dismemberProbabilities;
@@ -211,6 +212,8 @@ cvar_t* g_saber;
 cvar_t* g_saber2;
 cvar_t* g_saber_color;
 cvar_t* g_saber2_color;
+cvar_t* g_saber_skin[MAX_SABER_PARTS]; // the saber builder: the part skins of the first saber
+cvar_t* g_saber2_skin[MAX_SABER_PARTS]; // and of the second saber
 cvar_t* g_saberDarkSideSaberColor;
 
 // kef -- used with DebugTraceForNPC
@@ -719,6 +722,7 @@ static void G_InitCvars()
 	g_debugSaberLock = gi.cvar("g_debugSaberLock", "0", CVAR_CHEAT);
 	//just for debugging/development, makes saberlocks happen all the time
 	g_saberLockRandomNess = gi.cvar("g_saberLockRandomNess", "0", CVAR_ARCHIVE);
+	g_saberBreaking = gi.cvar("g_saberBreaking", "2", CVAR_ARCHIVE);
 	//just for debugging/development, controls frequency of saberlocks
 	g_saberRestrictForce = gi.cvar("g_saberRestrictForce", "0", CVAR_ARCHIVE);
 	//restricts certain force powers when using a 2-handed saber or 2 sabers
@@ -798,6 +802,11 @@ static void G_InitCvars()
 
 	g_saber_color = gi.cvar("g_saber_color", "blue", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	g_saber2_color = gi.cvar("g_saber2_color", "blue", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
+	for (int i = 0; i < MAX_SABER_PARTS; i++)
+	{// the saber builder: the part skins (em_1, bd_3...) picked in the saber menu
+		g_saber_skin[i] = gi.cvar(va("g_saber_skin%d", i + 1), "", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
+		g_saber2_skin[i] = gi.cvar(va("g_saber2_skin%d", i + 1), "", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
+	}
 
 	g_saberDarkSideSaberColor = gi.cvar("g_saberDarkSideSaberColor", "1", CVAR_ARCHIVE);
 	//when you turn evil, it turns your saber red!

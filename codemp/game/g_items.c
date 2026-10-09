@@ -1512,6 +1512,8 @@ void Jetpack_Off(const gentity_t* ent)
 	ent->client->jetPackOn = qfalse;
 }
 
+#define JETPACK_IGNITE_THRUST 300.0f
+
 void Jetpack_On(gentity_t* ent)
 {
 	//create effects?
@@ -1538,6 +1540,23 @@ void Jetpack_On(gentity_t* ent)
 	G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/jetpack/ignite.wav"));
 
 	ent->client->jetPackOn = qtrue;
+
+	// upward thrust on ignition (as MD and SP): the jetpack kicks in with a jolt instead of just stopping the fall
+	// The lift is exactly the ignition thrust and the ground speed no more than a run: the flight has no gravity and
+	// only SP's light jetpack friction, so a force jump's speed (the jetpack users have Force Jump 3) carried into it
+	// threw the player across the map.
+	ent->client->ps.velocity[2] = JETPACK_IGNITE_THRUST;
+	{
+		const float maxRun = ent->client->ps.speed > 0 ? (float)ent->client->ps.speed : 250.0f;
+		const float groundSpeed = sqrt(ent->client->ps.velocity[0] * ent->client->ps.velocity[0]
+			+ ent->client->ps.velocity[1] * ent->client->ps.velocity[1]);
+
+		if (groundSpeed > maxRun)
+		{
+			ent->client->ps.velocity[0] *= maxRun / groundSpeed;
+			ent->client->ps.velocity[1] *= maxRun / groundSpeed;
+		}
+	}
 }
 
 #define FLAMETHROWER_RADIUS 200
@@ -3972,6 +3991,7 @@ void clear_registered_items(void)
 	RegisterItem(BG_FindItemForWeapon(WP_REPEATER));
 	RegisterItem(BG_FindItemForWeapon(WP_DISRUPTOR));
 	RegisterItem(BG_FindItemForWeapon(WP_CONCUSSION));
+	RegisterItem(BG_FindItemForWeapon(WP_DROIDEKA));
 
 	if (level.gametype == GT_SIEGE)
 	{//kind of cheesy, maybe check if siege class with disp's is gonna be on this map too

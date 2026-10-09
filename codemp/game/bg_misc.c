@@ -271,6 +271,7 @@ int WeaponIdleAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //TORSO_WEAPONREADY11,//WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //TORSO_WEAPONREADY12,//WP_DET_PACK,
 	BOTH_STAND3, //WP_CONCUSSION
+	BOTH_STAND3, //WP_DROIDEKA,
 	SBD_WEAPON_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -297,6 +298,7 @@ int WeaponReadyAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10,//WP_TRIP_MINE,
 	TORSO_WEAPONREADY10,//WP_DET_PACK,
 	TORSO_WEAPONREADY3, //WP_CONCUSSION
+	TORSO_WEAPONREADY3, //WP_DROIDEKA,
 	SBD_WEAPON_STANDING,//WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -323,6 +325,7 @@ int WeaponReadyAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY3,  //WP_CONCUSSION
+	TORSO_WEAPONREADY3, //WP_DROIDEKA,
 	SBD_WEAPON_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -349,6 +352,7 @@ int WeaponReadyLegsAnim[WP_NUM_WEAPONS] =
 	BOTH_STAND1, //WP_TRIP_MINE,
 	BOTH_STAND1, //WP_DET_PACK,
 	BOTH_STAND1, //WP_CONCUSSION
+	BOTH_STAND1, //WP_DROIDEKA,
 	BOTH_STAND1, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -375,6 +379,7 @@ int WeaponAttackAnim[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_TRIP_MINE,
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK4,  //WP_CONCUSSION,
+	BOTH_ATTACK4, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -401,6 +406,7 @@ int WeaponAttackAnim2[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_TRIP_MINE,
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK4,  //WP_CONCUSSION,
+	BOTH_ATTACK4, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -427,6 +433,7 @@ int WeaponAltAttackAnim[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_TRIP_MINE,
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK3,  //WP_CONCUSSION,
+	BOTH_ATTACK3, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -453,6 +460,7 @@ int WeaponAltAttackAnim2[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_TRIP_MINE,
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK3,  //WP_CONCUSSION,
+	BOTH_ATTACK3, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -479,6 +487,7 @@ int WeaponAimAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
+	TORSO_WEAPONREADY4, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -505,6 +514,7 @@ int WeaponAimAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
+	TORSO_WEAPONREADY4, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -531,6 +541,7 @@ int WeaponAltAimAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
+	TORSO_WEAPONREADY3, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -557,6 +568,7 @@ int WeaponAltAimAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
+	TORSO_WEAPONREADY3, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -583,6 +595,7 @@ int WeaponAimingAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
+	TORSO_WEAPONREADY4, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -609,6 +622,7 @@ int WeaponAimingAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_TRIP_MINE,
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
+	TORSO_WEAPONREADY4, //WP_DROIDEKA,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -1368,7 +1382,7 @@ Do not place. For siege classes ONLY.
 },
 
 {
-	"item_flamethrower",
+	"Flamethrower",
 	"sound/weapons/w_pkup.wav",
 	{
 		"models/items/psgun.glm", //FIXME: no model
@@ -1655,6 +1669,27 @@ Don't place this
 	/* precache */ "",
 	/* sounds */ "",
 	"@MENUS_CONC_RIFLE_DESC" // description
+},
+
+/*QUAKED weapon_droideka (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
+Don't place this: the droideka's built in arm blasters (from MovieDuels SP)
+*/
+{
+	"weapon_droideka",
+	"sound/weapons/w_pkup.wav",
+	{
+		"models/weapons2/noweap/noweap.glm",
+		0, 0, 0
+	},
+	/* view */ "models/weapons2/noweap/noweap.md3",
+	/* icon */ "gfx/hud/w_icon_droideka",
+	/* pickup */ //	"Droideka",
+	100,
+	IT_WEAPON,
+	WP_DROIDEKA,
+	/* precache */ "",
+	/* sounds */ "",
+	"" // description
 },
 
 /*QUAKED weapon_bryar_pistol_old (.3 .3 1) (-16 -16 -16) (16 16 16) suspended

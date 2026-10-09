@@ -859,6 +859,11 @@ void BotUtilizePersonality(bot_state_t* bs)
 			bs->botWeaponWeights[WP_CONCUSSION] = atoi(readbuf);
 		}
 
+		if (GetPairedValue(group, "WP_DROIDEKA", readbuf))
+		{
+			bs->botWeaponWeights[WP_DROIDEKA] = atoi(readbuf);
+		}
+
 		if (GetPairedValue(group, "WP_BRYAR_OLD", readbuf))
 		{
 			bs->botWeaponWeights[WP_BRYAR_OLD] = atoi(readbuf);

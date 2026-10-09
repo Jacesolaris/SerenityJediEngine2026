@@ -46,6 +46,7 @@ typedef enum
 	WP_TRIP_MINE,
 	WP_DET_PACK,
 	WP_CONCUSSION,
+	WP_DROIDEKA, // the droideka's twin arm blasters (from MovieDuels SP), for droideka NPCs
 
 	WP_BRYAR_OLD,
 	WP_EMPLACED_GUN,

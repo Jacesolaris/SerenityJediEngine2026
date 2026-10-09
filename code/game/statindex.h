@@ -50,6 +50,12 @@ using statIndex_t = enum
 	// Ammo in current weapon
 	STAT_TOTALAMMO,
 	// Total ammo
+	STAT_SABER_WEAR,
+	// breakable saber staff: wear 0-100 (100: breaks; 101: breaks from a heavy hit) - wp_saberblocking.cpp
+	STAT_SABER_WEAR_TIMER,
+	// ms until the wear starts to recover
+	STAT_SABER_BREAK_SAFE,
+	// level.time until which saber damage is halved after a break (stagger / knockdown)
 };
 
 #endif	// #ifndef STATINDEX_H

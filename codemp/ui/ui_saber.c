@@ -2541,6 +2541,8 @@ void UI_SaberDrawBlades(itemDef_t* item, vec3_t origin, vec3_t angles)
 	}
 }
 
+extern qboolean UI_CustomSaberSkin(const char* saberName, char* saberSkin, int saberNum);
+
 void UI_SaberAttachToChar(itemDef_t* item)
 {
 	int	numSabers = 1;
@@ -2574,11 +2576,11 @@ void UI_SaberAttachToChar(itemDef_t* item)
 			{
 				char skin_path[MAX_QPATH];
 				int boltNum;
-				//get the customSkin, if any
-				if (UI_SaberSkinForSaber(saber, skin_path))
+				//get the customSkin, if any (a built hilt's parts first - the saber builder)
+				if (UI_CustomSaberSkin(saber, skin_path, saberNum) || UI_SaberSkinForSaber(saber, skin_path))
 				{
 					const int g2skin = trap->R_RegisterSkin(skin_path);
-					trap->G2API_SetSkin(item->ghoul2, g2Saber, 0, g2skin);//this is going to set the surfs on/off matching the skin file
+					trap->G2API_SetSkin(item->ghoul2, g2Saber, g2skin, g2skin);//this is going to set the surfs on/off matching the skin file
 				}
 				else
 				{

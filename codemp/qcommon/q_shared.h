@@ -1533,6 +1533,7 @@ typedef struct siegePers_s
 #define FLAG_MBLOCKBOUNCE   20
 #define FLAG_PERFECTBLOCK   21
 #define FLAG_SLIGHTFATIGUE  22
+#define FLAG_DOUBLEJUMPFLIP 23	// the double jump's flip is playing (twice as fast: PM_SaberStartTransAnim)
 
 #define DODGE_BOLTBLOCK			3	//standard DP cost to block a missile bolt
 #define DODGE_BOWCASTERBLOCK	5

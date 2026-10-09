@@ -2478,6 +2478,75 @@ extern void WP_RemoveSaber(gentity_t* ent, int saberNum);
 extern void WP_RemoveSecondSaber(gentity_t* ent, int saberNum);
 void G_ChangePlayerModel(gentity_t* ent, const char* newModel);
 
+// The saber builder (from JA Enhanced): a saber with "saberbuilder" in its name or "isCustomSaber 1" in its .sab gets a
+// hilt skin built from the part skins picked in the saber menu (g_saber_skin1-5 / g_saber2_skin1-5):
+// "models/weapons2/<hilt folder>/|_|em_1|bd_3|bt_2|hd_1|pm_4" (the renderer puts the parts together).
+qboolean G_CustomSaberSkin(const char* saberName, const char* saberModel, const int saberNum, char* skinOut, const int skinOutSize)
+{
+	if (!saberName || !saberName[0] || !saberModel || !saberModel[0] || saberNum < 0 || saberNum > 1
+		|| !WP_SaberIsCustomBuilt(saberName))
+	{
+		return qfalse;
+	}
+	cvar_t** parts = saberNum ? g_saber2_skin : g_saber_skin;
+	qboolean anyPart = qfalse;
+	for (int j = 0; j < MAX_SABER_PARTS; j++)
+	{
+		if (parts[j] && parts[j]->string && parts[j]->string[0])
+		{
+			anyPart = qtrue;
+		}
+	}
+	if (!anyPart)
+	{// nothing picked yet: the hilt's own skin
+		return qfalse;
+	}
+
+	char skinRoot[MAX_QPATH] = { 0 };
+	Q_strncpyz(skinRoot, saberModel, sizeof skinRoot);
+	int l = static_cast<int>(strlen(skinRoot));
+	while (l > 0 && skinRoot[l] != '/')
+	{// back to the hilt's folder
+		l--;
+	}
+	if (skinRoot[l] != '/')
+	{
+		return qfalse;
+	}
+	skinRoot[l + 1] = 0;
+	Q_strcat(skinRoot, sizeof skinRoot, "|_");
+	for (int j = 0; j < MAX_SABER_PARTS; j++)
+	{
+		Q_strcat(skinRoot, sizeof skinRoot, "|");
+		if (parts[j] && parts[j]->string && parts[j]->string[0])
+		{
+			Q_strcat(skinRoot, sizeof skinRoot, parts[j]->string);
+		}
+	}
+	Q_strncpyz(skinOut, skinRoot, skinOutSize);
+	return qtrue;
+}
+
+// the player's built saber: its skin from the part cvars
+void G_SetCustomSaberSkinFromCVars(const gentity_t* ent, const int saberNum)
+{
+	if (!ent || !ent->client || saberNum < 0 || saberNum > 1)
+	{
+		return;
+	}
+	saberInfo_t* saber = &ent->client->ps.saber[saberNum];
+	char skin[MAX_QPATH];
+	if (!G_CustomSaberSkin(saber->name, saber->model, saberNum, skin, sizeof skin))
+	{
+		return;
+	}
+	if (saber->skin && gi.bIsFromZone(saber->skin, TAG_G_ALLOC))
+	{
+		gi.Free(saber->skin);
+	}
+	saber->skin = G_NewString(skin);
+}
+
 void G_SetSabersFromCVars(gentity_t* ent)
 {
 	if (g_saber->string
@@ -2494,6 +2563,7 @@ void G_SetSabersFromCVars(gentity_t* ent)
 		{
 			ent->client->ps.saberStylesKnown |= ent->client->ps.saber[0].singleBladeStyle;
 		}
+		G_SetCustomSaberSkinFromCVars(ent, 0); // the saber builder
 	}
 
 	if (player
@@ -2534,6 +2604,7 @@ void G_SetSabersFromCVars(gentity_t* ent)
 			{
 				ent->client->ps.saberStylesKnown |= ent->client->ps.saber[1].singleBladeStyle;
 			}
+			G_SetCustomSaberSkinFromCVars(ent, 1); // the saber builder
 			if (ent->client->ps.saber[1].saberFlags & SFL_TWO_HANDED)
 			{
 				//tsk tsk, can't use a twoHanded saber as second saber
@@ -2640,6 +2711,10 @@ void G_ReloadSaberData(const gentity_t* ent)
 		{
 			ent->client->ps.saberStylesKnown |= ent->client->ps.saber[0].singleBladeStyle;
 		}
+		if (ent->s.number == 0)
+		{// the player's built saber (the saber builder)
+			G_SetCustomSaberSkinFromCVars(ent, 0);
+		}
 	}
 	if (ent->client->ps.saber[1].name != nullptr)
 	{
@@ -2651,6 +2726,10 @@ void G_ReloadSaberData(const gentity_t* ent)
 		if (ent->client->ps.saber[1].singleBladeStyle)
 		{
 			ent->client->ps.saberStylesKnown |= ent->client->ps.saber[1].singleBladeStyle;
+		}
+		if (ent->s.number == 0)
+		{// the player's built saber (the saber builder)
+			G_SetCustomSaberSkinFromCVars(ent, 1);
 		}
 	}
 }

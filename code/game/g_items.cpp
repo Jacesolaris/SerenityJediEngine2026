@@ -1533,17 +1533,36 @@ void FinishSpawningItem(gentity_t* ent)
 				Q_stricmp(g_saber->string, "NULL");
 
 			if (isPlayer && validPlayerSaber)
+			{
 				WP_SaberParseParms(g_saber->string, &saberInfo);
+				char customSkin[MAX_QPATH];
+				if (G_CustomSaberSkin(saberInfo.name, saberInfo.model, 0, customSkin, sizeof customSkin))
+				{// the saber builder: the player's built hilt
+					if (saberInfo.skin && gi.bIsFromZone(saberInfo.skin, TAG_G_ALLOC))
+					{
+						gi.Free(saberInfo.skin);
+					}
+					saberInfo.skin = G_NewString(customSkin);
+				}
+			}
 			else
 				WP_SaberParseParms(ent->NPC_type, &saberInfo);
 
-			gi.G2API_InitGhoul2Model(
+			const int g2Model = gi.G2API_InitGhoul2Model(
 				ent->ghoul2,
 				saberInfo.model,
 				G_ModelIndex(saberInfo.model),
 				NULL_HANDLE, NULL_HANDLE,
 				0, 0
 			);
+			if (saberInfo.skin && g2Model >= 0)
+			{// the hilt's custom skin (a .sab customSkin or a built saber)
+				const int saberSkin = gi.RE_RegisterSkin(saberInfo.skin);
+				if (saberSkin)
+				{
+					gi.G2API_SetSkin(&ent->ghoul2[g2Model], G_SkinIndex(saberInfo.skin), saberSkin);
+				}
+			}
 
 			WP_SaberFreeStrings(saberInfo);
 		}
@@ -2200,6 +2219,8 @@ void Jetpack_Off(const gentity_t* ent)
 	ent->client->jetPackOn = qfalse;
 }
 
+constexpr float JETPACK_IGNITE_THRUST = 300.0f;
+
 void Jetpack_On(const gentity_t* ent)
 {
 	//create effects?
@@ -2212,6 +2233,12 @@ void Jetpack_On(const gentity_t* ent)
 	}
 
 	ent->client->jetPackOn = qtrue;
+
+	// upward thrust on ignition (as MD): the jetpack kicks in with a jolt instead of just stopping the fall
+	if (ent->client->ps.velocity[2] < JETPACK_IGNITE_THRUST)
+	{
+		ent->client->ps.velocity[2] = JETPACK_IGNITE_THRUST;
+	}
 }
 
 void ItemUse_Jetpack(const gentity_t* ent)

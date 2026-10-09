@@ -6527,6 +6527,12 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 	if (!targ)
 		return;
 
+	if (mod == MOD_SABER && targ->client && targ->client->saberBreakSafeTime > level.time)
+	{
+		// breakable saber staffs: saber damage is halved for a moment after the staff breaks
+		damage = (damage + 1) / 2;
+	}
+
 	if (dir && damage > 0 && G_CorpsePushable(targ))
 	{// ragdoll: hits push the body (saber, shots, explosions, kicks)
 		vec3_t push;
@@ -7727,6 +7733,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 	{
 		//do head shots
 		if (inflictor->s.weapon == WP_BLASTER
+			|| inflictor->s.weapon == WP_DROIDEKA
 			|| inflictor->s.weapon == WP_FLECHETTE
 			|| inflictor->s.weapon == WP_BRYAR_PISTOL
 			|| inflictor->s.weapon == WP_TURRET

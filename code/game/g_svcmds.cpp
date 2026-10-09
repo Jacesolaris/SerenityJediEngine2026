@@ -271,6 +271,30 @@ static void Svcmd_SaberBlade_f()
 	g_entities[0].client->ps.SaberBladeActivate(saberNum, bladeNum, turnOn);
 }
 
+// the saber builder: customSaber <1|2> <part1> [part2] [part3] [part4] [part5], e.g. customSaber 1 em_1 bd_3 bt_2 hd_1 pm_4
+static void Svcmd_CustomSaber_f()
+{
+	if (gi.argc() < 3)
+	{
+		gi.Printf(S_COLOR_RED"USAGE: customSaber <saberNum 1|2> <skin1> [skin2] [skin3] [skin4] [skin5]\n");
+		return;
+	}
+	const int saberNum = atoi(gi.argv(1));
+	if (saberNum < 1 || saberNum > 2)
+	{
+		gi.Printf(S_COLOR_RED"USAGE: customSaber <saberNum 1|2> <skin1> [skin2] [skin3] [skin4] [skin5]\n");
+		return;
+	}
+	for (int i = 0; i < MAX_SABER_PARTS; i++)
+	{
+		gi.cvar_set(va("%s_skin%d", saberNum == 1 ? "g_saber" : "g_saber2", i + 1), gi.argc() > 2 + i ? gi.argv(2 + i) : "");
+	}
+	if (g_entities[0].client)
+	{
+		G_InitPlayerFromCvars(&g_entities[0]);
+	}
+}
+
 static void Svcmd_SaberColor_f()
 {
 	//FIXME: just list the colors, each additional listing sets that blade
@@ -1706,6 +1730,7 @@ static svcmd_t svcmds[] = {
 	{"ICARUS", Svcmd_ICARUS_f, CMD_CHEAT},
 
 	{"saberColor", Svcmd_SaberColor_f, CMD_CHEAT},
+	{"customSaber", Svcmd_CustomSaber_f, CMD_CHEAT},
 	{"saber", Svcmd_Saber_f, CMD_CHEAT},
 	{"saberBlade", Svcmd_SaberBlade_f, CMD_CHEAT},
 

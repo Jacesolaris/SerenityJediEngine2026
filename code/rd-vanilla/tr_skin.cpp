@@ -261,6 +261,52 @@ static bool RE_SplitSkins(const char* INname, char* skinhead, char* skintorso, c
 	return false;
 }
 
+/*
+===============
+RE_SplitSkins5
+input = skinname, possibly being a macro for up to five skins (the saber builder, from JA Enhanced)
+return= true if it is one: "models/weapons2/saber/|_|skin1|skin2|skin3|skin4|skin5" (1 to 5 parts)
+output= qualified names of the parts found (the others stay empty)
+===============
+*/
+static bool RE_SplitSkins5(const char* INname, char parts[5][MAX_QPATH], int* numParts)
+{
+	const char* sep = strstr(INname, "|_|");
+	*numParts = 0;
+	if (!sep)
+	{
+		return false;
+	}
+	char base[MAX_QPATH];
+	const int baseLen = static_cast<int>(sep - INname);
+	if (baseLen <= 0 || baseLen >= MAX_QPATH)
+	{
+		return false;
+	}
+	memcpy(base, INname, baseLen);
+	base[baseLen] = 0;
+
+	const char* p = sep + 3;
+	while (*p && *numParts < 5)
+	{
+		const char* end = strchr(p, '|');
+		const int len = end ? static_cast<int>(end - p) : static_cast<int>(strlen(p));
+		if (len > 0)
+		{
+			char part[MAX_QPATH];
+			Q_strncpyz(part, p, len + 1 < MAX_QPATH ? len + 1 : MAX_QPATH);
+			Com_sprintf(parts[*numParts], MAX_QPATH, "%s%s.skin", base, part);
+			(*numParts)++;
+		}
+		if (!end)
+		{
+			break;
+		}
+		p = end + 1;
+	}
+	return *numParts > 0;
+}
+
 // given a name, go get the skin we want and return
 static qhandle_t RE_RegisterIndividualSkin(const char* name, const qhandle_t hSkin)
 {
@@ -400,7 +446,16 @@ qhandle_t RE_RegisterSkin(const char* name)
 	char skinhead[MAX_QPATH] = { 0 };
 	char skintorso[MAX_QPATH] = { 0 };
 	char skinlower[MAX_QPATH] = { 0 };
-	if (RE_SplitSkins(name, reinterpret_cast<char*>(&skinhead), reinterpret_cast<char*>(&skintorso), reinterpret_cast<char*>(&skinlower)))
+	char skinParts[5][MAX_QPATH] = {};
+	int numSkinParts = 0;
+	if (RE_SplitSkins5(name, skinParts, &numSkinParts))
+	{//up to five parts (the saber builder): each part appends its surfaces
+		for (int i = 0; i < numSkinParts && hSkin; i++)
+		{
+			hSkin = RE_RegisterIndividualSkin(skinParts[i], hSkin);
+		}
+	}
+	else if (RE_SplitSkins(name, reinterpret_cast<char*>(&skinhead), reinterpret_cast<char*>(&skintorso), reinterpret_cast<char*>(&skinlower)))
 	{//three part
 		hSkin = RE_RegisterIndividualSkin(skinhead, hSkin);
 		if (hSkin && strcmp(skinhead, skintorso) != 0)

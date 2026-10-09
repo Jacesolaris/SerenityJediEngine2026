@@ -212,6 +212,7 @@ typedef struct clientInfo_s {
 
 	char			saber_name[64];
 	char			saber2Name[64];
+	char			saberSkinParts[MAX_SABERS][64]; // the saber builder: a built hilt's parts ("sk1" / "sk2")
 
 	char			name[MAX_QPATH];
 	char			cleanname[MAX_QPATH];
@@ -1638,6 +1639,7 @@ typedef struct cgEffects_s {
 	fxHandle_t  blasterWallImpactEffect;
 	fxHandle_t  blasterFleshImpactEffect;
 	fxHandle_t  blasterDroidImpactEffect;
+	fxHandle_t  droidekaShotEffect; // the droideka's bolts (WP_DROIDEKA)
 
 	// EWEB
 	fxHandle_t  ewebShotEffect;

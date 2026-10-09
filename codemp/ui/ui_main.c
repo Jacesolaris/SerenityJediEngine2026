@@ -1112,12 +1112,14 @@ _UI_Shutdown
 */
 void UI_CleanupGhoul2(void);
 void UI_FreeAllSpecies(void);
+void UI_FreeAllCustomSabers(void);
 
 void UI_Shutdown(void)
 {
 	trap->LAN_SaveCachedServers();
 	UI_CleanupGhoul2();
 	UI_FreeAllSpecies();
+	UI_FreeAllCustomSabers(); // the saber builder
 }
 
 char* defaultMenu = NULL;
@@ -1579,8 +1581,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 08/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 05------------------------------\n");
+	Com_Printf("---------------------Build date 09/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 06------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -5771,10 +5773,22 @@ static void UI_UpdateSiegeObjectiveGraphics(void)
 
 saber_colors_t TranslateSaberColor(const char* name);
 
+// the saber builder (below)
+static customSaberInfo_t* UI_CustomSaberByName(const char* saberName);
+static void UI_CustomSaberParts(const int saberNum, char* out, const int outSize);
+
 static void UI_UpdateSaberCvars(void)
 {
 	trap->Cvar_Set("saber1", UI_Cvar_VariableString("ui_saber"));
 	trap->Cvar_Set("saber2", UI_Cvar_VariableString("ui_saber2"));
+
+	{// the saber builder: a built hilt's parts go in the userinfo (saber1_skin / saber2_skin)
+		char parts[MAX_QPATH];
+		UI_CustomSaberParts(0, parts, sizeof parts);
+		trap->Cvar_Set("saber1_skin", UI_CustomSaberByName(UI_Cvar_VariableString("ui_saber")) ? parts : "");
+		UI_CustomSaberParts(1, parts, sizeof parts);
+		trap->Cvar_Set("saber2_skin", UI_CustomSaberByName(UI_Cvar_VariableString("ui_saber2")) ? parts : "");
+	}
 
 	saber_colors_t colorI = TranslateSaberColor(UI_Cvar_VariableString("ui_saber_color"));
 	trap->Cvar_Set("color1", va("%d", colorI));
@@ -5860,6 +5874,394 @@ extern qboolean UI_SaberSkinForSaber(const char* saber_name, char* saberSkin);
 extern qboolean ItemParse_asset_model_go(itemDef_t* item, const char* name, int* runTimeLength);
 extern qboolean ItemParse_model_g2skin_go(itemDef_t* item, const char* skinName);
 
+// ------------------------------------------------------------------------------------------------------------------
+// The saber builder (from JA Enhanced): ext_data/sabers/*.csab list hilts built from part skins
+// (models/weapons2/<folder>/<root><n>.skin, each with an icon_<root><n> image). The saber_custom / saber_custom2 popups
+// pick one skin per part (ui_saber_skin1-5 / ui_saber2_skin1-5); "updatesabercvars" sends them as the userinfo
+// saber1_skin / saber2_skin ("p1|p2|p3|p4|p5"), and every client's cgame and the menu preview use
+// "models/weapons2/<folder>/|_|p1|p2|p3|p4|p5" as the hilt's skin (the renderer puts the parts together).
+// ------------------------------------------------------------------------------------------------------------------
+static customSaberInfo_t* UI_CustomSaberByName(const char* saberName)
+{
+	if (!saberName || !saberName[0] || !uiInfo.customSabers)
+	{
+		return NULL;
+	}
+	for (int i = 0; i < uiInfo.customSabersCount; i++)
+	{
+		if (uiInfo.customSabers[i].SaberName[0] && !Q_stricmp(uiInfo.customSabers[i].SaberName, saberName))
+		{
+			return &uiInfo.customSabers[i];
+		}
+	}
+	return NULL;
+}
+
+// a part list's feeder: which saber (0 / 1), which part (0-4), and the built saber it lists (NULL: none)
+static customSaberInfo_t* UI_CustomSaberForFeeder(const float feederID, int* saberNum, int* part)
+{
+	const int id = (int)feederID;
+	if (id >= FEEDER_SABER_SKIN_1 && id <= FEEDER_SABER_SKIN_5)
+	{
+		*saberNum = 0;
+		*part = id - FEEDER_SABER_SKIN_1;
+	}
+	else if (id >= FEEDER_SABER2_SKIN_1 && id <= FEEDER_SABER2_SKIN_5)
+	{
+		*saberNum = 1;
+		*part = id - FEEDER_SABER2_SKIN_1;
+	}
+	else
+	{
+		return NULL;
+	}
+	const int idx = *saberNum ? uiInfo.customSabers2Index : uiInfo.customSabersIndex;
+	if (!uiInfo.customSabers || idx < 0 || idx >= uiInfo.customSabersCount)
+	{
+		return NULL;
+	}
+	return &uiInfo.customSabers[idx];
+}
+
+static void UI_CustomSaberPartCvar(const int saberNum, const int part, char* out, const int outSize)
+{
+	Com_sprintf(out, outSize, "ui_saber%s_skin%d", saberNum ? "2" : "", part + 1);
+}
+
+// the parts of a built saber as "p1|p2|p3|p4|p5" (the userinfo saber1_skin / saber2_skin)
+static void UI_CustomSaberParts(const int saberNum, char* out, const int outSize)
+{
+	out[0] = 0;
+	for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
+	{
+		char cvarName[32];
+		UI_CustomSaberPartCvar(saberNum, part, cvarName, sizeof cvarName);
+		if (part)
+		{
+			Q_strcat(out, outSize, "|");
+		}
+		Q_strcat(out, outSize, UI_Cvar_VariableString(cvarName));
+	}
+}
+
+// the menu preview's skin for a built saber; qfalse: not a built saber
+qboolean UI_CustomSaberSkin(const char* saberName, char* saberSkin, const int saberNum)
+{
+	char modelPath[MAX_QPATH];
+	char parts[MAX_QPATH];
+
+	if (!UI_CustomSaberByName(saberName) || !UI_SaberModelForSaber(saberName, modelPath))
+	{
+		return qfalse;
+	}
+	UI_CustomSaberParts(saberNum, parts, sizeof parts);
+	return BG_SaberBuiltSkin(saberName, modelPath, parts, saberSkin, MAX_QPATH);
+}
+
+// the built saber a menu edits: every part cvar set to one of its skins (the first if it isn't one of them), the part
+// lists' cursors on them, and their titles / descriptions; qfalse: the saber isn't a built one
+static qboolean UI_CustomSaberSetup(const int saberNum)
+{
+	char model[MAX_QPATH];
+	trap->Cvar_VariableStringBuffer(saberNum ? "ui_saber2" : "ui_saber", model, sizeof model);
+	customSaberInfo_t* saber = UI_CustomSaberByName(model);
+	if (!saber)
+	{
+		return qfalse;
+	}
+	const int idx = (int)(saber - uiInfo.customSabers);
+	if (saberNum)
+	{
+		uiInfo.customSabers2Index = idx;
+	}
+	else
+	{
+		uiInfo.customSabersIndex = idx;
+	}
+
+	const menuDef_t* menu = Menu_GetFocused();
+	for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
+	{
+		saberPartSkin_t* skins = &saber->Skin[part];
+		char cvarName[32];
+		char current[MAX_QPATH];
+		int cursor = -1;
+
+		UI_CustomSaberPartCvar(saberNum, part, cvarName, sizeof cvarName);
+		trap->Cvar_VariableStringBuffer(cvarName, current, sizeof current);
+		for (int i = 0; i < skins->count; i++)
+		{
+			if (!Q_stricmp(skins->skins[i].name, current))
+			{
+				cursor = i;
+				break;
+			}
+		}
+		if (cursor < 0)
+		{
+			cursor = 0;
+			trap->Cvar_Set(cvarName, skins->count > 0 ? skins->skins[0].name : "");
+		}
+		if (!menu)
+		{
+			continue;
+		}
+		itemDef_t* item = Menu_FindItemByName(menu, va("skin%dlistbox", part + 1));
+		if (item)
+		{
+			item->cursorPos = cursor;
+			if (item->type == ITEM_TYPE_LISTBOX && item->typeData.listbox)
+			{
+				item->typeData.listbox->cursorPos = cursor;
+			}
+			item->descText = saber->Skin[part].desc;
+		}
+		item = Menu_FindItemByName(menu, va("skin%dbut", part + 1));
+		if (item)
+		{
+			item->text = saber->Skin[part].name;
+			item->descText = saber->Skin[part].desc;
+		}
+	}
+	return qtrue;
+}
+
+static qboolean UI_ParseCustomSaberData(const char* buf, customSaberInfo_t* saber)
+{
+	const char* p = buf;
+	COM_BeginParseSession("csab");
+
+	const char* token = COM_ParseExt(&p, qtrue);
+	if (!token[0])
+	{
+		return qfalse;
+	}
+	Q_strncpyz(saber->SaberName, token, sizeof saber->SaberName);
+
+	token = COM_ParseExt(&p, qtrue);
+	if (token[0] != '{')
+	{
+		return qfalse;
+	}
+	token = COM_ParseExt(&p, qtrue);
+	while (token[0] != '}')
+	{
+		char key[32];
+
+		if (!token[0])
+		{
+			return qfalse;
+		}
+		Q_strncpyz(key, token, sizeof key);
+		token = COM_ParseExt(&p, qtrue);
+		if (!token[0])
+		{
+			return qfalse;
+		}
+		if (!Q_stricmp(key, "saberlongname"))
+		{
+			Q_strncpyz(saber->SaberLongName, token, sizeof saber->SaberLongName);
+		}
+		else if (!Q_stricmp(key, "foldername"))
+		{
+			Q_strncpyz(saber->FolderName, token, sizeof saber->FolderName);
+		}
+		else if (!Q_stricmp(key, "isStaff"))
+		{
+			saber->isStaff = atoi(token) ? qtrue : qfalse;
+		}
+		else if (!Q_stricmpn(key, "skin", 4) && key[4] >= '1' && key[4] <= '5')
+		{
+			saberPartSkin_t* part = &saber->Skin[key[4] - '1'];
+			if (!key[5])
+			{// skinN <root>: its skins are <root>_*.skin
+				Q_strncpyz(part->root, token, sizeof part->root - 1);
+				Q_strcat(part->root, sizeof part->root, "_");
+			}
+			else if (!Q_stricmp(&key[5], "name"))
+			{
+				Q_strncpyz(part->name, token, sizeof part->name);
+			}
+			else if (!Q_stricmp(&key[5], "desc"))
+			{
+				Q_strncpyz(part->desc, token, sizeof part->desc);
+			}
+		}
+		token = COM_ParseExt(&p, qtrue);
+	}
+	return saber->FolderName[0] ? qtrue : qfalse;
+}
+
+static void UI_FreeCustomSaber(customSaberInfo_t* saber)
+{
+	for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
+	{
+		free(saber->Skin[part].skins);
+	}
+	memset(saber, 0, sizeof(customSaberInfo_t));
+}
+
+void UI_FreeAllCustomSabers(void)
+{
+	for (int i = 0; i < uiInfo.customSabersCount; i++)
+	{
+		UI_FreeCustomSaber(&uiInfo.customSabers[i]);
+	}
+	free(uiInfo.customSabers);
+	uiInfo.customSabers = NULL;
+	uiInfo.customSabersCount = 0;
+	uiInfo.customSabersMax = 0;
+	uiInfo.customSabersIndex = 0;
+	uiInfo.customSabers2Index = 0;
+}
+
+static qboolean UI_CustomSaberIconExists(const char* folder, const char* skinName)
+{
+	static const char* exts[] = { "jpg", "png", "tga" };
+	for (int i = 0; i < (int)ARRAY_LEN(exts); i++)
+	{
+		fileHandle_t f;
+		trap->FS_Open(va("models/weapons2/%s/icon_%s.%s", folder, skinName, exts[i]), &f, FS_READ);
+		if (f)
+		{
+			trap->FS_Close(f);
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+static void UI_BuildCustomSaber_List(void)
+{
+	static char csabList[2048];
+	static char buffer[4096];
+	static char filelist[4096];
+
+	UI_FreeAllCustomSabers();
+	uiInfo.customSabersMax = 8;
+	uiInfo.customSabers = (customSaberInfo_t*)malloc(uiInfo.customSabersMax * sizeof(customSaberInfo_t));
+	if (!uiInfo.customSabers)
+	{
+		uiInfo.customSabersMax = 0;
+		return;
+	}
+
+	const int fileCnt = trap->FS_GetFileList("ext_data/sabers", ".csab", csabList, sizeof csabList);
+	const char* holdChar = csabList;
+	for (int i = 0; i < fileCnt; i++, holdChar += strlen(holdChar) + 1)
+	{
+		fileHandle_t f;
+		const int len = trap->FS_Open(va("ext_data/sabers/%s", holdChar), &f, FS_READ);
+		if (len <= 0 || !f)
+		{
+			if (f)
+			{
+				trap->FS_Close(f);
+			}
+			continue;
+		}
+		const int readLen = len < (int)sizeof buffer - 1 ? len : (int)sizeof buffer - 1;
+		trap->FS_Read(buffer, readLen, f);
+		trap->FS_Close(f);
+		buffer[readLen] = 0;
+
+		if (uiInfo.customSabersCount >= uiInfo.customSabersMax)
+		{
+			void* newPtr = realloc(uiInfo.customSabers, uiInfo.customSabersMax * 2 * sizeof(customSaberInfo_t));
+			if (!newPtr)
+			{
+				break;
+			}
+			uiInfo.customSabers = (customSaberInfo_t*)newPtr;
+			uiInfo.customSabersMax *= 2;
+		}
+		customSaberInfo_t* saber = &uiInfo.customSabers[uiInfo.customSabersCount];
+		memset(saber, 0, sizeof(customSaberInfo_t));
+		if (!UI_ParseCustomSaberData(buffer, saber))
+		{
+			Com_Printf("UI_BuildCustomSaber_List: error parsing file: %s\n", holdChar);
+			UI_FreeCustomSaber(saber);
+			continue;
+		}
+
+		// its part skins: <root><n>.skin with an icon
+		const int numfiles = trap->FS_GetFileList(va("models/weapons2/%s", saber->FolderName), ".skin", filelist,
+			sizeof filelist);
+		const char* fileptr = filelist;
+		int partsFound = 0;
+		int partsWanted = 0;
+		for (int j = 0; j < numfiles; j++, fileptr += strlen(fileptr) + 1)
+		{
+			char skinName[64];
+			COM_StripExtension(fileptr, skinName, sizeof skinName);
+			for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
+			{
+				saberPartSkin_t* skins = &saber->Skin[part];
+				if (!skins->root[0] || Q_stricmpn(skinName, skins->root, (int)strlen(skins->root)))
+				{
+					continue;
+				}
+				if (strlen(skinName) >= SKIN_LENGTH || !UI_CustomSaberIconExists(saber->FolderName, skinName))
+				{
+					break;
+				}
+				if (skins->count >= skins->max)
+				{
+					const int newMax = skins->max ? skins->max * 2 : 8;
+					void* newPtr = realloc(skins->skins, newMax * sizeof(skinName_t));
+					if (!newPtr)
+					{
+						break;
+					}
+					skins->skins = (skinName_t*)newPtr;
+					skins->max = newMax;
+				}
+				Q_strncpyz(skins->skins[skins->count++].name, skinName, SKIN_LENGTH);
+				partsFound |= 1 << part;
+				break;
+			}
+		}
+		for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
+		{
+			if (saber->Skin[part].root[0])
+			{
+				partsWanted |= 1 << part;
+			}
+		}
+		if (!partsWanted || partsFound != partsWanted)
+		{// a part without any skins: skip this hilt
+			Com_Printf("UI_BuildCustomSaber_List: %s has a part without skins, skipped\n", holdChar);
+			UI_FreeCustomSaber(saber);
+			continue;
+		}
+		uiInfo.customSabersCount++;
+	}
+}
+
+// the saber builder: the saber menu's preview item of a saber (the saber_custom popups have the focus but the
+// saber is in the saber menu under them)
+static itemDef_t* UI_FindSaberItem(const menuDef_t** menu, const char* itemName)
+{
+	itemDef_t* item = *menu ? Menu_FindItemByName(*menu, itemName) : NULL;
+	if (!item)
+	{
+		extern menuDef_t Menus[];
+		extern int menuCount;
+		for (int i = 0; i < menuCount && !item; i++)
+		{
+			if (&Menus[i] != *menu && Menus[i].window.flags & WINDOW_VISIBLE)
+			{
+				item = Menu_FindItemByName(&Menus[i], itemName);
+				if (item)
+				{
+					*menu = &Menus[i];
+				}
+			}
+		}
+	}
+	return item;
+}
+
 static void UI_UpdateSaberType(void)
 {
 	char sType[MAX_QPATH];
@@ -5868,7 +6270,14 @@ static void UI_UpdateSaberType(void)
 	if (Q_stricmp("single", sType) == 0 ||
 		Q_stricmp("staff", sType) == 0)
 	{
+		const menuDef_t* menu = Menu_GetFocused();
+		itemDef_t* customButton = menu ? Menu_FindItemByName(menu, "customicon2") : NULL;
+
 		trap->Cvar_Set("ui_saber2", "");
+		if (customButton)
+		{// the saber builder: no second saber, no gear for it
+			customButton->window.flags &= ~WINDOW_VISIBLE;
+		}
 	}
 }
 
@@ -5897,7 +6306,7 @@ static void UI_UpdateSaberHilt(qboolean second_saber)
 		saberCvarName = "ui_saber";
 	}
 
-	itemDef_t* item = Menu_FindItemByName(menu, itemName);
+	itemDef_t* item = UI_FindSaberItem(&menu, itemName);
 
 	if (item == NULL)
 	{
@@ -5918,6 +6327,23 @@ static void UI_UpdateSaberHilt(qboolean second_saber)
 	// Update UI text
 	item->text = model;
 
+	// the saber builder: a built hilt gets valid part skins and its "customise" (gear) button
+	{
+		const qboolean customSaber = UI_CustomSaberSetup(second_saber ? 1 : 0);
+		itemDef_t* customButton = Menu_FindItemByName(menu, second_saber ? "customicon2" : "customicon");
+		if (customButton)
+		{
+			if (customSaber)
+			{
+				customButton->window.flags |= WINDOW_VISIBLE;
+			}
+			else
+			{
+				customButton->window.flags &= ~WINDOW_VISIBLE;
+			}
+		}
+	}
+
 	// Resolve saber model path
 	if (UI_SaberModelForSaber(model, modelPath) == qtrue)
 	{
@@ -5926,8 +6352,8 @@ static void UI_UpdateSaberHilt(qboolean second_saber)
 		// Load model
 		ItemParse_asset_model_go(item, modelPath, &animRunLength);
 
-		// Load skin (if any)
-		if (UI_SaberSkinForSaber(model, skinPath) == qtrue)
+		// Load skin (if any; a built hilt's parts first)
+		if (UI_CustomSaberSkin(model, skinPath, second_saber ? 1 : 0) || UI_SaberSkinForSaber(model, skinPath) == qtrue)
 		{
 			ItemParse_model_g2skin_go(item, skinPath);
 		}
@@ -5965,6 +6391,25 @@ static void UI_GetSaberCvars(void)
 
 	trap->Cvar_Set("ui_saber", UI_Cvar_VariableString("saber1"));
 	trap->Cvar_Set("ui_saber2", UI_Cvar_VariableString("saber2"));
+
+	for (int saberNum = 0; saberNum < 2; saberNum++)
+	{// the saber builder: the parts of a built hilt from the userinfo (saber1_skin / saber2_skin: "p1|p2|...")
+		char parts[MAX_QPATH];
+		char* p = parts;
+		Q_strncpyz(parts, UI_Cvar_VariableString(saberNum ? "saber2_skin" : "saber1_skin"), sizeof parts);
+		for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
+		{
+			char cvarName[32];
+			char* bar = p ? strchr(p, '|') : NULL;
+			if (bar)
+			{
+				*bar = 0;
+			}
+			UI_CustomSaberPartCvar(saberNum, part, cvarName, sizeof cvarName);
+			trap->Cvar_Set(cvarName, p ? p : "");
+			p = bar ? bar + 1 : NULL;
+		}
+	}
 
 	trap->Cvar_Set("g_saber_color", SaberColorToString(trap->Cvar_VariableValue("color1")));
 	trap->Cvar_Set("g_saber2_color", SaberColorToString(trap->Cvar_VariableValue("color2")));
@@ -7443,6 +7888,16 @@ static void UI_RunMenuScript(char** args)
 		{
 			UI_UpdateSaberHilt(qfalse);
 		}
+		else if (Q_stricmp(name, "saber_custom") == 0)
+		{// the saber builder's page for the first saber
+			UI_CustomSaberSetup(0);
+			UI_UpdateSaberHilt(qfalse);
+		}
+		else if (Q_stricmp(name, "saber2_custom") == 0)
+		{// and for the second
+			UI_CustomSaberSetup(1);
+			UI_UpdateSaberHilt(qtrue);
+		}
 		else if (Q_stricmp(name, "saber_color") == 0)
 		{
 			UI_UpdateSaberColor(qfalse);
@@ -8741,6 +9196,13 @@ static int UI_FeederCount(float feederID)
 	int team, baseClass, count = 0, i;
 	static char info[MAX_STRING_CHARS];
 
+	if (feederID >= FEEDER_SABER_SKIN_1 && feederID <= FEEDER_SABER2_SKIN_5)
+	{// the saber builder's part lists
+		int saberNum, part;
+		const customSaberInfo_t* saber = UI_CustomSaberForFeeder(feederID, &saberNum, &part);
+		return saber ? saber->Skin[part].count : 0;
+	}
+
 	switch ((int)feederID)
 	{
 	case FEEDER_SABER_SINGLE_INFO:
@@ -9034,6 +9496,19 @@ static const char* UI_FeederItemText(float feederID, int index, int column,
 	static char hostname[MAX_HOSTNAMELENGTH] = { 0 };
 	static int lastColumn = -1;
 	*handle1 = *handle2 = *handle3 = -1;
+
+	if (feederID >= FEEDER_SABER_SKIN_1 && feederID <= FEEDER_SABER2_SKIN_5)
+	{// the saber builder's part lists
+		int saberNum, part;
+		const customSaberInfo_t* saber = UI_CustomSaberForFeeder(feederID, &saberNum, &part);
+		if (saber && index >= 0 && index < saber->Skin[part].count)
+		{
+			*handle1 = trap->R_RegisterShaderNoMip(va("models/weapons2/%s/icon_%s", saber->FolderName,
+				saber->Skin[part].skins[index].name));
+			return saber->Skin[part].skins[index].name;
+		}
+		return "";
+	}
 
 	if (feederID == FEEDER_SABER_SINGLE_INFO)
 	{
@@ -9425,6 +9900,18 @@ static qhandle_t UI_FeederItemImage(float feederID, int index)
 	int validCnt, i;
 	static char info[MAX_STRING_CHARS];
 
+	if (feederID >= FEEDER_SABER_SKIN_1 && feederID <= FEEDER_SABER2_SKIN_5)
+	{// the saber builder's part icons
+		int saberNum, part;
+		const customSaberInfo_t* saber = UI_CustomSaberForFeeder(feederID, &saberNum, &part);
+		if (saber && index >= 0 && index < saber->Skin[part].count)
+		{
+			return trap->R_RegisterShaderNoMip(va("models/weapons2/%s/icon_%s", saber->FolderName,
+				saber->Skin[part].skins[index].name));
+		}
+		return 0;
+	}
+
 	if (feederID == FEEDER_SABER_SINGLE_INFO)
 	{
 		return 0;
@@ -9694,6 +10181,20 @@ qboolean UI_FeederSelection(float feederFloat, int index, itemDef_t* item)
 {
 	static char info[MAX_STRING_CHARS];
 	const int feederID = feederFloat;
+
+	if (feederID >= FEEDER_SABER_SKIN_1 && feederID <= FEEDER_SABER2_SKIN_5)
+	{// the saber builder: this part's skin, and the preview hilt with it
+		int saberNum, part;
+		const customSaberInfo_t* saber = UI_CustomSaberForFeeder(feederFloat, &saberNum, &part);
+		if (saber && index >= 0 && index < saber->Skin[part].count)
+		{
+			char cvarName[32];
+			UI_CustomSaberPartCvar(saberNum, part, cvarName, sizeof cvarName);
+			trap->Cvar_Set(cvarName, saber->Skin[part].skins[index].name);
+			UI_UpdateSaberHilt(saberNum ? qtrue : qfalse);
+		}
+		return qtrue;
+	}
 
 	if (feederID == FEEDER_Q3HEADS)
 	{
@@ -11128,6 +11629,7 @@ static void UI_Init(qboolean inGameLoad)
 	Init_Display(&uiInfo.uiDC);
 
 	UI_BuildPlayerModel_List(inGameLoad);
+	UI_BuildCustomSaber_List(); // the saber builder's hilts (ext_data/sabers/*.csab)
 
 	String_Init();
 

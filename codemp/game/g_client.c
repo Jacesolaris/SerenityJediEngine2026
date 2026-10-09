@@ -2145,6 +2145,12 @@ static qboolean G_SaberModelSetup(const gentity_t* ent)
 	return fallbackForSaber;
 }
 
+// breakable saber staffs (w_saberblocking.c): rebuild the saber models after the staff swaps for its pieces
+void G_SaberModelSetupAll(const gentity_t* ent)
+{
+	G_SaberModelSetup(ent);
+}
+
 /*
 ===========
 SetupGameGhoul2Model
@@ -3168,6 +3174,24 @@ qboolean WinterGear = qfalse; //sets weither or not the models go for winter gea
 static char s_lastForcePowers[MAX_CLIENTS][DEFAULT_FORCEPOWERS_LEN];
 static char s_lastSabers[MAX_CLIENTS][MAX_QPATH * 2 + 2];
 
+// the saber builder (from JA Enhanced): a built hilt's parts "p1|p2|p3|p4|p5" from the userinfo (saber1_skin /
+// saber2_skin), only the characters a skin file name can have
+static void G_SaberSkinPartsFromUserinfo(const char* userinfo, const char* key, char* out, const int outSize)
+{
+	const char* s = Info_ValueForKey(userinfo, key);
+	int n = 0;
+
+	for (; *s && n < outSize - 1; s++)
+	{
+		if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || *s == '_' ||
+			*s == '-' || *s == '|')
+		{
+			out[n++] = *s;
+		}
+	}
+	out[n] = 0;
+}
+
 qboolean client_userinfo_changed(const int clientNum)
 {
 	gentity_t* ent = g_entities + clientNum;
@@ -3191,6 +3215,8 @@ qboolean client_userinfo_changed(const int clientNum)
 	char rgb2[MAX_INFO_STRING];
 	char script1[MAX_INFO_STRING];
 	char script2[MAX_INFO_STRING];
+	char saberSkin1[MAX_QPATH];
+	char saberSkin2[MAX_QPATH];
 
 	trap->GetUserinfo(clientNum, userinfo, sizeof userinfo);
 
@@ -3505,6 +3531,9 @@ qboolean client_userinfo_changed(const int clientNum)
 	Q_strncpyz(script1, Info_ValueForKey(userinfo, "rgb_script1"), sizeof script1);
 	Q_strncpyz(script2, Info_ValueForKey(userinfo, "rgb_script2"), sizeof script2);
 
+	G_SaberSkinPartsFromUserinfo(userinfo, "saber1_skin", saberSkin1, sizeof saberSkin1);
+	G_SaberSkinPartsFromUserinfo(userinfo, "saber2_skin", saberSkin2, sizeof saberSkin2);
+
 	// gender hints
 	s = Info_ValueForKey(userinfo, "sex");
 	if (!Q_stricmp(s, "female"))
@@ -3551,6 +3580,15 @@ qboolean client_userinfo_changed(const int clientNum)
 	Q_strcat(buf, sizeof buf, va("tc2\\%s\\", rgb2));
 	Q_strcat(buf, sizeof buf, va("ss1\\%s\\", script1));
 	Q_strcat(buf, sizeof buf, va("ss2\\%s\\", script2));
+	// the saber builder: the parts of a built hilt (cgame: BG_SaberBuiltSkin)
+	if (saberSkin1[0])
+	{
+		Q_strcat(buf, sizeof buf, va("sk1\\%s\\", saberSkin1));
+	}
+	if (saberSkin2[0])
+	{
+		Q_strcat(buf, sizeof buf, va("sk2\\%s\\", saberSkin2));
+	}
 
 	if (ent->r.svFlags & SVF_BOT)
 	{
@@ -6689,7 +6727,6 @@ spawn_done:
 		case BCLASS_JEDIKNIGHT2:
 		case BCLASS_JEDIKNIGHT3:
 		case BCLASS_SMUGGLER3:
-		case BCLASS_SABERNOFP:
 		case BCLASS_JEDICONSULAR2:
 		case BCLASS_JEDICONSULAR3:
 		case BCLASS_SITHWORRIOR1:
@@ -6753,6 +6790,10 @@ spawn_done:
 		case BCLASS_IPPERIALAGENT2:
 		case BCLASS_IPPERIALAGENT3:
 		case BCLASS_CLONETROOPER:
+		case BCLASS_JANGO_NOJP: // these weren't in the switch, so they kept the player's Force setup (as MD now)
+		case BCLASS_PAZVIZSLA:
+		case BCLASS_RESISTANCE:
+		case BCLASS_GRAN_SHOOTER:
 		case BCLASS_PLAYER:
 			client->ps.fd.forcePowerLevel[FP_HEAL] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_LEVITATION] = FORCE_LEVEL_0;
@@ -6801,7 +6842,7 @@ spawn_done:
 		case BCLASS_BOUNTYHUNTER1:
 		case BCLASS_BOBAFETT:
 			client->ps.fd.forcePowerLevel[FP_HEAL] = FORCE_LEVEL_0;
-			client->ps.fd.forcePowerLevel[FP_LEVITATION] = FORCE_LEVEL_3; //big jumps for the jetpack club
+			client->ps.fd.forcePowerLevel[FP_LEVITATION] = FORCE_LEVEL_0; // no Force for the jetpack club (as SP): the normal jump, the jetpack does the height
 			client->ps.fd.forcePowerLevel[FP_SPEED] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_PUSH] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_PULL] = FORCE_LEVEL_0;
@@ -6820,6 +6861,8 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_0;
 			break;
 		case BCLASS_TUSKEN_RAIDER:
+		case BCLASS_SABERNOFP: // sword / darksaber users: no Force, but the saber needs offense, defense and throw (as MD)
+		case BCLASS_MANDO_SABER_NO_FP_ARMOUR:
 			client->ps.fd.forcePowerLevel[FP_HEAL] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_LEVITATION] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SPEED] = FORCE_LEVEL_0;

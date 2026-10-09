@@ -377,6 +377,48 @@ the saber style (fast, medium, strong)
 ================
 */
 
+// A breakable saber staff's wear (ps.stats[STAT_SABER_WEAR], wp_saberblocking.cpp) tints the saber style icon:
+// white, yellow under 60 left, orange-red under 25, flashing red under 10; a short red flash each time it wears.
+static void CG_SaberWearSetColor(const float* base)
+{
+	static int last_wear = 0;
+	static int flash_time = 0;
+	const int wear = cg.snap ? cg.snap->ps.stats[STAT_SABER_WEAR] : 0;
+	vec4_t color;
+
+	if (wear > last_wear)
+	{
+		flash_time = cg.time + 250;
+	}
+	last_wear = wear;
+	memcpy(color, base, sizeof(vec4_t));
+	if (wear > 0)
+	{
+		const int left = 100 - (wear > 100 ? 100 : wear);
+		vec3_t tint = { 1.0f, 1.0f, 1.0f };
+		if (flash_time > cg.time || left < 10)
+		{
+			VectorSet(tint, 1.0f, 0.15f, 0.15f);
+			if (left < 10 && flash_time <= cg.time && cg.time / 150 & 1)
+			{
+				color[3] *= 0.35f;
+			}
+		}
+		else if (left < 25)
+		{
+			VectorSet(tint, 1.0f, 0.45f, 0.15f);
+		}
+		else if (left < 60)
+		{
+			VectorSet(tint, 1.0f, 1.0f, 0.3f);
+		}
+		color[0] *= tint[0];
+		color[1] *= tint[1];
+		color[2] *= tint[2];
+	}
+	cgi_R_SetColor(color);
+}
+
 static void CG_DrawCusSaberStyle(const centity_t* cent, const float hud_ratio)
 {
 	int index;
@@ -429,7 +471,7 @@ static void CG_DrawCusSaberStyle(const centity_t* cent, const float hud_ratio)
 		index = OHB_SABERSTYLE_STRONG;
 	}
 
-	cgi_R_SetColor(otherHUDBits[index].color);
+	CG_SaberWearSetColor(otherHUDBits[index].color);
 
 	CG_DrawPic(
 		SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[index].xPos) + 5 * hud_ratio,
@@ -1564,7 +1606,7 @@ static void CG_DrawJK2Ammo(const centity_t* cent, const int x, const int y)
 
 	if (cent->currentState.weapon == WP_SABER && cent->gent)
 	{
-		cgi_R_SetColor(colorTable[CT_WHITE]);
+		CG_SaberWearSetColor(colorTable[CT_WHITE]);
 
 		if (!cg.saberAnimLevelPending && cent->gent->client)
 		{
@@ -4105,7 +4147,7 @@ static void CG_DrawDataPadAmmo(const centity_t* cent, const int x, const int y)
 
 	if (cent->currentState.weapon == WP_SABER && cent->gent)
 	{
-		cgi_R_SetColor(colorTable[CT_WHITE]);
+		CG_SaberWearSetColor(colorTable[CT_WHITE]);
 
 		if (!cg.saberAnimLevelPending && cent->gent->client)
 		{

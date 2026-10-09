@@ -6115,6 +6115,12 @@ void BG_SetTorsoAnimTimer(playerState_t* ps, const int time)
 
 void PM_SaberStartTransAnim(const int clientNum, const int saberAnimLevel, const int weapon, const int anim, float* animSpeed, const int fatigued)
 {
+	// Double jump: its forward flip plays twice as fast (bg_pmove.c PM_CheckDoubleJump, FLAG_DOUBLEJUMPFLIP)
+	if (anim == BOTH_FLIP_F && fatigued & 1 << FLAG_DOUBLEJUMPFLIP)
+	{
+		*animSpeed *= 2.0f;
+		return;
+	}
 	// Wall-run (Fallen Order style): the run lasts as long as its animation, so it plays slower and longer (in MP the
 	// server timers and every client's playback both come through here, so they stay the same)
 	if (anim == BOTH_WALL_RUN_LEFT || anim == BOTH_WALL_RUN_RIGHT)

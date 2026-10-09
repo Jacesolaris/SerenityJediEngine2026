@@ -80,6 +80,7 @@ void WP_SaberRemoveG2Model(gentity_t* saberent);
 extern qboolean PM_SaberInNonIdleDamageMove(const playerState_t* ps, int AnimIndex);
 qboolean WalkCheck(const gentity_t* self);
 qboolean WP_saberKnockOutOfHand(gentity_t* saberent, gentity_t* saber_owner, vec3_t velocity);
+void WP_SaberWearHiltTrace(gentity_t* victim, const gentity_t* attacker);
 qboolean WP_SaberDisarmed(gentity_t* saberent, gentity_t* saber_owner, vec3_t velocity);
 extern qboolean PM_SuperBreakWinAnim(int anim);
 extern stringID_table_t saber_moveTable[];
@@ -4134,7 +4135,10 @@ int g_real_trace(
 			}
 
 			// Ghoul2 collision
-			G_G2TraceCollide(tr, current_start, end, mins, maxs);
+			if (G_G2TraceCollide(tr, current_start, end, mins, maxs))
+			{
+				WP_SaberWearHiltTrace(current_ent, attacker); // breakable saber staffs: a hit on the hilt
+			}
 		}
 		else if ((current_ent->r.contents & CONTENTS_LIGHTSABER) &&
 			current_ent->r.contents != -1 &&

@@ -747,4 +747,12 @@ float NPC_GetVFOVPercentage(vec3_t spot, vec3_t from, vec3_t facing, float vFOV)
 
 void sentry_explode(gentity_t* ent);
 
+// the saber builder (from JA Enhanced): a hilt built from part skins, picked in the saber menu (ui_saber_skin1-5)
+constexpr int MAX_SABER_PARTS = 5;
+extern cvar_t* g_saber_skin[MAX_SABER_PARTS];
+extern cvar_t* g_saber2_skin[MAX_SABER_PARTS];
+qboolean WP_SaberIsCustomBuilt(const char* saberName);
+qboolean G_CustomSaberSkin(const char* saberName, const char* saberModel, int saberNum, char* skinOut, int skinOutSize);
+void G_SetCustomSaberSkinFromCVars(const gentity_t* ent, int saberNum);
+
 #endif

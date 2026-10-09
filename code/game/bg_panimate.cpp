@@ -5913,6 +5913,13 @@ void PM_SetTorsoAnimTimer(gentity_t* ent, int* torsoAnimTimer, const int time)
 
 void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* animSpeed, const gentity_t* gent, const int fatigued)
 {
+	// Double jump: its forward flip plays twice as fast (bg_pmove.cpp PM_CheckDoubleJump)
+	extern qboolean pm_doubleJumpFlipAnim;
+	if (anim == BOTH_FLIP_F && pm_doubleJumpFlipAnim)
+	{
+		*animSpeed *= 2.0f;
+		return;
+	}
 	// Wall-run (Fallen Order style): the run lasts as long as its animation, so it plays slower and longer (in MP the
 	// server timers and every client's playback both come through here, so they stay the same)
 	if (anim == BOTH_WALL_RUN_LEFT || anim == BOTH_WALL_RUN_RIGHT)

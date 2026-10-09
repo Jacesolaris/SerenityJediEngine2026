@@ -100,6 +100,18 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define FEEDER_MOVES_TITLES					0x16			// move titles for the data pad moves screen
 #define FEEDER_LANGUAGES					0x17			// the list of languages
 
+// the saber builder (from JA Enhanced): the part skins of the first / second built saber
+#define FEEDER_SABER_SKIN_1					0x19
+#define FEEDER_SABER_SKIN_2					0x1a
+#define FEEDER_SABER_SKIN_3					0x1b
+#define FEEDER_SABER_SKIN_4					0x1c
+#define FEEDER_SABER_SKIN_5					0x1d
+#define FEEDER_SABER2_SKIN_1				0x1e
+#define FEEDER_SABER2_SKIN_2				0x1f
+#define FEEDER_SABER2_SKIN_3				0x20
+#define FEEDER_SABER2_SKIN_4				0x21
+#define FEEDER_SABER2_SKIN_5				0x22
+
 #define UI_VERSION				200
 #define UI_HANDICAP				200
 #define UI_EFFECTS				201

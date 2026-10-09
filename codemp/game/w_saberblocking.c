@@ -887,6 +887,8 @@ qboolean sab_beh_attack_vs_block(gentity_t* attacker, gentity_t* blocker, const 
 	return qtrue;
 }
 
+void WP_SaberWearOnBlock(gentity_t* blocker, const gentity_t* attacker);
+
 qboolean sab_beh_block_vs_attack(
 	gentity_t* blocker,
 	gentity_t* attacker,
@@ -908,6 +910,9 @@ qboolean sab_beh_block_vs_attack(
 		PM_SuperBreakWinAnim(blocker->client->ps.torsoAnim)) {
 		return qfalse;
 	}
+
+	WP_SaberWearOnBlock(blocker, attacker); // breakable saber staffs
+
 	//-(Im the blocker)
 	const qboolean accurate_parry =
 		g_accurate_blocking(blocker, attacker, hit_loc);
@@ -1318,3 +1323,335 @@ qboolean sab_beh_block_vs_attack(
 /////////Functions//////////////
 //
 /////////////////////// 2026 new build ////////////////////////////////
+
+/*
+-------------------------
+Breakable saber staffs (saber wear) - the same rules as SP
+
+A saber with brokenSaber1 in its .sab (Academy_staff_1, dual_1) wears down in a fight and breaks into its
+brokenSaber1 (right hand) / brokenSaber2 (left hand; "none": one half). Wear 0-100 in ps.stats[STAT_SABER_WEAR]
+(the HUD tints the saber style icon by it). g_saberBreaking: 0 off, 1 NPCs only, 2 everyone. Boss NPCs never break.
+Wear: a hit on the hilt 20; blocking a heavy attack (strong / desann / tavion style, a special, unblockable) 4, medium
+2, fast 1; a perfect block 0. x2 with no block points, x2 the attacker's Sith sword, x1.5 the attacker's saber
+damageScale > 1, x1.5 the attacker's Force Rage. Recovers 1 a second after 8 s without wear, but once under 25 left
+(cracked, wear > 75) never back above 25. At 100 it breaks at the end of the swing: sparks, the pieces, a stagger -
+or from a heavy hit a knockdown and the right-hand half knocked away (Force pull / pick it up for dual again). Saber
+damage is halved for 1.5 s after a break. A player gets the staff back when they respawn (userinfo is not changed).
+-------------------------
+*/
+#define SABERWEAR_BREAK			100
+#define SABERWEAR_BREAK_HEAVY	101
+#define SABERWEAR_CRACKED		75
+#define SABERWEAR_RECOVER_DELAY	8000
+
+extern void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, float strength, qboolean breakSaberLock);
+extern qboolean WP_saberKnockOutOfHand(gentity_t* saberent, gentity_t* saber_owner, vec3_t velocity);
+extern qboolean PM_SaberInStart(int move);
+extern qboolean PM_SaberInTransition(int move);
+extern qboolean PM_SaberInAttack(int move);
+extern qboolean BG_SabersOff(const playerState_t* ps);
+extern qboolean G_SetSaber(const gentity_t* ent, int saberNum, const char* saber_name, qboolean siege_override);
+extern void WP_SetSaber(int entNum, saberInfo_t* sabers, int saberNum, const char* saber_name);
+extern void G_SaberModelSetupAll(const gentity_t* ent);
+
+static qboolean WP_SaberWearBoss(const gentity_t* ent)
+{
+	if (ent->s.number < MAX_CLIENTS)
+	{
+		return qfalse;
+	}
+	switch (ent->client->NPC_class)
+	{
+	case CLASS_DESANN:
+	case CLASS_TAVION:
+	case CLASS_LUKE:
+	case CLASS_KYLE:
+	case CLASS_ALORA:
+	case CLASS_VADER:
+	case CLASS_YODA:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// this one's saber can wear down and break
+static qboolean WP_SaberBreakable(const gentity_t* ent)
+{
+	if (!ent || !ent->client || ent->health <= 0 || g_saberBreaking.integer <= 0)
+	{
+		return qfalse;
+	}
+	if (g_saberBreaking.integer == 1 && ent->s.number < MAX_CLIENTS)
+	{
+		return qfalse;
+	}
+	if (ent->client->ps.weapon != WP_SABER || ent->client->saber[1].model[0])
+	{
+		return qfalse;
+	}
+	if (!ent->client->saber[0].brokenSaber1[0])
+	{
+		return qfalse;
+	}
+	return WP_SaberWearBoss(ent) ? qfalse : qtrue;
+}
+
+static void WP_SaberWearAdd(gentity_t* victim, const gentity_t* attacker, float amount, const qboolean heavy)
+{
+	if (!WP_SaberBreakable(victim))
+	{
+		return;
+	}
+	playerState_t* ps = &victim->client->ps;
+	if (ps->saberInFlight || ps->saberLockTime > level.time)
+	{
+		return;
+	}
+	if (attacker && attacker->client)
+	{
+		if (attacker->client->saber[0].type == SABER_SITH_SWORD)
+		{
+			amount *= 2.0f;
+		}
+		if (attacker->client->saber[0].damageScale > 1.0f)
+		{
+			amount *= 1.5f;
+		}
+		if (attacker->client->ps.fd.forcePowersActive & 1 << FP_RAGE)
+		{
+			amount *= 1.5f;
+		}
+	}
+	if (ps->fd.blockPoints <= BLOCKPOINTS_FATIGUE)
+	{
+		amount *= 2.0f;
+	}
+	int wear = ps->stats[STAT_SABER_WEAR];
+	if (wear < SABERWEAR_BREAK)
+	{
+		wear += (int)(amount + 0.999f);
+	}
+	if (wear >= SABERWEAR_BREAK)
+	{
+		wear = heavy || wear == SABERWEAR_BREAK_HEAVY ? SABERWEAR_BREAK_HEAVY : SABERWEAR_BREAK;
+	}
+	ps->stats[STAT_SABER_WEAR] = wear;
+	victim->client->saberWearTimer = SABERWEAR_RECOVER_DELAY;
+}
+
+// the blocker's saber takes the attack (sab_beh_block_vs_attack)
+void WP_SaberWearOnBlock(gentity_t* blocker, const gentity_t* attacker)
+{
+	if (!attacker || !attacker->client || !WP_SaberBreakable(blocker))
+	{
+		return;
+	}
+	const playerState_t* bps = &blocker->client->ps;
+	const playerState_t* aps = &attacker->client->ps;
+	const qboolean unblockable = PM_SaberInnonblockableAttack(aps->torsoAnim);
+
+	if (!unblockable
+		&& bps->ManualBlockingFlags & 1 << MBF_PERFECTBLOCKING
+		&& bps->ManualBlockingFlags & 1 << MBF_HOLDINGBLOCKANDATTACK
+		&& bps->fd.blockPoints > BLOCKPOINTS_FATIGUE)
+	{
+		return; // a perfect block: no wear
+	}
+	float amount;
+	qboolean heavy = qfalse;
+	if (unblockable || PM_SaberInSpecialAttack(aps->torsoAnim))
+	{
+		amount = 4.0f;
+		heavy = qtrue;
+	}
+	else
+	{
+		switch (aps->fd.saberAnimLevel)
+		{
+		case SS_STRONG:
+		case SS_DESANN:
+		case SS_TAVION:
+			amount = 4.0f;
+			heavy = qtrue;
+			break;
+		case SS_MEDIUM:
+			amount = 2.0f;
+			break;
+		default:
+			amount = 1.0f;
+			break;
+		}
+	}
+	WP_SaberWearAdd(blocker, attacker, amount, heavy);
+}
+
+// a saber trace just hit victim's ghoul2 (G_G2TraceCollide): wear if it hit the hilt of a breakable saber
+void WP_SaberWearHiltTrace(gentity_t* victim, const gentity_t* attacker)
+{
+	char surf_name[MAX_QPATH] = {0};
+
+	if (!victim || !victim->client || !victim->ghoul2 || !attacker || !attacker->client || attacker == victim)
+	{
+		return;
+	}
+	gclient_t* client = victim->client;
+	if (client->g2LastSurfaceTime != level.time || client->g2LastSurfaceModel <= G2MODEL_PLAYER
+		|| client->saberWearHiltDebounce > level.time || !WP_SaberBreakable(victim))
+	{
+		return;
+	}
+	surf_name[0] = 0;
+	trap->G2API_GetSurfaceName(victim->ghoul2, client->g2LastSurfaceHit, client->g2LastSurfaceModel, surf_name);
+	if (!surf_name[0] || (Q_stricmpn("w_", surf_name, 2) && Q_stricmpn("saber", surf_name, 5) && Q_stricmp("cylinder01", surf_name)))
+	{
+		return;
+	}
+	client->saberWearHiltDebounce = level.time + 500;
+	WP_SaberWearAdd(victim, attacker, attacker->client->saber[0].type == SABER_SITH_SWORD ? 40.0f : 20.0f, qtrue);
+}
+
+// swap the staff for its broken pieces: brokenSaber1 in the right hand, brokenSaber2 in the left, dual style
+static qboolean WP_SaberWearSwap(gentity_t* ent)
+{
+	gclient_t* client = ent->client;
+	char piece1[SABER_NAME_LENGTH];
+	char piece2[SABER_NAME_LENGTH];
+	const saber_colors_t color1 = client->saber[0].blade[0].color;
+	const saber_colors_t color2 = client->saber[0].numBlades > 1 ? client->saber[0].blade[1].color : color1;
+
+	Q_strncpyz(piece1, client->saber[0].brokenSaber1, sizeof piece1);
+	Q_strncpyz(piece2, client->saber[0].brokenSaber2[0] ? client->saber[0].brokenSaber2 : "none", sizeof piece2);
+	if (!piece1[0])
+	{
+		return qfalse;
+	}
+
+	if (ent->s.number < MAX_CLIENTS)
+	{
+		// pers.saber1/2 + the configstring: every client sees the pieces (the colours are the player's color1/color2)
+		G_SetSaber(ent, 0, piece1, qtrue);
+		G_SetSaber(ent, 1, piece2, qtrue);
+		client_userinfo_changed(ent->s.number);
+	}
+	else
+	{
+		WP_SetSaber(ent->s.number, client->saber, 0, piece1);
+		WP_SetSaber(ent->s.number, client->saber, 1, piece2);
+		ent->s.npcSaber1 = G_model_index(va("@%s", piece1));
+		ent->s.npcSaber2 = client->saber[1].model[0] ? G_model_index(va("@%s", piece2)) : 0;
+	}
+	for (int i = 0; i < MAX_BLADES; i++)
+	{
+		client->saber[0].blade[i].color = color1;
+		client->saber[1].blade[i].color = color2;
+	}
+	G_SaberModelSetupAll(ent);
+
+	if (client->saber[1].model[0])
+	{
+		client->ps.fd.saber_anim_levelBase = client->ps.fd.saberAnimLevel = client->ps.fd.saberDrawAnimLevel = SS_DUAL;
+		client->saberCycleQueue = SS_DUAL;
+	}
+	return qtrue;
+}
+
+static void WP_SaberWearBreak(gentity_t* ent, const qboolean heavy)
+{
+	gclient_t* client = ent->client;
+	vec3_t fwd, push, org, up = { 0, 0, 1 };
+
+	client->ps.stats[STAT_SABER_WEAR] = 0;
+	client->saberWearTimer = 0;
+
+	VectorCopy(client->lastSaberBase_Always, org);
+	G_PlayEffectID(G_EffectIndex("sparks/spark_explosion"), org, up);
+	G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/weapons/saber/saberoffquick.mp3"));
+
+	if (!WP_SaberWearSwap(ent))
+	{
+		return;
+	}
+	client->saberBreakSafeTime = level.time + 1500;
+
+	AngleVectors(client->ps.viewangles, fwd, NULL, NULL);
+	fwd[2] = 0;
+	VectorNormalize(fwd);
+	VectorScale(fwd, -1.0f, push);
+	if (client->ps.groundEntityNum != ENTITYNUM_NONE)
+	{
+		if (heavy)
+		{
+			// knocked down, the right-hand half knocked away
+			G_Knockdown(ent, ent, push, 300, qtrue);
+			if (client->saber[1].model[0] && client->ps.saberEntityNum)
+			{
+				vec3_t throw_vel;
+				VectorScale(push, 150.0f, throw_vel);
+				throw_vel[2] = 350.0f;
+				WP_saberKnockOutOfHand(&g_entities[client->ps.saberEntityNum], ent, throw_vel);
+			}
+		}
+		else
+		{
+			VectorMA(client->ps.velocity, 150.0f, push, client->ps.velocity);
+			G_Stagger(ent);
+		}
+	}
+	else
+	{
+		VectorMA(client->ps.velocity, heavy ? 300.0f : 150.0f, push, client->ps.velocity);
+	}
+	if (ent->s.number < MAX_CLIENTS)
+	{
+		trap->SendServerCommand(ent->s.number, "cp \"Your saber staff broke!\"");
+	}
+}
+
+// every client think: recovery, the cracked sparks, the break when it is due
+void WP_SaberWearThink(gentity_t* ent, const int msec)
+{
+	if (!ent || !ent->client)
+	{
+		return;
+	}
+	gclient_t* client = ent->client;
+	playerState_t* ps = &client->ps;
+	if (!WP_SaberBreakable(ent))
+	{
+		ps->stats[STAT_SABER_WEAR] = 0;
+		client->saberWearTimer = 0;
+		return;
+	}
+	const int wear = ps->stats[STAT_SABER_WEAR];
+	if (wear >= SABERWEAR_BREAK)
+	{
+		// at the end of the swing (not while it is thrown, holstered or locked)
+		if (ps->saberInFlight || BG_SabersOff(ps) || ps->saberLockTime > level.time
+			|| PM_SaberInStart(ps->saberMove) || PM_SaberInTransition(ps->saberMove) || PM_SaberInAttack(ps->saberMove))
+		{
+			return;
+		}
+		WP_SaberWearBreak(ent, wear == SABERWEAR_BREAK_HEAVY ? qtrue : qfalse);
+		return;
+	}
+	if (wear > SABERWEAR_CRACKED && !BG_SabersOff(ps) && Q_irand(0, 1500) < msec)
+	{
+		vec3_t org, up = { 0, 0, 1 };
+		VectorCopy(client->lastSaberBase_Always, org);
+		G_PlayEffectID(G_EffectIndex("sparks/spark_nosnd"), org, up);
+	}
+	if (wear > 0)
+	{
+		client->saberWearTimer -= msec;
+		if (client->saberWearTimer <= 0)
+		{
+			const int wear_floor = wear > SABERWEAR_CRACKED ? SABERWEAR_CRACKED + 1 : 0;
+			if (wear > wear_floor)
+			{
+				ps->stats[STAT_SABER_WEAR] = wear - 1;
+			}
+			client->saberWearTimer = 1000;
+		}
+	}
+}

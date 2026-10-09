@@ -83,6 +83,7 @@ const gbuyable_t bg_buylist[] =
 	{"flechette", WP_FLECHETTE, IT_WEAPON, 350, 2, WC_RIFLE}, // shotgun
 	{"launcher", WP_ROCKET_LAUNCHER, IT_WEAPON, 3, 2, WC_HEAVY}, // rocket
 	{"concussion", WP_CONCUSSION, IT_WEAPON, 300, 2, WC_HEAVY}, // mega rifle
+	{"droideka", WP_DROIDEKA, IT_WEAPON, 350, 2, WC_RIFLE}, // the droideka's arm blasters
 
 	{"energy", AMMO_BLASTER, IT_AMMO, 999, 0, WC_AMMO},
 	{"powercells", AMMO_POWERCELL, IT_AMMO, 999, 0, WC_AMMO},
@@ -470,6 +471,7 @@ static void G_Give(gentity_t* ent, const char* name, const char* args, const int
 	if (give_all || !Q_stricmp(name, "weapons"))
 	{
 		ent->client->ps.stats[STAT_WEAPONS] = (1 << (LAST_USEABLE_WEAPON + 1)) - (1 << WP_NONE);
+		ent->client->ps.stats[STAT_WEAPONS] &= ~(1 << WP_DROIDEKA); // the droideka's arm blasters are for droidekas only
 		G_AddEvent(ent, EV_WEAPINVCHANGE, ent->client->ps.stats[STAT_WEAPONS]);
 		if (!give_all)
 			return;

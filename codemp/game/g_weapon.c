@@ -5705,6 +5705,56 @@ extern qboolean PM_PainAnim(int anim);
 extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags);
 extern void G_SoundOnEnt(gentity_t* ent, soundChannel_t channel, const char* sound_path);
 
+//---------------------------------------------------------
+static void WP_FireDroideka(gentity_t* ent, const qboolean alt_fire)
+//---------------------------------------------------------
+{// the droideka's twin arm blasters (from MovieDuels SP): the arms fire in turn
+	static qboolean droideka_left_arm[MAX_GENTITIES];
+	vec3_t angs, dir, start;
+	int damage = BLASTER_DAMAGE;
+
+	vectoangles(forward, angs);
+
+	if (ent->s.eType == ET_NPC || ent->r.svFlags & SVF_BOT)
+	{// a little spread, and the NPC blaster damage
+		const float spread = alt_fire ? BLASTER_ALT_SPREAD : BLASTER_MAIN_SPREAD;
+
+		angs[PITCH] += Q_flrand(-1.0f, 1.0f) * spread;
+		angs[YAW] += Q_flrand(-1.0f, 1.0f) * spread;
+
+		if (g_npcspskill.integer == 0)
+		{
+			damage = BLASTER_NPC_DAMAGE_EASY;
+		}
+		else if (g_npcspskill.integer == 1)
+		{
+			damage = BLASTER_NPC_DAMAGE_NORMAL;
+		}
+		else
+		{
+			damage = BLASTER_NPC_DAMAGE_HARD;
+		}
+	}
+
+	AngleVectors(angs, dir, NULL, NULL);
+
+	droideka_left_arm[ent->s.number] = droideka_left_arm[ent->s.number] ? qfalse : qtrue;
+	VectorCopy(droideka_left_arm[ent->s.number] ? muzzle2 : muzzle, start);
+	WP_TraceSetStart(ent, start, vec3_origin, vec3_origin);
+
+	gentity_t* missile = CreateMissile(start, dir, BLASTER_VELOCITY, 10000, ent, alt_fire);
+
+	missile->classname = "blaster_proj";
+	missile->s.weapon = WP_DROIDEKA;
+	missile->damage = damage;
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK;
+	missile->methodOfDeath = MOD_BLASTER;
+	missile->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
+
+	// we don't want it to bounce forever
+	missile->bounceCount = 8;
+}
+
 void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 {
 	float alert = 256;
@@ -5855,7 +5905,7 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 	}
 
 	calcmuzzlePoint(ent, forward, vright, muzzle);
-	if (ent->client->ps.eFlags & EF3_DUAL_WEAPONS)
+	if (ent->client->ps.eFlags & EF3_DUAL_WEAPONS || ent->s.weapon == WP_DROIDEKA) // the droideka fires from both arms
 	{
 		calcmuzzlePoint2(ent, forward, vright, muzzle2);
 	}
@@ -5941,6 +5991,10 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 
 	case WP_BLASTER:
 		WP_FireBlaster(ent, alt_fire);
+		break;
+
+	case WP_DROIDEKA:
+		WP_FireDroideka(ent, alt_fire);
 		break;
 
 	case WP_DISRUPTOR:

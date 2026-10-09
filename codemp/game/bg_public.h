@@ -63,9 +63,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define WALL_RUN_FLIP_LIFT	120.0f		// and at least this upward speed
 #define DOUBLE_JUMP_VELOCITY	300.0f		// double jump (Fallen Order style): upward speed of the second jump
 #define DOUBLE_JUMP_MAX_RISE	(JUMP_VELOCITY * 0.5f)	// double jump: only while rising slower than this (second half of the rise, never falling)
-#define AIR_DASH_SPEED			600.0f		// air dash (Jedi Survivor style): horizontal speed of the dash
-#define AIR_DASH_TIME			350			// air dash: ms it holds that speed and the height (then falls normally)
-#define AIR_DASH_MIN_HEIGHT		64.0f		// air dash: only this high above the ground (else running down steps air dashes)
+#define AIR_DASH_SPEED			400.0f		// air dash (Jedi Survivor style): horizontal speed of the dash
+#define AIR_DASH_TIME			250			// air dash: ms it holds that speed and the height (then falls normally)
+#define AIR_DASH_MIN_HEIGHT		24.0f		// air dash: only this high above the ground (just above a step, so running down steps doesn't air dash)
 #define AIR_WALL_RUN_REACH		28.0f		// wall-run from the air: a wall this close to the side catches the player
 #define AIR_WALL_RUN_MIN_SPEED	150.0f		// wall-run from the air: horizontal speed needed
 #define AIR_WALL_RUN_MAX_FALL	300.0f		// wall-run from the air: not when falling faster than this
@@ -81,7 +81,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-08,Month-10,Year-26,BuildNum-05" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-09,Month-10,Year-26,BuildNum-06" // build date
 
 #define	STEPSIZE		18
 
@@ -569,6 +569,7 @@ extern int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS];
 #define	PMF_DOUBLE_JUMPED	268435456	// used the double jump (Fallen Order style) in this jump; cleared on landing
 #define	PMF_AIR_DASHED		536870912	// used the air dash (Jedi Survivor style) in this jump; cleared on landing
 #define	PMF_AIR_WALL_RAN	1073741824	// started a wall-run from the air (Fallen Order style) in this jump; cleared on landing
+#define	PMF_DASH_FLIPPED	PMF_LADDER_JUMP	// the air dash chain's flip (dash / jump / dash) was used in this jump; cleared on landing (shares the unused ladder-jump bit)
 #define	PMF_LEAP_CANCELLED	((int)0x80000000)	// the long leap / air dash was cancelled with +back: only falls until landing (the last free bit)
 
 // Kata or smashdown (bots and NPCs, bg_saber.c PM_CanDoSmashdown, ai_main.c): distances between the two origins,
@@ -696,7 +697,8 @@ typedef enum {
 	STAT_MAX_HEALTH,					// health / armor limit, changable by handicap
 	STAT_DODGE,			//number of Dodge Points the player has.  DP is used for evading/blocking attacks before they hurt you.
 	STAT_MAX_DODGE,		//maximum number of dodge points allowed.
-	STAT_AMMOPOOL
+	STAT_AMMOPOOL,
+	STAT_SABER_WEAR			//breakable saber staffs: 0-100 wear (101: broken by a heavy hit), the HUD tints the saber style icon by it
 } statIndex_t;
 
 // playerState_t->persistant[] indexes
@@ -1995,6 +1997,9 @@ typedef struct saberInfo_s {
 	float			splashKnockback, splashKnockback2;		// 0 - amount of splashKnockback, 100% at a distance of 0, 0% at a distance = splashRadius
 
 	int			BPregenRate;
+
+	char			brokenSaber1[SABER_NAME_LENGTH];	// "" - breakable saber staffs: when it breaks the right hand gets this saber
+	char			brokenSaber2[SABER_NAME_LENGTH];	// "" - and the left hand this one
 } saberInfo_t;
 #define MAX_SABERS 2
 
@@ -2166,6 +2171,10 @@ extern int force_power_dark_light[NUM_FORCE_POWERS];
 extern const char* gametypeStringShort[GT_MAX_GAME_TYPE];
 const char* BG_GetGametypeString(int gametype);
 int BG_GetGametypeForString(const char* gametype);
+
+// the saber builder (from JA Enhanced): a built hilt's parts are skins in its model's folder
+qboolean BG_SaberIsCustomBuilt(const char* saber_name);
+qboolean BG_SaberBuiltSkin(const char* saber_name, const char* saberModel, const char* parts, char* skinOut, int skinOutSize);
 
 #define BOT_SABER_PENDING_MASK     0x1
 #define BOT_PENDING_STAND_ANIM     0x2

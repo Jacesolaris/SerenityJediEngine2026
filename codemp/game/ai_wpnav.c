@@ -1791,6 +1791,7 @@ float botGlobalNavWeaponWeights[WP_NUM_WEAPONS] =
 	3, //WP_TRIP_MINE,
 	3, //WP_DET_PACK,
 	2, //WP_CONCUSSION,
+	3, //WP_DROIDEKA,
 	0, //WP_BRYAR_OLD,
 	0 //WP_EMPLACED_GUN,
 };

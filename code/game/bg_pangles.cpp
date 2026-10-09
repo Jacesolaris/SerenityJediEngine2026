@@ -454,6 +454,8 @@ void BG_G2SetBoneAngles(const centity_t* cent, const int boneIndex, const vec3_t
 	}
 }
 
+
+
 constexpr auto MAX_YAWSPEED_X_WING = 1;
 constexpr auto MAX_PITCHSPEED_X_WING = 1;
 
