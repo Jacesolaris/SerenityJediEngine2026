@@ -1125,7 +1125,7 @@ static void Rancor_Crush(void)
 	}
 
 	gentity_t* crush = &g_entities[NPCS.NPC->client->ps.groundEntityNum];
-	if (crush->inuse && crush->client && !crush->localAnimIndex)
+	if (crush->inuse && crush->client && BG_AnimSetIsHumanoid(crush->localAnimIndex))
 	{
 		//a humanoid, smash them good.
 		G_Damage(crush, NPCS.NPC, NPCS.NPC, NULL, NPCS.NPC->r.currentOrigin, 200, 0, MOD_CRUSH);

@@ -88,7 +88,7 @@ constexpr auto ANGER_ALERT_SOUND_RADIUS = 256;
 
 void G_AngerAlert(const gentity_t* self)
 {
-	if (self && self->NPC && self->NPC->scriptFlags & SCF_NO_GROUPS)
+	if (!self || self->NPC && self->NPC->scriptFlags & SCF_NO_GROUPS)
 	{
 		//I'm not a team playa...
 		return;
@@ -115,7 +115,7 @@ qboolean G_TeamEnemy(const gentity_t* self)
 	{
 		return qfalse;
 	}
-	if (self && self->NPC && self->NPC->scriptFlags & SCF_NO_GROUPS)
+	if (self->NPC && self->NPC->scriptFlags & SCF_NO_GROUPS)
 	{
 		//I'm not a team playa...
 		return qfalse;
@@ -356,6 +356,7 @@ static void G_AttackDelay(const gentity_t* self, const gentity_t* enemy)
 			att_delay += Q_irand(0, 500);
 			break;
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 			if (!(self->NPC->scriptFlags & SCF_ALT_FIRE))
 			{
 				//rapid-fire blasters
@@ -481,6 +482,13 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 		return;
 
 	if (!self->NPC)
+	{
+		self->enemy = enemy;
+		return;
+	}
+
+	// NPC with no client: just store enemy and bail (as MD; the code below uses self->client unchecked)
+	if (!self->client)
 	{
 		self->enemy = enemy;
 		return;
@@ -630,6 +638,7 @@ void G_SetEnemy(gentity_t* self, gentity_t* enemy)
 
 		if (self->s.weapon == WP_BLASTER ||
 			self->s.weapon == WP_REPEATER ||
+			self->s.weapon == WP_Z6_ROTARY_CANNON ||
 			self->s.weapon == WP_THERMAL ||
 			self->s.weapon == WP_BLASTER_PISTOL ||
 			self->s.weapon == WP_DROIDEKA ||
@@ -933,6 +942,7 @@ void ChangeWeapon(const gentity_t* ent, int new_weapon)
 		break;
 
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 		if (ent->NPC->scriptFlags & SCF_ALT_FIRE)
 		{
 			ent->NPC->aiFlags &= ~NPCAI_BURST_WEAPON;
@@ -1352,11 +1362,10 @@ void WeaponThink()
 	}
 
 	// Can't Fire While Cloaked
-	if (NPC->client &&
-		(NPC->client->ps.powerups[PW_CLOAKED]
-			|| level.time < NPC->client->ps.powerups[PW_UNCLOAKING]
-			|| NPC->client->ps.powerups[PW_STUNNED]
-			|| NPC->client->ps.powerups[PW_SHOCKED]))
+	if (NPC->client->ps.powerups[PW_CLOAKED]
+		|| level.time < NPC->client->ps.powerups[PW_UNCLOAKING]
+		|| NPC->client->ps.powerups[PW_STUNNED]
+		|| NPC->client->ps.powerups[PW_SHOCKED])
 	{
 		return;
 	}
@@ -1425,7 +1434,7 @@ HaveWeapon
 
 qboolean HaveWeapon(const int weapon)
 {
-	return static_cast<qboolean>(client->ps.stats[STAT_WEAPONS] & 1 << weapon);
+	return BG_HasWeapon(&client->ps, weapon);
 }
 
 qboolean EntIsGlass(const gentity_t* check)
@@ -2174,7 +2183,7 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range, const
 		{
 			if (ally->health > 0)
 			{
-				if (ally->client->playerTeam == NPC->client->playerTeam || NPC->client->playerTeam == TEAM_ENEMY && ally->client)
+				if (ally->client->playerTeam == NPC->client->playerTeam || NPC->client->playerTeam == TEAM_ENEMY)
 				{
 					vec3_t diff;
 					//if on same team or if player is disguised as your team
@@ -2185,7 +2194,7 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range, const
 							//reject
 							continue;
 						}
-						if (ally->client && ally->client->leader && ally->client->leader == NPC)
+						if (ally->client->leader && ally->client->leader == NPC)
 						{
 							//reject
 							continue;
@@ -2197,7 +2206,7 @@ gentity_t* NPC_PickAlly(const qboolean facingEachOther, const float range, const
 						continue;
 					}
 
-					if (movingOnly && ally->client && NPC->client)
+					if (movingOnly)
 					{
 						//They have to be moving relative to each other
 						if (!DistanceSquared(ally->client->ps.velocity, NPC->client->ps.velocity))
@@ -2553,7 +2562,7 @@ qboolean NPC_EvaluateShot(const int hit, qboolean glassOK)
 		return qfalse;
 	}
 
-	if (hit == NPC->enemy->s.number || &g_entities[hit] != nullptr && g_entities[hit].svFlags & SVF_GLASS_BRUSH)
+	if (hit == NPC->enemy->s.number || g_entities[hit].svFlags & SVF_GLASS_BRUSH)
 	{
 		//can hit enemy or will hit glass, so shoot anyway
 		return qtrue;

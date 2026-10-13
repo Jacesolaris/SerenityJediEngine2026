@@ -209,7 +209,7 @@ extern void PM_TorsoAnimation();
 extern int PM_TorsoAnimForFrame(gentity_t* ent, int torso_frame);
 extern int PM_AnimLength(int index, animNumber_t anim);
 extern qboolean PM_InOnGroundAnim(playerState_t* ps);
-extern weaponInfo_t cg_weapons[MAX_WEAPONS];
+extern weaponInfo_t cg_weapons[WP_NUM_WEAPONS];
 extern int PM_PickAnim(const gentity_t* self, int minAnim, int maxAnim);
 extern void DoImpact(gentity_t* self, gentity_t* other, qboolean damageSelf, const trace_t* trace);
 extern saberMoveName_t transitionMove[Q_NUM_QUADS][Q_NUM_QUADS];
@@ -2107,6 +2107,7 @@ static qboolean PM_CheckJump()
 				case BOTH_WALL_FLIP_LEFT:
 					contents |= CONTENTS_BODY;
 					//NOTE: purposely falls through to next case!
+					[[fallthrough]];
 				case BOTH_WALL_RUN_LEFT:
 					do_trace = qtrue;
 					VectorMA(pm->ps->origin, -16, right, traceto);
@@ -2115,6 +2116,7 @@ static qboolean PM_CheckJump()
 				case BOTH_WALL_FLIP_RIGHT:
 					contents |= CONTENTS_BODY;
 					//NOTE: purposely falls through to next case!
+					[[fallthrough]];
 				case BOTH_WALL_RUN_RIGHT:
 					do_trace = qtrue;
 					VectorMA(pm->ps->origin, 16, right, traceto);
@@ -2147,7 +2149,7 @@ static qboolean PM_CheckJump()
 					if (anim == BOTH_WALL_FLIP_LEFT)
 					{
 						//sigh.. check for bottomless pit to the right
-						trace_t trace2;
+						static trace_t trace2; // static: PM_CheckJump used ~19 KB of stack (C6262); pm->trace fills it first
 						VectorMA(pm->ps->origin, 128, right, traceto);
 						pm->trace(&trace2, pm->ps->origin, mins, maxs, traceto, pm->ps->clientNum, contents,
 							static_cast<EG2_Collision>(0), 0);
@@ -2169,7 +2171,7 @@ static qboolean PM_CheckJump()
 					else if (anim == BOTH_WALL_FLIP_RIGHT)
 					{
 						//sigh.. check for bottomless pit to the left
-						trace_t trace2;
+						static trace_t trace2; // static: PM_CheckJump used ~19 KB of stack (C6262); pm->trace fills it first
 						VectorMA(pm->ps->origin, -128, right, traceto);
 						pm->trace(&trace2, pm->ps->origin, mins, maxs, traceto, pm->ps->clientNum, contents,
 							static_cast<EG2_Collision>(0), 0);
@@ -2213,7 +2215,7 @@ static qboolean PM_CheckJump()
 							}
 							else if (anim == BOTH_WALL_FLIP_BACK1)
 							{
-								trace_t trace2;
+								static trace_t trace2; // static: PM_CheckJump used ~19 KB of stack (C6262); pm->trace fills it first
 								vec3_t start;
 								VectorCopy(pm->ps->origin, start);
 								start[2] += 64;
@@ -2235,7 +2237,7 @@ static qboolean PM_CheckJump()
 							if (anim == BOTH_WALL_FLIP_BACK1)
 							{
 								//sigh.. check for bottomless pit to the rear
-								trace_t trace2;
+								static trace_t trace2; // static: PM_CheckJump used ~19 KB of stack (C6262); pm->trace fills it first
 								VectorMA(pm->ps->origin, -128, fwd, traceto);
 								pm->trace(&trace2, pm->ps->origin, mins, maxs, traceto, pm->ps->clientNum, contents,
 									static_cast<EG2_Collision>(0), 0);
@@ -2952,6 +2954,7 @@ static qboolean PM_IsGunner()
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -3942,6 +3945,11 @@ static void PM_AirMove()
 	{
 		grav_mod = 0.0f;
 	}
+	// SJE: charging Force Repulse floats in place (PM_RepulseHover): no air dash / wall-run / jump speed carried on
+	if (pm->ps->forcePowersActive & 1 << FP_REPULSE && pm->ps->repulseChargeStart && pm->ps->stats[STAT_HEALTH] > 0)
+	{
+		pm->ps->velocity[0] = pm->ps->velocity[1] = 0.0f;
+	}
 	PM_StepSlideMove(grav_mod);
 
 	if (p_veh && pm->ps->pm_flags & PMF_BUMPED)
@@ -4683,6 +4691,7 @@ static int PM_GetLandingAnim()
 			return -1;
 		}
 		//NOTE: falls through on purpose!
+		[[fallthrough]];
 	default:
 		if (pm->ps->pm_flags & PMF_BACKWARDS_JUMP)
 		{
@@ -9968,6 +9977,7 @@ static qboolean PM_JetpackGunPose()
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -9990,6 +10000,7 @@ static qboolean PM_JetpackCanAimGun()
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -10014,7 +10025,10 @@ static void PM_JetPackAnim()
 		registered = qtrue;
 	}
 
-	if (!PM_Bobaspecialanim(pm->ps->torsoAnim))
+	// a finished special anim (shots are in the list) no longer blocks the flight anims: held on its last frame it kept
+	// the gun pose code below from running, and when weaponTime ran out the torso copied the flying legs anim from its
+	// first frame for a frame (a "swim" flash after every shot)
+	if (!PM_Bobaspecialanim(pm->ps->torsoAnim) || pm->ps->torsoAnimTimer <= 0)
 	{
 		if (pm->cmd.rightmove > 0)
 		{
@@ -10144,8 +10158,10 @@ static void PM_JetPackAnim()
 			// their own anim)
 			parts = SETANIM_LEGS;
 
+			// also once the shot's torso anim has run out while weaponTime still counts down: else the torso-from-legs
+			// code put the flying anim (BOTH_FORCEJUMP1, from its first frame) on the torso for a frame after each shot
 			if (is_player
-				&& pm->ps->weaponTime <= 0
+				&& (pm->ps->weaponTime <= 0 || pm->ps->torsoAnimTimer <= 0)
 				&& pm->ps->torsoAnim != BOTH_FLAMETHROWER)
 			{
 				const int pose = PM_JetpackGunPose() ? TORSO_WEAPONREADY3 : TORSO_WEAPONREADY2;
@@ -10163,7 +10179,10 @@ static void PM_JetPackAnim()
 		}
 
 		PM_SetAnim(pm, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
-		pm->gent->s.loopSound = flyLoopSound;
+		if (pm->gent)
+		{
+			pm->gent->s.loopSound = flyLoopSound;
+		}
 	}
 }
 
@@ -10535,7 +10554,8 @@ static void PM_Footsteps(void)
 									pm->ps->weapon == WP_FLECHETTE ||
 									pm->ps->weapon == WP_ROCKET_LAUNCHER ||
 									pm->ps->weapon == WP_CONCUSSION ||
-									pm->ps->weapon == WP_REPEATER)
+									pm->ps->weapon == WP_REPEATER ||
+									pm->ps->weapon == WP_Z6_ROTARY_CANNON)
 								{
 									PM_SetAnim(pm, SETANIM_LEGS, BOTH_CROUCH2, SETANIM_FLAG_NORMAL);
 								}
@@ -10585,7 +10605,8 @@ static void PM_Footsteps(void)
 							pm->ps->weapon == WP_FLECHETTE ||
 							pm->ps->weapon == WP_ROCKET_LAUNCHER ||
 							pm->ps->weapon == WP_CONCUSSION ||
-							pm->ps->weapon == WP_REPEATER)
+							pm->ps->weapon == WP_REPEATER ||
+							pm->ps->weapon == WP_Z6_ROTARY_CANNON)
 						{
 							PM_SetAnim(pm, SETANIM_LEGS, BOTH_CROUCH2, SETANIM_FLAG_NORMAL);
 						}
@@ -10646,7 +10667,8 @@ static void PM_Footsteps(void)
 						pm->ps->weapon == WP_FLECHETTE ||
 						pm->ps->weapon == WP_ROCKET_LAUNCHER ||
 						pm->ps->weapon == WP_CONCUSSION ||
-						pm->ps->weapon == WP_REPEATER)
+						pm->ps->weapon == WP_REPEATER ||
+						pm->ps->weapon == WP_Z6_ROTARY_CANNON)
 					{
 						PM_SetAnim(pm, SETANIM_LEGS, BOTH_CROUCH2, SETANIM_FLAG_NORMAL);
 					}
@@ -10731,7 +10753,8 @@ static void PM_Footsteps(void)
 							pm->ps->weapon == WP_FLECHETTE ||
 							pm->ps->weapon == WP_ROCKET_LAUNCHER ||
 							pm->ps->weapon == WP_CONCUSSION ||
-							pm->ps->weapon == WP_REPEATER)
+							pm->ps->weapon == WP_REPEATER ||
+							pm->ps->weapon == WP_Z6_ROTARY_CANNON)
 						{
 							PM_SetAnim(pm, SETANIM_LEGS, BOTH_CROUCH2, SETANIM_FLAG_NORMAL);
 						}
@@ -11329,6 +11352,7 @@ static void PM_Footsteps(void)
 						pm->ps->weapon == WP_TUSKEN_RIFLE ||
 						pm->ps->weapon == WP_DEMP2 ||
 						pm->ps->weapon == WP_REPEATER ||
+						pm->ps->weapon == WP_Z6_ROTARY_CANNON ||
 						pm->ps->weapon == WP_BLASTER ||
 						pm->ps->weapon == WP_CONCUSSION ||
 						pm->ps->weapon == WP_ROCKET_LAUNCHER ||
@@ -11975,7 +11999,7 @@ static void PM_BeginWeaponChange(const int weapon)
 		return;
 	}
 
-	if (!(pm->ps->stats[STAT_WEAPONS] & 1 << weapon))
+	if (!BG_HasWeapon(pm->ps, weapon))
 	{
 		return;
 	}
@@ -12131,7 +12155,7 @@ static void PM_FinishWeaponChange()
 		weapon = WP_NONE;
 	}
 
-	if (!(pm->ps->stats[STAT_WEAPONS] & 1 << weapon))
+	if (!BG_HasWeapon(pm->ps, weapon))
 	{
 		weapon = WP_NONE;
 	}
@@ -16248,6 +16272,7 @@ static qboolean PM_CheckUpsideDownAttack()
 			return qfalse;
 		}
 	}
+	[[fallthrough]];
 	case BOTH_FLIP_HOLD7:
 		pm->ps->pm_flags |= PMF_SLOW_MO_FALL;
 		PM_SetSaberMove(LS_UPSIDE_DOWN_ATTACK);
@@ -20535,6 +20560,7 @@ static qboolean PM_MercIsGunner()
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -21241,6 +21267,7 @@ static void PM_Weapon(void)
 			case WP_DEMP2:
 			case WP_FLECHETTE:
 			case WP_REPEATER:
+			case WP_Z6_ROTARY_CANNON:
 			case WP_CONCUSSION:
 			case WP_ROCKET_LAUNCHER:
 			case WP_DISRUPTOR:
@@ -21468,6 +21495,7 @@ static void PM_Weapon(void)
 			}
 			break;
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 			// repeater is supposed to do smoke after sustained bursts
 			pm->ps->weaponShotCount++;
 			break;
@@ -21719,7 +21747,13 @@ void PM_CheckForceUseButton(gentity_t* ent, usercmd_t* ucmd)
 
 	if (ucmd->buttons & BUTTON_USE_FORCE && !ent->client->ps.forcePowersKnown)
 	{
-		gi.SendConsoleCommand("invuse");
+		// no force powers: the key uses the selected inventory item once per press
+		// (sent every frame it toggled the binoculars on and off while the key was held)
+		if (!(ent->client->ps.pm_flags & PMF_USEFORCE_HELD))
+		{
+			gi.SendConsoleCommand("invuse");
+		}
+		ent->client->ps.pm_flags |= PMF_USEFORCE_HELD;
 		return;
 	}
 
@@ -22325,6 +22359,48 @@ static void PmoveSingle()
 	PM_AdjustAngleForWallGrab(pm->ps, &pm->cmd);
 }
 
+// Force Repulse charge (2026-10-12, DH: as The Force Unleashed): the charging player rises smoothly (g_repulseHoverHeight)
+// off the ground and hovers there, no gravity, no walking; the push (wp_saber.cpp, at release or after g_repulseMaxCharge)
+// ends the charge and gravity takes him down again.
+static float PM_RepulseHoverHeight()
+{// g_repulseHoverHeight: 24 - 128, default 80
+	static cvar_t* g_repulseHoverHeight = nullptr;
+	if (!g_repulseHoverHeight)
+	{
+		g_repulseHoverHeight = gi.cvar("g_repulseHoverHeight", "90", CVAR_ARCHIVE);
+	}
+	return Com_Clamp(24.0f, 128.0f, g_repulseHoverHeight->value);
+}
+
+extern qboolean WP_RepulseHoverHeld(const gentity_t* ent);
+static void PM_RepulseHover()
+{
+	// charging, or released and the blast has not gone off yet (he floats through the throw, wp_saber.cpp)
+	const qboolean charging = pm->ps->forcePowersActive & 1 << FP_REPULSE && pm->ps->repulseChargeStart ? qtrue : qfalse;
+	if (!(charging || WP_RepulseHoverHeld(pm->gent)) || pm->ps->stats[STAT_HEALTH] <= 0)
+	{
+		return;
+	}
+	trace_t tr;
+	vec3_t end;
+	VectorCopy(pm->ps->origin, end);
+	// SJE: the feet box (pm->mins / maxs are only set later this frame, PM_CheckDuck: here they were still empty, so
+	// a player on the floor measured 24 up, rose at 68 - under the ground check's 100 kick-off - and never left the floor)
+	static const vec3_t hoverMins = { -15.0f, -15.0f, -24.0f }, hoverMaxs = { 15.0f, 15.0f, 0.0f };
+	const float hoverHeight = PM_RepulseHoverHeight();
+	end[2] -= hoverHeight + 8.0f;
+	pm->trace(&tr, pm->ps->origin, hoverMins, hoverMaxs, end, pm->ps->clientNum, pm->tracemask & ~CONTENTS_BODY,
+		static_cast<EG2_Collision>(0), 0);
+	// (world only: a body in the box made the trace start solid, fraction 0 read as "on the floor", and he shot up for good)
+	const float height = tr.startsolid || tr.allsolid ? hoverHeight : tr.fraction * (hoverHeight + 8.0f);
+
+	pm->ps->gravity = 0;
+	pm->ps->velocity[0] = pm->ps->velocity[1] = 0.0f;
+	// up while below the hover height (slowing down as he gets there), then still
+	pm->ps->velocity[2] = height < hoverHeight ? (hoverHeight - height) * 3.0f + 20.0f : 0.0f;
+	pm->cmd.forwardmove = pm->cmd.rightmove = pm->cmd.upmove = 0;
+}
+
 static void Pmove_Internal(pmove_t* pmove);
 
 // Pmove can re-enter itself (something done during one entity's move, e.g. a spawn from a script, can run
@@ -22408,6 +22484,8 @@ static void Pmove_Internal(pmove_t* pmove)
 	VectorCopy(pm->ps->velocity, pml.previous_velocity);
 
 	pml.frametime = pml.msec * 0.001;
+
+	PM_RepulseHover();
 
 	if (pm->ps->clientNum >= MAX_CLIENTS &&
 		pm->gent &&
@@ -22571,7 +22649,7 @@ static void Pmove_Internal(pmove_t* pmove)
 
 	PM_DropTimers();
 
-	if (pm->ps && (pm->ps->eFlags & EF_LOCKED_TO_WEAPON
+	if ((pm->ps->eFlags & EF_LOCKED_TO_WEAPON
 		|| pm->ps->eFlags & EF_HELD_BY_RANCOR
 		|| pm->ps->eFlags & EF_HELD_BY_WAMPA
 		|| pm->ps->eFlags & EF_HELD_BY_SAND_CREATURE))
@@ -22588,7 +22666,7 @@ static void Pmove_Internal(pmove_t* pmove)
 	{
 		PM_FlyVehicleMove();
 	}
-	else if (pm->ps && pm->ps->pm_flags & PMF_TIME_WATERJUMP)
+	else if (pm->ps->pm_flags & PMF_TIME_WATERJUMP)
 	{
 		PM_WaterJumpMove();
 	}
@@ -22619,7 +22697,7 @@ static void Pmove_Internal(pmove_t* pmove)
 
 		PM_AirMove();
 	}
-	else if (pm->ps && pm->ps->pm_flags & PMF_GRAPPLE_PULL)
+	else if (pm->ps->pm_flags & PMF_GRAPPLE_PULL)
 	{
 		PM_GrappleMove();
 		PM_AirMove();
@@ -22648,7 +22726,7 @@ static void Pmove_Internal(pmove_t* pmove)
 	}
 	else
 	{
-		if (pm->ps && pm->ps->gravity <= 0)
+		if (pm->ps->gravity <= 0)
 		{
 			PM_FlyMove();
 		}
@@ -22713,6 +22791,7 @@ static void Pmove_Internal(pmove_t* pmove)
 			|| pm->ps->weapon == WP_BRYAR_PISTOL
 			|| pm->ps->weapon == WP_BOWCASTER
 			|| pm->ps->weapon == WP_REPEATER
+			|| pm->ps->weapon == WP_Z6_ROTARY_CANNON
 			|| pm->ps->weapon == WP_DEMP2
 			|| pm->ps->weapon == WP_FLECHETTE
 			//
@@ -22833,7 +22912,7 @@ static void Pmove_Internal(pmove_t* pmove)
 	//================================
 
 	// TEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMPTEMP
-	if (pm->gent && pm->ps && pm->ps->eFlags & EF_LOCKED_TO_WEAPON)
+	if (pm->gent && pm->ps->eFlags & EF_LOCKED_TO_WEAPON)
 	{
 		if (pm->gent->owner && pm->gent->owner->e_UseFunc == useF_emplaced_gun_use) //ugly way to tell, but...
 		{
@@ -22846,7 +22925,7 @@ static void Pmove_Internal(pmove_t* pmove)
 			PM_SetAnim(pm, SETANIM_LEGS, BOTH_STAND1, SETANIM_FLAG_NORMAL);
 		}
 	}
-	else if (pm->gent && pm->ps && pm->ps->eFlags & EF_HELD_BY_RANCOR)
+	else if (pm->gent && pm->ps->eFlags & EF_HELD_BY_RANCOR)
 	{
 		PM_SetAnim(pm, SETANIM_LEGS, BOTH_SWIM_IDLE1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 	}
@@ -23189,6 +23268,78 @@ constexpr auto LEDGEGRABMINDISTANCE = 22.0f;
 //distance at which the animation grabs the ledge
 constexpr auto LEDGEHOROFFSET = 22.3f;
 
+//ledge grab size compensation:
+//cg_players scales the model about the entity origin and then raises it by 24 * (scale - 1) so the feet stay on
+//the bbox floor (origin - 24).  A point that is h above the origin on a normal size model therefore ends up
+//(h + 24) * scale - 24 above the origin, and a point d in front of it ends up d * scale in front of it.
+//The ledge offsets above are the hand position of the normal size model, so they are converted the same way.
+constexpr auto LEDGEMODELFEETOFFSET = 24.0f;
+
+static float PM_LedgeModelScale()
+{
+	if (!pm->gent)
+	{
+		return 1.0f;
+	}
+	const float scale = pm->gent->s.modelScale[2];
+
+	if (scale <= 0.0f || scale == 1.0f)
+	{
+		//not scaled (0 is "no scale" for the renderer too)
+		return 1.0f;
+	}
+	if (scale < 0.1f)
+	{
+		return 0.1f;
+	}
+	if (scale > 4.0f)
+	{
+		return 4.0f;
+	}
+	return scale;
+}
+
+//height above the origin of a point that is height above the origin on a normal size model
+static float PM_LedgeScaledHeight(const float height)
+{
+	const float scale = PM_LedgeModelScale();
+
+	if (scale == 1.0f)
+	{
+		return height;
+	}
+	return (height + LEDGEMODELFEETOFFSET) * scale - LEDGEMODELFEETOFFSET;
+}
+
+//horizontal distance from the wall at which the scaled model's hands are on the ledge (never inside the bbox)
+static float PM_LedgeScaledHorOffset()
+{
+	const float scale = PM_LedgeModelScale();
+
+	if (scale == 1.0f)
+	{
+		return LEDGEHOROFFSET;
+	}
+	const float min_offset = pm->maxs[0] + 1.0f;
+	const float offset = LEDGEHOROFFSET * scale;
+	return offset < min_offset ? min_offset : offset;
+}
+
+//how far in front of us the ledge may be (bigger models reach further)
+static float PM_LedgeScaledDistance()
+{
+	const float scale = PM_LedgeModelScale();
+	return scale > 1.0f ? LEDGEGRABDISTANCE * scale : LEDGEGRABDISTANCE;
+}
+
+//vertical climb speed factor for the pull up (bigger models have further to climb; smaller ones keep the normal
+//speed so they also get up when the old, unscaled hang position had to be used)
+static float PM_LedgeClimbScale()
+{
+	const float scale = PM_LedgeModelScale();
+	return scale > 1.0f ? scale : 1.0f;
+}
+
 //Get the point in the leg animation and return a percentage of the current point in the anim between 0 and the total anim length (0.0f - 1.0f)
 static float GetSelfLegAnimPointforLedge()
 {
@@ -23311,25 +23462,25 @@ static void PM_SetVelocityforLedgeMove(playerState_t* ps, const int anim)
 			VectorScale(moveDir, 70.0f, moveDir);         // small forward nudge (tweak 30.0f)
 			ps->velocity[0] = moveDir[0];
 			ps->velocity[1] = moveDir[1];
-			ps->velocity[2] = 154.0f;                      // keep upward velocity
+			ps->velocity[2] = 154.0f * PM_LedgeClimbScale(); // keep upward velocity (scaled models climb further)
 		}
 		else if (animationpoint > .7f && animationpoint < .75f)
 		{
 			ps->velocity[0] = 0.0f;
 			ps->velocity[1] = 0.0f;
-			ps->velocity[2] = 26.0f;
+			ps->velocity[2] = 26.0f * PM_LedgeClimbScale();
 		}
 		else if (animationpoint > .375 && animationpoint < .7)
 		{
 			ps->velocity[0] = 0.0f;
 			ps->velocity[1] = 0.0f;
-			ps->velocity[2] = 140.0f;
+			ps->velocity[2] = 140.0f * PM_LedgeClimbScale();
 		}
 		else if (animationpoint < .375)
 		{
 			VectorSet(fwdAngles, 0.0f, pm->ps->viewangles[YAW], 0);
 			AngleVectors(fwdAngles, NULL, NULL, moveDir);
-			VectorScale(moveDir, 200.0f, moveDir);
+			VectorScale(moveDir, 200.0f * PM_LedgeClimbScale(), moveDir);
 			VectorCopy(moveDir, ps->velocity);
 		}
 		else
@@ -23357,9 +23508,14 @@ void PM_AdjustAngleForWallGrab(playerState_t* ps, usercmd_t* ucmd)
 			VectorNormalize(fwd);
 
 			VectorCopy(ps->origin, trace_from);
-			trace_from[2] += LEDGEGRABHEIGHT - 1;
+			{
+				//scaled models hang at their scaled hand height (or at the normal one if that spot was blocked
+				//when grabbing), so check just below the lower of the two - it is below the ledge in both cases
+				const float scaled_height = PM_LedgeScaledHeight(LEDGEGRABHEIGHT);
+				trace_from[2] += (scaled_height < LEDGEGRABHEIGHT ? scaled_height : LEDGEGRABHEIGHT) - 1;
+			}
 
-			VectorMA(trace_from, LEDGEGRABDISTANCE, fwd, traceTo);
+			VectorMA(trace_from, PM_LedgeScaledDistance(), fwd, traceTo);
 
 			gi.trace(&trace, trace_from, nullptr, nullptr, traceTo, ps->clientNum, pm->tracemask,
 				static_cast<EG2_Collision>(0), 0);
@@ -23474,11 +23630,27 @@ static qboolean LedgeTrace(trace_t* trace, vec3_t dir, float* lerpup, float* ler
 {
 	//scan for for a ledge in the given direction
 	vec3_t traceTo, trace_from, wallangles;
-	VectorMA(pm->ps->origin, LEDGEGRABDISTANCE, dir, traceTo);
+	//the grab heights are where the hands are; scale them with the model (normal size: unchanged).
+	//Bigger models keep the normal lowest grab height so they can still grab ledges at chest height
+	//(they hang lower then, or as before if their body does not fit below the ledge).
+	float grab_min_height = PM_LedgeScaledHeight(LEDGEGRABMINHEIGHT);
+
+	if (grab_min_height > LEDGEGRABMINHEIGHT)
+	{
+		grab_min_height = LEDGEGRABMINHEIGHT;
+	}
+	float grab_max_height = PM_LedgeScaledHeight(LEDGEGRABMAXHEIGHT);
+
+	if (grab_max_height - grab_min_height < LEDGEGRABMAXHEIGHT - LEDGEGRABMINHEIGHT)
+	{
+		//small models keep the normal size search window so they still find ledges
+		grab_max_height = grab_min_height + (LEDGEGRABMAXHEIGHT - LEDGEGRABMINHEIGHT);
+	}
+	VectorMA(pm->ps->origin, PM_LedgeScaledDistance(), dir, traceTo);
 	VectorCopy(pm->ps->origin, trace_from);
 
-	trace_from[2] += LEDGEGRABMINHEIGHT;
-	traceTo[2] += LEDGEGRABMINHEIGHT;
+	trace_from[2] += grab_min_height;
+	traceTo[2] += grab_min_height;
 
 	gi.trace(trace, trace_from, nullptr, nullptr, traceTo, pm->ps->clientNum, pm->tracemask,
 		static_cast<EG2_Collision>(0), 0);
@@ -23490,7 +23662,7 @@ static qboolean LedgeTrace(trace_t* trace, vec3_t dir, float* lerpup, float* ler
 
 		VectorCopy(traceTo, trace_from);
 
-		trace_from[2] += LEDGEGRABMAXHEIGHT - LEDGEGRABMINHEIGHT;
+		trace_from[2] += grab_max_height - grab_min_height;
 
 		gi.trace(trace, trace_from, nullptr, nullptr, traceTo, pm->ps->clientNum, pm->tracemask,
 			static_cast<EG2_Collision>(0), 0);
@@ -23510,7 +23682,8 @@ static qboolean LedgeTrace(trace_t* trace, vec3_t dir, float* lerpup, float* ler
 		return qfalse;
 	}
 	VectorCopy(trace->endpos, traceTo);
-	*lerpup = trace->endpos[2] - pm->ps->origin[2] - LEDGEVERTOFFSET;
+	//hang so the (scaled) model's hands are on the ledge
+	*lerpup = trace->endpos[2] - pm->ps->origin[2] - PM_LedgeScaledHeight(LEDGEVERTOFFSET);
 
 	VectorCopy(pm->ps->origin, trace_from);
 	traceTo[2] -= 1;
@@ -23529,7 +23702,7 @@ static qboolean LedgeTrace(trace_t* trace, vec3_t dir, float* lerpup, float* ler
 		return qfalse;
 	}
 
-	*lerpfwd = Distance(trace->endpos, trace_from) - LEDGEHOROFFSET;
+	*lerpfwd = Distance(trace->endpos, trace_from) - PM_LedgeScaledHorOffset();
 	*lerpyaw = vectoyaw(trace->plane.normal) + 180;
 	return qtrue;
 }
@@ -23675,6 +23848,19 @@ void PM_CheckGrab()
 	//check to see if we can actually latch to that position.
 	gi.trace(&trace, pm->ps->origin, pm->mins, pm->maxs, trace_to, pm->ps->clientNum, MASK_PLAYERSOLID,
 		static_cast<EG2_Collision>(0), 0);
+
+	if ((trace.fraction != 1 || trace.startsolid) && PM_LedgeModelScale() != 1.0f)
+	{
+		//the size compensated hang position is blocked, try the normal size one instead
+		lerpup += PM_LedgeScaledHeight(LEDGEVERTOFFSET) - LEDGEVERTOFFSET;
+		lerpfwd += PM_LedgeScaledHorOffset() - LEDGEHOROFFSET;
+
+		VectorMA(pm->ps->origin, lerpfwd, check_dir, trace_to);
+		trace_to[2] += lerpup;
+
+		gi.trace(&trace, pm->ps->origin, pm->mins, pm->maxs, trace_to, pm->ps->clientNum, MASK_PLAYERSOLID,
+			static_cast<EG2_Collision>(0), 0);
+	}
 
 	if (trace.fraction != 1 || trace.startsolid)
 	{

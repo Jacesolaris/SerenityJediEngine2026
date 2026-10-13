@@ -24,6 +24,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "server.h"
 #include "qcommon/cm_public.h"
 
+#include <memory>
+
 /*
 =============================================================================
 
@@ -108,6 +110,10 @@ static void SV_EmitPacketEntities(clientSnapshot_t* from, clientSnapshot_t* to, 
 		if (newnum < oldnum)
 		{
 			// this is a new entity, send it from the baseline
+			if (newnum < 0 || newnum >= MAX_GENTITIES) // never: entity numbers are < MAX_GENTITIES (lets the analyser see the svEntities index is valid, C6385)
+			{
+				Com_Error(ERR_DROP, "SV_EmitPacketEntities: bad entity number %i", newnum);
+			}
 			MSG_WriteDeltaEntity(msg, &sv.svEntities[newnum].baseline, newent, qtrue);
 			newindex++;
 			continue;
@@ -851,7 +857,9 @@ extern cvar_t* fs_gamedirvar;
 
 void SV_SendClientSnapshot(client_t* client)
 {
-	byte msg_buf[MAX_MSGLEN];
+	// heap, not stack (C6262). One buffer per call: this is re-entered when a Com_Error inside it
+	// shuts the server down (SV_FinalMessage), so a static buffer is not safe. Not zeroed, as on the stack.
+	const std::unique_ptr<byte[]> msg_buf(new byte[MAX_MSGLEN]);
 	msg_t msg;
 
 	if (!client->sentGamedir)
@@ -859,7 +867,7 @@ void SV_SendClientSnapshot(client_t* client)
 		//rww - if this is the case then make sure there is an svc_setgame sent before this snap
 		int i = 0;
 
-		MSG_Init(&msg, msg_buf, sizeof msg_buf);
+		MSG_Init(&msg, msg_buf.get(), MAX_MSGLEN);
 
 		//have to include this for each message.
 		MSG_WriteLong(&msg, client->lastClientCommand);
@@ -915,7 +923,7 @@ void SV_SendClientSnapshot(client_t* client)
 		return;
 	}
 
-	MSG_Init(&msg, msg_buf, sizeof msg_buf);
+	MSG_Init(&msg, msg_buf.get(), MAX_MSGLEN);
 	msg.allowoverflow = qtrue;
 
 	// NOTE, MRE: all server->client messages now acknowledge

@@ -143,6 +143,7 @@ using otherhudbits_t = enum
 	OHB_TRIPMINE,
 	OHB_MELEE,
 	OHB_DEKA,
+	OHB_Z6_ROTARY_CANNON,
 	OHB_SCANLINE_LEFT,
 	OHB_SCANLINE_RIGHT,
 	OHB_FRAME_LEFT,
@@ -585,6 +586,8 @@ using cgEffects_t = struct
 
 	// REPEATER
 	fxHandle_t cloneShotEffect;
+	fxHandle_t cloneWallImpactEffect; // the Z-6's clone bolt impacts (MovieDuels)
+	fxHandle_t cloneFleshImpactEffect;
 	fxHandle_t repeaterProjectileEffect;
 	fxHandle_t repeaterAltProjectileEffect;
 	fxHandle_t repeaterWallImpactEffect;

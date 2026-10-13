@@ -276,7 +276,7 @@ namespace ratl
 		public:
 			// Constructors
 			//--------------
-			iterator() : mOwner(nullptr)
+			iterator() : mIndex(0), mOwner(nullptr)
 			{}
 
 			iterator(pool_root<T>* p, const int index) : mIndex(index), mOwner(p)
@@ -365,7 +365,7 @@ namespace ratl
 		public:
 			// Constructors
 			//--------------
-			const_iterator() : mOwner(nullptr)
+			const_iterator() : mIndex(0), mOwner(nullptr)
 			{}
 
 			const_iterator(const pool_root<T>* p, const int index) : mIndex(index), mOwner(p)

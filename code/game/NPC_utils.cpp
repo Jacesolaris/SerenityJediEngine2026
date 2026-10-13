@@ -298,6 +298,7 @@ qboolean NPC_UpdateAngles(const qboolean do_pitch, const qboolean do_yaw)
 			NPC->s.weapon == WP_BLASTER ||
 			NPC->s.weapon == WP_BOWCASTER ||
 			NPC->s.weapon == WP_REPEATER ||
+			NPC->s.weapon == WP_Z6_ROTARY_CANNON ||
 			NPC->s.weapon == WP_FLECHETTE ||
 			NPC->s.weapon == WP_JAWA ||
 			NPC->s.weapon == WP_BRYAR_PISTOL ||

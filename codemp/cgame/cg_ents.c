@@ -632,7 +632,7 @@ void ScaleModelAxis(refEntity_t* ent)
 Ghoul2 Insert End
 */
 
-char* forceHolocronModels[] = {
+char* forceHolocronModels[NUM_FORCE_POWERS] = { // the ported SP powers (FP_STASIS ..) have no holocron model: NULL
 	"models/map_objects/mp/lt_heal.md3", //FP_HEAL,
 	"models/map_objects/mp/force_jump.md3", //FP_LEVITATION,
 	"models/map_objects/mp/force_speed.md3", //FP_SPEED,
@@ -1162,7 +1162,7 @@ static void CG_General(centity_t* cent)
 			}
 			else if (cent->currentState.modelGhoul2 == G2_MODELPART_WAIST)
 			{
-				if (cl_ent->localAnimIndex <= 1)
+				if (BG_AnimSetIsHumanoidLike(cl_ent->localAnimIndex))
 				{
 					//humanoid/rtrooper
 					rotate_bone = "thoracic";
@@ -1253,7 +1253,7 @@ static void CG_General(centity_t* cent)
 					trap->G2API_RemoveGhoul2Model(&cl_ent->ghoul2, 3);
 				}
 
-				if (cl_ent->localAnimIndex <= 0)
+				if (BG_AnimSetIsHumanoid(cl_ent->localAnimIndex))
 				{
 					//humanoid
 					trap->G2API_SetBoneAngles(cl_ent->ghoul2, 0, "model_root", vec3_origin, BONE_ANGLES_POSTMULT,
@@ -2458,6 +2458,7 @@ static void CG_Item(centity_t* cent)
 			cent->lerpOrigin[2] -= 16;
 			break;
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 			cent->lerpOrigin[2] -= 12;
 			break;
 		case WP_DEMP2:

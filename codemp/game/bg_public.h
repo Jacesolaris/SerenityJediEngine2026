@@ -81,12 +81,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-09,Month-10,Year-26,BuildNum-06" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-13,Month-10,Year-26,BuildNum-07" // build date
 
 #define	STEPSIZE		18
 
 #define DEFAULT_FORCEPOWERS	"5-1-000000000000000000"
 #define DEFAULT_FORCEPOWERS_LEN (22) // numPowers + rank + side + separators
+// the longest forcepowers string: one digit per power, the ported SP powers (FP_STASIS ..) after the 18 JKA ones.
+// Strings from DEFAULT_FORCEPOWERS_LEN (JKA configs, bots, .fcf files: the new powers are 0) up to this are valid.
+#define FORCEPOWERS_MAX_LEN (4 + NUM_FORCE_POWERS)
 //"rank-side-heal.lev.speed.push.pull.tele.grip.lightning.rage.protect.absorb.teamheal.teamforce.drain.see"
 
 #define	DEFAULT_GRAVITY		800
@@ -393,7 +396,7 @@ typedef struct animation_s {
 extern qboolean			bgpa_ftext_loaded;
 extern animation_t		bgHumanoidAnimations[MAX_TOTALANIMATIONS];
 
-#define MAX_ANIM_FILES	32
+#define MAX_ANIM_FILES	64 // SJE: was 32; servers with many distinct player/NPC models ran out of animation sets (local index only, not networked)
 #define MAX_ANIM_EVENTS 1200
 
 typedef enum
@@ -476,6 +479,8 @@ typedef struct animevent_s
 typedef struct bgLoadedAnim_s {
 	char			filename[MAX_QPATH];
 	animation_t* anims;
+	qboolean		skelChecked;	// SJE: humanoidSkel below has been worked out from the GLA
+	qboolean		humanoidSkel;	// SJE: the set's GLA has the humanoid bones (own humanoid skeleton, e.g. _humanoid_yoda)
 } bgLoadedAnim_t;
 
 typedef struct bgLoadedEvents_s {
@@ -1283,6 +1288,7 @@ typedef enum {
 	MOD_FORCE_LIGHTNING,
 	MOD_BURNING,
 	MOD_GAS,
+	MOD_Z6_ROTARY_CANNON, // from MovieDuels
 
 	MOD_MAX
 } meansOfDeath_t;
@@ -2018,7 +2024,7 @@ void BG_G2PlayerAngles(void* ghoul2, int motionBolt, entityState_t* cent, int ti
 	qboolean* tPitching, qboolean* lYawing, float* tYawAngle, float* tPitchAngle,
 	float* lYawAngle, int frametime, vec3_t turAngles, vec3_t modelScale, int ciLegs,
 	int ciTorso, int* corrTime, vec3_t lookAngles, vec3_t lastHeadAngles, int lookTime,
-	const entityState_t* emplaced, int* crazySmoothFactor, int ManualBlockingFlags);
+	const entityState_t* emplaced, int* crazySmoothFactor, int ManualBlockingFlags, int animIndex);
 
 void BG_G2ATSTAngles(void* ghoul2, int time, vec3_t cent_lerpAngles);
 
@@ -2077,6 +2083,38 @@ qboolean	BG_PlayerTouchesItem(const playerState_t* ps, const entityState_t* item
 void	BG_InitAnimsets();
 void	BG_ClearAnimsets();
 int		bg_parse_animation_file(const char* filename, animation_t* anim_set, qboolean is_humanoid);
+// SJE: per-model skeletons (like SP). A model.glm may name its own GLA; its <GLA dir>/animation.cfg is then used.
+int		BG_ParseAnimationFileForGLA(const char* glaName);	// glaName as G2API_GetGLAName gives it (no .gla); -1 on failure
+qboolean BG_AnimSetIsHumanoid(int animIndex);		// slot 0, or a set whose skeleton has the humanoid bones (was: index == 0)
+qboolean BG_AnimSetIsHumanoidLike(int animIndex);	// the above, or the rockettrooper slot 1 (was: index <= 1)
+qboolean BG_ModelOwnSkeletonGLA(const char* modelName, char* glaOut, int glaOutSize); // model uses its own player-capable GLA?
+qboolean BG_AnimSetIsRocketTrooper(int animIndex);	// the rockettrooper skeleton's set (slot 1, players/rockettrooper/animation.cfg)
+int		BG_SkeletonClass(int NPC_class, int animIndex);	// the NPC class whose bone layout the skeleton has (players: from the anim set)
+// SJE: jetpack bot classes (players and bots of these botclasses)
+qboolean BG_ClassIsJetpackFlyer(int botclass);		// flies with the jetpack like SP's Boba/Mando/rockettrooper (double tap jump, bot flight AI)
+qboolean BG_ClassHasBuiltInJetpack(int botclass);	// the jets are part of the model (*jet1/*jet2): no jetpack model drawn
+// SJE: creature/droid player skeletons. BG_ModelOwnSkeletonGLA accepts any own skeleton with model_root, an animation.cfg
+// and BOTH_STAND1; BG_ModelSkeletonFlags says which player bolts/bones it has. The botclass decides what it needs.
+#define SKELF_OWN		0x0001	// the model uses its own skeleton that BG_ModelOwnSkeletonGLA accepts
+#define SKELF_RHAND		0x0002	// *r_hand
+#define SKELF_LHAND		0x0004	// *l_hand
+#define SKELF_HEAD		0x0008	// *head_top, ceyebrow, *head_t or *head_eyes
+#define SKELF_MOTION	0x0010	// Motion
+#define SKELF_LLUMBAR	0x0020	// lower_lumbar
+#define SKELF_ULUMBAR	0x0040	// upper_lumbar
+#define SKELF_CRANIUM	0x0080	// cranium
+#define SKELF_FULL		0x0100	// every bolt/bone the humanoid player code needs (the old, fixed test): no class limits
+int		BG_ModelSkeletonFlags(const char* modelName);	// SKELF_* of the model's own skeleton, 0 when it has none / it is unusable
+qboolean BG_ClassIsCreature(int botclass);			// a creature/droid class that may use a skeleton without the full humanoid bolts
+qboolean BG_ClassSkeletonOk(int botclass, int skelFlags);	// may a model with these SKELF_* flags be played as this class?
+qboolean BG_ClassHasNoFists(int botclass);			// gets no melee either (R2/R5: stun only; gonk, protocol: nothing), as the SP NPC files
+qboolean BG_ClassCantJump(int botclass);			// SP PM_GentCantJump droids
+qboolean BG_AnimSetCantJump(int animIndex);			// own skeleton without a real jump anim (galak_mech, mark1...)
+qboolean BG_ClassIsWholeBody(int botclass);			// every anim drives the whole body (no separate torso/weapon anims)
+qboolean BG_ClassCreatureSize(int botclass, float* halfWidth, int* standheight, int* crouchheight); // SP .npc width/height
+int		BG_ClassCreatureScale(int botclass);		// SP .npc scale (percent), 0 = not a creature class
+int		BG_ClassCreatureAttackAnim(int botclass, int weapon, qboolean alt);	// the SP attack anim of a creature class, -1 = none
+int		BG_ClassCreatureNPCClass(int botclass);		// the SP NPC class of a creature class (death effects), CLASS_NONE otherwise
 #ifndef _GAME
 int		BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, const int eventFileIndex);
 #endif
@@ -2179,3 +2217,13 @@ qboolean BG_SaberBuiltSkin(const char* saber_name, const char* saberModel, const
 #define BOT_SABER_PENDING_MASK     0x1
 #define BOT_PENDING_STAND_ANIM     0x2
 #define BOT_SABER_PENDING_DELAY_MS 400 // milliseconds delay before cycling saber style
+
+// bg_weather.c: gameplay side of the global weather effects (game and cgame only)
+void BG_WeatherReset(void);
+void BG_WeatherCommand(const char* command);
+float BG_WeatherFizzChance(void);
+qboolean BG_WeatherOutsidePain(void);
+qboolean BG_WeatherLava(void);
+qboolean BG_IsOutside(const vec3_t pos, int passEntityNum);
+#define BG_WEATHER_NUM_PRESETS	10	// weather presets 0 (none) - 9, see BG_WeatherPresetName
+const char* BG_WeatherPresetName(int preset);

@@ -258,39 +258,86 @@ CG_MachinegunSpinAngle
 
 static float CG_MachinegunSpinAngle(centity_t* cent)
 {
-	float angle;
-	int delta = cg.time - cent->pe.barrelTime;
+	float angle = 0.0f;
+	int   delta = 0;
 
-	if (cent->pe.barrelSpinning)
+	// -----------------------------------------------------------------
+	// Safety: never dereference cent if it's NULL
+	// -----------------------------------------------------------------
+	if (cent == NULL)
 	{
-		angle = cent->pe.barrelAngle + delta * SPIN_SPEED;
+		return 0.0f;
+	}
+
+	delta = cg.time - cent->pe.barrelTime;
+
+	// -----------------------------------------------------------------
+	// Spinning / coasting logic
+	// -----------------------------------------------------------------
+
+	if (cent->pe.barrelSpinning == qtrue)
+	{
+		// Constant spin speed
+		angle = cent->pe.barrelAngle + ((float)delta * SPIN_SPEED);
 	}
 	else
 	{
+		// Coasting down
 		if (delta > COAST_TIME)
 		{
 			delta = COAST_TIME;
 		}
 
-		const float speed = 0.5f * (SPIN_SPEED + (float)(COAST_TIME - delta) / COAST_TIME);
-		angle = cent->pe.barrelAngle + delta * speed;
+		const float t = (float)(COAST_TIME - delta) / (float)COAST_TIME;
+		const float speed = 0.5f * (SPIN_SPEED + (t * SPIN_SPEED));
+
+		angle = cent->pe.barrelAngle + ((float)delta * speed);
 	}
 
-	// --- FIXED: detect state change correctly ---
-	if (cent->pe.barrelSpinning != !!(cent->currentState.eFlags & EF_FIRING))
+	// -----------------------------------------------------------------
+	// State change detection: EF_FIRING drives barrelSpinning
+	// Use predicted player state for the local client so the viewmodel
+	// barrel responds immediately to player input.
+	// -----------------------------------------------------------------
 	{
-		cent->pe.barrelTime = cg.time;
-		cent->pe.barrelAngle = AngleNormalize360(angle);
-		cent->pe.barrelSpinning = !!(cent->currentState.eFlags & EF_FIRING);
+		qboolean firingNow = qfalse;
 
-		if (cg.snap->ps.weapon == WP_REPEATER)
+		if (cg.snap != NULL &&
+			cent->currentState.number == cg.predictedPlayerState.clientNum)
 		{
-			trap->S_StartSound(
-				NULL,
-				cent->currentState.number,
-				CHAN_WEAPON,
-				trap->S_RegisterSound("sound/weapons/barrelSpinning/barrelSpinning.wav")
-			);
+			// Local player: use predicted state
+			firingNow =
+				(((cg.predictedPlayerState.eFlags & EF_FIRING) != 0 ||
+					(cg.predictedPlayerState.eFlags & EF_ALT_FIRING) != 0)
+					? qtrue : qfalse);
+		}
+		else
+		{
+			// Remote players: use server state
+			firingNow =
+				(((cent->currentState.eFlags & EF_FIRING) != 0 ||
+					(cent->currentState.eFlags & EF_ALT_FIRING) != 0)
+					? qtrue : qfalse);
+		}
+
+		// Transition: start or stop spinning
+		if (cent->pe.barrelSpinning != (firingNow != 0))
+		{
+			cent->pe.barrelTime = cg.time;
+			cent->pe.barrelAngle = AngleNormalize360(angle);
+			cent->pe.barrelSpinning = (firingNow != 0);
+
+			// Play spin-up sound for Z6
+			if (firingNow == qtrue &&
+				(cent->currentState.weapon == WP_Z6_ROTARY_CANNON ||
+					(cg.snap != NULL && cg.snap->ps.weapon == WP_Z6_ROTARY_CANNON)))
+			{
+				trap->S_StartSound(
+					NULL,
+					cent->currentState.number,
+					CHAN_WEAPON,
+					trap->S_RegisterSound("sound/weapons/z6/spinny.wav"));
+			}
 		}
 	}
 
@@ -624,11 +671,7 @@ void cg_add_player_weaponduals(refEntity_t* parent,
 				angles[YAW] = 0.0f;
 				angles[PITCH] = 0.0f;
 
-				if (cg_SpinningBarrels.integer && weapon_num == WP_REPEATER)
-				{
-					angles[ROLL] = CG_MachinegunSpinAngle(cent);
-				}
-				else if (cg_SpinningBarrels.integer && weapon_num == WP_STUN_BATON)
+				if (cg_SpinningBarrels.integer && weapon_num == WP_Z6_ROTARY_CANNON)
 				{
 					angles[ROLL] = CG_MachinegunSpinAngle(cent);
 				}
@@ -919,6 +962,7 @@ void cg_add_player_weaponduals(refEntity_t* parent,
 		if (cg.time - cent->muzzleOverheatTime <= MUZZLE_FLASH_TIME + 10)
 		{
 			if (weapon_num == WP_REPEATER ||
+				weapon_num == WP_Z6_ROTARY_CANNON ||
 				weapon_num == WP_FLECHETTE ||
 				weapon_num == WP_DISRUPTOR ||
 				weapon_num == WP_CONCUSSION)
@@ -1004,19 +1048,18 @@ void cg_add_player_weaponduals(refEntity_t* parent,
 	}
 }
 
-// cg_SpinningBarrels: the gun in a player's hand spins its "bone_barrel" bone (the Z6 rotary cannon's
-// models/weapons2/z6_rotary/model.glm, CG_InitG2Weapons) while he fires and coasts down after.
-// Guns whose model has no such bone are not affected. With these orientations YAW turns it around the barrels.
-static void CG_SpinWeaponBarrel(centity_t* cent)
+// The Z6 rotary cannon in the hand of a player (models/weapons2/z6_rotary/model.glm, CG_InitG2Weapons): its barrel bone
+// spins while he fires and coasts down after. With these orientations YAW turns it around the length of the barrels.
+static void CG_Z6SpinBarrel(centity_t* cent)
 {
 	vec3_t angles = { 0.0f, 0.0f, 0.0f };
 
-	if (!cg_SpinningBarrels.integer || !cent->ghoul2 || cent->currentState.weapon == WP_SABER
-		|| cent->currentState.weapon == WP_MELEE || !trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, 1))
+	if (cent->currentState.weapon != WP_Z6_ROTARY_CANNON || !cent->ghoul2
+		|| !trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, 1))
 	{
 		return;
 	}
-	angles[YAW] = CG_MachinegunSpinAngle(cent);
+	angles[YAW] = cg_SpinningBarrels.integer ? CG_MachinegunSpinAngle(cent) : 0.0f;
 	trap->G2API_SetBoneAngles(cent->ghoul2, 1, "bone_barrel", angles, BONE_ANGLES_POSTMULT, POSITIVE_X, NEGATIVE_Y,
 		NEGATIVE_Z, cgs.game_models, 0, cg.time);
 }
@@ -1025,7 +1068,7 @@ void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent,
 {
 	if (third_person)
 	{
-		CG_SpinWeaponBarrel(cent);
+		CG_Z6SpinBarrel(cent);
 	}
 	refEntity_t gun;
 	refEntity_t barrel;
@@ -1163,7 +1206,7 @@ void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent,
 				angles[YAW] = 0;
 				angles[PITCH] = 0;
 
-				if (cg_SpinningBarrels.integer && cent->currentState.weapon == WP_REPEATER)
+				if (cg_SpinningBarrels.integer && cent->currentState.weapon == WP_Z6_ROTARY_CANNON)
 				{
 					angles[ROLL] = CG_MachinegunSpinAngle(cent);
 				}
@@ -1396,6 +1439,7 @@ void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent,
 		if (cg.time - cent->muzzleOverheatTime <= MUZZLE_FLASH_TIME + 10)
 		{
 			if (cent->currentState.weapon == WP_REPEATER ||
+				cent->currentState.weapon == WP_Z6_ROTARY_CANNON ||
 				cent->currentState.weapon == WP_FLECHETTE ||
 				cent->currentState.weapon == WP_DISRUPTOR ||
 				cent->currentState.weapon == WP_CONCUSSION)
@@ -1456,71 +1500,6 @@ void CG_AddPlayerWeapon(refEntity_t* parent, playerState_t* ps, centity_t* cent,
 	}
 }
 
-static void CG_DrawZ6TruegunsBarrel(const playerState_t* ps)
-{
-	weaponInfo_t* wi = &cg_weapons[WP_REPEATER];
-	centity_t* cent = &cg_entities[cg.predictedPlayerState.clientNum];
-
-	refEntity_t hand;
-	refEntity_t barrel;
-	vec3_t ang = { 0,0,0 };
-
-	memset(&hand, 0, sizeof(hand));
-	memset(&barrel, 0, sizeof(barrel));
-
-	CG_CalculateWeaponPosition(hand.origin, ang);
-	VectorMA(hand.origin, cg_gunX.value, cg.refdef.viewaxis[0], hand.origin);
-	VectorMA(hand.origin, cg_gunY.value, cg.refdef.viewaxis[1], hand.origin);
-	VectorMA(hand.origin, cg_gunZ.value, cg.refdef.viewaxis[2], hand.origin);
-
-	AnglesToAxis(ang, hand.axis);
-	hand.hModel = wi->handsModel;
-	hand.renderfx = RF_DEPTHHACK | RF_FIRST_PERSON;
-
-	CG_AddWeaponWithPowerups(&hand);
-
-	// spinning barrel
-	ang[ROLL] = CG_MachinegunSpinAngle(cent);
-	AnglesToAxis(ang, barrel.axis);
-
-	barrel.hModel = wi->barrelModel;
-	CG_PositionRotatedEntityOnTag(&barrel, &hand, wi->handsModel, "tag_barrel");
-
-	CG_AddWeaponWithPowerups(&barrel);
-}
-
-// Draw only the spinning barrel (for trueguns=0 case where hands are already drawn)
-static void CG_DrawZ6SpinningBarrelOnly(const playerState_t* ps)
-{
-	weaponInfo_t* wi = &cg_weapons[WP_REPEATER];
-	centity_t* cent = &cg_entities[cg.predictedPlayerState.clientNum];
-
-	refEntity_t hand;
-	refEntity_t barrel;
-	vec3_t ang = { 0,0,0 };
-
-	memset(&hand, 0, sizeof(hand));
-	memset(&barrel, 0, sizeof(barrel));
-
-	CG_CalculateWeaponPosition(hand.origin, ang);
-	VectorMA(hand.origin, cg_gunX.value, cg.refdef.viewaxis[0], hand.origin);
-	VectorMA(hand.origin, cg_gunY.value, cg.refdef.viewaxis[1], hand.origin);
-	VectorMA(hand.origin, cg_gunZ.value, cg.refdef.viewaxis[2], hand.origin);
-
-	AnglesToAxis(ang, hand.axis);
-	hand.hModel = wi->handsModel;
-	hand.renderfx = RF_DEPTHHACK | RF_FIRST_PERSON;
-
-	// spinning barrel
-	ang[ROLL] = CG_MachinegunSpinAngle(cent);
-	AnglesToAxis(ang, barrel.axis);
-
-	barrel.hModel = wi->barrelModel;
-	CG_PositionRotatedEntityOnTag(&barrel, &hand, wi->handsModel, "tag_barrel");
-
-	CG_AddWeaponWithPowerups(&barrel);
-}
-
 /*
 ==============
 CG_AddViewWeapon
@@ -1564,6 +1543,12 @@ void CG_AddViewWeapon(playerState_t* ps)
 
 	// No gun in third person
 	if (cg.renderingThirdPerson)
+	{
+		return;
+	}
+
+	// SJE: no view weapon for a model without hands (creature / droid models: R2-D2, gonk...)
+	if (ps->clientNum >= 0 && ps->clientNum < MAX_CLIENTS && cgs.clientinfo[ps->clientNum].noHandBolt)
 	{
 		return;
 	}
@@ -1721,12 +1706,6 @@ void CG_AddViewWeapon(playerState_t* ps)
 			qtrue      // left-hand
 		);
 	}
-
-	// Special case: Z6 with trueguns OFF and spinning barrels - add spinning barrel to normal md3 weapon
-	/*if (ps->weapon == WP_REPEATER && !cg_trueguns.integer && cg_SpinningBarrels.integer)
-	{
-		CG_DrawZ6SpinningBarrelOnly(ps);
-	}*/
 }
 
 /*
@@ -2231,6 +2210,7 @@ static qboolean IsCyclingReloadableGun(const int weap)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -2956,6 +2936,10 @@ void CG_FireWeapon(centity_t* cent, const qboolean alt_fire)
 
 			CGCam_Shake(val, 250);
 		}
+		else if (ent->weapon == WP_Z6_ROTARY_CANNON)
+		{
+			CGCam_Shake(flrand(0.2f, 0.5f), 150); // the Z-6: a light, steady rumble (as MovieDuels)
+		}
 		else if (ent->weapon == WP_ROCKET_LAUNCHER ||
 			ent->weapon == WP_REPEATER && alt_fire ||
 			ent->weapon == WP_FLECHETTE ||
@@ -3173,6 +3157,10 @@ void cg_missile_hit_wall(const int weapon, vec3_t origin, vec3_t dir, const qboo
 		FX_BlasterWeaponHitWall(origin, dir);
 		break;
 
+	case WP_Z6_ROTARY_CANNON:
+		FX_CloneWeaponHitWall(origin, dir);
+		break;
+
 	case WP_DISRUPTOR:
 		FX_DisruptorAltMiss(origin, dir);
 		break;
@@ -3285,6 +3273,10 @@ void cg_missile_hit_player(const int weapon, vec3_t origin, vec3_t dir, const qb
 	case WP_BLASTER:
 	case WP_DROIDEKA:
 		FX_BlasterWeaponHitPlayer(origin, dir, humanoid);
+		break;
+
+	case WP_Z6_ROTARY_CANNON:
+		FX_CloneWeaponHitPlayer(origin, dir, humanoid);
 		break;
 
 	case WP_DISRUPTOR:
@@ -3474,7 +3466,7 @@ void CG_InitG2Weapons(void)
 			assert(item->giTag < MAX_WEAPONS);
 
 			// initialise model
-			// (the Z6 rotary cannon in the hand: its model with a barrel bone, which CG_SpinWeaponBarrel spins,
+			// (the Z6 rotary cannon in the hand: its model with a barrel bone, which CG_Z6SpinBarrel spins,
 			// instead of rotary_cannon_w.glm, whose barrels are fixed to the gun)
 			const char* hand_model = !Q_stricmp(item->world_model[0], "models/weapons2/z6_rotary/rotary_cannon_w.glm")
 				? "models/weapons2/z6_rotary/model.glm" : item->world_model[0];
@@ -3688,6 +3680,18 @@ void CG_CopyG2WeaponInstance(const centity_t* cent, const int weapon_num, void* 
 	if (weapG2 != NULL)
 	{
 		hasWeaponInstance = qtrue;
+	}
+
+	if (cent->currentState.eType != ET_NPC && cent->currentState.number >= 0 && cent->currentState.number < MAX_CLIENTS &&
+		cgs.clientinfo[cent->currentState.number].noHandBolt)
+	{
+		// SJE: a creature / droid model without a right hand (R2-D2's stun arm is inside the body, the wampa and
+		// rancor fight with claws): no weapon model; bolt 0 would be some other tag on these skeletons
+		hasWeaponInstance = qfalse;
+		if (trap->G2API_HasGhoul2ModelOnIndex(&to_ghoul2, 2))
+		{
+			trap->G2API_RemoveGhoul2Model(&to_ghoul2, 2);
+		}
 	}
 
 	if (hasWeaponInstance == qtrue)

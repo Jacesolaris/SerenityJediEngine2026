@@ -107,6 +107,7 @@ G_FindConfigstringIndex
 int G_FindConfigstringIndex(const char* name, const int start, const int max, const qboolean create)
 {
 	int i;
+	int firstFree = 0;
 
 	if (!VALIDSTRING(name))
 	{
@@ -119,6 +120,16 @@ int G_FindConfigstringIndex(const char* name, const int start, const int max, co
 		trap->GetConfigstring(start + i, s, sizeof s);
 		if (!s[0])
 		{
+			// the effects can have blanked slots in the middle (old weather strings, g_svcmds.c G_SetWeather): look
+			// at all of them, then take the first free one
+			if (start == CS_EFFECTS)
+			{
+				if (!firstFree)
+				{
+					firstFree = i;
+				}
+				continue;
+			}
 			break;
 		}
 		if (strcmp(s, name) == 0)
@@ -132,12 +143,24 @@ int G_FindConfigstringIndex(const char* name, const int start, const int max, co
 		return 0;
 	}
 
+	if (firstFree)
+	{
+		i = firstFree;
+	}
+
 	if (i == max)
 	{
 		trap->Error(ERR_DROP, "G_FindConfigstringIndex: overflow");
 	}
 
 	trap->SetConfigstring(start + i, name);
+
+	if (start == CS_EFFECTS && name[0] == '*')
+	{
+		// a new global weather effect: clients get it as a configstring change and run it in order, keep the
+		// gameplay weather state (acid rain / lava weather damage) in step with them
+		BG_WeatherCommand(name + 1);
+	}
 
 	return i;
 }
@@ -209,10 +232,87 @@ int G_BSPIndex(const char* name)
 
 //=====================================================================
 
+// SJE: does this player model use its own skeleton (its model.glm names a GLA outside players/_humanoid/ that has an
+// animation.cfg and everything the player code needs)? Like SP, such a model then gets its own GLA and anim set
+// instead of the shared _humanoid one. Same rule as the cgame (BG_ModelOwnSkeletonGLA). Cached per model folder.
+#define MAX_OWN_SKELETON_CACHE 128
+typedef struct ownSkeletonCache_s {
+	char		model[MAX_QPATH];
+	int			skelFlags;	// BG_ModelSkeletonFlags (SKELF_*), 0 = no own skeleton
+} ownSkeletonCache_t;
+
+static ownSkeletonCache_t ownSkeletonCache[MAX_OWN_SKELETON_CACHE];
+static int numOwnSkeletonCache = 0;
+
+// SKELF_* of the model's own skeleton (0 = none / unusable). Which of these a class needs: BG_ClassSkeletonOk.
+int G_ModelSkeletonFlags(const char* model)
+{
+	char folder[MAX_QPATH];
+
+	if (!model || !model[0])
+	{
+		return 0;
+	}
+
+	Q_strncpyz(folder, model, sizeof folder);
+	char* p = strchr(folder, '/');
+	if (p)
+	{
+		*p = 0;
+	}
+	p = strchr(folder, '|');
+	if (p)
+	{
+		*p = 0;
+	}
+	if (!folder[0])
+	{
+		return 0;
+	}
+
+	for (int i = 0; i < numOwnSkeletonCache; i++)
+	{
+		if (!Q_stricmp(ownSkeletonCache[i].model, folder))
+		{
+			return ownSkeletonCache[i].skelFlags;
+		}
+	}
+
+	const int skelFlags = BG_ModelSkeletonFlags(folder);
+
+	if (numOwnSkeletonCache < MAX_OWN_SKELETON_CACHE)
+	{
+		Q_strncpyz(ownSkeletonCache[numOwnSkeletonCache].model, folder, sizeof ownSkeletonCache[numOwnSkeletonCache].model);
+		ownSkeletonCache[numOwnSkeletonCache].skelFlags = skelFlags;
+		numOwnSkeletonCache++;
+	}
+	return skelFlags;
+}
+
+qboolean G_ModelHasOwnSkeleton(const char* model)
+{
+	return G_ModelSkeletonFlags(model) ? qtrue : qfalse;
+}
+
 //see if we can or should allow this guy to use a custom skeleton -rww
 qboolean G_PlayerHasCustomSkeleton(gentity_t* ent)
 {
-	return qfalse;
+	char userinfo[MAX_INFO_STRING];
+
+	if (!ent || !ent->client || ent->s.number >= MAX_CLIENTS)
+	{
+		return qfalse;
+	}
+	if (level.gametype == GT_SIEGE)
+	{
+		// siege forces class models through its own path; keep it as it was
+		return qfalse;
+	}
+
+	trap->GetUserinfo(ent->s.number, userinfo, sizeof userinfo);
+	// (G_AssignClassAndScaleFromModel already resets a model the class may not use; this is the same rule)
+	const int skelFlags = G_ModelSkeletonFlags(Info_ValueForKey(userinfo, "model"));
+	return skelFlags && BG_ClassSkeletonOk(ent->client->pers.botclass, skelFlags) ? qtrue : qfalse;
 }
 
 /*
@@ -2074,6 +2174,58 @@ extern qboolean gSiegeRoundBegun;
 static vec3_t playerMins = { -15, -15, DEFAULT_MINS_2 };
 static vec3_t playerMaxs = { 15, 15, DEFAULT_MAXS_2 };
 
+// SJE: a gonk (power droid: an NPC, or a player playing one) gives a bacta canister to whoever uses it: dropped in
+// front of it, towards the user, then it needs g_gonkBactaCooldown seconds (default 30) for the next one. The cgame
+// shows the use icon on a living gonk within 256 units (CG_DrawGonkHint).
+static int gonkBactaTime[MAX_GENTITIES];
+
+static qboolean G_IsLivingGonk(const gentity_t* ent)
+{
+	if (!ent || !ent->inuse || !ent->client || ent->health <= 0 || ent->client->ps.pm_type == PM_DEAD
+		|| ent->s.eFlags & EF_DEAD)
+	{
+		return qfalse;
+	}
+	return ent->s.eType == ET_NPC ? ent->client->NPC_class == CLASS_GONK : ent->s.botclass == BCLASS_GONK;
+}
+
+static void G_GonkGiveBacta(gentity_t* gonk, const gentity_t* user)
+{
+	if (gonkBactaTime[gonk->s.number] > level.time + 3600000)
+	{
+		gonkBactaTime[gonk->s.number] = 0; // left over from an earlier map
+	}
+	if (level.time < gonkBactaTime[gonk->s.number])
+	{
+		if (user->s.number < MAX_CLIENTS)
+		{
+			trap->SendServerCommand(user->s.number, va("cp \"The gonk is recharging (%d s)\"",
+				(gonkBactaTime[gonk->s.number] - level.time + 999) / 1000));
+		}
+		return;
+	}
+	gitem_t* item = BG_FindItemForHoldable(HI_MEDPAC);
+	vec3_t dir, org, vel;
+
+	if (!item)
+	{
+		return;
+	}
+	VectorSubtract(user->r.currentOrigin, gonk->r.currentOrigin, dir);
+	dir[2] = 0;
+	if (VectorNormalize(dir) < 1.0f)
+	{
+		AngleVectors(gonk->r.currentAngles, dir, NULL, NULL);
+	}
+	VectorMA(gonk->r.currentOrigin, 20.0f, dir, org);
+	org[2] += 8.0f;
+	VectorScale(dir, 80.0f, vel);
+	vel[2] = 120.0f;
+	LaunchItem(item, org, vel);
+	G_Sound(gonk, CHAN_VOICE, G_SoundIndex("sound/chars/gonk/misc/gonktalk1"));
+	gonkBactaTime[gonk->s.number] = level.time + (int)((g_gonkBactaCooldown.value > 0.0f ? g_gonkBactaCooldown.value : 0.0f) * 1000.0f);
+}
+
 void TryUse(gentity_t* ent)
 {
 	trace_t trace;
@@ -2164,6 +2316,12 @@ void TryUse(gentity_t* ent)
 	}
 
 	gentity_t* target = &g_entities[trace.entityNum];
+
+	if (target != ent && G_IsLivingGonk(target))
+	{
+		G_GonkGiveBacta(target, ent);
+		return;
+	}
 
 	//Enable for corpse dragging
 #if 0

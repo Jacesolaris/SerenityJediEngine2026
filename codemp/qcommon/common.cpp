@@ -29,6 +29,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/game_version.h"
 #include "../server/NPCNav/navigator.h"
 #include "../shared/sys/sys_local.h"
+#include <vector>
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -485,13 +486,16 @@ static qboolean Com_AddStartupCommands(void)
 
 void Info_Print(const char* s)
 {
-	char key[BIG_INFO_KEY]{};
+	// off the stack (C6262; 16 KB with value); console command only, not reentrant
+	static char key[BIG_INFO_KEY];
+	static char value[BIG_INFO_VALUE];
+	memset(key, 0, sizeof(key)); // zeroed as the {} on the stack was
 
 	if (*s == '\\')
 		s++;
 	while (*s)
 	{
-		char value[BIG_INFO_VALUE]{};
+		memset(value, 0, sizeof(value)); // zeroed each pass as the {} on the stack was
 		char* o = key;
 		while (*s && *s != '\\')
 			*o++ = *s++;
@@ -949,10 +953,10 @@ Returns last event time
 int Com_EventLoop(void)
 {
 	netadr_t evFrom;
-	byte bufData[MAX_MSGLEN];
+	std::vector<byte> bufData(MAX_MSGLEN); // heap, not stack (C6262): one buffer per call, so safe if this is ever re-entered
 	msg_t buf;
 
-	MSG_Init(&buf, bufData, sizeof bufData);
+	MSG_Init(&buf, bufData.data(), MAX_MSGLEN);
 
 	while (true)
 	{
@@ -998,6 +1002,8 @@ int Com_EventLoop(void)
 			CL_JoystickEvent(ev.evValue, ev.evValue2, ev.evTime);
 			break;
 		case SE_CONSOLE:
+			if (ev.evPtr == nullptr) // console events always carry the text; checked as the Z_Free below does
+				break;
 			if (static_cast<char*>(ev.evPtr)[0] == '\\' || static_cast<char*>(ev.evPtr)[0] == '/')
 			{
 				Cbuf_AddText(static_cast<char*>(ev.evPtr) + 1);

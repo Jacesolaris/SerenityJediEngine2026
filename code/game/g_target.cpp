@@ -1003,7 +1003,7 @@ static void set_mission_stats_cvars()
 	// Find the favorite weapon
 	int wpn = 0;
 	int max_wpn = cg_entities[0].gent->client->sess.missionStats.weaponUsed[0];
-	for (int i = 1; i < WP_NUM_WEAPONS; i++)
+	for (int i = 1; i < MISSION_STATS_WEAPONS; i++)
 	{
 		if (cg_entities[0].gent->client->sess.missionStats.weaponUsed[i] > max_wpn)
 		{

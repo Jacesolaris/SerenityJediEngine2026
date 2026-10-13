@@ -11,6 +11,7 @@ typedef struct classModel_s
 	bclass_t botclass;
 	bclass_t adminClass;
 	int scale;
+	qboolean exactOnly;	// SJE: only an exact model/skin or folder match (step 1 or 2), never the substring scan
 } classModel_t;
 
 static const classModel_t classModels[] =
@@ -31,6 +32,39 @@ static const classModel_t classModels[] =
 	{ "nikto", BCLASS_HUMAN_MERC, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "snivvian", BCLASS_HUMAN_MERC, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "twilek", BCLASS_HUMAN_MERC, BCLASS_NONE, BOTZIZE_NORMAL },
+
+	// Added 2026-10-11 (SJE: creature/droid player models, class-correct as the SP NPC files). Exact folder rows only
+	// (exactOnly), so short names like "r2" do not catch other models in the substring scan.
+	{ "r2", BCLASS_R2D2, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },				// r2d2 skeleton, r2d2.npc: stun baton
+	{ "r5", BCLASS_R5D2, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },				// r2d2 skeleton; owner decision 2026-10-11: R5 has no weapon (only R2-D2 gets the stun)
+	{ "gonk", BCLASS_GONK, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },			// gonk.npc: WP_NONE (no weapon at all)
+	{ "sith_droid", BCLASS_PROTOCOL, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },	// protocol skeleton: as protocol.npc
+	{ "teran", BCLASS_RANCOR, BCLASS_NONE, 70, qtrue },						// rancor skeleton (rancor reskin): melee; 70% of SP size (BG_ClassCreatureSize)
+	{ "mutant_rancor", BCLASS_RANCOR, BCLASS_NONE, 70, qtrue },				// rancor skeleton: melee, rancor bbox at 70% (the SP mutant is scale 200)
+	{ "saber_droid", BCLASS_SABER_DROID, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },	// saber_droid.npc: WP_SABER
+	{ "saberdroid", BCLASS_SABER_DROID, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },	// saber_droid skeleton
+	{ "howler", BCLASS_HOWLER, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },		// howler.npc: WP_MELEE
+	{ "minemonster", BCLASS_MINEMONSTER, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },	// minemonster.npc: WP_MELEE
+	{ "mark1", BCLASS_MARK1, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },			// was caught by the Sith "ma" row; not playable
+	{ "mark2", BCLASS_MARK2, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },			// (no creature class: reset to the default model)
+
+	// Added 2026-10-11 (SJE: bots for the SP NPC characters, scriptsmp/sje_characters.bot): models/skins whose class did not
+	// give the NPC file's weapon, or that fell to the saber fallback class. Classes from the NPC files.
+	{ "jedi_kyle", BCLASS_KYLE, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },		// kyle.npc Kyle/Kyle2 (CLASS_KYLE); was caught by the "jedi" row
+	{ "imperial/officer", BCLASS_IMPOFFICER, BCLASS_NONE, BOTZIZE_NORMAL },	// impofficer.npc: WP_BLASTER
+	{ "imperial/commander", BCLASS_IMPOFFICER, BCLASS_NONE, BOTZIZE_NORMAL },	// impcommander.npc: WP_BLASTER
+	{ "granjk2", BCLASS_GRAN, BCLASS_NONE, BOTZIZE_LARGE, qtrue },			// gran.npc GranJK2: WP_THERMAL + WP_MELEE (as gran/red)
+	{ "rebel_commando", BCLASS_REBEL, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },	// rebel2.npc species commandos are CLASS_REBEL (the bith/quarren skins hit saber rows)
+	{ "reebus", BCLASS_RAX, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },			// rax.npc Rax2: WP_CONCUSSION (fell to the saber fallback)
+	{ "mohc", BCLASS_RAX, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },				// rax.npc Mohc: WP_CONCUSSION (fell to the saber fallback)
+	{ "darktrooper", BCLASS_STORMTROOPER, BCLASS_NONE, BOTZIZE_NORMAL, qtrue },	// stormtrooper.npc StormTrooper2, as the darktrooper_tv rows (fell to the saber fallback)
+	{ "human_merc/abyssin", BCLASS_RODIAN, BCLASS_NONE, BOTZIZE_NORMAL },		// alien_mercs.npc abyssin: CLASS_RODIAN, WP_DISRUPTOR
+	{ "human_merc/devaronian", BCLASS_RODIAN, BCLASS_NONE, BOTZIZE_NORMAL },	// alien_mercs.npc devaronian: CLASS_RODIAN, WP_CONCUSSION
+	{ "human_merc/kaleesh", BCLASS_RODIAN, BCLASS_NONE, BOTZIZE_NORMAL },		// alien_mercs.npc kaleesh: CLASS_RODIAN, WP_TUSKEN_RIFLE (SP only; disruptor here)
+	{ "human_merc/zhug_boss", BCLASS_WEEQUAY, BCLASS_NONE, BOTZIZE_NORMAL },	// alien_mercs.npc zhug_boss: CLASS_WEEQUAY, WP_BOWCASTER
+	{ "human_merc/zhug", BCLASS_WEEQUAY, BCLASS_NONE, BOTZIZE_NORMAL },		// alien_mercs.npc zhug: CLASS_WEEQUAY (its WP_BLASTER is not in that class)
+	{ "human_merc/advozse", BCLASS_WEEQUAY, BCLASS_NONE, BOTZIZE_NORMAL },		// alien_mercs.npc advozse: CLASS_WEEQUAY (its WP_ROCKET_LAUNCHER is not in that class)
+	{ "human_merc/arcona", BCLASS_SABOTEUR, BCLASS_NONE, BOTZIZE_NORMAL },		// alien_mercs.npc arcona: CLASS_SABOTEUR (its WP_BOWCASTER is not in that class)
 
 	// Generated from the former if/else chain
 	{ "md_gua_am", BCLASS_SABERNOFP, BCLASS_NONE, BOTZIZE_NORMAL },
@@ -1050,12 +1084,12 @@ static const classModel_t classModels[] =
 	{ "protocol", BCLASS_PROTOCOL, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "protocol/red", BCLASS_PROTOCOL, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "protocol/blue", BCLASS_PROTOCOL, BCLASS_NONE, BOTZIZE_NORMAL },
-	{ "tc14/main", BCLASS_PROTOCOL, BCLASS_NONE, BOTZIZE_NORMAL },
-	{ "kgc3po/main", BCLASS_PROTOCOL, BCLASS_NONE, BOTZIZE_NORMAL },
-	{ "r2d2", BCLASS_R2D2, BCLASS_NONE, BOTZIZE_SMALLER },
-	{ "r5d2", BCLASS_R2D2, BCLASS_NONE, BOTZIZE_SMALLER },
+	// SJE: the rows "tc14/main" and "kgc3po/main" were removed: no tc14 or kgc3po model is in any pk3 (the protocol droid
+	// is "protocol" with the skins default/menu/imp, all covered by the row above).
+	{ "r2d2", BCLASS_R2D2, BCLASS_NONE, BOTZIZE_NORMAL },					// SJE: r2d2.npc has no scale (the r2d2 skeleton gets the r2d2.npc bbox)
+	{ "r5d2", BCLASS_R5D2, BCLASS_NONE, BOTZIZE_NORMAL },					// SJE: own class, no weapon (owner decision 2026-10-11; SP r5d2.npc has the stun, as r2d2)
 	{ "marka_ragnos", BCLASS_RAGNOS, BCLASS_NONE, BOTZIZE_NORMAL },
-	{ "rancor", BCLASS_RANCOR, BCLASS_NONE, BOTZIZE_NORMAL },
+	{ "rancor", BCLASS_RANCOR, BCLASS_NONE, 70 },								// SJE: 70% of the SP rancor so it fits MP maps (bbox: BG_ClassCreatureSize)
 	{ "rax_joris", BCLASS_RAX, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "calo", BCLASS_RAX, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "rebel", BCLASS_REBEL, BCLASS_NONE, BOTZIZE_NORMAL },
@@ -1306,7 +1340,7 @@ static const classModel_t classModels[] =
 	{ "ugnaught", BCLASS_UGNAUGHT, BCLASS_NONE, BOTZIZE_SMALLER },
 	{ "ew/main", BCLASS_UGNAUGHT, BCLASS_NONE, BOTZIZE_SMALLER },
 	{ "ew", BCLASS_UGNAUGHT, BCLASS_NONE, BOTZIZE_SMALLER },
-	{ "wampa", BCLASS_WAMPA, BCLASS_NONE, BOTZIZE_NORMAL },
+	{ "wampa", BCLASS_WAMPA, BCLASS_NONE, 150 },							// SJE: wampa.npc scale 150 (matches its bbox)
 	{ "weequay", BCLASS_WEEQUAY, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "weequay/blue", BCLASS_WEEQUAY, BCLASS_NONE, BOTZIZE_NORMAL },
 	{ "weequay/red", BCLASS_WEEQUAY, BCLASS_NONE, BOTZIZE_NORMAL },

@@ -2063,8 +2063,12 @@ void R_GenerateDrawSurfs(viewParms_t* viewParms, trRefdef_t* refdef) {
 
 	R_AddPolygonSurfaces(refdef);
 
+	// weather belongs to the game view only. It was added to whichever scene came first in the frame: while an in-game
+	// menu is open the game view is not drawn, so the menu's model preview (RDF_NOWORLDMODEL) was scene 0 and the map's
+	// weather was drawn over the menu across that scene's viewport.
 	if (tr.viewParms.viewParmType > VPT_POINT_SHADOWS &&
 		tr.world &&
+		!(refdef->rdflags & RDF_NOWORLDMODEL) &&
 		backEndData->currentFrame->currentScene == 0)
 	{
 		R_AddWeatherSurfaces();
@@ -2532,12 +2536,9 @@ static void R_SetupViewParms(const trRefdef_t* refdef)
 	Com_Memset(&tr.viewParms, 0, sizeof(viewParms_t));
 	tr.viewParms.viewportX = refdef->x;
 
-	// Shoud be just refef->y but this flips the menu orientation for models, so its actually needed like this
-#ifdef REND2_SP
+	// GL viewports count from the bottom: flip the refdef's top-down y for menu / no-world scenes too (MP only flipped it
+	// while no map was loaded, so the in-game character menu's model preview was drawn too big and too high)
 	if (!tr.world || refdef->rdflags & RDF_NOWORLDMODEL)
-#else
-	if (!tr.world)
-#endif
 		tr.viewParms.viewportY = glConfig.vidHeight - (refdef->y + refdef->height);
 	else
 		tr.viewParms.viewportY = refdef->y;

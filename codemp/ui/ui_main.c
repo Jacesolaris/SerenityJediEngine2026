@@ -66,7 +66,17 @@ const char* forcepowerDesc[NUM_FORCE_POWERS] =
 	"@MENUS_EFFECT_NAREA_OF_EFFECT",
 	"@SP_INGAME_FORCE_SABER_OFFENSE_DESC",
 	"@SP_INGAME_FORCE_SABER_DEFENSE_DESC",
-	"@SP_INGAME_FORCE_SABER_THROW_DESC"
+	"@SP_INGAME_FORCE_SABER_THROW_DESC",
+	"@SP_INGAME_FORCE_STASIS_DESC",
+	"@SP_INGAME_FORCE_DESTRUCTION_DESC",
+	"@SP_INGAME_FORCE_GRASP_DESC",
+	"@SP_INGAME_FORCE_REPULSE_DESC",
+	"@SP_INGAME_FORCE_LIGHTNINGSTRIKE_DESC",
+	"@SP_INGAME_FORCE_FEAR_DESC",
+	"@SP_INGAME_FORCE_DEADLYSIGHT_DESC",
+	"@SP_INGAME_FORCE_BLAST_DESC",
+	"@SP_INGAME_FORCE_INSANITY_DESC",
+	"@SP_INGAME_FORCE_BLINDING_DESC"
 };
 
 // Movedata Sounds
@@ -260,6 +270,12 @@ int uiNumAllAnims = 1; //start off at 0, because 0 will always be assigned to hu
 static animation_t* UI_AnimsetAlloc(void)
 {
 	assert(uiNumAllAnims < MAX_ANIM_FILES);
+	if (uiNumAllAnims >= MAX_ANIM_FILES)
+	{
+		// SJE: release-build guard (was only an assert): never write past bgAllAnims
+		Com_Printf(S_COLOR_YELLOW "WARNING: UI_AnimsetAlloc: no free animation slot (MAX_ANIM_FILES %d)\n", MAX_ANIM_FILES);
+		return NULL;
+	}
 	bgAllAnims[uiNumAllAnims].anims = (animation_t*)BG_Alloc(sizeof(animation_t) * MAX_TOTALANIMATIONS);
 
 	return bgAllAnims[uiNumAllAnims].anims;
@@ -1581,8 +1597,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 09/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 06------------------------------\n");
+	Com_Printf("---------------------Build date 13/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 07------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -2968,7 +2984,17 @@ static int UI_OwnerDrawWidth(int ownerDraw, float scale)
 	case UI_FORCE_RANK_SABERATTACK:
 	case UI_FORCE_RANK_SABERDEFEND:
 	case UI_FORCE_RANK_SABERTHROW:
-		findex = ownerDraw - UI_FORCE_RANK - 1;
+	case UI_FORCE_RANK_STASIS:
+	case UI_FORCE_RANK_DESTRUCTION:
+	case UI_FORCE_RANK_GRASP:
+	case UI_FORCE_RANK_REPULSE:
+	case UI_FORCE_RANK_LIGHTNING_STRIKE:
+	case UI_FORCE_RANK_FEAR:
+	case UI_FORCE_RANK_DEADLYSIGHT:
+	case UI_FORCE_RANK_BLAST:
+	case UI_FORCE_RANK_INSANITY:
+	case UI_FORCE_RANK_BLINDING:
+		findex = UI_FORCE_RANK_INDEX(ownerDraw);
 		//this will give us the index as long as UI_FORCE_RANK is always one below the first force rank index
 		i = uiForcePowersRank[findex];
 
@@ -3149,16 +3175,18 @@ static void UI_DrawRedBlue(rectDef_t* rect, float scale, vec4_t color, int textS
 	{
 		//print different team names for CoOp
 		Text_Paint(rect->x, rect->y, scale, color,
-			uiInfo.redBlue == 0
-			? UI_GetStringEdString("SJE_MENUS", "ENEMYTEAM")
-			: UI_GetStringEdString("SJE_MENUS", "PLAYERTEAM"), 0, 0, textStyle, i_menu_font);
+			uiInfo.redBlue == 2
+			? UI_GetStringEdString("SJE_MENUS", "PLAYERTEAM")
+			: UI_GetStringEdString("SJE_MENUS", "ENEMYTEAM"), 0, 0, textStyle, i_menu_font);
 	}
 	else
 	{
 		Text_Paint(rect->x, rect->y, scale, color,
-			uiInfo.redBlue == 0
+			uiInfo.redBlue == 1
 			? UI_GetStringEdString("MP_INGAME", "RED")
-			: UI_GetStringEdString("MP_INGAME", "BLUE"), 0, 0, textStyle, i_menu_font);
+			: uiInfo.redBlue == 2
+			? UI_GetStringEdString("MP_INGAME", "BLUE")
+			: "Auto (faction)", 0, 0, textStyle, i_menu_font);
 	}
 }
 
@@ -3421,8 +3449,17 @@ static void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float
 	case UI_FORCE_RANK_SABERATTACK:
 	case UI_FORCE_RANK_SABERDEFEND:
 	case UI_FORCE_RANK_SABERTHROW:
-
-		findex = ownerDraw - UI_FORCE_RANK - 1;
+	case UI_FORCE_RANK_STASIS:
+	case UI_FORCE_RANK_DESTRUCTION:
+	case UI_FORCE_RANK_GRASP:
+	case UI_FORCE_RANK_REPULSE:
+	case UI_FORCE_RANK_LIGHTNING_STRIKE:
+	case UI_FORCE_RANK_FEAR:
+	case UI_FORCE_RANK_DEADLYSIGHT:
+	case UI_FORCE_RANK_BLAST:
+	case UI_FORCE_RANK_INSANITY:
+	case UI_FORCE_RANK_BLINDING:
+		findex = UI_FORCE_RANK_INDEX(ownerDraw);
 		//this will give us the index as long as UI_FORCE_RANK is always one below the first force rank index
 		if (uiForcePowerDarkLight[findex] && uiForceSide != uiForcePowerDarkLight[findex])
 		{
@@ -4552,7 +4589,7 @@ static qboolean UI_RedBlue_HandleKey(int flags, float* special, int key)
 {
 	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
 	{
-		uiInfo.redBlue ^= 1;
+		uiInfo.redBlue = (uiInfo.redBlue + 1) % 3; // 0 Auto (the bot's faction picks the team), 1 Red, 2 Blue
 		return qtrue;
 	}
 	return qfalse;
@@ -4699,7 +4736,17 @@ static qboolean UI_OwnerDrawHandleKey(int ownerDraw, int flags, float* special, 
 	case UI_FORCE_RANK_SABERATTACK:
 	case UI_FORCE_RANK_SABERDEFEND:
 	case UI_FORCE_RANK_SABERTHROW:
-		findex = ownerDraw - UI_FORCE_RANK - 1;
+	case UI_FORCE_RANK_STASIS:
+	case UI_FORCE_RANK_DESTRUCTION:
+	case UI_FORCE_RANK_GRASP:
+	case UI_FORCE_RANK_REPULSE:
+	case UI_FORCE_RANK_LIGHTNING_STRIKE:
+	case UI_FORCE_RANK_FEAR:
+	case UI_FORCE_RANK_DEADLYSIGHT:
+	case UI_FORCE_RANK_BLAST:
+	case UI_FORCE_RANK_INSANITY:
+	case UI_FORCE_RANK_BLINDING:
+		findex = UI_FORCE_RANK_INDEX(ownerDraw);
 		//this will give us the index as long as UI_FORCE_RANK is always one below the first force rank index
 		return UI_ForcePowerRank_HandleKey(flags, special, key, uiForcePowersRank[findex], 0,
 			NUM_FORCE_POWER_LEVELS - 1, ownerDraw);
@@ -6096,6 +6143,7 @@ static void UI_FreeCustomSaber(customSaberInfo_t* saber)
 {
 	for (int part = 0; part < MAX_CUSTOM_SABER_PARTS; part++)
 	{
+#pragma warning(suppress: 6001) // false positive: each saber is memset to 0 before it is filled (UI_BuildCustomSaber_List)
 		free(saber->Skin[part].skins);
 	}
 	memset(saber, 0, sizeof(customSaberInfo_t));
@@ -6214,7 +6262,12 @@ static void UI_BuildCustomSaber_List(void)
 						break;
 					}
 					skins->skins = (skinName_t*)newPtr;
+					memset(skins->skins + skins->max, 0, (newMax - skins->max) * sizeof(skinName_t)); // the new entries start cleared
 					skins->max = newMax;
+				}
+				if (skins->count >= skins->max)
+				{
+					break; // (cannot happen: grown above; tells the analyser the index is in range)
 				}
 				Q_strncpyz(skins->skins[skins->count++].name, skinName, SKIN_LENGTH);
 				partsFound |= 1 << part;
@@ -6926,6 +6979,8 @@ static void UI_UpdateSiegeStatusIcons(void)
 	}
 }
 
+qboolean UI_SJEChars_Script(const char* name, char** args);
+
 static void UI_RunMenuScript(char** args)
 {
 	const char* name, * name2;
@@ -6935,6 +6990,10 @@ static void UI_RunMenuScript(char** args)
 		if (UI_Pazaak_Script(name, args))
 		{
 			return; // pzk_*
+		}
+		if (UI_SJEChars_Script(name, args))
+		{
+			return; // sje_char_* (the Select Character menu, ui_sjechars.c)
 		}
 		char buff[1024];
 		if (Q_stricmp(name, "StartServer") == 0)
@@ -7336,13 +7395,13 @@ static void UI_RunMenuScript(char** args)
 			{
 				trap->Cmd_ExecuteText(EXEC_APPEND,
 					va("addbot \"%s\" %i %s\n", UI_GetBotNameByNumber(uiInfo.botIndex),
-						uiInfo.skillIndex + 1, uiInfo.redBlue == 0 ? "Red" : "Blue"));
+						uiInfo.skillIndex + 1, trap->Cvar_VariableValue("g_gametype") == GT_SINGLE_PLAYER ? (uiInfo.redBlue == 2 ? "Blue" : "Red") : uiInfo.redBlue == 1 ? "Red" : uiInfo.redBlue == 2 ? "Blue" : "auto"));
 			}
 			else
 			{
 				trap->Cmd_ExecuteText(EXEC_APPEND,
 					va("addbot \"%s\" %i %s\n", UI_GetBotNameByNumber(uiInfo.botIndex),
-						uiInfo.skillIndex + 1, uiInfo.redBlue == 0 ? "Red" : "Blue"));
+						uiInfo.skillIndex + 1, trap->Cvar_VariableValue("g_gametype") == GT_SINGLE_PLAYER ? (uiInfo.redBlue == 2 ? "Blue" : "Red") : uiInfo.redBlue == 1 ? "Red" : uiInfo.redBlue == 2 ? "Blue" : "auto"));
 			}
 		}
 		else if (Q_stricmp(name, "addFavorite") == 0)

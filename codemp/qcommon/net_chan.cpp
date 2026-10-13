@@ -46,6 +46,8 @@ to the new value before sending out any replies.
 */
 
 #include "qcommon/qcommon.h"
+#include <memory>
+#include <vector>
 
 #define	MAX_PACKETLEN			1400		// max size of a network packet
 #define	FRAGMENT_SIZE			(MAX_PACKETLEN - 100)
@@ -619,19 +621,11 @@ Sends a text message in an out-of-band datagram
 void QDECL NET_OutOfBandPrint(netsrc_t sock, netadr_t adr, const char* format, ...)
 {
 	// ----------------------------------------------------------------------
-	// Allocate large buffer on heap (fixes MSVC C6262)
+	// Large buffer on the heap (fixes MSVC C6262), one per call: this can be re-entered (Com_Printf output is
+	// sent to an rcon client through here while redirected). Not zeroed, as on the stack.
 	// ----------------------------------------------------------------------
-	static char* string = nullptr;
-
-	if (string == nullptr)
-	{
-		string = static_cast<char*>(Z_Malloc(MAX_MSGLEN, TAG_TEMP_WORKSPACE, qfalse));
-		if (string == nullptr)
-		{
-			Com_Printf("^1NET_OutOfBandPrint: Failed to allocate string buffer\n");
-			return;
-		}
-	}
+	const std::unique_ptr<char[]> stringBuf(new char[MAX_MSGLEN]);
+	char* string = stringBuf.get();
 
 	// ----------------------------------------------------------------------
 	// Set the header
@@ -668,21 +662,12 @@ void QDECL NET_OutOfBandData(const netsrc_t sock,
 	const int len)
 {
 	// ----------------------------------------------------------------------
-	// Allocate large buffer on heap (fixes MSVC C6262)
+	// Large buffer on the heap (fixes MSVC C6262), one per call (not shared between calls)
 	// ----------------------------------------------------------------------
-	static byte* string = nullptr;
-
 	const size_t bufferSize = MAX_MSGLEN * 2;
 
-	if (string == nullptr)
-	{
-		string = static_cast<byte*>(Z_Malloc(bufferSize, TAG_TEMP_WORKSPACE, qfalse));
-		if (string == nullptr)
-		{
-			Com_Printf("^1NET_OutOfBandData: Failed to allocate string buffer\n");
-			return;
-		}
-	}
+	std::vector<byte> stringBuf(bufferSize);
+	byte* string = stringBuf.data();
 
 	// ----------------------------------------------------------------------
 	// Safety: validate input

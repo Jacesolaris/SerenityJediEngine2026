@@ -3500,7 +3500,7 @@ NPC_BSST_Attack
 
 extern qboolean PM_CrouchAnim(int anim);
 constexpr auto MELEE_DIST_SQUARED = 6400;
-extern qboolean PM_InOnGroundAnims(int anim);
+extern qboolean PM_InOnGroundAnims(const int anim);
 
 static qboolean Melee_CanDoGrab()
 {

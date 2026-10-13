@@ -1349,7 +1349,7 @@ static QINLINE void G_G2PlayerAngles(gentity_t* ent, matrix3_t legs, vec3_t legs
 	VectorCopy(ent->client->ps.origin, lerp_org);
 	VectorCopy(ent->client->ps.viewangles, lerp_ang);
 
-	if (ent->localAnimIndex <= 1)
+	if (BG_AnimSetIsHumanoidLike(ent->localAnimIndex))
 	{
 		vec3_t tur_angles;
 		//don't do these things on non-humanoids
@@ -1380,7 +1380,7 @@ static QINLINE void G_G2PlayerAngles(gentity_t* ent, matrix3_t legs, vec3_t legs
 			tur_angles,
 			ent->modelScale, ci_legs, ci_torso, &ent->client->corrTime, look_angles,
 			ent->client->lastHeadAngles,
-			ent->client->lookTime, emplaced, NULL, ent->client->ps.ManualBlockingFlags);
+			ent->client->lookTime, emplaced, NULL, ent->client->ps.ManualBlockingFlags, ent->localAnimIndex);
 
 		if (ent->client->ps.heldByClient && ent->client->ps.heldByClient <= MAX_CLIENTS)
 		{
@@ -4278,7 +4278,8 @@ static void WP_SaberClearDamage(void)
 	numVictims = 0;
 }
 
-static void wp_saber_specific_do_hit(const gentity_t* self, const int saberNum, const int bladeNum, const gentity_t* victim, vec3_t impactpoint, const int dmg)
+static void wp_saber_specific_do_hit(const gentity_t* self, const int saberNum, const int bladeNum, const gentity_t* victim, vec3_t impactpoint,
+	const vec3_t impact_normal, const vec3_t blade_dir, const int dmg)
 {
 	qboolean is_droid = qfalse;
 
@@ -4318,7 +4319,20 @@ static void wp_saber_specific_do_hit(const gentity_t* self, const int saberNum, 
 		te->s.legsAnim = bladeNum;
 
 		VectorCopy(impactpoint, te->s.origin);
-		VectorScale(impactpoint, -1, te->s.angles);
+		//send a real effect direction (the cgame uses angles as the fx dir), not the negated
+		//impact position base JKA sent: the surface/G2 hit normal like SP, else back along the blade
+		if (impact_normal && (impact_normal[0] || impact_normal[1] || impact_normal[2]))
+		{
+			VectorCopy(impact_normal, te->s.angles);
+		}
+		else if (blade_dir)
+		{
+			VectorScale(blade_dir, -1, te->s.angles);
+		}
+		else
+		{
+			VectorClear(te->s.angles);
+		}
 
 		if (!te->s.angles[0] && !te->s.angles[1] && !te->s.angles[2])
 		{
@@ -4372,6 +4386,7 @@ static vec3_t saberClashPos = { 0 };
 static vec3_t saberClashNorm = { 0 };
 static int saberClashEventParm = 1;
 static int saberClashOther = -1; //the clientNum for the other player involved in the saber clash.
+static int saberClashBlocker = ENTITYNUM_NONE; //entity number of the blocker, sent so the cgame can show the perfect-block effect
 static QINLINE void G_SetViewLock(const gentity_t* self, vec3_t impact_pos, vec3_t impact_normal);
 static QINLINE void G_SetViewLockDebounce(const gentity_t* self);
 
@@ -4384,6 +4399,8 @@ static void WP_SaberDoClash(const gentity_t* self, const int saberNum, const int
 		VectorCopy(saberClashNorm, te->s.angles);
 		te->s.eventParm = saberClashEventParm;
 		te->s.otherentityNum2 = self->s.number;
+		//otherentityNum is not read for EV_SABER_BLOCK by older cgames, so this stays protocol compatible
+		te->s.otherentityNum = saberClashBlocker;
 		te->s.weapon = saberNum;
 		te->s.legsAnim = bladeNum;
 
@@ -7132,6 +7149,7 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 		VectorCopy(tr.endpos, saberClashPos);
 		VectorCopy(tr.plane.normal, saberClashNorm);
 		saberClashEventParm = 1;
+		saberClashBlocker = blocker->s.number;
 
 		// Only lock view if one player is in an attack move
 		if (!idle_damage || PM_SaberInNonIdleDamageMove(&blocker->client->ps, blocker->localAnimIndex))
@@ -7331,7 +7349,7 @@ static QINLINE qboolean CheckSaberDamage(gentity_t* self, const int rSaberNum, c
 		// Saber-specific hit behaviour
 		if (isSmashTorso == qfalse)  // suppress normal hit FX during smashdown floor impact
 		{
-			wp_saber_specific_do_hit(self, rSaberNum, rBladeNum, victim, tr.endpos, dmg);
+			wp_saber_specific_do_hit(self, rSaberNum, rBladeNum, victim, tr.endpos, tr.plane.normal, dir, dmg);
 		}
 
 		// If the victim died, prevent saber bounce passthrough
@@ -7938,7 +7956,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, usercmd_t* ucmd)
 		}
 	}
 
-	if (self->s.eType == ET_NPC && self->localAnimIndex <= 1)
+	if (self->s.eType == ET_NPC && BG_AnimSetIsHumanoidLike(self->localAnimIndex))
 	{
 		//humanoid NPCs don't set angles based on server angles for looking, unlike other NPCs
 		if (self->client && self->client->renderInfo.lookTarget < ENTITYNUM_WORLD)
@@ -8138,6 +8156,10 @@ static QINLINE qboolean WP_CheckThrownSaberDamaged(gentity_t* saberent,
 					te->s.eventParm = 1;
 					te->s.weapon = 0; // saberNum
 					te->s.legsAnim = 0; // bladeNum
+					//no blocker: SP never plays the perfect-block effect for thrown saber blocks
+					te->s.otherentityNum = ENTITYNUM_NONE;
+					//the thrower, so the cgame reads the right saber (custom block fx, no-clash-flare flags) instead of client 0
+					te->s.otherentityNum2 = saber_owner->s.number;
 
 					if (WP_saberCheckKnockdown_Thrown(saberent, saber_owner, &g_entities[tr.entityNum]))
 					{
@@ -9944,7 +9966,7 @@ static void UpdateClientRenderinfo(gentity_t* self, vec3_t render_origin, vec3_t
 			//rwwFIXMEFIXME: Base on skeleton used? Assuming humanoid currently.
 			ri->lastG2 = self->ghoul2;
 
-			if (self->localAnimIndex <= 1)
+			if (BG_AnimSetIsHumanoidLike(self->localAnimIndex))
 			{
 				ri->headBolt = trap->G2API_AddBolt(self->ghoul2, 0, "*head_eyes");
 				ri->handRBolt = trap->G2API_AddBolt(self->ghoul2, 0, "*r_hand");

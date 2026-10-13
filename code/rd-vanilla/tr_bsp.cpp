@@ -165,7 +165,8 @@ constexpr auto LIGHTMAP_SIZE = 128;
 
 static	void R_LoadLightmaps(const lump_t* l, const char* ps_map_name, world_t& worldData)
 {
-	byte		image[LIGHTMAP_SIZE * LIGHTMAP_SIZE * 4]{};
+	static byte image[LIGHTMAP_SIZE * LIGHTMAP_SIZE * 4]; // off the stack (C6262)
+	memset(image, 0, sizeof(image)); // cleared each time, as the {} on the stack was
 	int j;
 	float				max_intensity = 0;
 	double				sum_intensity = 0;
@@ -417,7 +418,8 @@ ParseMesh
 */
 static void ParseMesh(const dsurface_t* ds, mapVert_t* verts, msurface_t* surf, const world_t& worldData, const int index) {
 	int				i, j, k;
-	drawVert_t points[MAX_PATCH_SIZE * MAX_PATCH_SIZE]{};
+	static drawVert_t points[MAX_PATCH_SIZE * MAX_PATCH_SIZE]; // off the stack (C6262)
+	memset(points, 0, sizeof(points)); // cleared each time, as the {} on the stack was
 	int				lightmapNum[MAXLIGHTMAPS]{};
 	vec3_t			bounds[2]{};
 	vec3_t			tmp_vec;

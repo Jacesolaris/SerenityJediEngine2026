@@ -84,7 +84,7 @@ void G_WriteClientSessionData(const gclient_t* client)
 	gi.cvar_set(var, s2);
 
 	s2 = "";
-	for (i = 0; i < WP_NUM_WEAPONS; i++)
+	for (i = 0; i < MISSION_STATS_WEAPONS; i++)
 	{
 		s2 = va("%s %i", s2, client->sess.missionStats.weaponUsed[i]);
 	}
@@ -211,7 +211,7 @@ void G_ReadSessionData(gclient_t* client)
 
 	i = 0;
 	tok = strtok(s, " ");
-	while (tok != NULL && i < WP_NUM_WEAPONS)
+	while (tok != NULL && i < MISSION_STATS_WEAPONS)
 	{
 		client->sess.missionStats.weaponUsed[i] = atoi(tok);
 		i++;

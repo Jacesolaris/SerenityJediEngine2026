@@ -64,7 +64,6 @@ CVec3 mGlobalWindDirection;
 float mGlobalWindSpeed;
 int mParticlesRendered;
 
-extern cvar_t* r_weather;
 ////////////////////////////////////////////////////////////////////////////////////////
 // Handy Functions
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -1344,11 +1343,15 @@ void RB_RenderWorldEffects(void)
 	}
 }
 
+static qboolean weatherCommandFromConsole; // "r_we" typed: print the command list for an unknown command
+
 void R_WorldEffect_f(void)
 {
 	char temp[2048] = { 0 };
 	ri.Cmd_ArgsBuffer(temp, sizeof temp);
+	weatherCommandFromConsole = qtrue;
 	RE_WorldEffectCommand(temp);
+	weatherCommandFromConsole = qfalse;
 }
 
 void R_WeatherEffect_f(void)
@@ -1414,10 +1417,15 @@ void RE_WorldEffectCommand(const char* command)
 
 	token = COM_ParseExt(&command, qfalse);
 
-	if (!token)
+	if (!token || !token[0])
 	{
 		return;
 	}
+
+	// A number is one of the numbered presets (the menu's r_weather values, see the cgame's CG_ApplyWeather).
+	// Named commands always do what they say: before, the r_weather cvar replaced most of them with its own preset,
+	// and r_weather 0 (the default) turned every map weather command into "clear".
+	const int preset = token[0] >= '0' && token[0] <= '9' ? atoi(token) : -1;
 
 	//Die - clean up the whole weather system -rww
 	if (Q_stricmp(token, "die") == 0)
@@ -1437,7 +1445,7 @@ void RE_WorldEffectCommand(const char* command)
 		mParticleClouds.clear();
 		mWindZones.clear();
 	}
-	else if (r_weather->integer == 0)
+	else if (preset == 0)
 	{
 		for (int p = 0; p < mParticleClouds.size(); p++)
 		{
@@ -1477,7 +1485,7 @@ void RE_WorldEffectCommand(const char* command)
 		CWindZone& nWind = mWindZones.push_back();
 		nWind.Initialize();
 	}
-	else if (r_weather->integer == 8)
+	else if (preset == 8)
 	{
 		if (mWindZones.full())
 		{
@@ -1571,7 +1579,7 @@ void RE_WorldEffectCommand(const char* command)
 		nCloud.mOrientWithVelocity = true;
 		nCloud.mWaterParticles = true;
 	}
-	else if (r_weather->integer == 2)
+	else if (preset == 2)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1617,7 +1625,7 @@ void RE_WorldEffectCommand(const char* command)
 
 		mOutside.mOutsidePain = 0.1f;
 	}
-	else if (r_weather->integer == 7)
+	else if (preset == 7)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1679,7 +1687,7 @@ void RE_WorldEffectCommand(const char* command)
 		nCloud.mColor = 0.75f;
 		nCloud.mWaterParticles = true;
 	}
-	else if (r_weather->integer == 1)
+	else if (preset == 1)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1705,7 +1713,7 @@ void RE_WorldEffectCommand(const char* command)
 		nCloud.mColor = 0.75f;
 		nCloud.mWaterParticles = true;
 	}
-	else if (r_weather->integer == 3)
+	else if (preset == 3)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1746,7 +1754,7 @@ void RE_WorldEffectCommand(const char* command)
 		nCloud.mSpawnRange.mMaxs[1] = 1500.0f;
 		nCloud.mSpawnRange.mMaxs[2] = 1500.0f;
 	}
-	else if (r_weather->integer == 9)
+	else if (preset == 9)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1825,7 +1833,7 @@ void RE_WorldEffectCommand(const char* command)
 
 		nCloud.mRotationChangeNext = 0;
 	}
-	else if (r_weather->integer == 4)
+	else if (preset == 4)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1873,7 +1881,7 @@ void RE_WorldEffectCommand(const char* command)
 
 		nCloud.mRotationChangeNext = 0;
 	}
-	else if (r_weather->integer == 6)
+	else if (preset == 6)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1921,7 +1929,7 @@ void RE_WorldEffectCommand(const char* command)
 
 		nCloud.mRotationChangeNext = 0;
 	}
-	else if (r_weather->integer == 5)
+	else if (preset == 5)
 	{
 		if (mParticleClouds.full())
 		{
@@ -1979,6 +1987,11 @@ void RE_WorldEffectCommand(const char* command)
 	else if (Q_stricmp(token, "outsidepain") == 0)
 	{
 		mOutside.mOutsidePain = !mOutside.mOutsidePain;
+	}
+	else if (!weatherCommandFromConsole)
+	{
+		// a map's weather name this renderer doesn't have (e.g. fx_wind's "swirlingwind"): ignore it
+		ri.Printf(PRINT_DEVELOPER, "RE_WorldEffectCommand: unknown weather command '%s' ignored\n", token);
 	}
 	else
 	{

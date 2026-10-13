@@ -628,11 +628,13 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 			case WP_DISRUPTOR:
 			case WP_BOWCASTER:
 			case WP_REPEATER:
+			case WP_Z6_ROTARY_CANNON:
 			case WP_DEMP2:
 			case WP_FLECHETTE:
 			case WP_ROCKET_LAUNCHER:
 			case WP_CONCUSSION:
 				NPCInfo->scriptFlags |= SCF_PILOT;
+				break;
 			default:
 				break;
 
@@ -1177,11 +1179,12 @@ static void NPC_SetWeapons(const gentity_t* ent)
 	const int weapons = NPC_WeaponsForTeam(ent->client->playerTeam, ent->spawnflags, ent->NPC_type);
 
 	ent->client->ps.stats[STAT_WEAPONS] = 0;
-	for (int curWeap = WP_SABER; curWeap < WP_NUM_WEAPONS; curWeap++)
+	ent->client->ps.stats[STAT_WEAPONS2] = 0;
+	for (int curWeap = WP_SABER; curWeap < WP_NUM_WEAPONS && curWeap < 32; curWeap++) // the team weapons are a 32-bit mask
 	{
 		if (weapons & 1 << curWeap)
 		{
-			ent->client->ps.stats[STAT_WEAPONS] |= 1 << curWeap;
+			BG_GiveWeapon(&ent->client->ps, curWeap);
 			RegisterItem(FindItemForWeapon(static_cast<weapon_t>(curWeap))); //precache the weapon
 			ent->NPC->currentAmmo = ent->client->ps.ammo[weaponData[curWeap].ammoIndex] = 100; //FIXME: max ammo
 

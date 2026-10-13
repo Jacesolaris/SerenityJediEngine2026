@@ -186,6 +186,16 @@ char* showPowersName[] =
 	"SABER_OFFENSE2", //FP_SABER_OFFENSE
 	"SABER_DEFENSE2", //FP_SABER_DEFENSE
 	"SABER_THROW2", //FP_SABERTHROW
+	"STASIS2", //FP_STASIS (SP_INGAME strings, as SP)
+	"DESTRUCTION2", //FP_DESTRUCTION
+	"GRASP2", //FP_GRASP
+	"REPULSE2", //FP_REPULSE
+	"LIGHTNING_STRIKE2", //FP_LIGHTNING_STRIKE
+	"FEAR2", //FP_FEAR
+	"DEADLYSIGHT2", //FP_DEADLYSIGHT
+	"BLAST2", //FP_BLAST
+	"INSANITY2", //FP_INSANITY
+	"BLINDING2", //FP_BLINDING
 	NULL
 };
 
@@ -1635,6 +1645,23 @@ static void CG_DrawCusweapontype(const centity_t* cent, const menuDef_t* menu_hu
 	else if (cent->currentState.weapon == WP_REPEATER)
 	{
 		focus_item = Menu_FindItemByName(menu_hud, "weapontype_repeater");
+
+		if (focus_item)
+		{
+			trap->R_SetColor(colorTable[CT_WHITE]);
+
+			CG_DrawPic(
+				focus_item->window.rect.x + 5,
+				focus_item->window.rect.y + 5,
+				focus_item->window.rect.w,
+				focus_item->window.rect.h,
+				focus_item->window.background
+			);
+		}
+	}
+	else if (cent->currentState.weapon == WP_Z6_ROTARY_CANNON)
+	{
+		focus_item = Menu_FindItemByName(menu_hud, "weapontype_z6rotarycannon");
 
 		if (focus_item)
 		{
@@ -7943,6 +7970,7 @@ static void CG_DrawCrosshair(vec3_t world_point, const int ch_ent_valid)
 				hShader = cgs.media.crosshairShader[1];
 			}
 			else if (cg.snap->ps.weapon == WP_REPEATER ||
+				cg.snap->ps.weapon == WP_Z6_ROTARY_CANNON ||
 				cg.snap->ps.weapon == WP_BLASTER)
 			{
 				hShader = cgs.media.crosshairShader[2];
@@ -8094,6 +8122,17 @@ CG_SaberClashFlare
 int cg_saberFlashTime = 0;
 vec3_t cg_saberFlashPos = { 0, 0, 0 };
 
+// SP scales the flare width by cgs.widthRatioCoef so the sprite stays round on widescreen.
+// MP has no such field, so derive it from the video mode against the 640x480 virtual screen.
+static float CG_SaberFlareWidthRatio(void)
+{
+	if (cgs.glconfig.vidWidth <= 0 || cgs.glconfig.vidHeight <= 0)
+	{
+		return 1.0f;
+	}
+	return (float)(SCREEN_WIDTH * cgs.glconfig.vidHeight) / (float)(SCREEN_HEIGHT * cgs.glconfig.vidWidth);
+}
+
 void CG_SaberClashFlare(void)
 {
 	const int max_time = 150;
@@ -8109,7 +8148,8 @@ void CG_SaberClashFlare(void)
 		return;
 	}
 
-	if (cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING) && g_saberLockCinematicCamera.integer)
+	// as SP: no clash flare at all while saber locking
+	if (cg.predictedPlayerState.communicatingflags & (1 << CF_SABERLOCKING))
 	{
 		return;
 	}
@@ -8129,17 +8169,16 @@ void CG_SaberClashFlare(void)
 		return;
 	}
 
-	const float len = VectorNormalize(dif);
-	if (len > 1200)
+	float len = VectorNormalize(dif);
+
+	// as SP: clamp to a known range, so distant clashes still show a small flare
+	if (len > 800)
 	{
-		return;
+		len = 800;
 	}
 
-	float v = (1.0f - (float)t / max_time) * ((1.0f - len / 800.0f) * 2.0f + 0.35f);
-	if (v < 0.001f)
-	{
-		v = 0.001f;
-	}
+	const float v = (1.0f - (float)t / max_time) * ((1.0f - len / 800.0f) * 2.0f + 0.35f);
+	const float w_ratio = CG_SaberFlareWidthRatio();
 
 	if (!CG_WorldCoordToScreenCoord(cg_saberFlashPos, &x, &y))
 	{
@@ -8149,7 +8188,9 @@ void CG_SaberClashFlare(void)
 	VectorSet4(color, 0.8f, 0.8f, 0.8f, 1.0f);
 	trap->R_SetColor(color);
 
-	CG_DrawPic(x - v * 300, y - v * 300, v * 600, v * 600, trap->R_RegisterShader("gfx/effects/saberFlare"));
+	CG_DrawPic(x - v * 300 * w_ratio, y - v * 300, v * 600 * w_ratio, v * 600, trap->R_RegisterShader("gfx/effects/saberFlare"));
+	// now drawn ahead of the crosshair/HUD, so don't leave the grey tint set for them
+	trap->R_SetColor(NULL);
 }
 
 void CG_SaberBlockFlare(void)
@@ -8182,17 +8223,16 @@ void CG_SaberBlockFlare(void)
 		return;
 	}
 
-	const float len = VectorNormalize(dif);
-	if (len > 1200)
+	float len = VectorNormalize(dif);
+
+	// as SP: clamp to a known range
+	if (len > 800)
 	{
-		return;
+		len = 800;
 	}
 
-	float v = (1.0f - (float)t / max_time) * ((1.0f - len / 800.0f) * 2.0f + 0.35f);
-	if (v < 0.001f)
-	{
-		v = 0.001f;
-	}
+	const float v = (1.0f - (float)t / max_time) * ((1.0f - len / 800.0f) * 2.0f + 0.35f);
+	const float w_ratio = CG_SaberFlareWidthRatio();
 
 	if (!CG_WorldCoordToScreenCoord(cg_saberFlashPos, &x, &y))
 	{
@@ -8202,8 +8242,8 @@ void CG_SaberBlockFlare(void)
 	VectorSet4(color, 0.8f, 0.8f, 0.8f, 1.0f);
 	trap->R_SetColor(color);
 
-	CG_DrawPic(x - v * 300, y - v * 300,
-		v * 600, v * 600,
+	CG_DrawPic(x - v * 300 * w_ratio, y - v * 300,
+		v * 600 * w_ratio, v * 600,
 		trap->R_RegisterShader("gfx/effects/BlockFlare"));
 }
 
@@ -9232,6 +9272,38 @@ static void CG_DrawCrosshairItem(void)
 CG_DrawCrosshairNames
 =====================
 */
+// SJE: the use icon on a living gonk (an NPC, or a player playing one) under the crosshair within 256 units:
+// using it gives a bacta canister (TryUse, game side; the gonk's recharge time is only known there).
+static void CG_DrawGonkHint(void)
+{
+	if (in_camera || !cg.snap)
+	{
+		return;
+	}
+	CG_ScanForCrosshairEntity();
+	const int idx = cg.crosshairclientNum;
+	if (cg.crosshairClientTime != cg.time || idx < 0 || idx >= ENTITYNUM_WORLD || idx == cg.snap->ps.clientNum)
+	{
+		return;
+	}
+	const centity_t* cent = &cg_entities[idx];
+	if (cent->currentState.eFlags & EF_DEAD)
+	{
+		return;
+	}
+	if (cent->currentState.eType == ET_NPC ? cent->currentState.NPC_class != CLASS_GONK
+		: idx >= MAX_CLIENTS || cent->currentState.botclass != BCLASS_GONK)
+	{
+		return;
+	}
+	if (DistanceSquared(cent->lerpOrigin, cg.refdef.vieworg) > 256.0f * 256.0f)
+	{
+		return;
+	}
+	trap->R_SetColor(NULL);
+	CG_DrawPic(50, 285, 32, 32, cgs.media.useableHint);
+}
+
 static void CG_DrawCrosshairNames(void)
 {
 	char      sanitized[1024];
@@ -9311,6 +9383,12 @@ static void CG_DrawCrosshairNames(void)
 	VectorSubtract(cg_entities[idx].lerpOrigin, cg.refdef.vieworg, diff);
 
 	float distSq = VectorLengthSquared(diff);
+	// SJE: names only for a character within 256 units of the view
+	if (distSq > 256.0f * 256.0f)
+	{
+		trap->R_SetColor(NULL);
+		return;
+	}
 	// Hard safety: ensure idx is valid for clientinfo[]
 	if (idx < 0 || idx >= MAX_CLIENTS)
 	{
@@ -11675,12 +11753,14 @@ static void CG_Draw2D(void)
 	// Draw this before the text so that any text won't get clipped off
 	CG_DrawZoomMask();
 
+	// as SP: the clash flare is drawn for everyone, also when dead or with the scoreboard up.
+	// (BlockFlare is no longer stacked on top of it for spectators; SP only uses it in camera mode.)
+	CG_SaberClashFlare();
+
 	if (cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR)
 	{
 		CG_DrawCrosshair(NULL, 0);
 		CG_DrawCrosshairNames();
-		CG_SaberClashFlare();
-		CG_SaberBlockFlare();
 	}
 	else
 	{
@@ -11697,6 +11777,8 @@ static void CG_Draw2D(void)
 			CG_DrawCrosshairNames();
 
 			CG_DrawCrosshairItem();
+
+			CG_DrawGonkHint();
 
 			CG_DynamicHudBegin(hud_alpha);
 
@@ -11745,8 +11827,6 @@ static void CG_Draw2D(void)
 			{
 				CG_DrawFlagStatus();
 			}
-
-			CG_SaberClashFlare();
 
 			if (cg_drawStatus.integer && hud_alpha > 0.0f)
 			{

@@ -61,7 +61,6 @@ typedef struct ipFilter_s
 
 static ipFilter_t ipFilters[MAX_IPFILTERS];
 static int numIPFilters;
-extern cvar_t* r_weather;
 
 /*
 =================
@@ -282,9 +281,424 @@ static void Svcmd_AddIP_f(void)
 	AddIP(str);
 }
 
-void G_RemoveWeather(void)
+/*
+==============================================================================
+
+SERVER WEATHER
+
+The weather everybody gets is the "*<command>" strings in the CS_EFFECTS configstrings. Clients run them in index
+order (live as they change, all of them when they connect: CG_RegisterSounds / CG_ApplyWeather), and the game runs
+them through bg_weather.c for the acid rain / lava weather damage (G_WeatherRescan).
+
+The game sets the weather from the map's Weather/<mapname>.cfg file (G_WeatherLoadMapDefault, at map start) and with
+the "weather" command (G_WeatherCommand_f, server console or an allowed client). The strings it creates for this are
+"owned": the next change blanks them (the 64 effect slots would run out otherwise), and new ones always go after every
+weather string the game doesn't own (map entities such as fx_rain), so a client that connects later runs everything in
+the same order as the clients that saw the changes live.
+
+Before this the map file was exec'd as console commands ("r_weather N"): on a listen server that only reached the host's
+renderer (which turned it into r_weather's own preset, or cleared the weather with r_weather 0), on a dedicated server
+it only set a cvar. Neither made a configstring, so other players and the gameplay code never had the map's weather.
+
+==============================================================================
+*/
+
+#define G_WEATHER_MAX_OWNED		16	// configstrings one weather change may own
+#define G_WEATHER_MAX_COMMANDS	8	// weather commands one change may set (the vanilla renderer has 5 clouds anyway)
+
+static int gWeatherOwned[G_WEATHER_MAX_OWNED];
+static int gWeatherNumOwned;
+
+static qboolean G_WeatherIsOwned(const int index)
 {
-	trap->SendConsoleCommand(EXEC_APPEND, "execq Weather/clear.cfg");
+	for (int i = 0; i < gWeatherNumOwned; i++)
+	{
+		if (gWeatherOwned[i] == index)
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+static qboolean G_WeatherStringInUse(const char* str)
+{
+	char s[MAX_STRING_CHARS];
+
+	for (int i = 1; i < MAX_FX; i++)
+	{
+		trap->GetConfigstring(CS_EFFECTS + i, s, sizeof s);
+		if (s[0] && !strcmp(s, str))
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+// sets "*<command>" in the first free effect slot after 'after', returns the slot or -1 if there is none
+static int G_WeatherAddString(const char* command, const int after)
+{
+	char str[MAX_QPATH];
+	char s[MAX_STRING_CHARS];
+	int i;
+
+	Com_sprintf(str, sizeof str, "*%s", command);
+
+	// keep it different from every other effect string, or G_EffectIndex would hand this slot to a map entity
+	// asking for the same weather (and the next change would blank it). Trailing spaces: every weather parser skips them
+	size_t len = strlen(str);
+	while (G_WeatherStringInUse(str) && len < sizeof str - 1)
+	{
+		str[len++] = ' ';
+		str[len] = '\0';
+	}
+
+	for (i = after + 1; i < MAX_FX; i++)
+	{
+		trap->GetConfigstring(CS_EFFECTS + i, s, sizeof s);
+		if (!s[0])
+		{
+			break;
+		}
+	}
+
+	if (i >= MAX_FX || gWeatherNumOwned >= G_WEATHER_MAX_OWNED)
+	{
+		trap->Print(S_COLOR_YELLOW "WARNING: no free effect configstring for the weather \"%s\"\n", command);
+		return -1;
+	}
+
+	trap->SetConfigstring(CS_EFFECTS + i, str);
+	gWeatherOwned[gWeatherNumOwned++] = i;
+	return i;
+}
+
+// new map (not on map_restart, which keeps the configstrings): nothing is owned yet
+void G_WeatherNewMap(void)
+{
+	gWeatherNumOwned = 0;
+}
+
+/*
+=================
+G_SetWeather
+
+Replaces the weather the game set before with these commands (without the '*'). clearFirst sends a "clear" before
+them, which also removes the weather of the map's entities.
+=================
+*/
+static void G_SetWeather(const char* const* commands, const int numCommands, const qboolean clearFirst)
+{
+	char s[MAX_STRING_CHARS];
+	int last = 0;
+	int i;
+
+	// the strings of the last change go
+	for (i = 0; i < gWeatherNumOwned; i++)
+	{
+		trap->SetConfigstring(CS_EFFECTS + gWeatherOwned[i], "");
+	}
+	gWeatherNumOwned = 0;
+
+	// the new ones go after all the other weather strings
+	for (i = 1; i < MAX_FX; i++)
+	{
+		trap->GetConfigstring(CS_EFFECTS + i, s, sizeof s);
+		if (s[0] == '*')
+		{
+			last = i;
+		}
+	}
+
+	if (clearFirst)
+	{
+		last = G_WeatherAddString("clear", last);
+	}
+
+	for (i = 0; i < numCommands && last >= 0; i++)
+	{
+		if (commands[i] && commands[i][0])
+		{
+			last = G_WeatherAddString(commands[i], last);
+		}
+	}
+
+	// the gameplay weather is now what a client that connects now would get
+	G_WeatherRescan();
+}
+
+// a weather command for G_SetWeather from a preset number ("4") or a weather command name, NULL if it is neither
+static const char* G_WeatherCommandForWord(const char* word)
+{
+	static const char* const names[] = {
+		"lightrain", "rain", "acidrain", "heavyrain", "snow", "lava", "spacedust", "sand", "Sandstorm", "fog",
+		"heavyrainfog", "light_fog", "wind", "gustingwind", "outsidepain"
+	};
+
+	if (!word || !word[0])
+	{
+		return NULL;
+	}
+
+	if (word[0] >= '0' && word[0] <= '9')
+	{
+		return BG_WeatherPresetName(atoi(word));
+	}
+
+	for (size_t i = 0; i < ARRAY_LEN(names); i++)
+	{
+		if (!Q_stricmp(word, names[i]))
+		{
+			return names[i];
+		}
+	}
+	return NULL;
+}
+
+// the map's Weather/<mapname>.cfg ("r_weather N" lines, one weather each, as in SP): returns the number of commands
+static int G_WeatherReadMapFile(const char** commands, const int maxCommands)
+{
+	char mapname[MAX_QPATH];
+	char buf[2048];
+	fileHandle_t f = 0;
+	int num = 0;
+
+	trap->Cvar_VariableStringBuffer("mapname", mapname, sizeof mapname);
+	if (!mapname[0])
+	{
+		return 0;
+	}
+
+	const int len = trap->FS_Open(va("Weather/%s.cfg", mapname), &f, FS_READ);
+	if (!f)
+	{
+		return 0; // most maps have none
+	}
+	if (len <= 0 || len >= (int)sizeof buf)
+	{
+		trap->FS_Close(f);
+		return 0;
+	}
+	trap->FS_Read(buf, len, f);
+	trap->FS_Close(f);
+	buf[len] = '\0';
+
+	// statements are split by line ends and ';', each is "r_weather <preset>" (or "weather <preset or name>")
+	char* p = buf;
+	while (*p && num < maxCommands)
+	{
+		char* end = p;
+		char word[2][MAX_QPATH];
+		int words = 0;
+
+		while (*end && *end != '\n' && *end != '\r' && *end != ';')
+		{
+			end++;
+		}
+		const char next = *end;
+		*end = '\0';
+
+		while (*p && words < 2)
+		{
+			int n = 0;
+			while (*p == ' ' || *p == '\t')
+			{
+				p++;
+			}
+			while (*p && *p != ' ' && *p != '\t' && n < MAX_QPATH - 1)
+			{
+				word[words][n++] = *p++;
+			}
+			word[words][n] = '\0';
+			if (!n)
+			{
+				break;
+			}
+			words++;
+		}
+
+		if (words == 2 && (!Q_stricmp(word[0], "r_weather") || !Q_stricmp(word[0], "weather")))
+		{
+			const char* command = G_WeatherCommandForWord(word[1]);
+			if (command)
+			{
+				commands[num++] = command;
+			}
+		}
+
+		p = next ? end + 1 : end;
+	}
+
+	return num;
+}
+
+/*
+=================
+G_WeatherLoadMapDefault
+
+Map start: the weather from the map's Weather/<mapname>.cfg file, for everybody, added to the weather the map's
+entities set (as SP adds it). Players can show their own choice instead (r_weather) or none (cg_weather 0), see
+CG_ApplyWeather; the damage always follows this server weather.
+=================
+*/
+void G_WeatherLoadMapDefault(void)
+{
+	const char* commands[G_WEATHER_MAX_COMMANDS];
+	char mapname[MAX_QPATH];
+	static const char* const rend2NoWeatherMaps[] = {
+		// as SP g_itemLoad.cpp: no file weather on these with rend2
+		"yavin1", "demo", "01nar", "md2_bd_ch", "md_sn_intro_jedi", "md_ch_battledroids", "md_ep4_intro", "secbase",
+		"level0", "JKG_ImperialBase", "kejim_post"
+	};
+
+	if (g_AllowWeather.integer != 1)
+	{
+		return;
+	}
+
+	trap->Cvar_VariableStringBuffer("mapname", mapname, sizeof mapname);
+	if (com_rend2.integer == 1)
+	{
+		for (size_t i = 0; i < ARRAY_LEN(rend2NoWeatherMaps); i++)
+		{
+			if (!Q_stricmp(mapname, rend2NoWeatherMaps[i]))
+			{
+				return;
+			}
+		}
+	}
+
+	const int num = G_WeatherReadMapFile(commands, G_WEATHER_MAX_COMMANDS);
+	if (num > 0)
+	{
+		G_SetWeather(commands, num, qfalse);
+	}
+}
+
+static void G_WeatherUsage(const gentity_t* ent)
+{
+	const char* text =
+		"usage: weather <type>   sets the server weather for everybody\n"
+		"  clear (or 0, none) | default (the map's weather) | snow (1) | rain (2) | lava (3) | sand (4) |\n"
+		"  heavyrainfog (5) | fog (6) | acidrain (7) | wind (8) | spacedust (9) |\n"
+		"  lightrain | heavyrain | light_fog | gustingwind | Sandstorm\n";
+
+	// the weather strings everybody runs, what the weather damage sees now and whether the asking player is outside
+	char list[256] = { 0 };
+	char s[MAX_STRING_CHARS];
+	for (int i = 1; i < MAX_FX; i++)
+	{
+		trap->GetConfigstring(CS_EFFECTS + i, s, sizeof s);
+		if (s[0] == '*')
+		{
+			Q_strcat(list, sizeof list, va(" [%s]", s + 1));
+		}
+	}
+	const char* state = va("Server weather:%s\nacid rain %s (g_acidRainDamage %d), lava %s (g_lavaWeatherDamage %d)%s\n",
+		list[0] ? list : " none", BG_WeatherOutsidePain() ? "on" : "off", g_acidRainDamage.integer,
+		BG_WeatherLava() ? "on" : "off", g_lavaWeatherDamage.integer,
+		ent && ent->client ? (BG_IsOutside(ent->r.currentOrigin, ent->s.number) ? ", you are outside" : ", you are inside") : "");
+
+	if (ent)
+	{
+		trap->SendServerCommand(ent - g_entities, va("print \"%s%s\"", text, state));
+	}
+	else
+	{
+		trap->Print("%s%s", text, state);
+	}
+}
+
+/*
+=================
+G_WeatherCommand_f
+
+"weather <type>" from the server console (ent NULL) or a client (g_cmds.c, which checks it is allowed).
+The named types keep their old meaning (sand = wind + sand, fog = heavyrainfog), numbers are the menu's presets.
+=================
+*/
+void G_WeatherCommand_f(const gentity_t* ent)
+{
+	char arg[MAX_TOKEN_CHARS];
+	const char* commands[G_WEATHER_MAX_COMMANDS];
+	int num = 0;
+
+	trap->Argv(1, arg, sizeof arg);
+
+	if (!arg[0])
+	{
+		G_WeatherUsage(ent);
+		return;
+	}
+
+	if (!Q_stricmp(arg, "clear") || !Q_stricmp(arg, "none") || !Q_stricmp(arg, "off") || !strcmp(arg, "0"))
+	{
+		// nothing
+	}
+	else if (!Q_stricmp(arg, "default") || !Q_stricmp(arg, "map"))
+	{
+		// the map's weather again: its entities' weather strings (copied, they come after the "clear"), then the file
+		char s[MAX_STRING_CHARS];
+		static char entityWeather[G_WEATHER_MAX_COMMANDS][MAX_QPATH];
+
+		for (int i = 1; i < MAX_FX && num < G_WEATHER_MAX_COMMANDS; i++)
+		{
+			trap->GetConfigstring(CS_EFFECTS + i, s, sizeof s);
+			if (s[0] == '*' && !G_WeatherIsOwned(i))
+			{
+				Q_strncpyz(entityWeather[num], s + 1, sizeof entityWeather[num]);
+				commands[num] = entityWeather[num];
+				num++;
+			}
+		}
+		if (g_AllowWeather.integer == 1)
+		{
+			num += G_WeatherReadMapFile(commands + num, G_WEATHER_MAX_COMMANDS - num);
+		}
+	}
+	else if (!Q_stricmp(arg, "rain"))
+	{
+		commands[num++] = "rain 500";
+	}
+	else if (!Q_stricmp(arg, "sand") || !Q_stricmp(arg, "sandstorm"))
+	{
+		commands[num++] = "wind";
+		commands[num++] = "sand";
+	}
+	else if (!Q_stricmp(arg, "fog"))
+	{
+		commands[num++] = "heavyrainfog";
+	}
+	else if (!Q_stricmp(arg, "spacedust"))
+	{
+		commands[num++] = "spacedust 4000";
+	}
+	else if (!Q_stricmp(arg, "acidrain"))
+	{
+		commands[num++] = "acidrain 500";
+	}
+	else
+	{
+		const char* command = G_WeatherCommandForWord(arg);
+		if (!command)
+		{
+			G_WeatherUsage(ent);
+			return;
+		}
+		commands[num++] = command;
+	}
+
+	G_SetWeather(commands, num, qtrue);
+
+	if (ent)
+	{
+		trap->SendServerCommand(ent - g_entities, va("print \"Server weather: %s\n\"", arg));
+	}
+	else
+	{
+		trap->Print("Server weather: %s\n", arg);
+	}
 }
 
 void G_Rename_Player(gentity_t* player, const char* newname)
@@ -296,70 +710,6 @@ void G_Rename_Player(gentity_t* player, const char* newname)
 	trap->SetUserinfo(clientNum, userinfo);
 	client_userinfo_changed(clientNum);
 	player->client->pers.netnameTime = level.time + 5000; // hmmm...
-}
-
-static void Svcmd_Weather_f(void)
-{
-	char arg1[MAX_STRING_CHARS];
-	int num;
-	trap->Argv(1, arg1, sizeof arg1);
-
-	if ((Q_stricmp(arg1, "snow") == 0) || (Q_stricmp(arg1, "1") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*snow");
-	}
-	else if ((Q_stricmp(arg1, "lava") == 0) || (Q_stricmp(arg1, "3") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*lava");
-	}
-	else if ((Q_stricmp(arg1, "rain") == 0) || (Q_stricmp(arg1, "2") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*rain 500");
-	}
-	else if ((Q_stricmp(arg1, "sandstorm") == 0) || (Q_stricmp(arg1, "sand") == 0) || (Q_stricmp(arg1, "4") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*wind");
-		G_EffectIndex("*sand");
-	}
-	else if ((Q_stricmp(arg1, "fog") == 0) || (Q_stricmp(arg1, "6") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*heavyrainfog");
-	}
-	else if ((Q_stricmp(arg1, "spacedust") == 0) || (Q_stricmp(arg1, "9") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*spacedust 4000");
-	}
-	else if ((Q_stricmp(arg1, "acidrain") == 0) || (Q_stricmp(arg1, "7") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-		G_EffectIndex("*acidrain 500");
-	}
-	if ((Q_stricmp(arg1, "clear") == 0) || (Q_stricmp(arg1, "0") == 0))
-	{
-		G_RemoveWeather();
-		num = G_EffectIndex("*clear");
-		trap->SetConfigstring(CS_EFFECTS + num, "");
-	}
 }
 
 /*
@@ -667,9 +1017,10 @@ qboolean ConsoleCommand(void)
 
 	trap->Argv(0, cmd, sizeof cmd);
 
+	// "weather" (the engine has an "r_weather" cvar everywhere, so that name normally never gets here)
 	if ((Q_stricmp(cmd, "r_weather") == 0) || (Q_stricmp(cmd, "weather") == 0))
 	{
-		Svcmd_Weather_f();
+		G_WeatherCommand_f(NULL);
 		return qtrue;
 	}
 

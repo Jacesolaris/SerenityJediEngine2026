@@ -75,7 +75,17 @@ qboolean uiForcePowersDisabled[NUM_FORCE_POWERS] =
 	qfalse,//FP_SEE,
 	qfalse,//FP_SABER_OFFENSE,
 	qfalse,//FP_SABER_DEFENSE,
-	qfalse//FP_SABERTHROW,
+	qfalse,//FP_SABERTHROW,
+	qfalse,//FP_STASIS
+	qfalse,//FP_DESTRUCTION
+	qfalse,//FP_GRASP
+	qfalse,//FP_REPULSE
+	qfalse,//FP_LIGHTNING_STRIKE
+	qfalse,//FP_FEAR
+	qfalse,//FP_DEADLYSIGHT
+	qfalse,//FP_BLAST
+	qfalse,//FP_INSANITY
+	qfalse//FP_BLINDING
 };
 
 int uiForcePowersRank[NUM_FORCE_POWERS] =
@@ -97,7 +107,8 @@ int uiForcePowersRank[NUM_FORCE_POWERS] =
 	0,//FP_SEE,
 	0,//FP_SABER_OFFENSE, //default to 1 point in attack
 	0,//FP_SABER_DEFENSE, //defualt to 1 point in defense
-	0//FP_SABERTHROW,
+	0,//FP_SABERTHROW,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0 //FP_STASIS .. FP_BLINDING
 };
 
 int uiForcePowerDarkLight[NUM_FORCE_POWERS] = //0 == neutral
@@ -119,7 +130,17 @@ int uiForcePowerDarkLight[NUM_FORCE_POWERS] = //0 == neutral
 	0,//FP_SEE,//duration
 	0,//FP_SABER_OFFENSE,
 	0,//FP_SABER_DEFENSE,
-	0//FP_SABERTHROW,
+	0,//FP_SABERTHROW,
+	FORCE_LIGHTSIDE,//FP_STASIS
+	FORCE_DARKSIDE,//FP_DESTRUCTION
+	FORCE_LIGHTSIDE,//FP_GRASP
+	FORCE_LIGHTSIDE,//FP_REPULSE (as SP)
+	FORCE_LIGHTSIDE,//FP_LIGHTNING_STRIKE
+	FORCE_DARKSIDE,//FP_FEAR
+	FORCE_DARKSIDE,//FP_DEADLYSIGHT
+	FORCE_LIGHTSIDE,//FP_BLAST
+	FORCE_DARKSIDE,//FP_INSANITY
+	FORCE_LIGHTSIDE//FP_BLINDING
 		//NUM_FORCE_POWERS
 };
 
@@ -201,14 +222,16 @@ void UI_DrawForceStars(const rectDef_t* rect, float scale, vec4_t color, int tex
 // Set the client's force power layout.
 void UI_UpdateClientForcePowers(const char* teamArg)
 {
-	trap->Cvar_Set("forcepowers", va("%i-%i-%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i",
-		uiForceRank, uiForceSide, uiForcePowersRank[0], uiForcePowersRank[1],
-		uiForcePowersRank[2], uiForcePowersRank[3], uiForcePowersRank[4],
-		uiForcePowersRank[5], uiForcePowersRank[6], uiForcePowersRank[7],
-		uiForcePowersRank[8], uiForcePowersRank[9], uiForcePowersRank[10],
-		uiForcePowersRank[11], uiForcePowersRank[12], uiForcePowersRank[13],
-		uiForcePowersRank[14], uiForcePowersRank[15], uiForcePowersRank[16],
-		uiForcePowersRank[17]));
+	{
+		// rank-side-<one digit per power> (all NUM_FORCE_POWERS: the ported SP powers follow FP_SABERTHROW)
+		char powers[128];
+		Com_sprintf(powers, sizeof powers, "%i-%i-", uiForceRank, uiForceSide);
+		for (int i = 0; i < NUM_FORCE_POWERS; i++)
+		{
+			Q_strcat(powers, sizeof powers, va("%i", uiForcePowersRank[i]));
+		}
+		trap->Cvar_Set("forcepowers", powers);
+	}
 
 	if (gTouchedForce)
 	{
@@ -733,12 +756,17 @@ void UI_UpdateForcePowers()
 				i++;
 			}
 
-			if (i_f < NUM_FORCE_POWERS)
+			if (i_f < FP_STASIS)
 			{ //info for all the powers wasn't there..
 				uiForceSide = 0;
 				goto validitycheck;
 			}
-			i++;
+			while (i_f < NUM_FORCE_POWERS)
+			{ //a JKA string (18 powers): the ported SP powers are 0
+				uiForcePowersRank[i_f] = 0;
+				i_f++;
+			}
+			break; // all read (going on would step behind the end of the string)
 		}
 	}
 
@@ -1007,7 +1035,11 @@ qboolean UI_ForcePowerRank_HandleKey(int flags, float* special, int key, int num
 		int rank;
 
 		//this will give us the index as long as UI_FORCE_RANK is always one below the first force rank index
-		const int forcepower = type - UI_FORCE_RANK - 1;
+		const int forcepower = UI_FORCE_RANK_INDEX(type);
+		if (forcepower < 0 || forcepower >= NUM_FORCE_POWERS)
+		{
+			return qfalse;
+		}
 
 		//the power is disabled on the server
 		if (uiForcePowersDisabled[forcepower])
@@ -1103,7 +1135,8 @@ int gCustPowersRank[NUM_FORCE_POWERS] = {
 	0,//FP_SEE,
 	0,//FP_SABER_OFFENSE,
 	0,//FP_SABER_DEFENSE,
-	0//FP_SABERTHROW,
+	0,//FP_SABERTHROW,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0 //FP_STASIS .. FP_BLINDING
 };
 
 /*

@@ -1482,8 +1482,8 @@ static consoleCommand_t	commands[] = {
 	{ "modelList",			R_Modellist_f },
 	{ "vbolist",			R_VBOList_f },
 	{ "capframes",			R_CaptureFrameData_f },
-	{ "r_weather",			R_WeatherEffect_f },
-	{ "weather",			R_SetWeatherEffect_f },
+	// no "weather" / "r_weather" commands: "weather" is the cgame's (server weather), "r_weather" is the player's
+	// weather selector cvar, applied by the cgame (CG_ApplyWeather). "r_we <command>" still runs one directly.
 };
 
 static const size_t numCommands = ARRAY_LEN(commands);

@@ -26,6 +26,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
  * by the location of a node within a doubly-linked list */
 
 #include "qcommon/qcommon.h"
+#include <memory>
 
 static int bloc = 0;
 
@@ -450,30 +451,13 @@ void Huff_Decompress(msg_t* mbuf, const int offset)
 	int ch = 0;
 
 	// ----------------------------------------------------------------------
-	// Allocate large buffers on heap (fixes MSVC C6262)
+	// Large buffers on the heap (fixes MSVC C6262; 64 KB + ~50 KB huff_t), one set per call (not shared
+	// between calls). Only used for the out-of-band connect packet. huff is cleared below.
 	// ----------------------------------------------------------------------
-	static byte* seq = nullptr;
-	static huff_t* huff = nullptr;
-
-	if (seq == nullptr)
-	{
-		seq = static_cast<byte*>(Z_Malloc(65536, TAG_TEMP_WORKSPACE, qfalse));
-		if (seq == nullptr)
-		{
-			Com_Printf("^1Huff_Decompress: Failed to allocate seq buffer\n");
-			return;
-		}
-	}
-
-	if (huff == nullptr)
-	{
-		huff = static_cast<huff_t*>(Z_Malloc(sizeof(huff_t), TAG_TEMP_WORKSPACE, qfalse));
-		if (huff == nullptr)
-		{
-			Com_Printf("^1Huff_Decompress: Failed to allocate huff struct\n");
-			return;
-		}
-	}
+	const std::unique_ptr<byte[]> seqBuf(new byte[65536]);
+	byte* seq = seqBuf.get();
+	const std::unique_ptr<huff_t> huffBuf(new huff_t);
+	huff_t* huff = huffBuf.get();
 
 	// ----------------------------------------------------------------------
 	// Validate message buffer
@@ -554,30 +538,13 @@ extern int oldsize;
 void Huff_Compress(msg_t* mbuf, const int offset)
 {
 	// ----------------------------------------------------------------------
-	// Allocate large buffers on heap (fixes MSVC C6262)
+	// Large buffers on the heap (fixes MSVC C6262; 64 KB + ~50 KB huff_t), one set per call (not shared
+	// between calls). Only used for the out-of-band connect packet. huff is cleared below.
 	// ----------------------------------------------------------------------
-	static byte* seq = nullptr;
-	static huff_t* huff = nullptr;
-
-	if (seq == nullptr)
-	{
-		seq = static_cast<byte*>(Z_Malloc(65536, TAG_TEMP_WORKSPACE, qfalse));
-		if (seq == nullptr)
-		{
-			Com_Printf("^1Huff_Compress: Failed to allocate seq buffer\n");
-			return;
-		}
-	}
-
-	if (huff == nullptr)
-	{
-		huff = static_cast<huff_t*>(Z_Malloc(sizeof(huff_t), TAG_TEMP_WORKSPACE, qfalse));
-		if (huff == nullptr)
-		{
-			Com_Printf("^1Huff_Compress: Failed to allocate huff struct\n");
-			return;
-		}
-	}
+	const std::unique_ptr<byte[]> seqBuf(new byte[65536]);
+	byte* seq = seqBuf.get();
+	const std::unique_ptr<huff_t> huffBuf(new huff_t);
+	huff_t* huff = huffBuf.get();
 
 	// ----------------------------------------------------------------------
 	// Validate message buffer

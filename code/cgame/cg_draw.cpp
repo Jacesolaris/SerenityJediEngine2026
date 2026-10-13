@@ -630,6 +630,10 @@ static void CG_DrawCusweapontype(const centity_t* cent, const float hud_ratio)
 	{
 		wp_index = OHB_DEKA;
 	}
+	else if (cent->currentState.weapon == WP_Z6_ROTARY_CANNON)
+	{
+		wp_index = OHB_Z6_ROTARY_CANNON;
+	}
 	else
 	{
 		wp_index = OHB_MELEE;
@@ -5603,6 +5607,7 @@ static void CG_DrawCrosshair(vec3_t world_point)
 					1, 1, cgs.media.crosshairShader[1]);
 			}
 			else if (cg.snap->ps.weapon == WP_REPEATER ||
+				cg.snap->ps.weapon == WP_Z6_ROTARY_CANNON ||
 				cg.snap->ps.weapon == WP_BLASTER)
 			{
 				cgi_R_DrawStretchPic(x + cg.refdef.x + 0.5 * (640 - w), y + cg.refdef.y + 0.5 * (480 - h), w, h, 0, 0,
@@ -6874,6 +6879,12 @@ static void CG_DrawCrosshairNames(void)
 		return;
 	}
 
+	// SJE: names (and the backup names) only for a character within 256 units of the view
+	if (DistanceSquared(cg_entities[g_crosshairEntNum].lerpOrigin, cg.refdef.vieworg) > 256.0f * 256.0f)
+	{
+		return;
+	}
+
 	const char* name = GetFullName(CrosshairEnt);
 
 	if (!name || !name[0])
@@ -7691,12 +7702,22 @@ static qboolean CG_RenderingFromMiscCamera()
 
 qboolean cg_usingInFrontOf = qfalse;
 qboolean CanUseInfrontOf(const gentity_t*);
+qboolean G_GonkCanGiveBacta(const gentity_t* gonk);
 
 static void CG_UseIcon()
 {
 	cg_usingInFrontOf = CanUseInfrontOf(cg_entities[cg.snap->ps.clientNum].gent);
 
-	if (cg_usingInFrontOf)
+	// SJE: a gonk with a bacta canister to give (G_GonkCanGiveBacta) under the crosshair gets the use icon too
+	qboolean show_hint = cg_usingInFrontOf;
+	if (!show_hint)
+	{
+		CG_ScanForCrosshairEntity(qfalse);
+		show_hint = cg.crosshairClientTime == cg.time && cg.crosshairclientNum > 0 && cg.crosshairclientNum < ENTITYNUM_WORLD
+			&& G_GonkCanGiveBacta(&g_entities[cg.crosshairclientNum]) ? qtrue : qfalse;
+	}
+
+	if (show_hint)
 	{
 		vec3_t diff;
 		VectorSubtract(cg_entities[cg.crosshairclientNum].lerpOrigin, cg.refdef.vieworg, diff);

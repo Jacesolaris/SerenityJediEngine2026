@@ -914,7 +914,7 @@ qboolean G2API_SetSurfaceOnOff(CGhoul2Info_v& ghoul2, const char* surfaceName, c
 		ghlInfo = &ghoul2[0];
 	}
 
-	if (G2_SetupModelPointers(ghlInfo))
+	if (ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		// ensure we flush the cache
 		ghlInfo->mMeshFrameNum = 0;
@@ -1257,7 +1257,7 @@ qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int
 		res = G2_SetupModelPointers(ghlInfo);
 	}
 
-	if (res)
+	if (res && ghlInfo) // res is never true for a NULL ghlInfo; the check just makes that explicit
 	{
 		// ensure we flush the cache
 		ghlInfo->mSkelFrameNum = 0;
@@ -1332,7 +1332,7 @@ qboolean G2API_SetBoneAnim(CGhoul2Info_v& ghoul2, const int modelIndex, const ch
 			res = G2_SetupModelPointers(ghlInfo);
 		}
 
-		if (res)
+		if (res && ghlInfo) // res is never true for a NULL ghlInfo; the check just makes that explicit
 		{
 			// ensure we flush the cache
 			ghlInfo->mSkelFrameNum = 0;
@@ -1479,7 +1479,7 @@ qboolean G2API_SetBoneAnglesIndex(CGhoul2Info* ghlInfo, const int index, const v
 		res = G2_SetupModelPointers(ghlInfo);
 	}
 
-	if (res)
+	if (res && ghlInfo) // res is never true for a NULL ghlInfo; the check just makes that explicit
 	{
 		// ensure we flush the cache
 		ghlInfo->mSkelFrameNum = 0;
@@ -1518,7 +1518,7 @@ qboolean G2API_SetBoneAngles(CGhoul2Info_v& ghoul2, const int modelIndex, const 
 			res = G2_SetupModelPointers(ghoul2);
 		}
 
-		if (res)
+		if (res && ghlInfo) // res is never true for a NULL ghlInfo; the check just makes that explicit
 		{
 			// ensure we flush the cache
 			ghlInfo->mSkelFrameNum = 0;
@@ -2615,7 +2615,7 @@ qboolean G2API_SetNewOrigin(CGhoul2Info_v& ghoul2, const int boltIndex)
 		ghlInfo = &ghoul2[0];
 	}
 
-	if (G2_SetupModelPointers(ghlInfo))
+	if (ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		if (boltIndex < 0)
 		{

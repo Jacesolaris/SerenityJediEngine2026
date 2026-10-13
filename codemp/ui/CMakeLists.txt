@@ -34,6 +34,9 @@ set(MPUIDefines ${MPSharedDefines} "UI_BUILD")
 set(MPUIGameFiles
 	"${MPDir}/game/bg_misc.c"
 	"${MPDir}/game/bg_saberLoad.c"
+	"${MPDir}/game/bg_skeleton.c"
+	"${MPDir}/game/bg_classmodel.c"
+	"${MPDir}/game/bg_classmodel.h"
 	"${MPDir}/game/bg_saga.c"
 	"${MPDir}/game/bg_vehicleLoad.c"
 	"${MPDir}/game/bg_weapons.c"
@@ -75,6 +78,7 @@ set(MPUIUIFiles
 	"${MPDir}/ui/ui_gameinfo.c"
 	"${MPDir}/ui/ui_main.c"
 	"${MPDir}/ui/ui_saber.c"
+	"${MPDir}/ui/ui_sjechars.c"
 	"${MPDir}/ui/ui_shared.c"
 	"${MPDir}/ui/ui_syscalls.c"
 	"${MPDir}/ui/keycodes.h"

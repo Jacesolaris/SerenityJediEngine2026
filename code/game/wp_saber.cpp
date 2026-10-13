@@ -257,6 +257,7 @@ extern void CG_CubeOutline(vec3_t mins, vec3_t maxs, int time, unsigned int colo
 void WP_BlockPointsDrain(const gentity_t* self, int fatigue);
 qboolean WP_SaberParryNonRandom(gentity_t* self, vec3_t hitloc, qboolean missileBlock);
 extern void CGCam_BlockShakeSP(float intensity, int duration);
+extern void CGCam_Shake(float intensity, int duration);
 static qhandle_t repulseLoopSound = 0;
 extern void Boba_FlyStop(gentity_t* self);
 extern void Jetpack_Off(const gentity_t* ent);
@@ -789,7 +790,7 @@ void G_CreateG2AttachedWeaponModel(gentity_t* ent, const char* ps_weapon_model, 
 		strcat(weapon_model, ".glm"); //and change to ghoul2
 	}
 
-	// The Z6 rotary cannon in the hand: its model with a barrel bone, which cgame spins (CG_SpinWeaponBarrel)
+	// The Z6 rotary cannon in the hand: its model with a barrel bone, which cgame spins (CG_Z6SpinBarrel)
 	// instead of rotary_cannon_w.glm (its barrels are fixed to the gun)
 	if (!Q_stricmp(weapon_model, "models/weapons2/z6_rotary/rotary_cannon_w.glm"))
 	{
@@ -2776,7 +2777,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 	{
 		int dflags = base_d_flags | DAMAGE_DEATH_KNOCKBACK | DAMAGE_NO_HIT_LOC;
 
-		if (victimentity_num[i] != ENTITYNUM_NONE && &g_entities[victimentity_num[i]] != nullptr)
+		if (victimentity_num[i] != ENTITYNUM_NONE)
 		{
 			// Don't bother with this damage if the fraction is higher than the saber's fraction
 			if (dmgFraction[i] < saberHitFraction || broken_parry)
@@ -4307,7 +4308,7 @@ static void wp_saber_m_block_effect(const gentity_t* attacker, const int saberNu
 	{
 		if (normal)
 		{
-			G_PlayEffect("saber/saber/saber_goodparry", position, normal);
+			G_PlayEffect("saber/saber_goodparry", position, normal);
 		}
 		else
 		{
@@ -4646,7 +4647,7 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 				{
 					return qtrue;
 				}
-				if (tr.entityNum == ENTITYNUM_NONE || &g_entities[tr.entityNum] == nullptr)
+				if (tr.entityNum == ENTITYNUM_NONE)
 				{
 					//didn't hit the owner
 					return qfalse; // Exit, but we didn't hit the wall.
@@ -4837,12 +4838,12 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 									|| hitEnt->client->NPC_class == CLASS_SABER_DROID))
 							{
 								// special droid only behaviors
-								if (!WP_SaberBladeUseSecondBladeStyle(&attacker->client->ps.saber[saberNum], bladeNum)
+								if (attacker->client && !WP_SaberBladeUseSecondBladeStyle(&attacker->client->ps.saber[saberNum], bladeNum)
 									&& attacker->client->ps.saber[saberNum].hitOtherEffect)
 								{
 									hit_effect = attacker->client->ps.saber[saberNum].hitOtherEffect;
 								}
-								else if (WP_SaberBladeUseSecondBladeStyle(
+								else if (attacker->client && WP_SaberBladeUseSecondBladeStyle(
 									&attacker->client->ps.saber[saberNum], bladeNum)
 									&& attacker->client->ps.saber[saberNum].hitOtherEffect2)
 								{
@@ -4871,12 +4872,12 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 								}
 								else
 								{
-									if (attacker->client->ps.saber[saberNum].hitOtherEffect &&
+									if (attacker->client && attacker->client->ps.saber[saberNum].hitOtherEffect &&
 										!WP_SaberBladeUseSecondBladeStyle(&attacker->client->ps.saber[saberNum], bladeNum))
 									{
 										hit_effect = attacker->client->ps.saber[saberNum].hitOtherEffect;
 									}
-									else if (attacker->client->ps.saber[saberNum].hitOtherEffect2 &&
+									else if (attacker->client && attacker->client->ps.saber[saberNum].hitOtherEffect2 &&
 										WP_SaberBladeUseSecondBladeStyle(
 											&attacker->client->ps.saber[saberNum], bladeNum))
 									{
@@ -11637,6 +11638,7 @@ int BasicWeaponBlockCosts[NUM_MODS] =
 	20, //MOD_PISTOL,
 	10, //MOD_PISTOL_ALT,
 	20, //MOD_LIGHTNING_STRIKE,
+	20, //MOD_Z6_ROTARY_CANNON,
 
 	//NUM_MODS,
 };
@@ -15390,7 +15392,7 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 			gentity_t* blocker = self; // was the shooter (incoming->ownerNum): wrong entity, crash for non-client owners
 
 			// Player saber activation
-			if (self->client && !self->client->ps.SaberActive())
+			if (!self->client->ps.SaberActive())
 			{
 				self->client->ps.SaberActivate();
 			}
@@ -15848,7 +15850,7 @@ void WP_DropWeapon(gentity_t* dropper, vec3_t velocity)
 		}
 	}
 	//FIXME: does this work on the player?
-	dropper->client->ps.stats[STAT_WEAPONS] |= 1 << replace_weap;
+	BG_GiveWeapon(&dropper->client->ps, replace_weap);
 	if (!dropper->s.number)
 	{
 		if (old_weap == WP_THERMAL)
@@ -15857,13 +15859,13 @@ void WP_DropWeapon(gentity_t* dropper, vec3_t velocity)
 		}
 		else
 		{
-			dropper->client->ps.stats[STAT_WEAPONS] &= ~(1 << old_weap);
+			BG_TakeWeapon(&dropper->client->ps, old_weap);
 		}
 		CG_ChangeWeapon(replace_weap);
 	}
 	else
 	{
-		dropper->client->ps.stats[STAT_WEAPONS] &= ~(1 << old_weap);
+		BG_TakeWeapon(&dropper->client->ps, old_weap);
 	}
 	ChangeWeapon(dropper, replace_weap);
 	dropper->s.weapon = replace_weap;
@@ -16657,6 +16659,11 @@ static qboolean ShouldPlayerResistForceThrow(const gentity_t* player, gentity_t*
 		return qfalse;
 	}
 
+	if (player->client && player->client->ps.repulseChargeStart)
+	{
+		return qtrue; // charging Force Repulse: pushes and pulls don't move him (2026-10-12)
+	}
+
 	if (!player->client)
 	{
 		return qfalse;
@@ -17176,6 +17183,10 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 				for (e = 0; e < num_listed_entities; e++)
 				{
 					ent = entity_list[e];
+					if (!ent)
+					{
+						continue; // (EntitiesInBox gives no null entries; for the analyser: ent == forward_ent below can be null)
+					}
 
 					if (!WP_ForceThrowable(ent, forward_ent, self, pull, cone, radius, forward))
 					{
@@ -17305,6 +17316,10 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 				for (e = 0; e < num_listed_entities; e++)
 				{
 					ent = entity_list[e];
+					if (!ent)
+					{
+						continue; // (EntitiesInBox gives no null entries; for the analyser: ent == forward_ent below can be null)
+					}
 
 					if (!WP_ForceThrowable(ent, forward_ent, self, pull, cone, radius, forward))
 					{
@@ -17448,6 +17463,10 @@ void ForceThrow(gentity_t* self, qboolean pull, qboolean fake)
 			for (e = 0; e < num_listed_entities; e++)
 			{
 				ent = entity_list[e];
+				if (!ent)
+				{
+					continue; // (EntitiesInBox gives no null entries; for the analyser: ent == forward_ent below can be null)
+				}
 
 				if (!WP_ForceThrowable(ent, forward_ent, self, pull, cone, radius, forward))
 				{
@@ -18706,6 +18725,164 @@ void ForceDeadlySight(gentity_t* self)
 	self->client->ps.forcePowerDebounce[FP_DEADLYSIGHT] = level.time + self->client->ps.torsoAnimTimer + 5000;
 }
 
+// Force Repulse release (DH 2026-10-12, as The Force Unleashed): the throw anim starts at once, the blast itself (bubble,
+// sound, shake, the push) comes at its throw frame - the hands fly apart at frame 12 of BOTH_SUPERPUSH (_humanoid.gla) -
+// and its strength follows the charge time (a tap is the weakest, a full g_repulseMaxCharge charge the strongest).
+// The saber goes out while charging and comes back on after the throw if it was on. Kept per entity and not saved:
+// a save in the half second between release and blast just loses that blast.
+#define REPULSE_THROW_ANIM	BOTH_SUPERPUSH
+#define REPULSE_THROW_FRAME	12
+static int repulseBlastTime[MAX_GENTITIES];
+static int repulseBlastCharge[MAX_GENTITIES];
+static int repulseRelightTime[MAX_GENTITIES];
+static qboolean repulseSaberWasOn[MAX_GENTITIES];
+// the repulse button is still down since the last release: no new charge until it is let go (a held button
+// started a new charge the frame after the auto-release at g_repulseMaxCharge, which hid the throw)
+static qboolean repulseHeld[MAX_GENTITIES];
+// after the release he floats on through the throw and comes down a moment after the blast (DH 2026-10-13, as The Force
+// Unleashed 2): until this time PM_RepulseHover keeps him up (WP_RepulseHoverHeld), 0 = no
+#define REPULSE_HOVER_AFTER_BLAST	175
+static int repulseHoverEnd[MAX_GENTITIES];
+
+void WP_RepulseClearPending()
+{
+	memset(repulseBlastTime, 0, sizeof repulseBlastTime);
+	memset(repulseHoverEnd, 0, sizeof repulseHoverEnd);
+	memset(repulseBlastCharge, 0, sizeof repulseBlastCharge);
+	memset(repulseRelightTime, 0, sizeof repulseRelightTime);
+	memset(repulseSaberWasOn, 0, sizeof repulseSaberWasOn);
+	memset(repulseHeld, 0, sizeof repulseHeld);
+}
+
+// g_repulseMaxCharge (1.5 - 4 s, default 2.5; DH 2026-10-12) in ms
+static int WP_RepulseMaxChargeTime()
+{
+	static cvar_t* g_repulseMaxCharge = nullptr;
+	if (!g_repulseMaxCharge)
+	{
+		g_repulseMaxCharge = gi.cvar("g_repulseMaxCharge", "2.0", CVAR_ARCHIVE);
+	}
+	const float maxCharge = g_repulseMaxCharge->value < 1.5f ? 1.5f : g_repulseMaxCharge->value > 4.0f ? 4.0f : g_repulseMaxCharge->value;
+	return static_cast<int>(maxCharge * 1000.0f);
+}
+
+// 0 (a tap) .. 1 (a full charge)
+static float WP_RepulseChargeFrac(const int charge_time)
+{
+	const float frac = static_cast<float>(charge_time) / static_cast<float>(WP_RepulseMaxChargeTime());
+	return frac < 0.0f ? 0.0f : frac > 1.0f ? 1.0f : frac;
+}
+
+// charging starts: the saber goes out (its normal off sound) if it was on
+static void WP_RepulseSaberOff(const gentity_t* self)
+{
+	const int n = self->s.number;
+	repulseRelightTime[n] = 0;
+	repulseSaberWasOn[n] = qfalse;
+	if (self->client->ps.weapon == WP_SABER && self->client->ps.SaberActive())
+	{
+		self->client->ps.SaberDeactivate();
+		G_SoundIndexOnEnt(self, CHAN_WEAPON, self->client->ps.saber[0].soundOff);
+		repulseSaberWasOn[n] = qtrue;
+	}
+}
+
+// per frame (WP_ForcePowersUpdate): the blast at the throw frame, then the saber back on after the throw
+static void ForceRepulseThrow(gentity_t* self, int charge_time, qboolean blast);
+static void WP_RepulsePending(gentity_t* self)
+{
+	const int n = self->s.number;
+	if (repulseHoverEnd[n] && (level.time >= repulseHoverEnd[n] || self->health <= 0 || PM_InKnockDown(&self->client->ps)))
+	{
+		repulseHoverEnd[n] = 0;
+	}
+	if (repulseBlastTime[n] && level.time >= repulseBlastTime[n])
+	{
+		repulseBlastTime[n] = 0;
+		if (self->health > 0)
+		{
+			ForceRepulseThrow(self, repulseBlastCharge[n], qtrue);
+		}
+	}
+	if (repulseRelightTime[n] && level.time >= repulseRelightTime[n])
+	{
+		repulseRelightTime[n] = 0;
+		if (repulseSaberWasOn[n] && self->health > 0 && self->client->ps.weapon == WP_SABER
+			&& !self->client->ps.SaberActive() && !self->client->ps.repulseChargeStart)
+		{
+			self->client->ps.SaberActivate();
+			G_SoundIndexOnEnt(self, CHAN_WEAPON, self->client->ps.saber[0].soundOn);
+		}
+		repulseSaberWasOn[n] = qfalse;
+	}
+}
+
+// bg_pmove PM_RepulseHover: released, he still floats until a moment after the blast (not when knocked down or dead)
+qboolean WP_RepulseHoverHeld(const gentity_t* ent)
+{
+	if (!ent || !ent->client || ent->s.number < 0 || ent->s.number >= MAX_GENTITIES)
+	{
+		return qfalse;
+	}
+	const int end = repulseHoverEnd[ent->s.number];
+	return end && level.time < end && ent->health > 0 && !PM_InKnockDown(&ent->client->ps) ? qtrue : qfalse;
+}
+
+extern qboolean PM_InSaberAnim(int anim);
+// a cutscene starts (CGCam_Enable): a saber attack, kata or saber lock in progress ends here. The player's anim and weapon
+// timers stand still while the camera runs, so a kata started just before a cutscene played on after it and blocked every
+// attack until it was over (TWJ team report 2026-10-13). A cinematic anim a script put on him is left alone.
+static void WP_CutsceneEndSaberMove(gentity_t* ent, const qboolean locked)
+{
+	playerState_t* ps = &ent->client->ps;
+	if (locked || PM_InSaberAnim(ps->torsoAnim) || PM_SaberInSpecialAttack(ps->torsoAnim))
+	{
+		ps->torsoAnimTimer = 0;
+	}
+	if (locked || PM_InSaberAnim(ps->legsAnim) || PM_SaberInSpecialAttack(ps->legsAnim))
+	{
+		ps->legsAnimTimer = 0;
+	}
+	ps->saberMove = ps->saberBounceMove = LS_READY;
+	ps->saberBlocked = BLOCKED_NONE;
+	ps->weaponTime = 0;
+	ps->weaponstate = WEAPON_READY;
+}
+
+void WP_CutsceneResetSaberState(gentity_t* ent)
+{
+	if (!ent || !ent->client || ent->client->ps.weapon != WP_SABER)
+	{
+		return;
+	}
+	playerState_t* ps = &ent->client->ps;
+	const qboolean locked = ps->saberLockTime > level.time ? qtrue : qfalse;
+	if (locked)
+	{
+		// both sides of the lock
+		if (ps->saberLockEnemy >= 0 && ps->saberLockEnemy < ENTITYNUM_WORLD)
+		{
+			gentity_t* other = &g_entities[ps->saberLockEnemy];
+			if (other->inuse && other->client && other->client->ps.saberLockEnemy == ent->s.number)
+			{
+				other->client->ps.saberLockTime = 0;
+				other->client->ps.saberLockEnemy = ENTITYNUM_NONE;
+				if (other->client->ps.weapon == WP_SABER)
+				{
+					WP_CutsceneEndSaberMove(other, qtrue);
+				}
+			}
+		}
+		ps->saberLockTime = 0;
+		ps->saberLockEnemy = ENTITYNUM_NONE;
+	}
+	if (!locked && (ps->saberMove == LS_READY || ps->saberMove == LS_NONE))
+	{
+		return; // nothing running
+	}
+	WP_CutsceneEndSaberMove(ent, locked);
+}
+
 static void ForceRepulseDamage(gentity_t* self, gentity_t* enemy, vec3_t location, const int damageLevel)
 {
 	switch (damageLevel)
@@ -18724,7 +18901,9 @@ static void ForceRepulseDamage(gentity_t* self, gentity_t* enemy, vec3_t locatio
 	}
 }
 
-static void ForceRepulseThrow(gentity_t* self, int charge_time)
+// blast qfalse: the release - checks, the throw anim, the blast scheduled at the throw frame (returns via repulseBlastTime);
+// blast qtrue: the blast itself
+static void ForceRepulseThrow(gentity_t* self, int charge_time, const qboolean blast)
 {
 	//shove things around you away
 	qboolean fake = qfalse;
@@ -18788,15 +18967,21 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 		return;
 	}
 
-	if (charge_time > 2500.0f)
+	// the charge sets the strength: 0 = a tap, 1 = a full g_repulseMaxCharge charge
+	const float charge_frac = WP_RepulseChargeFrac(charge_time);
+	const float strength = 0.4f + 0.6f * charge_frac;
+	radius = static_cast<int>(radius * (0.6f + 0.4f * charge_frac));
+
+	// damage steps as before (> 2.5 / 1.25 / 0.5 s of the old 3.5 s), as fractions of g_repulseMaxCharge
+	if (charge_frac > 2500.0f / 3500.0f)
 	{
 		damage_level = FORCE_LEVEL_3;
 	}
-	else if (charge_time > 1250.0f)
+	else if (charge_frac > 1250.0f / 3500.0f)
 	{
 		damage_level = FORCE_LEVEL_2;
 	}
-	else if (charge_time > 500.0f)
+	else if (charge_frac > 500.0f / 3500.0f)
 	{
 		damage_level = FORCE_LEVEL_1;
 	}
@@ -18807,37 +18992,76 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 	{
 		return;
 	}
-	//make sure this plays and that you cannot press fire for about 1 second after this
-	anim = BOTH_SUPERPUSH;
-	sound_index = G_SoundIndex("sound/weapons/force/repulsepush.wav");
-	hold = 650;
 
-	int parts = SETANIM_TORSO;
-	if (!PM_InKnockDown(&self->client->ps))
+	if (!blast)
 	{
-		if (self->client->ps.saberLockTime > level.time)
+		//make sure this plays and that you cannot press fire for about 1 second after this
+		anim = REPULSE_THROW_ANIM;
+		hold = 650;
+
+		// floating (the charge lifted him): the whole body throws, he stays up until the blast (repulseHoverEnd)
+		int parts = self->client->ps.groundEntityNum == ENTITYNUM_NONE ? SETANIM_BOTH : SETANIM_TORSO;
+		if (!PM_InKnockDown(&self->client->ps))
 		{
-			self->client->ps.saberLockTime = 0;
-			self->painDebounceTime = level.time + 2000;
-			hold += 1000;
-			parts = SETANIM_BOTH;
+			if (self->client->ps.saberLockTime > level.time)
+			{
+				self->client->ps.saberLockTime = 0;
+				self->painDebounceTime = level.time + 2000;
+				hold += 1000;
+				parts = SETANIM_BOTH;
+			}
 		}
+		NPC_SetAnim(self, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+		self->client->ps.saberMove = self->client->ps.saberBounceMove = LS_READY;
+		//don't finish whatever saber anim you may have been in
+		self->client->ps.saberBlocked = BLOCKED_NONE;
+
+		// the blast at the throw frame, the saber back on when the throw anim is over
+		int throw_delay = 0, anim_length = 0;
+		const int anim_file = self->client->clientInfo.animFileIndex;
+		if (ValidAnimFileIndex(anim_file) && level.knownAnimFileSets[anim_file].animations[anim].numFrames > REPULSE_THROW_FRAME)
+		{
+			throw_delay = abs(level.knownAnimFileSets[anim_file].animations[anim].frameLerp) * REPULSE_THROW_FRAME;
+			anim_length = PM_AnimLength(anim_file, static_cast<animNumber_t>(anim));
+		}
+		if (self->client->ps.forcePowersActive & 1 << FP_SPEED)
+		{
+			hold = floor(hold * g_timescale->value);
+			throw_delay = floor(throw_delay * g_timescale->value);
+			anim_length = floor(anim_length * g_timescale->value);
+		}
+		if (hold < throw_delay + 100)
+		{
+			hold = throw_delay + 100;
+		}
+		self->client->ps.weaponTime = hold; //was 1000, but want to swing sooner
+		repulseBlastTime[self->s.number] = level.time + (throw_delay > 0 ? throw_delay : 1);
+		repulseBlastCharge[self->s.number] = charge_time;
+		repulseRelightTime[self->s.number] = level.time + (anim_length > throw_delay ? anim_length : throw_delay + 1);
+		// he floats on through the throw and comes down a moment after the blast (never longer than 1.5 s)
+		repulseHoverEnd[self->s.number] = (throw_delay < 1325 ? repulseBlastTime[self->s.number] : level.time + 1325)
+			+ REPULSE_HOVER_AFTER_BLAST;
+		return;
 	}
-	NPC_SetAnim(self, parts, anim, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
-	self->client->ps.saberMove = self->client->ps.saberBounceMove = LS_READY;
-	//don't finish whatever saber anim you may have been in
-	self->client->ps.saberBlocked = BLOCKED_NONE;
-	if (self->client->ps.forcePowersActive & 1 << FP_SPEED)
-	{
-		hold = floor(hold * g_timescale->value);
-	}
-	self->client->ps.weaponTime = hold; //was 1000, but want to swing sooner
-	//do effect... FIXME: build-up or delay this until in proper part of anim
+
+	//the blast: the push bubble, its sound and a shake
+	sound_index = G_SoundIndex("sound/weapons/force/repulsepush.wav");
 	self->client->ps.powerups[PW_FORCE_REPULSE] = level.time + self->client->ps.torsoAnimTimer + 500;
 	//reset to 0 in case it's still > 0 from a previous push
 	self->client->pushEffectFadeTime = 0;
 
 	G_Sound(self, sound_index);
+
+	if (player && player->client)
+	{
+		// the player feels it, the closer the more (his own blast too)
+		const float shake_range = radius * 2.0f;
+		const float dist_to_player = Distance(player->currentOrigin, self->currentOrigin);
+		if (dist_to_player < shake_range)
+		{
+			CGCam_Shake((0.25f + 0.5f * charge_frac) * (1.0f - dist_to_player / shake_range), 400 + static_cast<int>(400 * charge_frac));
+		}
+	}
 
 	VectorCopy(self->client->ps.viewangles, fwdangles);
 	//fwdangles[1] = self->client->ps.viewangles[1];
@@ -18870,6 +19094,10 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 			vec3_t dir;
 			gentity_t* forward_ent = nullptr;
 			ent = entity_list[e];
+			if (!ent)
+			{
+				continue; // (EntitiesInBox gives no null entries; for the analyser: ent == forward_ent below can be null)
+			}
 
 			if (!WP_ForceThrowable(ent, forward_ent, self, qfalse, 0.0f, radius, forward))
 			{
@@ -19204,6 +19432,7 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 						knockback /= 2.0f;
 					}
 				}
+				knockback *= strength; // the charge time
 				//actually push/pull the enemy
 				G_Throw(push_target[x], push_dir, knockback);
 				//make it so they don't actually hurt me when pulled at me...
@@ -19396,6 +19625,7 @@ static void ForceRepulseThrow(gentity_t* self, int charge_time)
 				{
 					knockback = 100;
 				}
+				knockback *= strength; // the charge time
 
 				//FIXME: if pull a FL_FORCE_PULLABLE_ONLY, clear the flag, assuming it's no longer in solid?  or check?
 				VectorCopy(push_target[x]->currentOrigin, push_target[x]->s.pos.trBase);
@@ -22312,6 +22542,7 @@ static qboolean ThisGuyIsAGunner(const gentity_t* self)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -27100,6 +27331,10 @@ void ForceGrasp(gentity_t* self)
 
 		traceEnt = &g_entities[tr.entityNum];
 	}
+	if (traceEnt && traceEnt->client && traceEnt->client->ps.repulseChargeStart)
+	{
+		return; // charging Force Repulse: can't be gripped (2026-10-12)
+	}
 	//rww - RAGDOLL_BEGIN
 #ifdef JK2_RAGDOLL_GRIPNOHEALTH
 	if (!traceEnt || traceEnt == self || traceEnt->bmodel || traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
@@ -27611,6 +27846,8 @@ void ForceRepulse(gentity_t* self)
 	}
 
 	self->client->ps.repulseChargeStart = level.time;
+	// the saber goes out while charging (back on after the throw, WP_RepulsePending)
+	WP_RepulseSaberOff(self);
 
 	NPC_SetAnim(self, SETANIM_TORSO, BOTH_FORCE_PROTECT_FAST, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 
@@ -28736,8 +28973,16 @@ void WP_ForcePowerStop(gentity_t* self, const forcePowers_t force_power)
 		if (self->client->ps.repulseChargeStart)
 		{
 			self->s.loopSound = 0;
-			ForceRepulseThrow(self, level.time - self->client->ps.repulseChargeStart);
+			// the throw anim now, the blast at its throw frame (WP_RepulsePending)
+			repulseHeld[self->s.number] = qtrue;
+			repulseBlastTime[self->s.number] = 0;
+			ForceRepulseThrow(self, level.time - self->client->ps.repulseChargeStart, qfalse);
 			self->client->ps.repulseChargeStart = 0;
+			if (!repulseBlastTime[self->s.number])
+			{
+				// no throw (dead, knocked down, no force...): the saber comes back now
+				repulseRelightTime[self->s.number] = level.time;
+			}
 		}
 		break;
 	case FP_DEADLYSIGHT:
@@ -30224,6 +30469,15 @@ static void wp_force_power_run(gentity_t* self, forcePowers_t force_power, userc
 			WP_ForcePowerStop(self, FP_REPULSE);
 			return;
 		}
+		// the charge lasts at most g_repulseMaxCharge seconds (1.5 - 4, default 2.5): then the push goes off even if the
+		// button is still held (DH 2026-10-12, The Force Unleashed). While charging he hovers (bg_pmove PM_RepulseHover)
+		// and is untouchable (G_Damage, G_Knockdown, grip / push / pull).
+		if (self->client->ps.repulseChargeStart
+			&& level.time - self->client->ps.repulseChargeStart >= WP_RepulseMaxChargeTime())
+		{
+			WP_ForcePowerStop(self, FP_REPULSE);
+			return;
+		}
 		if (self->client->ps.repulseChargeStart && WP_ForcePowerAvailable(
 			self, FP_REPULSE, force_power_needed[FP_REPULSE] + 30))
 		{
@@ -30262,7 +30516,8 @@ static void wp_force_power_run(gentity_t* self, forcePowers_t force_power, userc
 			}
 
 			self->s.loopSound = repulseLoopSound;
-			VectorClear(self->client->ps.velocity);
+			// no walking; the height is pmove's (PM_RepulseHover lifts him and keeps him floating)
+			self->client->ps.velocity[0] = self->client->ps.velocity[1] = 0.0f;
 			cmd->forwardmove = 0;
 			cmd->rightmove = 0;
 			cmd->upmove = 0;
@@ -30540,6 +30795,9 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		return;
 	}
 
+	// a Repulse blast due at its throw frame, the saber back on after the throw
+	WP_RepulsePending(self);
+
 	//see if any force powers are running
 	if (self->health <= 0)
 	{
@@ -30585,8 +30843,13 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 		}
 	}
 
-	if (ucmd->buttons & BUTTON_REPULSE)
+	if (!(ucmd->buttons & BUTTON_REPULSE))
 	{
+		repulseHeld[self->s.number] = qfalse;
+	}
+	else if (!repulseHeld[self->s.number] && !repulseBlastTime[self->s.number])
+	{
+		// a new charge only after the button was let go and the last blast has gone off
 		ForceRepulse(self);
 		self->client->ps.powerups[PW_INVINCIBLE] =
 			level.time + self->client->ps.torsoAnimTimer + 2000;

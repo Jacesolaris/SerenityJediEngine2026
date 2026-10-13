@@ -37,6 +37,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "qcommon/q_shared.h"
 #include "bg_public.h"
 #include "anims.h"
+#include "teams.h"
 #include "cgame/animtable.h"
 
 #ifdef _GAME
@@ -4895,6 +4896,12 @@ void BG_ClearAnimsets(void)
 static animation_t* BG_AnimsetAlloc(void)
 {
 	assert(bgNumAllAnims < MAX_ANIM_FILES);
+	if (bgNumAllAnims >= MAX_ANIM_FILES)
+	{
+		// SJE: release-build guard (was only an assert): never write past bgAllAnims
+		Com_Printf(S_COLOR_YELLOW "WARNING: all %d animation sets are in use, cannot load another one\n", MAX_ANIM_FILES);
+		return NULL;
+	}
 	bgAllAnims[bgNumAllAnims].anims = (animation_t*)BG_Alloc(sizeof(animation_t) * MAX_TOTALANIMATIONS);
 
 	return bgAllAnims[bgNumAllAnims].anims;
@@ -5514,7 +5521,7 @@ int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, c
 	const char* text_p = NULL;
 	char* text = bgAnimEvtTextBuffer;      // static global buffer
 	char sfilename[MAX_QPATH];
-	fileHandle_t f;
+	fileHandle_t f = 0;
 	int i;
 	int used_index = -1;
 
@@ -5523,6 +5530,13 @@ int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, c
 
 	// Determine which event index to use
 	const int forced_index = (eventFileIndex == -1) ? 0 : eventFileIndex;
+
+	if (forced_index < 0 || forced_index >= MAX_ANIM_FILES || animFileIndex < 0 || animFileIndex >= MAX_ANIM_FILES)
+	{
+		// SJE: release-build guard (the asserts above only work in debug builds)
+		Com_Printf(S_COLOR_YELLOW "WARNING: no free animation event slot for %s\n", as_filename);
+		return 0;
+	}
 
 	// Skip if already parsed (unless inside an include)
 	if (bg_animParseIncluding <= 0)
@@ -5588,9 +5602,49 @@ int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, c
 	}
 
 	// Load file
-	const int len = trap->FS_Open(sfilename, &f, FS_READ);
+	int len = trap->FS_Open(sfilename, &f, FS_READ);
+	if (len <= 0 && strstr(sfilename, "mpanimevents.cfg"))
+	{
+		// no MP events file here: use the animevents.cfg SP and MP share (as MD MP). Own skeletons keep their step
+		// sounds there (galak_mech, assassin_droid, ...), so without this they had no footsteps in MP
+		if (f)
+		{
+			trap->FS_Close(f);
+			f = 0;
+		}
+		Com_sprintf(sfilename, sizeof(sfilename), "%sanimevents.cfg", as_filename);
+		len = trap->FS_Open(sfilename, &f, FS_READ);
+	}
+	if (len <= 0 && bg_animParseIncluding <= 0 && animFileIndex > 0 && bgAllAnims[animFileIndex].filename[0])
+	{
+		// a model on its own skeleton keeps its events next to its skeleton's animation.cfg when that is in another
+		// folder: try (mp)animevents.cfg in the anim set's folder (as MD MP)
+		char setDir[MAX_QPATH];
+		Q_strncpyz(setDir, bgAllAnims[animFileIndex].filename, sizeof setDir);
+		char* setSlash = Q_strrchr(setDir, '/');
+		if (setSlash && Q_stricmpn(setDir, as_filename, (int)(setSlash - setDir) + 1))
+		{
+			setSlash[1] = 0;
+			for (i = 0; i < 2 && len <= 0; i++)
+			{
+				if (f)
+				{
+					trap->FS_Close(f);
+					f = 0;
+				}
+				Com_sprintf(sfilename, sizeof(sfilename), "%s%sanimevents.cfg", setDir, i == 0 ? "mp" : "");
+				len = trap->FS_Open(sfilename, &f, FS_READ);
+			}
+		}
+	}
 	if (len <= 0)
+	{
+		if (f)
+		{
+			trap->FS_Close(f);
+		}
 		goto finish;
+	}
 
 	if (len >= (int)sizeof(bgAnimEvtTextBuffer) - 1)
 	{
@@ -5659,6 +5713,11 @@ finish:
 
 		if (forced_index != 0)
 			bgNumAnimEvents++;
+
+		// SJE: a model without an mpanimevents.cfg (rockettrooper, many creatures) still gets this (empty, initialised)
+		// event slot. It used to get -1, which callers store in eventAnimIndex and later index bgAllEvents[-1] with
+		// (crash in CG_PlayerAnimEventDo). Later calls for the same file already returned this slot.
+		used_index = forced_index;
 	}
 
 	return used_index;
@@ -5924,12 +5983,352 @@ int bg_parse_animation_file(const char* filename, animation_t* anim_set, const q
 		}
 		else
 		{
-			bgpa_ftext_loaded = qtrue;
+			// SJE: only the slot 0 (_humanoid) load means "humanoid text loaded". The rockettrooper slot 1 used to set
+			// this too, so when a rockettrooper loaded first the _humanoid set was never loaded (NULL slot 0).
+			if (next_index == 0)
+			{
+				bgpa_ftext_loaded = qtrue;
+			}
 			used_index = next_index;
 		}
 	}
 
 	return used_index;
+}
+
+/*
+======================
+SJE: per-model skeletons (ported from SJE SP's G_LoadAnimFileSet)
+
+A model.glm names the GLA (skeleton) it is animated with. Like SP, the anim set is the animation.cfg in that GLA's
+folder. Each set remembers whether its GLA has the humanoid bones, so a second humanoid skeleton (for example
+_humanoid_yoda) gets all the humanoid-only code (bolts, ragdoll, head look, Motion bone...) like _humanoid does,
+while creature skeletons keep the creature path. Everything is read from the files, so the game and cgame (and
+server and clients) always come to the same answer.
+======================
+*/
+// SJE: the glm/gla file readers, BG_ModelSkeletonFlags, BG_ClassIsCreature and BG_ClassSkeletonOk are in bg_skeleton.c
+// (shared with the ui, which needs the same playable rules for its character menu).
+extern qboolean BG_GLAIsHumanoid(const char* glaName);
+
+int BG_ParseAnimationFileForGLA(const char* glaName)
+{
+	char cfgName[MAX_QPATH];
+
+	if (!glaName || !glaName[0])
+	{
+		return -1;
+	}
+
+	Q_strncpyz(cfgName, glaName, sizeof cfgName);
+	char* slash = Q_strrchr(cfgName, '/');
+	if (!slash)
+	{
+		return -1;
+	}
+	*slash = 0;
+	if (strlen(cfgName) + strlen("/animation.cfg") >= sizeof cfgName)
+	{
+		return -1;
+	}
+	Q_strcat(cfgName, sizeof cfgName, "/animation.cfg");
+
+	const int index = bg_parse_animation_file(cfgName, NULL, qfalse);
+
+	if (index > 1 && index < MAX_ANIM_FILES && !bgAllAnims[index].skelChecked)
+	{
+		bgAllAnims[index].skelChecked = qtrue;
+		bgAllAnims[index].humanoidSkel = BG_GLAIsHumanoid(glaName);
+#ifdef _DEBUG // the skeleton each animation set uses: Debug builds only (it printed on every join)
+#ifdef _GAME
+		Com_Printf("Animation set %d (game): %s, %s skeleton\n", index, cfgName,
+			bgAllAnims[index].humanoidSkel ? "humanoid" : "non-humanoid");
+#else
+		Com_Printf("Animation set %d (cgame): %s, %s skeleton\n", index, cfgName,
+			bgAllAnims[index].humanoidSkel ? "humanoid" : "non-humanoid");
+#endif
+#endif
+	}
+	return index;
+}
+
+qboolean BG_AnimSetIsHumanoid(const int animIndex)
+{
+	if (animIndex == 0)
+	{
+		return qtrue;
+	}
+	if (animIndex < 0 || animIndex >= MAX_ANIM_FILES)
+	{
+		return qfalse;
+	}
+	return bgAllAnims[animIndex].humanoidSkel ? qtrue : qfalse;
+}
+
+qboolean BG_AnimSetIsHumanoidLike(const int animIndex)
+{
+	return animIndex <= 1 || BG_AnimSetIsHumanoid(animIndex) ? qtrue : qfalse;
+}
+
+// bg_parse_animation_file always puts players/rockettrooper/animation.cfg in slot 1
+qboolean BG_AnimSetIsRocketTrooper(const int animIndex)
+{
+	return animIndex == 1 && bgAllAnims[1].anims ? qtrue : qfalse;
+}
+
+// The NPC class whose (odd) bone layout this skeleton has, for the class-keyed bone code (BG_ClassHasBadBones and
+// BG_BoneOrientationsForClass). NPCs: their class, as before. Players and bots have no NPC class: the skeleton they
+// were given decides (SJE MP loads the rockettrooper's own skeleton for a rockettrooper player now).
+int BG_SkeletonClass(const int NPC_class, const int animIndex)
+{
+	if (NPC_class != CLASS_NONE)
+	{
+		return NPC_class;
+	}
+	if (BG_AnimSetIsRocketTrooper(animIndex))
+	{
+		return CLASS_ROCKETTROOPER;
+	}
+	return CLASS_NONE;
+}
+
+// SJE: the jetpack classes. As SP (bg_pmove PM_CheckJump: Boba, Mando and the rockettrooper fly with the jetpack):
+// a double tap of jump in the air turns the jetpack on for players, bots hold jump to jet and use the flight AI.
+qboolean BG_ClassIsJetpackFlyer(const int botclass)
+{
+	switch (botclass)
+	{
+	case BCLASS_BOBAFETT:
+	case BCLASS_MANDOLORIAN:
+	case BCLASS_MANDOLORIAN1:
+	case BCLASS_MANDOLORIAN2:
+	case BCLASS_ROCKETTROOPER:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// SJE: classes whose jets are built into the player model (tags *jet1/*jet2, like SP's rockettrooper NPC): the
+// jetpack item works as usual, but the separate jetpack model is never drawn and the flames come from the model's jets.
+qboolean BG_ClassHasBuiltInJetpack(const int botclass)
+{
+	return botclass == BCLASS_ROCKETTROOPER ? qtrue : qfalse;
+}
+
+// (BG_ModelSkeletonFlags / BG_ModelOwnSkeletonGLA: bg_skeleton.c)
+
+// ---------------------------------------------------------------------------------------------------------------
+// SJE: creature and droid player classes. Values from the SP NPC files (ext_data/npcs/*.npc) and the SP class code.
+// ---------------------------------------------------------------------------------------------------------------
+// (BG_ClassIsCreature / BG_ClassSkeletonOk: bg_skeleton.c)
+
+// SP: r2d2/r5d2.npc WP_STUN_BATON, gonk.npc and protocol.npc WP_NONE (no melee for any of them)
+qboolean BG_ClassHasNoFists(const int botclass)
+{
+	switch (botclass)
+	{
+	case BCLASS_R2D2:
+	case BCLASS_R5D2:
+	case BCLASS_GONK:
+	case BCLASS_PROTOCOL:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// SP bg_pmove PM_GentCantJump
+qboolean BG_ClassCantJump(const int botclass)
+{
+	switch (botclass)
+	{
+	case BCLASS_R2D2:
+	case BCLASS_R5D2:
+	case BCLASS_GONK:
+	case BCLASS_PROTOCOL:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// a model on its own (not humanoid) skeleton with no real jump anim: no BOTH_JUMP1, or one that only repeats the stand
+// pose (galak_mech). It can't jump (as SP, whose NPCs of these never jump); the jump key plays a taunt (G_NoJumpTaunt)
+qboolean BG_AnimSetCantJump(const int animIndex)
+{
+	if (animIndex <= 0 || animIndex >= MAX_ANIM_FILES || animIndex >= bgNumAllAnims || BG_AnimSetIsHumanoidLike(animIndex))
+	{
+		return qfalse;
+	}
+	const animation_t* anims = bgAllAnims[animIndex].anims;
+	if (!anims)
+	{
+		return qfalse;
+	}
+	if (anims[BOTH_JUMP1].numFrames <= 0)
+	{
+		return qtrue;
+	}
+	return anims[BOTH_JUMP1].firstFrame == anims[BOTH_STAND1].firstFrame
+		&& anims[BOTH_JUMP1].numFrames == anims[BOTH_STAND1].numFrames ? qtrue : qfalse;
+}
+
+// classes whose anims always move the whole body (beasts and the weaponless / handless droids): the cgame drives
+// lower_lumbar with the legs anim, and their attacks are whole-body anims
+qboolean BG_ClassIsWholeBody(const int botclass)
+{
+	switch (botclass)
+	{
+	case BCLASS_R2D2:
+	case BCLASS_R5D2:
+	case BCLASS_GONK:
+	case BCLASS_PROTOCOL:
+	case BCLASS_WAMPA:
+	case BCLASS_RANCOR:
+	case BCLASS_HOWLER:
+	case BCLASS_MINEMONSTER:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// SJE (owner decision 2026-10-11): the smallest creatures (gonk, howler, mine monster) are 30-32 units tall in SP, which put
+// their first-person eye 2-4 units above the origin (26-28 above the floor, with the model filling the view). They get
+// this minimum height instead: stand maxs 20, view height 16 (eye 40 above the floor, 4 below the top of the bbox).
+#define CREATURE_MIN_HEIGHT	44
+
+// bbox from the SP .npc "width" (mins/maxs x and y) and "height"/"crouchheight" (maxs z = value + DEFAULT_MINS_2).
+// Only classes whose size differs from a human; the humanoid-shaped droids keep the normal player box.
+qboolean BG_ClassCreatureSize(const int botclass, float* halfWidth, int* standheight, int* crouchheight)
+{
+	float w;
+	int h, c;
+
+	switch (botclass)
+	{
+	case BCLASS_R2D2:	// r2d2.npc / r5d2.npc: width 12, height 40
+	case BCLASS_R5D2:
+		w = 12;
+		h = 40;
+		c = 40;
+		break;
+	case BCLASS_GONK:	// gonk.npc: width 12, height 32
+		w = 12;
+		h = CREATURE_MIN_HEIGHT;	// SP 32
+		c = CREATURE_MIN_HEIGHT;
+		break;
+	case BCLASS_WAMPA:	// wampa.npc: width 30, height 128, crouchheight 80 (scale 150)
+		w = 30;
+		h = 128;
+		c = 80;
+		break;
+	case BCLASS_RANCOR:	// rancor.npc: width 60, height 160, crouchheight 128 - at 70% (owner decision 2026-10-11: the SP
+		// rancor did not fit MP maps; its model scale is 70 too, g_classmodels.h / BG_ClassCreatureScale)
+		w = 42;
+		h = 112;
+		c = 90;
+		break;
+	case BCLASS_HOWLER:	// howler.npc: height 32, crouchheight 32, no width (SP default 15)
+		w = 15;
+		h = CREATURE_MIN_HEIGHT;	// SP 32
+		c = CREATURE_MIN_HEIGHT;
+		break;
+	case BCLASS_MINEMONSTER:	// minemonster.npc: width 9, height 30
+		w = 9;
+		h = CREATURE_MIN_HEIGHT;	// SP 30
+		c = CREATURE_MIN_HEIGHT;
+		break;
+	default:
+		return qfalse;
+	}
+	if (halfWidth)
+	{
+		*halfWidth = w;
+	}
+	if (standheight)
+	{
+		*standheight = h + DEFAULT_MINS_2;
+	}
+	if (crouchheight)
+	{
+		*crouchheight = c + DEFAULT_MINS_2;
+	}
+	return qtrue;
+}
+
+// SP .npc "scale" of the creature classes (the model is drawn at this size; the bbox above matches it)
+int BG_ClassCreatureScale(const int botclass)
+{
+	switch (botclass)
+	{
+	case BCLASS_WAMPA:
+		return 150;
+	case BCLASS_R2D2:
+	case BCLASS_R5D2:
+	case BCLASS_GONK:
+	case BCLASS_HOWLER:
+	case BCLASS_MINEMONSTER:
+		return 100;
+	case BCLASS_RANCOR:	// 70% of SP (owner decision 2026-10-11)
+		return 70;
+	default:
+		return 0;
+	}
+}
+
+// The attack anims the SP AI of these classes plays (AI_Wampa, AI_Rancor, AI_Howler, AI_MineMonster), primary / alt fire.
+// R2/R5: the stun zap (BOTH_ATTACK3, as WeaponAttackAnim; the r2d2 cfg aliases it to a jolt).
+int BG_ClassCreatureAttackAnim(const int botclass, const int weapon, const qboolean alt)
+{
+	switch (botclass)
+	{
+	case BCLASS_WAMPA:	// slash / backhand
+		return weapon == WP_MELEE ? alt ? BOTH_ATTACK3 : BOTH_ATTACK1 : -1;
+	case BCLASS_RANCOR:	// smash / bite
+		return weapon == WP_MELEE ? alt ? BOTH_MELEE2 : BOTH_MELEE1 : -1;
+	case BCLASS_HOWLER:	// lunge / tongue
+		return weapon == WP_MELEE ? alt ? BOTH_ATTACK2 : BOTH_ATTACK1 : -1;
+	case BCLASS_MINEMONSTER:	// bite / big bite
+		return weapon == WP_MELEE ? alt ? BOTH_ATTACK2 : BOTH_ATTACK1 : -1;
+	case BCLASS_R2D2:
+	case BCLASS_R5D2:
+		return weapon == WP_STUN_BATON ? BOTH_ATTACK3 : -1;
+	default:
+		return -1;
+	}
+}
+
+int BG_ClassCreatureNPCClass(const int botclass)
+{
+	switch (botclass)
+	{
+	case BCLASS_R2D2:
+		return CLASS_R2D2;
+	case BCLASS_R5D2:
+		return CLASS_R5D2;
+	case BCLASS_GONK:
+		return CLASS_GONK;
+	case BCLASS_PROTOCOL:
+		return CLASS_PROTOCOL;
+	case BCLASS_WAMPA:
+		return CLASS_WAMPA;
+	case BCLASS_RANCOR:
+		return CLASS_RANCOR;
+	case BCLASS_HOWLER:
+		return CLASS_HOWLER;
+	case BCLASS_MINEMONSTER:
+		return CLASS_MINEMONSTER;
+	case BCLASS_ASSASSIN_DROID:
+		return CLASS_ASSASSIN_DROID;
+	case BCLASS_HAZARDTROOPER:
+		return CLASS_HAZARD_TROOPER;
+	case BCLASS_SABER_DROID:
+		return CLASS_SABER_DROID;
+	default:
+		return CLASS_NONE;
+	}
 }
 
 /*

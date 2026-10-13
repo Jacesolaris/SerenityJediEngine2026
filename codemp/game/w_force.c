@@ -201,7 +201,17 @@ const int forcePowerMinRank[NUM_FORCE_POWER_LEVELS][NUM_FORCE_POWERS] = //0 == n
 		999, //FP_SEE,//duration
 		999, //FP_SABER_OFFENSE,
 		999, //FP_SABER_DEFENSE,
-		999 //FP_SABERTHROW,
+		999, //FP_SABERTHROW,
+		999, //FP_STASIS
+		999, //FP_DESTRUCTION
+		999, //FP_GRASP
+		999, //FP_REPULSE
+		999, //FP_LIGHTNING_STRIKE
+		999, //FP_FEAR
+		999, //FP_DEADLYSIGHT
+		999, //FP_BLAST
+		999, //FP_INSANITY
+		999 //FP_BLINDING
 		//NUM_FORCE_POWERS
 	},
 	{
@@ -222,7 +232,17 @@ const int forcePowerMinRank[NUM_FORCE_POWER_LEVELS][NUM_FORCE_POWERS] = //0 == n
 		5, //FP_SEE,//duration
 		0, //FP_SABER_OFFENSE,
 		0, //FP_SABER_DEFENSE,
-		0 //FP_SABERTHROW,
+		0, //FP_SABERTHROW,
+		10, //FP_STASIS
+		15, //FP_DESTRUCTION
+		15, //FP_GRASP
+		10, //FP_REPULSE
+		10, //FP_LIGHTNING_STRIKE
+		15, //FP_FEAR
+		15, //FP_DEADLYSIGHT
+		10, //FP_BLAST
+		15, //FP_INSANITY
+		10 //FP_BLINDING
 		//NUM_FORCE_POWERS
 	},
 	{
@@ -243,7 +263,17 @@ const int forcePowerMinRank[NUM_FORCE_POWER_LEVELS][NUM_FORCE_POWERS] = //0 == n
 		5, //FP_SEE,//duration
 		5, //FP_SABER_OFFENSE,
 		5, //FP_SABER_DEFENSE,
-		5 //FP_SABERTHROW,
+		5, //FP_SABERTHROW,
+		10, //FP_STASIS
+		15, //FP_DESTRUCTION
+		15, //FP_GRASP
+		10, //FP_REPULSE
+		10, //FP_LIGHTNING_STRIKE
+		15, //FP_FEAR
+		15, //FP_DEADLYSIGHT
+		10, //FP_BLAST
+		15, //FP_INSANITY
+		10 //FP_BLINDING
 		//NUM_FORCE_POWERS
 	},
 	{
@@ -264,7 +294,17 @@ const int forcePowerMinRank[NUM_FORCE_POWER_LEVELS][NUM_FORCE_POWERS] = //0 == n
 		5, //FP_SEE,//duration
 		10, //FP_SABER_OFFENSE,
 		10, //FP_SABER_DEFENSE,
-		10 //FP_SABERTHROW,
+		10, //FP_SABERTHROW,
+		10, //FP_STASIS
+		15, //FP_DESTRUCTION
+		15, //FP_GRASP
+		10, //FP_REPULSE
+		10, //FP_LIGHTNING_STRIKE
+		15, //FP_FEAR
+		15, //FP_DEADLYSIGHT
+		10, //FP_BLAST
+		15, //FP_INSANITY
+		10 //FP_BLINDING
 		//NUM_FORCE_POWERS
 	}
 };
@@ -353,7 +393,7 @@ void WP_InitForcePowers(gentity_t* ent)
 	int i, last_fp_known = -1;
 	qboolean warn_client, did_event = qfalse;
 
-	char userinfo[MAX_INFO_STRING], forcePowers[DEFAULT_FORCEPOWERS_LEN + 1], readBuf[DEFAULT_FORCEPOWERS_LEN + 1] = { 0 };
+	char userinfo[MAX_INFO_STRING], forcePowers[FORCEPOWERS_MAX_LEN + 1], readBuf[FORCEPOWERS_MAX_LEN + 1] = { 0 };
 
 	// if server has no max rank, default to max (50)
 	if (g_maxForceRank.integer <= 0 || g_maxForceRank.integer >= NUM_FORCE_MASTERY_LEVELS)
@@ -426,7 +466,7 @@ void WP_InitForcePowers(gentity_t* ent)
 
 	Q_strncpyz(forcePowers, Info_ValueForKey(userinfo, "forcepowers"), sizeof forcePowers);
 
-	if (strlen(forcePowers) != DEFAULT_FORCEPOWERS_LEN)
+	if (strlen(forcePowers) < DEFAULT_FORCEPOWERS_LEN || strlen(forcePowers) > FORCEPOWERS_MAX_LEN)
 	{
 		Q_strncpyz(forcePowers, DEFAULT_FORCEPOWERS, sizeof forcePowers);
 		trap->SendServerCommand(ent - g_entities,
@@ -995,6 +1035,9 @@ int ForcePowerUsableOn(const gentity_t* attacker, const gentity_t* other, const 
 	if (!other)                     // FIX 1: prevent NULL dereference
 		return 0;
 
+	if (other->client && other->client->repulseChargeStart)
+		return 0; // charging Force Repulse: no power works on him (2026-10-12, DH)
+
 	if (other->client &&            // FIX 2: safe to dereference now
 		(other->client->ps.inAirAnim ||
 			other->client->ps.groundEntityNum == ENTITYNUM_NONE))
@@ -1151,6 +1194,7 @@ static qboolean class_is_gunner(const gentity_t* self)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -1608,6 +1652,29 @@ void WP_ForcePowerStart(const gentity_t* self, const forcePowers_t forcePower, i
 	case FP_SABER_DEFENSE:
 		break;
 	case FP_SABERTHROW:
+		break;
+	case FP_GRASP:
+	case FP_REPULSE:
+		// held powers (the ported SP powers): run while the force key is held
+		hearable = qtrue;
+		hearDist = 256;
+		self->client->ps.fd.forcePowersActive |= 1 << forcePower;
+		break;
+	case FP_DEADLYSIGHT:
+		hearable = qtrue;
+		hearDist = 256;
+		duration = 1000 * self->client->ps.fd.forcePowerLevel[forcePower];
+		self->client->ps.fd.forcePowersActive |= 1 << forcePower;
+		break;
+	case FP_STASIS:
+	case FP_DESTRUCTION:
+	case FP_LIGHTNING_STRIKE:
+	case FP_FEAR:
+	case FP_BLAST:
+	case FP_INSANITY:
+	case FP_BLINDING:
+		hearable = qtrue;
+		hearDist = 512;
 		break;
 	default:
 		break;
@@ -4815,14 +4882,15 @@ void ForceTelepathy(gentity_t* self)
 				WP_ForcePowerStart(self, FP_TELEPATHY, 0);
 			}
 
-			if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2)
+			/*if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2)
 			{
 				G_Sound(self, CHAN_AUTO, G_SoundIndex("sound/weapons/force/ForceStasis.mp3"));
 			}
 			else
 			{
 				G_Sound(self, CHAN_AUTO, G_SoundIndex("sound/weapons/force/distract.wav"));
-			}
+			}*/
+			G_Sound(self, CHAN_AUTO, G_SoundIndex("sound/weapons/force/distract.wav"));
 
 			self->client->ps.forceHandExtend = HANDEXTEND_FORCEPUSH;
 			self->client->ps.forceHandExtendTime = level.time + 1000;
@@ -4860,7 +4928,7 @@ void ForceTelepathy(gentity_t* self)
 			VectorSubtract(thispush_org, tto, a);
 			vectoangles(a, a);
 
-			if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2 && ent->s.eType == ET_MISSILE && ent->s.eType != TR_STATIONARY)
+			/*if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2 && ent->s.eType == ET_MISSILE && ent->s.eType != TR_STATIONARY)
 			{
 				vec3_t dir2_me;
 				VectorSubtract(self->r.currentOrigin, ent->r.currentOrigin, dir2_me);
@@ -4870,7 +4938,7 @@ void ForceTelepathy(gentity_t* self)
 				{
 					G_StasisMissile(self, ent, forward);
 				}
-			}
+			}*/
 			if (!ent->client)
 			{
 				entity_list[e] = ENTITYNUM_NONE;
@@ -4896,50 +4964,50 @@ void ForceTelepathy(gentity_t* self)
 			gotatleastone = qtrue;
 			WP_AddAsMindtricked(&self->client->ps.fd, ent->s.number);
 
-			if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2 && ent->s.weapon != WP_SABER)
-			{
-				ent->client->frozenTime = level.time + STASIS_TIME;
-				ent->client->ps.userInt3 |= 1 << FLAG_FROZEN;
-				ent->client->ps.userInt1 |= LOCK_UP;
-				ent->client->ps.userInt1 |= LOCK_DOWN;
-				ent->client->ps.userInt1 |= LOCK_RIGHT;
-				ent->client->ps.userInt1 |= LOCK_LEFT;
-				ent->client->viewLockTime = level.time + STASIS_TIME;
-				ent->client->ps.legsTimer = ent->client->ps.torsoTimer = level.time + STASIS_TIME;
-				G_SetAnim(ent, NULL, SETANIM_BOTH, WeaponReadyAnim[ent->client->ps.weapon], SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 500);
-				//G_AddEvent(ent, EV_STASIS, DirToByte(dir));
-				ent->client->ps.saberMove = ent->client->ps.saberBounceMove = LS_READY;
-				//don't finish whatever saber anim you may have been in
-				ent->client->ps.saberBlocked = BLOCKED_NONE;
-				player_Freeze(ent);
-			}
-			else if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2 && ent->s.weapon == WP_SABER &&
-				ent->client->ps.fd.forcePower <= 75)
-			{
-				ent->client->frozenTime = level.time + STASISJEDI_TIME;
-				ent->client->ps.userInt3 |= 1 << FLAG_FROZEN;
-				ent->client->ps.userInt1 |= LOCK_UP;
-				ent->client->ps.userInt1 |= LOCK_DOWN;
-				ent->client->ps.userInt1 |= LOCK_RIGHT;
-				ent->client->ps.userInt1 |= LOCK_LEFT;
-				ent->client->viewLockTime = level.time + STASISJEDI_TIME;
-				ent->client->ps.legsTimer = ent->client->ps.torsoTimer = level.time + STASISJEDI_TIME;
-				G_SetAnim(ent, NULL, SETANIM_BOTH, WeaponReadyAnim[ent->client->ps.weapon], SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 300);
-				G_AddEvent(ent, EV_STASIS, DirToByte(dir));
-				ent->client->ps.saberMove = ent->client->ps.saberBounceMove = LS_READY;
-				//don't finish whatever saber anim you may have been in
-				ent->client->ps.saberBlocked = BLOCKED_NONE;
-				player_Freeze(ent);
-			}
-			else
-			{
-				if (ent->client->ps.userInt3 |= 1 << FLAG_FROZEN)
-				{
-					ent->client->ps.userInt3 &= ~(1 << FLAG_FROZEN);
-				}
-				Player_CheckFreeze(ent);
-				G_SetAnim(ent, &ent->client->pers.cmd, SETANIM_TORSO, BOTH_SONICPAIN_HOLD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD, 0);
-			}
+			//if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2 && ent->s.weapon != WP_SABER)
+			//{
+			//	ent->client->frozenTime = level.time + STASIS_TIME;
+			//	ent->client->ps.userInt3 |= 1 << FLAG_FROZEN;
+			//	ent->client->ps.userInt1 |= LOCK_UP;
+			//	ent->client->ps.userInt1 |= LOCK_DOWN;
+			//	ent->client->ps.userInt1 |= LOCK_RIGHT;
+			//	ent->client->ps.userInt1 |= LOCK_LEFT;
+			//	ent->client->viewLockTime = level.time + STASIS_TIME;
+			//	ent->client->ps.legsTimer = ent->client->ps.torsoTimer = level.time + STASIS_TIME;
+			//	G_SetAnim(ent, NULL, SETANIM_BOTH, WeaponReadyAnim[ent->client->ps.weapon], SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 500);
+			//	//G_AddEvent(ent, EV_STASIS, DirToByte(dir));
+			//	ent->client->ps.saberMove = ent->client->ps.saberBounceMove = LS_READY;
+			//	//don't finish whatever saber anim you may have been in
+			//	ent->client->ps.saberBlocked = BLOCKED_NONE;
+			//	player_Freeze(ent);
+			//}
+			//else if (self->client->ps.fd.forcePowerLevel[FP_TELEPATHY] > FORCE_LEVEL_2 && ent->s.weapon == WP_SABER &&
+			//	ent->client->ps.fd.forcePower <= 75)
+			//{
+			//	ent->client->frozenTime = level.time + STASISJEDI_TIME;
+			//	ent->client->ps.userInt3 |= 1 << FLAG_FROZEN;
+			//	ent->client->ps.userInt1 |= LOCK_UP;
+			//	ent->client->ps.userInt1 |= LOCK_DOWN;
+			//	ent->client->ps.userInt1 |= LOCK_RIGHT;
+			//	ent->client->ps.userInt1 |= LOCK_LEFT;
+			//	ent->client->viewLockTime = level.time + STASISJEDI_TIME;
+			//	ent->client->ps.legsTimer = ent->client->ps.torsoTimer = level.time + STASISJEDI_TIME;
+			//	G_SetAnim(ent, NULL, SETANIM_BOTH, WeaponReadyAnim[ent->client->ps.weapon], SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 300);
+			//	G_AddEvent(ent, EV_STASIS, DirToByte(dir));
+			//	ent->client->ps.saberMove = ent->client->ps.saberBounceMove = LS_READY;
+			//	//don't finish whatever saber anim you may have been in
+			//	ent->client->ps.saberBlocked = BLOCKED_NONE;
+			//	player_Freeze(ent);
+			//}
+			//else
+			//{
+			//	if (ent->client->ps.userInt3 |= 1 << FLAG_FROZEN)
+			//	{
+			//		ent->client->ps.userInt3 &= ~(1 << FLAG_FROZEN);
+			//	}
+			//	Player_CheckFreeze(ent);
+			//	G_SetAnim(ent, &ent->client->pers.cmd, SETANIM_TORSO, BOTH_SONICPAIN_HOLD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_RESTART | SETANIM_FLAG_HOLD, 0);
+			//}
 		}
 		e++;
 	}
@@ -5754,7 +5822,8 @@ void ForceThrow(gentity_t* self, qboolean pull)
 		{
 			int i1;
 			int func_num;
-			int func_list[MAX_GENTITIES];
+			// static: too big for the stack (C6262); filled by EntitiesInBox before it is read
+			static int func_list[MAX_GENTITIES];
 			gentity_t* funcEnt = NULL;
 
 			func_num = trap->EntitiesInBox(mins, maxs, func_list, MAX_GENTITIES);
@@ -7112,6 +7181,1125 @@ void ForceThrow(gentity_t* self, qboolean pull)
 	}
 }
 
+// ==================================================================================================================
+// The SJE SP force powers ported to MP (2026-10-12): FP_STASIS, FP_DESTRUCTION, FP_GRASP, FP_REPULSE,
+// FP_LIGHTNING_STRIKE, FP_FEAR, FP_DEADLYSIGHT, FP_BLAST, FP_INSANITY, FP_BLINDING.
+// Same costs, sides, ranges, projectiles, sounds and effects as SP (code/game/wp_saber.cpp); stun and freeze times on
+// players are shorter than SP's NPC times so they stay fair in MP. Used through the force select + use force key:
+// the instant powers once per press, Grasp and Repulse while the key is held (Repulse charges and pushes on release),
+// Deadly Sight runs for a time.
+// ==================================================================================================================
+
+extern void G_AddVoiceEvent(const gentity_t* self, int event, int speak_debounce_time);
+extern void G_ClearEnemy(gentity_t* self);
+extern void G_GetBoltPosition(gentity_t* self, int boltIndex, vec3_t pos, int modelIndex);
+extern void G_StasisMissile(gentity_t* ent, gentity_t* missile, vec3_t forward);
+
+#define SJE_FP_STUN_BOTH_FLAGS	(SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART)
+
+static const int sjeStasisTime[NUM_FORCE_POWER_LEVELS] = { 0, 2000, 3000, 4000 };		// SP 5/10/15 s (NPCs)
+static const int sjeStasisJediTime[NUM_FORCE_POWER_LEVELS] = { 0, 1000, 1500, 2000 };	// SP 2/3/5 s
+static const int sjeStasisRadius[NUM_FORCE_POWER_LEVELS] = { 0, 512, 1024, 2048 };
+static const int sjeStrikeRadius[NUM_FORCE_POWER_LEVELS] = { 0, 128, 256, 512 };
+static const int sjeStrikeDamage[NUM_FORCE_POWER_LEVELS] = { 0, 10, 20, 30 };
+static const int sjeRepulseRadius[NUM_FORCE_POWER_LEVELS] = { 0, 384, 448, 512 };
+static const int sjeMindTime[NUM_FORCE_POWER_LEVELS] = { 0, 5000, 10000, 15000 };		// SP insanityTime (NPCs)
+static const int sjePlayerStunTime[NUM_FORCE_POWER_LEVELS] = { 0, 1000, 1500, 2000 };	// fear / insanity / blinding on players
+static vec3_t sjeFxUp = { 0, 0, 1 };
+
+// the caster's level of a power, 0 .. FORCE_LEVEL_3 (the tables here are indexed by it)
+static int SJE_Level(const gentity_t* self, const forcePowers_t fp)
+{
+	return Com_Clampi(0, FORCE_LEVEL_3, self->client->ps.fd.forcePowerLevel[fp]);
+}
+
+static qboolean SJE_PowerReady(gentity_t* self, const forcePowers_t fp)
+{
+	if (!self->client || self->health <= 0)
+	{
+		return qfalse;
+	}
+	if (self->client->ps.fd.forcePowerDebounce[fp] > level.time
+		|| self->client->ps.saberLockTime > level.time
+		|| self->client->ps.userInt3 & 1 << FLAG_FROZEN
+		|| self->client->ps.m_iVehicleNum)
+	{
+		return qfalse;
+	}
+	return WP_ForcePowerUsable(self, fp);
+}
+
+static void SJE_EyePoint(const gentity_t* self, vec3_t eye, vec3_t fwd)
+{
+	VectorCopy(self->client->ps.origin, eye);
+	eye[2] += self->client->ps.viewheight;
+	AngleVectors(self->client->ps.viewangles, fwd, NULL, NULL);
+}
+
+// play an effect at org pointing along dir (G_PlayEffectID takes angles: the cgame AngleVectors them)
+static void SJE_EffectDir(const char* fx, vec3_t org, const vec3_t dir)
+{
+	vec3_t ang;
+
+	vectoangles(dir, ang);
+	G_PlayEffectID(G_EffectIndex(fx), org, ang);
+}
+
+// the caster's left hand (the force hand) on the server's skeleton, else his eye
+static void SJE_HandPoint(gentity_t* self, vec3_t out)
+{
+	vec3_t fwd;
+
+	SJE_EyePoint(self, out, fwd);
+	if (self->ghoul2)
+	{
+		const int bolt = trap->G2API_AddBolt(self->ghoul2, 0, "*l_hand");
+		if (bolt >= 0)
+		{
+			G_GetBoltPosition(self, bolt, out, 0);
+		}
+	}
+}
+
+// the caster's cast anim (whole body when standing still, else the torso), sound and hand effect
+static void SJE_CastAnim(gentity_t* self, const int anim, const char* sound, const char* handFx)
+{
+	const qboolean still = self->client->ps.groundEntityNum != ENTITYNUM_NONE
+		&& !(self->client->ps.pm_flags & PMF_DUCKED)
+		&& VectorLengthSquared(self->client->ps.velocity) < 100.0f;
+
+	G_SetAnim(self, NULL, still ? SETANIM_BOTH : SETANIM_TORSO, anim, SJE_FP_STUN_BOTH_FLAGS, 0);
+	if (self->client->ps.weaponTime < 600)
+	{
+		self->client->ps.weaponTime = 600;
+	}
+	if (sound)
+	{
+		G_Sound(self, CHAN_BODY, G_SoundIndex(sound));
+	}
+	if (handFx)
+	{
+		G_PlayBoltedEffect(G_EffectIndex(handFx), self, "*l_hand");
+	}
+}
+
+// classes the mind powers (fear / insanity / blinding) and grasp don't work on: droids, walkers, big beasts
+static qboolean SJE_MindImmune(const gentity_t* ent)
+{
+	if (!ent->client)
+	{
+		return qtrue;
+	}
+	switch (ent->client->NPC_class)
+	{
+	case CLASS_GALAKMECH:
+	case CLASS_ATST:
+	case CLASS_PROBE:
+	case CLASS_GONK:
+	case CLASS_R2D2:
+	case CLASS_R5D2:
+	case CLASS_MARK1:
+	case CLASS_MARK2:
+	case CLASS_MOUSE:
+	case CLASS_SEEKER:
+	case CLASS_REMOTE:
+	case CLASS_SENTRY:
+	case CLASS_INTERROGATOR:
+	case CLASS_PROTOCOL:
+	case CLASS_ASSASSIN_DROID:
+	case CLASS_SABER_DROID:
+	case CLASS_DROIDEKA:
+	case CLASS_SBD:
+	case CLASS_HAZARD_TROOPER:
+	case CLASS_RANCOR:
+	case CLASS_WAMPA:
+	case CLASS_SAND_CREATURE:
+	case CLASS_VEHICLE:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+// a living client the caster may use an offensive power on
+static qboolean SJE_ValidEnemy(const gentity_t* self, const gentity_t* ent, const forcePowers_t fp)
+{
+	if (!ent || ent == self || !ent->inuse || !ent->client || ent->health <= 0
+		|| ent->client->ps.eFlags & EF_DEAD || ent->client->sess.sessionTeam == TEAM_SPECTATOR)
+	{
+		return qfalse;
+	}
+	if (ent->s.eType != ET_NPC && OnSameTeam(self, ent) && !g_friendlyFire.integer)
+	{
+		return qfalse;
+	}
+	if (ent->s.eType == ET_NPC && ent->client->NPC_class == CLASS_VEHICLE)
+	{
+		return qfalse;
+	}
+	return ForcePowerUsableOn(self, ent, fp) ? qtrue : qfalse;
+}
+
+// Force Absorb soaks up a power: no effect, the target gets force back (as MP absorb does for grip / lightning)
+static qboolean SJE_Absorbed(gentity_t* target, const forcePowers_t fp, const int casterLevel)
+{
+	if (!target->client || !(target->client->ps.fd.forcePowersActive & 1 << FP_ABSORB)
+		|| target->client->ps.fd.forcePowerLevel[FP_ABSORB] < casterLevel)
+	{
+		return qfalse;
+	}
+	target->client->ps.fd.forcePower += forcePowerNeeded[casterLevel][fp] / 2;
+	if (target->client->ps.fd.forcePower > target->client->ps.fd.forcePowerMax)
+	{
+		target->client->ps.fd.forcePower = target->client->ps.fd.forcePowerMax;
+	}
+	G_Sound(target, CHAN_AUTO, G_SoundIndex("sound/weapons/force/absorbhit.mp3"));
+	return qtrue;
+}
+
+static qboolean SJE_ClearShot(const gentity_t* self, const gentity_t* ent);
+
+// the first living entity on the line of sight (players, NPCs) within range: dead bodies are looked through. Nobody
+// on the line: the living client nearest to it (within about 20 degrees, in clear view), so a slightly missed aim
+// still finds the target
+static gentity_t* SJE_SightTarget(gentity_t* self, const float range)
+{
+	trace_t tr;
+	vec3_t eye, start, fwd, end;
+	int skip = self->s.number;
+
+	SJE_EyePoint(self, eye, fwd);
+	VectorCopy(eye, start);
+	VectorMA(eye, range, fwd, end);
+	for (int tries = 0; tries < 4; tries++)
+	{
+		trap->Trace(&tr, start, NULL, NULL, end, skip, MASK_SHOT, qfalse, 0, 0);
+		if (tr.entityNum >= ENTITYNUM_WORLD) // (startsolid: the eye is inside the target at point-blank range - still him)
+		{
+			break;
+		}
+		gentity_t* hit = &g_entities[tr.entityNum];
+		if (!hit->client || hit->health > 0)
+		{
+			return hit;
+		}
+		// a corpse: go on behind it
+		VectorCopy(tr.endpos, start);
+		skip = hit->s.number;
+	}
+
+	gentity_t* best = NULL;
+	float bestDot = 0.94f;
+	for (int i = 0; i < level.num_entities; i++)
+	{
+		gentity_t* ent = &g_entities[i];
+		vec3_t dir;
+
+		if (ent == self || !ent->inuse || !ent->client || ent->health <= 0
+			|| ent->client->sess.sessionTeam == TEAM_SPECTATOR)
+		{
+			continue;
+		}
+		VectorSubtract(ent->client->ps.origin, eye, dir);
+		if (VectorNormalize(dir) > range)
+		{
+			continue;
+		}
+		const float dot = DotProduct(dir, fwd);
+		if (dot > bestDot && SJE_ClearShot(self, ent))
+		{
+			bestDot = dot;
+			best = ent;
+		}
+	}
+	return best;
+}
+
+// clear line from the caster's eye to the entity's centre (dead bodies don't block it)
+static qboolean SJE_ClearShot(const gentity_t* self, const gentity_t* ent)
+{
+	trace_t tr;
+	vec3_t eye, fwd, center;
+
+	SJE_EyePoint(self, eye, fwd);
+	if (eye[0] >= ent->r.absmin[0] && eye[0] <= ent->r.absmax[0] && eye[1] >= ent->r.absmin[1] && eye[1] <= ent->r.absmax[1]
+		&& eye[2] >= ent->r.absmin[2] && eye[2] <= ent->r.absmax[2])
+	{
+		return qtrue; // point-blank: the eye is inside him
+	}
+	VectorAdd(ent->r.absmin, ent->r.absmax, center);
+	VectorScale(center, 0.5f, center);
+	trap->Trace(&tr, eye, NULL, NULL, center, self->s.number, MASK_SHOT & ~CONTENTS_CORPSE, qfalse, 0, 0);
+	return tr.fraction == 1.0f || tr.entityNum == ent->s.number ? qtrue : qfalse;
+}
+
+// freeze a client (the MP freeze of mind trick 3 / the cryoban grenade: no move, look or weapon; g_active.c lifts it)
+static void SJE_Freeze(gentity_t* ent, const int duration)
+{
+	gclient_t* cl = ent->client;
+
+	if (cl->ps.userInt3 & 1 << FLAG_FROZEN && cl->frozenTime > level.time + duration)
+	{
+		return; // already frozen longer
+	}
+	cl->frozenTime = level.time + duration;
+	cl->ps.userInt3 |= 1 << FLAG_FROZEN;
+	cl->ps.userInt1 |= LOCK_UP | LOCK_DOWN | LOCK_RIGHT | LOCK_LEFT;
+	cl->viewLockTime = level.time + duration;
+	VectorClear(cl->ps.velocity);
+	cl->ps.legsTimer = cl->ps.torsoTimer = duration;
+	cl->ps.weaponTime = duration;
+	Jetpack_Off(ent);
+}
+
+// a short "can't act" stun on a player (fear / insanity / blinding): weapon and force locked, a stagger anim
+static void SJE_PlayerStun(gentity_t* ent, const int duration, const int anim)
+{
+	gclient_t* cl = ent->client;
+
+	G_SetAnim(ent, NULL, SETANIM_TORSO, anim, SJE_FP_STUN_BOTH_FLAGS, 0);
+	cl->ps.torsoTimer = duration;
+	if (cl->ps.weaponTime < duration)
+	{
+		cl->ps.weaponTime = duration;
+	}
+	cl->ps.fd.forcePowerDebounce[FP_PUSH] = level.time + duration; // no instant counter-push
+	cl->ps.fd.forcePowerDebounce[FP_PULL] = level.time + duration;
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_STASIS: freeze people in front (L3: everyone in a wide cone, L1/L2: the one under the crosshair)
+// ------------------------------------------------------------------------------------------------------------------
+static void SJE_StasisOne(gentity_t* self, gentity_t* ent, const int lvl)
+{
+	if (!SJE_ValidEnemy(self, ent, FP_STASIS) || SJE_Absorbed(ent, FP_STASIS, lvl))
+	{
+		return;
+	}
+	const qboolean saberUser = ent->client->ps.weapon == WP_SABER && !ent->client->ps.saberHolstered;
+	if (saberUser && ent->client->ps.fd.forcePower > 75)
+	{
+		// a strong Jedi shrugs it off (SP: saber users with more than 75 force)
+		G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/weapons/force/absorbhit.mp3"));
+		return;
+	}
+	SJE_Freeze(ent, saberUser ? sjeStasisJediTime[lvl] : sjeStasisTime[lvl]);
+	SJE_EffectDir("force/pushblur", ent->client->ps.origin, sjeFxUp);
+	if (ent->s.eType == ET_NPC)
+	{
+		G_AddVoiceEvent(ent, Q_irand(EV_PUSHED1, EV_PUSHED3), 2000);
+	}
+}
+
+static void ForceStasis(gentity_t* self)
+{
+	if (!SJE_PowerReady(self, FP_STASIS))
+	{
+		return;
+	}
+	const int lvl = SJE_Level(self, FP_STASIS);
+	const float radius = sjeStasisRadius[lvl];
+
+	WP_ForcePowerStart(self, FP_STASIS, 0);
+	self->client->ps.fd.forcePowerDebounce[FP_STASIS] = level.time + 1500;
+	SJE_CastAnim(self, self->client->ps.weapon == WP_SABER || self->client->ps.weapon == WP_MELEE ? BOTH_2HANDPUSH
+		: BOTH_FORCEPUSH, "sound/weapons/force/ForceStasis.mp3", "force/pushblur");
+
+	if (lvl >= FORCE_LEVEL_3)
+	{
+		static int list[MAX_GENTITIES]; // static: 16 KB (C6262)
+		vec3_t mins = { 0 }, maxs = { 0 }, eye, fwd;
+
+		SJE_EyePoint(self, eye, fwd);
+		for (int i = 0; i < 3; i++)
+		{
+			mins[i] = self->client->ps.origin[i] - radius;
+			maxs[i] = self->client->ps.origin[i] + radius;
+		}
+		const int num = trap->EntitiesInBox(mins, maxs, list, MAX_GENTITIES);
+		for (int e = 0; e < num; e++)
+		{
+			gentity_t* ent = &g_entities[list[e]];
+			vec3_t dir;
+
+			if (ent->inuse && ent->s.eType == ET_MISSILE && ent->s.pos.trType != TR_STATIONARY && ent->r.ownerNum != self->s.number)
+			{
+				// a missile in the cone flying at him: held in the air (as SP; g_missile.c keeps its flight for later)
+				vec3_t toMe;
+				VectorSubtract(ent->r.currentOrigin, eye, dir);
+				VectorSubtract(self->client->ps.origin, ent->r.currentOrigin, toMe);
+				if (VectorNormalize(dir) <= radius && DotProduct(dir, fwd) >= 0.5f
+					&& DotProduct(ent->s.pos.trDelta, toMe) >= 0.0f && SJE_ClearShot(self, ent))
+				{
+					G_StasisMissile(self, ent, fwd);
+				}
+				continue;
+			}
+			if (!ent->client || ent == self)
+			{
+				continue;
+			}
+			VectorSubtract(ent->client->ps.origin, eye, dir);
+			if (VectorNormalize(dir) > radius || DotProduct(dir, fwd) < 0.5f || !SJE_ClearShot(self, ent))
+			{
+				continue;
+			}
+			SJE_StasisOne(self, ent, lvl);
+		}
+		return;
+	}
+	gentity_t* target = SJE_SightTarget(self, radius);
+	if (target)
+	{
+		SJE_StasisOne(self, target, lvl);
+	}
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_DESTRUCTION / FP_BLAST: a force projectile (SP: rocket_proj with the concussion / repeater alt look)
+// ------------------------------------------------------------------------------------------------------------------
+static void SJE_FireForceProjectile(gentity_t* self, const qboolean blast)
+{
+	const int lvl = SJE_Level(self, blast ? FP_BLAST : FP_DESTRUCTION);
+	vec3_t eye, fwd;
+
+	SJE_EyePoint(self, eye, fwd);
+	VectorMA(eye, 16, fwd, eye);
+	gentity_t* missile = CreateMissile(eye, fwd, blast ? 1200 * lvl : 600 + 600 * lvl, 10000, self, blast);
+
+	missile->classname = "rocket_proj";
+	missile->s.weapon = blast ? WP_REPEATER : WP_CONCUSSION;
+	missile->mass = blast ? 20 : 10;
+	if (blast)
+	{
+		VectorSet(missile->r.maxs, 1, 1, 1);
+		missile->damage = 20 * lvl;
+		missile->splashDamage = 20 * lvl;
+		missile->splashRadius = 80 * (1 + lvl) / 2;
+		missile->dflags = DAMAGE_EXTRA_KNOCKBACK;
+		missile->methodOfDeath = MOD_REPEATER_ALT;
+		missile->splashMethodOfDeath = MOD_REPEATER_ALT_SPLASH;
+		missile->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
+	}
+	else
+	{
+		VectorSet(missile->r.maxs, 3, 3, 3);
+		missile->damage = 40 * (1 + lvl) / 2;
+		missile->splashDamage = 30 * (1 + lvl) / 2;
+		missile->splashRadius = 160 * (1 + lvl) / 2;
+		missile->dflags = DAMAGE_DEATH_KNOCKBACK | DAMAGE_EXTRA_KNOCKBACK;
+		missile->methodOfDeath = MOD_CONC;
+		missile->splashMethodOfDeath = MOD_CONC;
+		missile->clipmask = MASK_SHOT;
+	}
+	VectorScale(missile->r.maxs, -1, missile->r.mins);
+	missile->bounceCount = 0;
+}
+
+static void ForceDestruction(gentity_t* self)
+{
+	if (!SJE_PowerReady(self, FP_DESTRUCTION))
+	{
+		return;
+	}
+	WP_ForcePowerStart(self, FP_DESTRUCTION, 0);
+	self->client->ps.fd.forcePowerDebounce[FP_DESTRUCTION] = level.time + 3500;
+	SJE_CastAnim(self, BOTH_FORCEPUSH, "sound/weapons/force/destruction.mp3", "force/drain_hand");
+	SJE_FireForceProjectile(self, qfalse);
+}
+
+static void ForceBlast(gentity_t* self)
+{
+	if (!SJE_PowerReady(self, FP_BLAST))
+	{
+		return;
+	}
+	WP_ForcePowerStart(self, FP_BLAST, 0);
+	self->client->ps.fd.forcePowerDebounce[FP_BLAST] = level.time + 1500;
+	SJE_CastAnim(self, BOTH_FORCEPUSH, "sound/weapons/force/blast.wav", "force/invin");
+	SJE_FireForceProjectile(self, qtrue);
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_LIGHTNING_STRIKE: a lightning bolt into everything in a cone in front (128 / 256 / 512)
+// ------------------------------------------------------------------------------------------------------------------
+static void ForceLightningStrike(gentity_t* self)
+{
+	if (!SJE_PowerReady(self, FP_LIGHTNING_STRIKE))
+	{
+		return;
+	}
+	const int lvl = SJE_Level(self, FP_LIGHTNING_STRIKE);
+	const float radius = sjeStrikeRadius[lvl];
+	static int list[MAX_GENTITIES]; // static: 16 KB (C6262)
+	vec3_t mins = { 0 }, maxs = { 0 }, eye, fwd, end, hand, bolt;
+	trace_t tr;
+
+	WP_ForcePowerStart(self, FP_LIGHTNING_STRIKE, 0);
+	self->client->ps.fd.forcePowerDebounce[FP_LIGHTNING_STRIKE] = level.time + 1000;
+	SJE_CastAnim(self, BOTH_FORCELIGHTNING, "sound/weapons/force/strike.wav", "force/strike_flare");
+
+	SJE_EyePoint(self, eye, fwd);
+	// the bolt goes from his hand to the point under the crosshair (the eye's line, as the hits are found)
+	VectorMA(eye, radius, fwd, end);
+	trap->Trace(&tr, eye, NULL, NULL, end, self->s.number, MASK_SHOT, qfalse, 0, 0);
+	SJE_HandPoint(self, hand);
+	VectorSubtract(tr.endpos, hand, bolt);
+	if (VectorNormalize(bolt) < 1.0f)
+	{
+		VectorCopy(fwd, bolt);
+	}
+	SJE_EffectDir("env/yellow_lightning", hand, bolt);
+
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = self->client->ps.origin[i] - radius;
+		maxs[i] = self->client->ps.origin[i] + radius;
+	}
+	const int num = trap->EntitiesInBox(mins, maxs, list, MAX_GENTITIES);
+	for (int e = 0; e < num; e++)
+	{
+		gentity_t* ent = &g_entities[list[e]];
+		vec3_t dir;
+
+		if (ent == self || !ent->inuse || !ent->takedamage)
+		{
+			continue;
+		}
+		VectorSubtract(ent->r.currentOrigin, eye, dir);
+		if (VectorNormalize(dir) > radius || DotProduct(dir, fwd) < 0.5f || !SJE_ClearShot(self, ent))
+		{
+			continue;
+		}
+		if (ent->client && !SJE_ValidEnemy(self, ent, FP_LIGHTNING_STRIKE))
+		{
+			continue;
+		}
+		{
+			vec3_t back;
+			VectorScale(dir, -1.0f, back);
+			SJE_EffectDir("tusken/hit", ent->r.currentOrigin, back);
+		}
+		if (ent->client)
+		{
+			if (SJE_Absorbed(ent, FP_LIGHTNING_STRIKE, lvl))
+			{
+				continue;
+			}
+			// a Jedi blocking with the saber facing the bolt parries it (SP)
+			if (ent->client->ps.weapon == WP_SABER && !ent->client->ps.saberHolstered
+				&& ent->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK
+				&& InFront(self->client->ps.origin, ent->client->ps.origin, ent->client->ps.viewangles, 0.0f))
+			{
+				SJE_EffectDir("saber/fizz", ent->client->ps.origin, dir);
+				continue;
+			}
+			ent->client->ps.electrifyTime = level.time + 600;
+			if (ent->health <= 50 && ent->client->ps.groundEntityNum != ENTITYNUM_NONE)
+			{
+				G_Knockdown(ent, self, dir, 80, qtrue);
+			}
+			else
+			{
+				G_SetAnim(ent, NULL, SETANIM_TORSO, Q_irand(0, 1) ? BOTH_PAIN2 : BOTH_PAIN3,
+					SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+			}
+			Jetpack_Off(ent);
+		}
+		G_Damage(ent, self, self, dir, ent->r.currentOrigin, sjeStrikeDamage[lvl], DAMAGE_DEATH_KNOCKBACK,
+			MOD_FORCE_LIGHTNING);
+	}
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_FEAR / FP_INSANITY / FP_BLINDING: one target under the crosshair (2048). NPCs lose their enemy for a while
+// (fear and blinding: confused; insanity 3: fights for the caster's side), players are stunned shortly.
+// ------------------------------------------------------------------------------------------------------------------
+static void SJE_MindPower(gentity_t* self, const forcePowers_t fp)
+{
+	if (!SJE_PowerReady(self, fp))
+	{
+		return;
+	}
+	const int lvl = SJE_Level(self, fp);
+	const char* fx = fp == FP_BLINDING ? "force/invin" : "force/drain_hand";
+	const char* castSound = fp == FP_INSANITY ? "sound/weapons/force/pushyoda.mp3" : "sound/weapons/force/fear.mp3";
+	gentity_t* target = SJE_SightTarget(self, 2048);
+
+	self->client->ps.fd.forcePowerDebounce[fp] = level.time + 1000;
+	if (!target || !target->client || SJE_MindImmune(target) || !SJE_ValidEnemy(self, target, fp))
+	{
+		// nothing to work on: the attempt still costs force (SP)
+		WP_ForcePowerStart(self, fp, 0);
+		if (target && fp == FP_FEAR)
+		{
+			G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/fearfail.mp3"));
+		}
+		return;
+	}
+	WP_ForcePowerStart(self, fp, 0);
+	SJE_CastAnim(self, BOTH_MINDTRICK1, castSound, NULL);
+	G_PlayBoltedEffect(G_EffectIndex(fx), target, "cranium");
+
+	if (SJE_Absorbed(target, fp, lvl))
+	{
+		return;
+	}
+	if (target->s.eType == ET_NPC && target->NPC)
+	{
+		// Jedi resist (SP CanBeFeared: almost always at level 1, rarely at 3)
+		if (target->client->ps.weapon == WP_SABER && Q_irand(0, lvl == FORCE_LEVEL_3 ? 1 : lvl == FORCE_LEVEL_2 ? 20 : 1000))
+		{
+			NPC_Jedi_PlayConfusionSound(target);
+			return;
+		}
+		if (fp == FP_INSANITY && lvl == FORCE_LEVEL_3 && !target->NPC->charmedTime
+			&& target->client->playerTeam != NPCTEAM_PLAYER)
+		{
+			// dark charm: fights on the caster's side for a while (as mind trick's charm; G_CheckCharmed reverts it)
+			target->genericValue1 = target->client->playerTeam;
+			target->genericValue2 = target->client->enemyTeam;
+			target->genericValue3 = target->s.teamowner;
+			target->client->playerTeam = NPCTEAM_PLAYER;
+			target->client->enemyTeam = NPCTEAM_ENEMY;
+			target->s.teamowner = NPCTEAM_PLAYER;
+			target->NPC->charmedTime = level.time + sjeMindTime[lvl];
+			G_ClearEnemy(target);
+			return;
+		}
+		target->NPC->confusionTime = level.time + sjeMindTime[lvl];
+		if (target->enemy)
+		{
+			G_ClearEnemy(target);
+		}
+		G_SetAnim(target, NULL, SETANIM_TORSO, BOTH_SONICPAIN_HOLD, SJE_FP_STUN_BOTH_FLAGS, 0);
+		target->client->ps.torsoTimer = 2000;
+		if (fp == FP_FEAR)
+		{
+			G_AddVoiceEvent(target, Q_irand(EV_GIVEUP1, EV_GIVEUP4), 2000);
+		}
+		else
+		{
+			NPC_PlayConfusionSound(target);
+		}
+		return;
+	}
+	// players (and bots): a short stun
+	SJE_PlayerStun(target, sjePlayerStunTime[lvl], fp == FP_FEAR ? BOTH_COWER1 : BOTH_SONICPAIN_HOLD);
+}
+
+static void ForceFear(gentity_t* self)
+{
+	SJE_MindPower(self, FP_FEAR);
+}
+
+static void ForceInsanity(gentity_t* self)
+{
+	SJE_MindPower(self, FP_INSANITY);
+}
+
+static void ForceBlinding(gentity_t* self)
+{
+	SJE_MindPower(self, FP_BLINDING);
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_DEADLYSIGHT: for a short time everyone the caster looks at (cone, in sight) takes damage
+// ------------------------------------------------------------------------------------------------------------------
+static void ForceDeadlySight(gentity_t* self)
+{
+	if (!SJE_PowerReady(self, FP_DEADLYSIGHT))
+	{
+		return;
+	}
+	WP_ForcePowerStart(self, FP_DEADLYSIGHT, 0);
+	self->client->ps.fd.forcePowerDebounce[FP_DEADLYSIGHT] = level.time + 5000;
+	self->client->deadlySightNextTick = level.time;
+	SJE_CastAnim(self, BOTH_FORCE_RAGE, "sound/weapons/force/rageloop.wav", NULL);
+	G_PlayBoltedEffect(G_EffectIndex("force/rage2"), self, "cranium");
+	// (its loop sound: g_active.c G_SetClientSound)
+}
+
+static void SJE_DeadlySightRun(gentity_t* self)
+{
+	static const int tick[NUM_FORCE_POWER_LEVELS] = { 0, 250, 200, 150 };
+	static const int radius[NUM_FORCE_POWER_LEVELS] = { 0, 1024, 1536, 2048 };
+	static const int damage[NUM_FORCE_POWER_LEVELS] = { 0, 2, 4, 6 };
+	const int lvl = SJE_Level(self, FP_DEADLYSIGHT);
+
+	if (self->client->deadlySightNextTick > level.time)
+	{
+		return;
+	}
+	self->client->deadlySightNextTick = level.time + tick[lvl];
+
+	vec3_t eye, fwd;
+	SJE_EyePoint(self, eye, fwd);
+	for (int i = 0; i < level.num_entities; i++)
+	{
+		gentity_t* ent = &g_entities[i];
+		vec3_t dir;
+
+		if (!SJE_ValidEnemy(self, ent, FP_DEADLYSIGHT))
+		{
+			continue;
+		}
+		VectorSubtract(ent->client->ps.origin, eye, dir);
+		if (VectorNormalize(dir) > radius[lvl] || DotProduct(dir, fwd) < 0.5f || !SJE_ClearShot(self, ent))
+		{
+			continue;
+		}
+		G_Damage(ent, self, self, NULL, ent->client->ps.origin, damage[lvl], DAMAGE_NO_KNOCKBACK, MOD_FORCE_DARK);
+		G_PlayBoltedEffect(G_EffectIndex("volumetric/black_smoke"), ent, "cranium");
+	}
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_GRASP: hold someone (L1 in place, L2 lifted, L3 carried in front) without hurting him, while the key is held.
+// L3 or a saber user: the weapon goes off. Uses MP grip's float movement, not its choke.
+// ------------------------------------------------------------------------------------------------------------------
+static void ForceGrasp(gentity_t* self)
+{
+	if (self->client->graspEntityNum || !SJE_PowerReady(self, FP_GRASP))
+	{
+		return;
+	}
+	const int lvl = SJE_Level(self, FP_GRASP);
+	gentity_t* target = SJE_SightTarget(self, MAX_GRIP_DISTANCE);
+
+	if (!target || !target->client || SJE_MindImmune(target) || !SJE_ValidEnemy(self, target, FP_GRASP)
+		|| SJE_Absorbed(target, FP_GRASP, lvl))
+	{
+		return;
+	}
+	if (target->client->ps.weapon == WP_SABER && !target->client->ps.saberHolstered
+		&& target->client->ps.fd.forcePowerLevel[FP_PUSH] > lvl)
+	{
+		// a stronger Jedi pushes it away (SP: Jedi with more push than our grasp)
+		G_Sound(target, CHAN_AUTO, G_SoundIndex("sound/weapons/force/absorbhit.mp3"));
+		return;
+	}
+	WP_ForcePowerStart(self, FP_GRASP, 0);
+	self->client->graspEntityNum = target->s.number + 1;
+	self->client->graspStartTime = level.time;
+	self->client->ps.fd.forcePowerDebounce[FP_GRASP] = level.time + 1000;
+	G_SetAnim(self, NULL, SETANIM_TORSO, BOTH_FORCEGRIP_HOLD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	G_EntitySound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/grip.mp3"));
+
+	if (lvl >= FORCE_LEVEL_3 || target->client->ps.weapon == WP_SABER)
+	{
+		if (target->client->ps.weapon == WP_SABER && !target->client->ps.saberHolstered)
+		{
+			target->client->ps.saberHolstered = 2;
+			G_Sound(target, CHAN_WEAPON, G_SoundIndex("sound/weapons/saber/saberoffquick.mp3"));
+		}
+	}
+	if (target->s.eType == ET_NPC)
+	{
+		G_AddVoiceEvent(target, Q_irand(EV_PUSHED1, EV_PUSHED3), 2000);
+	}
+}
+
+static void SJE_GraspRelease(gentity_t* self)
+{
+	if (self->client->graspEntityNum)
+	{
+		gentity_t* target = &g_entities[self->client->graspEntityNum - 1];
+		if (target->inuse && target->client)
+		{
+			target->client->ps.forceGripChangeMovetype = PM_NORMAL;
+			target->client->ps.fd.forceGripBeingGripped = 0;
+			if (VectorLength(target->client->ps.velocity) > 500)
+			{
+				VectorNormalize(target->client->ps.velocity);
+				VectorScale(target->client->ps.velocity, 500, target->client->ps.velocity);
+			}
+		}
+	}
+	self->client->graspEntityNum = 0;
+	if (self->client->ps.torsoAnim == BOTH_FORCEGRIP_HOLD)
+	{
+		G_SetAnim(self, NULL, SETANIM_TORSO, BOTH_FORCEGRIP_RELEASE, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	}
+}
+
+static void SJE_GraspRun(gentity_t* self, const usercmd_t* cmd)
+{
+	const int lvl = SJE_Level(self, FP_GRASP);
+	gentity_t* target = self->client->graspEntityNum ? &g_entities[self->client->graspEntityNum - 1] : NULL;
+	vec3_t eye, fwd, to;
+
+	if (!target || !(cmd->buttons & BUTTON_FORCEPOWER) || self->client->ps.fd.forcePowerSelected != FP_GRASP
+		|| !SJE_ValidEnemy(self, target, FP_GRASP) || self->client->ps.fd.forcePower < 1
+		|| lvl == FORCE_LEVEL_1 && level.time - self->client->graspStartTime > 5000)
+	{
+		WP_ForcePowerStop(self, FP_GRASP);
+		return;
+	}
+	SJE_EyePoint(self, eye, fwd);
+	VectorSubtract(target->client->ps.origin, self->client->ps.origin, to);
+	if (VectorLength(to) > MAX_GRIP_DISTANCE || !SJE_ClearShot(self, target)
+		|| lvl < FORCE_LEVEL_3 && !InFront(target->client->ps.origin, self->client->ps.origin, self->client->ps.viewangles, 0.3f))
+	{
+		WP_ForcePowerStop(self, FP_GRASP);
+		return;
+	}
+	// 3 force per second while holding (SP: 3 per damage tick)
+	if (self->client->ps.fd.forcePowerDebounce[FP_GRASP] < level.time)
+	{
+		self->client->ps.fd.forcePowerDebounce[FP_GRASP] = level.time + 1000;
+		WP_ForcePowerDrain(&self->client->ps, FP_GRASP, 3);
+	}
+	if (self->client->ps.torsoAnim != BOTH_FORCEGRIP_HOLD || self->client->ps.torsoTimer < 100)
+	{
+		G_SetAnim(self, NULL, SETANIM_TORSO, BOTH_FORCEGRIP_HOLD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+		self->client->ps.torsoTimer = 300;
+	}
+	if (self->client->ps.weaponTime < 300)
+	{
+		self->client->ps.weaponTime = 300;
+	}
+
+	Jetpack_Off(target);
+	target->client->ps.fd.forceGripBeingGripped = level.time + 1000;
+	target->client->ps.otherKiller = self->s.number;
+	target->client->ps.otherKillerTime = level.time + 5000;
+	target->client->ps.otherKillerDebounceTime = level.time + 100;
+	if (target->client->ps.weaponTime < 300)
+	{
+		target->client->ps.weaponTime = 300;
+	}
+	if (target->client->ps.legsAnim != BOTH_PULLED_INAIR_F && lvl > FORCE_LEVEL_1)
+	{
+		G_SetAnim(target, NULL, SETANIM_BOTH, BOTH_PULLED_INAIR_F, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	}
+	if (lvl == FORCE_LEVEL_1)
+	{
+		return; // held where he is (grip 1's movement)
+	}
+	target->client->ps.forceGripChangeMovetype = PM_FLOAT;
+	if (target->client->ps.forceGripMoveInterval < level.time)
+	{
+		vec3_t goal, vel;
+
+		if (lvl == FORCE_LEVEL_2)
+		{
+			VectorCopy(target->client->ps.origin, goal);
+			if (level.time - self->client->graspStartTime < 1000)
+			{
+				goal[2] += 48; // lifted up (SP: to the head height + 48)
+			}
+		}
+		else
+		{
+			// carried in front of the caster (SP: 128..256 units along the view, aimed a bit low)
+			const float dist = Com_Clamp(128.0f, 256.0f, VectorLength(to));
+			VectorMA(eye, dist, fwd, goal);
+		}
+		VectorSubtract(goal, target->client->ps.origin, vel);
+		const float len = VectorNormalize(vel);
+		VectorScale(vel, len < 16 ? 8 : len < 64 ? 128 : len < 128 ? 256 : 512, target->client->ps.velocity);
+		target->client->ps.forceGripMoveInterval = level.time + 300;
+	}
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// FP_REPULSE: charge while the key is held (no moving), push everyone around away on release. The longer the charge,
+// the harder (SP: > 0.5 s level 1, > 1.25 s level 2, > 2.5 s level 3 damage).
+// ------------------------------------------------------------------------------------------------------------------
+// The release (DH 2026-10-12, as The Force Unleashed): the throw anim starts at once, the blast (sound, effect, shake, the
+// push) comes at its throw frame - the hands fly apart at frame 12 of BOTH_SUPERPUSH (_humanoid.gla) - and its strength
+// follows the charge time (a tap is the weakest, a full g_repulseMaxCharge charge the strongest). The saber goes out
+// while charging and comes back on after the throw if it was on (players, bots, NPCs).
+#define REPULSE_THROW_ANIM	BOTH_SUPERPUSH
+#define REPULSE_HOVER_AFTER_BLAST	175 // ms he still floats after the blast (SJE_RepulseRelease)
+#define REPULSE_THROW_FRAME	12
+extern bgLoadedAnim_t bgAllAnims[MAX_ANIM_FILES];
+
+static void ForceRepulse(gentity_t* self)
+{
+	if (self->client->repulseChargeStart || !SJE_PowerReady(self, FP_REPULSE))
+	{
+		return;
+	}
+	WP_ForcePowerStart(self, FP_REPULSE, 0);
+	self->client->repulseChargeStart = level.time;
+	G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/repulsecharge.mp3")); // as SP; the charge loop: g_active.c G_SetClientSound
+
+	// the saber goes out (its normal off sound) while charging
+	self->client->repulseRelightTime = 0;
+	self->client->repulseSaberHolster = -1;
+	if (self->client->ps.weapon == WP_SABER && self->client->ps.saberHolstered != 2 && !self->client->ps.saberInFlight)
+	{
+		self->client->repulseSaberHolster = self->client->ps.saberHolstered;
+		self->client->ps.saberHolstered = 2;
+		if (self->client->saber[0].soundOff)
+		{
+			G_Sound(self, CHAN_AUTO, self->client->saber[0].soundOff);
+		}
+		if (self->client->saber[1].soundOff && self->client->saber[1].model[0])
+		{
+			G_Sound(self, CHAN_AUTO, self->client->saber[1].soundOff);
+		}
+	}
+}
+
+// 0 (a tap) .. 1 (a full g_repulseMaxCharge charge)
+static float SJE_RepulseChargeFrac(const int chargeTime)
+{
+	return Com_Clamp(0.0f, 1.0f, chargeTime / (Com_Clamp(1.5f, 4.0f, g_repulseMaxCharge.value) * 1000.0f));
+}
+
+// the release: the throw anim now, the blast at its throw frame, the saber back on when the anim is over
+static void SJE_RepulseRelease(gentity_t* self, const int chargeTime)
+{
+	int throwDelay = 0, animLength = 0;
+
+	// floating (the charge lifted him): the whole body throws
+	G_SetAnim(self, NULL, self->client->ps.groundEntityNum == ENTITYNUM_NONE ? SETANIM_BOTH : SETANIM_TORSO, REPULSE_THROW_ANIM,
+		SJE_FP_STUN_BOTH_FLAGS, 0);
+	if (self->localAnimIndex >= 0 && self->localAnimIndex < MAX_ANIM_FILES && bgAllAnims[self->localAnimIndex].anims
+		&& bgAllAnims[self->localAnimIndex].anims[REPULSE_THROW_ANIM].numFrames > REPULSE_THROW_FRAME)
+	{
+		const animation_t* anim = &bgAllAnims[self->localAnimIndex].anims[REPULSE_THROW_ANIM];
+		throwDelay = abs(anim->frameLerp) * REPULSE_THROW_FRAME;
+		animLength = abs(anim->frameLerp) * anim->numFrames;
+	}
+	self->client->ps.weaponTime = throwDelay + 100 > 650 ? throwDelay + 100 : 650;
+	self->client->repulseBlastTime = level.time + (throwDelay > 0 ? throwDelay : 1);
+	self->client->repulseBlastCharge = chargeTime;
+	self->client->repulseRelightTime = level.time + (animLength > throwDelay ? animLength : throwDelay + 1);
+	// he floats on through the throw and comes down a moment after the blast (DH 2026-10-13, as The Force Unleashed 2;
+	// never longer than 1.5 s): SJE_SPPowerStop keeps the networked FP_REPULSE bit on, so pmove (PM_RepulseHover) and
+	// the client's prediction keep him up, SJE_RepulsePending ends it
+	self->client->repulseHoverEnd = (throwDelay < 1325 ? self->client->repulseBlastTime : level.time + 1325) + REPULSE_HOVER_AFTER_BLAST;
+}
+
+static void SJE_RepulseThrow(gentity_t* self, const int chargeTime);
+
+// per frame (WP_ForcePowersUpdate): the blast at the throw frame, then the saber back on
+static void SJE_RepulsePending(gentity_t* self)
+{
+	gclient_t* client = self->client;
+
+	// released: the float through the throw ends a moment after the blast, at once when dead or knocked down
+	if (client->repulseHoverEnd && (level.time >= client->repulseHoverEnd || self->health <= 0
+		|| client->ps.forceHandExtend == HANDEXTEND_KNOCKDOWN))
+	{
+		client->repulseHoverEnd = 0;
+		if (!client->repulseChargeStart)
+		{
+			client->ps.fd.forcePowersActive &= ~(1 << FP_REPULSE);
+		}
+	}
+	if (self->health <= 0)
+	{
+		client->repulseBlastTime = client->repulseRelightTime = 0;
+		return;
+	}
+	if (client->repulseBlastTime && level.time >= client->repulseBlastTime)
+	{
+		client->repulseBlastTime = 0;
+		SJE_RepulseThrow(self, client->repulseBlastCharge);
+	}
+	if (client->repulseRelightTime && level.time >= client->repulseRelightTime)
+	{
+		client->repulseRelightTime = 0;
+		if (client->repulseSaberHolster >= 0 && client->ps.weapon == WP_SABER && client->ps.saberHolstered == 2
+			&& !client->ps.saberInFlight && !client->repulseChargeStart)
+		{
+			client->ps.saberHolstered = client->repulseSaberHolster;
+			if (client->saber[0].soundOn)
+			{
+				G_Sound(self, CHAN_AUTO, client->saber[0].soundOn);
+			}
+			if (client->saber[1].soundOn && client->saber[1].model[0])
+			{
+				G_Sound(self, CHAN_AUTO, client->saber[1].soundOn);
+			}
+		}
+		client->repulseSaberHolster = -1;
+	}
+}
+
+// the blast (at the throw frame): sound, effect (cgame: the repulse refraction while EF_BODYPUSH is on during the throw
+// anim), shake and the push, all scaled by the charge time
+static void SJE_RepulseThrow(gentity_t* self, const int chargeTime)
+{
+	const int lvl = SJE_Level(self, FP_REPULSE);
+	const float chargeFrac = SJE_RepulseChargeFrac(chargeTime);
+	const float strength = 0.4f + 0.6f * chargeFrac;
+	// damage steps as before (> 2.5 / 1.25 / 0.5 s of the old 3.5 s), as fractions of g_repulseMaxCharge
+	const int damage = chargeFrac > 2500.0f / 3500.0f ? 50 : chargeFrac > 1250.0f / 3500.0f ? 25 : chargeFrac > 500.0f / 3500.0f ? 10 : 0;
+	const float radius = sjeRepulseRadius[lvl] * (0.6f + 0.4f * chargeFrac);
+	static int list[MAX_GENTITIES]; // static: 16 KB (C6262)
+	vec3_t mins = { 0 }, maxs = { 0 };
+
+	G_Sound(self, CHAN_BODY, G_SoundIndex("sound/weapons/force/repulsepush.wav"));
+	SJE_EffectDir("force/pushblur", self->client->ps.origin, sjeFxUp);
+	G_ScreenShake(self->client->ps.origin, NULL, 1.0f + 3.0f * chargeFrac, 500 + (int)(400 * chargeFrac), qfalse);
+	self->client->pushEffectTime = level.time + 600; // EF_BODYPUSH: cgame draws the repulse refraction (throw anim)
+	self->client->ps.fd.forcePowerDebounce[FP_REPULSE] = level.time + 1500;
+
+	for (int i = 0; i < 3; i++)
+	{
+		mins[i] = self->client->ps.origin[i] - radius;
+		maxs[i] = self->client->ps.origin[i] + radius;
+	}
+	const int num = trap->EntitiesInBox(mins, maxs, list, MAX_GENTITIES);
+	for (int e = 0; e < num; e++)
+	{
+		gentity_t* ent = &g_entities[list[e]];
+		vec3_t dir;
+
+		if (ent == self || !ent->inuse)
+		{
+			continue;
+		}
+		if (ent->s.eType == ET_MISSILE && ent->r.ownerNum != self->s.number && ent->s.pos.trType != TR_STATIONARY)
+		{
+			// missiles flying around are thrown away from the caster
+			VectorSubtract(ent->r.currentOrigin, self->client->ps.origin, dir);
+			if (VectorNormalize(dir) <= radius)
+			{
+				const float speed = VectorLength(ent->s.pos.trDelta);
+				BG_EvaluateTrajectory(&ent->s.pos, level.time, ent->r.currentOrigin);
+				VectorCopy(ent->r.currentOrigin, ent->s.pos.trBase);
+				VectorScale(dir, speed, ent->s.pos.trDelta);
+				ent->s.pos.trTime = level.time;
+				ent->r.ownerNum = self->s.number;
+			}
+			continue;
+		}
+		if (!SJE_ValidEnemy(self, ent, FP_REPULSE))
+		{
+			continue;
+		}
+		VectorSubtract(ent->client->ps.origin, self->client->ps.origin, dir);
+		const float dist = VectorNormalize(dir);
+		if (dist > radius || !SJE_ClearShot(self, ent) || SJE_Absorbed(ent, FP_REPULSE, lvl))
+		{
+			continue;
+		}
+		const qboolean armed = ent->client->ps.weapon != WP_NONE && ent->client->ps.weapon != WP_MELEE;
+		float kb = lvl == FORCE_LEVEL_3 ? armed ? 175 : 225 : lvl == FORCE_LEVEL_2 ? armed ? 100 : 125
+			: (200 - dist > 100 ? 200 - dist : 100) / (armed ? 3 : 2);
+		if (ent->client->NPC_class == CLASS_ASSASSIN_DROID || ent->client->NPC_class == CLASS_HAZARD_TROOPER
+			|| ent->client->NPC_class == CLASS_DROIDEKA)
+		{
+			kb /= 10;
+		}
+		kb *= strength; // the charge time
+		VectorMA(ent->client->ps.velocity, kb * 3, dir, ent->client->ps.velocity);
+		if (ent->client->ps.velocity[2] < kb)
+		{
+			ent->client->ps.velocity[2] = kb;
+		}
+		ent->client->ps.otherKiller = self->s.number;
+		ent->client->ps.otherKillerTime = level.time + 5000;
+		ent->client->ps.otherKillerDebounceTime = level.time + 100;
+		G_Sound(ent, CHAN_BODY, G_SoundIndex("sound/weapons/force/pushed.mp3"));
+		if (kb > 150 || ent->s.eType == ET_NPC && lvl >= FORCE_LEVEL_2 && kb > 100)
+		{
+			G_Knockdown(ent, self, dir, kb, qtrue);
+		}
+		if (damage)
+		{
+			G_Damage(ent, self, self, dir, ent->client->ps.origin, damage, DAMAGE_NO_KNOCKBACK, MOD_UNKNOWN);
+		}
+	}
+}
+
+static void SJE_RepulseRun(gentity_t* self, const usercmd_t* cmd)
+{
+	if (!self->client->repulseChargeStart)
+	{// released, floating through the throw (the bit is kept on for pmove): SJE_RepulsePending ends it
+		return;
+	}
+	if (!(cmd->buttons & BUTTON_FORCEPOWER) || self->client->ps.fd.forcePowerSelected != FP_REPULSE
+		|| self->client->ps.fd.forcePower < 1)
+	{
+		WP_ForcePowerStop(self, FP_REPULSE); // releases the push
+		return;
+	}
+	// the charge lasts at most g_repulseMaxCharge seconds (1.5 - 4, default 2.5): then it goes off even with the key held (DH 2026-10-12,
+	// The Force Unleashed). While charging he floats (bg_pmove PM_RepulseHover) and is untouchable (G_Damage,
+	// G_Knockdown, ForcePowerUsableOn).
+	if (level.time - self->client->repulseChargeStart >= (int)(Com_Clamp(1.5f, 4.0f, g_repulseMaxCharge.value) * 1000.0f))
+	{
+		WP_ForcePowerStop(self, FP_REPULSE);
+		return;
+	}
+	// charging: no walking, the protect-fast anim on the whole body (also in the air), a little force now and then (SP)
+	G_SetAnim(self, NULL, SETANIM_BOTH,
+		BOTH_FORCE_PROTECT_FAST, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD, 0);
+	if (self->client->ps.torsoTimer < 100)
+	{
+		self->client->ps.torsoTimer = 100;
+	}
+	if (self->client->ps.legsTimer < 100)
+	{
+		self->client->ps.legsTimer = 100;
+	}
+	self->client->ps.velocity[0] = self->client->ps.velocity[1] = 0;
+	if (self->client->ps.weaponTime < 100)
+	{
+		self->client->ps.weaponTime = 100;
+	}
+	if (!Q_irand(0, 4))
+	{
+		WP_ForcePowerDrain(&self->client->ps, FP_REPULSE, 1);
+	}
+}
+
+// per frame for the active ported powers (from wp_force_power_run)
+static void SJE_SPPowerRun(gentity_t* self, const forcePowers_t fp, const usercmd_t* cmd)
+{
+	switch ((int)fp)
+	{
+	case FP_GRASP:
+		SJE_GraspRun(self, cmd);
+		break;
+	case FP_REPULSE:
+		SJE_RepulseRun(self, cmd);
+		break;
+	case FP_DEADLYSIGHT:
+		SJE_DeadlySightRun(self);
+		break;
+	default:
+		break;
+	}
+}
+
+// WP_ForcePowerStop for the ported powers
+static void SJE_SPPowerStop(gentity_t* self, const forcePowers_t fp)
+{
+	switch ((int)fp)
+	{
+	case FP_GRASP:
+		SJE_GraspRelease(self);
+		break;
+	case FP_REPULSE:
+		if (self->client->repulseChargeStart)
+		{
+			const int charge = level.time - self->client->repulseChargeStart;
+			self->client->repulseChargeStart = 0;
+			if (self->health > 0)
+			{
+				SJE_RepulseRelease(self, charge); // the blast follows at the throw frame (SJE_RepulsePending)
+				// still floating until a moment after the blast: the networked bit stays on for pmove's PM_RepulseHover
+				self->client->ps.fd.forcePowersActive |= 1 << FP_REPULSE;
+			}
+		}
+		break;
+	case FP_DEADLYSIGHT:
+		break;
+	default:
+		break;
+	}
+}
+// ==================================================================================================================
+
 void WP_ForcePowerStop(gentity_t* self, const forcePowers_t forcePower)
 {
 	const int was_active = self->client->ps.fd.forcePowersActive;
@@ -7252,6 +8440,12 @@ void WP_ForcePowerStop(gentity_t* self, const forcePowers_t forcePower)
 		}
 
 		self->client->ps.activeForcePass = 0;
+		break;
+	case FP_GRASP:
+	case FP_REPULSE:
+	case FP_DEADLYSIGHT:
+		SJE_SPPowerStop(self, forcePower);
+		break;
 	default:
 		break;
 	}
@@ -7868,6 +9062,11 @@ static void wp_force_power_run(gentity_t* self, const forcePowers_t forcePower, 
 			self->client->ps.fd.forcePowerDebounce[forcePower] = level.time + 600;
 		}
 		break;
+	case FP_GRASP:
+	case FP_REPULSE:
+	case FP_DEADLYSIGHT:
+		SJE_SPPowerRun(self, forcePower, cmd);
+		break;
 	default:
 		break;
 	}
@@ -8033,6 +9232,76 @@ static int WP_DoSpecificPower(gentity_t* self, const usercmd_t* ucmd, const forc
 			break;
 		}
 		ForceSeeing(self);
+		self->client->ps.fd.forceButtonNeedRelease = 1;
+		break;
+	case FP_GRASP:
+		// held: catch someone, then hold him while the key is held (SJE_GraspRun)
+		if (!(self->client->ps.fd.forcePowersActive & 1 << FP_GRASP))
+		{
+			ForceGrasp(self);
+		}
+		if (!self->client->graspEntityNum)
+		{
+			powerSucceeded = 0;
+		}
+		break;
+	case FP_REPULSE:
+		// held: charge while the key is held, push on release (SJE_RepulseRun / SJE_SPPowerStop)
+		if (!(self->client->ps.fd.forcePowersActive & 1 << FP_REPULSE))
+		{
+			if (self->client->ps.fd.forceButtonNeedRelease)
+			{
+				powerSucceeded = 0;
+				break;
+			}
+			ForceRepulse(self);
+			self->client->ps.fd.forceButtonNeedRelease = 1;
+		}
+		break;
+	case FP_STASIS:
+	case FP_DESTRUCTION:
+	case FP_LIGHTNING_STRIKE:
+	case FP_FEAR:
+	case FP_DEADLYSIGHT:
+	case FP_BLAST:
+	case FP_INSANITY:
+	case FP_BLINDING:
+		powerSucceeded = 0; //always 0 for nonhold powers
+		if (self->client->ps.fd.forceButtonNeedRelease)
+		{
+			//need to release before we can use nonhold powers again
+			break;
+		}
+		switch ((int)forcepower)
+		{
+		case FP_STASIS:
+			ForceStasis(self);
+			break;
+		case FP_DESTRUCTION:
+			ForceDestruction(self);
+			break;
+		case FP_LIGHTNING_STRIKE:
+			ForceLightningStrike(self);
+			break;
+		case FP_FEAR:
+			ForceFear(self);
+			break;
+		case FP_DEADLYSIGHT:
+			if (!(self->client->ps.fd.forcePowersActive & 1 << FP_DEADLYSIGHT))
+			{
+				ForceDeadlySight(self);
+			}
+			break;
+		case FP_BLAST:
+			ForceBlast(self);
+			break;
+		case FP_INSANITY:
+			ForceInsanity(self);
+			break;
+		default:
+			ForceBlinding(self);
+			break;
+		}
 		self->client->ps.fd.forceButtonNeedRelease = 1;
 		break;
 	case FP_SABER_OFFENSE:
@@ -8585,6 +9854,9 @@ void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd)
 	{
 		return;
 	}
+
+	// a Repulse blast due at its throw frame, the saber back on after the throw
+	SJE_RepulsePending(self);
 
 	if (self->r.svFlags & SVF_BOT && !Bot_Is_Allowed_to_use_force(self))
 	{

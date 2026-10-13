@@ -79,6 +79,8 @@ typedef struct consoleCommand_s {
 	void		(*func)(void);
 } consoleCommand_t;
 
+qboolean UI_SJEChars_ConsoleCommand(const char* cmd);
+
 static int cmdcmp(const void* a, const void* b)
 {
 	return Q_stricmp(a, ((consoleCommand_t*)b)->cmd);
@@ -109,6 +111,11 @@ qboolean UI_ConsoleCommand(int realTime) {
 	if (UI_Pazaak_ConsoleCommand(UI_Argv(0)))
 	{
 		return qtrue; // uipzk
+	}
+
+	if (UI_SJEChars_ConsoleCommand(UI_Argv(0)))
+	{
+		return qtrue; // sje_charlist, sje_charmenu (ui_sjechars.c)
 	}
 
 	const consoleCommand_t* command = (consoleCommand_t*)Q_LinearSearch(UI_Argv(0), commands, num_commands,

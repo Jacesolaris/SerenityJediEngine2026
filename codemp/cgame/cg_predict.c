@@ -30,6 +30,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 static pmove_t cg_pmove;
 
+// the local player's bbox half width from the last prediction (creature classes are wider): cg_view.c aim camera
+float CG_PredictedHalfWidth(void)
+{
+	return cg_pmove.maxs[0] > 0.0f ? cg_pmove.maxs[0] : 15.0f;
+}
+
 static int cg_numSolidEntities;
 static centity_t* cg_solidEntities[MAX_ENTITIES_IN_SNAPSHOT];
 static int cg_numTriggerEntities;
@@ -1292,7 +1298,7 @@ void CG_PredictPlayerState(void)
 		cg_pmove.stepSlideFix = cgs.stepSlideFix;
 		cg_pmove.noSpecMove = cgs.noSpecMove;
 
-		cg_pmove.nonHumanoid = pEnt->localAnimIndex > 0;
+		cg_pmove.nonHumanoid = !BG_AnimSetIsHumanoid(pEnt->localAnimIndex);
 
 		if (cg.snap && cg.snap->ps.saberLockTime > cg.time)
 		{
@@ -1361,7 +1367,7 @@ void CG_PredictPlayerState(void)
 				cg_vehPmove.gametype = cgs.gametype;
 				cg_vehPmove.ghoul2 = veh->ghoul2;
 
-				cg_vehPmove.nonHumanoid = veh->localAnimIndex > 0;
+				cg_vehPmove.nonHumanoid = !BG_AnimSetIsHumanoid(veh->localAnimIndex);
 
 				/*
 				x = (veh->currentState.solid & 255);

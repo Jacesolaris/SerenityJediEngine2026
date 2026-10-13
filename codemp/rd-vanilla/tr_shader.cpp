@@ -1236,6 +1236,10 @@ static qboolean ParseStage(shaderStage_t* stage, const char** text)
 
 			// several animMap lines in one stage add to the same frames (MD's TFA / unstable blades): keep the frames
 			// read so far, else they are lost (NULL = the flat default image)
+			if (stage->bundle[0].numImageAnimations > max_image_animations)
+			{
+				stage->bundle[0].numImageAnimations = max_image_animations; // cannot happen (only counted up to the max below); keeps the copies inside images[]
+			}
 			if (stage->bundle[0].numImageAnimations > 0 && stage->bundle[0].image)
 			{
 				memcpy(images, stage->bundle[0].image, stage->bundle[0].numImageAnimations * sizeof(image_t*));
@@ -1260,7 +1264,10 @@ static qboolean ParseStage(shaderStage_t* stage, const char** text)
 			}
 			// Copy image ptrs into an array of ptrs
 			stage->bundle[0].image = static_cast<image_t*>(Hunk_Alloc(stage->bundle[0].numImageAnimations * sizeof(image_t*), h_low));
-			memcpy(stage->bundle[0].image, images, stage->bundle[0].numImageAnimations * sizeof(image_t*));
+			if (stage->bundle[0].image) // the hunk allocator never returns NULL (it errors out)
+			{
+				memcpy(stage->bundle[0].image, images, stage->bundle[0].numImageAnimations * sizeof(image_t*));
+			}
 		}
 		else if (!Q_stricmp(token, "videoMap"))
 		{
@@ -3169,26 +3176,10 @@ static const char* FindShaderInShaderText(const char* shadername) {
 		}
 	}
 
-	p = s_shaderText;
-
-	if (!p) {
-		return nullptr;
-	}
-
-	// look for label
-	while (true) {
-		token = COM_ParseExt(&p, qtrue);
-		if (token[0] == 0) {
-			break;
-		}
-
-		if (!Q_stricmp(token, shadername)) {
-			return p;
-		}
-		// skip the definition
-		SkipBracedSection(&p, 0);
-	}
-
+	// Not in the hash table = not in the shader text: the table holds every top-level name of s_shaderText (built in
+	// ScanAndLoadShaderFiles with the same parse), so the full linear scan of all shader files that used to follow here
+	// could never find anything more. It ran for every image without a shader script (most model / map textures) and made
+	// shader registration slow on map load and mid-game.
 	return nullptr;
 }
 

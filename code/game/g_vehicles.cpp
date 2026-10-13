@@ -849,7 +849,7 @@ static bool Board(Vehicle_t* p_veh, bgEntity_t* pEnt)
 	}
 #endif
 
-	if (p_veh->m_pVehicleInfo->numHands == 2)
+	if (p_veh->m_pVehicleInfo->numHands == 2 && ent->client)
 	{
 		//switch to vehicle weapon
 #ifndef _JK2MP
@@ -1325,7 +1325,7 @@ static bool Eject(Vehicle_t* p_veh, bgEntity_t* pEnt, const qboolean forceEject)
 #endif
 
 	//if was using vehicle weapon, remove it and switch to normal weapon when hop out...
-	if (ent->client->ps.weapon == WP_NONE)
+	if (ent->client && ent->client->ps.weapon == WP_NONE)
 	{
 		//FIXME: check against this vehicle's gun from the g_vehicleInfo table
 		//remove the vehicle's weapon from me
@@ -1370,8 +1370,11 @@ static bool Eject(Vehicle_t* p_veh, bgEntity_t* pEnt, const qboolean forceEject)
 	BG_SetLegsAnimTimer(&ent->client->ps, 0);
 	BG_SetTorsoAnimTimer(&ent->client->ps, 0);
 #else
-	PM_SetLegsAnimTimer(ent, &ent->client->ps.legsAnimTimer, 0);
-	PM_SetTorsoAnimTimer(ent, &ent->client->ps.torsoAnimTimer, 0);
+	if (ent->client)
+	{
+		PM_SetLegsAnimTimer(ent, &ent->client->ps.legsAnimTimer, 0);
+		PM_SetTorsoAnimTimer(ent, &ent->client->ps.torsoAnimTimer, 0);
+	}
 #endif
 
 	// Set how long until this vehicle can be boarded again.

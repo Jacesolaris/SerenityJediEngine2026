@@ -1182,6 +1182,7 @@ static qboolean self_is_gunner(const gentity_t* self)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -7396,6 +7397,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 			case WP_DISRUPTOR:
 			case WP_BOWCASTER:
 			case WP_REPEATER:
+			case WP_Z6_ROTARY_CANNON:
 			case WP_DEMP2:
 			case WP_FLECHETTE:
 			case WP_ROCKET_LAUNCHER:

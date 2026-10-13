@@ -81,7 +81,7 @@ public:
 	}
 
 protected:
-	int m_id;
+	int m_id = 0;
 	unsigned int m_timeStamp = 0;
 	CBlock* m_block = nullptr;
 };

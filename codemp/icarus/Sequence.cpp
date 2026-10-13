@@ -31,6 +31,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 CSequence::CSequence(void)
 {
+	m_owner = nullptr;
+	m_id = 0;
+
 	m_numCommands = 0;
 	m_flags = 0;
 	m_iterations = 1;

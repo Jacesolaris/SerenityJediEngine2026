@@ -140,7 +140,7 @@ void SV_DirectConnect(netadr_t from)
 	char userinfo[MAX_INFO_STRING];
 	int i;
 	client_t* cl, * newcl;
-	client_t temp{};
+	static client_t temp; // ~500 KB, off the stack (C6262): Com_Memset below clears it before use
 	sharedEntity_t* ent;
 	int clientNum;
 	int version;

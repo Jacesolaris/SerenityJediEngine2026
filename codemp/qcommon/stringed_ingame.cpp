@@ -612,7 +612,7 @@ const char* CStringEdPackage::ParseLine(const char* psLine)
 			{
 				static constexpr char sSeperators[] = " \t";
 				char sFlags[1024] = { 0 }; // 1024 chars should be enough to store 8 flag names
-				strncpy(sFlags, psLine, sizeof sFlags - 1);
+				Q_strncpyz(sFlags, psLine, sizeof sFlags);
 				char* psToken = strtok(sFlags, sSeperators);
 				while (psToken != nullptr)
 				{
@@ -659,8 +659,7 @@ const char* CStringEdPackage::ParseLine(const char* psLine)
 				{
 					iCharsToCopy = sizeof sThisLanguage - 1;
 				}
-				strncpy(sThisLanguage, psLine, iCharsToCopy);
-				// already declared as {0} so no need to zero-cap dest buffer
+				Q_strncpyz(sThisLanguage, psLine, static_cast<int>(iCharsToCopy) + 1); // the first iCharsToCopy chars, always terminated
 
 				psLine += strlen(sThisLanguage);
 				const char* _psSentence = ConvertCRLiterals_Read(InsideQuotes(psLine));
@@ -836,7 +835,7 @@ static const char* SE_Load_Actual(const char* psFileName, SE_BOOL bLoadDebug, SE
 
 		TheStringPackage.SetupNewFileParse(psFileName, bLoadDebug);
 
-		char sLineBuffer[16384]; // should be enough for one line of text (some of them can be BIG though)
+		static char sLineBuffer[16384]; // should be enough for one line of text (some of them can be BIG though); static: off the stack (C6262), load-time only, not reentrant
 		while (!psErrorMessage && TheStringPackage.ReadLine(psParsePos, sLineBuffer))
 		{
 			if (strlen(sLineBuffer))

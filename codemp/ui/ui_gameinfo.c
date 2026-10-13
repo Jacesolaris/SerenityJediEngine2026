@@ -42,6 +42,10 @@ static char* ui_arenaInfos[MAX_ARENAS];
 UI_ParseInfos
 ===============
 */
+// bot / arena info files: 64 KB each (bg_public.h's 8 KB MAX_BOTS_TEXT / MAX_ARENAS_TEXT refused SJE's larger bots.txt);
+// the read buffers are static, not on the stack
+#define BOTINFO_FILE_MAX	(64 * 1024)
+
 static int UI_ParseInfos(const char* buf, int max, char* infos[])
 {
 	char	info[MAX_INFO_STRING];
@@ -115,15 +119,15 @@ UI_LoadArenasFromFile
 */
 static void UI_LoadArenasFromFile(char* filename) {
 	fileHandle_t	f;
-	char			buf[MAX_ARENAS_TEXT];
+	static char	buf[BOTINFO_FILE_MAX];
 
 	const int len = trap->FS_Open(filename, &f, FS_READ);
 	if (!f) {
 		trap->Print(S_COLOR_RED "file not found: %s\n", filename);
 		return;
 	}
-	if (len >= MAX_ARENAS_TEXT) {
-		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i", filename, len, MAX_ARENAS_TEXT);
+	if (len >= BOTINFO_FILE_MAX) {
+		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i", filename, len, BOTINFO_FILE_MAX);
 		trap->FS_Close(f);
 		return;
 	}
@@ -348,15 +352,15 @@ UI_LoadBotsFromFile
 */
 static void UI_LoadBotsFromFile(char* filename) {
 	fileHandle_t	f;
-	char			buf[MAX_BOTS_TEXT];
+	static char	buf[BOTINFO_FILE_MAX];
 
 	const int len = trap->FS_Open(filename, &f, FS_READ);
 	if (!f) {
 		trap->Print(S_COLOR_RED "file not found: %s\n", filename);
 		return;
 	}
-	if (len >= MAX_BOTS_TEXT) {
-		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i", filename, len, MAX_BOTS_TEXT);
+	if (len >= BOTINFO_FILE_MAX) {
+		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i", filename, len, BOTINFO_FILE_MAX);
 		trap->FS_Close(f);
 		return;
 	}

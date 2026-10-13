@@ -40,6 +40,7 @@ void CGCam_Distance(float distance, float initLerp);
 void CGCam_DistanceDisable();
 extern qboolean CG_CalcFOVFromX(float fov_x);
 extern void WP_SaberCatch(gentity_t* self, gentity_t* saber, qboolean switch_to_saber);
+extern void WP_CutsceneResetSaberState(gentity_t* ent);
 extern vmCvar_t cg_drawwidescreenmodesp;
 
 /*
@@ -119,6 +120,8 @@ void CGCam_Enable()
 			}
 		}
 
+		// no kata / attack / saber lock carries on after the cutscene
+		WP_CutsceneResetSaberState(&g_entities[0]);
 		if (g_entities[0].client->ps.saberFatigueChainCount >= MISHAPLEVEL_MIN)
 		{
 			g_entities[0].client->ps.saberFatigueChainCount = MISHAPLEVEL_MIN;

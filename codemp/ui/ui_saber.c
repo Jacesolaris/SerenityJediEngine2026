@@ -2419,6 +2419,8 @@ static void UI_SaberDrawBlade(itemDef_t* item, const char* saber_name, int saber
 	}
 }
 
+extern qboolean uiSJECharDualPreview; // ui_sjechars.c: the Select Character menu shows both NPC sabers
+
 static void UI_GetSaberForMenu(char* saber, int saberNum)
 {
 	char saberTypeString[MAX_QPATH] = { 0 };
@@ -2484,7 +2486,7 @@ void UI_SaberDrawBlades(itemDef_t* item, vec3_t origin, vec3_t angles)
 	int	numSabers = 1;
 
 	if (item->flags & ITF_ISCHARACTER//hacked sabermoves sabers in character's hand
-		&& uiInfo.movesTitleIndex == 4 /*MD_DUAL_SABERS*/)
+		&& (uiInfo.movesTitleIndex == 4 /*MD_DUAL_SABERS*/ || uiSJECharDualPreview))
 	{
 		numSabers = 2;
 	}
@@ -2556,7 +2558,7 @@ void UI_SaberAttachToChar(itemDef_t* item)
 		trap->G2API_RemoveGhoul2Model(&item->ghoul2, 1);
 	}
 
-	if (uiInfo.movesTitleIndex == 4 /*MD_DUAL_SABERS*/)
+	if (uiInfo.movesTitleIndex == 4 /*MD_DUAL_SABERS*/ || uiSJECharDualPreview) // SJE: the Select Character menu shows both NPC sabers
 	{
 		numSabers = 2;
 	}
@@ -2569,7 +2571,9 @@ void UI_SaberAttachToChar(itemDef_t* item)
 
 		UI_GetSaberForMenu(saber, saberNum);
 
-		if (UI_SaberModelForSaber(saber, modelPath))
+		// SJE: no saber for a model without the hand bolt (creatures, droids: e.g. the Select Character preview)
+		const int handBolt = trap->G2API_AddBolt(item->ghoul2, 0, saberNum == 0 ? "*r_hand" : "*l_hand");
+		if (handBolt >= 0 && UI_SaberModelForSaber(saber, modelPath))
 		{//successfully found a model
 			const int g2Saber = trap->G2API_InitGhoul2Model(&item->ghoul2, modelPath, 0, 0, 0, 0, 0); //add the model
 			if (g2Saber)

@@ -3160,7 +3160,6 @@ qboolean WP_SaberDoBreak(gentity_t* ent)
 		colors[i] = ent->client->ps.saber[0].blade[i].color;
 	}
 
-
 	//remove saber[0], replace with replacementSaber1
 	if (replacementSaber1)
 	{

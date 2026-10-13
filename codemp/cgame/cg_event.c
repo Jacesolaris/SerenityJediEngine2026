@@ -419,6 +419,7 @@ static void CG_Obituary(entityState_t* ent)
 		case MOD_DISRUPTOR_SNIPER:
 		case MOD_BOWCASTER:
 		case MOD_REPEATER:
+		case MOD_Z6_ROTARY_CANNON:
 		case MOD_REPEATER_ALT:
 		case MOD_FLECHETTE:
 			if (gender == GENDER_FEMALE)
@@ -633,6 +634,7 @@ clientkilled:
 			message = "KILLED_BOWCASTER";
 			break;
 		case MOD_REPEATER:
+		case MOD_Z6_ROTARY_CANNON:
 			message = "KILLED_REPEATER";
 			break;
 		case MOD_REPEATER_ALT:
@@ -1555,6 +1557,7 @@ static void CG_G2MarkEvent(entityState_t* es)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_TURRET:
 		if (!size)
 		{
@@ -3380,6 +3383,14 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 				int perfectblock_fxid = cgs.effects.mSaberprfectBlock;
 				qhandle_t block_sound = trap->S_RegisterSound(va("sound/weapons/saber/saberblock%d", Q_irand(1, 90)));
 				qhandle_t knock_sound = trap->S_RegisterSound(va("sound/weapons/saber/saberknock%d", Q_irand(1, 4)));
+				qboolean no_clash_flare = qfalse;
+				// The server puts the blocker in otherentityNum (the temp event entity itself never has
+				// the FLAG_PERFECTBLOCK bit). userInt3 is networked, so read it from the blocker as SP does.
+				const qboolean perfect_block = (es->otherentityNum >= 0 && es->otherentityNum < ENTITYNUM_WORLD
+					&& es->otherentityNum != es->otherentityNum2
+					&& (cg_entities[es->otherentityNum].currentState.userInt3 & (1 << FLAG_PERFECTBLOCK)))
+					? qtrue
+					: qfalse;
 
 				if (es->otherentityNum2 >= 0 && es->otherentityNum2 < ENTITYNUM_NONE)
 				{
@@ -3401,10 +3412,15 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 						if (WP_SaberBladeUseSecondBladeStyle(&client->saber[saberNum], bladeNum))
 						{
 							//use second blade style values
+							if (client->saber[saberNum].saberFlags2 & SFL2_NO_CLASH_FLARE2)
+							{
+								no_clash_flare = qtrue;
+							}
 							if (client->saber[saberNum].blockEffect2)
 							{
-								//custom saber block effect
+								//custom saber block effect (SP uses it for perfect blocks too)
 								block_fxid = client->saber[saberNum].blockEffect2;
+								perfectblock_fxid = client->saber[saberNum].blockEffect2;
 							}
 							if (client->saber[saberNum].block2Sound[0])
 							{
@@ -3421,17 +3437,15 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 						}
 						else
 						{
+							if (client->saber[saberNum].saberFlags2 & SFL2_NO_CLASH_FLARE)
+							{
+								no_clash_flare = qtrue;
+							}
 							if (client->saber[saberNum].blockEffect)
 							{
-								//custom saber block effect
-								if (cent->currentState.userInt3 & 1 << FLAG_PERFECTBLOCK)
-								{
-									perfectblock_fxid = client->saber[saberNum].blockEffect;
-								}
-								else
-								{
-									block_fxid = client->saber[saberNum].blockEffect;
-								}
+								//custom saber block effect (SP uses it for perfect blocks too)
+								block_fxid = client->saber[saberNum].blockEffect;
+								perfectblock_fxid = client->saber[saberNum].blockEffect;
 							}
 							if (client->saber[saberNum].blockSound[0])
 							{
@@ -3480,7 +3494,15 @@ void CG_EntityEvent(centity_t* cent, vec3_t position)
 						fx_dir[1] = 1;
 					}
 					trap->S_StartSound(es->origin, es->number, CHAN_AUTO, block_sound);
-					trap->FX_PlayEffectID(block_fxid, es->origin, fx_dir, -1, -1, qfalse);
+					trap->FX_PlayEffectID(perfect_block ? perfectblock_fxid : block_fxid, es->origin, fx_dir, -1, -1, qfalse);
+
+					// SP sets the clash flare on every saber block; in MP the block event is the only
+					// place the client hears about it, so start the flare here (cgame only, no protocol change).
+					if (!no_clash_flare)
+					{
+						cg_saberFlashTime = cg.time - 50;
+						VectorCopy(es->origin, cg_saberFlashPos);
+					}
 				}
 			}
 			else

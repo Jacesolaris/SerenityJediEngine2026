@@ -2345,9 +2345,12 @@ void MSG_CheckNETFPSFOverrides(const qboolean psfOverrides)
 	// can be restored on subsequent calls.
 
 	// Large local buffers for parsing override file lines
-	char overrideFile[16384];
-	char entryName[4096] = { 0 };
-	char bits[4096] = { 0 };
+	// static, off the stack (C6262; 24 KB): only called from server spawn / client gamestate parsing, not reentrant
+	static char overrideFile[16384];
+	static char entryName[4096];
+	static char bits[4096];
+	memset(entryName, 0, sizeof(entryName)); // zeroed as the = { 0 } on the stack was
+	memset(bits, 0, sizeof(bits));
 
 	char* fileName = nullptr;
 	int ibits = 0;

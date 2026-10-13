@@ -281,6 +281,7 @@ stringID_table_t WPTable[] =
 	ENUM2STRING(WP_TUSKEN_STAFF),
 	ENUM2STRING(WP_SCEPTER),
 	ENUM2STRING(WP_NOGHRI_STICK),
+	ENUM2STRING(WP_Z6_ROTARY_CANNON),
 	{"", 0}
 };
 
@@ -3338,14 +3339,14 @@ void G_SetWeapon(gentity_t* self, int wp)
 	const gitem_t* item = FindItemForWeapon(static_cast<weapon_t>(wp));
 	RegisterItem(item); //make sure the weapon is cached in case this runs at startup
 
-	if (self->client->ps.stats[STAT_WEAPONS] & 1 << wp)
+	if (BG_HasWeapon(&self->client->ps, wp))
 	{
 		hadWeapon = qtrue;
 	}
 	if (self->NPC)
 	{
 		//Should NPCs have only 1 weapon at a time?
-		self->client->ps.stats[STAT_WEAPONS] = 1 << wp;
+		BG_SetOnlyWeapon(&self->client->ps, wp);
 		self->client->ps.ammo[weaponData[wp].ammoIndex] = 999;
 
 		ChangeWeapon(self, wp);
@@ -3355,7 +3356,7 @@ void G_SetWeapon(gentity_t* self, int wp)
 	}
 	else
 	{
-		self->client->ps.stats[STAT_WEAPONS] |= 1 << wp;
+		BG_GiveWeapon(&self->client->ps, wp);
 		self->client->ps.ammo[weaponData[wp].ammoIndex] = ammoData[weaponData[wp].ammoIndex].max;
 
 		G_AddEvent(self, EV_ITEM_PICKUP, item - bg_itemlist);
@@ -6136,6 +6137,7 @@ static void Q3_Face(const int entID, const int expression, float holdtime)
 	case SET_FACEBLINKFROWN:
 		ent->client->facial_blink = -(level.time + holdtime);
 		//fall through
+		[[fallthrough]];
 	case SET_FACEFROWN:
 		ent->client->facial_timer = -(level.time + holdtime);
 		ent->client->facial_anim = FACE_FROWN;
@@ -8130,7 +8132,9 @@ void CQuake3GameInterface::RunScript(const gentity_t* pEntity, const char* strSc
 		if (IIcarusInterface::GetIcarus()->Run(pEntity->m_iIcarusID, pBuf, iLength) != IIcarusInterface::ICARUS_INVALID)
 			DebugPrint(WL_VERBOSE, "%d Script %s executed by %s %s\n", level.time, strScriptName, pEntity->classname,
 				pEntity->targetname);
-	default:;
+		break;
+	default:
+		break;
 	}
 }
 
@@ -11801,7 +11805,9 @@ void CQuake3GameInterface::PrecacheScript(const char* name)
 		// We loaded the script and registered it, so precache it through Icarus now.
 	case SCRIPT_REGISTERED:
 		IIcarusInterface::GetIcarus()->Precache(pBuf, iLength);
-	default:;
+		break;
+	default:
+		break;
 	}
 }
 

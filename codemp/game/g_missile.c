@@ -623,8 +623,9 @@ void G_StasisMissileThink(gentity_t* missile)
 		return;
 	}
 
-	vec3_t mins, maxs;
-	int touch[MAX_GENTITIES];
+	vec3_t mins = { 0.0f, 0.0f, 0.0f }, maxs = { 0.0f, 0.0f, 0.0f };
+	// static: too big for the stack (C6262); filled by EntitiesInBox before it is read
+	static int touch[MAX_GENTITIES];
 	for (int i = 0; i < 3; i++)
 	{
 		mins[i] = missile->r.absmin[i] - 8.0f;
@@ -934,6 +935,7 @@ static void G_Missile_Bounce_Effect(gentity_t* ent, vec3_t org, vec3_t dir, cons
 		G_PlayEffectID(G_EffectIndex("blaster/deflect"), ent->r.currentOrigin, dir);
 		break;
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 		G_PlayEffectID(G_EffectIndex("repeater/deflectblock"), ent->r.currentOrigin, dir);
 		break;
 	default:
@@ -963,6 +965,7 @@ void G_MissileReflectEffect(gentity_t* ent, vec3_t dir)
 		G_PlayEffectID(G_EffectIndex("blaster/deflect"), ent->r.currentOrigin, dir);
 		break;
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 		G_PlayEffectID(G_EffectIndex("repeater/deflectblock"), ent->r.currentOrigin, dir);
 		break;
 	default:

@@ -606,7 +606,7 @@ extern centity_t cg_entities[MAX_GENTITIES];
 extern centity_t* cg_permanents[MAX_GENTITIES];
 extern int cg_numpermanents;
 
-extern weaponInfo_t cg_weapons[MAX_WEAPONS];
+extern weaponInfo_t cg_weapons[WP_NUM_WEAPONS];
 extern itemInfo_t cg_items[MAX_ITEMS];
 extern markPoly_t cg_markPolys[MAX_MARK_POLYS];
 
@@ -745,6 +745,7 @@ extern vmCvar_t cg_missionstatusscreen;
 extern vmCvar_t cg_hudRatio;
 extern vmCvar_t cg_saberLockCinematicCamera;
 extern vmCvar_t cg_AimingCinematicCamera;
+extern vmCvar_t cg_aimShoulder;
 
 extern vmCvar_t cg_com_rend2;
 
@@ -758,7 +759,7 @@ const char* CG_ConfigString(const int index);
 const char* CG_Argv(int arg);
 
 void QDECL CG_Printf(const char* msg, ...);
-void QDECL CG_Error(const char* msg, ...);
+NORETURN void QDECL CG_Error(const char* msg, ...);
 
 void CG_StartMusic(qboolean bForceStart);
 
@@ -1013,7 +1014,7 @@ qboolean CG_Credits_Draw();
 void cgi_Printf(const char* fmt);
 
 // abort the game
-void cgi_Error(const char* fmt);
+NORETURN void cgi_Error(const char* fmt);
 
 // milliseconds should only be used for performance tuning, never
 // for anything game related.  Get time from the CG_DrawActiveFrame parameter
@@ -1226,6 +1227,8 @@ void FX_BowcasterHitWall(vec3_t origin, vec3_t normal);
 void FX_BowcasterHitPlayer(gentity_t* hit, vec3_t origin, vec3_t normal, qboolean humanoid);
 
 void FX_RepeaterHitWall(vec3_t origin, vec3_t normal);
+void FX_CloneWeaponHitWall(vec3_t origin, vec3_t normal);
+void FX_CloneWeaponHitPlayer(gentity_t* hit, vec3_t origin, vec3_t normal, qboolean humanoid);
 void FX_RepeaterAltHitWall(vec3_t origin, vec3_t normal);
 void FX_RepeaterHitPlayer(gentity_t* hit, vec3_t origin, vec3_t normal, qboolean humanoid);
 void FX_RepeaterAltHitPlayer(gentity_t* hit, vec3_t origin, vec3_t normal, qboolean humanoid);
@@ -1348,4 +1351,20 @@ void CG_AdjustEyePos(const char* modelName);
 void CG_TrueViewCheckModel(const char* model_name); // the player's model changed: its trueview.cfg eye position
 void CG_TrueViewSave_f(); // "trueview_save [value]": saves the player's model with its eye position in trueview.cfg
 
+// continuous force effects started at most once per 16 ms per entity and effect (see CG_ContinuousFxReady, cg_players.cpp)
+enum
+{
+	CFX_SHOCKED,
+	CFX_STUNNED,
+	CFX_DRAINED,
+	CFX_LIGHTNING,
+	CFX_LIGHTNING_STRIKE,
+	CFX_ROSH,
+	CFX_DRAIN,
+	CFX_VIEW_LIGHTNING,
+	CFX_VIEW_LIGHTNING_STRIKE,
+	CFX_VIEW_DRAIN,
+	CFX_NUM_SLOTS
+};
+qboolean CG_ContinuousFxReady(int ent_num, int slot);
 #endif	//__CG_LOCAL_H__

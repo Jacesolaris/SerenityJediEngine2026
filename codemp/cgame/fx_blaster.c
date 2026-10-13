@@ -80,6 +80,36 @@ void FX_DroidekaProjectileThink(centity_t* cent, const struct weaponInfo_s* weap
 
 /*
 -------------------------
+FX_CloneProjectileThink / FX_CloneWeaponHitWall / FX_CloneWeaponHitPlayer
+
+the Z-6 rotary cannon's bolts (WP_Z6_ROTARY_CANNON, from MovieDuels)
+-------------------------
+*/
+void FX_CloneProjectileThink(centity_t* cent, const struct weaponInfo_s* weapon)
+{
+	vec3_t forward;
+
+	if (VectorNormalize2(cent->currentState.pos.trDelta, forward) == 0.0f)
+	{
+		forward[2] = 1.0f;
+	}
+
+	trap->FX_PlayEffectID(cgs.effects.cloneShotEffect, cent->lerpOrigin, forward, -1, -1, qfalse);
+}
+
+void FX_CloneWeaponHitWall(vec3_t origin, vec3_t normal)
+{
+	trap->FX_PlayEffectID(cgs.effects.cloneWallImpactEffect, origin, normal, -1, -1, qfalse);
+}
+
+void FX_CloneWeaponHitPlayer(vec3_t origin, vec3_t normal, qboolean humanoid)
+{
+	trap->FX_PlayEffectID(humanoid ? cgs.effects.cloneFleshImpactEffect : cgs.effects.cloneWallImpactEffect, origin, normal,
+		-1, -1, qfalse);
+}
+
+/*
+-------------------------
 FX_BlasterWeaponHitWall
 -------------------------
 */

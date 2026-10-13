@@ -1386,6 +1386,7 @@ qboolean NPC_CheckSurrender()
 		if (NPC->s.weapon != WP_ROCKET_LAUNCHER
 			&& NPC->s.weapon != WP_CONCUSSION
 			&& NPC->s.weapon != WP_REPEATER
+			&& NPC->s.weapon != WP_Z6_ROTARY_CANNON
 			&& NPC->s.weapon != WP_FLECHETTE
 			&& NPC->s.weapon != WP_SABER)
 		{

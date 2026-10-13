@@ -1859,7 +1859,9 @@ static void BeginPixelShader(const GLuint uiType, const GLuint uiID)
 
 		g_uiCurrentPixelShaderType = GL_FRAGMENT_PROGRAM_ARB;
 	}
-	default:;
+	break;
+	default:
+		break;
 	}
 }
 
@@ -1958,10 +1960,13 @@ static void RB_BlurGlowTexture()
 	for (int iNumBlurPasses = 0; iNumBlurPasses < r_DynamicGlowPasses->integer; iNumBlurPasses++)
 	{
 		// Load the Texel Offsets into the Vertex Program.
-		qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, -fTexelWidthOffset, -fTexelWidthOffset, 0.0f, 0.0f);
-		qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 1, -fTexelWidthOffset, fTexelWidthOffset, 0.0f, 0.0f);
-		qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 2, fTexelWidthOffset, -fTexelWidthOffset, 0.0f, 0.0f);
-		qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 3, fTexelWidthOffset, fTexelWidthOffset, 0.0f, 0.0f);
+		if (qglProgramEnvParameter4fARB) // always set when the glow vertex program exists; NULL would crash
+		{
+			qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, -fTexelWidthOffset, -fTexelWidthOffset, 0.0f, 0.0f);
+			qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 1, -fTexelWidthOffset, fTexelWidthOffset, 0.0f, 0.0f);
+			qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 2, fTexelWidthOffset, -fTexelWidthOffset, 0.0f, 0.0f);
+			qglProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 3, fTexelWidthOffset, fTexelWidthOffset, 0.0f, 0.0f);
+		}
 
 		// After first pass put the tex coords to the viewport size.
 		if (iNumBlurPasses == 1)

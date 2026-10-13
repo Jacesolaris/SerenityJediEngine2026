@@ -305,7 +305,7 @@ public:
 	hstring mNameTrack;
 	CVec3 mMins;
 	CVec3 mMaxs;
-	int mStartTime;
+	int mStartTime = 0;
 
 public:
 	////////////////////////////////////////////////////////////////////////////////////
@@ -349,9 +349,9 @@ public:
 		assert(mTrack != nullptr);
 	}
 
-	CRailTrack* mTrack;
-	int mMinCol;
-	int mMaxCol;
+	CRailTrack* mTrack = nullptr;
+	int mMinCol = 0;
+	int mMaxCol = 0;
 };
 
 ratl::vector_vs<CRailLane, MAX_LANES> mRailLanes;
@@ -483,8 +483,8 @@ public:
 		}
 	}
 
-	CRailTrack* mTrack;
-	CRailLane* mLane;
+	CRailTrack* mTrack = nullptr;
+	CRailLane* mLane = nullptr;
 	int mCols = 0;
 	int mRows = 0;
 };

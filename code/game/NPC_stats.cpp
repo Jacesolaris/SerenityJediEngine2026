@@ -617,6 +617,7 @@ static void ParseAnimationEvtBlock(const int gla_index, const unsigned short mod
 			}
 			// fall through to normal sound
 
+			[[fallthrough]];
 		case AEV_SOUND: //# animID AEV_SOUND framenum soundpath randomlow randomhi chancetoplay
 			// get soundstring
 			token = COM_Parse(text_p);
@@ -1405,7 +1406,7 @@ extern int NPC_WeaponsForTeam(const team_t team, const int spawnflags, const cha
 static void NPC_PrecacheWeapons(const team_t player_team, const int spawnflags, const char* np_ctype)
 {
 	const int weapons = NPC_WeaponsForTeam(player_team, spawnflags, np_ctype);
-	for (int cur_weap = WP_SABER; cur_weap < WP_NUM_WEAPONS; cur_weap++)
+	for (int cur_weap = WP_SABER; cur_weap < WP_NUM_WEAPONS && cur_weap < 32; cur_weap++) // the team weapons are a 32-bit mask
 	{
 		if (weapons & 1 << cur_weap)
 		{
@@ -3750,7 +3751,7 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 				if (weap >= WP_NONE && weap < WP_NUM_WEAPONS)
 				{
 					npc->client->ps.weapon = weap;
-					npc->client->ps.stats[STAT_WEAPONS] |= 1 << weap;
+					BG_GiveWeapon(&npc->client->ps, weap);
 					if (weap > WP_NONE)
 					{
 						RegisterItem(FindItemForWeapon(static_cast<weapon_t>(weap))); //precache the weapon

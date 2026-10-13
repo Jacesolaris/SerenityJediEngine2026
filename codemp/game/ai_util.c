@@ -864,6 +864,11 @@ void BotUtilizePersonality(bot_state_t* bs)
 			bs->botWeaponWeights[WP_DROIDEKA] = atoi(readbuf);
 		}
 
+		if (GetPairedValue(group, "WP_Z6_ROTARY_CANNON", readbuf))
+		{
+			bs->botWeaponWeights[WP_Z6_ROTARY_CANNON] = atoi(readbuf);
+		}
+
 		if (GetPairedValue(group, "WP_BRYAR_OLD", readbuf))
 		{
 			bs->botWeaponWeights[WP_BRYAR_OLD] = atoi(readbuf);
@@ -910,6 +915,7 @@ void BotUtilizePersonality(bot_state_t* bs)
 				bs->forceinfo[NUM_FORCE_POWERS + SK_BOWCASTER + 4] = '0' + skillLevel;
 				break;
 			case WP_REPEATER:
+			case WP_Z6_ROTARY_CANNON:
 				bs->forceinfo[NUM_FORCE_POWERS + SK_REPEATER + 4] = '0' + skillLevel;
 				break;
 			case WP_ROCKET_LAUNCHER:

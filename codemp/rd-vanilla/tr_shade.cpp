@@ -436,12 +436,18 @@ static void ProjectDlightTexture2(void)
 {
 	int		i, l;
 	vec3_t	origin;
-	byte	clipBits[SHADER_MAX_VERTEXES]{};
-	float	texCoordsArray[SHADER_MAX_VERTEXES][2]{};
-	float	oldTexCoordsArray[SHADER_MAX_VERTEXES][2]{};
-	float	vertCoordsArray[SHADER_MAX_VERTEXES][4]{};
-	unsigned int		colorArray[SHADER_MAX_VERTEXES]{};
-	glIndex_t	hitIndexes[SHADER_MAX_INDEXES]{};
+	static byte clipBits[SHADER_MAX_VERTEXES]; // off the stack (C6262)
+	memset(clipBits, 0, sizeof(clipBits)); // cleared each time, as the {} on the stack was
+	static float texCoordsArray[SHADER_MAX_VERTEXES][2]; // off the stack (C6262)
+	memset(texCoordsArray, 0, sizeof(texCoordsArray)); // cleared each time, as the {} on the stack was
+	static float oldTexCoordsArray[SHADER_MAX_VERTEXES][2]; // off the stack (C6262)
+	memset(oldTexCoordsArray, 0, sizeof(oldTexCoordsArray)); // cleared each time, as the {} on the stack was
+	static float vertCoordsArray[SHADER_MAX_VERTEXES][4]; // off the stack (C6262)
+	memset(vertCoordsArray, 0, sizeof(vertCoordsArray)); // cleared each time, as the {} on the stack was
+	static unsigned int colorArray[SHADER_MAX_VERTEXES]; // off the stack (C6262)
+	memset(colorArray, 0, sizeof(colorArray)); // cleared each time, as the {} on the stack was
+	static glIndex_t hitIndexes[SHADER_MAX_INDEXES]; // off the stack (C6262)
+	memset(hitIndexes, 0, sizeof(hitIndexes)); // cleared each time, as the {} on the stack was
 	int		numIndexes;
 	float	radius;
 	int		fogging;
@@ -748,10 +754,14 @@ static void ProjectDlightTexture(void)
 	vec3_t	origin;
 	float* texCoords;
 	byte* colors;
-	byte	clipBits[SHADER_MAX_VERTEXES]{};
-	float	texCoordsArray[SHADER_MAX_VERTEXES][2]{};
-	byte	colorArray[SHADER_MAX_VERTEXES][4]{};
-	glIndex_t	hitIndexes[SHADER_MAX_INDEXES]{};
+	static byte clipBits[SHADER_MAX_VERTEXES]; // off the stack (C6262)
+	memset(clipBits, 0, sizeof(clipBits)); // cleared each time, as the {} on the stack was
+	static float texCoordsArray[SHADER_MAX_VERTEXES][2]; // off the stack (C6262)
+	memset(texCoordsArray, 0, sizeof(texCoordsArray)); // cleared each time, as the {} on the stack was
+	static byte colorArray[SHADER_MAX_VERTEXES][4]; // off the stack (C6262)
+	memset(colorArray, 0, sizeof(colorArray)); // cleared each time, as the {} on the stack was
+	static glIndex_t hitIndexes[SHADER_MAX_INDEXES]; // off the stack (C6262)
+	memset(hitIndexes, 0, sizeof(hitIndexes)); // cleared each time, as the {} on the stack was
 	int		numIndexes;
 	float	scale;
 	float	radius;
@@ -1906,7 +1916,7 @@ void RB_StageIteratorGeneric(void)
 	}
 
 	//don't disable the hardware fog til after we do surface sprites
-	if (r_drawfog->value == 2 &&
+	if (r_drawfog->value == 2 && tr.world &&
 		(tess.fogNum == tr.world->globalFog || tess.fogNum == tr.world->numfogs) &&
 		tess.fogNum &&
 		tess.shader->fogPass)

@@ -938,7 +938,9 @@ SV_PointContents
 */
 int SV_PointContents(const vec3_t p, const int passEntityNum)
 {
-	int touch[MAX_GENTITIES];
+	// static, off the stack (C6262; 16 KB): filled by SV_AreaEntities before it is read; nothing below calls back
+	// into the game module or this function, and the server runs on the main thread only
+	static int touch[MAX_GENTITIES];
 
 	// get base contents from world
 	int contents = CM_PointContents(p, 0);

@@ -542,6 +542,10 @@ public:
 // some fluff just in case we add more in the future.
 constexpr auto MAX_MISSION_OBJ = 400;
 
+// the weapon usage counts saved for the mission stats: 32, the size before the Z-6 (index 32) was added, so the old
+// saves load - the Z-6 is not counted
+constexpr int MISSION_STATS_WEAPONS = 32;
+
 // !!!!!!!!!! LOADSAVE-affecting structure !!!!!!!!!!
 class missionStats_t
 {
@@ -559,7 +563,7 @@ public:
 	int torsoAttacksCnt; // # of times torso was hit with saber
 	int otherAttacksCnt; // # of times anything else on a monster was hit with saber
 	int forceUsed[NUM_FORCE_POWERS]; // # of times each force power was used
-	int weaponUsed[WP_NUM_WEAPONS]; // # of times each weapon was used
+	int weaponUsed[MISSION_STATS_WEAPONS]; // # of times each weapon was used
 
 	void sg_export(
 		ojk::SavedGameHelper& saved_game) const

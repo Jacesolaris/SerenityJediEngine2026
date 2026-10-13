@@ -4,6 +4,9 @@ SerenityJediEngine2026 launcher
 ===========================================================================
 
 A small window like the Jedi Academy launcher: SINGLEPLAYER, MULTIPLAYER, OPTIONS and EXIT.
+MULTIPLAYER opens its own list: START MULTIPLAYER, START SERVER and BACK. START SERVER runs
+"Start SerenityJediEngine-MP-FFA-Server.bat" from the SerenityJediEngine2026 mod folder in its own console window
+and the launcher stays open (so the game can be started next, to join the server).
 It starts SerenityJediEngine2026-SP.x86_64.exe or SerenityJediEngine2026-MP.x86_64.exe from its own
 folder, passing the options chosen on the OPTIONS page as "+set" command line values (they override
 the configs), and then closes. The options are remembered in SerenityJediEngine2026-Launcher.ini in
@@ -22,8 +25,10 @@ open; the speaker button next to minimise switches it off (remembered in the ini
 #include <shlwapi.h>
 #include <mmsystem.h>
 
+#include <cstdio>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "resource.h"
 #include "win32/AutoVersion.h"
@@ -52,6 +57,10 @@ namespace
 	const wchar_t* const kSPExe = L"SerenityJediEngine2026-SP.x86_64.exe";
 	const wchar_t* const kMPExe = L"SerenityJediEngine2026-MP.x86_64.exe";
 	const wchar_t* const kIniName = L"SerenityJediEngine2026-Launcher.ini";
+	// the mod folder (fs_game) next to the exes, and the dedicated server batch file in it (it does "cd .." itself, so it
+	// runs from the mod folder)
+	const wchar_t* const kModFolder = L"SerenityJediEngine2026";
+	const wchar_t* const kServerBat = L"Start SerenityJediEngine-MP-FFA-Server.bat";
 	// Release builds of the game only start when this is set on their process (shared/sys/sys_main.cpp
 	// Sys_RequireLauncher: SJE_LAUNCHER_ENV / SJE_LAUNCHER_TOKEN); keep the two the same.
 	const wchar_t* const kLauncherEnv = L"SJE_LAUNCHER";
@@ -68,7 +77,25 @@ namespace
 	const Gdiplus::Color kEdgeLit(235, 120, 200, 255);
 	const Gdiplus::Color kGlow(45, 80, 170, 255);
 
-	enum class Page { Main, Options };
+	enum class Page { Main, Options, Multiplayer };
+
+	// the game's config files (in the mod folder of the Documents home, else of the install folder)
+	const wchar_t* const kSPConfig = L"SerenityJediEngine2026-SP.cfg";
+	const wchar_t* const kMPConfig = L"SerenityJediEngine2026-MP.cfg";
+
+	// resolutions the OPTIONS page cycles through (0 x 0 = the desktop resolution, r_mode -2)
+	struct Resolution
+	{
+		int width;
+		int height;
+	};
+	const Resolution kResolutions[] = { { 0, 0 }, { 1280, 720 }, { 1366, 768 }, { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 },
+		{ 3840, 2160 } };
+	// the engine's fixed r_mode list (shared/sdl/sdl_window.cpp r_vidModes, r_mode 0..20)
+	const Resolution kRModes[] = { { 320, 240 }, { 400, 300 }, { 512, 384 }, { 640, 480 }, { 800, 600 }, { 856, 480 },
+		{ 960, 720 }, { 1024, 768 }, { 1152, 864 }, { 1280, 720 }, { 1280, 1024 }, { 1366, 768 }, { 1440, 900 },
+		{ 1600, 900 }, { 1600, 1200 }, { 1680, 1050 }, { 1920, 1080 }, { 2048, 1536 }, { 2400, 600 }, { 2560, 1440 },
+		{ 3840, 2160 } };
 
 	struct Settings
 	{
@@ -76,6 +103,7 @@ namespace
 		bool windowed = false;
 		bool controller = true; // in_joystick: gamepad / joystick input (the game default is on)
 		bool music = true;  // launcher background music (speaker button)
+		Resolution resolution = { 0, 0 }; // { 0, 0 } = desktop
 	};
 
 	struct Launcher
@@ -281,6 +309,8 @@ namespace
 		return path;
 	}
 
+	void LoadGameConfig(); // below, with the other game config code
+
 	void LoadSettings()
 	{
 		const std::wstring ini = IniPath();
@@ -288,6 +318,7 @@ namespace
 		g_launcher.settings.windowed = GetPrivateProfileIntW(L"Options", L"Windowed", 0, ini.c_str()) != 0;
 		g_launcher.settings.controller = GetPrivateProfileIntW(L"Options", L"Controller", 1, ini.c_str()) != 0;
 		g_launcher.settings.music = GetPrivateProfileIntW(L"Options", L"Music", 1, ini.c_str()) != 0;
+		LoadGameConfig(); // renderer, display, resolution: what the game's config says
 	}
 
 	void SaveSettings()
@@ -300,13 +331,303 @@ namespace
 	}
 
 	// ------------------------------------------------------------------------------------------
+	// The game's own configs: renderer, display and resolution are read from the config the game uses (the one in
+	// Documents\STARWARS SerenityJediEngine\SerenityJediEngine2026\SerenityJediEngine2026 when it exists, else the one in
+	// the install's SerenityJediEngine2026 folder) and written back into both the SP and the MP config: only those
+	// "seta" lines are replaced (or added), every other line stays as it was.
+	// ------------------------------------------------------------------------------------------
+
+	std::wstring HomeModFolder()
+	{
+		wchar_t docs[MAX_PATH] = {};
+		if (FAILED(SHGetFolderPathW(nullptr, CSIDL_PERSONAL, nullptr, 0, docs)))
+		{
+			return L"";
+		}
+		return std::wstring(docs) + L"\\" + kHomeParent + L"\\" + kHomeFolder + L"\\" + kModFolder;
+	}
+
+	// the config file of SP or MP: Documents first, then the install folder; when neither exists, the Documents one
+	// (written on save; the game reads it when it starts)
+	std::wstring ConfigPath(const bool multiplayer)
+	{
+		const wchar_t* const name = multiplayer ? kMPConfig : kSPConfig;
+		const std::wstring home_dir = HomeModFolder();
+		const std::wstring home = home_dir.empty() ? L"" : home_dir + L"\\" + name;
+		const std::wstring install = g_launcher.folder + L"\\" + kModFolder + L"\\" + name;
+		if (!home.empty() && PathFileExistsW(home.c_str()))
+		{
+			return home;
+		}
+		if (PathFileExistsW(install.c_str()))
+		{
+			return install;
+		}
+		return home.empty() ? install : home;
+	}
+
+	std::vector<std::string> ReadLines(const std::wstring& path)
+	{
+		std::vector<std::string> lines;
+		FILE* f = nullptr;
+		if (_wfopen_s(&f, path.c_str(), L"rb") != 0 || !f)
+		{
+			return lines;
+		}
+		std::string text;
+		char buf[4096];
+		size_t n;
+		while ((n = fread(buf, 1, sizeof buf, f)) > 0)
+		{
+			text.append(buf, n);
+		}
+		fclose(f);
+		size_t start = 0;
+		while (start < text.size())
+		{
+			size_t end = text.find('\n', start);
+			if (end == std::string::npos)
+			{
+				end = text.size();
+			}
+			std::string line = text.substr(start, end - start);
+			if (!line.empty() && line.back() == '\r')
+			{
+				line.pop_back();
+			}
+			lines.push_back(line);
+			start = end + 1;
+		}
+		return lines;
+	}
+
+	// the cvar name of a "seta name value" / "set name value" line, else ""
+	std::string CfgLineCvar(const std::string& line, std::string* value)
+	{
+		size_t i = line.find_first_not_of(" \t");
+		if (i == std::string::npos)
+		{
+			return "";
+		}
+		size_t word_end = line.find_first_of(" \t", i);
+		if (word_end == std::string::npos)
+		{
+			return "";
+		}
+		const std::string cmd = line.substr(i, word_end - i);
+		if (_stricmp(cmd.c_str(), "seta") && _stricmp(cmd.c_str(), "set"))
+		{
+			return "";
+		}
+		i = line.find_first_not_of(" \t", word_end);
+		if (i == std::string::npos)
+		{
+			return "";
+		}
+		word_end = line.find_first_of(" \t", i);
+		const std::string name = line.substr(i, word_end == std::string::npos ? std::string::npos : word_end - i);
+		if (value)
+		{
+			value->clear();
+			if (word_end != std::string::npos)
+			{
+				std::string v = line.substr(line.find_first_not_of(" \t", word_end) == std::string::npos ? line.size()
+					: line.find_first_not_of(" \t", word_end));
+				if (v.size() >= 2 && v.front() == '"')
+				{
+					const size_t close = v.find('"', 1);
+					v = v.substr(1, close == std::string::npos ? std::string::npos : close - 1);
+				}
+				*value = v;
+			}
+		}
+		return name;
+	}
+
+	bool ReadCfgValue(const std::vector<std::string>& lines, const char* cvar, std::string& value)
+	{
+		bool found = false;
+		for (const std::string& line : lines)
+		{
+			std::string v;
+			if (!_stricmp(CfgLineCvar(line, &v).c_str(), cvar))
+			{
+				value = v; // the last one wins, as when the game execs it
+				found = true;
+			}
+		}
+		return found;
+	}
+
+	// replaces the lines of these cvars (or adds them at the end); the rest of the file is kept as it was
+	void WriteCfgValues(const std::wstring& path, const std::vector<std::pair<std::string, std::string>>& values)
+	{
+		std::vector<std::string> lines = ReadLines(path);
+		for (const auto& kv : values)
+		{
+			const std::string line = "seta " + kv.first + " \"" + kv.second + "\"";
+			bool replaced = false;
+			for (std::string& l : lines)
+			{
+				if (!_stricmp(CfgLineCvar(l, nullptr).c_str(), kv.first.c_str()))
+				{
+					l = line;
+					replaced = true;
+				}
+			}
+			if (!replaced)
+			{
+				// keep a last empty line (the file's final newline) last
+				if (!lines.empty() && lines.back().empty())
+				{
+					lines.insert(lines.end() - 1, line);
+				}
+				else
+				{
+					lines.push_back(line);
+				}
+			}
+		}
+		const size_t slash = path.find_last_of(L"\\/");
+		if (slash != std::wstring::npos)
+		{
+			SHCreateDirectoryExW(nullptr, path.substr(0, slash).c_str(), nullptr);
+		}
+		FILE* f = nullptr;
+		if (_wfopen_s(&f, path.c_str(), L"wb") != 0 || !f)
+		{
+			return;
+		}
+		for (size_t i = 0; i < lines.size(); i++)
+		{
+			fputs(lines[i].c_str(), f);
+			if (i + 1 < lines.size() || !lines[i].empty())
+			{
+				fputs("\r\n", f);
+			}
+		}
+		fclose(f);
+	}
+
+	// renderer, display and resolution from the game's config (MP's, else SP's); keeps the launcher's values when
+	// there is no config yet
+	void LoadGameConfig()
+	{
+		Settings& s = g_launcher.settings;
+		std::vector<std::string> lines = ReadLines(ConfigPath(true));
+		if (lines.empty())
+		{
+			lines = ReadLines(ConfigPath(false));
+		}
+		if (lines.empty())
+		{
+			return;
+		}
+		std::string v;
+		if (ReadCfgValue(lines, "cl_renderer", v))
+		{
+			s.rend2 = v.find("rend2") != std::string::npos;
+		}
+		if (ReadCfgValue(lines, "r_fullscreen", v))
+		{
+			s.windowed = atoi(v.c_str()) == 0;
+		}
+		if (ReadCfgValue(lines, "r_mode", v))
+		{
+			const int mode = atoi(v.c_str());
+			if (mode == -1)
+			{
+				std::string w, h;
+				ReadCfgValue(lines, "r_customwidth", w);
+				ReadCfgValue(lines, "r_customheight", h);
+				s.resolution = { atoi(w.c_str()), atoi(h.c_str()) };
+			}
+			else if (mode >= 0 && mode < static_cast<int>(sizeof kRModes / sizeof kRModes[0]))
+			{
+				s.resolution = kRModes[mode];
+			}
+			else
+			{
+				s.resolution = { 0, 0 };
+			}
+			if (s.resolution.width <= 0 || s.resolution.height <= 0)
+			{
+				s.resolution = { 0, 0 };
+			}
+		}
+	}
+
+	const char* RendererName(const bool rend2, const bool multiplayer)
+	{
+		return multiplayer
+			? (rend2 ? "SerenityJediEngine2026-rdmp-rend2" : "SerenityJediEngine2026-rdmp")
+			: (rend2 ? "SerenityJediEngine2026-rdsp-rend2" : "SerenityJediEngine2026-rdsp");
+	}
+
+	// the cvars the OPTIONS page sets, for the SP or the MP config / command line
+	std::vector<std::pair<std::string, std::string>> GameConfigValues(const bool multiplayer)
+	{
+		const Settings& s = g_launcher.settings;
+		std::vector<std::pair<std::string, std::string>> values = {
+			{ "cl_renderer", RendererName(s.rend2, multiplayer) },
+			{ "com_rend2", s.rend2 ? "1" : "0" },
+			{ "r_fullscreen", s.windowed ? "0" : "1" } };
+		if (s.resolution.width > 0)
+		{
+			values.push_back({ "r_mode", "-1" });
+			values.push_back({ "r_customwidth", std::to_string(s.resolution.width) });
+			values.push_back({ "r_customheight", std::to_string(s.resolution.height) });
+		}
+		else
+		{
+			values.push_back({ "r_mode", "-2" });
+		}
+		return values;
+	}
+
+	void SaveGameConfig()
+	{
+		WriteCfgValues(ConfigPath(false), GameConfigValues(false));
+		WriteCfgValues(ConfigPath(true), GameConfigValues(true));
+	}
+
+	// the next resolution of the list (from a resolution that is not in it: the first)
+	void NextResolution()
+	{
+		Settings& s = g_launcher.settings;
+		const int count = static_cast<int>(sizeof kResolutions / sizeof kResolutions[0]);
+		int next = 0;
+		for (int i = 0; i < count; i++)
+		{
+			if (kResolutions[i].width == s.resolution.width && kResolutions[i].height == s.resolution.height)
+			{
+				next = (i + 1) % count;
+				break;
+			}
+		}
+		s.resolution = kResolutions[next];
+	}
+
+	// ------------------------------------------------------------------------------------------
 	// Layout
 	// ------------------------------------------------------------------------------------------
+
+	// the buttons on the current page: the multiplayer list has three, the others four
+	int ButtonCount()
+	{
+		if (g_launcher.page == Page::Options)
+		{
+			return kButtonCount + 1; // renderer, display, resolution, controller, back
+		}
+		return g_launcher.page == Page::Multiplayer ? 3 : kButtonCount;
+	}
 
 	RECT ButtonRect(const int index)
 	{
 		const int x = (kWidth - kButtonW) / 2;
-		const int y = kButtonTop + index * (kButtonH + kButtonGap);
+		// a page with more than kButtonCount buttons starts higher, so the last one stays in the window
+		const int extra = ButtonCount() > kButtonCount ? ButtonCount() - kButtonCount : 0;
+		const int y = kButtonTop + (index - extra) * (kButtonH + kButtonGap);
 		return RECT{ x, y, x + kButtonW, y + kButtonH };
 	}
 
@@ -316,7 +637,7 @@ namespace
 
 	int HitTest(const POINT pt)
 	{
-		for (int i = 0; i < kButtonCount; i++)
+		for (int i = 0; i < ButtonCount(); i++)
 		{
 			const RECT r = ButtonRect(i);
 			if (PtInRect(&r, pt))
@@ -349,12 +670,21 @@ namespace
 			static const wchar_t* const labels[kButtonCount] = { L"SINGLEPLAYER", L"MULTIPLAYER", L"OPTIONS", L"EXIT" };
 			return labels[index];
 		}
+		if (g_launcher.page == Page::Multiplayer)
+		{
+			static const wchar_t* const mp_labels[3] = { L"START MULTIPLAYER", L"START SERVER", L"BACK" };
+			return mp_labels[index];
+		}
 		const Settings& s = g_launcher.settings;
 		switch (index)
 		{
 		case 0: return s.rend2 ? L"GRAPHIC MODE: QUALITY" : L"GRAPHIC MODE: PERFORMANCE";
 		case 1: return s.windowed ? L"DISPLAY: WINDOWED" : L"DISPLAY: FULLSCREEN";
-		case 2: return s.controller ? L"CONTROLLER: ON" : L"CONTROLLER: OFF";
+		case 2:
+			return s.resolution.width > 0
+				? L"RESOLUTION: " + std::to_wstring(s.resolution.width) + L" x " + std::to_wstring(s.resolution.height)
+				: L"RESOLUTION: DESKTOP";
+		case 3: return s.controller ? L"CONTROLLER: ON" : L"CONTROLLER: OFF";
 		default: return L"BACK";
 		}
 	}
@@ -501,7 +831,7 @@ namespace
 			Gdiplus::FontFamily family(L"Palatino Linotype");
 			const Gdiplus::FontFamily* use_family = family.IsAvailable() ? &family : Gdiplus::FontFamily::GenericSerif();
 			const Gdiplus::Font font(use_family, 14, Gdiplus::FontStyleBold, Gdiplus::UnitPoint);
-			for (int i = 0; i < kButtonCount; i++)
+			for (int i = 0; i < ButtonCount(); i++)
 			{
 				DrawButton(g, i, font);
 			}
@@ -540,15 +870,13 @@ namespace
 			return false;
 		}
 
-		// "+set" on the command line overrides the values in the configs
+		// "+set" on the command line overrides the values in the configs (they are the configs' own values unless the
+		// OPTIONS page changed them, and then it wrote them into the configs too)
 		std::wstring cmd = L"\"" + exe + L"\"";
-		const wchar_t* renderer = multiplayer
-			? (s.rend2 ? L"SerenityJediEngine2026-rdmp-rend2" : L"SerenityJediEngine2026-rdmp")
-			: (s.rend2 ? L"SerenityJediEngine2026-rdsp-rend2" : L"SerenityJediEngine2026-rdsp");
-		cmd += L" +set cl_renderer ";
-		cmd += renderer;
-		cmd += s.rend2 ? L" +set com_rend2 1" : L" +set com_rend2 0";
-		cmd += s.windowed ? L" +set r_fullscreen 0" : L" +set r_fullscreen 1";
+		for (const auto& kv : GameConfigValues(multiplayer))
+		{
+			cmd += L" +set " + std::wstring(kv.first.begin(), kv.first.end()) + L" " + std::wstring(kv.second.begin(), kv.second.end());
+		}
 		cmd += s.controller ? L" +set in_joystick 1" : L" +set in_joystick 0";
 
 		SetEnvironmentVariableW(kLauncherEnv, kLauncherToken); // the game inherits it: lets a release build start
@@ -566,6 +894,42 @@ namespace
 		return true;
 	}
 
+	// Runs the FFA dedicated server batch file from the mod folder in a console window of its own. The batch file
+	// restarts the server when it crashes; closing its window stops it.
+	bool StartServer(const HWND hwnd)
+	{
+		const std::wstring mod = g_launcher.folder + L"\\" + kModFolder;
+		const std::wstring bat = mod + L"\\" + kServerBat;
+		if (!PathFileExistsW(bat.c_str()))
+		{
+			const std::wstring msg = L"Could not find " + bat + L"\n\nThe launcher must be in the SerenityJediEngine2026 game folder.";
+			MessageBoxW(hwnd, msg.c_str(), L"SerenityJediEngine2026", MB_OK | MB_ICONERROR);
+			return false;
+		}
+
+		wchar_t comspec[MAX_PATH] = {};
+		if (!GetEnvironmentVariableW(L"ComSpec", comspec, MAX_PATH))
+		{
+			GetSystemDirectoryW(comspec, MAX_PATH);
+			wcscat_s(comspec, L"\\cmd.exe");
+		}
+		// cmd /c ""<bat>"": the outer quotes are cmd's, the inner ones keep the spaces in the path
+		std::wstring cmd = L"\"" + std::wstring(comspec) + L"\" /c \"\"" + bat + L"\"\"";
+
+		SetEnvironmentVariableW(kLauncherEnv, kLauncherToken); // the server inherits it, as the game does
+
+		STARTUPINFOW si = { sizeof(si) };
+		PROCESS_INFORMATION pi = {};
+		if (!CreateProcessW(comspec, &cmd[0], nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, mod.c_str(), &si, &pi))
+		{
+			MessageBoxW(hwnd, (L"Could not start " + bat).c_str(), L"SerenityJediEngine2026", MB_OK | MB_ICONERROR);
+			return false;
+		}
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+		return true;
+	}
+
 	void OnButton(const HWND hwnd, const int index)
 	{
 		if (g_launcher.page == Page::Main)
@@ -573,13 +937,17 @@ namespace
 			switch (index)
 			{
 			case 0:
-			case 1:
 				PlaySfx(true); // the launcher closes right after
-				if (StartGame(hwnd, index == 1))
+				if (StartGame(hwnd, false))
 				{
 					DestroyWindow(hwnd);
 				}
 				return;
+			case 1:
+				PlaySfx();
+				g_launcher.page = Page::Multiplayer;
+				g_launcher.hover = kHitNone;
+				break;
 			case 2:
 				PlaySfx();
 				g_launcher.page = Page::Options;
@@ -590,6 +958,27 @@ namespace
 				return;
 			}
 		}
+		else if (g_launcher.page == Page::Multiplayer)
+		{
+			switch (index)
+			{
+			case 0:
+				PlaySfx(true); // the launcher closes right after
+				if (StartGame(hwnd, true))
+				{
+					DestroyWindow(hwnd);
+				}
+				return;
+			case 1:
+				PlaySfx();
+				StartServer(hwnd); // the launcher stays open, to start the game and join
+				break;
+			default:
+				PlaySfx();
+				g_launcher.page = Page::Main;
+				break;
+			}
+		}
 		else
 		{
 			Settings& s = g_launcher.settings;
@@ -598,10 +987,15 @@ namespace
 			{
 			case 0: s.rend2 = !s.rend2; break;
 			case 1: s.windowed = !s.windowed; break;
-			case 2: s.controller = !s.controller; break;
+			case 2: NextResolution(); break;
+			case 3: s.controller = !s.controller; break;
 			default: g_launcher.page = Page::Main; break;
 			}
 			SaveSettings();
+			if (index <= 2)
+			{
+				SaveGameConfig(); // renderer, display, resolution: into the game's configs
+			}
 		}
 		InvalidateRect(hwnd, nullptr, FALSE);
 	}
@@ -638,7 +1032,7 @@ namespace
 				g_launcher.tracking_mouse = TrackMouseEvent(&tme) != FALSE;
 			}
 			const int hit = HitTest(POINT{ GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam) });
-			if (hit != g_launcher.hover && hit >= 0 && hit < kButtonCount)
+			if (hit != g_launcher.hover && hit >= 0 && hit < ButtonCount())
 			{
 				PlaySfx(); // moved onto another menu button
 			}
@@ -700,7 +1094,7 @@ namespace
 		case WM_KEYDOWN:
 			if (wparam == VK_ESCAPE)
 			{
-				if (g_launcher.page == Page::Options)
+				if (g_launcher.page != Page::Main)
 				{
 					PlaySfx();
 					g_launcher.page = Page::Main;
@@ -735,7 +1129,7 @@ namespace
 	}
 }
 
-int WINAPI wWinMain(const HINSTANCE instance, HINSTANCE, PWSTR, const int show)
+int WINAPI wWinMain(_In_ const HINSTANCE instance, _In_opt_ HINSTANCE, _In_ PWSTR, _In_ const int show) // SAL as winbase.h (C28251)
 {
 	g_launcher.instance = instance;
 

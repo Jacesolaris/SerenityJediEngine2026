@@ -1566,6 +1566,7 @@ void RE_Font_DrawString(const int ox, const int oy, const char* psText, const fl
 				break;
 			}
 			// else drop through and display as normal...
+			[[fallthrough]];
 		case '^':
 			if (uiLetter != '_')	// necessary because of fallthrough above
 			{
@@ -1584,6 +1585,7 @@ void RE_Font_DrawString(const int ox, const int oy, const char* psText, const fl
 				}
 			}
 			//purposely falls thrugh
+			[[fallthrough]];
 		default:
 			pLetter = curfont->GetLetter(uiLetter, &hShader);			// Description of pLetter
 			if (!pLetter->width)

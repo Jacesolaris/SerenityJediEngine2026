@@ -899,7 +899,8 @@ char* modNames[MOD_MAX] = {
 	"MOD_BODYSHOT",
 	"MOD_FORCE_LIGHTNING",
 	"MOD_BURNING",
-	"MOD_GAS"
+	"MOD_GAS",
+	"MOD_Z6_ROTARY_CANNON"
 };
 
 /*
@@ -2073,6 +2074,21 @@ Not to be confused with NPC_RemoveBodyEffects (NPC.cpp), which only applies effe
 
 extern qboolean Jedi_CultistDestroyer(const gentity_t* self);
 
+// SJE: the class whose death effects an entity gets: NPCs their NPC class; players and bots of a droid / creature
+// botclass the matching SP NPC class (R2-D2 and the gonk explode as in SP), everyone else as before
+static int G_DeathFXClass(const gentity_t* ent)
+{
+	if (ent->s.number < MAX_CLIENTS && level.gametype != GT_SIEGE)
+	{
+		const int npcClass = BG_ClassCreatureNPCClass(ent->client->pers.botclass);
+		if (npcClass != CLASS_NONE)
+		{
+			return npcClass;
+		}
+	}
+	return ent->client->NPC_class;
+}
+
 void DeathFX(gentity_t* ent)
 {
 	vec3_t effect_pos, right;
@@ -2098,7 +2114,7 @@ void DeathFX(gentity_t* ent)
 	}
 
 	// team no longer indicates species/race.  NPC_class should be used to identify certain npc types
-	switch (ent->client->NPC_class)
+	switch (G_DeathFXClass(ent))
 	{
 	case CLASS_MOUSE:
 		VectorCopy(ent->r.currentOrigin, effect_pos);
@@ -2309,7 +2325,7 @@ static void death_fxextra(gentity_t* ent)
 		G_Sound(ent, CHAN_AUTO, G_SoundIndex("sound/chars/cultist1/misc/anger1"));
 	}
 
-	switch (ent->client->NPC_class)
+	switch (G_DeathFXClass(ent))
 	{
 	case CLASS_BOBAFETT:
 		AngleVectors(ent->r.currentAngles, NULL, right, NULL);
@@ -2767,7 +2783,8 @@ void G_PushCorpse(gentity_t* ent, const vec3_t push)
 // somebody walking or running into the body pushes it along (at most once per 100 ms)
 void G_CorpseTouchPush(gentity_t* corpse)
 {
-	int touch[MAX_GENTITIES];
+	// static: too big for the stack (C6262); filled by EntitiesInBox before it is read
+	static int touch[MAX_GENTITIES];
 	vec3_t mins, maxs, cur;
 	int i, num;
 
@@ -2822,7 +2839,8 @@ void G_CorpseTouchPush(gentity_t* corpse)
 // reach and in sight - stronger with the force level, weaker with the distance
 void G_ForceThrowCorpses(gentity_t* self, const qboolean pull, const int radius, const float arc)
 {
-	int list[MAX_GENTITIES];
+	// static: too big for the stack (C6262); filled by EntitiesInBox before it is read
+	static int list[MAX_GENTITIES];
 	vec3_t eye, mins, maxs;
 	int i, num;
 	const int level_ = self->client->ps.fd.forcePowerLevel[pull ? FP_PULL : FP_PUSH];
@@ -2877,6 +2895,11 @@ void player_die(gentity_t* self, const gentity_t* inflictor, gentity_t* attacker
 	char* killer_name, * obit;
 	qboolean was_jedi_master = qfalse;
 	char buf[512] = { 0 };
+
+	if (!self->client)
+	{
+		return; // only clients die here: self->client is used unchecked all through
+	}
 
 	if (self->client->hook)
 	{
@@ -4640,7 +4663,7 @@ static void G_GetDismemberBolt(gentity_t* self, vec3_t bolt_point, const int lim
 		rotate_bone = "cranium";
 		break;
 	case G2_MODELPART_WAIST:
-		if (self->localAnimIndex <= 1)
+		if (BG_AnimSetIsHumanoidLike(self->localAnimIndex))
 		{
 			//humanoid
 			rotate_bone = "thoracic";
@@ -5256,7 +5279,7 @@ qboolean G_GetHitLocFromSurfName(gentity_t* ent, const char* surfName, int* hit_
 		return qfalse;
 	}
 
-	if (ent->localAnimIndex <= 1)
+	if (BG_AnimSetIsHumanoidLike(ent->localAnimIndex))
 	{
 		//humanoid
 		hand_l_bolt = trap->G2API_AddBolt(ent->ghoul2, 0, "*l_hand");
@@ -5707,7 +5730,12 @@ void G_CheckForDismemberment(gentity_t* ent, const gentity_t* enemy, vec3_t poin
 	vec3_t bolt_point;
 	const int dismember = g_dismember.integer;
 
-	if (ent->localAnimIndex > 1)
+	if (!ent->ghoul2 || !trap->G2API_HaveWeGhoul2Models(ent->ghoul2))
+	{// no skeleton to take bolts from (an entity killed without a ghoul2 instance)
+		return;
+	}
+
+	if (!BG_AnimSetIsHumanoidLike(ent->localAnimIndex))
 	{
 		if (!ent->NPC)
 		{
@@ -5826,7 +5854,12 @@ void G_CheckForblowingup(gentity_t* ent, const gentity_t* enemy, const int damag
 	vec3_t bolt_point;
 	const int dismember = g_dismember.integer;
 
-	if (ent->localAnimIndex > 1)
+	if (!ent->ghoul2 || !trap->G2API_HaveWeGhoul2Models(ent->ghoul2))
+	{// no skeleton to take bolts from (an entity killed without a ghoul2 instance)
+		return;
+	}
+
+	if (!BG_AnimSetIsHumanoidLike(ent->localAnimIndex))
 	{
 		if (!ent->NPC)
 		{
@@ -5997,6 +6030,11 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	if (!self || !self->client)
 	{
 		return;
+	}
+
+	if (self->client->repulseChargeStart)
+	{
+		return; // charging Force Repulse: can't be knocked down
 	}
 
 	if (self->client->NPC_class == CLASS_ROCKETTROOPER)
@@ -6526,6 +6564,12 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 
 	if (!targ)
 		return;
+
+	if (targ->client && targ->client->repulseChargeStart && mod != MOD_TRIGGER_HURT && mod != MOD_SUICIDE
+		&& mod != MOD_CRUSH && mod != MOD_TELEFRAG)
+	{
+		return; // charging Force Repulse: invincible, no knockback either (2026-10-12, DH)
+	}
 
 	if (mod == MOD_SABER && targ->client && targ->client->saberBreakSafeTime > level.time)
 	{
@@ -7609,7 +7653,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 		}
 	}
 
-	if (mod == MOD_SLIME || mod == MOD_LAVA)
+	if ((mod == MOD_SLIME || mod == MOD_LAVA) && targ->client)
 	{
 		// Hazard Troopers Don't Mind Acid Rain
 		if (targ->client->NPC_class == CLASS_HAZARD_TROOPER && !(dflags & DAMAGE_NO_PROTECTION))
@@ -7633,31 +7677,35 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 			testEndPos[1] += (Q_flrand(0.0f, 1.0f) * 8.0f) - 4.0f;
 			testEndPos[2] += (Q_flrand(0.0f, 1.0f) * 8.0f);
 
-			trap->Trace(&testTrace, testStartPos, NULL, NULL, testEndPos, ENTITYNUM_NONE, MASK_SHOT, qfalse, 0, 0);
+			// as SP: a ghoul2 trace at the body, the fizz plays where it hits the model
+			trap->Trace(&testTrace, testStartPos, NULL, NULL, testEndPos, ENTITYNUM_NONE, MASK_SHOT, qfalse,
+				G2TRFLAG_DOGHOULTRACE | G2TRFLAG_GETSURFINDEX | G2TRFLAG_HITCORPSES, 0);
 
-			float chanceOfFizz = trap->WE_GetChanceOfSaberFizz();
-			int rsaber_num = 0;
-			int rblade_num = 0;
-			targ->client->saber[rsaber_num].blade[rblade_num].storageTime = level.time;
+			// game-side value as in MD MP: the renderer import is only set by rend2 (NULL in vanilla and on dedicated servers -
+			// slime damage crashed there) and read the host's own renderer settings on a listen server.
+			// Under acid rain use the game's own weather state (bg_weather.c, 0.1 like SP), so the acid pain
+			// debounce below is SP's 0.2-1.2 s; otherwise (slime) keep the random value.
+			float chanceOfFizz = BG_WeatherOutsidePain() ? BG_WeatherFizzChance() : 0.0f;
+			if (chanceOfFizz <= 0.0f)
+			{
+				chanceOfFizz = flrand(0.0f, 1.0f);
+			}
 
 			if (!testTrace.startsolid &&
 				!testTrace.allsolid &&
 				testTrace.entityNum == targ->s.number &&
-				testTrace.G2CollisionMap[0].mEntityNum != -1)
+				testTrace.G2CollisionMap[0].mEntityNum == targ->s.number)
 			{
-				if (chanceOfFizz > 0)
-				{
-					vec3_t ang = { 0, 0, 0 };
-					ang[0] = flrand(0, 360);
-					ang[1] = flrand(0, 360);
-					ang[2] = flrand(0, 360);
+				vec3_t ang = { 0, 0, 0 };
+				ang[0] = flrand(0, 360);
+				ang[1] = flrand(0, 360);
+				ang[2] = flrand(0, 360);
 
-					VectorMA(targ->client->saber[rsaber_num].blade[rblade_num].muzzlePoint, targ->client->saber[rsaber_num].blade[rblade_num].lengthMax * flrand(0, 1), targ->client->saber[rsaber_num].blade[rblade_num].muzzleDir, testEndPos);
-					G_PlayEffectID(G_EffectIndex("world / acid_fizz.efx"), testEndPos, ang);
+				// was played at saber 0's blade (the world origin for anyone without a saber)
+				G_PlayEffectID(G_EffectIndex("world/acid_fizz"), testTrace.G2CollisionMap[0].mCollisionPosition, ang);
 
-					targ->client->poisonDamage = 18;
-					targ->client->poisonTime = level.time + 1000;
-				}
+				targ->client->poisonDamage = 18;
+				targ->client->poisonTime = level.time + 1000;
 			}
 			TIMER_Set(targ, "AcidPainDebounce", 200 + (10000.0f * Q_flrand(0.0f, 1.0f) * chanceOfFizz));
 			gPainHitLoc = HL_CHEST;
@@ -7734,6 +7782,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 		//do head shots
 		if (inflictor->s.weapon == WP_BLASTER
 			|| inflictor->s.weapon == WP_DROIDEKA
+			|| inflictor->s.weapon == WP_Z6_ROTARY_CANNON
 			|| inflictor->s.weapon == WP_FLECHETTE
 			|| inflictor->s.weapon == WP_BRYAR_PISTOL
 			|| inflictor->s.weapon == WP_TURRET

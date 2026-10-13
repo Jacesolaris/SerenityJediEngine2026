@@ -177,7 +177,7 @@ public:
 	mdxaBone_t boneMatrix; //final matrix
 	int parent; // only set once
 
-	CTransformBone()
+	CTransformBone() : boneMatrix(), parent(0)
 	{
 		touch = 0;
 		//rww - RAGDOLL_BEGIN
@@ -341,9 +341,10 @@ public:
 	bool mUnsquash;
 	float mSmoothFactor;
 
-	CBoneCache(const model_t* amod, const mdxaHeader_t* aheader) :
+	CBoneCache(const model_t* amod, const mdxaHeader_t* aheader) : frameSize(0),
 		header(aheader),
-		mod(amod)
+		mod(amod), rootBoneList(nullptr), rootMatrix(),
+		incomingTime(0), mCurrentTouchRender(0)
 	{
 		assert(amod);
 		assert(aheader);

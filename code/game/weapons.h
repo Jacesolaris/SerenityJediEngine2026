@@ -101,6 +101,7 @@ using weapon_t = enum //# weapon_e
 	WP_TUSKEN_STAFF,
 	WP_SCEPTER,
 	WP_NOGHRI_STICK,
+	WP_Z6_ROTARY_CANNON,	// index 32: owned through STAT_WEAPONS2 (BG_HasWeapon / BG_GiveWeapon)
 
 	//# #eol
 	WP_NUM_WEAPONS
@@ -292,6 +293,18 @@ using ammoData_t = struct ammoData_s
 #define	REPEATER_ALT_NPC_DAMAGE_EASY	15
 #define	REPEATER_ALT_NPC_DAMAGE_NORMAL	30
 #define	REPEATER_ALT_NPC_DAMAGE_HARD	45
+
+//  Z-6 Rotary Cannon (from MovieDuels)
+//---------
+#define Z6_ROTARY_CANNON_SPREAD				1.1f
+#define Z6_ROTARY_CANNON_NPC_SPREAD			1.2f
+#define Z6_ROTARY_CANNON_VELOCITY			2200
+#define Z6_ROTARY_CANNON_DAMAGE				12
+#define Z6_ROTARY_CANNON_NPC_VEL_CUT		0.7f
+#define Z6_ROTARY_CANNON_NPC_HARD_VEL_CUT	0.5f
+#define Z6_ROTARY_CANNON_NPC_DAMAGE_EASY	8
+#define Z6_ROTARY_CANNON_NPC_DAMAGE_NORMAL	10
+#define Z6_ROTARY_CANNON_NPC_DAMAGE_HARD	12
 
 // DEMP2
 //----------

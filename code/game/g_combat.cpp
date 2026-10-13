@@ -315,6 +315,7 @@ gentity_t* TossClientItems(gentity_t* self)
 				case WP_DISRUPTOR:      dropped->count = 20; break;
 				case WP_BOWCASTER:      dropped->count = 5;  break;
 				case WP_REPEATER:
+				case WP_Z6_ROTARY_CANNON:
 				case WP_WRIST_BLASTER:  dropped->count = 20; break;
 				case WP_DEMP2:          dropped->count = 10; break;
 				case WP_FLECHETTE:      dropped->count = 30; break;
@@ -2057,6 +2058,7 @@ static qboolean G_LimbLost(const gentity_t* ent, const int hit_loc)
 			return qtrue;
 		}
 		//NOTE: falls through
+		[[fallthrough]];
 	case HL_LEG_RT:
 		//NOTE: feet fall through
 		if (ent->locationDamage[HL_LEG_RT] >= Q3_INFINITE)
@@ -2071,6 +2073,7 @@ static qboolean G_LimbLost(const gentity_t* ent, const int hit_loc)
 			return qtrue;
 		}
 		//NOTE: falls through
+		[[fallthrough]];
 	case HL_LEG_LT:
 		//NOTE: feet fall through
 		if (ent->locationDamage[HL_LEG_LT] >= Q3_INFINITE)
@@ -2085,6 +2088,7 @@ static qboolean G_LimbLost(const gentity_t* ent, const int hit_loc)
 			return qtrue;
 		}
 		//NOTE: falls through
+		[[fallthrough]];
 	case HL_ARM_LT:
 	case HL_CHEST_LT:
 	case HL_BACK_RT:
@@ -2104,6 +2108,7 @@ static qboolean G_LimbLost(const gentity_t* ent, const int hit_loc)
 			return qtrue;
 		}
 		//NOTE: falls through
+		[[fallthrough]];
 	case HL_ARM_RT:
 	case HL_CHEST_RT:
 	case HL_BACK_LT:
@@ -2123,6 +2128,7 @@ static qboolean G_LimbLost(const gentity_t* ent, const int hit_loc)
 			return qtrue;
 		}
 		//NOTE: falls through
+		[[fallthrough]];
 	case HL_WAIST:
 		//NOTE: head falls through
 		if (ent->locationDamage[HL_WAIST] >= Q3_INFINITE)
@@ -4655,6 +4661,11 @@ void player_die(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, cons
 	qboolean holding_saber = qfalse;
 	int cliff_fall = 0;
 
+	if (!self->client)
+	{
+		return; // only clients die here: self->client is used unchecked all through
+	}
+
 	if (self->client->hook)
 	{
 		// free it!
@@ -6096,7 +6107,7 @@ static int CheckArmor(const gentity_t* ent, const int damage, const int dflags, 
 			mod == MOD_BOWCASTER || mod == MOD_BRYAR || mod == MOD_BRYAR_ALT || mod == MOD_BLASTER || mod ==
 			MOD_BLASTER_ALT ||
 			mod == MOD_SNIPER || mod == MOD_BOWCASTER || mod == MOD_BOWCASTER_ALT || mod == MOD_REPEATER || mod ==
-			MOD_REPEATER_ALT ||
+			MOD_REPEATER_ALT || mod == MOD_Z6_ROTARY_CANNON ||
 			mod == MOD_PISTOL || mod == MOD_PISTOL_ALT)
 		{
 			return damage;
@@ -6247,6 +6258,11 @@ void G_Knockdown(gentity_t* self, gentity_t* attacker, const vec3_t push_dir, fl
 	if (!self || !self->client)
 	{
 		return;
+	}
+
+	if (self->client->ps.repulseChargeStart)
+	{
+		return; // charging Force Repulse: can't be knocked down
 	}
 
 	if (self->client->NPC_class == CLASS_ROCKETTROOPER)
@@ -7058,6 +7074,9 @@ void G_TrackWeaponUsage(const gentity_t* self, const gentity_t* inflictor, const
 		case MOD_REPEATER_ALT:
 			weapon = WP_REPEATER;
 			break;
+		case MOD_Z6_ROTARY_CANNON:
+			weapon = WP_Z6_ROTARY_CANNON;
+			break;
 		case MOD_DEMP2:
 		case MOD_DEMP2_ALT:
 			weapon = WP_DEMP2;
@@ -7098,7 +7117,7 @@ void G_TrackWeaponUsage(const gentity_t* self, const gentity_t* inflictor, const
 		default:;
 		}
 	}
-	if (weapon != WP_NONE)
+	if (weapon != WP_NONE && weapon < MISSION_STATS_WEAPONS)
 	{
 		self->client->sess.missionStats.weaponUsed[weapon] += add;
 	}
@@ -7265,6 +7284,17 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 	vec3_t new_dir;
 	qboolean already_dead = qfalse;
 	float shield_absorbed = 0;
+
+	if (!targ)
+	{
+		return; // targ is used unchecked below (targ->takedamage)
+	}
+
+	if (targ->client && targ->client->ps.repulseChargeStart && mod != MOD_TRIGGER_HURT && mod != MOD_SUICIDE
+		&& mod != MOD_CRUSH)
+	{
+		return; // charging Force Repulse: invincible, no knockback either (2026-10-12, DH)
+	}
 
 	if (mod == MOD_SABER && targ && targ->client && targ->client->ps.stats[STAT_SABER_BREAK_SAFE] > level.time)
 	{
@@ -7748,6 +7778,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 						//need to still be crushed by AT-ST
 						break;
 					}
+					[[fallthrough]];
 				case MOD_REPEATER_ALT:
 				case MOD_FLECHETTE_ALT:
 				case MOD_ROCKET:
@@ -7777,6 +7808,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, const 
 				case MOD_BLASTER:
 				case MOD_BLASTER_ALT:
 				case MOD_REPEATER:
+				case MOD_Z6_ROTARY_CANNON:
 				case MOD_FLECHETTE:
 				case MOD_WATER:
 				case MOD_SLIME:

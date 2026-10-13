@@ -911,7 +911,8 @@ CM_PatchCollideFromGrid
 */
 static void CM_PatchCollideFromGrid(cGrid_t* grid, patchCollide_t* pf) {
 	int				i, j;
-	int				gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2]{};
+	static int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2]; // off the stack (C6262)
+	memset(gridPlanes, 0, sizeof(gridPlanes)); // zeroed each call, as the {} on the stack was
 	int				borders[4]{};
 	int				noAdjust[4]{};
 
@@ -1090,7 +1091,8 @@ Points is packed as concatenated rows.
 ===================
 */
 patchCollide_s* CM_GeneratePatchCollide(int width, int height, vec3_t* points) {
-	cGrid_t			grid{};
+	static cGrid_t	grid; // ~200 KB, off the stack (C6262)
+	memset(&grid, 0, sizeof(grid));
 	int				i, j;
 
 	if (width <= 2 || height <= 2 || !points) {
@@ -1173,8 +1175,8 @@ CM_TracePointThroughPatchCollide
 */
 static void CM_TracePointThroughPatchCollide(traceWork_t* tw, trace_t& trace, const patchCollide_s* pc)
 {
-	qboolean	frontFacing[MAX_PATCH_PLANES]{};
-	float		intersection[MAX_PATCH_PLANES]{};
+	static qboolean frontFacing[MAX_PATCH_PLANES]; // off the stack (C6262), as stock: written for every plane before it is read; no 64 KB clear per trace
+	static float intersection[MAX_PATCH_PLANES]; // off the stack (C6262), as stock: written for every plane before it is read; no 64 KB clear per trace
 	float		intersect;
 	const patchPlane_t* planes;
 	const facet_t* facet;
@@ -1246,7 +1248,7 @@ static void CM_TracePointThroughPatchCollide(traceWork_t* tw, trace_t& trace, co
 			if (!cv) {
 				cv = Cvar_Get("r_debugSurfaceUpdate", "1", 0);
 			}
-			if (cv->integer) {
+			if (cv && cv->integer) {
 				debugPatchCollide = pc;
 				debugFacet = facet;
 			}

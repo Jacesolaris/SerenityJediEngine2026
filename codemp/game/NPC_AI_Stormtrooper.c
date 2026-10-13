@@ -416,7 +416,7 @@ static void NPC_ST_StoreMovementSpeech(const int speech, const float chance)
 	NPCS.NPCInfo->movementSpeechChance = chance;
 }
 
-extern qboolean PM_InOnGroundAnims(const int anim);
+extern qboolean PM_InOnGroundAnims(const playerState_t* ps);
 
 static qboolean Melee_CanDoGrab(void)
 {
@@ -432,7 +432,7 @@ static qboolean Melee_CanDoGrab(void)
 					&& NPCS.NPC->enemy->client->ps.groundEntityNum != ENTITYNUM_NONE)
 				{
 					//me and enemy are on ground
-					if (!PM_InOnGroundAnims(NPCS.NPC->enemy->client->ps.legsAnim))
+					if (!PM_InOnGroundAnims(&NPCS.NPC->enemy->client->ps))
 					{
 						if ((NPCS.NPC->client->ps.weaponTime <= 200 || NPCS.NPC->client->ps.torsoAnim == BOTH_KYLE_GRAB)
 							&& !NPCS.NPC->client->ps.saberInFlight)
@@ -2644,7 +2644,8 @@ static void ST_Commander(void)
 			int num_listed_entities;
 			qboolean fled = qfalse;
 			gentity_t* ent;
-			int entity_list[MAX_GENTITIES];
+			// static: too big for the stack (C6262); filled by EntitiesInBox before it is read
+			static int entity_list[MAX_GENTITIES];
 
 			TIMER_Set(NPCS.NPC, "checkGrenadeTooCloseDebouncer", Q_irand(300, 600));
 

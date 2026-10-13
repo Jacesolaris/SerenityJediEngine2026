@@ -56,6 +56,9 @@ using statIndex_t = enum
 	// ms until the wear starts to recover
 	STAT_SABER_BREAK_SAFE,
 	// level.time until which saber damage is halved after a break (stagger / knockdown)
+	STAT_WEAPONS2,
+	// the owned weapons 32..63 (STAT_WEAPONS holds 0..31): WP_Z6_ROTARY_CANNON. Use BG_HasWeapon / BG_GiveWeapon
+	// / BG_TakeWeapon (bg_public.h) for a weapon number that can be 32 or more - never 1 << 32
 };
 
 #endif	// #ifndef STATINDEX_H

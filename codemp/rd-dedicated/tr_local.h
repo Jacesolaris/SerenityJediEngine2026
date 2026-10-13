@@ -1659,7 +1659,10 @@ public:
 #ifdef _G2_GORE
 		surfaceData(nullptr),
 		alternateTex(nullptr),
-		goreChain(nullptr)
+		goreChain(nullptr),
+		scale(1.0f),
+		fade(0.0f),
+		impactTime(0.0f)
 #else
 		surfaceData(0)
 #endif

@@ -113,7 +113,7 @@ hfile::~hfile()
 {
 	if (is_open())
 	{
-		return;
+		close(); // was "return;" - leaked the file handle and the pool slot (stock + MD close here)
 	}
 
 	if (mHandle && Pool().is_used(mHandle))

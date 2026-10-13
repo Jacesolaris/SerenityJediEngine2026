@@ -1611,6 +1611,14 @@ static void NPC_RunBehavior(const npcteam_t team, const int b_state)
 		//being forced to march
 		NPC_BSDefault();
 	}
+	else if (NPCS.NPC->client->NPC_class == CLASS_GONK || NPCS.NPC->client->NPC_class == CLASS_MOUSE
+		|| NPCS.NPC->client->NPC_class == CLASS_R2D2 || NPCS.NPC->client->NPC_class == CLASS_R5D2)
+	{
+		// SJE: the weaponless droids wander and keep out of fights like SP's (team NEUTRAL there). MP's NPC file
+		// parser never reads a team (it looks up "NPCplayerTeam"), so a gonk ran the combat AI: it chased players,
+		// "fired" WP_NONE every frame and slid along in anims it does not have.
+		NPC_BehaviorSet_Droid(b_state);
+	}
 	else
 	{
 		switch (team)

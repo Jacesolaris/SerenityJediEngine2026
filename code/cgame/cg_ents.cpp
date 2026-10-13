@@ -921,7 +921,7 @@ static void CG_General(centity_t* cent)
 	}
 
 	//--------------------------
-	if (s1->eFlags & EF_FIRING && cent->gent->inuse)
+	if (s1->eFlags & EF_FIRING && cent->gent && cent->gent->inuse)
 	{
 		//special code for adding the beam to the attached tripwire mine
 		vec3_t beam_org;
@@ -973,7 +973,7 @@ static void CG_General(centity_t* cent)
 		theFxScheduler.PlayEffect(cgs.effects.tripmineglowBit, beam_org, ent.axis[0]);
 	}
 
-	if (s1->eFlags & EF_ALT_FIRING)
+	if (s1->eFlags & EF_ALT_FIRING && cent->gent)
 	{
 		// hack for the spotlight
 		vec3_t org, axis[3], dir;
@@ -991,7 +991,7 @@ static void CG_General(centity_t* cent)
 	}
 
 	//-----------------------------------------------------------
-	if (cent->gent->flags & (FL_DMG_BY_HEAVY_WEAP_ONLY | FL_SHIELDED))
+	if (cent->gent && cent->gent->flags & (FL_DMG_BY_HEAVY_WEAP_ONLY | FL_SHIELDED))
 	{
 		// Dumb assumption, but I guess we must be a shielded ion_cannon??  We should probably verify
 		// if it's an ion_cannon that's Heavy Weapon only, we don't want to make it shielded do we...?

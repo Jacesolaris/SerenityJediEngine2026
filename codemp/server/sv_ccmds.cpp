@@ -1389,6 +1389,16 @@ const char* forceToggleNamePrints[NUM_FORCE_POWERS] = {
 	"SABER OFFENSE",
 	"SABER DEFENSE",
 	"SABER THROW",
+	"STASIS",
+	"DESTRUCTION",
+	"GRASP",
+	"REPULSE",
+	"LIGHTNING STRIKE",
+	"FEAR",
+	"DEADLY SIGHT",
+	"BLAST",
+	"INSANITY",
+	"BLINDING",
 };
 
 static void SV_ForceToggle_f(void)

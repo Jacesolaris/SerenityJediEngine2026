@@ -1792,6 +1792,7 @@ float botGlobalNavWeaponWeights[WP_NUM_WEAPONS] =
 	3, //WP_DET_PACK,
 	2, //WP_CONCUSSION,
 	3, //WP_DROIDEKA,
+	3, //WP_Z6_ROTARY_CANNON,
 	0, //WP_BRYAR_OLD,
 	0 //WP_EMPLACED_GUN,
 };
@@ -3479,6 +3480,480 @@ static gentity_t* GetNextSpawnInIndex(const gentity_t* current_spawn)
 //   v = WPFLAG_SPAWN_TEAM_RED
 //   w = WPFLAG_SPAWN_TEAM_BLUE
 // ------------------------------------------------------------
+// SJE: bot_wp_autogrid [spacing] [force] - a bot route for a map that has none, made from the map itself.
+// A grid (spacing 64..256, default 96: under MAX_NEIGHBOR_LINK_DISTANCE so CalculatePaths links grid neighbours) is
+// flood-filled from the spawn points and items over floor a player can stand on: player-hull traces walk there in 16
+// unit steps (18 unit step-ups, floor normal >= 0.7), else crouched (d) or with a 40 unit jump (j); drops up to 40, so
+// every link also works the other way. No points in lava / slime, on sky, movers or in a trigger_hurt. Bots follow a
+// route in index order, so the points are written as one walk over the grid (each next point a checked move from the
+// one before; a branch is walked back), then up to 12 spawn points at least 192 apart are flagged (u; v / w near red
+// / blue team spawns). Saved with SavePathData (RepairPaths, CalculatePaths, FlagObjects), like bot_wp_save.
+#define AG_MAX_NODES	1900
+#define AG_HASH			4096
+#define AG_STEP			18.0f
+#define AG_JUMP			40.0f
+#define AG_DROP			40.0f
+#define AG_SUBSTEP		16.0f
+#define AG_MAX_HURT		128
+#define AG_MAX_SPAWNS	12
+#define AG_SPAWN_GAP	192.0f
+
+typedef struct
+{
+	vec3_t org;
+	int gx, gy;
+	int flags; // WPFLAG_DUCK / WPFLAG_JUMP of the spot (jump: reached with a jump from where it was found)
+	int edge[8];
+	int numEdges;
+	int hashNext;
+} agNode_t;
+
+static agNode_t agNodes[AG_MAX_NODES];
+static int agNumNodes;
+static int agHash[AG_HASH];
+static vec3_t agHurtMins[AG_MAX_HURT], agHurtMaxs[AG_MAX_HURT];
+static int agNumHurt;
+static int agOrder[AG_MAX_NODES * 2];
+static int agStack[AG_MAX_NODES][2];
+static int agFirstWP[AG_MAX_NODES];
+static byte agVisited[AG_MAX_NODES];
+
+static const vec3_t agMins = { -15, -15, -24 };
+static const vec3_t agMaxs = { 15, 15, 40 };
+static const vec3_t agCrouchMaxs = { 15, 15, 16 };
+
+static int AG_HashKey(const int gx, const int gy)
+{
+	return (int)(((unsigned)gx * 73856093u ^ (unsigned)gy * 19349663u) & (AG_HASH - 1));
+}
+
+static int AG_FindNode(const int gx, const int gy, const float z)
+{
+	for (int n = agHash[AG_HashKey(gx, gy)]; n >= 0; n = agNodes[n].hashNext)
+	{
+		if (agNodes[n].gx == gx && agNodes[n].gy == gy && fabs(agNodes[n].org[2] - z) < 24.0f)
+		{
+			return n;
+		}
+	}
+	return -1;
+}
+
+static qboolean AG_SpotOk(const vec3_t org, const trace_t* floor)
+{
+	vec3_t feet;
+
+	if (floor->plane.normal[2] < 0.7f || floor->surfaceFlags & SURF_SKY)
+	{
+		return qfalse;
+	}
+	if (floor->entityNum < ENTITYNUM_WORLD && g_entities[floor->entityNum].s.eType == ET_MOVER)
+	{
+		return qfalse; // lifts and doors move away
+	}
+	VectorCopy(org, feet);
+	feet[2] -= 16.0f;
+	if (trap->PointContents(feet, ENTITYNUM_NONE) & (CONTENTS_LAVA | CONTENTS_SLIME))
+	{
+		return qfalse;
+	}
+	for (int i = 0; i < agNumHurt; i++)
+	{
+		if (org[0] + 15 > agHurtMins[i][0] && org[0] - 15 < agHurtMaxs[i][0] && org[1] + 15 > agHurtMins[i][1]
+			&& org[1] - 15 < agHurtMaxs[i][1] && org[2] + 40 > agHurtMins[i][2] && org[2] - 24 < agHurtMaxs[i][2])
+		{
+			return qfalse;
+		}
+	}
+	return qtrue;
+}
+
+// a hull trace that must get all the way
+static qboolean AG_Clear(const vec3_t from, const vec3_t to, const vec3_t maxs)
+{
+	trace_t tr;
+
+	trap->Trace(&tr, from, agMins, maxs, to, ENTITYNUM_NONE, MASK_PLAYERSOLID, qfalse, 0, 0);
+	return !tr.startsolid && !tr.allsolid && tr.fraction >= 1.0f ? qtrue : qfalse;
+}
+
+// the floor under "from" within "down" units: the standing origin there in out
+static qboolean AG_Floor(const vec3_t from, const float down, const vec3_t maxs, vec3_t out, trace_t* tr)
+{
+	vec3_t end;
+
+	VectorCopy(from, end);
+	end[2] -= down;
+	trap->Trace(tr, from, agMins, maxs, end, ENTITYNUM_NONE, MASK_PLAYERSOLID, qfalse, 0, 0);
+	if (tr->startsolid || tr->allsolid || tr->fraction >= 1.0f)
+	{
+		return qfalse;
+	}
+	VectorCopy(tr->endpos, out);
+	return qtrue;
+}
+
+// walk (in substeps, standing or crouched) or jump from a standing origin to the cell at (tx, ty)
+static qboolean AG_Move(const vec3_t from, const float tx, const float ty, vec3_t out, int* flags)
+{
+	trace_t tr;
+	vec3_t pos, up, next;
+	const float dx = tx - from[0], dy = ty - from[1];
+	const float dist = sqrtf(dx * dx + dy * dy);
+	const int steps = (int)ceilf(dist / AG_SUBSTEP);
+
+	for (int duck = 0; duck < 2; duck++)
+	{
+		const float* maxs = duck ? agCrouchMaxs : agMaxs;
+		qboolean ok = qtrue;
+
+		VectorCopy(from, pos);
+		for (int s = 1; s <= steps && ok; s++)
+		{
+			VectorCopy(pos, up);
+			up[2] += AG_STEP;
+			next[0] = from[0] + dx * s / steps;
+			next[1] = from[1] + dy * s / steps;
+			next[2] = up[2];
+			if (!AG_Clear(pos, up, maxs) || !AG_Clear(up, next, maxs)
+				|| !AG_Floor(next, AG_STEP + AG_DROP, maxs, pos, &tr) || tr.plane.normal[2] < 0.7f)
+			{
+				ok = qfalse;
+			}
+		}
+		if (ok && AG_SpotOk(pos, &tr))
+		{
+			VectorCopy(pos, out);
+			*flags = duck ? WPFLAG_DUCK : 0;
+			return qtrue;
+		}
+	}
+
+	// a jump: straight up, across, down
+	VectorCopy(from, up);
+	up[2] += AG_JUMP;
+	next[0] = tx;
+	next[1] = ty;
+	next[2] = up[2];
+	if (AG_Clear(from, up, agMaxs) && AG_Clear(up, next, agMaxs)
+		&& AG_Floor(next, AG_JUMP + AG_DROP, agMaxs, pos, &tr) && AG_SpotOk(pos, &tr))
+	{
+		VectorCopy(pos, out);
+		*flags = WPFLAG_JUMP;
+		return qtrue;
+	}
+	return qfalse;
+}
+
+static int AG_AddNode(const vec3_t org, const int gx, const int gy, const int flags)
+{
+	if (agNumNodes >= AG_MAX_NODES)
+	{
+		return -1;
+	}
+	agNode_t* n = &agNodes[agNumNodes];
+	VectorCopy(org, n->org);
+	n->gx = gx;
+	n->gy = gy;
+	n->flags = flags;
+	n->numEdges = 0;
+	const int key = AG_HashKey(gx, gy);
+	n->hashNext = agHash[key];
+	agHash[key] = agNumNodes;
+	return agNumNodes++;
+}
+
+static void AG_Link(const int a, const int b)
+{
+	if (a == b)
+	{
+		return;
+	}
+	for (int i = 0; i < agNodes[a].numEdges; i++)
+	{
+		if (agNodes[a].edge[i] == b)
+		{
+			return;
+		}
+	}
+	if (agNodes[a].numEdges < 8)
+	{
+		agNodes[a].edge[agNodes[a].numEdges++] = b;
+	}
+}
+
+// a node in the cell nearest to a point (a spawn point, an item), reached from it on foot
+static int AG_SeedNode(const vec3_t point, const float spacing)
+{
+	trace_t tr;
+	vec3_t start, floorOrg, out;
+	int flags;
+
+	VectorCopy(point, start);
+	start[2] += 8.0f;
+	if (!AG_Floor(start, 128.0f, agMaxs, floorOrg, &tr))
+	{
+		return -1;
+	}
+	const int gx0 = (int)floorf(floorOrg[0] / spacing), gy0 = (int)floorf(floorOrg[1] / spacing);
+	for (int c = 0; c < 4; c++)
+	{
+		const int gx = gx0 + (c & 1), gy = gy0 + (c >> 1);
+		if (AG_Move(floorOrg, gx * spacing, gy * spacing, out, &flags))
+		{
+			const int n = AG_FindNode(gx, gy, out[2]);
+			return n >= 0 ? n : AG_AddNode(out, gx, gy, flags);
+		}
+	}
+	return -1;
+}
+
+static int AG_Flood(const float spacing)
+{
+	static const int dirs[8][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
+	int head = 0;
+
+	// every node is checked once, in the order found (a breadth-first fill)
+	while (head < agNumNodes)
+	{
+		const int a = head++;
+		for (int d = 0; d < 8; d++)
+		{
+			const int gx = agNodes[a].gx + dirs[d][0], gy = agNodes[a].gy + dirs[d][1];
+			vec3_t out;
+			int flags;
+
+			if (!AG_Move(agNodes[a].org, gx * spacing, gy * spacing, out, &flags))
+			{
+				continue;
+			}
+			int b = AG_FindNode(gx, gy, out[2]);
+			if (b < 0)
+			{
+				b = AG_AddNode(out, gx, gy, flags);
+				if (b < 0)
+				{
+					return 0; // too many
+				}
+			}
+			AG_Link(a, b);
+			AG_Link(b, a); // drops are at most AG_DROP, jumps at most AG_JUMP: it goes back too
+		}
+	}
+	return 1;
+}
+
+// the points in walking order: depth first, walking back along a finished branch (each next point is a checked move)
+static int AG_WalkOrder(void)
+{
+	int count = 0;
+
+	memset(agVisited, 0, sizeof agVisited);
+	for (int root = 0; root < agNumNodes; root++)
+	{
+		if (agVisited[root])
+		{
+			continue;
+		}
+		int depth = 0, lastNew = count;
+		agVisited[root] = 1;
+		agOrder[count++] = root;
+		agStack[depth][0] = root;
+		agStack[depth][1] = 0;
+		depth++;
+		while (depth > 0)
+		{
+			const int u = agStack[depth - 1][0];
+			if (agStack[depth - 1][1] < agNodes[u].numEdges)
+			{
+				const int v = agNodes[u].edge[agStack[depth - 1][1]++];
+				if (!agVisited[v])
+				{
+					agVisited[v] = 1;
+					agOrder[count++] = v;
+					lastNew = count;
+					agStack[depth][0] = v;
+					agStack[depth][1] = 0;
+					depth++;
+				}
+			}
+			else
+			{
+				depth--;
+				if (depth > 0)
+				{
+					agOrder[count++] = agStack[depth - 1][0]; // back to the parent
+				}
+			}
+		}
+		count = lastNew; // no walking back after the last new point
+	}
+	return count;
+}
+
+static int AG_SpawnFlagFor(const gentity_t* spawn)
+{
+	if (spawn && spawn->classname && Q_stristr(spawn->classname, "red"))
+	{
+		return WPFLAG_SPAWN_TEAM_RED;
+	}
+	if (spawn && spawn->classname && Q_stristr(spawn->classname, "blue"))
+	{
+		return WPFLAG_SPAWN_TEAM_BLUE;
+	}
+	return WPFLAG_SPAWN_NEUTRAL;
+}
+
+static void AG_AutoGrid(const gentity_t* pl, const float spacingArg, const qboolean force)
+{
+	vmCvar_t mapname;
+	static int spawnEnts[MAX_GENTITIES];
+	int numSpawnEnts = 0;
+	// 64..256: over 127 the grid neighbours get no CalculatePaths links (only the walking order joins them) - for maps too
+	// big for 1900 points at 96..120 (large outdoor maps)
+	const float spacing = spacingArg >= 64.0f && spacingArg <= 256.0f ? spacingArg : 96.0f;
+	const int startTime = trap->Milliseconds();
+
+	if (gWPNum > 0 && !force)
+	{
+		trap->Print(S_COLOR_YELLOW "bot_wp_autogrid: this map has a route (%i points) already; "
+			"\"bot_wp_autogrid <spacing> force\" replaces it\n", gWPNum);
+		return;
+	}
+
+	agNumNodes = 0;
+	agNumHurt = 0;
+	memset(agHash, -1, sizeof agHash);
+	for (int i = 0; i < level.num_entities; i++)
+	{
+		const gentity_t* ent = &g_entities[i];
+		if (!ent->inuse || !ent->classname)
+		{
+			continue;
+		}
+		if (!Q_stricmp(ent->classname, "trigger_hurt") && agNumHurt < AG_MAX_HURT)
+		{
+			VectorCopy(ent->r.absmin, agHurtMins[agNumHurt]);
+			VectorCopy(ent->r.absmax, agHurtMaxs[agNumHurt]);
+			agNumHurt++;
+		}
+		else if (!Q_stricmpn(ent->classname, "info_player", 11) || !Q_stricmpn(ent->classname, "team_CTF_", 9)
+			&& (Q_stristr(ent->classname, "player") || Q_stristr(ent->classname, "spawn")))
+		{
+			spawnEnts[numSpawnEnts++] = i;
+		}
+	}
+
+	// seeds: the spawn points, then the items
+	for (int i = 0; i < numSpawnEnts; i++)
+	{
+		AG_SeedNode(g_entities[spawnEnts[i]].r.currentOrigin, spacing);
+	}
+	for (int i = MAX_CLIENTS; i < level.num_entities; i++)
+	{
+		if (g_entities[i].inuse && g_entities[i].s.eType == ET_ITEM)
+		{
+			AG_SeedNode(g_entities[i].r.currentOrigin, spacing);
+		}
+	}
+	if (!agNumNodes)
+	{
+		trap->Print(S_COLOR_RED "bot_wp_autogrid: no floor found at any spawn point or item\n");
+		return;
+	}
+	if (!AG_Flood(spacing))
+	{
+		trap->Print(S_COLOR_RED "bot_wp_autogrid: more than %i grid points at spacing %g, try a bigger spacing\n",
+			AG_MAX_NODES, spacing);
+		return;
+	}
+
+	const int numOrder = AG_WalkOrder();
+	if (numOrder > MAX_WPARRAY_SIZE - 256)
+	{
+		trap->Print(S_COLOR_RED "bot_wp_autogrid: %i route points is too many, try a bigger spacing\n", numOrder);
+		return;
+	}
+
+	// the route, in walking order
+	gDeactivated = 1;
+	gWPNum = 0;
+	for (int i = 0; i < agNumNodes; i++)
+	{
+		agFirstWP[i] = -1;
+	}
+	for (int i = 0; i < numOrder; i++)
+	{
+		const int n = agOrder[i];
+		if (agFirstWP[n] < 0)
+		{
+			agFirstWP[n] = gWPNum;
+		}
+		CreateNewWP(agNodes[n].org, agNodes[n].flags);
+	}
+
+	// spawn points: first the points nearest the map's spawns, then the ones farthest from those already picked
+	int numSpawns = 0;
+	int spawnNodes[AG_MAX_SPAWNS];
+	for (int pass = 0; pass < 2 && numSpawns < AG_MAX_SPAWNS; pass++)
+	{
+		const int tries = pass == 0 ? numSpawnEnts : AG_MAX_SPAWNS;
+		for (int t = 0; t < tries && numSpawns < AG_MAX_SPAWNS; t++)
+		{
+			int best = -1;
+			float bestScore = pass == 0 ? 1e30f : AG_SPAWN_GAP * AG_SPAWN_GAP;
+			for (int n = 0; n < agNumNodes; n++)
+			{
+				if (agNodes[n].flags || agFirstWP[n] < 0)
+				{
+					continue; // not on a duck or jump spot
+				}
+				float nearest = 1e30f;
+				for (int s = 0; s < numSpawns; s++)
+				{
+					const float d = DistanceSquared(agNodes[n].org, agNodes[spawnNodes[s]].org);
+					nearest = d < nearest ? d : nearest;
+				}
+				if (nearest < AG_SPAWN_GAP * AG_SPAWN_GAP)
+				{
+					continue;
+				}
+				const float score = pass == 0 ? DistanceSquared(agNodes[n].org, g_entities[spawnEnts[t]].r.currentOrigin) : nearest;
+				if (pass == 0 ? score < bestScore : score > bestScore)
+				{
+					bestScore = score;
+					best = n;
+				}
+			}
+			if (best >= 0 && (pass == 1 || bestScore < 256.0f * 256.0f))
+			{
+				// the team of the nearest map spawn
+				const gentity_t* nearestSpawn = NULL;
+				float nd = 1e30f;
+				for (int s = 0; s < numSpawnEnts; s++)
+				{
+					const float d = DistanceSquared(agNodes[best].org, g_entities[spawnEnts[s]].r.currentOrigin);
+					if (d < nd)
+					{
+						nd = d;
+						nearestSpawn = &g_entities[spawnEnts[s]];
+					}
+				}
+				gWPArray[agFirstWP[best]]->flags |= AG_SpawnFlagFor(nearestSpawn);
+				spawnNodes[numSpawns++] = best;
+			}
+		}
+	}
+
+	trap->Cvar_Register(&mapname, "mapname", "", CVAR_SERVERINFO | CVAR_ROM);
+	gDeactivated = 0;
+	const int saved = SavePathData(mapname.string);
+	trap->Print(S_COLOR_GREEN "bot_wp_autogrid %s: %i grid points, %i route points (%i after repair), %i spawn points, "
+		"spacing %g, %i ms - %s\n", mapname.string, agNumNodes, numOrder, gWPNum, numSpawns, spacing,
+		trap->Milliseconds() - startTime, saved ? "saved" : "NOT saved");
+	(void)pl;
+}
+
 int AcceptBotCommand(const char* cmd, const gentity_t* pl)
 {
 	vmCvar_t mapname;
@@ -3790,6 +4265,17 @@ int AcceptBotCommand(const char* cmd, const gentity_t* pl)
 		gDeactivated = 0;
 		trap->Cvar_Register(&mapname, "mapname", "", CVAR_SERVERINFO | CVAR_ROM);
 		SavePathData(mapname.string);
+		return 1;
+	}
+
+	// SJE: bot_wp_autogrid [spacing] [force] (AG_AutoGrid)
+	if (Q_stricmp(cmd, "bot_wp_autogrid") == 0)
+	{
+		char arg[MAX_STRING_CHARS];
+		trap->Argv(1, arg, sizeof arg);
+		const float spacing = (float)atof(arg);
+		trap->Argv(2, arg, sizeof arg);
+		AG_AutoGrid(pl, spacing, !Q_stricmp(arg, "force") ? qtrue : qfalse);
 		return 1;
 	}
 

@@ -2136,7 +2136,8 @@ static void SV_G2API_GetSurfaceName(void* ghoul2, const int surfNumber, const in
 
 static float SV_G2API_GetChanceOfSaberFizz(void)
 {
-	return re->GetChanceOfSaberFizz();
+	// only rend2 provides it (vanilla and the dedicated renderer leave it NULL)
+	return re->GetChanceOfSaberFizz ? re->GetChanceOfSaberFizz() : 0.0f;
 }
 
 //static float SV_G2API_IsOutsideCausingPain(vec3_t pos)

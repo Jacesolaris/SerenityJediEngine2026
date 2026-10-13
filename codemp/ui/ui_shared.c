@@ -56,7 +56,17 @@ const char* HolocronIcons[NUM_FORCE_POWERS] = {
 	"gfx/mp/f_icon_sight", //FP_SEE,
 	"gfx/mp/f_icon_saber_attack", //FP_SABER_OFFENSE,
 	"gfx/mp/f_icon_saber_defend", //FP_SABER_DEFENSE,
-	"gfx/mp/f_icon_saber_throw" //FP_SABERTHROW
+	"gfx/mp/f_icon_saber_throw", //FP_SABERTHROW
+	"gfx/mp/f_icon_lt_stasis", //FP_STASIS
+	"gfx/mp/f_icon_dk_destruction", //FP_DESTRUCTION
+	"gfx/mp/f_icon_lt_grasp", //FP_GRASP
+	"gfx/mp/f_icon_repulse", //FP_REPULSE
+	"gfx/mp/f_icon_lt_lightning_strike", //FP_LIGHTNING_STRIKE
+	"gfx/mp/f_icon_dk_fear", //FP_FEAR
+	"gfx/mp/f_icon_dk_deadlysight", //FP_DEADLYSIGHT
+	"gfx/mp/f_icon_lt_blast", //FP_BLAST
+	"gfx/mp/f_icon_dk_insanity", //FP_INSANITY
+	"gfx/mp/f_icon_lt_blinding" //FP_BLINDING
 };
 
 #define SCROLL_TIME_START					500
@@ -3182,6 +3192,16 @@ static qboolean Item_OwnerDraw_HandleKey(itemDef_t* item, const int key)
 			case UI_FORCE_RANK_SABERATTACK:
 			case UI_FORCE_RANK_SABERDEFEND:
 			case UI_FORCE_RANK_SABERTHROW:
+			case UI_FORCE_RANK_STASIS:
+			case UI_FORCE_RANK_DESTRUCTION:
+			case UI_FORCE_RANK_GRASP:
+			case UI_FORCE_RANK_REPULSE:
+			case UI_FORCE_RANK_LIGHTNING_STRIKE:
+			case UI_FORCE_RANK_FEAR:
+			case UI_FORCE_RANK_DEADLYSIGHT:
+			case UI_FORCE_RANK_BLAST:
+			case UI_FORCE_RANK_INSANITY:
+			case UI_FORCE_RANK_BLINDING:
 				if (!Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory))
 				{
 					return qfalse;
@@ -7913,24 +7933,32 @@ qboolean ItemParse_asset_model_go(itemDef_t* item, const char* name, int* runTim
 						strcpy(slash, "/animation.cfg");
 
 						const int animIndex = UI_ParseAnimationFile(GLAName, NULL, qfalse);
-						if (animIndex != -1)
+						if (animIndex >= 0 && animIndex < MAX_ANIM_FILES && bgAllAnims[animIndex].anims)
 						{ //We parsed out the animation info for whatever model this is
 							const animation_t* anim = &bgAllAnims[animIndex].anims[modelPtr->g2anim];
-
-							const int sFrame = anim->firstFrame;
-							const int eFrame = anim->firstFrame + anim->numFrames;
-							int flags = BONE_ANIM_OVERRIDE_FREEZE;
-							const int time = DC->realTime;
-							const float animSpeed = 50.0f / anim->frameLerp;
-							const int blendTime = 150;
-
-							if (anim->loopFrames != -1)
+							// SJE: a skeleton without this menu anim (creatures, droids: BOTH_WALK1 / BOTH_MENUIDLE1 missing) had
+							// frameLerp 0 here (division by zero, frozen preview): use its stand anim, else leave it unanimated
+							if (anim->numFrames <= 0 || anim->frameLerp == 0)
 							{
-								flags |= BONE_ANIM_OVERRIDE_LOOP;
+								anim = &bgAllAnims[animIndex].anims[BOTH_STAND1];
 							}
+							if (anim->numFrames > 0 && anim->frameLerp != 0)
+							{
+								const int sFrame = anim->firstFrame;
+								const int eFrame = anim->firstFrame + anim->numFrames;
+								int flags = BONE_ANIM_OVERRIDE_FREEZE;
+								const int time = DC->realTime;
+								const float animSpeed = 50.0f / anim->frameLerp;
+								const int blendTime = 150;
 
-							trap->G2API_SetBoneAnim(item->ghoul2, 0, "model_root", sFrame, eFrame, flags, animSpeed, time, -1, blendTime);
-							*runTimeLength = anim->frameLerp * (anim->numFrames - 2);
+								if (anim->loopFrames != -1)
+								{
+									flags |= BONE_ANIM_OVERRIDE_LOOP;
+								}
+
+								trap->G2API_SetBoneAnim(item->ghoul2, 0, "model_root", sFrame, eFrame, flags, animSpeed, time, -1, blendTime);
+								*runTimeLength = anim->frameLerp * (anim->numFrames - 2);
+							}
 						}
 					}
 				}

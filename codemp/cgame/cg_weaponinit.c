@@ -172,7 +172,8 @@ void CG_RegisterWeapon(const int weapon_num)
 		weapon_num == WP_FLECHETTE ||
 		weapon_num == WP_REPEATER ||
 		weapon_num == WP_ROCKET_LAUNCHER ||
-		weapon_num == WP_CONCUSSION)
+		weapon_num == WP_CONCUSSION ||
+		weapon_num == WP_Z6_ROTARY_CANNON)
 	{
 		Q_strncpyz(path, item->view_model, sizeof path);
 		COM_StripExtension(path, path, sizeof path);
@@ -444,6 +445,39 @@ void CG_RegisterWeapon(const int weapon_num)
 		cgs.effects.blasterWallImpactEffect = trap->FX_RegisterEffect("blaster/wall_impact");
 		cgs.effects.blasterFleshImpactEffect = trap->FX_RegisterEffect("blaster/flesh_impact");
 		cgs.effects.blasterDroidImpactEffect = trap->FX_RegisterEffect("blaster/droid_impact");
+		break;
+
+	case WP_Z6_ROTARY_CANNON: // the Z-6 rotary cannon (from MovieDuels)
+		weaponInfo->selectSound = trap->S_RegisterSound("sound/weapons/blaster/select.wav");
+
+		weaponInfo->flashSound[0] = trap->S_RegisterSound("sound/weapons/z6/fire.mp3");
+		weaponInfo->firingSound = NULL_SOUND;
+		weaponInfo->chargeSound = NULL_SOUND;
+		weaponInfo->muzzleEffect = trap->FX_RegisterEffect("z6/muzzle_flash");
+		weaponInfo->missileModel = NULL_HANDLE;
+		weaponInfo->missileSound = NULL_SOUND;
+		weaponInfo->missileDlight = 0;
+		weaponInfo->missilehit_sound = NULL_SOUND;
+		weaponInfo->missileTrailFunc = FX_CloneProjectileThink;
+
+		weaponInfo->mOverloadMuzzleEffect = trap->FX_RegisterEffect("blaster/smokin_hot_muzzle");
+		weaponInfo->mOverloadMuzzleEffect2 = trap->FX_RegisterEffect("blaster/smokin_hot_muzzle2");
+		weaponInfo->mOverloadMuzzleEffect3 = trap->FX_RegisterEffect("blaster/smokin_hot_muzzle3");
+
+		weaponInfo->altFlashSound[0] = trap->S_RegisterSound("sound/weapons/z6/fire.mp3");
+		weaponInfo->altFiringSound = NULL_SOUND;
+		weaponInfo->altChargeSound = NULL_SOUND;
+		weaponInfo->altMuzzleEffect = trap->FX_RegisterEffect("z6/altmuzzle_flash");
+		weaponInfo->altMissileModel = NULL_HANDLE;
+		weaponInfo->altMissileSound = NULL_SOUND;
+		weaponInfo->altMissileDlight = 0;
+		weaponInfo->altMissilehit_sound = NULL_SOUND;
+		weaponInfo->altMissileTrailFunc = FX_CloneProjectileThink;
+
+		trap->S_RegisterSound("sound/weapons/z6/spinny.wav");
+		cgs.effects.cloneShotEffect = trap->FX_RegisterEffect("clone/projectile");
+		cgs.effects.cloneWallImpactEffect = trap->FX_RegisterEffect("clone/wall_impact");
+		cgs.effects.cloneFleshImpactEffect = trap->FX_RegisterEffect("clone/flesh_impact");
 		break;
 
 	case WP_EMPLACED_GUN:

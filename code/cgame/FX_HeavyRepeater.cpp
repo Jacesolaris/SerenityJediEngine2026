@@ -169,3 +169,24 @@ void FX_CloneProjectileThink(centity_t* cent, const weaponInfo_s* weapon)
 
 	theFxScheduler.PlayEffect(cgs.effects.cloneShotEffect, cent->lerpOrigin, forward);
 }
+/*
+-------------------------
+FX_CloneWeaponHitWall / FX_CloneWeaponHitPlayer: the Z-6's bolt impacts (MovieDuels' clone impacts)
+-------------------------
+*/
+void FX_CloneWeaponHitWall(vec3_t origin, vec3_t normal)
+{
+	theFxScheduler.PlayEffect(cgs.effects.cloneWallImpactEffect, origin, normal);
+}
+
+void FX_CloneWeaponHitPlayer(gentity_t* hit, vec3_t origin, vec3_t normal, const qboolean humanoid)
+{
+	if (hit && hit->client && hit->ghoul2.size())
+	{
+		CG_AddGhoul2Mark(humanoid ? cgs.media.bdecal_bodyburn1 : cgs.media.bdecal_burnmark1, flrand(3.5, 4.0), origin,
+			normal, hit->s.number, hit->client->ps.origin, hit->client->renderInfo.legsYaw, hit->ghoul2,
+			hit->s.modelScale, Q_irand(10000, 13000));
+	}
+
+	theFxScheduler.PlayEffect(cgs.effects.cloneFleshImpactEffect, origin, normal);
+}

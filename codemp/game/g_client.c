@@ -43,6 +43,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_team.h"
 #include "anims.h"
 #include "g_classmodels.h" // model -> bot class + scale table
+#include "bg_classmodel.h" // BG_ClassModelIndex, BG_ModelBlocked
 #include "bg_vehicles.h"
 #include "teams.h"
 #include <string.h>
@@ -2277,25 +2278,8 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 						strcpy(skin, "default");
 					}
 
-					if (level.gametype >= GT_TEAM && level.gametype != GT_SIEGE && !g_jediVmerc.integer)
-					{
-						float colorOverride[3] = { 0 };
-
-						colorOverride[0] = colorOverride[1] = colorOverride[2] = 0.0f;
-
-						BG_ValidateSkinForTeam(truncModelName, skin, ent->client->sess.sessionTeam, colorOverride);
-						if (colorOverride[0] != 0.0f ||
-							colorOverride[1] != 0.0f ||
-							colorOverride[2] != 0.0f)
-						{
-							ent->client->ps.customRGBA[0] = colorOverride[0] * 255.0f;
-							ent->client->ps.customRGBA[1] = colorOverride[1] * 255.0f;
-							ent->client->ps.customRGBA[2] = colorOverride[2] * 255.0f;
-						}
-
-						//BG_ValidateSkinForTeam( truncModelName, skin, ent->client->sess.sessionTeam, NULL );
-					}
-					else if (level.gametype == GT_SIEGE)
+					// no team colour tint in team games any more: everyone keeps their own colours (DH 2026-10-13)
+					if (level.gametype == GT_SIEGE)
 					{
 						//force skin for class if appropriate
 						if (ent->client->siegeClass != -1)
@@ -2415,13 +2399,19 @@ void SetupGameGhoul2Model(gentity_t* ent, char* modelname, char* skinName)
 		if (GLAName[0] &&
 			!strstr(GLAName, "players/_humanoid/"))
 		{
-			//it doesn't use humanoid anims.
-			char* slash = Q_strrchr(GLAName, '/');
-			if (slash)
-			{
-				strcpy(slash, "/animation.cfg");
+			//it doesn't use the master humanoid anims: use the animation.cfg next to its own GLA (SJE: also remembers
+			//whether that GLA is a humanoid skeleton, like _humanoid_yoda)
+			ent->localAnimIndex = BG_ParseAnimationFileForGLA(GLAName);
 
-				ent->localAnimIndex = bg_parse_animation_file(GLAName, NULL, qfalse);
+			if (ent->localAnimIndex == -1 && ent->s.number < MAX_CLIENTS)
+			{
+				// SJE: a player whose own skeleton could not be set up falls back to the default model
+				Com_Printf(S_COLOR_YELLOW "WARNING: could not load the animation set of %s, using " DEFAULT_MODEL "\n", GLAName);
+				trap->G2API_CleanGhoul2Models(&ent->ghoul2);
+				ent->ghoul2 = NULL;
+				trap->G2API_DuplicateGhoul2Instance(precachedKyle, &ent->ghoul2);
+				trap->G2API_AttachInstanceToEntNum(ent->ghoul2, ent->s.number, qtrue);
+				ent->localAnimIndex = 0;
 			}
 		}
 		else
@@ -2813,76 +2803,7 @@ Class_Model System start
 Behaviour preserved exactly, but structure cleaned and bugs fixed.
 ==================
 */
-static char lcase(char c)
-{
-	if (c >= 'A' && c <= 'Z')
-	{
-		c = c | 0x20;
-	}
-	return c;
-}
-
-static int Class_Model(char* haystack, char* needle)
-{
-	char* h;
-	char* n;
-
-	if (!haystack || !needle)
-	{
-		return 0;
-	}
-
-	while (*haystack)
-	{
-		h = haystack;
-		n = needle;
-
-		/* Find first matching character (case-insensitive) */
-		if (lcase(*h) != lcase(*n))
-		{
-			haystack++;
-			continue;
-		}
-
-		/* Try to match the entire needle */
-		while (*h && *n)
-		{
-			/* Skip color codes in haystack */
-			if (*h == '^')
-			{
-				int i;
-				for (i = 0; i < 3; i++)
-				{
-					if (*h)
-					{
-						h++;
-					}
-				}
-				continue;
-			}
-
-			/* If characters don't match (case-insensitive), break */
-			if (lcase(*h) != lcase(*n))
-			{
-				break;
-			}
-
-			h++;
-			n++;
-		}
-
-		/* If we consumed all of needle, match succeeded */
-		if (!*n)
-		{
-			return 1;
-		}
-
-		/* Move to next starting position */
-		haystack++;
-	}
-
-	return 0;
-}
+// (Class_Model, the substring test of the class table, is BG_ClassModelHas in bg_classmodel.c now)
 
 /*
 ==================
@@ -2992,70 +2913,12 @@ Class_Model System
 // ------------------------------------------------------------
 // CLASS + SCALE ASSIGNMENT HELPER
 // ------------------------------------------------------------
-// The class table row for a model string ("folder", "folder/skin" or "folder/head|torso|lower"):
-// 1. a row naming exactly this model/skin,
-// 2. a row naming exactly this model folder - the table has short general patterns ("jedi", "reva", "ma", "ew"...)
-//    listed before specific ones, and a plain substring scan let them catch e.g. revan_jedi, maul_rebels, jeditrainer,
-//    nihilus/new before the rows written for those models,
-// 3. else (as before) the first row whose pattern is somewhere in the model string.
+// The class table row for a model string: BG_ClassModelIndex (bg_classmodel.c, shared with the ui's character menu;
+// the same steps as before, plus character-menu variant folders and uniform head_X|torso_X|lower_X skins).
 static const classModel_t* G_ClassModelFor(const char* model)
 {
-	char clean[MAX_QPATH], folder[MAX_QPATH];
-	int n = 0;
-
-	for (const char* s = model; *s && n < (int)sizeof clean - 1; s++)
-	{
-		if (Q_IsColorString(s))
-		{// skip colour codes, as Class_Model does
-			s++;
-			continue;
-		}
-		clean[n++] = *s;
-	}
-	clean[n] = 0;
-
-	Q_strncpyz(folder, clean, sizeof folder);
-	{
-		char* slash = strchr(folder, '/');
-		if (slash)
-		{
-			*slash = 0;
-		}
-	}
-
-	for (int i = 0; i < (int)ARRAY_LEN(classModels); i++)
-	{
-		const char* p = classModels[i].pattern;
-		const char* slash = strchr(p, '/');
-		if (slash && slash[1] && !Q_stricmp(p, clean))
-		{
-			return &classModels[i];
-		}
-	}
-
-	for (int i = 0; i < (int)ARRAY_LEN(classModels); i++)
-	{
-		const char* p = classModels[i].pattern;
-		const char* slash = strchr(p, '/');
-		if (slash && slash[1])
-		{
-			continue; // a model/skin row
-		}
-		const size_t len = slash ? (size_t)(slash - p) : strlen(p);
-		if (len == strlen(folder) && !Q_stricmpn(p, folder, (int)len))
-		{
-			return &classModels[i];
-		}
-	}
-
-	for (int i = 0; i < (int)ARRAY_LEN(classModels); i++)
-	{
-		if (Class_Model((char*)model, (char*)classModels[i].pattern))
-		{
-			return &classModels[i];
-		}
-	}
-	return NULL;
+	const int i = BG_ClassModelIndex(model);
+	return i >= 0 ? &classModels[i] : NULL;
 }
 
 static void G_AssignClassAndScaleFromModel(gentity_t* ent, const int clientNum, char* userinfo, char* model, const size_t modelSize)
@@ -3084,24 +2947,7 @@ static void G_AssignClassAndScaleFromModel(gentity_t* ent, const int clientNum, 
 		//    These should NEVER use the humanoid BCLASS system.
 		//    We force them back to DEFAULT_MODEL and normal scale.
 		// ------------------------------------------------------------------
-		if (Class_Model(model, "model_siege") ||
-			Class_Model(model, "atst") ||
-			Class_Model(model, "gonk") ||
-			Class_Model(model, "lambdashuttle") ||
-			Class_Model(model, "marka_ragnos") ||
-			Class_Model(model, "probe") ||
-			Class_Model(model, "rocks") ||
-			Class_Model(model, "sand_creature") ||
-			Class_Model(model, "sentry") ||
-			Class_Model(model, "swoop") ||
-			Class_Model(model, "tauntaun") ||
-			Class_Model(model, "tie_bomber") ||
-			Class_Model(model, "tie_fighter") ||
-			Class_Model(model, "droideka") ||
-			Class_Model(model, "droideka/main") ||
-			Class_Model(model, "droideka_mp") ||
-			Class_Model(model, "x-wing") ||
-			Class_Model(model, "z-95"))
+		if (BG_ModelBlocked(model)) // the list is in bg_classmodel.c (the ui hides the same models)
 		{
 			// Don't allow them to pick these models
 			Q_strncpyz(model, DEFAULT_MODEL, modelSize);
@@ -3122,6 +2968,39 @@ static void G_AssignClassAndScaleFromModel(gentity_t* ent, const int clientNum, 
 		//    model string wins (case-insensitive substring, colour codes skipped).
 		// ------------------------------------------------------------------
 		const classModel_t* classModel = G_ClassModelFor(model);
+
+		// ------------------------------------------------------------------
+		// SJE: a model on its own skeleton without the full humanoid bolts (creatures, droids) is only playable as a
+		//      creature class with the bolts that class needs (BG_ClassSkeletonOk; e.g. no hand needed for R2's stun
+		//      or the wampa's claws, a hand for the hazard trooper's guns). Others (vehicles, props, probe, mark1/2,
+		//      or a creature mapped to a humanoid class) fall back to the default model, for players and bots alike.
+		// ------------------------------------------------------------------
+		{
+			const int skelFlags = G_ModelSkeletonFlags(model);
+			const int wantClass = classModel ? classModel->botclass : BCLASS_SABERNOFP;
+
+			// SJE 2026-10-11: a model on neither _humanoid nor a usable own skeleton (props: toss_*, remote, mark2...) is
+			// drawn as the default model by every client (CG_RegisterClientModelname), so reset it here too, class-correct
+			if (!skelFlags && model[0] && !BG_ModelUsesHumanoidGLA(model))
+			{
+				Com_Printf("%s: model %s has no usable player skeleton, using " DEFAULT_MODEL "\n", client->pers.netname, model);
+				Q_strncpyz(model, DEFAULT_MODEL, modelSize);
+				Q_strncpyz(client->modelname, DEFAULT_MODEL, sizeof client->modelname);
+				Info_SetValueForKey(userinfo, "model", model);
+				trap->SetUserinfo(clientNum, userinfo);
+				classModel = G_ClassModelFor(model);
+			}
+			else if (skelFlags && !BG_ClassSkeletonOk(wantClass, skelFlags))
+			{
+				Com_Printf("%s: model %s cannot be played as its class (skeleton lacks what the class needs), using " DEFAULT_MODEL "\n",
+					client->pers.netname, model);
+				Q_strncpyz(model, DEFAULT_MODEL, modelSize);
+				Q_strncpyz(client->modelname, DEFAULT_MODEL, sizeof client->modelname);
+				Info_SetValueForKey(userinfo, "model", model);
+				trap->SetUserinfo(clientNum, userinfo);
+				classModel = G_ClassModelFor(model);
+			}
+		}
 
 		if (classModel)
 		{
@@ -3171,7 +3050,7 @@ qboolean WinterGear = qfalse; //sets weither or not the models go for winter gea
 // Force power string and sabers (saber1|saber2) of each client at the last userinfo change. When one of them
 // changes while the player is alive in game, the player is killed (MOD_TEAM_CHANGE gives the point back) and
 // respawns with the new setup (force powers and sabers are applied at spawn).
-static char s_lastForcePowers[MAX_CLIENTS][DEFAULT_FORCEPOWERS_LEN];
+static char s_lastForcePowers[MAX_CLIENTS][FORCEPOWERS_MAX_LEN + 1];
 static char s_lastSabers[MAX_CLIENTS][MAX_QPATH * 2 + 2];
 
 // the saber builder (from JA Enhanced): a built hilt's parts "p1|p2|p3|p4|p5" from the userinfo (saber1_skin /
@@ -3204,17 +3083,19 @@ qboolean client_userinfo_changed(const int clientNum)
 	char buf[MAX_INFO_STRING] = { 0 };
 	char oldClientinfo[MAX_INFO_STRING];
 	char model[MAX_QPATH];
-	char forcePowers[DEFAULT_FORCEPOWERS_LEN];
+	char forcePowers[FORCEPOWERS_MAX_LEN + 1];
 	char oldname[MAX_NETNAME];
 	char className[MAX_QPATH];
 	char color1[16];
 	char color2[16];
 	qboolean model_changed = qfalse;
 	gender_t gender;
-	char rgb1[MAX_INFO_STRING];
-	char rgb2[MAX_INFO_STRING];
-	char script1[MAX_INFO_STRING];
-	char script2[MAX_INFO_STRING];
+	// static: too big for the stack (C6262); only written and read further down, with no call in between that
+	// can come back here (player_die above might)
+	static char rgb1[MAX_INFO_STRING];
+	static char rgb2[MAX_INFO_STRING];
+	static char script1[MAX_INFO_STRING];
+	static char script2[MAX_INFO_STRING];
 	char saberSkin1[MAX_QPATH];
 	char saberSkin2[MAX_QPATH];
 
@@ -3336,6 +3217,32 @@ qboolean client_userinfo_changed(const int clientNum)
 		Q_strncpyz(client->modelname, model, sizeof client->modelname);
 		model_changed = qtrue;
 	}
+	else if (level.gametype != GT_SIEGE)
+	{
+		// SJE: switching to or from a model with its own skeleton needs a new server g2 instance and anim set
+		// (models on the shared _humanoid skeleton keep sharing the default instance, as before). The second test
+		// catches a server instance still on an own skeleton when the model string did not change here (for example
+		// after a blocked model was reset to the default by the class code, which also sets client->modelname).
+		const qboolean newOwnSkeleton = G_ModelHasOwnSkeleton(model);
+		const qboolean modelStringChanged = Q_stricmp(model, client->modelname) ? qtrue : qfalse;
+		qboolean reload = qfalse;
+
+		if (modelStringChanged)
+		{
+			reload = newOwnSkeleton || G_ModelHasOwnSkeleton(client->modelname) || ent->localAnimIndex != 0;
+			Q_strncpyz(client->modelname, model, sizeof client->modelname);
+		}
+		else if (!newOwnSkeleton && ent->localAnimIndex != 0)
+		{
+			reload = qtrue;
+		}
+
+		if (reload && ent->ghoul2)
+		{
+			// (before the first spawn there is no instance yet; ClientBegin sets it up)
+			model_changed = qtrue;
+		}
+	}
 
 	client->ps.customRGBA[0] = ((value = Info_ValueForKey(userinfo, "char_color_red")))
 		? Com_Clampi(0, 255, atoi(value))
@@ -3386,20 +3293,10 @@ qboolean client_userinfo_changed(const int clientNum)
 	}
 
 	// update our customRGBA for team colors.
-	if (level.gametype >= GT_TEAM && level.gametype != GT_SIEGE && !g_jediVmerc.integer)
-	{
-		char skin[MAX_QPATH] = { 0 };
-		vec3_t colorOverride = { 0.0f };
-
-		VectorClear(colorOverride);
-
-		BG_ValidateSkinForTeam(model, skin, client->sess.sessionTeam, colorOverride);
-		if (colorOverride[0] != 0.0f || colorOverride[1] != 0.0f || colorOverride[2] != 0.0f)
-			VectorScaleM(colorOverride, 255.0f, client->ps.customRGBA);
-	}
+	// no team colour tint in team games any more: everyone keeps their own colours (DH 2026-10-13)
 
 	// bots set their team a few frames later
-	if (level.gametype >= GT_TEAM && g_entities[clientNum].r.svFlags & SVF_BOT)
+	if (level.gametype >= GT_TEAM && ent->r.svFlags & SVF_BOT)
 	{
 		s = Info_ValueForKey(userinfo, "team");
 		if (!Q_stricmp(s, "red") || !Q_stricmp(s, "r"))
@@ -4016,8 +3913,6 @@ void ClientBegin(const int clientNum, const qboolean allowTeamReset)
 	//init saber ent
 	wp_saber_init_blade_data(ent);
 
-	IT_LoadWeatherParms();
-
 	// First time model setup for that player.
 	trap->GetUserinfo(clientNum, userinfo, sizeof userinfo);
 	char* modelname = Info_ValueForKey(userinfo, "model");
@@ -4116,7 +4011,7 @@ void G_BreakArm(gentity_t* ent, const int arm)
 
 	assert(ent && ent->client);
 
-	if (ent->s.NPC_class == CLASS_VEHICLE || ent->localAnimIndex > 1)
+	if (ent->s.NPC_class == CLASS_VEHICLE || !BG_AnimSetIsHumanoidLike(ent->localAnimIndex))
 	{
 		//no broken limbs for vehicles and non-humanoids
 		return;
@@ -4188,6 +4083,11 @@ void G_UpdateClientAnims(gentity_t* self, float animSpeedScale)
 	static float animSpeed, lAnimSpeedScale;
 	qboolean setTorso = qfalse;
 
+	if (!self || !self->client || !self->ghoul2 || !trap->G2API_HaveWeGhoul2Models(self->ghoul2))
+	{// no ghoul2 instance (e.g. an NPC killed by a saber in the frame its model was freed): nothing to animate
+		return;
+	}
+
 	torsoAnim = self->client->ps.torsoAnim;
 	legsAnim = self->client->ps.legsAnim;
 
@@ -4230,8 +4130,9 @@ void G_UpdateClientAnims(gentity_t* self, float animSpeedScale)
 		if (animSpeed < 0)
 		{
 			lastFrame = bgAllAnims[self->localAnimIndex].anims[legsAnim].firstFrame;
-			firstFrame = bgAllAnims[self->localAnimIndex].anims[legsAnim].firstFrame + bgAllAnims[self->localAnimIndex].
-				anims[legsAnim].numFrames;
+			// SJE: its own last frame, as in the cgame (firstFrame + numFrames can be past the end of the GLA)
+			firstFrame = bgAllAnims[self->localAnimIndex].anims[legsAnim].firstFrame + (bgAllAnims[self->localAnimIndex].anims[legsAnim].numFrames > 0
+				? bgAllAnims[self->localAnimIndex].anims[legsAnim].numFrames - 1 : 0);
 		}
 		else
 		{
@@ -4297,8 +4198,9 @@ tryTorso:
 		if (animSpeed < 0)
 		{
 			lastFrame = bgAllAnims[self->localAnimIndex].anims[f].firstFrame;
-			firstFrame = bgAllAnims[self->localAnimIndex].anims[f].firstFrame + bgAllAnims[self->localAnimIndex].anims[
-				f].numFrames;
+			// SJE: its own last frame, as in the cgame (firstFrame + numFrames can be past the end of the GLA)
+			firstFrame = bgAllAnims[self->localAnimIndex].anims[f].firstFrame + (bgAllAnims[self->localAnimIndex].anims[f].numFrames > 0
+				? bgAllAnims[self->localAnimIndex].anims[f].numFrames - 1 : 0);
 		}
 		else
 		{
@@ -4317,7 +4219,7 @@ tryTorso:
 	}
 
 	if (setTorso &&
-		self->localAnimIndex <= 1)
+		BG_AnimSetIsHumanoidLike(self->localAnimIndex))
 	{
 		//only set the motion bone for humanoids.
 		trap->G2API_SetBoneAnim(self->ghoul2, 0, "Motion", firstFrame, lastFrame, aFlags, lAnimSpeedScale, level.time,
@@ -4328,7 +4230,7 @@ tryTorso:
 	if (self->client->ps.brokenLimbs != self->client->brokenLimbs ||
 		setTorso)
 	{
-		if (self->localAnimIndex <= 1 && self->client->ps.brokenLimbs &&
+		if (BG_AnimSetIsHumanoidLike(self->localAnimIndex) && self->client->ps.brokenLimbs &&
 			(self->client->ps.brokenLimbs & (1 << BROKENLIMB_LARM)))
 		{ //broken left arm
 			char* brokenBone = "lhumerus";
@@ -4348,7 +4250,7 @@ tryTorso:
 
 			trap->G2API_SetBoneAnim(self->ghoul2, 0, brokenBone, armFirstFrame, armLastFrame, armFlags, armAnimSpeed, level.time, -1, 150);
 		}
-		else if (self->localAnimIndex <= 1 && self->client->ps.brokenLimbs &&
+		else if (BG_AnimSetIsHumanoidLike(self->localAnimIndex) && self->client->ps.brokenLimbs &&
 			(self->client->ps.brokenLimbs & (1 << BROKENLIMB_RARM)))
 		{ //broken right arm
 			char* brokenBone = "rhumerus";
@@ -4779,7 +4681,7 @@ void ClientSpawn(gentity_t* ent)
 				if (BOT_FindCTFWaypointSpawnPoint_red(ent, wpSpawn) == qtrue)
 				{
 					VectorCopy(wpSpawn, spawn_origin);
-					VectorClear(spawn_angles);
+					BOT_WaypointSpawnAngles(client->sess.sessionTeam, spawn_origin, spawn_angles);
 					spawnPoint = NULL;
 					goto spawn_done;
 				}
@@ -4789,7 +4691,7 @@ void ClientSpawn(gentity_t* ent)
 				if (BOT_FindCTFWaypointSpawnPoint_blue(ent, wpSpawn) == qtrue)
 				{
 					VectorCopy(wpSpawn, spawn_origin);
-					VectorClear(spawn_angles);
+					BOT_WaypointSpawnAngles(client->sess.sessionTeam, spawn_origin, spawn_angles);
 					spawnPoint = NULL;
 					goto spawn_done;
 				}
@@ -4874,7 +4776,7 @@ void ClientSpawn(gentity_t* ent)
 				if (BOT_FindCTFWaypointSpawnPoint_red(ent, wpSpawn) == qtrue)
 				{
 					VectorCopy(wpSpawn, spawn_origin);
-					VectorClear(spawn_angles);
+					BOT_WaypointSpawnAngles(client->sess.sessionTeam, spawn_origin, spawn_angles);
 					spawnPoint = NULL;
 					goto spawn_done;
 				}
@@ -4884,7 +4786,7 @@ void ClientSpawn(gentity_t* ent)
 				if (BOT_FindCTFWaypointSpawnPoint_blue(ent, wpSpawn) == qtrue)
 				{
 					VectorCopy(wpSpawn, spawn_origin);
-					VectorClear(spawn_angles);
+					BOT_WaypointSpawnAngles(client->sess.sessionTeam, spawn_origin, spawn_angles);
 					spawnPoint = NULL;
 					goto spawn_done;
 				}
@@ -4927,7 +4829,7 @@ void ClientSpawn(gentity_t* ent)
 		if (BOT_FindFFAWaypointSpawnPoint(ent, wpSpawn) == qtrue)
 		{
 			VectorCopy(wpSpawn, spawn_origin);
-			VectorClear(spawn_angles);
+			BOT_WaypointSpawnAngles(client->sess.sessionTeam, spawn_origin, spawn_angles);
 			spawnPoint = NULL;
 			goto spawn_done;
 		}
@@ -4957,6 +4859,54 @@ void ClientSpawn(gentity_t* ent)
 	}
 
 spawn_done:
+
+	if (level.gametype != GT_SIEGE && client->sess.sessionTeam != TEAM_SPECTATOR)
+	{
+		// SJE: creature classes with a bigger bbox than a human (wampa, rancor): the spawn point picked for a human
+		// may be too tight; then use another spawn point of the same kind where the creature's bbox fits
+		float halfWidth;
+		int standheight;
+
+		if (BG_ClassCreatureSize(client->pers.botclass, &halfWidth, &standheight, NULL) &&
+			(halfWidth > playerMaxs[0] || standheight > playerMaxs[2]))
+		{
+			vec3_t cMins, cMaxs;
+			trace_t tr;
+
+			VectorSet(cMins, -halfWidth, -halfWidth, DEFAULT_MINS_2);
+			VectorSet(cMaxs, halfWidth, halfWidth, standheight);
+			// (bodies count too: the kill box at spawn uses this bigger bbox and would telefrag anyone in it)
+			trap->Trace(&tr, spawn_origin, cMins, cMaxs, spawn_origin, ent->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+			if ((tr.startsolid || tr.allsolid) && spawnPoint && spawnPoint->classname)
+			{
+				gentity_t* spots[64];
+				gentity_t* other = NULL;
+				int numSpots = 0;
+
+				while ((other = G_Find(other, FOFS(classname), spawnPoint->classname)) != NULL && numSpots < (int)ARRAY_LEN(spots))
+				{
+					spots[numSpots++] = other;
+				}
+				const int first = numSpots > 0 ? Q_irand(0, numSpots - 1) : 0;
+				for (int s = 0; s < numSpots; s++)
+				{
+					vec3_t o;
+
+					other = spots[(first + s) % numSpots];
+					VectorCopy(other->s.origin, o);
+					o[2] += 9;
+					trap->Trace(&tr, o, cMins, cMaxs, o, ent->s.number, MASK_PLAYERSOLID, qfalse, 0, 0);
+					if (!tr.startsolid && !tr.allsolid)
+					{
+						VectorCopy(o, spawn_origin);
+						VectorCopy(other->s.angles, spawn_angles);
+						spawnPoint = other;
+						break;
+					}
+				}
+			}
+		}
+	}
 
 	client->pers.teamState.state = TEAM_ACTIVE;
 
@@ -5017,18 +4967,7 @@ spawn_done:
 
 	client->ps.customRGBA[3] = 255;
 
-	if (level.gametype >= GT_TEAM && level.gametype != GT_SIEGE && !g_jediVmerc.integer)
-	{
-		char skin[MAX_QPATH] = { 0 }, model[MAX_QPATH] = { 0 };
-		vec3_t colorOverride = { 0.0f };
-
-		VectorClear(colorOverride);
-		Q_strncpyz(model, Info_ValueForKey(userinfo, "model"), sizeof model);
-
-		BG_ValidateSkinForTeam(model, skin, savedSess.sessionTeam, colorOverride);
-		if (colorOverride[0] != 0.0f || colorOverride[1] != 0.0f || colorOverride[2] != 0.0f)
-			VectorScaleM(colorOverride, 255.0f, client->ps.customRGBA);
-	}
+	// no team colour tint in team games any more: everyone keeps their own colours (DH 2026-10-13)
 
 	client->siegeClass = savedSiegeIndex;
 
@@ -5115,6 +5054,22 @@ spawn_done:
 	client->ps.crouchheight = CROUCH_MAXS_2;
 	client->ps.standheight = DEFAULT_MAXS_2;
 
+	if (level.gametype != GT_SIEGE)
+	{
+		// SJE: creature/droid classes get the bbox of their SP .npc file (PM_CheckDuck keeps it, from ps.botclass)
+		float halfWidth;
+		int standheight, crouchheight;
+
+		if (BG_ClassCreatureSize(client->pers.botclass, &halfWidth, &standheight, &crouchheight))
+		{
+			VectorSet(ent->r.mins, -halfWidth, -halfWidth, DEFAULT_MINS_2);
+			VectorSet(ent->r.maxs, halfWidth, halfWidth, standheight);
+			client->ps.standheight = standheight;
+			client->ps.crouchheight = crouchheight;
+		}
+		client->ps.botclass = client->pers.botclass;
+	}
+
 	client->ps.clientNum = index;
 
 	// ------------------------------------------------------------
@@ -5175,7 +5130,9 @@ spawn_done:
 	}
 
 	//Give everyone fists as long as they aren't disabled.
-	if (!wDisable || !(wDisable & 1 << WP_MELEE))
+	// SJE: except the classes that have no melee at all (SP NPC files: R2/R5 only the stun, gonk and protocol nothing)
+	if ((!wDisable || !(wDisable & 1 << WP_MELEE)) &&
+		!(level.gametype != GT_SIEGE && ent->s.eType != ET_NPC && BG_ClassHasNoFists(client->pers.botclass)))
 	{
 		client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
 	}
@@ -5263,6 +5220,10 @@ spawn_done:
 			{
 				client->ps.stats[STAT_WEAPONS] |= 1 << WP_REPEATER;
 			}
+			if (!wDisable || !(wDisable & 1 << WP_Z6_ROTARY_CANNON))
+			{
+				client->ps.stats[STAT_WEAPONS] |= 1 << WP_Z6_ROTARY_CANNON;
+			}
 			if (!wDisable || !(wDisable & 1 << WP_DISRUPTOR)) //JRHockney
 			{
 				client->ps.stats[STAT_WEAPONS] |= 1 << WP_DISRUPTOR;
@@ -5334,7 +5295,6 @@ spawn_done:
 				case BCLASS_JEDITRAINER:
 				case BCLASS_ALORA:
 				case BCLASS_DESANN:
-				case BCLASS_KYLE:
 				case BCLASS_LUKE:
 				case BCLASS_JEDIMASTER:
 				case BCLASS_DUELS:
@@ -5378,9 +5338,19 @@ spawn_done:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_SABER;
 					break;
+				case BCLASS_KYLE:
+					// SJE 2026-10-11: kyle.npc (Kyle, Kyle_JKA, KyleJK2): WP_BRYAR_PISTOL + WP_SABER
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_SABER;
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
+					ClassAmmoSetup(ent);
+					break;
 				case BCLASS_ASSASSIN_DROID:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_DISRUPTOR;
 					client->skillLevel[SK_DISRUPTOR] = FORCE_LEVEL_3;
+					// SJE 2026-10-11: assassin_droid.npc: WP_BLASTER (the MP disruptor is kept)
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BLASTER;
+					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
 					break;
 				case BCLASS_BARTENDER:
@@ -5410,6 +5380,9 @@ spawn_done:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					/*client->skillLevel[SK_PISTOL] = FORCE_LEVEL_3;
 					client->ps.eFlags |= EF3_DUAL_WEAPONS;*/
+					// SJE 2026-10-11: boba_fett.npc / bounty_hunter.npc: WP_DISRUPTOR
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_DISRUPTOR;
+					client->skillLevel[SK_DISRUPTOR] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_ROCKET_LAUNCHER;
 					client->skillLevel[SK_ROCKET] = FORCE_LEVEL_3;
@@ -5437,6 +5410,9 @@ spawn_done:
 					break;
 				case BCLASS_GALAK:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					// SJE 2026-10-11: galak.npc (Galak, GalakJK2, Galakclass): WP_BLASTER
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BLASTER;
+					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_REPEATER;
 					client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
 					client->skillLevel[SK_REPEATERUPGRADE] = FORCE_LEVEL_3;
@@ -5453,6 +5429,10 @@ spawn_done:
 					break;
 				case BCLASS_GRAN:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					// SJE 2026-10-11: gran.npc Gran/Gran2/GranJK2: WP_THERMAL + WP_MELEE
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
+					client->skillLevel[SK_THERMAL] = FORCE_LEVEL_3;
+					client->ps.ammo[AMMO_THERMAL] = 4;
 					break;
 				case BCLASS_GRAN_SHOOTER:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
@@ -5487,6 +5467,8 @@ spawn_done:
 					break;
 				case BCLASS_IMPERIAL:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					// SJE 2026-10-11: imperial.npc (Imperial, ImperialJK2, ImperialCommando): WP_BLASTER_PISTOL (MP: bryar pistol)
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_DEMP2;
 					ClassAmmoSetup(ent);
 					break;
@@ -5555,13 +5537,19 @@ spawn_done:
 					ClassAmmoSetup(ent);
 					break;
 				case BCLASS_PROTOCOL:
+				case BCLASS_GONK:
+					// SJE: as protocol.npc / gonk.npc (WP_NONE): no weapon at all, not even fists (BG_ClassHasNoFists)
+					break;
+				case BCLASS_HOWLER:
+				case BCLASS_MINEMONSTER:
+					// SJE: howler.npc / minemonster.npc: WP_MELEE (their bites, BG_ClassCreatureAttackAnim)
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
 					break;
 				case BCLASS_R2D2:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_STUN_BATON;
 					break;
 				case BCLASS_R5D2:
-					client->ps.stats[STAT_WEAPONS] |= 1 << WP_STUN_BATON;
+					// SJE (owner decision 2026-10-11): only R2-D2 has the stun; R5 has no weapon at all (BG_ClassHasNoFists)
 					break;
 				case BCLASS_RAGNOS:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
@@ -5616,6 +5604,11 @@ spawn_done:
 					break;
 				case BCLASS_RODIAN:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					// SJE 2026-10-11: rodian.npc: Rodian WP_DISRUPTOR, Rodian2/RodianJK2 WP_BLASTER
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_DISRUPTOR;
+					client->skillLevel[SK_DISRUPTOR] = FORCE_LEVEL_3;
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BLASTER;
+					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_FLECHETTE;
 					client->skillLevel[SK_FLECHETTE] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
@@ -5629,6 +5622,9 @@ spawn_done:
 					client->ps.stats[STAT_ARMOR] = 100;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_DISRUPTOR;
 					client->skillLevel[SK_DISRUPTOR] = FORCE_LEVEL_3;
+					// SJE 2026-10-11: saboteur.npc: WP_BLASTER (saboteursniper.npc: the disruptor)
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BLASTER;
+					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
 					break;
 				case BCLASS_STORMTROOPER:
@@ -5649,6 +5645,9 @@ spawn_done:
 					break;
 				case BCLASS_SWAMPTROOPER:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					// SJE 2026-10-11: swamptrooper.npc SwampTrooper3: WP_BOWCASTER (flechette/repeater as before)
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BOWCASTER;
+					client->skillLevel[SK_BOWCASTER] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_FLECHETTE;
 					client->skillLevel[SK_FLECHETTE] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
@@ -5661,6 +5660,9 @@ spawn_done:
 					client->ps.stats[STAT_ARMOR] = 100;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BLASTER;
 					client->skillLevel[SK_BLASTER] = FORCE_LEVEL_3;
+					// SJE 2026-10-11: trandoshan.npc: WP_REPEATER
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_REPEATER;
+					client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
 					client->skillLevel[SK_THERMAL] = FORCE_LEVEL_3;
@@ -5687,6 +5689,9 @@ spawn_done:
 					break;
 				case BCLASS_WEEQUAY:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					// SJE 2026-10-11: weequay.npc (all Weequay NPCs): WP_BOWCASTER
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BOWCASTER;
+					client->skillLevel[SK_BOWCASTER] = FORCE_LEVEL_3;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_CONCUSSION;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
@@ -5807,6 +5812,7 @@ spawn_done:
 				case BCLASS_BOUNTYHUNTER1:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_FLECHETTE;
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_Z6_ROTARY_CANNON; // as MovieDuels
 					client->skillLevel[SK_FLECHETTE] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_REPEATER;
@@ -6010,6 +6016,11 @@ spawn_done:
 					client->ps.weapon = i1;
 					break;
 				}
+			}
+			if (i1 == WP_NONE)
+			{
+				// SJE: a class without any weapon (gonk, protocol droid): hold nothing
+				client->ps.weapon = WP_NONE;
 			}
 		}
 	}
@@ -6667,6 +6678,18 @@ spawn_done:
 			client->ps.fd.forcePowerMax = 200;
 			client->ps.fd.forcePower = client->ps.fd.forcePowerMax;
 			break;
+		case BCLASS_R2D2:
+		case BCLASS_R5D2:
+		case BCLASS_GONK:
+		case BCLASS_PROTOCOL:
+		case BCLASS_WAMPA:
+		case BCLASS_RANCOR:
+		case BCLASS_HOWLER:
+		case BCLASS_MINEMONSTER:
+			// SJE: droids and creatures: no holdable items (the default gave every class a portable shield)
+			client->ps.stats[STAT_ARMOR] = 100;
+			client->ps.stats[STAT_MAX_HEALTH] = 100;
+			break;
 		default:
 			client->ps.stats[STAT_ARMOR] = 100;
 			client->ps.stats[STAT_MAX_HEALTH] = 100;
@@ -6759,10 +6782,6 @@ spawn_done:
 		case BCLASS_GALAKMECH:
 		case BCLASS_MONMOTHMA:
 		case BCLASS_NOGHRI:
-		case BCLASS_PROTOCOL:
-		case BCLASS_R2D2:
-		case BCLASS_R5D2:
-		case BCLASS_RANCOR:
 		case BCLASS_RAX:
 		case BCLASS_REBEL:
 		case BCLASS_REBEL_PILOT:
@@ -6775,7 +6794,6 @@ spawn_done:
 		case BCLASS_TRANDOSHAN:
 		case BCLASS_TUSKEN_SNIPER:
 		case BCLASS_UGNAUGHT:
-		case BCLASS_WAMPA:
 		case BCLASS_WEEQUAY:
 		case BCLASS_SOILDER:
 		case BCLASS_BATTLEDROID:
@@ -6922,6 +6940,23 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_0;
 			break;
+		case BCLASS_PROTOCOL:
+		case BCLASS_R2D2:
+		case BCLASS_R5D2:
+		case BCLASS_GONK:
+		case BCLASS_RANCOR:
+		case BCLASS_WAMPA:
+		case BCLASS_HOWLER:
+		case BCLASS_MINEMONSTER:
+			// SJE: droids and creatures have no Force at all (they only kept the gunner limits before, so a player's
+			// own Force setup gave e.g. R2-D2 push and grip)
+			for (int fp = 0; fp < NUM_FORCE_POWERS; fp++)
+			{
+				client->ps.fd.forcePowerLevel[fp] = FORCE_LEVEL_0;
+			}
+			client->ps.fd.forcePowersKnown = 0;
+			client->ps.fd.forcePowerSelected = 0;
+			break;
 		default:
 			//Read bot.txt or Player FP setup for saber users
 			break;
@@ -6945,6 +6980,16 @@ spawn_done:
 	client->ps.genericEnemyIndex = -1;
 
 	G_AddEvent(ent, EV_WEAPINVCHANGE, client->ps.stats[STAT_WEAPONS]);
+
+	if (developer.integer > 1 || developer.integer && (BG_ClassIsCreature(client->pers.botclass) || ent->r.svFlags & SVF_BOT))
+	{
+		// SJE: creature/droid class and bot loadouts (developer only; developer 2: every client, e.g. the Select Character menu)
+		Com_Printf("ClientSpawn: %s class %d model %s: weapons 0x%x weapon %d items 0x%x force known 0x%x bbox %.0f %.0f %.0f / %.0f %.0f %.0f scale %d saber %s/%s\n",
+			client->pers.netname, client->pers.botclass, client->modelname, client->ps.stats[STAT_WEAPONS],
+			client->ps.weapon, client->ps.stats[STAT_HOLDABLE_ITEMS], client->ps.fd.forcePowersKnown,
+			ent->r.mins[0], ent->r.mins[1], ent->r.mins[2], ent->r.maxs[0], ent->r.maxs[1], ent->r.maxs[2],
+			client->ps.iModelScale, client->pers.saber1, client->pers.saber2);
+	}
 
 	client->ps.isJediMaster = qfalse;
 
@@ -7082,8 +7127,9 @@ spawn_done:
 		if (ent->client->sess.sessionTeam != TEAM_SPECTATOR)
 		{
 			g_kill_box(ent);
-			if (client->ps.weapon <= WP_NONE)
+			if (client->ps.weapon <= WP_NONE && client->ps.stats[STAT_WEAPONS] & ~(1 << WP_NONE))
 			{
+				// (SJE: only when there is a weapon; the weaponless classes, gonk and protocol, keep WP_NONE)
 				client->ps.weapon = WP_BRYAR_PISTOL;
 			}
 

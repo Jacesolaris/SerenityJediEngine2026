@@ -1119,6 +1119,7 @@ static void UI_FreeCustomSaber(customSaberInfo_t* saber)
 {
 	for (auto& part : saber->Skin)
 	{
+#pragma warning(suppress: 6001) // false positive: each saber is memset to 0 before it is filled (UI_BuildCustomSaber_List)
 		free(part.skins);
 	}
 	memset(saber, 0, sizeof(customSaberInfo_t));
@@ -1233,7 +1234,12 @@ static void UI_BuildCustomSaber_List()
 						break;
 					}
 					skins.skins = static_cast<skinName_t*>(newPtr);
+					memset(skins.skins + skins.max, 0, (newMax - skins.max) * sizeof(skinName_t)); // the new entries start cleared
 					skins.max = newMax;
+				}
+				if (skins.count >= skins.max)
+				{
+					break; // (cannot happen: grown above; tells the analyser the index is in range)
 				}
 				Q_strncpyz(skins.skins[skins.count++].name, skinName, SKIN_LENGTH);
 				partsFound |= 1 << part;
@@ -3957,8 +3963,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 09/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 06------------------------------\n");
+	Com_Printf("---------------------Build date 13/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 07------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

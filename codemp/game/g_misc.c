@@ -2389,6 +2389,8 @@ static qboolean HasValidWeaponThatUsesAmmo(const gentity_t* ent, const int ammot
 	case AMMO_METAL_BOLTS:
 		if (ent->client->ps.stats[STAT_WEAPONS] & 1 << WP_REPEATER)
 			return qtrue;
+		if (ent->client->ps.stats[STAT_WEAPONS] & 1 << WP_Z6_ROTARY_CANNON)
+			return qtrue;
 		if (ent->client->ps.stats[STAT_WEAPONS] & 1 << WP_FLECHETTE)
 			return qtrue;
 		if (ent->client->ps.stats[STAT_WEAPONS] & 1 << WP_CONCUSSION)

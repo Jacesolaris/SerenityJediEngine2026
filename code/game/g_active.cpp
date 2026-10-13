@@ -1891,7 +1891,7 @@ void G_MatchPlayerWeapon(gentity_t* ent)
 		if (new_weap != WP_NONE && ent->client->ps.weapon != new_weap)
 		{
 			G_RemoveWeaponModels(ent);
-			ent->client->ps.stats[STAT_WEAPONS] = 1 << new_weap;
+			BG_SetOnlyWeapon(&ent->client->ps, new_weap);
 			ent->client->ps.ammo[weaponData[new_weap].ammoIndex] = 999;
 			ChangeWeapon(ent, new_weap);
 			ent->client->ps.weapon = new_weap;
@@ -1970,7 +1970,7 @@ static void ClientTimerActions(gentity_t* ent, const int msec)
 		/* ---------------------------------------------------------
 		   WEAPON USAGE STATS
 		--------------------------------------------------------- */
-		if (ent->s.weapon != WP_NONE)
+		if (ent->s.weapon != WP_NONE && ent->s.weapon < MISSION_STATS_WEAPONS)
 			client->sess.missionStats.weaponUsed[ent->s.weapon]++;
 
 		/* ---------------------------------------------------------
@@ -6392,6 +6392,7 @@ static qboolean GunisLong(const gentity_t* ent)
 	case WP_BLASTER:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 		return qtrue;
@@ -6408,6 +6409,7 @@ static qboolean GunisMassive(const gentity_t* ent)
 	case WP_TUSKEN_RIFLE:
 	case WP_CONCUSSION:
 	case WP_ROCKET_LAUNCHER:
+	case WP_Z6_ROTARY_CANNON:
 		return qtrue;
 	default:;
 	}
@@ -6711,6 +6713,10 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 	float vehicleFrameTimeModifier)
 {
 	gclient_t* client = ent->client;
+	if (!client)
+	{
+		return; // client is used unchecked below
+	}
 	const Vehicle_t* p_veh = nullptr;
 
 	if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
@@ -7455,6 +7461,7 @@ qboolean IsHoldingReloadableGun(const gentity_t* ent)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -7485,6 +7492,10 @@ static int ClipSize(const int ammo, gentity_t* ent)
 
 static int MagazineSize(const int ammo, gentity_t* ent)
 {
+	if (ammo == AMMO_METAL_BOLTS && ent->s.weapon == WP_Z6_ROTARY_CANNON)
+	{
+		return 150; // the minigun's belt (MovieDuels)
+	}
 	switch (ammo)
 	{
 	case AMMO_BLASTER:
@@ -7526,7 +7537,14 @@ void WP_ReloadGun(gentity_t* ent)
 	{
 		if (ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_TWELVE)
 		{
-			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			if (ent->s.weapon == WP_DROIDEKA)
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
 			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
 			G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 			G_Damage(ent, nullptr, nullptr, nullptr, ent->currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
@@ -7549,6 +7567,10 @@ void WP_ReloadGun(gentity_t* ent)
 					G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/recharge.mp3");
 				}
 			}
+			else if (ent->s.weapon == WP_DROIDEKA)
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
 			else if (ent->s.weapon == WP_DISRUPTOR || ent->s.weapon == WP_BOWCASTER || ent->s.weapon == WP_DEMP2)
 			{
 				if (ent->client->ps.ammo[AMMO_POWERCELL] < ClipSize(AMMO_POWERCELL, ent))
@@ -7564,7 +7586,7 @@ void WP_ReloadGun(gentity_t* ent)
 					G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/recharge.mp3");
 				}
 			}
-			else if (ent->s.weapon == WP_REPEATER || ent->s.weapon == WP_FLECHETTE || ent->s.weapon == WP_CONCUSSION)
+			else if (ent->s.weapon == WP_REPEATER || ent->s.weapon == WP_Z6_ROTARY_CANNON || ent->s.weapon == WP_FLECHETTE || ent->s.weapon == WP_CONCUSSION)
 			{
 				if (ent->client->ps.ammo[AMMO_METAL_BOLTS] < ClipSize(AMMO_METAL_BOLTS, ent))
 				{
@@ -7617,7 +7639,14 @@ void FireOverheatFail(gentity_t* ent)
 {
 	if (IsHoldingReloadableGun(ent))
 	{
-		NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		if (ent->s.weapon == WP_DROIDEKA)
+		{
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		}
+		else
+		{
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		}
 		G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
 		G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 		G_Damage(ent, nullptr, nullptr, nullptr, ent->currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
@@ -7674,7 +7703,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 
 	qboolean HoldingStun = ent->client->ps.communicatingflags & 1 << CF_STUNNING ? qtrue : qfalse;
 
-	if (ent->client && ent->client->NPC_class == CLASS_VEHICLE)
+	if (ent->client->NPC_class == CLASS_VEHICLE)
 	{
 		p_veh = ent->m_pVehicle;
 	}
@@ -7686,13 +7715,13 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 		G_HeldByMonster(ent, &ucmd);
 	}
 
-	if (ent->client && ent->client->ps.Manual_m_blockingTime <= level.time && ent->client->ps.Manual_m_blockingTime > 0)
+	if (ent->client->ps.Manual_m_blockingTime <= level.time && ent->client->ps.Manual_m_blockingTime > 0)
 	{
 		ent->client->ps.userInt3 &= ~(1 << FLAG_BLOCKING);
 		ent->client->ps.Manual_m_blockingTime = 0;
 	}
 
-	if (ent->client && ent->client->ps.powerups[PW_GALAK_SHIELD] && !droideka_npc(ent))
+	if (ent->client->ps.powerups[PW_GALAK_SHIELD] && !droideka_npc(ent))
 	{
 		if (ent->client->ps.weapon == WP_SABER)
 		{
@@ -7883,7 +7912,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 		}
 
 		// Transfer over our driver's commands to us (the vehicle).
-		if (ent->owner && ent->client && ent->client->NPC_class == CLASS_VEHICLE)
+		if (ent->owner && ent->client->NPC_class == CLASS_VEHICLE)
 		{
 			memcpy(ucmd, &ent->owner->client->usercmd, sizeof(usercmd_t));
 			ucmd->buttons &= ~(BUTTON_USE); //Vehicles NEVER try to use ANYTHING!!!
@@ -7904,7 +7933,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 	{
 		p_veh->m_pVehicleInfo->Update(p_veh, ucmd);
 	}
-	else if (ent->client)
+	else
 	{
 		//this is any client that is not a vehicle (OR: is a vehicle and it not being ridden, is not being boarded, or is a TaunTaun...!
 		if (ent->client->NPC_class == CLASS_GONK ||
@@ -8869,7 +8898,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 	}
 
 	//NEED to do this every frame, since these overrides do not go into the save/load data
-	if (client && ent->s.m_iVehicleNum != 0 && !ent->s.number && !MatrixMode)
+	if (ent->s.m_iVehicleNum != 0 && !ent->s.number && !MatrixMode)
 	{
 		//FIXME: extern and read from g_vehicleInfo?
 		Vehicle_t* pPlayerVeh = ent->owner->m_pVehicle;
@@ -8962,7 +8991,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 				}
 			}
 		}
-		if (ent->client && ent->client->ps.viewangles[PITCH] > 0)
+		if (ent->client->ps.viewangles[PITCH] > 0)
 		{
 			cg.overrides.thirdPersonPitchOffset = ent->client->ps.viewangles[PITCH] * -0.75;
 			cg.overrides.thirdPersonVertOffset = 300 + ent->client->ps.viewangles[PITCH] * -10;
@@ -9006,7 +9035,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 	pm.debugLevel = g_debugMove->integer;
 	pm.noFootsteps = qfalse;
 
-	if (ent->client && ent->NPC)
+	if (ent->NPC)
 	{
 		pm.cmd.weapon = ent->client->ps.weapon;
 	}
@@ -9145,7 +9174,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			&& ent->client->ps.pm_type != PM_DEAD
 			&& !ent->client->hookhasbeenfired)
 		{
-			if (ent->client && ent->client->hookDebounceTime > level.time)
+			if (ent->client->hookDebounceTime > level.time)
 			{
 				if (ent->client->hook)
 				{
@@ -9186,7 +9215,7 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 	{
 		if (ent->client->ps.pm_type != PM_DEAD && !ent->client->stunhasbeenfired)
 		{
-			if (ent->client && ent->client->stunDebounceTime > level.time)
+			if (ent->client->stunDebounceTime > level.time)
 			{
 				if (client->stun)
 				{
@@ -9426,6 +9455,18 @@ void ClientEndFrame(gentity_t* ent)
 	P_DamageFeedback(ent);
 
 	ent->client->ps.stats[STAT_HEALTH] = ent->health; // FIXME: get rid of ent->health...
+
+	// the exe's level-transition save (playersave) holds STAT_WEAPONS only: keep the weapons from 32 on (the Z-6) in a
+	// cvar for Player_RestoreFromPrevLevel
+	if (ent->s.number == 0)
+	{
+		static int savedWeapons2 = -1;
+		if (savedWeapons2 != ent->client->ps.stats[STAT_WEAPONS2])
+		{
+			savedWeapons2 = ent->client->ps.stats[STAT_WEAPONS2];
+			gi.cvar_set("sje_playersave_weapons2", va("%i", savedWeapons2));
+		}
+	}
 
 	G_SetClientSound(ent);
 }

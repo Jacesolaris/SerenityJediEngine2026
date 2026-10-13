@@ -421,7 +421,7 @@ is above 0: the blend already eases it, and damping on top made it trail behind 
 
 #define AIM_CAMERA_ANGLE		0.0f	// yaw inward
 #define AIM_CAMERA_PITCH		0.0f	// no pitch offset
-#define AIM_CAMERA_HORZ			-20.0f	// shoulder shift
+#define AIM_CAMERA_SHOULDER		24.0f	// right-shoulder shift of a normal-sized model (cg_aimShoulder 1, CG_AimShoulderOffset)
 #define AIM_CAMERA_VERT			4.0f	// slight upward shift
 #define AIM_CAMERA_RANGE		50.0f	// closer to the player
 #define AIM_CAMERA_FOV			60.0f	// closer FOV
@@ -520,6 +520,38 @@ static float CG_SaberLockBlendValue(const float value, const float locked)
 float CG_CameraBlendAlpha(const float alpha)
 {
 	return CG_AimBlendValue(alpha, AIM_CAMERA_ALPHA);
+}
+
+float CG_PredictedHalfWidth(void);
+
+// The aiming camera's sideways offset (viewaxis[1] points left, so negative = over the right shoulder):
+// cg_aimShoulder x AIM_CAMERA_SHOULDER, scaled by the player's size (bbox half width against a normal 15, stand
+// height against 40, model scale) so a big model gets a bigger shift. cg_aimShoulder 0 = the old centred camera.
+static float CG_AimShoulderOffset(const float normal)
+{
+	float scale = CG_PredictedHalfWidth() / 15.0f;
+
+	if (cg.predictedPlayerState.standheight > 0 && cg.predictedPlayerState.standheight / (float)DEFAULT_MAXS_2 > scale)
+	{
+		scale = cg.predictedPlayerState.standheight / (float)DEFAULT_MAXS_2;
+	}
+	if (cg.predictedPlayerState.iModelScale > 0 && cg.predictedPlayerState.iModelScale / 100.0f > scale)
+	{
+		scale = cg.predictedPlayerState.iModelScale / 100.0f;
+	}
+	if (scale < 0.5f)
+	{
+		scale = 0.5f;
+	}
+	else if (scale > 3.0f)
+	{
+		scale = 3.0f;
+	}
+	if (cg_aimShoulder.value <= 0.0f)
+	{
+		return normal;
+	}
+	return normal - AIM_CAMERA_SHOULDER * cg_aimShoulder.value * scale;
 }
 
 /*
@@ -1126,28 +1158,21 @@ static void CG_OffsetThirdPersonView(void)
 
 	// Temp: just move the camera to the side a bit
 
-	if (cg.predictedPlayerState.communicatingflags & (1 << CF_OVERSIZEDGUNNER))
+	if (CG_CameraBlending())
 	{
+		//saber lock / aiming camera (first, so the shoulder shift works for every model: the oversized / undersized
+		//gunner and undersized Jedi branches that came before it only applied cg_thirdPersonHorzOffset, as below)
+		thirdPersonHorzOffset = CG_SaberLockBlendValue(CG_AimBlendValue(thirdPersonHorzOffset,
+			CG_AimShoulderOffset(thirdPersonHorzOffset)), SABERLOCK_CAMERA_HORZ);
 		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
-		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
-	}
-	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDGUNNER))
-	{
-		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
-		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
-	}
-	else if (cg.predictedPlayerState.communicatingflags & (1 << CF_UNDERSIZEDJEDI))
-	{
-		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
-		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
-	}
-	else if (CG_CameraBlending())
-	{
-		//saber lock / aiming camera
-		thirdPersonHorzOffset = CG_SaberLockBlendValue(CG_AimBlendValue(thirdPersonHorzOffset, AIM_CAMERA_HORZ),
-			SABERLOCK_CAMERA_HORZ);
-		AnglesToAxis(cg.refdef.viewangles, cg.refdef.viewaxis);
-		VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], cameraCurLoc);
+		{
+			// the side shift came after the wall traces: trace it too, so the camera stops at a wall instead of in it
+			vec3_t shifted;
+			trace_t trace;
+			VectorMA(cameraCurLoc, thirdPersonHorzOffset, cg.refdef.viewaxis[1], shifted);
+			CG_Trace(&trace, cameraCurLoc, cameramins, cameramaxs, shifted, cg.predictedPlayerState.clientNum, MASK_CAMERACLIP);
+			VectorCopy(trace.fraction < 1.0f ? trace.endpos : shifted, cameraCurLoc);
+		}
 	}
 	else if (thirdPersonHorzOffset != 0.0f)
 	{
@@ -2967,6 +2992,7 @@ static qboolean Holding_Gun_And_Walking(void)
 		case WP_DISRUPTOR:
 		case WP_BOWCASTER:
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 		case WP_DEMP2:
 		case WP_FLECHETTE:
 		case WP_ROCKET_LAUNCHER:
@@ -3005,6 +3031,7 @@ static qboolean Holding_Gun_And_Walking_And_Blocking(void)
 		case WP_DISRUPTOR:
 		case WP_BOWCASTER:
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 		case WP_DEMP2:
 		case WP_FLECHETTE:
 		case WP_ROCKET_LAUNCHER:

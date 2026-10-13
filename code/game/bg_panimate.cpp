@@ -7486,6 +7486,7 @@ static qboolean PM_CanAimGun()
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -8262,6 +8263,7 @@ void PM_TorsoAnimation()
 				case WP_DEMP2:
 				case WP_FLECHETTE:
 				case WP_REPEATER:
+				case WP_Z6_ROTARY_CANNON:
 				case WP_CONCUSSION:
 				case WP_ROCKET_LAUNCHER:
 					if (!weaponBusy && !(pm->gent && pm->gent->client && pm->gent->client->NPC_class == CLASS_GALAKMECH))
@@ -8918,6 +8920,7 @@ void PM_TorsoAnimation()
 				case WP_DEMP2:
 				case WP_FLECHETTE:
 				case WP_REPEATER:
+				case WP_Z6_ROTARY_CANNON:
 				case WP_CONCUSSION:
 				case WP_ROCKET_LAUNCHER:
 				case WP_DISRUPTOR:

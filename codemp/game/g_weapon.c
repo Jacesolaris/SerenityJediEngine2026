@@ -138,6 +138,13 @@ extern qboolean IsHoldingReloadableGun(const gentity_t* ent);
 #define REPEATER_ALT_SPLASH_RAD_SIEGE	80
 #define	REPEATER_ALT_VELOCITY			1100
 
+// Z-6 Rotary Cannon (from MovieDuels)
+//----------
+#define Z6_ROTARY_CANNON_SPREAD			1.1f
+#define Z6_ROTARY_CANNON_VELOCITY		2200
+#define Z6_ROTARY_CANNON_DAMAGE			12
+#define Z6_ROTARY_CANNON_NPC_DAMAGE		10
+
 // DEMP2
 //----------
 #define	DEMP2_DAMAGE				35
@@ -1667,6 +1674,40 @@ static void WP_RepeaterAltFire(gentity_t* ent)
 }
 
 //---------------------------------------------------------
+static void WP_FireZ6RotaryCannonMissile(gentity_t* ent, vec3_t start, vec3_t dir, const qboolean alt_fire)
+//---------------------------------------------------------
+{
+	gentity_t* missile = CreateMissile(start, dir, Z6_ROTARY_CANNON_VELOCITY, 10000, ent, alt_fire);
+
+	missile->classname = "z6_rotary_proj";
+	missile->s.weapon = WP_Z6_ROTARY_CANNON;
+	missile->damage = ent->s.eType == ET_NPC ? Z6_ROTARY_CANNON_NPC_DAMAGE : Z6_ROTARY_CANNON_DAMAGE;
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK;
+	missile->methodOfDeath = MOD_Z6_ROTARY_CANNON;
+	missile->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
+
+	// we don't want it to bounce forever
+	missile->bounceCount = 8;
+}
+
+//---------------------------------------------------------
+static void WP_FireZ6RotaryCannon(gentity_t* ent, const qboolean alt_fire)
+//---------------------------------------------------------
+{
+	// the Z-6 (from MovieDuels): a fast stream of bolts, the alt fire sprays them
+	vec3_t dir, angs;
+
+	vectoangles(forward, angs);
+	if (alt_fire)
+	{
+		angs[PITCH] += Q_flrand(-1.0f, 1.0f) * Z6_ROTARY_CANNON_SPREAD;
+		angs[YAW] += Q_flrand(-1.0f, 1.0f) * Z6_ROTARY_CANNON_SPREAD;
+	}
+	AngleVectors(angs, dir, NULL, NULL);
+	WP_FireZ6RotaryCannonMissile(ent, muzzle, dir, alt_fire);
+}
+
+//---------------------------------------------------------
 static void WP_FireRepeater(gentity_t* ent, const qboolean alt_fire)
 //---------------------------------------------------------
 {
@@ -2257,13 +2298,13 @@ static void StasismissileExplode(gentity_t* self)
 }
 #endif
 
+extern void G_StasisMissileThink(gentity_t* missile);
 //----------------------------------------------
 void wp_stasis_missile_blow(gentity_t* ent)
 //----------------------------------------------
 {
 	// a missile held by Force Stasis, every frame (g_missile.c G_StasisMissile): touched it goes off, its time up it
 	// flies on
-	extern void G_StasisMissileThink(gentity_t * missile);
 	G_StasisMissileThink(ent);
 }
 
@@ -4127,7 +4168,7 @@ static void WP_FireConcussionAlt(gentity_t* ent)
 						if (traceEnt->health > 0)
 						{
 							//alive
-							if (!traceEnt->localAnimIndex && BG_KnockDownable(&traceEnt->client->ps))
+							if (BG_AnimSetIsHumanoid(traceEnt->localAnimIndex) && BG_KnockDownable(&traceEnt->client->ps))
 							{
 								//knock-downable (humanoids)
 								traceEnt->client->ps.otherKiller = ent->s.number;
@@ -4406,16 +4447,37 @@ static void WP_FireMelee(gentity_t* ent, qboolean alt_fire)
 		muzzle_punch[2] += ent->client->ps.viewheight - 6.0f;
 	}
 
-	// Slight forward/right offset from the body
-	VectorMA(muzzle_punch, 20.0f, forward, muzzle_punch);
-	VectorMA(muzzle_punch, 4.0f, vright, muzzle_punch);
+	// SJE: creature players (wampa, rancor, howler, mine monster) reach from the edge of their own (SP sized) bbox, with
+	// a claw / jaw sized box, so a rancor does not swing inside its own body
+	const int creatureAnim = hasClient && ent->s.number < MAX_CLIENTS && level.gametype != GT_SIEGE
+		? BG_ClassCreatureAttackAnim(ent->client->pers.botclass, WP_MELEE, qfalse) : -1;
 
-	// End point of the melee trace
-	VectorMA(muzzle_punch, MELEE_RANGE, forward, end);
+	if (creatureAnim != -1)
+	{
+		// (rancor: 70% of the SP reach, as its 70% size - owner decision 2026-10-11)
+		const float reach = ent->client->pers.botclass == BCLASS_RANCOR ? 45.0f :
+			ent->client->pers.botclass == BCLASS_WAMPA ? 48.0f : 24.0f;
+		const float box = ent->client->pers.botclass == BCLASS_RANCOR ? 17.0f :
+			ent->client->pers.botclass == BCLASS_WAMPA ? 16.0f : 8.0f;
 
-	// Small box around the punch path
-	VectorSet(maxs, 6.0f, 6.0f, 6.0f);
-	VectorScale(maxs, -1.0f, mins);
+		VectorMA(muzzle_punch, ent->r.maxs[0], forward, muzzle_punch);
+		VectorMA(muzzle_punch, reach, forward, end);
+		VectorSet(maxs, box, box, box);
+		VectorScale(maxs, -1.0f, mins);
+	}
+	else
+	{
+		// Slight forward/right offset from the body
+		VectorMA(muzzle_punch, 20.0f, forward, muzzle_punch);
+		VectorMA(muzzle_punch, 4.0f, vright, muzzle_punch);
+
+		// End point of the melee trace
+		VectorMA(muzzle_punch, MELEE_RANGE, forward, end);
+
+		// Small box around the punch path
+		VectorSet(maxs, 6.0f, 6.0f, 6.0f);
+		VectorScale(maxs, -1.0f, mins);
+	}
 
 	trap->Trace(&tr,
 		muzzle_punch,
@@ -4488,6 +4550,30 @@ static void WP_FireMelee(gentity_t* ent, qboolean alt_fire)
 				if (ent->client->ps.torsoAnim == BOTH_MELEEUP)
 				{
 					dmg = MELEE_SWING_EXTRA_DAMAGE;
+				}
+				if (creatureAnim != -1)
+				{
+					// SJE: the damage the SP AI does with these attacks (AI_Wampa Wampa_Slash, AI_Rancor swing / bite,
+					// AI_Howler (several small hits per attack there, one hit here), AI_MineMonster)
+					const int anim = ent->client->ps.torsoAnim;
+
+					switch (ent->client->pers.botclass)
+					{
+					case BCLASS_WAMPA:
+						dmg = anim == BOTH_ATTACK3 ? Q_irand(10, 15) : Q_irand(20, 30);
+						break;
+					case BCLASS_RANCOR:
+						dmg = anim == BOTH_MELEE2 ? Q_irand(35, 50) : Q_irand(40, 55);
+						break;
+					case BCLASS_HOWLER:
+						dmg = 8;
+						break;
+					case BCLASS_MINEMONSTER:
+						dmg = anim == BOTH_ATTACK2 ? 10 : 5;
+						break;
+					default:
+						break;
+					}
 				}
 			}
 
@@ -5809,7 +5895,14 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 		}
 		else
 		{
-			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			if (ent->s.weapon == WP_DROIDEKA)
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
 			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
 			G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 			G_Damage(ent, NULL, NULL, NULL, ent->r.currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
@@ -5997,6 +6090,10 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 		WP_FireDroideka(ent, alt_fire);
 		break;
 
+	case WP_Z6_ROTARY_CANNON:
+		WP_FireZ6RotaryCannon(ent, alt_fire);
+		break;
+
 	case WP_DISRUPTOR:
 		alert = 50;
 		WP_FireDisruptor(ent, alt_fire);
@@ -6047,6 +6144,10 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 
 	default:
 		// debug only, no assert
+		if (ent->s.weapon == WP_NONE)
+		{
+			break; // SJE: a weaponless NPC told to attack (it was printed every frame)
+		}
 		Com_Printf(S_COLOR_YELLOW "FireWeapon: unknown weapon %d\n", ent->s.weapon);
 		break;
 	}

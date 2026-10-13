@@ -1051,6 +1051,9 @@ static void Player_RestoreFromPrevLevel(gentity_t* ent)
 	// Sync entity health with playerstate
 	ent->health = client->ps.stats[STAT_HEALTH];
 
+	// the weapons from 32 on (the Z-6) are not in the exe's playersave string: ClientEndFrame keeps them in this cvar
+	client->ps.stats[STAT_WEAPONS2] = gi.Cvar_VariableIntegerValue("sje_playersave_weapons2");
+
 	// Free any existing saber names that came from the game alloc zone
 	if (ent->client->ps.saber[0].name && gi.bIsFromZone(ent->client->ps.saber[0].name, TAG_G_ALLOC))
 	{
@@ -2930,7 +2933,7 @@ void G_ChangePlayerModel(gentity_t* ent, const char* newModel)
 				{//Gunner inventory
 					if (ent->client->NPC_class == CLASS_DROIDEKA)
 					{
-						ent->client->ps.stats[STAT_WEAPONS] = 1 << WP_DROIDEKA;
+						BG_SetOnlyWeapon(&ent->client->ps, WP_DROIDEKA);
 
 						ent->client->ps.inventory[INV_BARRIER] = 1;
 						//Remove these if he has them when changing model to decca
@@ -3115,7 +3118,7 @@ void G_ChangePlayerModel(gentity_t* ent, const char* newModel)
 				{//Gunner inventory
 					if (ent->client->NPC_class == CLASS_DROIDEKA)
 					{
-						ent->client->ps.stats[STAT_WEAPONS] = 1 << WP_DROIDEKA;
+						BG_SetOnlyWeapon(&ent->client->ps, WP_DROIDEKA);
 
 						ent->client->ps.inventory[INV_BARRIER] = 1;
 						//Remove these if he has them when changing model to decca
@@ -3446,7 +3449,7 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 
 		if (com_outcast && com_outcast->integer == 0) //playing academy
 		{ //starts as a jedi
-			client->ps.stats[STAT_WEAPONS] = 1 << WP_MELEE;
+			BG_SetOnlyWeapon(&client->ps, WP_MELEE);
 
 			client->ps.inventory[INV_ELECTROBINOCULARS] = 1;
 			client->ps.inventory[INV_BACTA_CANISTER] = 1;
@@ -3454,7 +3457,7 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 		}
 		else if ((com_outcast && com_outcast->integer == 1) || (com_outcast && com_outcast->integer == 4)) //playing outcast
 		{// starts as a gunner
-			client->ps.stats[STAT_WEAPONS] = 1 << WP_MELEE;
+			BG_SetOnlyWeapon(&client->ps, WP_MELEE);
 			client->ps.stats[STAT_WEAPONS] |= 1 << WP_BRYAR_PISTOL;
 			client->ps.stats[STAT_WEAPONS] |= 1 << WP_STUN_BATON;
 
@@ -3465,7 +3468,7 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 		}
 		else
 		{// all the other mods
-			client->ps.stats[STAT_WEAPONS] = 1 << WP_MELEE;
+			BG_SetOnlyWeapon(&client->ps, WP_MELEE);
 
 			client->ps.inventory[INV_ELECTROBINOCULARS] = 1;
 			client->ps.inventory[INV_BACTA_CANISTER] = 1;
@@ -3492,7 +3495,7 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 
 		for (i = FIRST_WEAPON; i < MAX_PLAYER_WEAPONS; i++) // don't give ammo for explosives
 		{
-			if (playerUsableWeapons[i] && client->ps.stats[STAT_WEAPONS] & 1 << i)
+			if (playerUsableWeapons[i] && BG_HasWeapon(&client->ps, i))
 			{
 				//if starting with this weapon, gimme max ammo for it
 				client->ps.ammo[weaponData[i].ammoIndex] = ammoData[weaponData[i].ammoIndex].max;
@@ -3636,7 +3639,7 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 		if (spawnPoint->spawnflags & 64) //NOWEAPON
 		{
 			//player starts with absolutely no weapons
-			ent->client->ps.stats[STAT_WEAPONS] = 1 << WP_NONE;
+			BG_SetOnlyWeapon(&ent->client->ps, WP_NONE);
 			ent->client->ps.ammo[weaponData[WP_NONE].ammoIndex] = 32000;
 			ent->client->ps.weapon = WP_NONE;
 			ent->client->ps.weaponstate = WEAPON_READY;

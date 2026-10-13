@@ -5664,6 +5664,20 @@ void PM_WeaponLightsaber(void)
 		return;
 	}
 
+	// MovieDuels (test phase 2026-10-13): a press of the block button with the saber off ignites it, as attack does;
+	// not while charging Repulse (the charge puts the saber out) or under water, and not when the block press is a sprint
+	// (running + block: sprinting with the saber off keeps it off, DH 2026-10-13)
+	const qboolean blockSprinting = pm->ps->PlayerEffectFlags & 1 << PEF_SPRINTING ||
+		(pm->cmd.forwardmove || pm->cmd.rightmove) && !(pm->cmd.buttons & BUTTON_WALKING) && pm->ps->sprintFuel > 15 ? qtrue : qfalse;
+	if (pm->cmd.buttons & BUTTON_BLOCK && !(pm->ps->pm_flags & PMF_BLOCK_HELD) && !blockSprinting
+		&& pm->ps->weapon == WP_SABER && pm->ps->saberHolstered == 2 && !pm->ps->saberInFlight
+		&& pm->watertype != CONTENTS_WATER && !(pm->ps->fd.forcePowersActive & 1 << FP_REPULSE)
+		&& pm->ps->stats[STAT_HEALTH] > 0)
+	{
+		pm->ps->saberHolstered = 0;
+		PM_AddEvent(EV_SABER_UNHOLSTER);
+	}
+
 	// ----------------------------------------------------------------------
 	// Special NPC classes that use their own saber logic
 	// ----------------------------------------------------------------------

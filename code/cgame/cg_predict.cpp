@@ -548,7 +548,7 @@ static void CG_TouchItem(centity_t* cent)
 	if (item->giType == IT_WEAPON)
 	{
 		const int ammotype = weaponData[item->giTag].ammoIndex;
-		cg.predictedPlayerState.stats[STAT_WEAPONS] |= 1 << item->giTag;
+		BG_GiveWeapon(&cg.predictedPlayerState, item->giTag);
 		if (!cg.predictedPlayerState.ammo[ammotype])
 		{
 			cg.predictedPlayerState.ammo[ammotype] = 1;

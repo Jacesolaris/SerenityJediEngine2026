@@ -100,6 +100,7 @@ float weaponSpeed[WP_NUM_WEAPONS][2] =
 	{0, 0}, //WP_TUSKEN_STAFF,
 	{0, 0}, //WP_SCEPTER,
 	{0, 0}, //WP_NOGHRI_STICK,
+	{Z6_ROTARY_CANNON_VELOCITY, Z6_ROTARY_CANNON_VELOCITY}, //WP_Z6_ROTARY_CANNON,
 };
 
 float WP_SpeedOfMissileForWeapon(const int wp, const qboolean alt_fire)
@@ -388,6 +389,7 @@ qboolean W_AccuracyLoggableWeapon(const int weapon, const qboolean alt_fire, con
 			return qtrue;
 			//non-alt standard
 		case MOD_REPEATER:
+		case MOD_Z6_ROTARY_CANNON:
 		case MOD_DEMP2:
 		case MOD_FLECHETTE:
 			return qtrue;
@@ -418,6 +420,7 @@ qboolean W_AccuracyLoggableWeapon(const int weapon, const qboolean alt_fire, con
 		case WP_BOWCASTER:
 		case WP_ROCKET_LAUNCHER:
 		case WP_CONCUSSION:
+		case WP_Z6_ROTARY_CANNON:
 		case WP_DROIDEKA:
 			return qtrue;
 			//non-alt standard
@@ -565,6 +568,7 @@ void calcmuzzlePoint(gentity_t* const ent, vec3_t forward_vec, vec3_t muzzlePoin
 		break;
 
 	case WP_BLASTER:
+	case WP_Z6_ROTARY_CANNON: // as MovieDuels (rifle muzzle height)
 		ViewHeightFix(ent);
 		muzzlePoint[2] += ent->client->ps.viewheight;
 		muzzlePoint[2] -= 1;
@@ -1619,7 +1623,14 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 		}
 		else
 		{
-			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			if (ent->s.weapon == WP_DROIDEKA)
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
 			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
 			G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 			G_Damage(ent, nullptr, nullptr, nullptr, ent->currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
@@ -1853,6 +1864,17 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 						ent->client->cloneFired = 0;
 					}
 				}
+				else if (ent->s.weapon == WP_Z6_ROTARY_CANNON)
+				{
+					// the minigun builds fatigue every 4th shot (MovieDuels)
+					ent->client->cloneFired++;
+
+					if (ent->client->cloneFired >= 4)
+					{
+						G_AddBlasterAttackChainCount(ent, BLASTERMISHAPLEVEL_MIN);
+						ent->client->cloneFired = 0;
+					}
+				}
 				else if (ent->s.weapon == WP_DROIDEKA)
 				{
 					ent->client->DekaFired++;
@@ -1946,6 +1968,10 @@ void FireWeapon(gentity_t* ent, const qboolean alt_fire)
 
 	case WP_REPEATER:
 		WP_FireRepeater(ent, alt_fire);
+		break;
+
+	case WP_Z6_ROTARY_CANNON:
+		WP_FireZ6RotaryCannon(ent);
 		break;
 
 	case WP_DEMP2:

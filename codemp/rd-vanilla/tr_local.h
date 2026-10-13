@@ -642,7 +642,16 @@ using srfFlare_t = struct srfFlare_s {
 	vec3_t			origin;
 	vec3_t			normal;
 	vec3_t			color;
+
+	// asynchronous depth test (RB_TestZFlare, tr_surface.cpp)
+	int				pboQueued;		// frame + 1 of the last queued depth read, 0 = none
+	int				pboSlot;
+	int				pboVisible;
+	float			pboEyeZ;
+	float			pboProj[3];		// projectionMatrix[10], [11], [14] of that frame
 };
+
+void R_ShutdownFlarePbos();
 
 #define	VERTEXSIZE			(6+(MAXLIGHTMAPS*3))
 #define VERTEX_LM			5
@@ -1637,7 +1646,10 @@ public:
 #ifdef _G2_GORE
 		surfaceData(nullptr),
 		alternateTex(nullptr),
-		goreChain(nullptr)
+		goreChain(nullptr),
+		scale(1.0f),
+		fade(0.0f),
+		impactTime(0.0f)
 #else
 		surfaceData(0)
 #endif

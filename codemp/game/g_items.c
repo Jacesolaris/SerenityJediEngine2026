@@ -3992,6 +3992,7 @@ void clear_registered_items(void)
 	RegisterItem(BG_FindItemForWeapon(WP_DISRUPTOR));
 	RegisterItem(BG_FindItemForWeapon(WP_CONCUSSION));
 	RegisterItem(BG_FindItemForWeapon(WP_DROIDEKA));
+	RegisterItem(BG_FindItemForWeapon(WP_Z6_ROTARY_CANNON));
 
 	if (level.gametype == GT_SIEGE)
 	{//kind of cheesy, maybe check if siege class with disp's is gonna be on this map too
@@ -4099,6 +4100,7 @@ static qboolean G_AmmoDisabled(const int wDisable, const gitem_t* item)
 	case AMMO_METAL_BOLTS:
 	{
 		if (!(wDisable & 1 << WP_REPEATER)
+			|| !(wDisable & 1 << WP_Z6_ROTARY_CANNON)
 			|| !(wDisable & 1 << WP_FLECHETTE))
 		{
 			return qfalse;
@@ -4371,49 +4373,5 @@ void G_RunItem(gentity_t* ent)
 	G_BounceItem(ent, &tr);
 }
 
-void IT_LoadWeatherParms(void)
-{
-	char serverinfo[MAX_INFO_STRING] = { 0 };
-	char sje_mapname[128] = { 0 };
-	vmCvar_t mapname;// getting mapname
-
-	Q_strncpyz(sje_mapname, Info_ValueForKey(serverinfo, "mapname"), sizeof sje_mapname);
-	strcpy(level.sjemapname, sje_mapname);
-
-	if (com_rend2.integer == 1 &&
-		(Q_stricmp(sje_mapname, "yavin1") == 0)
-		|| (Q_stricmp(sje_mapname, "demo") == 0)
-		|| (Q_stricmp(sje_mapname, "01nar") == 0)
-		|| (Q_stricmp(sje_mapname, "md2_bd_ch") == 0)
-		|| (Q_stricmp(sje_mapname, "md_sn_intro_jedi") == 0)
-		|| (Q_stricmp(sje_mapname, "md_ch_battledroids") == 0)
-		|| (Q_stricmp(sje_mapname, "md_ep4_intro") == 0)
-		|| (Q_stricmp(sje_mapname, "secbase") == 0)
-		|| (Q_stricmp(sje_mapname, "level0") == 0)
-		|| (Q_stricmp(sje_mapname, "JKG_ImperialBase") == 0)
-		|| (Q_stricmp(sje_mapname, "kejim_post") == 0))
-	{
-		return;
-	}
-
-	if (g_AllowWeather.integer != 1)
-	{
-		return;
-	}
-
-	trap->Cvar_Register(&mapname, "mapname", "", CVAR_SERVERINFO | CVAR_ROM);
-
-	// most maps have no weather file: only exec one that is there (exec prints "couldn't exec" otherwise)
-	fileHandle_t f = 0;
-	const int len = trap->FS_Open(va("Weather/%s.cfg", mapname.string), &f, FS_READ);
-	if (f)
-	{
-		trap->FS_Close(f);
-	}
-	if (len <= 0)
-	{
-		return;
-	}
-
-	trap->SendConsoleCommand(EXEC_INSERT, va("execq Weather/%s", mapname.string));
-}
+// The map's weather file (Weather/<mapname>.cfg) is no longer exec'd here: G_WeatherLoadMapDefault (g_svcmds.c) reads it
+// at map start and sets it as server weather configstrings, so every client and the weather damage get it.

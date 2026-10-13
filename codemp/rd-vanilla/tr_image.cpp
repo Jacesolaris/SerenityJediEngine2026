@@ -1137,7 +1137,8 @@ static void R_CreateDlightImage()
 	else
 	{
 		// if we dont get a successful load
-		byte data[DLIGHT_SIZE][DLIGHT_SIZE][4]{};
+		static byte data[DLIGHT_SIZE][DLIGHT_SIZE][4]; // off the stack (C6262); init-time only, not reentrant
+		memset(data, 0, sizeof(data)); // cleared each time, as the {} on the stack was
 
 		// make a centered inverse-square falloff blob for dynamic lighting
 		for (int x = 0; x < DLIGHT_SIZE; x++)

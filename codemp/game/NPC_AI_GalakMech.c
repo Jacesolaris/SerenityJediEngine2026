@@ -836,7 +836,7 @@ static void NPC_BSGM_Attack(void)
 			&& enemyDist4 < MELEE_DIST_SQUARED
 			&& InFront(NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles,
 				0.3f)
-			&& NPCS.NPC->enemy->localAnimIndex <= 1) //within 80 and in front
+			&& BG_AnimSetIsHumanoidLike(NPCS.NPC->enemy->localAnimIndex)) //within 80 and in front
 		{
 			//our shield is down, and enemy within 80, if very close, use melee attack to slap away
 			if (TIMER_Done(NPCS.NPC, "attackDelay"))

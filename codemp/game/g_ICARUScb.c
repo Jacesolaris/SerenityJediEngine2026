@@ -8862,8 +8862,8 @@ qboolean Q3_Set(const int taskID, const int entID, const char* type_name, const 
 		//UI_SetActiveMenu( (const char *) data );
 		break;
 
-	// the mission's objectives: the objective's text (strings OBJECTIVES_<name>, as the SP datapad) is looked up by
-	// each client in his own language ("@@@" in a centre print, CG_CheckSVStringEdRef)
+		// the mission's objectives: the objective's text (strings OBJECTIVES_<name>, as the SP datapad) is looked up by
+		// each client in his own language ("@@@" in a centre print, CG_CheckSVStringEdRef)
 	case SET_OBJECTIVE_SHOW:
 		if (data && data[0])
 		{

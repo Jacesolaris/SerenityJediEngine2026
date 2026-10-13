@@ -23,6 +23,7 @@ stringID_table_t holsterTypeTable[] =
 	ENUM2STRING(HLR_REPEATER), //repeater
 	ENUM2STRING(HLR_FLECHETTE), //flechette
 	ENUM2STRING(HLR_DISRUPTOR), //disruptor
+	ENUM2STRING(HLR_Z6), //the Z-6 rotary cannon
 	ENUM2STRING(MAX_HOLSTER),
 
 	{ NULL, 0 }   // <-- REQUIRED TERMINATOR
@@ -71,7 +72,13 @@ void CG_LoadHolsterData(clientInfo_t* ci)
 
 		if (!f)
 		{
-			f_len = trap->FS_Open("models/players/kyle/holster.cfg", &f, FS_READ);
+			// SJE: not on a creature / droid skeleton (saber droid, gonk...): Kyle's spots (chest tag, lumbar, hips) are bones it
+			// lacks, so the holstered saber was drawn at the stand-in bolt and floated around the body. Such a model only
+			// shows holstered weapons with a holster.cfg of its own.
+			if (!ci->creatureSkel)
+			{
+				f_len = trap->FS_Open("models/players/kyle/holster.cfg", &f, FS_READ);
+			}
 		}
 	}
 	else
@@ -86,7 +93,13 @@ void CG_LoadHolsterData(clientInfo_t* ci)
 
 		if (!f)
 		{
-			f_len = trap->FS_Open("models/players/kyle/holster.cfg", &f, FS_READ);
+			// SJE: not on a creature / droid skeleton (saber droid, gonk...): Kyle's spots (chest tag, lumbar, hips) are bones it
+			// lacks, so the holstered saber was drawn at the stand-in bolt and floated around the body. Such a model only
+			// shows holstered weapons with a holster.cfg of its own.
+			if (!ci->creatureSkel)
+			{
+				f_len = trap->FS_Open("models/players/kyle/holster.cfg", &f, FS_READ);
+			}
 		}
 	}
 

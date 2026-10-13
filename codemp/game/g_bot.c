@@ -51,6 +51,10 @@ float trap_Cvar_VariableValue(const char* var_name)
 G_ParseInfos
 ===============
 */
+// bot / arena info files: 64 KB each (bg_public.h's 8 KB MAX_BOTS_TEXT / MAX_ARENAS_TEXT refused SJE's larger bots.txt);
+// the read buffers are static, not on the stack
+#define BOTINFO_FILE_MAX	(64 * 1024)
+
 static int G_ParseInfos(const char* buf, const int max, char* infos[])
 {
 	char info[MAX_INFO_STRING];
@@ -119,7 +123,7 @@ G_LoadArenasFromFile
 static void G_LoadArenasFromFile(char* filename)
 {
 	fileHandle_t f;
-	char buf[MAX_ARENAS_TEXT];
+	static char buf[BOTINFO_FILE_MAX];
 
 	const int len = trap->FS_Open(filename, &f, FS_READ);
 	if (!f)
@@ -127,9 +131,9 @@ static void G_LoadArenasFromFile(char* filename)
 		trap->Print(S_COLOR_RED "file not found: %s\n", filename);
 		return;
 	}
-	if (len >= MAX_ARENAS_TEXT)
+	if (len >= BOTINFO_FILE_MAX)
 	{
-		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i\n", filename, len, MAX_ARENAS_TEXT);
+		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i\n", filename, len, BOTINFO_FILE_MAX);
 		trap->FS_Close(f);
 		return;
 	}
@@ -522,12 +526,28 @@ static void PlayerIntroSound(const char* modelAndSkin) {
 }
 #endif
 
+// the team a bot's faction puts it on in team games ("faction red" / "faction blue" in its bot file), TEAM_FREE: none
+static int G_BotFactionTeam(const char* botinfo)
+{
+	const char* faction = botinfo ? Info_ValueForKey(botinfo, "faction") : "";
+	if (!Q_stricmp(faction, "red"))
+	{
+		return TEAM_RED;
+	}
+	if (!Q_stricmp(faction, "blue"))
+	{
+		return TEAM_BLUE;
+	}
+	return TEAM_FREE;
+}
+
 /*
 ===============
 G_AddRandomBot
 ===============
 */
-static void G_AddRandomBot(const int team)
+// faction >= 0: only bots of that faction (team games: a random bot that belongs on that side); qfalse: none found
+static qboolean G_AddRandomBotOfFaction(const int team, const int faction)
 {
 	int i, n;
 	char* value, * teamstr;
@@ -537,6 +557,10 @@ static void G_AddRandomBot(const int team)
 	for (n = 0; n < level.bots.num; n++)
 	{
 		value = Info_ValueForKey(level.bots.infos[n], "name");
+		if (faction >= 0 && G_BotFactionTeam(level.bots.infos[n]) != faction)
+		{
+			continue;
+		}
 		//
 		for (i = 0; i < sv_maxclients.integer; i++)
 		{
@@ -577,6 +601,10 @@ static void G_AddRandomBot(const int team)
 	for (n = 0; n < level.bots.num; n++)
 	{
 		value = Info_ValueForKey(level.bots.infos[n], "name");
+		if (faction >= 0 && G_BotFactionTeam(level.bots.infos[n]) != faction)
+		{
+			continue;
+		}
 		//
 		for (i = 0; i < sv_maxclients.integer; i++)
 		{
@@ -613,7 +641,7 @@ static void G_AddRandomBot(const int team)
 			num--;
 			if (num <= 0)
 			{
-				char netname[36];
+				char netname[MAX_NETNAME]; // was 36: bot names over 35 characters were cut and "not defined" (test phase 2026-10-13)
 				const float skill = trap->Cvar_VariableIntegerValue("g_npcspskill");
 				if (team == TEAM_RED) teamstr = "red";
 				else if (team == TEAM_BLUE) teamstr = "blue";
@@ -621,10 +649,26 @@ static void G_AddRandomBot(const int team)
 				Q_strncpyz(netname, value, sizeof netname);
 				Q_CleanStr(netname);
 				trap->SendConsoleCommand(EXEC_INSERT, va("addbot \"%s\" %.2f %s %i\n", netname, skill, teamstr, 0));
-				return;
+				return qtrue;
 			}
 		}
 	}
+	return qfalse;
+}
+
+// team games (not Siege): the bot for the side with fewer players is a random bot of that side's faction (none left:
+// any bot); FFA / duels / Siege as before
+static void G_AddRandomBot(const int team)
+{
+	if (level.gametype >= GT_TEAM && level.gametype != GT_SIEGE)
+	{
+		const int side = team == TEAM_RED || team == TEAM_BLUE ? team : PickTeam(-1);
+		if (G_AddRandomBotOfFaction(side, side))
+		{
+			return;
+		}
+	}
+	G_AddRandomBotOfFaction(team, -1);
 }
 
 /*
@@ -998,17 +1042,35 @@ static void G_AddBot(const char* name, const float skill, const char* team, cons
 	Info_SetValueForKey(userinfo, key, s);
 
 	// initialize the bot settings
-	if (!team || !*team)
+	// team games: a red / blue the player's setup asked for stands; otherwise (none, "random", "auto"...) the bot's
+	// faction ("faction red|blue" in its bot file: bad guys red, good guys blue) decides, without one the team balance.
+	// Not in Siege (its own classes) and not in FFA / duels (DH 2026-10-13)
+	if (level.gametype >= GT_TEAM)
 	{
-		if (level.gametype >= GT_TEAM)
+		if (team && (!Q_stricmp(team, "red") || !Q_stricmp(team, "r")))
 		{
-			if (PickTeam(clientNum) == TEAM_RED)
-				team = "red";
-			else
-				team = "blue";
+			team = "red";
+		}
+		else if (team && (!Q_stricmp(team, "blue") || !Q_stricmp(team, "b")))
+		{
+			team = "blue";
 		}
 		else
-			team = "red";
+		{
+			const int factionTeam = level.gametype != GT_SIEGE ? G_BotFactionTeam(botinfo) : TEAM_FREE;
+			if (factionTeam == TEAM_RED || factionTeam == TEAM_BLUE)
+			{
+				team = factionTeam == TEAM_RED ? "red" : "blue";
+			}
+			else
+			{
+				team = PickTeam(clientNum) == TEAM_RED ? "red" : "blue";
+			}
+		}
+	}
+	else if (!team || !*team)
+	{
+		team = "red";
 	}
 	Info_SetValueForKey(userinfo, "team", team);
 
@@ -1314,7 +1376,7 @@ G_LoadBotsFromFile
 static void G_LoadBotsFromFile(char* filename)
 {
 	fileHandle_t f;
-	char buf[MAX_BOTS_TEXT];
+	static char buf[BOTINFO_FILE_MAX];
 
 	const int len = trap->FS_Open(filename, &f, FS_READ);
 	if (!f)
@@ -1322,9 +1384,9 @@ static void G_LoadBotsFromFile(char* filename)
 		trap->Print(S_COLOR_RED "file not found: %s\n", filename);
 		return;
 	}
-	if (len >= MAX_BOTS_TEXT)
+	if (len >= BOTINFO_FILE_MAX)
 	{
-		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i\n", filename, len, MAX_BOTS_TEXT);
+		trap->Print(S_COLOR_RED "file too large: %s is %i, max allowed is %i\n", filename, len, BOTINFO_FILE_MAX);
 		trap->FS_Close(f);
 		return;
 	}

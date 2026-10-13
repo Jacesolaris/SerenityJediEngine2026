@@ -160,7 +160,7 @@ static void Pzk_HostSend(pzkGame_t* g, const int pid, const char* text)
 
 static void Pzk_HostFinish(pzkGame_t* g, const int winnerPid)
 {
-	char winnerName[64];
+	char winnerName[64] = { 0 };
 	int pid;
 
 	winnerName[0] = 0;
@@ -239,8 +239,9 @@ static qboolean Pzk_InCutscene(void)
 // An NPC who is after the player is close by (the match would make him a sitting, invulnerable target)
 static qboolean Pzk_EnemyNear(const gentity_t* ent)
 {
-	int list[MAX_GENTITIES];
-	vec3_t mins, maxs;
+	// static: too big for the stack (C6262); filled by EntitiesInBox before it is read
+	static int list[MAX_GENTITIES];
+	vec3_t mins = { 0 }, maxs = { 0 };
 	int i, num;
 
 	for (i = 0; i < 3; i++)
@@ -600,7 +601,7 @@ qboolean G_Pazaak_ClientCommand(gentity_t* ent, const char* cmd)
 	if (!Q_stricmp(cmd, "~pzk"))
 	{
 		static char args[16][64];
-		const char* argv[16];
+		const char* argv[16] = { 0 };
 		const int clientNum = ent->s.number;
 		int argc, i;
 

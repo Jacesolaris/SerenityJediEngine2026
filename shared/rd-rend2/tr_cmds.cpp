@@ -373,7 +373,7 @@ void	RE_SetColor(const float* rgba) {
 		r_hudAlpha = ri.Cvar_Get("r_hudAlpha", "1", CVAR_TEMP);
 #endif
 	}
-	if (r_hudAlpha && r_hudAlpha->value < 1.0f)
+	if (r_hudAlpha&& r_hudAlpha->value < 1.0f)
 	{
 		cmd->color[3] *= r_hudAlpha->value > 0.0f ? r_hudAlpha->value : 0.0f;
 	}
@@ -778,7 +778,10 @@ void RE_BeginFrame(stereoFrame_t stereoFrame)
 					return;
 			}
 			else
+			{
 				ri.Error(ERR_FATAL, "RE_BeginFrame: Stereo is enabled, but stereoFrame was %i", stereoFrame);
+				return; // not reached: ri.Error never returns (function pointer, so it cannot be noreturn)
+			}
 
 			R_SetColorMode(colcmd->rgba, stereoFrame, r_anaglyphMode->integer);
 			colcmd->commandId = RC_COLORMASK;

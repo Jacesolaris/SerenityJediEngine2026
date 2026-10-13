@@ -266,7 +266,7 @@ static void G_Give(gentity_t* ent, const char* name, const char* args, const int
 			}
 			if (ent->client->NPC_class == CLASS_DROIDEKA)
 			{
-				ent->client->ps.stats[STAT_WEAPONS] = 1 << WP_DROIDEKA;
+				BG_SetOnlyWeapon(&ent->client->ps, WP_DROIDEKA);
 
 				ent->client->ps.inventory[INV_BARRIER] = 1;
 				//Remove these if he has them when changing model to decca
@@ -335,13 +335,14 @@ static void G_Give(gentity_t* ent, const char* name, const char* args, const int
 	if (give_all || !Q_stricmp(name, "weapons"))
 	{
 		ent->client->ps.stats[STAT_WEAPONS] = (1 << MAX_PLAYER_WEAPONS) - (1 << WP_NONE);
+		BG_GiveWeapon(&ent->client->ps, WP_Z6_ROTARY_CANNON);
 		if (!give_all)
 			return;
 	}
 
 	if (!give_all && !Q_stricmp(name, "weaponnum"))
 	{
-		ent->client->ps.stats[STAT_WEAPONS] |= 1 << atoi(args);
+		BG_GiveWeapon(&ent->client->ps, atoi(args));
 		return;
 	}
 

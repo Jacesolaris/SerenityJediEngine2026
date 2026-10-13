@@ -418,6 +418,19 @@ typedef enum
 	FP_SABER_OFFENSE,
 	FP_SABER_DEFENSE,
 	FP_SABERTHROW,
+	// SJE SP powers ported to MP (2026-10-12). Added at the end so the indexes above, the force strings (forcepowers
+	// userinfo, .fcf, bot forceinfo: a shorter string reads as level 0 for these) and the netfields keep working.
+	// forcePowersKnown / forcePowersActive are 32-bit masks: room for 32 powers.
+	FP_STASIS,
+	FP_DESTRUCTION,
+	FP_GRASP,
+	FP_REPULSE,
+	FP_LIGHTNING_STRIKE,
+	FP_FEAR,
+	FP_DEADLYSIGHT,
+	FP_BLAST,
+	FP_INSANITY,
+	FP_BLINDING,
 	NUM_FORCE_POWERS
 } forcePowers_t;
 

@@ -929,6 +929,7 @@ static void AnimateRiders(Vehicle_t* p_veh)
 			pilotPS->weapon == WP_BRYAR_PISTOL ||
 			pilotPS->weapon == WP_BOWCASTER ||
 			pilotPS->weapon == WP_REPEATER ||
+			pilotPS->weapon == WP_Z6_ROTARY_CANNON ||
 			pilotPS->weapon == WP_DEMP2 ||
 			pilotPS->weapon == WP_FLECHETTE)
 		{

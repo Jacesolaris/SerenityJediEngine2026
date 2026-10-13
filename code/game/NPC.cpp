@@ -2458,7 +2458,7 @@ void NPC_Think(gentity_t* self)
 	}
 
 	// see if NPC ai is frozen
-	if (debugNPCFreeze->integer || NPC->svFlags & SVF_ICARUS_FREEZE || self && self->client && self->client->ps.
+	if (debugNPCFreeze->integer || NPC->svFlags & SVF_ICARUS_FREEZE || self->client->ps.
 		stasisTime > level.time)
 	{
 		NPC_UpdateAngles(qtrue, qtrue);
@@ -2466,7 +2466,7 @@ void NPC_Think(gentity_t* self)
 		VectorCopy(self->s.origin, self->s.origin2);
 		return;
 	}
-	if (debugNPCFreeze->integer || NPC->svFlags & SVF_ICARUS_FREEZE || self && self->client && self->client->ps.
+	if (debugNPCFreeze->integer || NPC->svFlags & SVF_ICARUS_FREEZE || self->client->ps.
 		stasisJediTime > level.time)
 	{
 		NPC_UpdateAngles(qtrue, qtrue);

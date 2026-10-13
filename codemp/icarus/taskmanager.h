@@ -72,7 +72,7 @@ public:
 	void SetGUID(const int id) { m_id = id; }
 
 protected:
-	int m_id;
+	int m_id = 0;
 	unsigned int m_timeStamp = 0;
 	CBlock* m_block = nullptr;
 };
@@ -185,7 +185,7 @@ protected:
 
 	// Variables
 
-	CSequencer* m_owner;
+	CSequencer* m_owner = nullptr;
 	int m_ownerID = 0;
 
 	CTaskGroup* m_curGroup = nullptr;
@@ -199,7 +199,7 @@ protected:
 	taskGroupName_m m_taskGroupNameMap;
 	taskGroupID_m m_taskGroupIDMap;
 
-	bool m_resident;
+	bool m_resident = false;
 
 	//CTask	*m_waitTask;		//Global pointer to the current task that is waiting for callback completion
 };

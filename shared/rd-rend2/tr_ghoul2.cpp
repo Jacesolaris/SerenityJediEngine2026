@@ -297,6 +297,8 @@ public:
 	CTransformBone()
 		: touch(0)
 		, touchRender(0)
+		, boneMatrix()
+		, parent(0)
 	{}
 };
 
@@ -420,12 +422,17 @@ public:
 	int	     uboGPUFrame;
 
 	CBoneCache(const model_t* amod, const mdxaHeader_t* aheader)
-		: header(aheader)
+		: frameSize(0)
+		, header(aheader)
 		, mod(amod)
 		, mBones(header->numBones)
 		, mFinalBones(header->numBones)
 		, mSmoothBones(header->numBones)
+		, rootBoneList(nullptr)
+		, rootMatrix()
+		, incomingTime(0)
 		, mCurrentTouch(3)
+		, mCurrentTouchRender(0)
 		, mLastTouch(2)
 		, mLastLastTouch(1)
 		, mSmoothingActive(false)
@@ -3565,7 +3572,7 @@ void RB_TransformBones(const trRefEntity_t* ent, const trRefdef_t* refdef, int c
 			const mdxaBone_t& b = bc->EvalRender(bone);
 			Com_Memcpy(
 				bc->boneMatrices + bone,
-				&b.matrix[0][0],
+				&b, // the whole 3x4 matrix (was &b.matrix[0][0], same address)
 				sizeof(mat3x4_t));
 		}
 		bc->uboOffset = -1;
@@ -3773,7 +3780,8 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		}
 	}
 
-	if (mergeBack != -1 && mergeForward == -1)
+	// ">= 0" / "< 0" instead of "!= -1" / "== -1": same result (an index is -1 or a valid slot), and /analyze can see it is not negative
+	if (mergeBack >= 0 && mergeForward < 0)
 	{
 		tess.multiDrawNumIndexes[mergeBack] += numIndexes;
 		tess.multiDrawLastIndex[mergeBack] = tess.multiDrawFirstIndex[mergeBack] + tess.multiDrawNumIndexes[mergeBack];
@@ -3781,7 +3789,7 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		tess.multiDrawMaxIndex[mergeBack] = MAX(tess.multiDrawMaxIndex[mergeBack], maxIndex);
 		backEnd.pc.c_multidrawsMerged++;
 	}
-	else if (mergeBack == -1 && mergeForward != -1)
+	else if (mergeBack < 0 && mergeForward >= 0)
 	{
 		tess.multiDrawNumIndexes[mergeForward] += numIndexes;
 		tess.multiDrawFirstIndex[mergeForward] = (glIndex_t*)firstIndexOffset;
@@ -3790,7 +3798,7 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		tess.multiDrawMaxIndex[mergeForward] = MAX(tess.multiDrawMaxIndex[mergeForward], maxIndex);
 		backEnd.pc.c_multidrawsMerged++;
 	}
-	else if (mergeBack != -1 && mergeForward != -1)
+	else if (mergeBack >= 0 && mergeForward >= 0)
 	{
 		tess.multiDrawNumIndexes[mergeBack] += numIndexes + tess.multiDrawNumIndexes[mergeForward];
 		tess.multiDrawLastIndex[mergeBack] = tess.multiDrawFirstIndex[mergeBack] + tess.multiDrawNumIndexes[mergeBack];
@@ -3805,7 +3813,7 @@ void RB_SurfaceGhoul(CRenderableSurface* surf)
 		}
 		backEnd.pc.c_multidrawsMerged += 2;
 	}
-	else if (mergeBack == -1 && mergeForward == -1)
+	else if (mergeBack < 0 && mergeForward < 0)
 	{
 		tess.multiDrawNumIndexes[tess.multiDrawPrimitives] = numIndexes;
 		tess.multiDrawFirstIndex[tess.multiDrawPrimitives] = (glIndex_t*)firstIndexOffset;

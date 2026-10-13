@@ -293,6 +293,9 @@ typedef struct clientInfo_s {
 
 	qhandle_t		bolt_llumbar;
 
+	qboolean		creatureSkel;	// SJE: own skeleton without the full humanoid bolts (creature / droid): missing bolts point at others
+	qboolean		noHandBolt;		// SJE: the model has no *r_hand: no weapon model is drawn on it
+
 	int				siegeIndex;
 	int				siegeDesiredTeam;
 
@@ -392,6 +395,7 @@ typedef struct centity_s {
 	Vehicle_t* m_pVehicle; //vehicle data
 	void* ghoul2; //g2 instance
 	int				localAnimIndex; //index locally (game/cgame) to anim data for this skel
+	void* animIndexGhoul2; // players: the ghoul2 instance localAnimIndex was worked out for (CG_PlayerCheckAnimIndex)
 	vec3_t			modelScale; //needed for g2 collision
 
 	//from here up must be unified with bgEntity_t -rww
@@ -492,6 +496,7 @@ typedef struct centity_s {
 	int				overridingBones;
 
 	int				bodyFadeTime;
+	int				repulseFadeTime;	// the Force Repulse blast refraction (CG_ForceRepulseRefraction's timer)
 	vec3_t			pushEffectOrigin;
 
 	cgLoopSound_t	loopingSound[MAX_CG_LOOPSOUNDS];
@@ -1640,6 +1645,9 @@ typedef struct cgEffects_s {
 	fxHandle_t  blasterFleshImpactEffect;
 	fxHandle_t  blasterDroidImpactEffect;
 	fxHandle_t  droidekaShotEffect; // the droideka's bolts (WP_DROIDEKA)
+	fxHandle_t  cloneShotEffect; // the Z-6 rotary cannon (from MovieDuels): its bolts and their impacts
+	fxHandle_t  cloneWallImpactEffect;
+	fxHandle_t  cloneFleshImpactEffect;
 
 	// EWEB
 	fxHandle_t  ewebShotEffect;
@@ -1762,6 +1770,7 @@ typedef struct cgEffects_s {
 	fxHandle_t	mBlueJet;
 
 	fxHandle_t	mboil;
+	fxHandle_t	mSaberRainFizz;	// saber blade in the rain (SP wp_saber.cpp "saber/fizz")
 
 	//footstep effects
 	fxHandle_t footstepMud;
@@ -1958,6 +1967,9 @@ int CG_Argc(void);
 void CG_StartMusic(qboolean bForceStart);
 
 void CG_UpdateCvars(void);
+
+void CG_ApplyWeather(void);
+void CG_WeatherCvarChanged(void);
 
 int CG_CrosshairPlayer(void);
 int CG_LastAttacker(void);

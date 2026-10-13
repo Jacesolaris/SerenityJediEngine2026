@@ -547,11 +547,11 @@ static int Pickup_Weapon(gentity_t* ent, gentity_t* other)
 	}
 
 	// add the weapon
-	if (other->client->ps.stats[STAT_WEAPONS] & 1 << ent->item->giTag)
+	if (BG_HasWeapon(&other->client->ps, ent->item->giTag))
 	{
 		hadWeapon = qtrue;
 	}
-	other->client->ps.stats[STAT_WEAPONS] |= 1 << ent->item->giTag;
+	BG_GiveWeapon(&other->client->ps, ent->item->giTag);
 
 	if (ent->item->giTag == WP_SABER && (!hadWeapon || ent->NPC_type != nullptr))
 	{
@@ -967,7 +967,7 @@ void Touch_Item(gentity_t* ent, gentity_t* other, trace_t* trace)
 			TIMER_Set(other, "verifyCP", pickUpTime);
 			TIMER_Set(other, "attackDelay", 600);
 		}
-		if (other->client->ps.stats[STAT_WEAPONS] & 1 << ent->item->giTag)
+		if (BG_HasWeapon(&other->client->ps, ent->item->giTag))
 		{
 			bHadWeapon = qtrue;
 		}
@@ -2307,6 +2307,7 @@ static qboolean he_has_gun(const gentity_t* ent)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:

@@ -900,6 +900,7 @@ int giMapChecksum;
 SavedGameJustLoaded_e g_eSavedGameJustLoaded;
 qboolean g_qbLoadTransition = qfalse;
 void G_LoadExtraEntitiesFile();
+extern void WP_RepulseClearPending();
 
 static void init_game(const char* mapname, const char* spawntarget, const int check_sum, const char* entities,
 	const int level_time, const int random_seed, const int global_time,
@@ -921,6 +922,7 @@ static void init_game(const char* mapname, const char* spawntarget, const int ch
 	srand(random_seed);
 
 	G_InitCvars();
+	WP_RepulseClearPending(); // per-entity Repulse blasts / saber relights of the last level or game
 
 	G_InitMemory();
 

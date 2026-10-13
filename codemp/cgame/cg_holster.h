@@ -47,6 +47,8 @@ enum
 	//flechette
 	HLR_DISRUPTOR,
 	//disruptor
+	HLR_Z6,
+	//the Z-6 rotary cannon (from MovieDuels)
 	MAX_HOLSTER //max possible holster weapon positions
 };
 

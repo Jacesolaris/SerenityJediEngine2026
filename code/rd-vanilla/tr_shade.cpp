@@ -495,11 +495,16 @@ Perform dynamic lighting with another rendering pass
 static void ProjectDlightTexture2(void)
 {
 	int		i;
-	byte	clip_bits[SHADER_MAX_VERTEXES]{};
-	float	tex_coords_array[SHADER_MAX_VERTEXES][2]{};
-	float	old_tex_coords_array[SHADER_MAX_VERTEXES][2]{};
-	unsigned int		color_array[SHADER_MAX_VERTEXES]{};
-	glIndex_t	hitIndexes[SHADER_MAX_INDEXES]{};
+	static byte clip_bits[SHADER_MAX_VERTEXES]; // off the stack (C6262)
+	memset(clip_bits, 0, sizeof(clip_bits)); // cleared each time, as the {} on the stack was
+	static float tex_coords_array[SHADER_MAX_VERTEXES][2]; // off the stack (C6262)
+	memset(tex_coords_array, 0, sizeof(tex_coords_array)); // cleared each time, as the {} on the stack was
+	static float old_tex_coords_array[SHADER_MAX_VERTEXES][2]; // off the stack (C6262)
+	memset(old_tex_coords_array, 0, sizeof(old_tex_coords_array)); // cleared each time, as the {} on the stack was
+	static unsigned int color_array[SHADER_MAX_VERTEXES]; // off the stack (C6262)
+	memset(color_array, 0, sizeof(color_array)); // cleared each time, as the {} on the stack was
+	static glIndex_t hitIndexes[SHADER_MAX_INDEXES]; // off the stack (C6262)
+	memset(hitIndexes, 0, sizeof(hitIndexes)); // cleared each time, as the {} on the stack was
 	int		numIndexes;
 	float	radius;
 	int		fogging;
@@ -518,7 +523,8 @@ static void ProjectDlightTexture2(void)
 	{
 		vec3_t dist;
 		vec3_t origin;
-		float vertCoordsArray[SHADER_MAX_VERTEXES][4]{};
+		static float vertCoordsArray[SHADER_MAX_VERTEXES][4]; // off the stack (C6262)
+		memset(vertCoordsArray, 0, sizeof(vertCoordsArray)); // cleared each time, as the {} on the stack was
 		if (!(tess.dlightBits & 1 << l)) {
 			continue;	// this surface definately doesn't have any of this light
 		}
@@ -802,8 +808,10 @@ static void ProjectDlightTexture()
 	int		i;
 	float* tex_coords;
 	byte* colors;
-	byte	clip_bits[SHADER_MAX_VERTEXES]{};
-	glIndex_t	hitIndexes[SHADER_MAX_INDEXES]{};
+	static byte clip_bits[SHADER_MAX_VERTEXES]; // off the stack (C6262)
+	memset(clip_bits, 0, sizeof(clip_bits)); // cleared each time, as the {} on the stack was
+	static glIndex_t hitIndexes[SHADER_MAX_INDEXES]; // off the stack (C6262)
+	memset(hitIndexes, 0, sizeof(hitIndexes)); // cleared each time, as the {} on the stack was
 	int		numIndexes;
 	float	scale;
 	float	radius;
@@ -816,8 +824,10 @@ static void ProjectDlightTexture()
 	}
 
 	for (int l = 0; l < backEnd.refdef.num_dlights; l++) {
-		byte color_array[SHADER_MAX_VERTEXES][4]{};
-		float tex_coords_array[SHADER_MAX_VERTEXES][2]{};
+		static byte color_array[SHADER_MAX_VERTEXES][4]; // off the stack (C6262)
+		memset(color_array, 0, sizeof(color_array)); // cleared each time, as the {} on the stack was
+		static float tex_coords_array[SHADER_MAX_VERTEXES][2]; // off the stack (C6262)
+		memset(tex_coords_array, 0, sizeof(tex_coords_array)); // cleared each time, as the {} on the stack was
 		vec3_t origin;
 		if (!(tess.dlightBits & 1 << l)) {
 			continue;	// this surface definately doesn't have any of this light
@@ -1960,7 +1970,7 @@ void RB_StageIteratorGeneric(void)
 		}
 	}
 	//don't disable the hardware fog til after we do surface sprites
-	if (r_drawfog->value == 2 &&
+	if (r_drawfog->value == 2 && tr.world &&
 		tess.fogNum && tess.shader->fogPass &&
 		(tess.fogNum == tr.world->globalFog || tess.fogNum == tr.world->numfogs))
 	{

@@ -1489,7 +1489,7 @@ void WP_SaberWearOnBlock(gentity_t* blocker, const gentity_t* attacker)
 // a saber trace just hit victim's ghoul2 (G_G2TraceCollide): wear if it hit the hilt of a breakable saber
 void WP_SaberWearHiltTrace(gentity_t* victim, const gentity_t* attacker)
 {
-	char surf_name[MAX_QPATH] = {0};
+	char surf_name[MAX_QPATH] = { 0 };
 
 	if (!victim || !victim->client || !victim->ghoul2 || !attacker || !attacker->client || attacker == victim)
 	{

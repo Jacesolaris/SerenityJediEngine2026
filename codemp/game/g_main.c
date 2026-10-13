@@ -365,8 +365,6 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 
 	G_InitWorldSession();
 
-	IT_LoadWeatherParms();
-
 	// initialize all entities for this game
 	memset(g_entities, 0, MAX_GENTITIES * sizeof g_entities[0]);
 	level.gentities = g_entities;
@@ -664,6 +662,18 @@ void G_InitGame(int levelTime, int randomSeed, int restart)
 
 	// parse the key/value pairs and spawn gentities
 	G_SpawnEntitiesFromString(qfalse);
+
+	// gameplay weather state (acid rain / lava weather damage) from the weather configstrings: the map's
+	// fx_rain etc. have just set them, and on a map_restart they are still there from before
+	G_WeatherInitFromConfigstrings();
+
+	// the map's default weather (Weather/<mapname>.cfg) as server weather. map_restart keeps the configstrings, and
+	// with them the weather (the map's, or what the weather command set)
+	if (!restart)
+	{
+		G_WeatherNewMap();
+		G_WeatherLoadMapDefault();
+	}
 
 	// general initialization
 	G_FindTeams();
@@ -5087,6 +5097,9 @@ void G_RunFrame(const int levelTime)
 			ClientEndFrame(ent);
 		}
 	}
+
+	// acid rain / lava weather damage for clients and NPCs standing outside (returns at once without such weather)
+	G_RunWeatherDamage();
 #ifdef _G_FRAME_PERFANAL
 	iTimer_ClientEndframe = trap->PrecisionTimer_End(timer_ClientEndframe);
 #endif

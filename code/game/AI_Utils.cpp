@@ -933,6 +933,7 @@ qboolean AI_RefreshGroup(AIGroupInfo_t* group)
 			group->morale += 2;
 			break;
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 			group->morale -= 1;
 			break;
 		case WP_FLECHETTE:

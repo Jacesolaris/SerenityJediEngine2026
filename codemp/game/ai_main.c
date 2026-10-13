@@ -1,4 +1,4 @@
-﻿/*
+/*
 ===========================================================================
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
@@ -130,6 +130,7 @@ extern qboolean G_NameInTriggerClassList(const char* list, const char* str);
 void bot_behave_defend_basic(bot_state_t* bs, vec3_t defpoint);
 int bot_select_choice_weapon(bot_state_t* bs, int weapon, int doselection);
 static qboolean bot_is_boba_class(const bot_state_t* bs);
+static qboolean bot_is_jet_class(const bot_state_t* bs);
 void adjustfor_strafe(const bot_state_t* bs, vec3_t moveDir);
 void bot_behave_attack(bot_state_t* bs);
 extern const gbuyable_t bg_buylist[];
@@ -278,6 +279,7 @@ int MinimumAttackDistance[WP_NUM_WEAPONS] =
 	0, //WP_DET_PACK,
 	0, //WP_CONCUSSION,
 	0, //WP_DROIDEKA,
+	0, //WP_Z6_ROTARY_CANNON,
 	0, //WP_BRYAR_OLD,
 	0, //WP_EMPLACED_GUN,
 	0 //WP_TURRET,
@@ -303,6 +305,7 @@ int MaximumAttackDistance[WP_NUM_WEAPONS] =
 	9999, //WP_DET_PACK,
 	9999, //WP_CONCUSSION,
 	9999, //WP_DROIDEKA,
+	9999, //WP_Z6_ROTARY_CANNON,
 	9999, //WP_BRYAR_OLD,
 	9999, //WP_EMPLACED_GUN,
 	9999 //WP_TURRET,
@@ -328,6 +331,7 @@ int IdealAttackDistance[WP_NUM_WEAPONS] =
 	1000, //WP_DET_PACK,
 	1000, //WP_CONCUSSION,
 	1000, //WP_DROIDEKA,
+	1000, //WP_Z6_ROTARY_CANNON,
 	1000, //WP_BRYAR_OLD,
 	1000, //WP_EMPLACED_GUN,
 	1000 //WP_TURRET,
@@ -1601,6 +1605,40 @@ static qboolean bot_in_saber_engagement(bot_state_t* bs)
 	return qtrue;
 }
 
+// SJE: a droid bot (gonk, mouse droid, R2, R5, protocol droid: no weapon) has a droid's brain, like SP's droids (Droid_Patrol): it never
+// takes an enemy or attacks, it walks the waypoints and now and then stops for a while. (It ran the fighter AI: it chased
+// players, "fired" its no-weapon and slid along in strafe / combat anims a droid does not have.)
+static qboolean bot_is_droid(const bot_state_t* bs)
+{
+	const int bc = g_entities[bs->client].s.botclass;
+	return bc == BCLASS_GONK || bc == BCLASS_MOUSE || bc == BCLASS_R2D2 || bc == BCLASS_R5D2 || bc == BCLASS_PROTOCOL ? qtrue : qfalse;
+}
+
+static void bot_droid_input(const bot_state_t* bs, bot_input_t* bi)
+{
+	static int pauseUntil[MAX_CLIENTS], nextPause[MAX_CLIENTS];
+	const int c = bs->client;
+
+	bi->actionflags &= ~(ACTION_ATTACK | ACTION_ALT_ATTACK | ACTION_KICK | ACTION_FORCEPOWER | ACTION_BLOCK | ACTION_GLOAT
+		| ACTION_FLOURISH | ACTION_GESTURE | ACTION_JUMP | ACTION_DELAYEDJUMP | ACTION_CROUCH);
+	bi->actionflags |= ACTION_WALK;
+	if (nextPause[c] > level.time + 60000 || pauseUntil[c] > level.time + 60000)
+	{
+		nextPause[c] = pauseUntil[c] = 0; // left over from an earlier map
+	}
+	if (level.time >= nextPause[c])
+	{
+		pauseUntil[c] = level.time + Q_irand(1500, 3500);
+		nextPause[c] = pauseUntil[c] + Q_irand(6000, 14000);
+	}
+	if (level.time < pauseUntil[c])
+	{
+		bi->speed = 0;
+		bi->actionflags &= ~(ACTION_MOVEFORWARD | ACTION_MOVEBACK | ACTION_MOVELEFT | ACTION_MOVERIGHT | ACTION_MOVEUP
+			| ACTION_MOVEDOWN);
+	}
+}
+
 static void bot_update_input(bot_state_t* bs, const int time, const int elapsed_time)
 {
 	bot_input_t bi;
@@ -1710,6 +1748,10 @@ static void bot_update_input(bot_state_t* bs, const int time, const int elapsed_
 
 	// Force selection
 	bi.forcesel = level.clients[bs->client].ps.fd.forcePowerSelected;
+	if (bot_is_droid(bs))
+	{
+		bot_droid_input(bs, &bi);
+	}
 
 	// Convert to usercmd
 	BotInputToUserCommand(bs, &bi, &bs->lastucmd, bs->cur_ps.delta_angles, time, bs->noUseTime);
@@ -1935,6 +1977,7 @@ int bot_ai_setup_client(const int client, const struct bot_settings_s* settings)
 	bs->botWeaponWeights[WP_DET_PACK] = 0;
 	bs->botWeaponWeights[WP_CONCUSSION] = 15;
 	bs->botWeaponWeights[WP_DROIDEKA] = 12;
+	bs->botWeaponWeights[WP_Z6_ROTARY_CANNON] = 12;
 	bs->botWeaponWeights[WP_BRYAR_OLD] = 19;
 
 	BotUtilizePersonality(bs);
@@ -5413,12 +5456,26 @@ static int bot_trace_duck(const bot_state_t* bs, vec3_t traceto)
 }
 
 //check of the potential enemy is a valid one
+static qboolean bot_vehicle_with_enemy(const bot_state_t* bs, const gentity_t* veh);
+
 static int pass_standard_enemy_checks(const bot_state_t* bs, const gentity_t* en)
 {
 	if (!bs || !en)
 	{
 		//shouldn't happen
 		return 0;
+	}
+	if (bot_is_droid(bs))
+	{
+		return 0; // SJE: droids have no enemies
+	}
+
+	// SJE: a vehicle with an enemy pilot (droideka...) is a target of its own (bot_vehicle_with_enemy). It is an NPC
+	// client with no pers.connected or session, so the player rules below dropped it again every frame and bots
+	// stopped attacking a player once he boarded.
+	if (en->s.eType == ET_NPC && en->s.NPC_class == CLASS_VEHICLE)
+	{
+		return bot_vehicle_with_enemy(bs, en) ? 1 : 0;
 	}
 
 	if (!en->client)
@@ -5575,6 +5632,11 @@ void bot_damage_notification(const gclient_t* bot, gentity_t* attacker)
 	{
 		//if attacker is an npc also don't care I suppose.
 		return;
+	}
+
+	if (botstates[bot->ps.clientNum] && bot_is_droid(botstates[bot->ps.clientNum]))
+	{
+		return; // SJE: a droid does not hit back
 	}
 
 	bot_state_t* bs_a = botstates[attacker->s.number];
@@ -5832,6 +5894,26 @@ int pass_loved_one_check(const bot_state_t* bs, const gentity_t* ent)
 	return 1;
 }
 
+// A vehicle with an enemy aboard. The rider himself is no target while riding (g_vehicles.c hides him: SVF_NOCLIENT,
+// EF_NODRAW, no contents, and a trace to him hits the vehicle) and vehicles were skipped in the scan, so bots ignored a
+// player in a vehicle (droideka etc.), even in FFA. The team / loved-one checks are done on the pilot.
+static qboolean bot_vehicle_with_enemy(const bot_state_t* bs, const gentity_t* veh)
+{
+	if (!veh->inuse || veh->s.eType != ET_NPC || veh->s.NPC_class != CLASS_VEHICLE || !veh->m_pVehicle
+		|| veh->health < 1 || veh->s.eFlags & EF_DEAD)
+	{
+		return qfalse;
+	}
+	const gentity_t* pilot = (const gentity_t*)veh->m_pVehicle->m_pPilot;
+	if (!pilot || !pilot->inuse || !pilot->client || pilot->s.number == bs->client
+		|| pilot->client->sess.sessionTeam == TEAM_SPECTATOR || pilot->health < 1
+		|| OnSameTeam(&g_entities[bs->client], pilot))
+	{
+		return qfalse;
+	}
+	return pass_loved_one_check(bs, pilot) ? qtrue : qfalse;
+}
+
 //update the currentEnemy visual data for the current enemy.
 static void enemy_visual_update(bot_state_t* bs)
 {
@@ -5877,6 +5959,11 @@ static void enemy_visual_update(bot_state_t* bs)
 //standard check to find a new enemy.
 static int scan_for_enemies(bot_state_t* bs)
 {
+	if (bot_is_droid(bs))
+	{
+		bs->currentEnemy = NULL;
+		return -1;
+	}
 	float has_enemy_dist = 0;
 	qboolean no_attack_non_jm = qfalse;
 	float closest = 999999;
@@ -5953,10 +6040,12 @@ static int scan_for_enemies(bot_state_t* bs)
 				request_siege_assistance(bs, SPOTTED_SNIPER);
 			}
 			else if ((g_entities[i].client->ps.weapon == WP_REPEATER ||
+				g_entities[i].client->ps.weapon == WP_Z6_ROTARY_CANNON ||
 				g_entities[i].client->ps.weapon == WP_BOWCASTER ||
 				g_entities[i].client->ps.weapon == WP_FLECHETTE ||
 				g_entities[i].client->ps.weapon == WP_THERMAL) &&
 				(g_entities[bs->client].client->ps.weapon == WP_REPEATER ||
+					g_entities[bs->client].client->ps.weapon == WP_Z6_ROTARY_CANNON ||
 					g_entities[bs->client].client->ps.weapon == WP_BOWCASTER ||
 					g_entities[bs->client].client->ps.weapon == WP_FLECHETTE))
 			{
@@ -6058,6 +6147,11 @@ static int scan_for_enemies(bot_state_t* bs)
 //the main scan regular scan for enemies for the TAB Bot
 static void advanced_scanfor_enemies(bot_state_t* bs)
 {
+	if (bot_is_droid(bs))
+	{
+		bs->currentEnemy = NULL;
+		return;
+	}
 	vec3_t a, enemy_origin;
 	int close_enemy_num = -1;
 	float closestdist = 99999;
@@ -6102,6 +6196,7 @@ static void advanced_scanfor_enemies(bot_state_t* bs)
 		if (i != bs->client
 			&& (g_entities[i].client && !OnSameTeam(&g_entities[bs->client], &g_entities[i]) &&
 				pass_standard_enemy_checks(bs, &g_entities[i]) && pass_loved_one_check(bs, &g_entities[i])
+				|| bot_vehicle_with_enemy(bs, &g_entities[i])
 				|| g_entities[i].s.eType == ET_NPC && g_entities[i].s.NPC_class != CLASS_VEHICLE && g_entities[i].
 				health > 0 && !(g_entities[i].s.eFlags & EF_DEAD)
 				|| g_entities[i].s.weapon == WP_EMPLACED_GUN
@@ -6187,10 +6282,12 @@ static void advanced_scanfor_enemies(bot_state_t* bs)
 				request_siege_assistance(bs, SPOTTED_SNIPER);
 			}
 			else if ((g_entities[i].client->ps.weapon == WP_REPEATER ||
+				g_entities[i].client->ps.weapon == WP_Z6_ROTARY_CANNON ||
 				g_entities[i].client->ps.weapon == WP_BOWCASTER ||
 				g_entities[i].client->ps.weapon == WP_FLECHETTE ||
 				g_entities[i].client->ps.weapon == WP_THERMAL) &&
 				(g_entities[bs->client].client->ps.weapon == WP_REPEATER ||
+					g_entities[bs->client].client->ps.weapon == WP_Z6_ROTARY_CANNON ||
 					g_entities[bs->client].client->ps.weapon == WP_BOWCASTER ||
 					g_entities[bs->client].client->ps.weapon == WP_FLECHETTE))
 			{
@@ -6343,6 +6440,7 @@ int bot_get_weapon_range(const bot_state_t* bs)
 	case WP_BLASTER:
 	case WP_DISRUPTOR:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DROIDEKA:
 		return BWEAPONRANGE_MID;
 	case WP_BOWCASTER:
@@ -9345,9 +9443,107 @@ static void JediDirectionalDashAttack(bot_state_t* bs, const vec3_t enemyPos)
 #define BOT_LIGHTNING_MAX_DELAY	12000
 static int s_botNextLightning[MAX_CLIENTS];
 
+// bots and the SJE SP powers ported to MP (w_force.c): only bots whose force setup has the power, at most one new cast
+// every 5-9 s (SP NPCs use them now and then, not as their main attack), with force to spare, the enemy in a narrow cone
+// and at a range that suits the power. Grasp is held about 2 s, Repulse charged about 1.3 s (or until the enemy is
+// close) and then released. Returns the power to select, or -1.
+#define BOT_SPPOWER_MIN_DELAY	5000
+#define BOT_SPPOWER_MAX_DELAY	9000
+static int s_botNextSPPower[MAX_CLIENTS];
+
+static qboolean bot_sp_power_ready(const bot_state_t* bs, const int fp, const int extra)
+{
+	const gclient_t* cl = &level.clients[bs->client];
+	const int lvl = cl->ps.fd.forcePowerLevel[fp];
+
+	return bs->cur_ps.fd.forcePowersKnown & 1 << fp && lvl > FORCE_LEVEL_0 && lvl <= FORCE_LEVEL_3
+		&& cl->ps.fd.forcePower > forcePowerNeeded[lvl][fp] + extra && cl->ps.fd.forcePowerDebounce[fp] <= level.time
+		? qtrue : qfalse;
+}
+
+static int bot_sp_power(bot_state_t* bs, vec3_t toEnemyAngles)
+{
+	const gclient_t* cl = &level.clients[bs->client];
+	const gentity_t* enemy = bs->currentEnemy;
+	const float dist = bs->frame_Enemy_Len;
+
+	// keep holding a power already going
+	if (cl->ps.fd.forcePowersActive & 1 << FP_GRASP)
+	{
+		return level.time - cl->graspStartTime < 2000 ? FP_GRASP : -1;
+	}
+	if (cl->repulseChargeStart)
+	{
+		return level.time - cl->repulseChargeStart < 1300 && dist > 96 ? FP_REPULSE : -1;
+	}
+	if (!enemy || !enemy->client || enemy->health <= 0 || s_botNextSPPower[bs->client] > level.time
+		|| !in_field_of_vision(bs->viewangles, 30, toEnemyAngles))
+	{
+		return -1;
+	}
+	const qboolean enemyStunned = enemy->client->ps.userInt3 & 1 << FLAG_FROZEN
+		|| enemy->client->ps.weaponTime > 500 ? qtrue : qfalse;
+
+	int cand[NUM_FORCE_POWERS];
+	int n = 0;
+	if (!enemyStunned && dist < 700 && bot_sp_power_ready(bs, FP_STASIS, 10))
+		cand[n++] = FP_STASIS;
+	if (dist > 250 && dist < 1500 && bot_sp_power_ready(bs, FP_DESTRUCTION, 15))
+		cand[n++] = FP_DESTRUCTION;
+	if (dist > 128 && dist < 1000 && bot_sp_power_ready(bs, FP_BLAST, 10))
+		cand[n++] = FP_BLAST;
+	if (dist < 128 * cl->ps.fd.forcePowerLevel[FP_LIGHTNING_STRIKE] && bot_sp_power_ready(bs, FP_LIGHTNING_STRIKE, 10))
+		cand[n++] = FP_LIGHTNING_STRIKE;
+	if (!enemyStunned && dist < 1024 && bot_sp_power_ready(bs, FP_FEAR, 10))
+		cand[n++] = FP_FEAR;
+	if (!enemyStunned && dist < 1024 && bot_sp_power_ready(bs, FP_INSANITY, 10))
+		cand[n++] = FP_INSANITY;
+	if (!enemyStunned && dist < 1024 && bot_sp_power_ready(bs, FP_BLINDING, 10))
+		cand[n++] = FP_BLINDING;
+	if (dist < 1024 && !(cl->ps.fd.forcePowersActive & 1 << FP_DEADLYSIGHT) && bot_sp_power_ready(bs, FP_DEADLYSIGHT, 20))
+		cand[n++] = FP_DEADLYSIGHT;
+	if (dist < 200 && bot_sp_power_ready(bs, FP_GRASP, 20))
+		cand[n++] = FP_GRASP;
+	if (dist < 300 && bot_sp_power_ready(bs, FP_REPULSE, 20))
+		cand[n++] = FP_REPULSE;
+	if (!n)
+	{
+		return -1;
+	}
+	s_botNextSPPower[bs->client] = level.time + Q_irand(BOT_SPPOWER_MIN_DELAY, BOT_SPPOWER_MAX_DELAY);
+	return cand[Q_irand(0, n - 1)];
+}
+
 #define BOT_SABER_SWING_EXTRA	50.0f	// blade + this: about 80 (90 was out of contact)
 #define BOT_SABER_IDEAL_MIN		65.0f	// the distance the saber combat handlers keep (was 85-130: the blades rarely touched)
 #define BOT_SABER_IDEAL_MAX		100.0f
+// saber duel spacing with hysteresis: -1 back off, 1 close in, 0 hold. It backed off below idealMin and closed in above
+// idealMax at full run towards a goal 64 units away, and inside the band it kept running to the last (stale) goal - two
+// bots duelling crossed the narrow band every few frames and flipped between running in and running out (the jerking
+// when they come close). Now a bot that starts backing off / closing in keeps going only until the middle of the band,
+// and holds its ground inside the band.
+static int s_botSaberSpacing[MAX_CLIENTS];
+static int Bot_SaberSpacing(const bot_state_t* bs, const float idealMin, const float idealMax)
+{
+	const float mid = 0.5f * (idealMin + idealMax);
+	const float len = bs->frame_Enemy_Len;
+	int* state = &s_botSaberSpacing[bs->client];
+
+	if (len < idealMin)
+	{
+		*state = -1;
+	}
+	else if (len > idealMax)
+	{
+		*state = 1;
+	}
+	else if ((*state < 0 && len >= mid) || (*state > 0 && len <= mid))
+	{
+		*state = 0;
+	}
+	return *state;
+}
+
 static float Bot_SaberReach(const bot_state_t* bs)
 {
 	const gclient_t* client = g_entities[bs->client].client;
@@ -9516,8 +9712,9 @@ static void saber_combat_handling(bot_state_t* bs)
 	const float idealMin = BOT_SABER_IDEAL_MIN; // was 85: saber contact needs closer
 	const float idealMax = BOT_SABER_IDEAL_MAX; // was 150
 	const float MaxDashDist = 256.0f;
+	const int spacing = Bot_SaberSpacing(bs, idealMin, idealMax);
 
-	if (bs->frame_Enemy_Len < idealMin)
+	if (spacing < 0)
 	{
 		vec3_t back;
 		VectorSubtract(bs->origin, enemyPos, back);
@@ -9529,7 +9726,7 @@ static void saber_combat_handling(bot_state_t* bs)
 
 		bs->beStill = level.time + 100;
 	}
-	else if (bs->frame_Enemy_Len > idealMax)
+	else if (spacing > 0)
 	{
 		/* Only attempt dash attack if enemy is a client with a valid playerState */
 		playerState_t* enemy_ps_for_dash = (bs->currentEnemy && bs->currentEnemy->client) ? &bs->currentEnemy->client->ps : NULL;
@@ -9553,6 +9750,10 @@ static void saber_combat_handling(bot_state_t* bs)
 				VectorMA(bs->origin, 64.0f, fwd_to_enemy, bs->goalPosition);
 			}
 		}
+	}
+	else
+	{
+		VectorCopy(bs->origin, bs->goalPosition); // in the band: hold (was: kept running to the stale goal)
 	}
 
 	// -------------------------------------------------
@@ -9697,8 +9898,9 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 	const float idealMin = BOT_SABER_IDEAL_MIN; // was 85: saber contact needs closer
 	const float idealMax = BOT_SABER_IDEAL_MAX; // was 150
 	const float MaxDashDist = 256.0f;
+	const int spacing = Bot_SaberSpacing(bs, idealMin, idealMax);
 
-	if (bs->frame_Enemy_Len < idealMin)
+	if (spacing < 0)
 	{
 		vec3_t back;
 		VectorSubtract(bs->origin, enemyPos, back);
@@ -9713,7 +9915,7 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 
 		bs->beStill = level.time + 100;
 	}
-	else if (bs->frame_Enemy_Len > idealMax)
+	else if (spacing > 0)
 	{
 		playerState_t* ps = &bs->currentEnemy->client->ps;
 		// Dash cooldown using bot-local timer
@@ -9741,6 +9943,10 @@ static void Enhanced_saber_combat_handling(bot_state_t* bs)
 #endif
 			}
 		}
+	}
+	else
+	{
+		VectorCopy(bs->origin, bs->goalPosition); // in the band: hold (was: kept running to the stale goal)
 	}
 
 	// -------------------------------------------------
@@ -9831,6 +10037,7 @@ float bot_weapon_can_lead(const bot_state_t* bs)
 		return 0.95f;
 	case WP_BLASTER:
 	case WP_DROIDEKA:
+	case WP_Z6_ROTARY_CANNON:
 		return 0.95f;
 	case WP_BOWCASTER:
 		return 0.95f;
@@ -10107,7 +10314,7 @@ static int should_secondary_fire(const bot_state_t* bs)
 	{
 		return 1;
 	}
-	if (weap == WP_REPEATER && bs->frame_Enemy_Len < 600 && bs->frame_Enemy_Len > 250)
+	if ((weap == WP_REPEATER || weap == WP_Z6_ROTARY_CANNON) && bs->frame_Enemy_Len < 600 && bs->frame_Enemy_Len > 250)
 	{
 		return 1;
 	}
@@ -11503,7 +11710,7 @@ static int bot_use_inventory_item(bot_state_t* bs)
 	}
 
 	// The Boba Fett classes use their jetpack and flamethrower in bot_boba_think / bot_boba_flight_cmd
-	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && bs->cur_ps.jetpackFuel > 30 && !bot_is_boba_class(bs))
+	if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && bs->cur_ps.jetpackFuel > 30 && !bot_is_jet_class(bs))
 	{
 		if (bs->currentEnemy && bs->frame_Enemy_Vis && bs->runningToEscapeThreat)
 		{
@@ -12277,6 +12484,47 @@ static qboolean bot_is_boba_class(const bot_state_t* bs)
 		? qtrue : qfalse;
 }
 
+// SJE: every jetpack class flies with this AI (the Boba classes and the rockettrooper, BG_ClassIsJetpackFlyer);
+// the flamethrower part only runs for a bot that has the flamethrower item
+static qboolean bot_is_jet_class(const bot_state_t* bs)
+{
+	return BG_ClassIsJetpackFlyer(g_entities[bs->client].client->pers.botclass);
+}
+
+// The flight numbers per class: Boba's (AI_BobaFett.cpp + AI_Seeker.cpp, above) or SP's flying rockettrooper
+// (AI_RocketTrooper.cpp RT_Flying_*: slower strafes with an occasional upward push, a faster advance, calmer height
+// changes, and a long flight - SP's rockettroopers keep flying until they land)
+typedef struct
+{
+	float strafeVel;		// a regular strafe's push
+	float sideStrafeCap;	// the most the "keep to his side" strafe may push (0: no cap)
+	float upwardPush;
+	int upwardChance;		// 1 in N strafes also push up (1: every strafe)
+	float forwardBase;
+	float forwardMult;		// per SP skill level
+	float heightStep;		// the most one height change moves (x the factor)
+	float heightJitter;		// the vertical velocity is scaled by 0.85 .. this after a height change
+	int flyMin, flyMax;		// flight time
+	float takeOffRange;		// chase an enemy closer than this with the jetpack (SP: Jedi_TryJump 550, the rockettrooper 1200)
+	const char* takeOffSound;
+} botJetParms_t;
+
+static const botJetParms_t botJetParmsBoba = {
+	BOBA_STRAFE_VEL, 0.0f, BOBA_UPWARD_PUSH, 1, BOBA_FORWARD_BASE_SPEED, BOBA_FORWARD_MULTIPLIER, 24.0f, 3.0f,
+	3000, 10000, 550.0f, "sound/boba/jeton.wav"
+};
+
+static const botJetParms_t botJetParmsRocketTrooper = {
+	60.0f, 60.0f * 4, 150.0f, 4, 50.0f, 10.0f, 20.0f, 1.25f,
+	10000, 25000, 1200.0f, "sound/chars/boba/bf_blast-off.wav"
+};
+
+static const botJetParms_t* bot_jet_parms(const bot_state_t* bs)
+{
+	return g_entities[bs->client].client->pers.botclass == BCLASS_ROCKETTROOPER
+		? &botJetParmsRocketTrooper : &botJetParmsBoba;
+}
+
 static qboolean bot_boba_has_weapon(const bot_state_t* bs, const int wp)
 {
 	if (!(bs->cur_ps.stats[STAT_WEAPONS] & 1 << wp))
@@ -12373,6 +12621,7 @@ static int bot_boba_select_weapon(bot_state_t* bs)
 static void bot_boba_strafe(const bot_state_t* bs, bobaBot_t* bb, playerState_t* ps)
 {
 	const gentity_t* enemy = bs->currentEnemy;
+	const botJetParms_t* jp = bot_jet_parms(bs);
 	trace_t tr;
 	vec3_t end, right, dir;
 	const int side = rand() & 1 ? -1 : 1;
@@ -12385,8 +12634,11 @@ static void bot_boba_strafe(const bot_state_t* bs, bobaBot_t* bb, playerState_t*
 		trap->Trace(&tr, ps->origin, NULL, NULL, end, bs->client, MASK_SOLID, qfalse, 0, 0);
 		if (tr.fraction > 0.9f)
 		{
-			VectorMA(ps->velocity, BOBA_STRAFE_VEL * side, right, ps->velocity);
-			ps->velocity[2] += BOBA_UPWARD_PUSH;
+			VectorMA(ps->velocity, jp->strafeVel * side, right, ps->velocity);
+			if (!Q_irand(0, jp->upwardChance - 1))
+			{
+				ps->velocity[2] += jp->upwardPush;
+			}
 			bb->standTime = level.time + 1000 + (int)(flrand(0.0f, 1.0f) * 500);
 		}
 	}
@@ -12401,9 +12653,16 @@ static void bot_boba_strafe(const bot_state_t* bs, bobaBot_t* bb, playerState_t*
 		{
 			VectorSubtract(tr.endpos, ps->origin, dir);
 			dir[2] *= 0.25f; // less upward change
-			const float dis = VectorNormalize(dir);
+			float dis = VectorNormalize(dir);
+			if (jp->sideStrafeCap > 0.0f && dis > jp->sideStrafeCap)
+			{
+				dis = jp->sideStrafeCap;
+			}
 			VectorMA(ps->velocity, dis, dir, ps->velocity);
-			ps->velocity[2] += BOBA_UPWARD_PUSH;
+			if (!Q_irand(0, jp->upwardChance - 1))
+			{
+				ps->velocity[2] += jp->upwardPush;
+			}
 			bb->standTime = level.time + 2500 + (int)(flrand(0.0f, 1.0f) * 500);
 		}
 	}
@@ -12413,6 +12672,7 @@ static void bot_boba_strafe(const bot_state_t* bs, bobaBot_t* bb, playerState_t*
 static void bot_boba_seeker_think(const bot_state_t* bs, bobaBot_t* bb, playerState_t* ps, const float xy_dist)
 {
 	const gentity_t* enemy = bs->currentEnemy;
+	const botJetParms_t* jp = bot_jet_parms(bs);
 
 	// hover at, or a little above, the enemy's eye level
 	if (bb->heightChange < level.time)
@@ -12425,13 +12685,13 @@ static void bot_boba_seeker_think(const bot_state_t* bs, bobaBot_t* bb, playerSt
 		dif = bb->targetZ - ps->origin[2];
 		if (fabs(dif) > 2.0f * dif_factor)
 		{
-			if (fabs(dif) > 24.0f * dif_factor)
+			if (fabs(dif) > jp->heightStep * dif_factor)
 			{
-				dif = dif < 0.0f ? -24.0f * dif_factor : 24.0f * dif_factor;
+				dif = dif < 0.0f ? -jp->heightStep * dif_factor : jp->heightStep * dif_factor;
 			}
 			ps->velocity[2] = (ps->velocity[2] + dif) * 0.5f;
 		}
-		ps->velocity[2] *= flrand(0.85f, 3.0f); // jet movement jitter
+		ps->velocity[2] *= flrand(0.85f, jp->heightJitter); // jet movement jitter
 	}
 
 	ps->velocity[0] *= BOBA_VELOCITY_DECAY;
@@ -12463,7 +12723,7 @@ static void bot_boba_seeker_think(const bot_state_t* bs, bobaBot_t* bb, playerSt
 		trap->Trace(&tr, ps->origin, NULL, NULL, end, bs->client, MASK_SOLID, qfalse, 0, 0);
 		if (tr.fraction == 1.0f && !tr.startsolid)
 		{
-			VectorMA(ps->velocity, BOBA_FORWARD_BASE_SPEED + BOBA_FORWARD_MULTIPLIER * skill, forward, ps->velocity);
+			VectorMA(ps->velocity, jp->forwardBase + jp->forwardMult * skill, forward, ps->velocity);
 		}
 	}
 }
@@ -12533,7 +12793,7 @@ static void bot_boba_think(bot_state_t* bs)
 		{
 			// Jedi_TryJump: chase an enemy that isn't far away (and not much lower) with the jetpack
 			bb->jumpChase = level.time + Q_irand(500, 2000);
-			if (xy_dist < 550 && z_diff > -400 && !(z_diff < 32 && xy_dist < 200))
+			if (xy_dist < bot_jet_parms(bs)->takeOffRange && z_diff > -400 && !(z_diff < 32 && xy_dist < 200))
 			{
 				take_off = z_diff > 64 || !Q_irand(0, 2) ? qtrue : qfalse;
 			}
@@ -12543,11 +12803,11 @@ static void bot_boba_think(bot_state_t* bs)
 		{
 			bb->fly = BOBA_FLY_TAKEOFF;
 			bb->flyStart = level.time;
-			bb->flyUntil = level.time + Q_irand(3000, 10000); // Boba_FlyStart
+			bb->flyUntil = level.time + Q_irand(bot_jet_parms(bs)->flyMin, bot_jet_parms(bs)->flyMax); // Boba_FlyStart (RT: long flights)
 			bb->heightChange = 0;
 			bb->standTime = 0;
 			bb->targetZ = enemy->r.currentOrigin[2] + enemy->r.maxs[2];
-			G_Sound(self, CHAN_ITEM, G_SoundIndex("sound/boba/jeton.wav"));
+			G_Sound(self, CHAN_ITEM, G_SoundIndex(bot_jet_parms(bs)->takeOffSound));
 		}
 	}
 
@@ -12590,7 +12850,7 @@ static void bot_boba_flight_cmd(bot_state_t* bs, usercmd_t* ucmd)
 	float enemy_dist = 0.0f;
 	float xy_dist = 0.0f;
 
-	if (!bot_is_boba_class(bs))
+	if (!bot_is_jet_class(bs))
 	{
 		return;
 	}
@@ -12696,6 +12956,11 @@ void standard_bot_ai(bot_state_t* bs)
 	const saberInfo_t* saber1 = BG_MySaber(bs->client, 0);
 	const saberInfo_t* saber2 = BG_MySaber(bs->client, 1);
 	gentity_t* botEnt = &g_entities[bs->client];
+
+	if (bot_is_droid(bs))
+	{
+		bs->currentEnemy = NULL;
+	}
 
 	qboolean dualSabers = qfalse;
 	qboolean staffSaber = qfalse;
@@ -13378,6 +13643,21 @@ void standard_bot_ai(bot_state_t* bs)
 		}
 	}
 
+	// the SJE SP powers (bot_sp_power): when nothing above was chosen
+	if (!use_the_force && bs->currentEnemy && bs->currentEnemy->client && bs->frame_Enemy_Vis)
+	{
+		vec3_t toEnemyVec, toEnemyAngles;
+		VectorSubtract(bs->currentEnemy->client->ps.origin, bs->eye, toEnemyVec);
+		vectoangles(toEnemyVec, toEnemyAngles);
+		const int spPower = bot_sp_power(bs, toEnemyAngles);
+		if (spPower != -1)
+		{
+			level.clients[bs->client].ps.fd.forcePowerSelected = spPower;
+			use_the_force = 1;
+			forceHostile = 1;
+		}
+	}
+
 	if (use_the_force && forceHostile)
 	{
 		if (bs->currentEnemy && bs->currentEnemy->client &&
@@ -13393,7 +13673,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 	bs->deathActivitiesDone = 0;
 
-	if (bot_is_boba_class(bs))
+	if (bot_is_jet_class(bs))
 	{
 		bot_boba_think(bs); // SP Boba Fett: tactics, jetpack flight, flamethrower
 	}
@@ -13468,6 +13748,7 @@ void standard_bot_ai(bot_state_t* bs)
 				bot_buy_item(bs, "powercells");
 			}
 			else if (g_entities[bs->client].client->ps.weapon == WP_REPEATER ||
+				g_entities[bs->client].client->ps.weapon == WP_Z6_ROTARY_CANNON ||
 				g_entities[bs->client].client->ps.weapon == WP_FLECHETTE ||
 				g_entities[bs->client].client->ps.weapon == WP_CONCUSSION)
 			{
@@ -13534,7 +13815,7 @@ void standard_bot_ai(bot_state_t* bs)
 				return;
 			}
 		}
-		else if (bot_is_boba_class(bs) && bs->currentEnemy ? bot_boba_select_weapon(bs) : bot_select_ideal_weapon(bs))
+		else if (bot_is_jet_class(bs) && bs->currentEnemy ? bot_boba_select_weapon(bs) : bot_select_ideal_weapon(bs))
 		{
 			return;
 		}
@@ -14023,7 +14304,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 				VectorCopy(bs->currentEnemy->r.currentOrigin, jumpPos[bs->cur_ps.clientNum]);
 			}
-			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && !bot_is_boba_class(bs) // Boba flies instead (bot_boba_think)
+			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && !bot_is_jet_class(bs) // Boba flies instead (bot_boba_think)
 				&& bs->BOTjumpState <= JS_WAITING // Not in a jump right now.
 				&& xy < 300
 				&& bs->currentEnemy->r.currentOrigin[2] > bs->origin[2] + 32
@@ -14037,7 +14318,7 @@ void standard_bot_ai(bot_state_t* bs)
 
 				VectorCopy(bs->currentEnemy->r.currentOrigin, jumpPos[bs->cur_ps.clientNum]);
 			}
-			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && !bot_is_boba_class(bs) // Boba flies instead (bot_boba_think)
+			else if (bs->cur_ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK && !bot_is_jet_class(bs) // Boba flies instead (bot_boba_think)
 				&& bs->BOTjumpState <= JS_WAITING // Not in a jump right now.
 				&& xy > 1400
 				&& bs->currentEnemy->r.currentOrigin[2] < bs->origin[2] - 32
@@ -15604,7 +15885,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 
 	bs->deathActivitiesDone = 0;
 
-	if (bot_is_boba_class(bs))
+	if (bot_is_jet_class(bs))
 	{
 		bot_boba_think(bs); // SP Boba Fett: tactics, jetpack flight, flamethrower
 	}
@@ -15679,6 +15960,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 				bot_buy_item(bs, "powercells");
 			}
 			else if (g_entities[bs->client].client->ps.weapon == WP_REPEATER ||
+				g_entities[bs->client].client->ps.weapon == WP_Z6_ROTARY_CANNON ||
 				g_entities[bs->client].client->ps.weapon == WP_FLECHETTE ||
 				g_entities[bs->client].client->ps.weapon == WP_CONCUSSION)
 			{
@@ -15745,7 +16027,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 				return;
 			}
 		}
-		else if (bot_is_boba_class(bs) && bs->currentEnemy ? bot_boba_select_weapon(bs) : bot_select_ideal_weapon(bs))
+		else if (bot_is_jet_class(bs) && bs->currentEnemy ? bot_boba_select_weapon(bs) : bot_select_ideal_weapon(bs))
 		{
 			return;
 		}

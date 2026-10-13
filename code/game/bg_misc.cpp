@@ -147,7 +147,7 @@ qboolean bg_can_item_be_grabbed(const entityState_t* ent, const playerState_t* p
 		// See if we already have this weapon.
 	{
 		// See if we already have this weapon.
-		if (!(ps->stats[STAT_WEAPONS] & 1 << item->giTag))
+		if (!BG_HasWeapon(ps, item->giTag))
 		{
 			// Don't have this weapon yet, so pick it up.
 			return qtrue;

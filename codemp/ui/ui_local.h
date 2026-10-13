@@ -415,7 +415,7 @@ typedef struct uiInfo_s {
 	// the saber builder (from JA Enhanced)
 	int						customSabersMax;
 	int						customSabersCount;
-	customSaberInfo_t*		customSabers;
+	customSaberInfo_t* customSabers;
 	int						customSabersIndex;
 	int						customSabers2Index;
 } uiInfo_t;

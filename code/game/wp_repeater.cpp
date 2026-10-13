@@ -217,3 +217,118 @@ void WP_FireRepeater(gentity_t* ent, const qboolean alt_fire)
 	// Fire main repeater shot
 	WP_RepeaterMainFire(ent, dir);
 }
+//---------------
+//  Z-6 Rotary Cannon (Minigun, from MovieDuels): repeater-type bolts, the barrel spins while firing (cgame)
+//---------------
+
+extern qboolean NPC_IsMando(const gentity_t* self);
+
+//---------------------------------------------------------
+static void WP_FireZ6RotaryCannonMissile(gentity_t* ent, vec3_t start, vec3_t dir)
+//---------------------------------------------------------
+{
+	int velocity = Z6_ROTARY_CANNON_VELOCITY;
+	int damage = Z6_ROTARY_CANNON_DAMAGE;
+	// an enemy NPC (not player controlled, not a mando) gets slower bolts and its own damage, so they can be evaded
+	const qboolean enemyNPC = ent->s.number >= MAX_CLIENTS && !G_ControlledByPlayer(ent) && !NPC_IsMando(ent)
+		? qtrue : qfalse;
+
+	if (ent->client->NPC_class == CLASS_VEHICLE)
+	{
+		damage *= 3;
+		velocity = ATST_MAIN_VEL + ent->client->ps.speed;
+	}
+	else if (enemyNPC)
+	{
+		velocity *= g_spskill->integer < 2 ? Z6_ROTARY_CANNON_NPC_VEL_CUT : Z6_ROTARY_CANNON_NPC_HARD_VEL_CUT;
+	}
+
+	WP_TraceSetStart(ent, start);
+	//make sure our start point isn't on the other side of a wall
+
+	WP_MissileTargetHint(ent, start, dir);
+
+	gentity_t* missile = CreateMissile(start, dir, velocity, 10000, ent, qfalse);
+
+	missile->classname = "z6_rotary_proj";
+	missile->s.weapon = WP_Z6_ROTARY_CANNON;
+
+	if (enemyNPC)
+	{
+		if (g_spskill->integer == 0)
+		{
+			damage = Z6_ROTARY_CANNON_NPC_DAMAGE_EASY;
+		}
+		else if (g_spskill->integer == 1)
+		{
+			damage = Z6_ROTARY_CANNON_NPC_DAMAGE_NORMAL;
+		}
+		else
+		{
+			damage = Z6_ROTARY_CANNON_NPC_DAMAGE_HARD;
+		}
+	}
+
+	missile->damage = damage;
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK;
+	missile->methodOfDeath = MOD_Z6_ROTARY_CANNON;
+	missile->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
+
+	// we don't want it to bounce forever
+	missile->bounceCount = 8;
+}
+
+//---------------------------------------------------------
+void WP_FireZ6RotaryCannon(gentity_t* ent)
+//---------------------------------------------------------
+{
+	vec3_t dir, angs, start;
+
+	if (!ent->client)
+	{
+		return;
+	}
+
+	vectoangles(forward_vec, angs);
+
+	if (ent->client->NPC_class == CLASS_VEHICLE)
+	{
+		// no inherent aim screw up
+	}
+	else if (NPC_IsNotHavingEnoughForceSight(ent))
+	{
+		//force sight 2+ gives perfect aim
+		if (ent->s.number < MAX_CLIENTS || G_ControlledByPlayer(ent))
+		{
+			if (PM_RunningAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_FULL)
+			{
+				// running or very fatigued
+				angs[PITCH] += Q_flrand(-1.5f, 1.5f) * RUNNING_SPREAD;
+				angs[YAW] += Q_flrand(-1.5f, 1.5f) * RUNNING_SPREAD;
+			}
+			else if (PM_WalkingAnim(ent->client->ps.legsAnim) || ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
+			{
+				// walking or fatigued a bit
+				angs[PITCH] += Q_flrand(-1.2f, 1.2f) * WALKING_SPREAD;
+				angs[YAW] += Q_flrand(-1.2f, 1.2f) * WALKING_SPREAD;
+			}
+			else
+			{
+				// just standing
+				angs[PITCH] += Q_flrand(-1.0f, 1.0f) * Z6_ROTARY_CANNON_SPREAD;
+				angs[YAW] += Q_flrand(-1.0f, 1.0f) * Z6_ROTARY_CANNON_SPREAD;
+			}
+		}
+		else
+		{
+			// NPCs: some slop
+			angs[PITCH] += Q_flrand(-1.0f, 1.0f) * Z6_ROTARY_CANNON_NPC_SPREAD;
+			angs[YAW] += Q_flrand(-1.0f, 1.0f) * Z6_ROTARY_CANNON_NPC_SPREAD;
+		}
+	}
+
+	AngleVectors(angs, dir, nullptr, nullptr);
+
+	VectorCopy(muzzle, start);
+	WP_FireZ6RotaryCannonMissile(ent, start, dir);
+}

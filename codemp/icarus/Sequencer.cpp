@@ -34,6 +34,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 CSequencer::CSequencer(void)
 {
+	m_owner = nullptr;
+	m_ownerID = 0;
+	m_ie = nullptr;
+	m_taskManager = nullptr;
+
 	m_numCommands = 0;
 
 	m_curStream = nullptr;

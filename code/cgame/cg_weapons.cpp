@@ -811,6 +811,7 @@ void CG_RegisterWeapon(const int weapon_num)
 
 	case WP_WRIST_BLASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 		theFxScheduler.RegisterEffect("repeater/muzzle_smoke");
 		theFxScheduler.RegisterEffect("repeater/projectile");
 		theFxScheduler.RegisterEffect("repeater/alt_projectile");
@@ -818,6 +819,8 @@ void CG_RegisterWeapon(const int weapon_num)
 		theFxScheduler.RegisterEffect("repeater/concussion");
 
 		cgs.effects.cloneShotEffect = theFxScheduler.RegisterEffect("clone/projectile");
+		cgs.effects.cloneWallImpactEffect = theFxScheduler.RegisterEffect("clone/wall_impact");
+		cgs.effects.cloneFleshImpactEffect = theFxScheduler.RegisterEffect("clone/flesh_impact");
 		cgs.effects.repeaterProjectileEffect = theFxScheduler.RegisterEffect("repeater/projectile");
 		cgs.effects.repeaterAltProjectileEffect = theFxScheduler.RegisterEffect("repeater/alt_projectile");
 		cgs.effects.repeaterWallImpactEffect = theFxScheduler.RegisterEffect("repeater/wall_impact");
@@ -1238,40 +1241,86 @@ constexpr auto COAST_TIME = 1000;
 
 float CG_MachinegunSpinAngle(centity_t* cent)
 {
-	float angle;
-	int delta = cg.time - cent->pe.barrelTime;
+	float angle = 0.0f;
+	int   delta = 0;
 
-	if (cent->pe.barrelSpinning)
+	// -----------------------------------------------------------------
+	// Safety: never dereference cent if it's NULL
+	// -----------------------------------------------------------------
+	if (cent == NULL)
 	{
-		angle = cent->pe.barrelAngle + delta * SPIN_SPEED;
+		return 0.0f;
+	}
+
+	delta = cg.time - cent->pe.barrelTime;
+
+	// -----------------------------------------------------------------
+	// Spinning / coasting logic
+	// -----------------------------------------------------------------
+
+	if (cent->pe.barrelSpinning == qtrue)
+	{
+		// Constant spin speed
+		angle = cent->pe.barrelAngle + ((float)delta * SPIN_SPEED);
 	}
 	else
 	{
+		// Coasting down
 		if (delta > COAST_TIME)
 		{
 			delta = COAST_TIME;
 		}
 
-		const float speed = 0.5f * (SPIN_SPEED + static_cast<float>(COAST_TIME - delta) / COAST_TIME);
-		angle = cent->pe.barrelAngle + delta * speed;
+		const float t = (float)(COAST_TIME - delta) / (float)COAST_TIME;
+		const float speed = 0.5f * (SPIN_SPEED + (t * SPIN_SPEED));
+
+		angle = cent->pe.barrelAngle + ((float)delta * speed);
 	}
 
-	// --- FIXED: detect state change ---
-	if (cent->pe.barrelSpinning != !!(cent->currentState.eFlags & EF_FIRING))
+	// -----------------------------------------------------------------
+	// State change detection: EF_FIRING drives barrelSpinning
+	// Use predicted player state for the local client so the viewmodel
+	// barrel responds immediately to player input.
+	// -----------------------------------------------------------------
 	{
-		cent->pe.barrelTime = cg.time;
-		cent->pe.barrelAngle = AngleNormalize360(angle);
-		cent->pe.barrelSpinning = !!(cent->currentState.eFlags & EF_FIRING);
+		qboolean firingNow = qfalse;
 
-		// play spin sound only on state change
-		if (cg.snap->ps.weapon == WP_REPEATER)
+		if (cg.snap != NULL &&
+			cent->currentState.number == cg.predictedPlayerState.clientNum)
 		{
-			cgi_S_StartSound(
-				nullptr,
-				cent->currentState.number,
-				CHAN_WEAPON,
-				cgi_S_RegisterSound("sound/weapons/barrelSpinning/barrelSpinning.wav")
-			);
+			// Local player: use predicted state
+			firingNow =
+				(((cg.predictedPlayerState.eFlags & EF_FIRING) != 0 ||
+					(cg.predictedPlayerState.eFlags & EF_ALT_FIRING) != 0)
+					? qtrue : qfalse);
+		}
+		else
+		{
+			// Remote players: use server state
+			firingNow =
+				(((cent->currentState.eFlags & EF_FIRING) != 0 ||
+					(cent->currentState.eFlags & EF_ALT_FIRING) != 0)
+					? qtrue : qfalse);
+		}
+
+		// Transition: start or stop spinning
+		if (cent->pe.barrelSpinning != (firingNow != 0))
+		{
+			cent->pe.barrelTime = cg.time;
+			cent->pe.barrelAngle = AngleNormalize360(angle);
+			cent->pe.barrelSpinning = (firingNow != 0);
+
+			// Play spin-up sound for Z6
+			if (firingNow == qtrue &&
+				(cent->currentState.weapon == WP_Z6_ROTARY_CANNON ||
+					(cg.snap != NULL && cg.snap->ps.weapon == WP_Z6_ROTARY_CANNON)))
+			{
+				cgi_S_StartSound(
+					NULL,
+					cent->currentState.number,
+					CHAN_WEAPON,
+					cgi_S_RegisterSound("sound/weapons/z6/spinny.wav"));
+			}
 		}
 	}
 
@@ -1451,134 +1500,6 @@ static void CG_DoMuzzleFlash(centity_t* cent, vec3_t org, vec3_t dir, const weap
 	}
 }
 
-static void CG_DrawZ6TruegunsBarrel(const playerState_t* ps)
-{
-	// Validate input
-	if (!ps)
-	{
-		CG_Printf("CG_DrawZ6TruegunsBarrel: NULL playerState\n");
-		return;
-	}
-
-	const weaponInfo_t* wi = &cg_weapons[WP_REPEATER];
-	centity_t* cent = &cg_entities[cg.predictedPlayerState.clientNum];
-
-	// Safety: weaponInfo must exist
-	if (!wi || !wi->handsModel)
-	{
-		CG_Printf("CG_DrawZ6TruegunsBarrel: Missing weaponInfo or handsModel\n");
-		return;
-	}
-
-	refEntity_t hand;
-	refEntity_t barrel;
-	vec3_t ang = { 0.0f, 0.0f, 0.0f };
-
-	// Clear entities
-	memset(&hand, 0, sizeof(hand));
-	memset(&barrel, 0, sizeof(barrel));
-
-	// Precompute hand transform once per frame
-	CG_CalculateWeaponPosition(hand.origin, ang);
-
-	VectorMA(hand.origin, cg_gun_x.value, cg.refdef.viewaxis[0], hand.origin);
-	VectorMA(hand.origin, cg_gun_y.value, cg.refdef.viewaxis[1], hand.origin);
-	VectorMA(hand.origin, cg_gun_z.value, cg.refdef.viewaxis[2], hand.origin);
-
-	AnglesToAxis(ang, hand.axis);
-	hand.hModel = wi->handsModel;
-	hand.renderfx = (RF_DEPTHHACK | RF_FIRST_PERSON);
-
-	// Draw the hand model once
-	CG_AddWeaponWithPowerups(&hand);
-
-	// Loop through barrels
-	for (int i = 0; i < weaponData[WP_REPEATER].numBarrels; i++)
-	{
-		memset(&barrel, 0, sizeof(barrel));
-
-		// Apply spin angle
-		ang[ROLL] = CG_MachinegunSpinAngle(cent);
-		AnglesToAxis(ang, barrel.axis);
-
-		barrel.hModel = wi->barrelModel[i];
-		barrel.renderfx = (RF_DEPTHHACK | RF_FIRST_PERSON);
-
-		// Attach barrel to tag
-		CG_PositionRotatedEntityOnTag(
-			&barrel,
-			&hand,
-			wi->handsModel,
-			(i == 0) ? "tag_barrel" : va("tag_barrel%d", i + 1),
-			nullptr
-		);
-
-		CG_AddWeaponWithPowerups(&barrel);
-	}
-}
-
-// Draw only the spinning barrel (trueguns = 0 case)
-static void CG_DrawZ6SpinningBarrelOnly(const playerState_t* ps)
-{
-	// Safety check
-	if (!ps)
-	{
-		CG_Printf("CG_DrawZ6SpinningBarrelOnly: NULL playerState\n");
-		return;
-	}
-
-	const weaponInfo_t* wi = &cg_weapons[WP_REPEATER];
-	centity_t* cent = &cg_entities[cg.predictedPlayerState.clientNum];
-
-	if (!wi || !wi->handsModel || !wi->barrelModel[0])
-	{
-		CG_Printf("CG_DrawZ6SpinningBarrelOnly: Missing weaponInfo or barrel model\n");
-		return;
-	}
-
-	refEntity_t hand;
-	refEntity_t barrel;
-	vec3_t ang = { 0.0f, 0.0f, 0.0f };
-
-	memset(&hand, 0, sizeof(hand));
-	memset(&barrel, 0, sizeof(barrel));
-
-	// Compute hand transform once
-	CG_CalculateWeaponPosition(hand.origin, ang);
-
-	VectorMA(hand.origin, cg_gun_x.value, cg.refdef.viewaxis[0], hand.origin);
-	VectorMA(hand.origin, cg_gun_y.value, cg.refdef.viewaxis[1], hand.origin);
-	VectorMA(hand.origin, cg_gun_z.value, cg.refdef.viewaxis[2], hand.origin);
-
-	AnglesToAxis(ang, hand.axis);
-	hand.hModel = wi->handsModel;
-	hand.renderfx = (RF_DEPTHHACK | RF_FIRST_PERSON);
-
-	// Draw the hand (already drawn in trueguns=0, but harmless)
-	CG_AddWeaponWithPowerups(&hand);
-
-	// --- Draw spinning barrel (index 0 only) ---
-	memset(&barrel, 0, sizeof(barrel));
-
-	// Apply spin
-	ang[ROLL] = CG_MachinegunSpinAngle(cent);
-	AnglesToAxis(ang, barrel.axis);
-
-	barrel.hModel = wi->barrelModel[0];
-	barrel.renderfx = (RF_DEPTHHACK | RF_FIRST_PERSON);
-
-	// Attach to tag_barrel
-	CG_PositionRotatedEntityOnTag(
-		&barrel,
-		&hand,
-		wi->handsModel,
-		"tag_barrel",
-		nullptr
-	);
-
-	CG_AddWeaponWithPowerups(&barrel);
-}
-
 /*
 ==============
 CG_AddViewWeapon
@@ -1671,7 +1592,12 @@ void CG_AddViewWeapon(playerState_t* ps)
 		return;
 	}
 
-	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_LIGHTNING_STRIKE)
+	if (!cent->gent || !cent->gent->client)
+	{
+		return; // drawn from the player's own entity, used unchecked further down
+	}
+
+	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_LIGHTNING_STRIKE && CG_ContinuousFxReady(cent->currentState.number, CFX_VIEW_LIGHTNING_STRIKE))
 	{
 		//doing the electrocuting
 		vec3_t temp;
@@ -1690,7 +1616,7 @@ void CG_AddViewWeapon(playerState_t* ps)
 		}
 	}
 
-	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_LIGHTNING)
+	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_LIGHTNING && CG_ContinuousFxReady(cent->currentState.number, CFX_VIEW_LIGHTNING))
 	{
 		//doing the electrocuting
 		vec3_t temp;
@@ -1800,7 +1726,7 @@ void CG_AddViewWeapon(playerState_t* ps)
 		}
 	}
 
-	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_DRAIN)
+	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_DRAIN && CG_ContinuousFxReady(cent->currentState.number, CFX_VIEW_DRAIN))
 	{
 		//doing the draining
 		vec3_t temp;
@@ -2039,11 +1965,7 @@ void CG_AddViewWeapon(playerState_t* ps)
 			angles[YAW] = 0;
 			angles[PITCH] = 0;
 
-			if (cg_SpinningBarrels.integer && ps->weapon == WP_REPEATER)
-			{
-				angles[ROLL] = CG_MachinegunSpinAngle(cent);
-			}
-			else if (cg_SpinningBarrels.integer && ps->weapon == WP_STUN_BATON)
+			if (cg_SpinningBarrels.integer && ps->weapon == WP_Z6_ROTARY_CANNON)
 			{
 				angles[ROLL] = CG_MachinegunSpinAngle(cent);
 			}
@@ -2197,12 +2119,6 @@ void CG_AddViewWeapon(playerState_t* ps)
 		}
 		CG_AddViewWeaponDuals(ps);
 	}
-
-	// Special case: Z6 with trueguns OFF and spinning barrels - add spinning barrel to normal md3 weapon
-	/*if (ps->weapon == WP_REPEATER && !cg_trueguns.integer && cg_SpinningBarrels.integer)
-	{
-		CG_DrawZ6SpinningBarrelOnly(ps);
-	}*/
 }
 
 void CG_AddViewWeaponDuals(playerState_t* ps)
@@ -2240,7 +2156,12 @@ void CG_AddViewWeaponDuals(playerState_t* ps)
 		return;
 	}
 
-	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_LIGHTNING)
+	if (!cent->gent || !cent->gent->client)
+	{
+		return; // drawn from the player's own entity, used unchecked further down
+	}
+
+	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_LIGHTNING && CG_ContinuousFxReady(cent->currentState.number, CFX_VIEW_LIGHTNING))
 	{
 		//doing the electrocuting
 		vec3_t temp;
@@ -2350,7 +2271,7 @@ void CG_AddViewWeaponDuals(playerState_t* ps)
 		}
 	}
 
-	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_DRAIN)
+	if (cent->gent && cent->gent->client && cent->gent->client->ps.forcePowersActive & 1 << FP_DRAIN && CG_ContinuousFxReady(cent->currentState.number, CFX_VIEW_DRAIN))
 	{
 		//doing the draining
 		vec3_t temp;
@@ -2583,7 +2504,7 @@ void CG_AddViewWeaponDuals(playerState_t* ps)
 			angles[YAW] = 0;
 			angles[PITCH] = 0;
 
-			if (cg_SpinningBarrels.integer && ps->weapon == WP_REPEATER)
+			if (cg_SpinningBarrels.integer && ps->weapon == WP_Z6_ROTARY_CANNON)
 			{
 				angles[ROLL] = CG_MachinegunSpinAngle(cent);
 			}
@@ -2801,6 +2722,7 @@ const char* weaponDesc[WP_NUM_WEAPONS - 1] =
 	"SBD_PISTOL_DESC",
 	"WRIST_DESC",
 	"EMPLACED_GUN_DESC",
+	"DROIDEKA_DESC",
 	"BOT_LASER_DESC",
 	"TURRET_DESC",
 	"TIE_FIGHTER_DESC",
@@ -2810,6 +2732,7 @@ const char* weaponDesc[WP_NUM_WEAPONS - 1] =
 	"TUSKEN_STAFF_DESC",
 	"SCEPTER_DESC",
 	"NOGHRI_STICK_DESC",
+	"Z6_ROTARY_DESC", // spmod.str INGAME_Z6_ROTARY_DESC
 };
 
 /*
@@ -2873,7 +2796,7 @@ void CG_DrawDataPadWeaponSelect()
 	{
 		cg.DataPadWeaponSelect = WP_MELEE;
 	}
-	else if (cg.DataPadWeaponSelect > MAX_PLAYER_WEAPONS)
+	else if (cg.DataPadWeaponSelect > MAX_PLAYER_WEAPONS && cg.DataPadWeaponSelect != WP_Z6_ROTARY_CANNON)
 	{
 		cg.DataPadWeaponSelect = MAX_PLAYER_WEAPONS;
 	}
@@ -3107,6 +3030,68 @@ CG_DrawWeaponSelect
 extern Vehicle_t* G_IsRidingVehicle(const gentity_t* pEnt);
 extern bool G_IsRidingTurboVehicle(const gentity_t* ent);
 
+// The weapon cycle order (next / prev weapon and the select bar): the concussion rifle between the flechette and the
+// rocket launcher, melee after the det pack, the Z-6 (index 32, beyond MAX_PLAYER_WEAPONS) after the repeater.
+static int CG_NextWeaponInCycle(int weapon)
+{
+	switch (weapon)
+	{
+	case WP_FLECHETTE:
+		weapon = WP_CONCUSSION;
+		break;
+	case WP_CONCUSSION:
+		weapon = WP_ROCKET_LAUNCHER;
+		break;
+	case WP_DET_PACK:
+		weapon = WP_MELEE;
+		break;
+	case WP_REPEATER:
+		weapon = WP_Z6_ROTARY_CANNON;
+		break;
+	case WP_Z6_ROTARY_CANNON:
+		weapon = WP_DEMP2;
+		break;
+	default:
+		weapon++;
+		break;
+	}
+	if (weapon < FIRST_WEAPON || weapon > MAX_PLAYER_WEAPONS && weapon != WP_Z6_ROTARY_CANNON)
+	{
+		weapon = FIRST_WEAPON;
+	}
+	return weapon;
+}
+
+static int CG_PrevWeaponInCycle(int weapon)
+{
+	switch (weapon)
+	{
+	case WP_ROCKET_LAUNCHER:
+		weapon = WP_CONCUSSION;
+		break;
+	case WP_CONCUSSION:
+		weapon = WP_FLECHETTE;
+		break;
+	case WP_MELEE:
+		weapon = WP_DET_PACK;
+		break;
+	case WP_DEMP2:
+		weapon = WP_Z6_ROTARY_CANNON;
+		break;
+	case WP_Z6_ROTARY_CANNON:
+		weapon = WP_REPEATER;
+		break;
+	default:
+		weapon--;
+		break;
+	}
+	if (weapon < FIRST_WEAPON || weapon > MAX_PLAYER_WEAPONS && weapon != WP_Z6_ROTARY_CANNON)
+	{
+		weapon = MAX_PLAYER_WEAPONS;
+	}
+	return weapon;
+}
+
 void CG_DrawWeaponSelect()
 {
 	int i;
@@ -3134,15 +3119,18 @@ void CG_DrawWeaponSelect()
 	// showing weapon select clears pickup item display, but not the blend blob
 	//cg.itemPickupTime = 0;
 
-	const int bits = cg.snap->ps.stats[STAT_WEAPONS];
-
 	// count the number of weapons owned
 	int count = 0;
 	const bool is_on_veh = G_IsRidingVehicle(cg_entities[0].gent) != nullptr;
 
+	if (!is_on_veh && BG_HasWeapon(&cg.snap->ps, WP_Z6_ROTARY_CANNON) && playerUsableWeapons[WP_Z6_ROTARY_CANNON])
+	{
+		count++;
+	}
+
 	for (i = 1; i < MAX_PLAYER_WEAPONS; i++)
 	{
-		if (bits & 1 << i && playerUsableWeapons[i] &&
+		if (BG_HasWeapon(&cg.snap->ps, i) && playerUsableWeapons[i] &&
 			(!is_on_veh //PM_WeaponOkOnVehicle
 				|| i == WP_NONE
 				|| i == WP_SABER
@@ -3191,18 +3179,7 @@ void CG_DrawWeaponSelect()
 		sideRightIconCnt = holdCount - sideLeftIconCnt;
 	}
 
-	if (cg.weaponSelect == WP_CONCUSSION)
-	{
-		i = WP_FLECHETTE;
-	}
-	else
-	{
-		i = cg.weaponSelect - 1;
-	}
-	if (i < 1)
-	{
-		i = MAX_PLAYER_WEAPONS;
-	}
+	i = CG_PrevWeaponInCycle(cg.weaponSelect);
 
 	if (is_on_veh) //PM_WeaponOkOnVehicle
 	{
@@ -3234,30 +3211,10 @@ void CG_DrawWeaponSelect()
 	// Work backwards from current icon
 	int holdX = x - (bigIconSize / 2 + pad + smallIconSize);
 	//height = smallIconSize * cg.iconHUDPercent;
-	qboolean drewConc = qfalse;
-
-	for (iconCnt = 1; iconCnt < sideLeftIconCnt + 1; i--)
+	for (iconCnt = 1; iconCnt < sideLeftIconCnt + 1; i = CG_PrevWeaponInCycle(i))
 	{
-		if (i == WP_CONCUSSION)
+		if (!BG_HasWeapon(&cg.snap->ps, i)) // Does he have this weapon?
 		{
-			i--;
-		}
-		else if (i == WP_FLECHETTE && !drewConc && cg.weaponSelect != WP_CONCUSSION)
-		{
-			i = WP_CONCUSSION;
-		}
-		if (i < 1)
-		{
-			i = MAX_PLAYER_WEAPONS;
-		}
-
-		if (!(bits & 1 << i)) // Does he have this weapon?
-		{
-			if (i == WP_CONCUSSION)
-			{
-				drewConc = qtrue;
-				i = WP_ROCKET_LAUNCHER;
-			}
 			continue;
 		}
 		if (is_on_veh)
@@ -3273,11 +3230,6 @@ void CG_DrawWeaponSelect()
 				i != WP_DEMP2 &&
 				i != WP_FLECHETTE)
 			{
-				if (i == WP_CONCUSSION)
-				{
-					drewConc = qtrue;
-					i = WP_ROCKET_LAUNCHER;
-				}
 				continue; // Don't draw anything else if on a vehicle
 			}
 		}
@@ -3313,11 +3265,6 @@ void CG_DrawWeaponSelect()
 			}
 
 			holdX -= smallIconSize + pad;
-		}
-		if (i == WP_CONCUSSION)
-		{
-			drewConc = qtrue;
-			i = WP_ROCKET_LAUNCHER;
 		}
 	}
 
@@ -3357,47 +3304,17 @@ void CG_DrawWeaponSelect()
 		}
 	}
 
-	if (cg.weaponSelect == WP_CONCUSSION)
-	{
-		i = WP_ROCKET_LAUNCHER;
-	}
-	else
-	{
-		i = cg.weaponSelect + 1;
-	}
-	if (i > MAX_PLAYER_WEAPONS)
-	{
-		i = 1;
-	}
+	i = CG_NextWeaponInCycle(cg.weaponSelect);
 
 	// Right side ICONS
 	// Work forwards from current icon
 	cgi_R_SetColor(calc_color);
 	holdX = x + bigIconSize / 2 + pad;
 	//height = smallIconSize * cg.iconHUDPercent;
-	drewConc = qfalse;
-	for (iconCnt = 1; iconCnt < sideRightIconCnt + 1; i++)
+	for (iconCnt = 1; iconCnt < sideRightIconCnt + 1; i = CG_NextWeaponInCycle(i))
 	{
-		if (i == WP_CONCUSSION)
+		if (!BG_HasWeapon(&cg.snap->ps, i)) // Does he have this weapon?
 		{
-			i++;
-		}
-		else if (i == WP_ROCKET_LAUNCHER && !drewConc && cg.weaponSelect != WP_CONCUSSION)
-		{
-			i = WP_CONCUSSION;
-		}
-		if (i > MAX_PLAYER_WEAPONS)
-		{
-			i = 1;
-		}
-
-		if (!(bits & 1 << i)) // Does he have this weapon?
-		{
-			if (i == WP_CONCUSSION)
-			{
-				drewConc = qtrue;
-				i = WP_FLECHETTE;
-			}
 			continue;
 		}
 		if (is_on_veh)
@@ -3413,11 +3330,6 @@ void CG_DrawWeaponSelect()
 				i != WP_DEMP2 &&
 				i != WP_FLECHETTE)
 			{
-				if (i == WP_CONCUSSION)
-				{
-					drewConc = qtrue;
-					i = WP_FLECHETTE;
-				}
 				continue; // Don't draw anything else if on a vehicle
 			}
 		}
@@ -3455,11 +3367,6 @@ void CG_DrawWeaponSelect()
 
 			holdX += smallIconSize + pad;
 		}
-		if (i == WP_CONCUSSION)
-		{
-			drewConc = qtrue;
-			i = WP_FLECHETTE;
-		}
 	}
 
 	const gitem_t* item = cg_weapons[cg.weaponSelect].item;
@@ -3495,7 +3402,7 @@ CG_WeaponSelectable
 */
 static qboolean CG_WeaponSelectable(int i, const int original, const qboolean dpMode)
 {
-	if (i > MAX_PLAYER_WEAPONS || !playerUsableWeapons[i])
+	if (i < 0 || i >= WP_NUM_WEAPONS || i > MAX_PLAYER_WEAPONS && i != WP_Z6_ROTARY_CANNON || !playerUsableWeapons[i])
 	{
 #ifndef FINAL_BUILD
 		Com_Printf("CG_WeaponSelectable() passed illegal index of %d!\n", i);
@@ -3553,7 +3460,7 @@ static qboolean CG_WeaponSelectable(int i, const int original, const qboolean dp
 		}
 	}
 
-	if (!(cg.snap->ps.stats[STAT_WEAPONS] & 1 << i))
+	if (!BG_HasWeapon(&cg.snap->ps, i))
 	{
 		// Don't have this weapon to start with.
 		return qfalse;
@@ -3736,8 +3643,6 @@ void CG_NextWeapon_f()
 
 	const int original = cg.weaponSelect;
 
-	constexpr int first_weapon = FIRST_WEAPON;
-
 	constexpr int first_vehicle_weapon = FIRST_VEHICLEWEAPON;
 
 	if (G_IsRidingVehicle(&g_entities[cg.snap->ps.viewEntity])) //PM_WeaponOkOnVehicle
@@ -3748,30 +3653,10 @@ void CG_NextWeapon_f()
 		}
 	}
 
-	for (int i = 0; i <= MAX_PLAYER_WEAPONS; i++)
+	for (int i = 0; i <= MAX_PLAYER_WEAPONS + 1; i++) // + 1: the Z-6
 	{
-		//*SIGH*... Hack to put concussion rifle before rocketlauncher
-		if (cg.weaponSelect == WP_FLECHETTE)
-		{
-			cg.weaponSelect = WP_CONCUSSION;
-		}
-		else if (cg.weaponSelect == WP_CONCUSSION)
-		{
-			cg.weaponSelect = WP_ROCKET_LAUNCHER;
-		}
-		else if (cg.weaponSelect == WP_DET_PACK)
-		{
-			cg.weaponSelect = WP_MELEE;
-		}
-		else
-		{
-			cg.weaponSelect++;
-		}
-
-		if (cg.weaponSelect < first_weapon || cg.weaponSelect > MAX_PLAYER_WEAPONS)
-		{
-			cg.weaponSelect = first_weapon;
-		}
+		// the cycle order: concussion before the rocket launcher, melee after the det pack, the Z-6 after the repeater
+		cg.weaponSelect = CG_NextWeaponInCycle(cg.weaponSelect);
 
 		if (CG_WeaponSelectable(cg.weaponSelect, original, qfalse))
 		{
@@ -3798,29 +3683,9 @@ void CG_DPNextWeapon_f()
 
 	const int original = cg.DataPadWeaponSelect;
 
-	for (int i = 0; i <= MAX_PLAYER_WEAPONS; i++)
+	for (int i = 0; i <= MAX_PLAYER_WEAPONS + 1; i++) // + 1: the Z-6
 	{
-		if (cg.DataPadWeaponSelect == WP_FLECHETTE)
-		{
-			cg.DataPadWeaponSelect = WP_CONCUSSION;
-		}
-		else if (cg.DataPadWeaponSelect == WP_CONCUSSION)
-		{
-			cg.DataPadWeaponSelect = WP_ROCKET_LAUNCHER;
-		}
-		else if (cg.DataPadWeaponSelect == WP_DET_PACK)
-		{
-			cg.DataPadWeaponSelect = WP_MELEE;
-		}
-		else
-		{
-			cg.DataPadWeaponSelect++;
-		}
-
-		if (cg.DataPadWeaponSelect < FIRST_WEAPON || cg.DataPadWeaponSelect > MAX_PLAYER_WEAPONS)
-		{
-			cg.DataPadWeaponSelect = FIRST_WEAPON;
-		}
+		cg.DataPadWeaponSelect = CG_NextWeaponInCycle(cg.DataPadWeaponSelect);
 
 		if (CG_WeaponSelectable(cg.DataPadWeaponSelect, original, qtrue))
 		{
@@ -3845,30 +3710,9 @@ void CG_DPPrevWeapon_f()
 
 	const int original = cg.DataPadWeaponSelect;
 
-	for (int i = 0; i <= MAX_PLAYER_WEAPONS; i++)
+	for (int i = 0; i <= MAX_PLAYER_WEAPONS + 1; i++) // + 1: the Z-6
 	{
-		//*SIGH*... Hack to put concussion rifle before rocketlauncher
-		if (cg.DataPadWeaponSelect == WP_ROCKET_LAUNCHER)
-		{
-			cg.DataPadWeaponSelect = WP_CONCUSSION;
-		}
-		else if (cg.DataPadWeaponSelect == WP_CONCUSSION)
-		{
-			cg.DataPadWeaponSelect = WP_FLECHETTE;
-		}
-		else if (cg.DataPadWeaponSelect == WP_MELEE)
-		{
-			cg.DataPadWeaponSelect = WP_DET_PACK;
-		}
-		else
-		{
-			cg.DataPadWeaponSelect--;
-		}
-
-		if (cg.DataPadWeaponSelect < FIRST_WEAPON || cg.DataPadWeaponSelect > MAX_PLAYER_WEAPONS)
-		{
-			cg.DataPadWeaponSelect = MAX_PLAYER_WEAPONS;
-		}
+		cg.DataPadWeaponSelect = CG_PrevWeaponInCycle(cg.DataPadWeaponSelect);
 
 		if (CG_WeaponSelectable(cg.DataPadWeaponSelect, original, qtrue))
 		{
@@ -3976,8 +3820,6 @@ void CG_PrevWeapon_f()
 
 	const int original = cg.weaponSelect;
 
-	constexpr int first_weapon = FIRST_WEAPON;
-
 	constexpr int first_vehicle_weapon = FIRST_VEHICLEWEAPON;
 
 	if (G_IsRidingVehicle(&g_entities[cg.snap->ps.viewEntity])) //PM_WeaponOkOnVehicle
@@ -3988,30 +3830,10 @@ void CG_PrevWeapon_f()
 		}
 	}
 
-	for (int i = 0; i <= MAX_PLAYER_WEAPONS; i++)
+	for (int i = 0; i <= MAX_PLAYER_WEAPONS + 1; i++) // + 1: the Z-6
 	{
-		//*SIGH*... Hack to put concussion rifle before rocketlauncher
-		if (cg.weaponSelect == WP_ROCKET_LAUNCHER)
-		{
-			cg.weaponSelect = WP_CONCUSSION;
-		}
-		else if (cg.weaponSelect == WP_CONCUSSION)
-		{
-			cg.weaponSelect = WP_FLECHETTE;
-		}
-		else if (cg.weaponSelect == WP_MELEE)
-		{
-			cg.weaponSelect = WP_DET_PACK;
-		}
-		else
-		{
-			cg.weaponSelect--;
-		}
-
-		if (cg.weaponSelect < first_weapon || cg.weaponSelect > MAX_PLAYER_WEAPONS)
-		{
-			cg.weaponSelect = MAX_PLAYER_WEAPONS;
-		}
+		// the cycle order: concussion before the rocket launcher, melee after the det pack, the Z-6 after the repeater
+		cg.weaponSelect = CG_PrevWeaponInCycle(cg.weaponSelect);
 
 		if (CG_WeaponSelectable(cg.weaponSelect, original, qfalse))
 		{
@@ -4104,7 +3926,7 @@ void CG_ChangeWeapon(const int num)
 		return;
 	}
 
-	if (player->client != nullptr && !(player->client->ps.stats[STAT_WEAPONS] & 1 << num))
+	if (player->client != nullptr && !BG_HasWeapon(&player->client->ps, num))
 	{
 		return; // don't have the weapon
 	}
@@ -4697,6 +4519,10 @@ void cg_missile_hit_wall(const centity_t* cent, const int weapon, vec3_t origin,
 		}
 		break;
 
+	case WP_Z6_ROTARY_CANNON:
+		FX_CloneWeaponHitWall(origin, dir);
+		break;
+
 	case WP_REPEATER:
 		if (alt_fire)
 		{
@@ -4873,6 +4699,10 @@ void cg_missile_hit_player(const centity_t* cent, const int weapon, vec3_t origi
 		{
 			FX_StrikeHitPlayer(origin, dir);
 		}
+		break;
+
+	case WP_Z6_ROTARY_CANNON:
+		FX_CloneWeaponHitPlayer(other, origin, dir, humanoid);
 		break;
 
 	case WP_REPEATER:

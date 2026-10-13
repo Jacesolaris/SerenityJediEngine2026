@@ -793,7 +793,7 @@ int G2API_InitGhoul2Model(CGhoul2Info_v& ghoul2, const char* fileName, int model
 
 	if (!fileName || !fileName[0])
 	{
-		assert(fileName[0]);
+		assert(fileName && fileName[0]);
 		return -1;
 	}
 
@@ -1046,7 +1046,7 @@ qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int
 	//rww - RAGDOLL_END
 
 	qboolean ret = qfalse;
-	if (G2_SetupModelPointers(ghlInfo))
+	if (ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		G2ERROR(startFrame >= 0, "startframe<0");
 		G2ERROR(startFrame < ghlInfo->aHeader->numFrames, "startframe>=numframes");
@@ -1101,7 +1101,7 @@ qboolean G2API_SetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int
 
 	qboolean ret = qfalse;
 	G2ERROR(boneName, "NULL boneName");
-	if (boneName && G2_SetupModelPointers(ghlInfo))
+	if (boneName && ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		G2ERROR(startFrame >= 0, "startframe<0");
 		G2ERROR(startFrame < ghlInfo->aHeader->numFrames, "startframe>=numframes");
@@ -1192,10 +1192,19 @@ qboolean G2API_GetBoneAnimIndex(CGhoul2Info* ghlInfo, const int iBoneIndex, cons
 	}
 	if (!ret)
 	{
-		*endFrame = 1;
-		*startFrame = 0;
+		if (endFrame)
+		{
+			*endFrame = 1;
+		}
+		if (startFrame)
+		{
+			*startFrame = 0;
+		}
 		*flags = 0;
-		*currentFrame = 0.0f;
+		if (currentFrame)
+		{
+			*currentFrame = 0.0f;
+		}
 		*animSpeed = 1.0f;
 	}
 	G2NOTE(ret, "G2API_GetBoneAnimIndex Failed");
@@ -1318,7 +1327,7 @@ static qboolean G2API_SetBoneAnglesOffsetIndex(CGhoul2Info* ghlInfo, const int i
 	//rww - RAGDOLL_END
 
 	qboolean ret = qfalse;
-	if (G2_SetupModelPointers(ghlInfo))
+	if (ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache
@@ -1353,7 +1362,7 @@ qboolean G2API_SetBoneAnglesOffset(CGhoul2Info* ghlInfo, const char* boneName, c
 
 	qboolean ret = qfalse;
 	G2ERROR(boneName, "NULL boneName");
-	if (boneName && G2_SetupModelPointers(ghlInfo))
+	if (boneName && ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache

@@ -596,12 +596,89 @@ static void CG_AS_Register(void)
 	trap->AS_ParseSets();
 }
 
-//a global weather effect (rain, snow, etc)
+/*
+=============================================================================
+
+WEATHER SHOWN
+
+The server's weather is the "*<command>" CS_EFFECTS strings: the map's entities (fx_rain ...), the map's default from
+its Weather/<mapname>.cfg file and the "weather" command (game g_svcmds.c). What this client shows:
+- cg_weather 0 (or r_weather below 0): no weather at all.
+- r_weather 1 - 9 (the menu's weather selector): that preset instead of the server's weather.
+- r_weather 0: the server's weather, so the map's default.
+The renderer gets it from here only (it no longer reads r_weather itself), and it is rebuilt when a cvar changes and
+on every CG_Init (map load, vid_restart). The saber rain fizz follows what is shown (bg_weather.c); the acid rain and
+lava weather damage are the server's and follow its weather whatever is shown.
+
+=============================================================================
+*/
+
+static qboolean cgWeatherReady; // the renderer has a world for this map: weather commands can go to it
+
+// -1: none, 0: the server's weather, 1 - 9: the player's preset
+static int CG_WeatherShown(void)
+{
+	if (!cg_weather.integer || r_weather.integer < 0)
+	{
+		return -1;
+	}
+	if (BG_WeatherPresetName(r_weather.integer))
+	{
+		return r_weather.integer;
+	}
+	return 0;
+}
+
+static void CG_WeatherSend(const char* command)
+{
+	BG_WeatherCommand(command); // gameplay copy of the shown weather (saber fizz in rain, bg_weather.c)
+	trap->RE_WorldEffectCommand(command);
+}
+
+// sends the renderer the whole weather this client shows
+void CG_ApplyWeather(void)
+{
+	if (!cgWeatherReady)
+	{
+		return;
+	}
+
+	CG_WeatherSend("clear");
+
+	const int shown = CG_WeatherShown();
+	if (shown > 0)
+	{
+		CG_WeatherSend(BG_WeatherPresetName(shown));
+	}
+	else if (shown == 0)
+	{
+		// all the server's weather strings in index order, as they came (old ones are blanked, so skip empty slots)
+		for (int i = 1; i < MAX_FX; i++)
+		{
+			const char* s = CG_ConfigString(CS_EFFECTS + i);
+			if (s[0] == '*')
+			{
+				CG_WeatherSend(s + 1);
+			}
+		}
+	}
+}
+
+// r_weather / cg_weather changed (menu, console): show the new choice now
+void CG_WeatherCvarChanged(void)
+{
+	CG_ApplyWeather();
+}
+
+//a global weather effect (rain, snow, etc): a CS_EFFECTS string starting with '*' arrived or changed
 void CG_ParseWeatherEffect(const char* str)
 {
-	char* sptr = (char*)str;
-	sptr++; //pass the '*'
-	trap->RE_WorldEffectCommand(sptr);
+	// before the map is up CG_Init sends them all; with the player's own choice or no weather they don't show
+	if (!cgWeatherReady || CG_WeatherShown() != 0)
+	{
+		return;
+	}
+	CG_WeatherSend(str + 1); //pass the '*'
 }
 
 extern int cgSiegeRoundBeganTime;
@@ -1179,13 +1256,14 @@ static void CG_RegisterSounds(void)
 		soundName = CG_ConfigString(CS_EFFECTS + i);
 		if (!soundName[0])
 		{
-			break;
+			// the server blanks old weather strings, so there can be effects after an empty slot
+			cgs.gameEffects[i] = 0;
+			continue;
 		}
 
 		if (soundName[0] == '*')
 		{
-			//it's a special global weather effect
-			CG_ParseWeatherEffect(soundName);
+			//it's a special global weather effect: CG_ApplyWeather sends them once the map is loaded
 			cgs.gameEffects[i] = 0;
 		}
 		else
@@ -1450,6 +1528,7 @@ static void CG_RegisterGraphics(void)
 
 	cgs.effects.mSparks = trap->FX_RegisterEffect("sparks/spark_nosnd.efx"); //sparks/spark.efx
 	cgs.effects.mboil = trap->FX_RegisterEffect("saber/boil.efx");
+	cgs.effects.mSaberRainFizz = trap->FX_RegisterEffect("saber/fizz.efx");
 	cgs.effects.mSaberCut = trap->FX_RegisterEffect("saber/saber_cut.efx");
 	cgs.effects.mDroidCut = trap->FX_RegisterEffect("saber/saber_cut_droid.efx");
 	cgs.effects.mDroidtouch = trap->FX_RegisterEffect("saber/saber_touch_droid.efx");
@@ -1948,6 +2027,7 @@ const char* CG_ConfigString(const int index)
 	if ((unsigned)index >= MAX_CONFIGSTRINGS)
 	{
 		trap->Error(ERR_DROP, "CG_ConfigString: bad index: %i", index);
+		return ""; // trap->Error never returns (the analyser cannot see that)
 	}
 
 	/* Determine the number of entries in the stringOffsets array at compile time */
@@ -1960,6 +2040,7 @@ const char* CG_ConfigString(const int index)
 	if (idx >= offsetsCount)
 	{
 		trap->Error(ERR_DROP, "CG_ConfigString: index %zu out of range for stringOffsets (count %zu)", idx, offsetsCount);
+		return ""; // trap->Error never returns (the analyser cannot see that)
 	}
 
 	/* Now safe to read the offset */
@@ -3050,11 +3131,19 @@ void CG_Init(const int serverMessageNum, const int serverCommandSequence, const 
 	//make sure saber data is loaded before this! (so we can precache the appropriate hilts)
 	CG_InitSiegeMode();
 
+	// no weather until the map is loaded (CG_ApplyWeather below)
+	cgWeatherReady = qfalse;
+	BG_WeatherReset();
+
 	CG_RegisterSounds();
 
 	CG_TrueViewInit();
 
 	CG_RegisterGraphics();
+
+	// the world is loaded: the weather this client shows (the server's, the player's r_weather choice, or none)
+	cgWeatherReady = qtrue;
+	CG_ApplyWeather();
 
 	CG_RegisterClients(); // if low on memory, some clients will be deferred
 

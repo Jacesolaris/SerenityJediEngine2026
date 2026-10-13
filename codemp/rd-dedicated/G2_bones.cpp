@@ -1542,6 +1542,40 @@ void G2_ResetRagDoll(CGhoul2Info_v& ghoul2_v)
 	ghoul2.mFlags &= ~(GHOUL2_RAG_PENDING | GHOUL2_RAG_DONE | GHOUL2_RAG_STARTED);
 }
 
+// SJE: the bones G2_SetRagDoll animates and constrains (the effector bones are optional). A player model on its own
+// skeleton (rockettrooper.gla, creatures, droids) may lack some; such a skeleton gets no ragdoll at all (the corpse
+// keeps its death anim) instead of a half set-up one (G2_Set_Bone_Anim_No_BS asserted on the missing bones).
+static bool G2_RagDollBonesPresent(const CGhoul2Info& ghoul2)
+{
+	static const char* const ragBones[] = {
+		"model_root", "pelvis", "Motion", "lower_lumbar", "upper_lumbar", "thoracic", "cranium", "rhumerus", "lhumerus",
+		"rradius", "lradius", "rfemurYZ", "lfemurYZ", "rtibia", "ltibia"
+	};
+	const model_t* mod = ghoul2.animModel;
+
+	if (!mod || !mod->mdxa)
+	{
+		return false;
+	}
+	const mdxaHeader_t* mdxa = mod->mdxa;
+	const mdxaSkelOffsets_t* offsets = reinterpret_cast<const mdxaSkelOffsets_t*>(reinterpret_cast<const byte*>(mdxa) + sizeof(mdxaHeader_t));
+
+	for (const char* const boneName : ragBones)
+	{
+		bool found = false;
+		for (int x = 0; x < mdxa->numBones && !found; x++)
+		{
+			const mdxaSkel_t* skel = reinterpret_cast<const mdxaSkel_t*>(reinterpret_cast<const byte*>(mdxa) + sizeof(mdxaHeader_t) + offsets->offsets[x]);
+			found = !Q_stricmp(skel->name, boneName);
+		}
+		if (!found)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void G2_SetRagDoll(CGhoul2Info_v& ghoul2_v, CRagDollParams* parms)
 {
 	if (parms)
@@ -1584,6 +1618,17 @@ void G2_SetRagDoll(CGhoul2Info_v& ghoul2_v, CRagDollParams* parms)
 	}
 #endif
 
+	if (!G2_RagDollBonesPresent(ghoul2))
+	{
+		// SJE: not a ragdoll skeleton (see above); say so once per model
+		static char lastNoRag[MAX_QPATH];
+		if (Q_stricmp(lastNoRag, ghoul2.mFileName))
+		{
+			Q_strncpyz(lastNoRag, ghoul2.mFileName, sizeof lastNoRag);
+			ri.Printf(PRINT_ALL, "G2_SetRagDoll: %s: skeleton has no ragdoll bones, no ragdoll\n", ghoul2.mFileName);
+		}
+		return;
+	}
 	ghoul2.mFlags |= GHOUL2_RAG_PENDING | GHOUL2_RAG_DONE | GHOUL2_RAG_STARTED; // well anyway we are going live
 	parms->CallRagDollBegin = qtrue;
 

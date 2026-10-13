@@ -276,7 +276,7 @@ centity_t cg_entities[MAX_GENTITIES];
 centity_t* cg_permanents[MAX_GENTITIES];
 int cg_numpermanents = 0;
 
-weaponInfo_t cg_weapons[MAX_WEAPONS];
+weaponInfo_t cg_weapons[WP_NUM_WEAPONS]; // WP_NUM_WEAPONS: 33 with the Z-6 (MAX_WEAPONS is 32)
 itemInfo_t cg_items[MAX_ITEMS];
 
 using inventoryInfo_t = struct
@@ -488,6 +488,7 @@ vmCvar_t cg_newgameplusJKO;
 vmCvar_t cg_saberLockCinematicCamera;
 
 vmCvar_t cg_AimingCinematicCamera;
+vmCvar_t cg_aimShoulder;
 
 vmCvar_t cg_com_rend2;
 
@@ -693,7 +694,7 @@ static cvarTable_t cvarTable[] = {
 
 	{&cg_drawwidescreenmodesp, "cg_drawwidescreenmodesp", "1", CVAR_ARCHIVE},
 
-	{&cg_SpinningBarrels, "cg_SpinningBarrels", "0", CVAR_ARCHIVE},
+	{&cg_SpinningBarrels, "cg_SpinningBarrels", "1", CVAR_ARCHIVE},
 
 	{&cg_Weather, "r_weather", "0", CVAR_ARCHIVE},
 
@@ -711,6 +712,7 @@ static cvarTable_t cvarTable[] = {
 	{&cg_saberLockCinematicCamera, "g_saberLockCinematicCamera", "1", CVAR_ARCHIVE },
 
 	{ &cg_AimingCinematicCamera, "g_AimingCinematicCamera", "1", CVAR_ARCHIVE },
+	{ &cg_aimShoulder, "cg_aimShoulder", "1", CVAR_ARCHIVE }, // aiming camera over the right shoulder (x model size); 0 = centred
 
 	{ &cg_com_rend2, "com_rend2", "0", CVAR_ARCHIVE | CVAR_SAVEGAME },
 
@@ -853,7 +855,7 @@ void CG_Printf(const char* msg, ...)
 	cgi_Printf(text);
 }
 
-void CG_Error(const char* msg, ...)
+NORETURN void CG_Error(const char* msg, ...)
 {
 	va_list argptr;
 	char text[1024];
@@ -1704,6 +1706,7 @@ HUDMenuItem_t otherHUDBits[] =
 	{"righthud", "weapontype_tripmine", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_TRIPMINE
 	{"righthud", "weapontype_melee", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_MELEE
 	{"righthud", "weapontype_droideka", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_DEKA
+	{"righthud", "weapontype_z6rotarycannon", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_Z6_ROTARY_CANNON
 	{"lefthud", "scanline", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_SCANLINE_LEFT
 	{"righthud", "scanline", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_SCANLINE_RIGHT
 	{"lefthud", "frame", 0, 0, 0, 0, {0.0f, 0.0f, 0.0f, 0.0f}, NULL_HANDLE}, // OHB_FRAME_LEFT
@@ -2737,6 +2740,13 @@ Called after every level change or subsystem restart
 void CG_Init(const int serverCommandSequence)
 {
 	cgs.serverCommandSequence = serverCommandSequence;
+
+	// Wall marks and local entities keep the renderer's shader handles. This also runs after vid_restart (the SP cgame is
+	// not unloaded), where the new renderer - e.g. vanilla -> rend2 - numbers its shaders differently: marks made before
+	// the switch were drawn with the old handles ("R_GetShaderByHandle: out of range hShader" every frame, or a wrong
+	// shader). A level restart already clears them (CG_RestartLevel); start empty here too.
+	CG_InitLocalEntities();
+	CG_InitMarkPolys();
 
 	cgi_Cvar_Set("cg_drawHUD", "1");
 
@@ -4345,7 +4355,7 @@ static qboolean CG_PlayerUsesFlamethrower()
 	const gentity_t* player = &g_entities[0];
 
 	return player->client && (player->client->NPC_class == CLASS_BOBAFETT
-			|| player->client->NPC_class == CLASS_MANDO) ? qtrue : qfalse;
+		|| player->client->NPC_class == CLASS_MANDO) ? qtrue : qfalse;
 }
 
 static int CG_ForcePowerIcon(const int power)

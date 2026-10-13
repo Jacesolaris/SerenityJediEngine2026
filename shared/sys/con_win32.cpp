@@ -483,6 +483,11 @@ void CON_WindowsColorPrint(const char* msg)
 	static char buffer[MAXPRINTMSG];
 	int length = 0;
 
+	if (msg == nullptr) // callers always pass a string; lets the analyser see msg is never NULL (C6011)
+	{
+		return;
+	}
+
 	while (*msg)
 	{
 		qconsole_drawinput = *msg == '\n';

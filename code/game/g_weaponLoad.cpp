@@ -184,6 +184,7 @@ qboolean playerUsableWeapons[WP_NUM_WEAPONS] =
 	qfalse, //WP_TUSKEN_STAFF,
 	qfalse, //WP_SCEPTER,
 	qtrue, //WP_NOGHRI_STICK,
+	qtrue, //WP_Z6_ROTARY_CANNON,
 
 	//# #eol
 	//WP_NUM_WEAPONS
@@ -290,6 +291,7 @@ const int defaultDamage[] = {
 	0, // WP_TUSKEN_STAFF
 	0, // WP_SCEPTER
 	0, // WP_NOGHRI_STICK
+	Z6_ROTARY_CANNON_DAMAGE, // WP_Z6_ROTARY_CANNON
 };
 
 const int defaultAltDamage[] = {
@@ -330,6 +332,7 @@ const int defaultAltDamage[] = {
 	0, // WP_TUSKEN_STAFF
 	0, // WP_SCEPTER
 	0, // WP_NOGHRI_STICK
+	Z6_ROTARY_CANNON_DAMAGE, // WP_Z6_ROTARY_CANNON
 };
 
 const int defaultSplashDamage[] = {
@@ -370,6 +373,7 @@ const int defaultSplashDamage[] = {
 	0, // WP_TUSKEN_STAFF
 	0, // WP_SCEPTER
 	0, // WP_NOGHRI_STICK
+	0, // WP_Z6_ROTARY_CANNON
 };
 
 constexpr float defaultSplashRadius[] = {
@@ -410,6 +414,7 @@ constexpr float defaultSplashRadius[] = {
 	0.0f, // WP_TUSKEN_STAFF
 	0.0f, // WP_SCEPTER
 	0.0f, // WP_NOGHRI_STICK
+	0.0f, // WP_Z6_ROTARY_CANNON
 };
 
 const int defaultAltSplashDamage[] = {
@@ -450,6 +455,7 @@ const int defaultAltSplashDamage[] = {
 	0, // WP_TUSKEN_STAFF
 	0, // WP_SCEPTER
 	0, // WP_NOGHRI_STICK
+	0, // WP_Z6_ROTARY_CANNON
 };
 
 constexpr float defaultAltSplashRadius[] = {
@@ -490,6 +496,7 @@ constexpr float defaultAltSplashRadius[] = {
 	0.0f, // WP_TUSKEN_STAFF
 	0.0f, // WP_SCEPTER
 	0.0f, // WP_NOGHRI_STICK
+	0.0f, // WP_Z6_ROTARY_CANNON
 };
 
 wpnParms_t WpnParms[] =
@@ -628,6 +635,8 @@ void WPN_WeaponType(const char** hold_buf)
 		weapon_num = WP_SCEPTER;
 	else if (!Q_stricmp(token_str, "WP_NOGHRI_STICK"))
 		weapon_num = WP_NOGHRI_STICK;
+	else if (!Q_stricmp(token_str, "WP_Z6_ROTARY_CANNON"))
+		weapon_num = WP_Z6_ROTARY_CANNON;
 	else
 	{
 		weapon_num = 0;

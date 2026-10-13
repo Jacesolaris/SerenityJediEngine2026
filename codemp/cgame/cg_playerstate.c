@@ -59,6 +59,7 @@ static void CG_CheckAmmo(void)
 		case WP_DISRUPTOR:
 		case WP_BOWCASTER:
 		case WP_REPEATER:
+		case WP_Z6_ROTARY_CANNON:
 		case WP_DEMP2:
 		case WP_FLECHETTE:
 		case WP_ROCKET_LAUNCHER:

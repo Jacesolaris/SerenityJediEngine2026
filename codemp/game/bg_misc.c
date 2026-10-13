@@ -201,7 +201,18 @@ int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS] = //0 == neutral
 	{0, 2, 5, 8}, // Sight		//FP_SEE,//duration
 	{0, 1, 5, 8}, // Saber Attack	//FP_SABER_OFFENSE,
 	{0, 1, 5, 8}, // Saber Defend	//FP_SABER_DEFENSE,
-	{0, 2, 6, 8}  // Saber Throw	//FP_SABERTHROW,
+	{0, 2, 6, 8}, // Saber Throw	//FP_SABERTHROW,
+	// the SP powers ported to MP (2026-10-12): as the MP power they are closest to
+	{0, 2, 4, 6}, // Stasis		//FP_STASIS
+	{0, 2, 5, 8}, // Destruction	//FP_DESTRUCTION
+	{0, 1, 3, 6}, // Grasp		//FP_GRASP (as grip)
+	{0, 1, 3, 6}, // Repulse	//FP_REPULSE (as push)
+	{0, 2, 5, 8}, // Lightning Strike //FP_LIGHTNING_STRIKE (as lightning)
+	{0, 2, 4, 6}, // Fear		//FP_FEAR
+	{0, 2, 5, 8}, // Deadly Sight //FP_DEADLYSIGHT
+	{0, 1, 3, 6}, // Blast		//FP_BLAST
+	{0, 2, 5, 8}, // Insanity	//FP_INSANITY
+	{0, 2, 4, 6}  // Blinding	//FP_BLINDING
 	//NUM_FORCE_POWERS
 };
 
@@ -225,7 +236,17 @@ int forcePowerSorted[NUM_FORCE_POWERS] =
 	FP_TEAM_FORCE,
 	FP_SABER_OFFENSE,
 	FP_SABER_DEFENSE,
-	FP_SABERTHROW
+	FP_SABERTHROW,
+	FP_STASIS,
+	FP_DESTRUCTION,
+	FP_GRASP,
+	FP_REPULSE,
+	FP_LIGHTNING_STRIKE,
+	FP_FEAR,
+	FP_DEADLYSIGHT,
+	FP_BLAST,
+	FP_INSANITY,
+	FP_BLINDING
 };
 
 int force_power_dark_light[NUM_FORCE_POWERS] = //0 == neutral
@@ -248,7 +269,17 @@ int force_power_dark_light[NUM_FORCE_POWERS] = //0 == neutral
 	0, //FP_SEE,//duration
 	0, //FP_SABER_OFFENSE,
 	0, //FP_SABER_DEFENSE,
-	0 //FP_SABERTHROW,
+	0, //FP_SABERTHROW,
+	FORCE_LIGHTSIDE, //FP_STASIS (as SP)
+	FORCE_DARKSIDE, //FP_DESTRUCTION
+	FORCE_LIGHTSIDE, //FP_GRASP
+	FORCE_LIGHTSIDE, //FP_REPULSE
+	FORCE_LIGHTSIDE, //FP_LIGHTNING_STRIKE
+	FORCE_DARKSIDE, //FP_FEAR
+	FORCE_DARKSIDE, //FP_DEADLYSIGHT
+	FORCE_LIGHTSIDE, //FP_BLAST
+	FORCE_DARKSIDE, //FP_INSANITY
+	FORCE_LIGHTSIDE //FP_BLINDING
 	//NUM_FORCE_POWERS
 };
 
@@ -272,6 +303,7 @@ int WeaponIdleAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //TORSO_WEAPONREADY12,//WP_DET_PACK,
 	BOTH_STAND3, //WP_CONCUSSION
 	BOTH_STAND3, //WP_DROIDEKA,
+	BOTH_STAND3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -299,6 +331,7 @@ int WeaponReadyAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10,//WP_DET_PACK,
 	TORSO_WEAPONREADY3, //WP_CONCUSSION
 	TORSO_WEAPONREADY3, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_STANDING,//WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -326,6 +359,7 @@ int WeaponReadyAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY3,  //WP_CONCUSSION
 	TORSO_WEAPONREADY3, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -353,6 +387,7 @@ int WeaponReadyLegsAnim[WP_NUM_WEAPONS] =
 	BOTH_STAND1, //WP_DET_PACK,
 	BOTH_STAND1, //WP_CONCUSSION
 	BOTH_STAND1, //WP_DROIDEKA,
+	BOTH_STAND1, //WP_Z6_ROTARY_CANNON,
 	BOTH_STAND1, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -380,6 +415,7 @@ int WeaponAttackAnim[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK4,  //WP_CONCUSSION,
 	BOTH_ATTACK4, //WP_DROIDEKA,
+	BOTH_ATTACK3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -407,6 +443,7 @@ int WeaponAttackAnim2[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK4,  //WP_CONCUSSION,
 	BOTH_ATTACK4, //WP_DROIDEKA,
+	BOTH_ATTACK3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -434,6 +471,7 @@ int WeaponAltAttackAnim[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK3,  //WP_CONCUSSION,
 	BOTH_ATTACK3, //WP_DROIDEKA,
+	BOTH_ATTACK3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -461,6 +499,7 @@ int WeaponAltAttackAnim2[WP_NUM_WEAPONS] =
 	BOTH_ATTACK11, //WP_DET_PACK,
 	BOTH_ATTACK3,  //WP_CONCUSSION,
 	BOTH_ATTACK3, //WP_DROIDEKA,
+	BOTH_ATTACK3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -488,6 +527,7 @@ int WeaponAimAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
 	TORSO_WEAPONREADY4, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -515,6 +555,7 @@ int WeaponAimAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
 	TORSO_WEAPONREADY4, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -542,6 +583,7 @@ int WeaponAltAimAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
 	TORSO_WEAPONREADY3, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -569,6 +611,7 @@ int WeaponAltAimAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
 	TORSO_WEAPONREADY3, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -596,6 +639,7 @@ int WeaponAimingAnim[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
 	TORSO_WEAPONREADY4, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -623,6 +667,7 @@ int WeaponAimingAnim2[WP_NUM_WEAPONS] =
 	TORSO_WEAPONREADY10, //WP_DET_PACK,
 	TORSO_WEAPONREADY4,  //WP_CONCUSSION,
 	TORSO_WEAPONREADY4, //WP_DROIDEKA,
+	TORSO_WEAPONREADY3, //WP_Z6_ROTARY_CANNON,
 	SBD_WEAPON_OUT_STANDING, //WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -1687,6 +1732,27 @@ Don't place this: the droideka's built in arm blasters (from MovieDuels SP)
 	100,
 	IT_WEAPON,
 	WP_DROIDEKA,
+	/* precache */ "",
+	/* sounds */ "",
+	"" // description
+},
+
+/*QUAKED weapon_z6rotarycannon (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
+the Z-6 rotary cannon (from MovieDuels)
+*/
+{
+	"weapon_z6rotarycannon",
+	"sound/weapons/w_pkup.wav",
+	{
+		"models/weapons2/z6_rotary/rotary_cannon_w.glm",
+		0, 0, 0
+	},
+	/* view */ "models/weapons2/z6_rotary/rotary_cannon.md3",
+	/* icon */ "gfx/hud/w_icon_z6_rotary_cannon",
+	/* pickup */ //	"Z-6 Rotary Cannon",
+	100,
+	IT_WEAPON,
+	WP_Z6_ROTARY_CANNON,
 	/* precache */ "",
 	/* sounds */ "",
 	"" // description
@@ -3683,6 +3749,9 @@ void BG_PlayerStateToEntityState(playerState_t* ps, entityState_t* s, const qboo
 	s->weapon = ps->weapon;
 	s->groundEntityNum = ps->groundEntityNum;
 	s->ManualBlockingFlags = ps->ManualBlockingFlags; //Blockingflag on OK
+	// SJE: the class too (ps.botclass is networked, kept = pers.botclass in ClientThink): the local player's entity
+	// (prediction, effects, the jetpack model) never had it and saw class 0
+	s->botclass = ps->botclass;
 	s->ManualBlockingTime = ps->ManualBlockingTime; //Blocking time 1 on
 	s->ManualblockStartTime = ps->ManualblockStartTime; //Blocking 2
 	s->BoltblockStartTime = ps->BoltblockStartTime; //Blocking 4
@@ -3908,6 +3977,9 @@ void BG_PlayerStateToEntityStateExtraPolate(playerState_t* ps, entityState_t* s,
 	s->weapon = ps->weapon;
 	s->groundEntityNum = ps->groundEntityNum;
 	s->ManualBlockingFlags = ps->ManualBlockingFlags; //Blockingflag on OK
+	// SJE: the class too (ps.botclass is networked, kept = pers.botclass in ClientThink): the local player's entity
+	// (prediction, effects, the jetpack model) never had it and saw class 0
+	s->botclass = ps->botclass;
 	s->ManualBlockingTime = ps->ManualBlockingTime; //Blocking time 1 on
 	s->ManualblockStartTime = ps->ManualblockStartTime; //Blocking 2
 	s->BoltblockStartTime = ps->BoltblockStartTime; //Blocking 4
@@ -4058,13 +4130,13 @@ int BG_ModelCache(const char* modelName, const char* skin_name)
 #if defined(_GAME)
 	// Server: NPCs, animation structs, saber data, AI pools, Increase for more NPCs/Bots
 //#define MAX_POOL_SIZE 4194304    // 4 MB
-#define MAX_POOL_SIZE   8388608    // 8 MB
-//#define MAX_POOL_SIZE 12582912   // 12 MB
+//#define MAX_POOL_SIZE   8388608    // 8 MB
+#define MAX_POOL_SIZE 12582912   // 12 MB (SJE: MAX_ANIM_FILES 64, each animation set is about 32 KB)
 //#define MAX_POOL_SIZE 15728640   // 15 MB
 //#define MAX_POOL_SIZE 20971520   // 20 MB
 #elif defined(_CGAME)
 	// Client game: less needed, but still safe
-#define MAX_POOL_SIZE   2621440    // 2.5 MB
+#define MAX_POOL_SIZE   8388608    // 8 MB (SJE: was 2.5 MB; MAX_ANIM_FILES 64 animation sets of about 32 KB each plus their event strings)
 #elif defined(UI_BUILD)
 	// UI: only G2 menu models + small allocations
 #define MAX_POOL_SIZE   1048576    // 1 MB
@@ -4307,6 +4379,7 @@ qboolean BG_IsUsingHeavyWeap(const playerState_t* ps)
 	{
 	case WP_DISRUPTOR:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_ROCKET_LAUNCHER:
 	case WP_FLECHETTE:
 	case WP_BOWCASTER:

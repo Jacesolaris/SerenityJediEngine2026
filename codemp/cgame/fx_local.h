@@ -45,6 +45,9 @@ void FX_BlasterAltFireThink(centity_t* cent, const struct weaponInfo_s* weapon);
 void FX_BlasterWeaponHitWall(vec3_t origin, vec3_t normal);
 void FX_BlasterWeaponHitPlayer(vec3_t origin, vec3_t normal, qboolean humanoid);
 void FX_DroidekaProjectileThink(centity_t* cent, const struct weaponInfo_s* weapon);
+void FX_CloneProjectileThink(centity_t* cent, const struct weaponInfo_s* weapon); // the Z-6 rotary cannon's bolts (from MovieDuels)
+void FX_CloneWeaponHitWall(vec3_t origin, vec3_t normal);
+void FX_CloneWeaponHitPlayer(vec3_t origin, vec3_t normal, qboolean humanoid);
 
 void FX_EwebProjectileThink(centity_t* cent, const struct weaponInfo_s* weapon);
 void FX_EwebAltFireThink(centity_t* cent, const struct weaponInfo_s* weapon);

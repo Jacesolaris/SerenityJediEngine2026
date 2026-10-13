@@ -47,6 +47,8 @@ typedef enum
 	WP_DET_PACK,
 	WP_CONCUSSION,
 	WP_DROIDEKA, // the droideka's twin arm blasters (from MovieDuels SP), for droideka NPCs
+	WP_Z6_ROTARY_CANNON, // the Z-6 rotary cannon (from MovieDuels): before WP_BRYAR_OLD so it stays player usable (LAST_USEABLE_WEAPON);
+	// BRYAR_OLD, EMPLACED_GUN and TURRET moved up one (g_weaponDisable bits for them shift too)
 
 	WP_BRYAR_OLD,
 	WP_EMPLACED_GUN,

@@ -78,3 +78,4 @@ int Pickup_Team(gentity_t* ent, const gentity_t* other);
 qboolean BOT_FindCTFWaypointSpawnPoint_red(gentity_t* bot, vec3_t outOrigin);
 qboolean BOT_FindCTFWaypointSpawnPoint_blue(gentity_t* bot, vec3_t outOrigin);
 qboolean BOT_FindFFAWaypointSpawnPoint(gentity_t* bot, vec3_t outOrigin);
+void BOT_WaypointSpawnAngles(int team, const vec3_t origin, vec3_t angles);

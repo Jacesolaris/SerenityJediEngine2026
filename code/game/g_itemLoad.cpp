@@ -154,6 +154,8 @@ static void IT_Name(const char** hold_buf)
 		itemNum = ITM_SCEPTER_PICKUP;
 	else if (!Q_stricmp(token_str, "ITM_NOGHRI_STICK_PICKUP"))
 		itemNum = ITM_NOGHRI_STICK_PICKUP;
+	else if (!Q_stricmp(token_str, "ITM_Z6_ROTARY_CANNON_PICKUP"))
+		itemNum = ITM_Z6_ROTARY_CANNON_PICKUP;
 	//ammo
 	else if (!Q_stricmp(token_str, "ITM_AMMO_FORCE_PICKUP"))
 		itemNum = ITM_AMMO_FORCE_PICKUP;
@@ -373,6 +375,8 @@ static void IT_Tag(const char** hold_buf)
 		tag = WP_SCEPTER;
 	else if (!Q_stricmp(token_str, "WP_NOGHRI_STICK"))
 		tag = WP_NOGHRI_STICK;
+	else if (!Q_stricmp(token_str, "WP_Z6_ROTARY_CANNON"))
+		tag = WP_Z6_ROTARY_CANNON;
 	else if (!Q_stricmp(token_str, "AMMO_FORCE"))
 		tag = AMMO_FORCE;
 	else if (!Q_stricmp(token_str, "AMMO_BLASTER"))

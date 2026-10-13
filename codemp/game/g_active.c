@@ -239,6 +239,158 @@ Check for lava / slime contents and drowning
 extern qboolean G_PointInBounds(vec3_t point, vec3_t mins, vec3_t maxs);
 extern void NPC_SetAnim(gentity_t* ent, int setAnimParts, int anim, int setAnimFlags);
 extern void WP_ForcePowerStart(const gentity_t* self, forcePowers_t forcePower, int overrideAmt);
+extern qboolean WP_ForcePowerUsable(const gentity_t* self, forcePowers_t forcePower);
+
+/*
+=============
+Weather damage (acid rain as in SP, plus lava weather)
+
+The weather state is the game's own copy (bg_weather.c), fed from the "*" CS_EFFECTS configstrings the
+game sends, so it is the same on listen and dedicated servers and doesn't depend on the host's renderer.
+The "is outside" test is cached per entity and only run while harmful weather is active.
+=============
+*/
+#define WEATHER_OUTSIDE_CHECK_TIME	250		// re-check "outside" every 250-500 ms per entity
+#define WEATHER_OUTSIDE_CHECK_RAND	250
+#define ACID_RAIN_DAMAGE			5		// SJE SP g_active.cpp
+#define LAVA_WEATHER_DEBOUNCE_MIN	1000	// lava weather: 1-2 damage every 1-3 s
+#define LAVA_WEATHER_DEBOUNCE_MAX	3000
+
+static int weatherOutsideCheckTime[MAX_GENTITIES];
+static qboolean weatherOutside[MAX_GENTITIES];
+static int lavaWeatherPainTime[MAX_GENTITIES];
+
+// rebuild the gameplay weather state from the configstrings, in the same order a connecting client runs them
+// (all the "*" strings in index order; the weather command blanks old ones, so empty slots are skipped, not the end)
+void G_WeatherRescan(void)
+{
+	char s[MAX_STRING_CHARS];
+
+	BG_WeatherReset();
+
+	for (int i = 1; i < MAX_FX; i++)
+	{
+		trap->GetConfigstring(CS_EFFECTS + i, s, sizeof s);
+		if (s[0] == '*')
+		{
+			BG_WeatherCommand(s + 1);
+		}
+	}
+}
+
+// map start / map_restart
+void G_WeatherInitFromConfigstrings(void)
+{
+	memset(weatherOutsideCheckTime, 0, sizeof weatherOutsideCheckTime);
+	memset(weatherOutside, 0, sizeof weatherOutside);
+	memset(lavaWeatherPainTime, 0, sizeof lavaWeatherPainTime);
+
+	G_WeatherRescan();
+}
+
+// a time stamp "due" check that also copes with level.time starting over on a new map
+static qboolean G_WeatherTimeDue(const int nextTime, const int maxWait)
+{
+	return level.time >= nextTime || nextTime - level.time > maxWait ? qtrue : qfalse;
+}
+
+static qboolean G_WeatherEntOutside(const gentity_t* ent)
+{
+	const int num = ent->s.number;
+
+	if (G_WeatherTimeDue(weatherOutsideCheckTime[num], WEATHER_OUTSIDE_CHECK_TIME + WEATHER_OUTSIDE_CHECK_RAND))
+	{
+		weatherOutside[num] = BG_IsOutside(ent->r.currentOrigin, num);
+		weatherOutsideCheckTime[num] = level.time + WEATHER_OUTSIDE_CHECK_TIME + Q_irand(0, WEATHER_OUTSIDE_CHECK_RAND);
+	}
+	return weatherOutside[num];
+}
+
+static void G_WeatherDamageEnt(gentity_t* ent, const qboolean acid, const qboolean lava)
+{
+	const gclient_t* client = ent->client;
+	const int num = ent->s.number;
+
+	if (ent->health <= 0
+		|| client->noclip
+		|| client->tempSpectate >= level.time
+		|| client->sess.sessionTeam == TEAM_SPECTATOR
+		|| client->ps.pm_type == PM_SPECTATOR
+		|| client->ps.pm_type == PM_DEAD
+		|| client->ps.pm_type == PM_INTERMISSION
+		|| client->NPC_class == CLASS_VEHICLE) // parked vehicles would slowly blow up
+	{
+		return;
+	}
+
+	if (!G_WeatherEntOutside(ent))
+	{
+		return;
+	}
+
+	// acid rain, as SP g_active.cpp (G_Damage's MOD_SLIME branch sets the "AcidPainDebounce" timer)
+	if (acid
+		&& ent->painDebounceTime < level.time
+		&& TIMER_Done(ent, "AcidPainDebounce"))
+	{
+		if (ent->NPC
+			&& client->ps.fd.forcePowersKnown & 1 << FP_PROTECT
+			&& (client->ps.fd.forcePowersActive & 1 << FP_PROTECT || WP_ForcePowerUsable(ent, FP_PROTECT)))
+		{
+			// NPCs who know Protect keep it up instead of taking the acid
+			if (!(client->ps.fd.forcePowersActive & 1 << FP_PROTECT))
+			{
+				WP_ForcePowerStart(ent, FP_PROTECT, 0);
+			}
+		}
+		else
+		{
+			G_Damage(ent, NULL, NULL, NULL, NULL, ACID_RAIN_DAMAGE, 0, MOD_SLIME);
+		}
+	}
+
+	// lava weather (new, SP has no lava weather damage): a little burn now and then
+	if (lava
+		&& ent->health > 0
+		&& G_WeatherTimeDue(lavaWeatherPainTime[num], LAVA_WEATHER_DEBOUNCE_MAX))
+	{
+		lavaWeatherPainTime[num] = level.time + Q_irand(LAVA_WEATHER_DEBOUNCE_MIN, LAVA_WEATHER_DEBOUNCE_MAX);
+
+		if (client->ps.powerups[PW_BATTLESUIT] <= level.time)
+		{
+			G_Damage(ent, NULL, NULL, NULL, NULL, Q_irand(1, 2), DAMAGE_NO_KNOCKBACK, MOD_LAVA);
+		}
+	}
+}
+
+// once per server frame, for clients and NPCs
+void G_RunWeatherDamage(void)
+{
+	const qboolean acid = g_acidRainDamage.integer && BG_WeatherOutsidePain() ? qtrue : qfalse;
+	const qboolean lava = g_lavaWeatherDamage.integer && BG_WeatherLava() ? qtrue : qfalse;
+
+	if (!acid && !lava)
+	{
+		return;
+	}
+
+	if (level.intermissiontime)
+	{
+		return;
+	}
+
+	for (int i = 0; i < level.num_entities; i++)
+	{
+		gentity_t* ent = &g_entities[i];
+
+		if (!ent->inuse || !ent->client)
+		{
+			continue;
+		}
+
+		G_WeatherDamageEnt(ent, acid, lava);
+	}
+}
 
 static void P_WorldEffects(gentity_t* ent)
 {
@@ -334,23 +486,7 @@ static void P_WorldEffects(gentity_t* ent)
 		}
 	}
 
-	/*if ((ent->health > 0) &&
-		(ent->painDebounceTime < level.time) &&
-		trap->WE_IsOutsideCausingPain(ent->r.currentOrigin) &&
-		TIMER_Done(ent, "AcidPainDebounce"))
-	{
-		if (ent->NPC && ent->client && (ent->client->ps.fd.forcePowersKnown & (1 << FP_PROTECT)))
-		{
-			if (!(ent->client->ps.fd.forcePowersActive & (1 << FP_PROTECT)))
-			{
-				WP_ForcePowerStart(ent, FP_PROTECT, 0);
-			}
-		}
-		else
-		{
-			G_Damage(ent, NULL, NULL, NULL, NULL, 1, 0, MOD_SLIME);
-		}
-	}*/
+	// acid rain / lava weather damage: G_RunWeatherDamage (once per frame for clients and NPCs)
 
 	// Poisoned?
 	if (ent->client->poisonDamage && ent->client->tempSpectate < level.time && ent->client->poisonTime < level.time)
@@ -911,6 +1047,17 @@ static void G_SetClientSound(gentity_t* ent)
 	else if (ent->client && ent->waterlevel && ent->watertype & (CONTENTS_LAVA | CONTENTS_SLIME))
 	{
 		ent->client->ps.loopSound = level.snd_fry;
+		ent->s.loopIsSoundset = qfalse;
+	}
+	else if (ent->client && ent->client->repulseChargeStart)
+	{
+		// Force Repulse charging (w_force.c; a client's loop sound is its ps.loopSound, s.loopSound is overwritten)
+		ent->client->ps.loopSound = G_SoundIndex("sound/weapons/force/repulseloop.wav");
+		ent->s.loopIsSoundset = qfalse;
+	}
+	else if (ent->client && ent->client->ps.fd.forcePowersActive & 1 << FP_DEADLYSIGHT)
+	{
+		ent->client->ps.loopSound = G_SoundIndex("sound/weapons/force/protectloop.mp3");
 		ent->s.loopIsSoundset = qfalse;
 	}
 	else if (ent->client)
@@ -2458,6 +2605,7 @@ static qboolean GunisLong(const gentity_t* ent)
 	case WP_BLASTER:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 		return qtrue;
@@ -4199,6 +4347,7 @@ qboolean IsHoldingReloadableGun(const gentity_t* ent)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -4270,7 +4419,14 @@ void WP_ReloadGun(gentity_t* ent)
 	{
 		if (ent->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_TWELVE)
 		{
-			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			if (ent->s.weapon == WP_DROIDEKA)
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
+			else
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
 			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
 			G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 			G_Damage(ent, NULL, NULL, NULL, ent->r.currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
@@ -4293,6 +4449,10 @@ void WP_ReloadGun(gentity_t* ent)
 					G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/recharge.mp3");
 				}
 			}
+			else if (ent->s.weapon == WP_DROIDEKA)
+			{
+				NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			}
 			else if (ent->s.weapon == WP_DISRUPTOR || ent->s.weapon == WP_BOWCASTER || ent->s.weapon == WP_DEMP2)
 			{
 				if (ent->client->ps.ammo[AMMO_POWERCELL] < ClipSize(AMMO_POWERCELL, ent))
@@ -4308,7 +4468,7 @@ void WP_ReloadGun(gentity_t* ent)
 					G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/recharge.mp3");
 				}
 			}
-			else if (ent->s.weapon == WP_REPEATER || ent->s.weapon == WP_FLECHETTE || ent->s.weapon == WP_CONCUSSION)
+			else if (ent->s.weapon == WP_REPEATER || ent->s.weapon == WP_Z6_ROTARY_CANNON || ent->s.weapon == WP_FLECHETTE || ent->s.weapon == WP_CONCUSSION)
 			{
 				if (ent->client->ps.ammo[AMMO_METAL_BOLTS] < ClipSize(AMMO_METAL_BOLTS, ent))
 				{
@@ -4352,7 +4512,14 @@ void FireOverheatFail(gentity_t* ent)
 {
 	if (IsHoldingReloadableGun(ent))
 	{
-		NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		if (ent->s.weapon == WP_DROIDEKA)
+		{
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD_DEKA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		}
+		else
+		{
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOADFAIL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		}
 		G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reloadfail.mp3");
 		G_SoundOnEnt(ent, CHAN_VOICE_ATTEN, "*pain25.wav");
 		G_Damage(ent, NULL, NULL, NULL, ent->r.currentOrigin, 2, DAMAGE_NO_ARMOR, MOD_LAVA);
@@ -4397,6 +4564,7 @@ static qboolean IsGunner(const gentity_t* ent)
 	case WP_DISRUPTOR:
 	case WP_BOWCASTER:
 	case WP_REPEATER:
+	case WP_Z6_ROTARY_CANNON:
 	case WP_DEMP2:
 	case WP_FLECHETTE:
 	case WP_ROCKET_LAUNCHER:
@@ -4665,6 +4833,55 @@ extern qboolean g_standard_humanoid(gentity_t* self);
 extern void Weapon_AltStun_Fire(gentity_t* ent);
 
 extern void WP_SaberWearThink(gentity_t* ent, int msec);
+
+#define NOJUMP_TAUNT_COOLDOWN 3000
+
+// The jump key of a model that can't jump (no jump anim on its skeleton, or a droid class SP never lets jump) plays a
+// taunt instead: the model's own taunt-like anim when its skeleton has one, and its taunt sound (EV_TAUNT falls back
+// through *taunt / *anger / *victory...). Human players only (bots press jump all the time), at most every
+// NOJUMP_TAUNT_COOLDOWN ms.
+static void G_NoJumpTaunt(gentity_t* ent, const usercmd_t* ucmd)
+{
+	static const int taunt_anims[] = { BOTH_ENGAGETAUNT, BOTH_GESTURE1, TORSO_HANDSIGNAL4, BOTH_ALERT1, BOTH_STAND1TO2 };
+	gclient_t* client = ent->client;
+	const qboolean pressed = ucmd->upmove > 0 ? qtrue : qfalse;
+	const qboolean was_held = client->noJumpTauntHeld;
+
+	client->noJumpTauntHeld = pressed;
+
+	if (!pressed || was_held || ent->r.svFlags & SVF_BOT)
+	{
+		return;
+	}
+	if (!BG_AnimSetCantJump(ent->localAnimIndex)
+		&& !(level.gametype != GT_SIEGE && BG_ClassCantJump(client->ps.botclass)))
+	{
+		return;
+	}
+	if (client->noJumpTauntTime > level.time
+		|| client->ps.stats[STAT_HEALTH] <= 0
+		|| client->ps.pm_type != PM_NORMAL
+		|| client->ps.m_iVehicleNum
+		|| client->ps.groundEntityNum == ENTITYNUM_NONE
+		|| client->ps.weaponTime > 0)
+	{
+		return;
+	}
+
+	for (int i = 0; i < (int)ARRAY_LEN(taunt_anims); i++)
+	{
+		if (BG_HasAnimation(ent->localAnimIndex, taunt_anims[i]))
+		{
+			const qboolean standing = client->ps.velocity[0] * client->ps.velocity[0]
+				+ client->ps.velocity[1] * client->ps.velocity[1] < 100.0f ? qtrue : qfalse;
+			NPC_SetAnim(ent, standing ? SETANIM_BOTH : SETANIM_TORSO, taunt_anims[i],
+				SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+			break;
+		}
+	}
+	G_AddEvent(ent, EV_TAUNT, TAUNT_TAUNT);
+	client->noJumpTauntTime = level.time + NOJUMP_TAUNT_COOLDOWN;
+}
 
 static void ClientThink_real(gentity_t* ent)
 {
@@ -5087,6 +5304,10 @@ static void ClientThink_real(gentity_t* ent)
 		client->ps.legsTimer = 0;
 		client->ps.torsoTimer = 0;
 	}
+
+	// SJE: keep the networked ps.botclass on the class (ClientSpawn clears the whole client, ps included):
+	// BG_PlayerStateToEntityState copies it into s.botclass, which the cgame and the client's pmove read
+	client->ps.botclass = client->pers.botclass;
 
 	if (client->ps.stats[STAT_HOLDABLE_ITEMS] & 1 << HI_JETPACK)
 	{
@@ -6637,6 +6858,9 @@ static void ClientThink_real(gentity_t* ent)
 	//play/stop any looping sounds tied to controlled movement
 	G_CheckMovingLoopingSounds(ent, ucmd);
 
+	// a model that can't jump: the jump key plays a taunt
+	G_NoJumpTaunt(ent, ucmd);
+
 	pmove.ps = &client->ps;
 	pmove.cmd = *ucmd;
 	if (pmove.ps->pm_type == PM_DEAD)
@@ -6673,7 +6897,7 @@ static void ClientThink_real(gentity_t* ent)
 #endif
 		if (ent->ghoul2)
 		{
-			if (ent->localAnimIndex > 1)
+			if (!BG_AnimSetIsHumanoidLike(ent->localAnimIndex))
 			{
 				//if it isn't humanoid then we will be having none of this.
 				pmove.ghoul2 = NULL;
@@ -6712,7 +6936,7 @@ static void ClientThink_real(gentity_t* ent)
 
 	pmove.noSpecMove = g_noSpecMove.integer;
 
-	pmove.nonHumanoid = ent->localAnimIndex > 0;
+	pmove.nonHumanoid = !BG_AnimSetIsHumanoid(ent->localAnimIndex);
 
 	VectorCopy(client->ps.origin, client->oldOrigin);
 

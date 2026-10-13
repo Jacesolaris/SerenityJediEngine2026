@@ -967,6 +967,7 @@ using meansOfDeath_t = enum
 	MOD_PISTOL_ALT,
 
 	MOD_LIGHTNING_STRIKE,
+	MOD_Z6_ROTARY_CANNON, // appended
 
 	NUM_MODS,
 };
@@ -1083,6 +1084,42 @@ int CurrentPlayerstateEvent(playerState_t* ps);
 void PlayerStateToEntityState(playerState_t* ps, entityState_t* s);
 
 qboolean BG_PlayerTouchesItem(const playerState_t* ps, const entityState_t* item, int atTime);
+
+// The owned weapons: stats[STAT_WEAPONS] holds weapons 0..31, stats[STAT_WEAPONS2] 32..63 (WP_Z6_ROTARY_CANNON).
+// For a weapon number that is not a constant below 32 use these, a plain 1 << weapon is undefined from 32 on.
+inline qboolean BG_HasWeapon(const playerState_t* ps, const int weapon)
+{
+	if (weapon < 0 || weapon >= WP_NUM_WEAPONS)
+	{
+		return qfalse;
+	}
+	const int bits = weapon < 32 ? ps->stats[STAT_WEAPONS] : ps->stats[STAT_WEAPONS2];
+	return bits & 1 << (weapon & 31) ? qtrue : qfalse;
+}
+
+inline void BG_GiveWeapon(playerState_t* ps, const int weapon)
+{
+	if (weapon >= 0 && weapon < WP_NUM_WEAPONS)
+	{
+		ps->stats[weapon < 32 ? STAT_WEAPONS : STAT_WEAPONS2] |= 1 << (weapon & 31);
+	}
+}
+
+inline void BG_TakeWeapon(playerState_t* ps, const int weapon)
+{
+	if (weapon >= 0 && weapon < WP_NUM_WEAPONS)
+	{
+		ps->stats[weapon < 32 ? STAT_WEAPONS : STAT_WEAPONS2] &= ~(1 << (weapon & 31));
+	}
+}
+
+// only this weapon (the "stats[STAT_WEAPONS] = 1 << weapon" of the old code)
+inline void BG_SetOnlyWeapon(playerState_t* ps, const int weapon)
+{
+	ps->stats[STAT_WEAPONS] = 0;
+	ps->stats[STAT_WEAPONS2] = 0;
+	BG_GiveWeapon(ps, weapon);
+}
 
 constexpr auto HYPERSPACE_TIME = 8000; //For hyperspace triggers (was 4000);
 constexpr auto HYPERSPACE_TELEPORT_FRAC = 0.75f;

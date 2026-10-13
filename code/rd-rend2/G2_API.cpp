@@ -1055,7 +1055,7 @@ qboolean G2API_SetBoneAnimIndex(CGhoul2Info* ghlInfo, const int index, const int
 	//rww - RAGDOLL_END
 
 	qboolean ret = qfalse;
-	if (G2_SetupModelPointers(ghlInfo))
+	if (ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		G2ERROR(astartFrame >= 0, "startframe < 0");
 		G2ERROR(astartFrame < ghlInfo->aHeader->numFrames, "startframe >= numframes");
@@ -1353,7 +1353,7 @@ static qboolean G2API_SetBoneAnglesOffsetIndex(CGhoul2Info* ghlInfo, const int i
 	//rww - RAGDOLL_END
 
 	qboolean ret = qfalse;
-	if (G2_SetupModelPointers(ghlInfo))
+	if (ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache
@@ -1388,7 +1388,7 @@ qboolean G2API_SetBoneAnglesOffset(CGhoul2Info* ghlInfo, const char* boneName, c
 
 	qboolean ret = qfalse;
 	G2ERROR(boneName, "NULL boneName");
-	if (boneName && G2_SetupModelPointers(ghlInfo))
+	if (boneName && ghlInfo && G2_SetupModelPointers(ghlInfo))
 	{
 		int currentTime = G2API_GetTime(AcurrentTime);
 		// ensure we flush the cache

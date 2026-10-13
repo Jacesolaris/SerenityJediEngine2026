@@ -53,6 +53,7 @@ enum
 	HLR_REPEATER,
 	HLR_FLECHETTE,
 	HLR_DISRUPTOR,
+	HLR_Z6,
 	MAX_HOLSTER
 };
 
@@ -87,6 +88,7 @@ static const stringID_table_t hlsTypeTable[] =
 	{"HLR_REPEATER", HLR_REPEATER},
 	{"HLR_FLECHETTE", HLR_FLECHETTE},
 	{"HLR_DISRUPTOR", HLR_DISRUPTOR},
+	{"HLR_Z6", HLR_Z6},
 	{nullptr, -1}
 };
 
@@ -156,6 +158,7 @@ static const hlsGun_t hlsGuns[] =
 	{WP_DISRUPTOR, qtrue, HLR_DISRUPTOR, HLR_DISRUPTOR},
 	{WP_BOWCASTER, qtrue, HLR_BOWCASTER, HLR_BOWCASTER},
 	{WP_DEMP2, qtrue, HLR_DEMP2, HLR_DEMP2},
+	{WP_Z6_ROTARY_CANNON, qtrue, HLR_Z6, HLR_Z6},
 };
 
 static const hlsGun_t* Hls_Gun(const int weapon)
@@ -587,11 +590,10 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		return;
 	}
 
-	const int inventory = client->ps.stats[STAT_WEAPONS];
 	const int inHand = client->ps.weapon;
 	auto carries = [&](const int weapon)
 		{
-			return weapon != inHand && inventory & 1 << weapon ? true : false;
+			return weapon != inHand && BG_HasWeapon(&client->ps, weapon) ? true : false;
 		};
 
 	// A jetpack (the classes that can fly with one) or a saber holstered on the back (the singleplayer saber
@@ -621,7 +623,7 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 	for (int p = 0; p < HLP_NUM; p++)
 	{
 		const hlsGun_t* gun = places[p] ? Hls_Gun(places[p]) : nullptr;
-		if (places[p] && (!(inventory & 1 << places[p]) || !gun || !enabled(Hls_PlaceType(gun, p))))
+		if (places[p] && (!BG_HasWeapon(&client->ps, places[p]) || !gun || !enabled(Hls_PlaceType(gun, p))))
 		{
 			places[p] = WP_NONE; // he no longer has it (or his model has no such place)
 		}
