@@ -2102,7 +2102,7 @@ static void Jedi_AdjustSaberAnimLevel(const gentity_t* self, const int new_level
 	{
 		Jedi_AdjustSaberAnimLevel(NPC, Q_irand(SS_FAST, SS_STAFF));
 	}
-	else if (new_level > SS_STAFF)
+	else if (new_level > SS_BLASTER) // SS_BLASTER (2026-10-14)
 	{
 		Jedi_AdjustSaberAnimLevel(NPC, Q_irand(SS_FAST, SS_STAFF));
 	}
@@ -2129,6 +2129,7 @@ static void Jedi_AdjustSaberAnimLevel(const gentity_t* self, const int new_level
 			gi.Printf(S_COLOR_RED"%s Saber Attack Set: strong\n", self->NPC_type);
 			break;
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			gi.Printf(S_COLOR_RED"%s Saber Attack Set: desann\n", self->NPC_type);
 			break;
 		case SS_TAVION:
@@ -2159,7 +2160,7 @@ static void Jedi_CheckDecreasesaber_anim_level()
 		{
 			if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 				|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-				|| NPC->client->ps.saberAnimLevel == SS_DESANN
+				|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 				|| NPC->client->ps.saberAnimLevel == SS_FAST
 				|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 				&& NPC->client->ps.saberAnimLevel != SS_STAFF
@@ -2712,7 +2713,7 @@ static void Jedi_CombatDistance(const int enemy_dist)
 				ps->forcePowerLevel[FP_SABER_OFFENSE] > FORCE_LEVEL_2)
 			{
 				if (ps->saberAnimLevel != SS_STRONG &&
-					ps->saberAnimLevel != SS_DESANN &&
+					(ps->saberAnimLevel != SS_DESANN && ps->saberAnimLevel != SS_BLASTER) && // SS_BLASTER (2026-10-14)
 					NPC->saberPower)
 				{
 					Jedi_AdjustSaberAnimLevel(NPC, Q_irand(SS_DESANN, SS_STRONG));
@@ -7499,7 +7500,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 
 				if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 					|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-					|| NPC->client->ps.saberAnimLevel == SS_DESANN
+					|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 					|| NPC->client->ps.saberAnimLevel == SS_FAST
 					|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 					&& npc_is_staff_style(NPC) == qfalse
@@ -7520,7 +7521,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 				{
 					if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 						|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-						|| NPC->client->ps.saberAnimLevel == SS_DESANN
+						|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 						|| NPC->client->ps.saberAnimLevel == SS_FAST
 						|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 						&& npc_is_staff_style(NPC) == qfalse
@@ -7574,7 +7575,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 			{
 				if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 					|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-					|| NPC->client->ps.saberAnimLevel == SS_DESANN
+					|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 					|| NPC->client->ps.saberAnimLevel == SS_FAST
 					|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 					&& npc_is_staff_style(NPC) == qfalse
@@ -7606,7 +7607,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 
 				if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 					|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-					|| NPC->client->ps.saberAnimLevel == SS_DESANN
+					|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 					|| NPC->client->ps.saberAnimLevel == SS_FAST
 					|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 					&& npc_is_staff_style(NPC) == qfalse
@@ -7638,7 +7639,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 				{
 					if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 						|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-						|| NPC->client->ps.saberAnimLevel == SS_DESANN
+						|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 						|| NPC->client->ps.saberAnimLevel == SS_FAST
 						|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 						&& npc_is_staff_style(NPC) == qfalse
@@ -7661,7 +7662,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 			{
 				if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 					|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-					|| NPC->client->ps.saberAnimLevel == SS_DESANN
+					|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 					|| NPC->client->ps.saberAnimLevel == SS_FAST
 					|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 					&& npc_is_staff_style(NPC) == qfalse
@@ -7685,7 +7686,7 @@ static void Jedi_CombatTimersUpdate(const int enemy_dist)
 			{
 				if ((NPC->client->ps.saberAnimLevel == SS_STRONG
 					|| NPC->client->ps.saberAnimLevel == SS_MEDIUM
-					|| NPC->client->ps.saberAnimLevel == SS_DESANN
+					|| (NPC->client->ps.saberAnimLevel == SS_DESANN || NPC->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 					|| NPC->client->ps.saberAnimLevel == SS_FAST
 					|| NPC->client->ps.saberAnimLevel == SS_TAVION)
 					&& npc_is_staff_style(NPC) == qfalse
@@ -9174,7 +9175,7 @@ void NPC_Jedi_Pain(gentity_t* self, gentity_t* inflictor, gentity_t* attacker, c
 			//ouch... maybe switch up which saber power level we're using
 			if ((self->client->ps.saberAnimLevel == SS_STRONG
 				|| self->client->ps.saberAnimLevel == SS_MEDIUM
-				|| self->client->ps.saberAnimLevel == SS_DESANN
+				|| (self->client->ps.saberAnimLevel == SS_DESANN || self->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 				|| self->client->ps.saberAnimLevel == SS_FAST
 				|| self->client->ps.saberAnimLevel == SS_TAVION)
 				&& !npc_is_staff_style(self)
@@ -10752,6 +10753,7 @@ static saberCombo_t JediChooseCombo(gentity_t* self)
 
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			chosen = s_strongSignatureCombos[Q_irand(0, ARRAY_LEN(s_strongSignatureCombos) - 1)];
 			maxLen = 4;
 			break;
@@ -11589,6 +11591,7 @@ static void Jedi_Attack(void)
 				case SS_MEDIUM:
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					NPC_SetAnim(NPC, SETANIM_TORSO, BOTH_ENGAGETAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
 				case SS_DUAL:

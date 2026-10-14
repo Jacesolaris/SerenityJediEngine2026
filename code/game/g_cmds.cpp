@@ -1487,6 +1487,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (ent->client->ps.saber[0].type == SABER_SINGLE_VADER) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -1559,6 +1560,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (ent->client->ps.saber[0].type == SABER_SINGLE_VADER) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -1823,6 +1825,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (!ent->client->ps.SaberActive())
 						{
 							//turn on the saber if it's not on
@@ -1871,6 +1874,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
 					case SS_DUAL:
@@ -1971,6 +1975,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VICTORY_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						if (!ent->client->ps.SaberActive())
 						{
@@ -2030,6 +2035,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (!ent->client->ps.SaberActive())
 						{
 							//turn on the saber if it's not on
@@ -2203,6 +2209,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					if (ent->client->ps.saber[0].type == SABER_SINGLE_VADER) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -2275,6 +2282,7 @@ void G_SetTauntAnim(gentity_t* ent, const int taunt)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					if (ent->client->ps.saber[0].type == SABER_SINGLE_VADER) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -2385,6 +2393,7 @@ static void G_SetsaberdownorAnim(gentity_t* ent)
 					case SS_STRONG:
 					case SS_TAVION:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND2TO1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						G_Sound(ent, ent->client->ps.saber[0].soundOff);
 						break;
@@ -2427,6 +2436,7 @@ static void G_SetsaberdownorAnim(gentity_t* ent)
 						case SS_STRONG:
 						case SS_TAVION:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, ent->client->ps.saber[0].soundOn);
 							break;
@@ -2454,6 +2464,7 @@ static void G_SetsaberdownorAnim(gentity_t* ent)
 						case SS_STRONG:
 						case SS_TAVION:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, ent->client->ps.saber[0].soundOn);
 							break;
@@ -2513,6 +2524,10 @@ static void G_SetsaberdownorAnim(gentity_t* ent)
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
+							G_Sound(ent, ent->client->ps.saber[0].soundOn);
+							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
+							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, ent->client->ps.saber[0].soundOn);
 							break;
 						default:
@@ -2649,6 +2664,7 @@ void G_RemoveWeather()
 ClientCommand
 =================
 */
+extern void Svcmd_FighterTest_f(); // (2026-10-13) g_vehicles.cpp
 void ClientCommand(const int clientNum)
 {
 	gentity_t* ent = g_entities + clientNum;
@@ -2829,12 +2845,12 @@ void ClientCommand(const int clientNum)
 			gi.SendServerCommand(ent - g_entities, va("print \"usage: addsaberstyle <saber style>\n\""));
 			gi.SendServerCommand(ent - g_entities,
 				va(
-					"print \"Valid styles: SS_FAST, SS_MEDIUM, SS_STRONG, SS_DESANN, SS_TAVION, SS_DUAL and SS_STAFF\n\""));
+					"print \"Valid styles: SS_FAST, SS_MEDIUM, SS_STRONG, SS_DESANN, SS_TAVION, SS_BLASTER, SS_DUAL and SS_STAFF\n\""));
 			return;
 		}
 
 		const int addStyle = GetIDForString(SaberStyleTable, gi.argv(1));
-		if (addStyle > SS_NONE && addStyle < SS_STAFF)
+		if (addStyle > SS_NONE && (addStyle < SS_STAFF || addStyle == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 		{
 			ent->client->ps.saberStylesKnown |= 1 << addStyle;
 		}
@@ -2852,12 +2868,12 @@ void ClientCommand(const int clientNum)
 			gi.SendServerCommand(ent - g_entities, va("print \"usage: setsaberstyle <saber style>\n\""));
 			gi.SendServerCommand(ent - g_entities,
 				va(
-					"print \"Valid styles: SS_FAST, SS_MEDIUM, SS_STRONG, SS_DESANN, SS_TAVION, SS_DUAL and SS_STAFF\n\""));
+					"print \"Valid styles: SS_FAST, SS_MEDIUM, SS_STRONG, SS_DESANN, SS_TAVION, SS_BLASTER, SS_DUAL and SS_STAFF\n\""));
 			return;
 		}
 
 		const int setStyle = GetIDForString(SaberStyleTable, gi.argv(1));
-		if (setStyle > SS_NONE && setStyle < SS_STAFF)
+		if (setStyle > SS_NONE && (setStyle < SS_STAFF || setStyle == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 		{
 			ent->client->ps.saberStylesKnown = 1 << setStyle;
 			cg.saberAnimLevelPending = ent->client->ps.saberAnimLevel = setStyle;
@@ -3064,6 +3080,14 @@ void ClientCommand(const int clientNum)
 			G_RemoveWeather();
 			num = G_EffectIndex("*clear");
 			gi.SetConfigstring(CS_EFFECTS + num, "");
+		}
+	}
+	else if (Q_stricmp(cmd, "fightertest") == 0)
+	{
+		//(2026-10-13) developer test of the fighter controls (g_vehicles.cpp), cheats only
+		if (g_cheats->integer)
+		{
+			Svcmd_FighterTest_f();
 		}
 	}
 	else if (TryWorkshopCommand(ent))

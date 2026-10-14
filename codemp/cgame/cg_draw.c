@@ -1414,6 +1414,22 @@ static void CG_DrawCusSaberStyle(const centity_t* cent, const menuDef_t* menu_hu
 			);
 		}
 		break;
+	case SS_BLASTER: // SS_BLASTER (2026-10-14): the Desann icon tinted pink (placeholder)
+		focus_item = Menu_FindItemByName(menu_hud, "saberstyle_desannMP");
+
+		if (focus_item)
+		{
+			CG_SaberWearSetColor(colorTable[CT_LTPINK]);
+
+			CG_DrawPic(
+				focus_item->window.rect.x + 5,
+				focus_item->window.rect.y + 5,
+				focus_item->window.rect.w,
+				focus_item->window.rect.h,
+				focus_item->window.background
+			);
+		}
+		break;
 	case 5: //FORCE_LEVEL_5://Tavion
 		focus_item = Menu_FindItemByName(menu_hud, "saberstyle_tavionMP");
 
@@ -2423,6 +2439,10 @@ static void CG_DrawJK2Ammo(const centity_t* cent, const int x, const int y)
 		case 7: //FORCE_LEVEL_5://DUELS
 			CG_DrawPic(x, y, 80, 40, cgs.media.JK2HUDSaberStyleDuels);
 			break;
+		case SS_BLASTER: // SS_BLASTER (2026-10-14): the Desann icon tinted pink (placeholder)
+			CG_SaberWearSetColor(colorTable[CT_LTPINK]);
+			CG_DrawPic(x, y, 80, 40, cgs.media.JK2HUDSaberStyleDesann);
+			break;
 		default:;
 		}
 		return;
@@ -3191,6 +3211,11 @@ static void CG_DrawSimpleSaberStyle(const centity_t* cent)
 	case SS_DESANN:
 		Com_sprintf(num, sizeof num, "DESANN");
 		calc_color = CT_HUD_RED;
+		break;
+	case SS_BLASTER: // SS_BLASTER (2026-10-14): style name + pistol clip, pink placeholder colour
+		Com_sprintf(num, sizeof num, "BLASTER %d",
+			SABERBLASTER_CLIP_SIZE - cg.predictedPlayerState.ammo[SABERBLASTER_CLIP_SLOT]);
+		calc_color = CT_LTPINK;
 		break;
 	case SS_TAVION:
 		Com_sprintf(num, sizeof num, "TAVION");

@@ -901,6 +901,7 @@ int PM_ReadyPoseForsaber_anim_level(void)
 			anim = BOTH_SABERDUAL_STANCE;
 			break;
 		case SS_STAFF:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			anim = BOTH_SABERSTAFF_STANCE;
 			break;
 		case SS_FAST:
@@ -990,7 +991,7 @@ int PM_IdlePoseForsaber_anim_level(void)
 				{
 					return BOTH_WALK1;
 				}
-				if (pm->ps->fd.saberAnimLevel == SS_DESANN)
+				if ((pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 				{
 					return BOTH_WALK1;
 				}
@@ -1025,7 +1026,7 @@ int PM_IdlePoseForsaber_anim_level(void)
 				{
 					return BOTH_WALK1;
 				}
-				if (pm->ps->fd.saberAnimLevel == SS_DESANN)
+				if ((pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 				{
 					return BOTH_WALK1;
 				}
@@ -1062,7 +1063,7 @@ int PM_IdlePoseForsaber_anim_level(void)
 				{
 					return BOTH_WALKBACK1;
 				}
-				if (pm->ps->fd.saberAnimLevel == SS_DESANN)
+				if ((pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 				{
 					return BOTH_WALKBACK1;
 				}
@@ -1154,7 +1155,11 @@ int PM_IdlePoseForsaber_anim_level(void)
 			case SS_FAST:
 				if (is_holding_block_button)
 				{
-					if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
+					if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU) // MD->SJE parity (2026-10-13): MD's Dooku class stands as Dooku's saber does
+					{
+						anim = BOTH_SABERSTANCE_STANCE_ALT;
+					}
+					else if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
 					{
 						anim = BOTH_SABERYODA_STANCE;
 					}
@@ -1203,9 +1208,14 @@ int PM_IdlePoseForsaber_anim_level(void)
 				}
 				break;
 			case SS_MEDIUM:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				if (is_holding_block_button)
 				{
-					if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
+					if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+					{
+						anim = BOTH_SABERSTANCE_STANCE_ALT;
+					}
+					else if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
 					{
 						anim = BOTH_SABERYODA_STANCE;
 					}
@@ -1256,7 +1266,11 @@ int PM_IdlePoseForsaber_anim_level(void)
 			case SS_STRONG:
 				if (is_holding_block_button)
 				{
-					if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
+					if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+					{
+						anim = BOTH_SABERSTANCE_STANCE_ALT;
+					}
+					else if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
 					{
 						anim = BOTH_SABERYODA_STANCE;
 					}
@@ -1307,7 +1321,11 @@ int PM_IdlePoseForsaber_anim_level(void)
 			case SS_TAVION:
 				if (is_holding_block_button)
 				{
-					if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
+					if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+					{
+						anim = BOTH_SABERSTANCE_STANCE_ALT;
+					}
+					else if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
 					{
 						anim = BOTH_SABERYODA_STANCE;
 					}
@@ -1358,7 +1376,11 @@ int PM_IdlePoseForsaber_anim_level(void)
 			case SS_DESANN:
 				if (is_holding_block_button)
 				{
-					if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
+					if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+					{
+						anim = BOTH_SABERSTANCE_STANCE_ALT;
+					}
+					else if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
 					{
 						anim = BOTH_SABERYODA_STANCE;
 					}
@@ -1410,7 +1432,11 @@ int PM_IdlePoseForsaber_anim_level(void)
 			default:
 				if (is_holding_block_button)
 				{
-					if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
+					if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+					{
+						anim = BOTH_SABERSTANCE_STANCE_ALT;
+					}
+					else if (saber1 && saber1->type == SABER_SINGLE_YODA) //yoda
 					{
 						anim = BOTH_SABERYODA_STANCE;
 					}
@@ -1594,12 +1620,17 @@ int PM_ReadyPoseForSaberAnimLevelBOT(void)
 		anim = BOTH_SABERDUAL_STANCE;
 		break;
 	case SS_STAFF:
+	case SS_BLASTER: // SS_BLASTER (2026-10-14)
 		anim = BOTH_SABERSTAFF_STANCE;
 		break;
 	case SS_FAST:
 		if (enemy_far == qtrue)
 		{
-			if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+			if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU) // MD->SJE parity (2026-10-13): MD's Dooku class stands as Dooku's saber does
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
 			{
 				anim = BOTH_SABERYODA_STANCE;
 			}
@@ -1638,7 +1669,11 @@ int PM_ReadyPoseForSaberAnimLevelBOT(void)
 
 		if (enemy_far == qtrue)
 		{
-			if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+			if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
 			{
 				anim = BOTH_SABERYODA_STANCE;
 			}
@@ -1676,7 +1711,11 @@ int PM_ReadyPoseForSaberAnimLevelBOT(void)
 	case SS_STRONG:
 		if (enemy_far == qtrue)
 		{
-			if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+			if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
 			{
 				anim = BOTH_SABERYODA_STANCE;
 			}
@@ -1714,7 +1753,11 @@ int PM_ReadyPoseForSaberAnimLevelBOT(void)
 	case SS_DESANN:
 		if (enemy_far == qtrue)
 		{
-			if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+			if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
 			{
 				anim = BOTH_SABERYODA_STANCE;
 			}
@@ -1752,7 +1795,11 @@ int PM_ReadyPoseForSaberAnimLevelBOT(void)
 	case SS_MEDIUM:
 		if (enemy_far == qtrue)
 		{
-			if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+			if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
 			{
 				anim = BOTH_SABERYODA_STANCE;
 			}
@@ -1791,7 +1838,11 @@ int PM_ReadyPoseForSaberAnimLevelBOT(void)
 	default:
 		if (enemy_far == qtrue)
 		{
-			if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
+			if (pm_entSelf && pm_entSelf->s.botclass == BCLASS_DOOKU)
+			{
+				anim = BOTH_SABERSTANCE_STANCE_ALT;
+			}
+			else if (saber1 && saber1->type == SABER_SINGLE_YODA && (enemy_far == qtrue))
 			{
 				anim = BOTH_SABERYODA_STANCE;
 			}
@@ -1880,6 +1931,7 @@ int PM_ReadyPoseForsaber_anim_levelDucked(void)
 	switch (pm->ps->fd.saberAnimLevel)
 	{
 	case SS_DUAL:
+	case SS_BLASTER: // SS_BLASTER (2026-10-14)
 		anim = BOTH_SABERDUALCROUCH;
 		break;
 	case SS_STAFF:
@@ -11645,13 +11697,17 @@ static void PM_Footsteps(void)
 							{//saber is on, so use the idle stance
 								if (is_walking_and_blocking == qtrue)
 								{//walking and blocking
-									if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+									if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 									{
 										PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_BlockingPoseForsaber_anim_levelDual()));
 									}
 									else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 									{
 										PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_BlockingPoseForsaber_anim_levelStaff()));
+									}
+									else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+									{
+										PM_ContinueLegsAnim(PM_LegsSlopeBackTransition(PM_BlockingPoseForsaber_anim_levelSingle()));
 									}
 									else
 									{
@@ -11858,6 +11914,7 @@ static void PM_Footsteps(void)
 					case SS_MEDIUM:
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					case SS_TAVION:
 						if (pm->ps->saberHolstered)
 						{
@@ -11950,7 +12007,7 @@ static void PM_Footsteps(void)
 						else if (pm->ps->fd.saberAnimLevel == SS_FAST
 							|| pm->ps->fd.saberAnimLevel == SS_MEDIUM
 							|| pm->ps->fd.saberAnimLevel == SS_STRONG
-							|| pm->ps->fd.saberAnimLevel == SS_DESANN
+							|| (pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 							|| pm->ps->fd.saberAnimLevel == SS_TAVION)
 						{
 							if (is_wanting_sprint) // single sprint here
@@ -12538,6 +12595,7 @@ static void PM_Footsteps(void)
 					case SS_MEDIUM:
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					case SS_TAVION:
 						if (pm->ps->saberHolstered)
 						{
@@ -13095,6 +13153,9 @@ void PM_FinishWeaponChange(void)
 						case SS_DESANN:
 							PM_SetAnim(SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
+							PM_SetAnim(SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						default:
 							PM_SetAnim(SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
@@ -13118,6 +13179,9 @@ void PM_FinishWeaponChange(void)
 						case SS_DESANN:
 							PM_SetAnim(SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14): draw anim placeholder
+							PM_SetAnim(SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						default:
 							PM_SetAnim(SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
@@ -13132,6 +13196,9 @@ void PM_FinishWeaponChange(void)
 							break;
 						case SS_STAFF:
 							PM_SetAnim(SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14): draw anim placeholder
+							PM_SetAnim(SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
 						case SS_NONE:
 						case SS_FAST:
@@ -14552,6 +14619,7 @@ static void PM_Weapon(void)
 				desiredAnim = BOTH_SABERPULL;
 				break;
 			case SS_STAFF:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				desiredAnim = BOTH_SABERPULL_ALT;
 				break;
 			default:;
@@ -14566,6 +14634,7 @@ static void PM_Weapon(void)
 			case SS_MEDIUM:
 			case SS_STRONG:
 			case SS_DESANN:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				desiredAnim = BOTH_STAND1TO2;
 				break;
 			case SS_DUAL:
@@ -15246,13 +15315,17 @@ static void PM_Weapon(void)
 			{
 				if (is_walking_and_blocking == qtrue)
 				{
-					if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+					if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 					{
 						PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelDual());
 					}
 					else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 					{
 						PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelStaff());
+					}
+					else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+					{
+						PM_StartTorsoAnim(PM_BlockingPoseForsaber_anim_levelSingle());
 					}
 					else
 					{
@@ -16006,6 +16079,7 @@ static void PM_BotGesture(void)
 				case SS_MEDIUM:
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					PM_SetAnim(SETANIM_TORSO, BOTH_ENGAGETAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
 				case SS_DUAL:
@@ -16116,6 +16190,7 @@ static void PM_BotGesture(void)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					pm->ps->saberHolstered = 0;
 					PM_SetAnim(SETANIM_TORSO, BOTH_VICTORY_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
@@ -16179,6 +16254,7 @@ static void PM_BotGesture(void)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					PM_SetAnim(SETANIM_TORSO, BOTH_SHOWOFF_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
 				case SS_DUAL:
@@ -17469,6 +17545,7 @@ static void BG_AdjustClientSpeed(playerState_t* ps, const usercmd_t* cmd, const 
 		{
 		case SS_TAVION:
 		case SS_FAST:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			ps->speed *= 0.85f;
 			break;
 		case SS_MEDIUM:
@@ -17500,6 +17577,7 @@ static void BG_AdjustClientSpeed(playerState_t* ps, const usercmd_t* cmd, const 
 		case SS_MEDIUM:
 		case SS_DUAL:
 		case SS_STAFF:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			ps->speed *= 0.85f;
 			break;
 		case SS_DESANN:
@@ -19787,6 +19865,110 @@ static void PM_RepulseHover(void)
 	pm->cmd.forwardmove = pm->cmd.rightmove = pm->cmd.upmove = 0;
 }
 
+//SS_BLASTER (2026-10-14)===================================================================
+// Saber in the right hand, a bryar pistol in the left hand (visual only, not an inventory weapon). Predicted here:
+// alt attack fires (torso BOTH_FORCELIGHTNING, clip in ps->ammo[SABERBLASTER_CLIP_SLOT] = shots used), alt attack +
+// attack reloads, no saber throw / kata. The server spawns the bolt on EV_SABERBLASTER (g_active.c ClientEvents).
+qboolean pm_saberBlasterAlt = qfalse; // alt attack held this pmove (taken out of pm->cmd), read by PM_SaberLocked
+static qboolean pm_saberBlasterReload = qfalse;
+
+static qboolean PM_SaberBlasterActive(void)
+{
+	return pm->ps->weapon == WP_SABER && pm->ps->fd.saberAnimLevel == SS_BLASTER ? qtrue : qfalse;
+}
+
+static void PM_SaberBlasterFilterCmd(void)
+{
+	const qboolean is_Ready_to_Reload = ((pm->cmd.buttons & BUTTON_WALKING) && (pm->cmd.buttons & BUTTON_DASH)) ? qtrue : qfalse;
+
+	pm_saberBlasterAlt = qfalse;
+	pm_saberBlasterReload = qfalse;
+
+	if (!PM_SaberBlasterActive())
+	{
+		return;
+	}
+
+	const qboolean alt = is_Ready_to_Reload;
+	const qboolean reload = alt && pm->cmd.buttons & BUTTON_ATTACK ? qtrue : qfalse;
+
+	if (reload)
+	{
+		pm->cmd.buttons &= ~BUTTON_ATTACK;
+	}
+	if (alt)
+	{
+		if (pm->cmd.buttons & BUTTON_ATTACK)
+		{
+			// alt attack + attack reloads the pistol instead of a kata
+			pm_saberBlasterReload = qtrue;
+			pm->cmd.buttons &= ~BUTTON_ATTACK;
+		}
+		else
+		{
+			pm_saberBlasterAlt = qtrue;
+		}
+		//pm->cmd.buttons &= ~BUTTON_ALT_ATTACK;
+	}
+	// alt attack belongs to the pistol: no saber throw in this style
+	pm->cmd.buttons &= ~BUTTON_BOTSABERTHROW;
+
+	if (pm->ps->saberLockTime < pm->cmd.serverTime)
+	{
+		pm->ps->weaponChargeTime = 0; // saberlock charge (see PM_SaberLocked)
+	}
+}
+
+static void WP_SaberBlasterThink(void)
+{
+	if (!PM_SaberBlasterActive()
+		|| pm->ps->weaponTime > 0
+		|| pm->ps->saberLockTime >= pm->cmd.serverTime //the lock is handled in PM_SaberLocked
+		|| pm->ps->saberInFlight
+		|| pm->ps->pm_type == PM_DEAD
+		|| pm->ps->stats[STAT_HEALTH] <= 0
+		|| PM_InKnockDown(pm->ps))
+	{
+		return;
+	}
+
+	if (pm_saberBlasterReload)
+	{
+		if (pm->ps->ammo[SABERBLASTER_CLIP_SLOT] > 0)
+		{
+			pm->ps->ammo[SABERBLASTER_CLIP_SLOT] = 0;
+			if (pm_entSelf && BG_HasAnimation(pm_entSelf->localAnimIndex, BOTH_RELOAD))
+			{
+				PM_SetAnim(SETANIM_TORSO, BOTH_RELOAD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+				pm->ps->torsoTimer = SABERBLASTER_RELOAD_TIME;
+			}
+			pm->ps->weaponTime = SABERBLASTER_RELOAD_TIME;
+			PM_AddEventWithParm(EV_SABERBLASTER, SBE_RELOAD);
+		}
+		return;
+	}
+
+	if (!pm_saberBlasterAlt)
+	{
+		return;
+	}
+
+	if (pm->ps->ammo[SABERBLASTER_CLIP_SLOT] >= SABERBLASTER_CLIP_SIZE)
+	{
+		// empty clip: click
+		pm->ps->weaponTime = 500;
+		PM_AddEventWithParm(EV_SABERBLASTER, SBE_EMPTY);
+		return;
+	}
+
+	pm->ps->ammo[SABERBLASTER_CLIP_SLOT]++;
+	pm->ps->saberBlocked = BLOCKED_NONE;
+	PM_SetAnim(SETANIM_TORSO, BOTH_FORCELIGHTNING, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+	pm->ps->weaponTime = weaponData[WP_BRYAR_PISTOL].fireTime;
+	pm->ps->torsoTimer = pm->ps->weaponTime;
+	PM_AddEventWithParm(EV_SABERBLASTER, SBE_FIRE);
+}
+
 static void PmoveSingle(pmove_t* pmove)
 {
 	qboolean stiffenedUp = qfalse;
@@ -19839,6 +20021,8 @@ static void PmoveSingle(pmove_t* pmove)
 	}
 
 	gPMDoSlowFall = PM_DoSlowFall();
+
+	PM_SaberBlasterFilterCmd(); // SS_BLASTER (2026-10-14)
 
 	// this counter lets us debug movement problems with a journal
 	// by setting a conditional breakpoint fot the previous frame
@@ -21078,6 +21262,7 @@ static void PmoveSingle(pmove_t* pmove)
 		//only run weapons if a valid weapon is selected
 		// weapons
 		PM_Weapon();
+		WP_SaberBlasterThink(); // SS_BLASTER (2026-10-14)
 	}
 
 	PM_Use();

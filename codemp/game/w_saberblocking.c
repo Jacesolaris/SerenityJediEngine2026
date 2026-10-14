@@ -1064,7 +1064,7 @@ qboolean sab_beh_block_vs_attack(
 					{
 						WP_SaberFatiguedParryDirection(blocker, hit_loc, qfalse);
 					}
-					else if (attacker->client->ps.fd.saberAnimLevel == SS_DESANN ||
+					else if ((attacker->client->ps.fd.saberAnimLevel == SS_DESANN || attacker->client->ps.fd.saberAnimLevel == SS_BLASTER) ||
 						attacker->client->ps.fd.saberAnimLevel == SS_STRONG)
 					{
 						WP_SaberFatiguedParryDirection(blocker, hit_loc, qfalse);
@@ -1075,7 +1075,7 @@ qboolean sab_beh_block_vs_attack(
 					}
 
 					if (attacker->r.svFlags & SVF_BOT)
-					{
+					{ // SS_BLASTER (2026-10-14)
 						sab_beh_add_balance(attacker, MPCOST_MBLOCKED); //SAC Punish attacker
 					}
 
@@ -1107,7 +1107,7 @@ qboolean sab_beh_block_vs_attack(
 				{
 					WP_SaberFatiguedParryDirection(blocker, hit_loc, qfalse);
 				}
-				else if (attacker->client->ps.fd.saberAnimLevel == SS_DESANN ||
+				else if ((attacker->client->ps.fd.saberAnimLevel == SS_DESANN || attacker->client->ps.fd.saberAnimLevel == SS_BLASTER) ||
 					attacker->client->ps.fd.saberAnimLevel == SS_STRONG)
 				{
 					WP_SaberFatiguedParryDirection(blocker, hit_loc, qfalse);
@@ -1125,7 +1125,7 @@ qboolean sab_beh_block_vs_attack(
 				if (!(blocker->r.svFlags & SVF_BOT))
 				{
 					PM_AddBlockFatigue(&blocker->client->ps, BLOCKPOINTS_FIVE);
-				}
+				} // SS_BLASTER (2026-10-14)
 
 				if (attacker->NPC && !G_ControlledByPlayer(attacker)) //NPC only
 				{
@@ -1158,7 +1158,7 @@ qboolean sab_beh_block_vs_attack(
 			// ----------------------------------------------------
 			else if (accurate_parry || npc_blocking)
 			{
-				if (attacker->client->ps.fd.saberAnimLevel == SS_DESANN ||
+				if ((attacker->client->ps.fd.saberAnimLevel == SS_DESANN || attacker->client->ps.fd.saberAnimLevel == SS_BLASTER) ||
 					attacker->client->ps.fd.saberAnimLevel == SS_STRONG)
 				{
 					WP_SaberFatiguedParryDirection(blocker, hit_loc, qfalse);
@@ -1203,7 +1203,7 @@ qboolean sab_beh_block_vs_attack(
 						!(blocker->r.svFlags & SVF_BOT))
 					{
 						Com_Printf(S_COLOR_CYAN "NPC good Parry\n");
-					}
+					} // SS_BLASTER (2026-10-14)
 
 					if (blocker->r.svFlags & SVF_BOT)
 					{
@@ -1471,6 +1471,7 @@ void WP_SaberWearOnBlock(gentity_t* blocker, const gentity_t* attacker)
 		{
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 		case SS_TAVION:
 			amount = 4.0f;
 			heavy = qtrue;

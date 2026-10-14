@@ -141,6 +141,7 @@ using channel_t = struct channel_s
 	qboolean fixed_origin; // use origin instead of fetching entnum's origin
 	sfx_t* thesfx; // sfx structure
 	qboolean loopSound; // from an S_AddLoopSound call, cleared each frame
+	qboolean uiSound; // started by the ui module (menu sounds): still plays while the in-game menu mutes the game
 	//
 	MP3STREAM MP3StreamHeader;
 	byte MP3SlidingDecodeBuffer[50000/*12000*/];

@@ -136,6 +136,7 @@ enum
 constexpr int MAX_HOLSTERED = 2; // at most this many guns have a place
 
 static int hlsPlaces[MAX_GENTITIES][HLP_NUM];
+static qboolean hlsBlasterHip[MAX_GENTITIES]; // SS_BLASTER (2026-10-14): the blaster style pistol is on the left hip
 
 // The guns that can be holstered, the ones that come first get a place first.
 // Hip guns: the right hip, then the left (holster types right / left); back guns: the back.
@@ -632,6 +633,21 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 			used++;
 		}
 	}
+	// SS_BLASTER (2026-10-14): someone who knows the blaster saber style carries its bryar pistol on the left hip
+	// while he does not use the style (with the style active it is in his left hand); it takes the left hip before
+	// any other gun
+	const qboolean blasterHip = client->ps.saberStylesKnown & 1 << SS_BLASTER
+		&& BG_HasWeapon(&client->ps, WP_SABER)
+		&& !client->ps.dualSabers
+		&& enabled(HLR_BRYARPISTOL_L)
+		? qtrue
+		: qfalse;
+	hlsBlasterHip[cent->currentState.number] = qfalse;
+	if (blasterHip && places[HLP_LHIP])
+	{
+		places[HLP_LHIP] = WP_NONE;
+		used--;
+	}
 	auto placed = [&](const int weapon)
 		{
 			for (int p = 0; p < HLP_NUM; p++)
@@ -666,7 +682,7 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 			places[HLP_RHIP] = gun.weapon;
 			used++;
 		}
-		else if (!places[HLP_LHIP] && enabled(gun.left))
+		else if (!places[HLP_LHIP] && !blasterHip && enabled(gun.left))
 		{
 			places[HLP_LHIP] = gun.weapon;
 			used++;
@@ -685,6 +701,11 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 			Hls_Render(cent, model, Hls_PlaceType(gun, p), weapon, g2Angles, origin, playerRenderfx, shadowPlane);
 		}
 	}
+	if (blasterHip && !(inHand == WP_SABER && client->ps.saberAnimLevel == SS_BLASTER))
+	{
+		Hls_Render(cent, model, HLR_BRYARPISTOL_L, WP_BRYAR_PISTOL, g2Angles, origin, playerRenderfx, shadowPlane);
+		hlsBlasterHip[cent->currentState.number] = qtrue;
+	}
 }
 
 // Whether a gun is holstered on a hip of this character (wp_saber.cpp then holsters his saber at the front of
@@ -695,6 +716,10 @@ qboolean CG_HolsterHipTaken(const int entNum, const qboolean left)
 		|| entNum != 0 && cg_holsteredweapons.integer < 2 || in_camera)
 	{
 		return qfalse;
+	}
+	if (left && hlsBlasterHip[entNum])
+	{
+		return qtrue; // SS_BLASTER (2026-10-14): the blaster style pistol is on the left hip
 	}
 	const int weapon = hlsPlaces[entNum][left ? HLP_LHIP : HLP_RHIP];
 	if (weapon == WP_NONE)
@@ -724,4 +749,5 @@ void CG_HolsterShutdown()
 	}
 	hlsNumModels = 0; // holster.cfg files are read again (they may have changed)
 	memset(hlsPlaces, 0, sizeof hlsPlaces);
+	memset(hlsBlasterHip, 0, sizeof hlsBlasterHip); // SS_BLASTER (2026-10-14)
 }

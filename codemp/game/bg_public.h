@@ -81,7 +81,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-13,Month-10,Year-26,BuildNum-07" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-14,Month-10,Year-26,BuildNum-08" // build date
 
 #define	STEPSIZE		18
 
@@ -1182,6 +1182,7 @@ typedef enum {
 	EV_BATTERIES_CHARGED,
 	EV_STASIS,
 	EV_BLOCKLINE,
+	EV_SABERBLASTER, // SS_BLASTER (2026-10-14): left hand pistol fire / empty / reload / lock shot (parm saberBlasterEvent_t)
 } entity_event_t;			// There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
 
 typedef enum {
@@ -1874,8 +1875,26 @@ typedef enum saber_styles_e {
 	SS_TAVION,
 	SS_DUAL,
 	SS_STAFF,
+	SS_BLASTER, // SS_BLASTER (2026-10-14): saber right hand + bryar pistol left hand, appended so existing values do not shift
 	SS_NUM_SABER_STYLES
 } saber_styles_t;
+
+// SS_BLASTER (2026-10-14): the left hand bryar pistol of SS_BLASTER (visual only, no inventory weapon)
+#define SABERBLASTER_CLIP_SIZE		20			// bryar shots per clip
+#define SABERBLASTER_RELOAD_TIME	1000		// ms, alt attack + attack
+#define SABERBLASTER_LOCK_CHARGE	1500		// ms of charging in a saberlock before the shot
+#define SABERBLASTER_CLIP_SLOT		AMMO_MAX	// unused ps.ammo[] slot (networked): shots used from the clip (0 = full)
+
+typedef enum
+{
+	SBE_FIRE,		// EV_SABERBLASTER parms
+	SBE_EMPTY,
+	SBE_RELOAD,
+	SBE_LOCKSHOT,
+	SBE_CHARGE
+} saberBlasterEvent_t;
+
+int BG_NextSaberStyleInCycle(int style);
 
 //SABER FLAGS
 //Old bools converted to a flag now
@@ -2105,6 +2124,10 @@ qboolean BG_ClassHasBuiltInJetpack(int botclass);	// the jets are part of the mo
 #define SKELF_CRANIUM	0x0080	// cranium
 #define SKELF_FULL		0x0100	// every bolt/bone the humanoid player code needs (the old, fixed test): no class limits
 int		BG_ModelSkeletonFlags(const char* modelName);	// SKELF_* of the model's own skeleton, 0 when it has none / it is unusable
+// MD->SJE parity (2026-10-13): MovieDuels' skeleton rules (bg_skeleton.c), the same the renderers use (R_SJE_ChooseAnimGLA)
+qboolean BG_IsHumanoidFamilyPath(const char* path);	// a GLA / cfg path in a humanoid-family folder (_humanoid*, JK2anims, ...)
+qboolean BG_IsOwnSkeletonModel(const char* model);	// MD's bone rule: the glm has neither the master's nor 72 bones, cfg next to its GLA
+qboolean BG_GLAFallsBackToMaster(const char* gla, int meshBones); // the renderer puts this glm on the master _humanoid GLA
 qboolean BG_ClassIsCreature(int botclass);			// a creature/droid class that may use a skeleton without the full humanoid bolts
 qboolean BG_ClassSkeletonOk(int botclass, int skelFlags);	// may a model with these SKELF_* flags be played as this class?
 qboolean BG_ClassHasNoFists(int botclass);			// gets no melee either (R2/R5: stun only; gonk, protocol: nothing), as the SP NPC files

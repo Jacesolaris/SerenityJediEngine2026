@@ -473,12 +473,29 @@ const char* SaberColorToString(const saber_colors_t color)
 	return NULL;
 }
 
+// SS_BLASTER (2026-10-14): style cycle order (SS_BLASTER is appended to the enum but cycles after SS_TAVION)
+int BG_NextSaberStyleInCycle(const int style)
+{
+	static const int cycle[] = { SS_FAST, SS_MEDIUM, SS_STRONG, SS_DESANN, SS_TAVION, SS_BLASTER, SS_DUAL, SS_STAFF };
+	const int count = (int)(sizeof cycle / sizeof cycle[0]);
+
+	for (int i = 0; i < count; i++)
+	{
+		if (cycle[i] == style)
+		{
+			return i + 1 < count ? cycle[i + 1] : SS_NUM_SABER_STYLES;
+		}
+	}
+	return style + 1;
+}
+
 saber_styles_t TranslateSaberStyle(const char* name)
 {
 	if (!Q_stricmp(name, "fast")) return SS_FAST;
 	if (!Q_stricmp(name, "medium")) return SS_MEDIUM;
 	if (!Q_stricmp(name, "strong")) return SS_STRONG;
 	if (!Q_stricmp(name, "desann")) return SS_DESANN;
+	if (!Q_stricmp(name, "blaster")) return SS_BLASTER; // SS_BLASTER (2026-10-14)
 	if (!Q_stricmp(name, "tavion")) return SS_TAVION;
 	if (!Q_stricmp(name, "dual")) return SS_DUAL;
 	if (!Q_stricmp(name, "staff")) return SS_STAFF;

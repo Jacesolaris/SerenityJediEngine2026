@@ -665,6 +665,17 @@ static void CG_CalcIdealThirdPersonViewTarget(void)
 	cameraIdealTarget[2] += localVertOffset - CG_LongLeapCameraBlend() * LONG_LEAP_CAMERA_DROP;
 }
 
+// (2026-10-13) cg_fighterCamTight: the pilot of a fighter gets a closer chase camera (x this of the vehicle's
+// cameraRange) that does not swing out sideways and back when strafing
+#define FIGHTER_CAM_TIGHT_RANGE	0.8f
+static qboolean CG_FighterCamTight(const centity_t* veh)
+{
+	return (qboolean)(cg_fighterCamTight.integer
+		&& veh && veh->m_pVehicle && veh->m_pVehicle->m_pVehicleInfo
+		&& veh->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER
+		&& !cg.predictedPlayerState.generic1); //the pilot, not a passenger
+}
+
 /*
 ===============
 CG_CalcTargetThirdPersonViewLocation
@@ -683,7 +694,12 @@ static void CG_CalcIdealThirdPersonViewLocation(void)
 		{
 			//override the range with what the vehicle wants it to be
 			thirdPersonRange = veh->m_pVehicle->m_pVehicleInfo->cameraRange;
-			if (veh->playerState->hackingTime)
+			if (CG_FighterCamTight(veh))
+			{
+				//(2026-10-13) closer, and steady when strafing
+				thirdPersonRange *= FIGHTER_CAM_TIGHT_RANGE;
+			}
+			else if (veh->playerState->hackingTime)
 			{
 				thirdPersonRange += fabs((float)veh->playerState->hackingTime / MAX_STRAFE_TIME) * 100.0f;
 			}
@@ -1004,7 +1020,7 @@ static void CG_OffsetThirdPersonView(void)
 		{
 			//override the range with what the vehicle wants it to be
 			thirdPersonHorzOffset = veh->m_pVehicle->m_pVehicleInfo->cameraHorzOffset;
-			if (veh->playerState->hackingTime)
+			if (veh->playerState->hackingTime && !CG_FighterCamTight(veh)) // (2026-10-13) tight: no sideways swing
 			{
 				thirdPersonHorzOffset += (float)veh->playerState->hackingTime / MAX_STRAFE_TIME * -80.0f;
 			}
@@ -1384,7 +1400,12 @@ static void CG_OffsetFighterView(void)
 		//NOTE: no yaw offset?
 		pitchOffset = veh->m_pVehicle->m_pVehicleInfo->cameraPitchOffset;
 		range = veh->m_pVehicle->m_pVehicleInfo->cameraRange;
-		if (veh->playerState->hackingTime)
+		if (CG_FighterCamTight(veh))
+		{
+			//(2026-10-13) closer, and steady when strafing
+			range *= FIGHTER_CAM_TIGHT_RANGE;
+		}
+		else if (veh->playerState->hackingTime)
 		{
 			horzOffset += (float)veh->playerState->hackingTime / MAX_STRAFE_TIME * -80.0f;
 			range += fabs((float)veh->playerState->hackingTime / MAX_STRAFE_TIME) * 100.0f;
@@ -3289,6 +3310,22 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView, co
 			}
 
 			trap->SetUserCmdValue(cg.weaponSelect, mSensitivity, mPitchOverride, mYawOverride, 0.0f, cg.forceSelect, cg.itemSelect, qfalse);
+		}
+	}
+
+	// (2026-10-13) tell the client when the player pilots a fighter: there a controller flies it (cl_fighterPad)
+	{
+		static int lastFighterPilot = -1;
+		const centity_t* pilotVeh = cg.predictedPlayerState.m_iVehicleNum
+			? &cg_entities[cg.predictedPlayerState.m_iVehicleNum] : NULL;
+		const int fighterPilot = pilotVeh && pilotVeh->m_pVehicle && pilotVeh->m_pVehicle->m_pVehicleInfo
+			&& pilotVeh->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER
+			&& !cg.predictedPlayerState.generic1 ? 1 : 0;
+
+		if (fighterPilot != lastFighterPilot)
+		{
+			trap->Cvar_Set("cl_fighterPilot", fighterPilot ? "1" : "0");
+			lastFighterPilot = fighterPilot;
 		}
 	}
 

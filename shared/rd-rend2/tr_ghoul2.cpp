@@ -3970,6 +3970,12 @@ int NewToOldRemapTable[53] = {
 71  // JKA Bone 52 face                 to JK2 Bone 71 face
 };
 
+#ifndef REND2_SP
+// MD->SJE parity (2026-10-13): the animation set (GLA) a mesh loads, the one its glm names or the master (tr_model.cpp)
+qhandle_t R_SJE_ChooseAnimGLA(const char* meshName, const mdxmHeader_t* mdxm, qboolean fresh, qboolean server, char* usedName,
+	int usedNameSize);
+#endif // !REND2_SP
+
 qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& bAlreadyCached)
 {
 	int					i, l, j;
@@ -4033,7 +4039,20 @@ qboolean R_LoadMDXM(model_t* mod, void* buffer, const char* mod_name, qboolean& 
 	}
 
 	// first up, go load in the animation file we need that has the skeletal animation info for this model
+#ifndef REND2_SP
+	// MD->SJE parity (2026-10-13): the GLA the glm names, or the master one (R_SJE_ChooseAnimGLA, tr_model.cpp); the glm
+	// keeps the name of the GLA actually loaded (G2API_GetGLAName: the game and cgame pick the animation.cfg from it)
+	{
+		char animNameToUse[MAX_QPATH];
+		mdxm->animIndex = R_SJE_ChooseAnimGLA(mod_name, mdxm, (qboolean)!bAlreadyFound, qfalse, animNameToUse, sizeof animNameToUse);
+		if (mdxm->animIndex)
+		{
+			Q_strncpyz(mdxm->animName, animNameToUse, sizeof mdxm->animName);
+		}
+	}
+#else
 	mdxm->animIndex = RE_RegisterModel(va("%s.gla", mdxm->animName));
+#endif
 
 #ifdef REND2_SP // per-map GLA override (sv_mapname is an SP renderer cvar)
 	char  animGLAName[MAX_QPATH];

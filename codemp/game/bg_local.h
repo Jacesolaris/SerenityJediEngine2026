@@ -59,6 +59,8 @@ extern pml_t pml;
 
 extern int c_pmove;
 
+extern qboolean pm_saberBlasterAlt; // SS_BLASTER (2026-10-14): alt attack held this pmove
+
 extern int forcePowerNeeded[NUM_FORCE_POWER_LEVELS][NUM_FORCE_POWERS];
 
 extern int forcePowerNeededlevel1[NUM_FORCE_POWER_LEVELS][NUM_FORCE_POWERS];

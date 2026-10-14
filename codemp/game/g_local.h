@@ -792,6 +792,7 @@ struct gclient_s
 	int invulnerableTimer;
 
 	int saberCycleQueue;
+	int saberBlasterLockEnemy; // SS_BLASTER (2026-10-14): saberlock enemy before this Pmove (lock shot target)
 
 	int legsAnimExecute;
 	int torsoAnimExecute;
@@ -1788,6 +1789,7 @@ void G_WeatherCommand_f(const gentity_t* ent);
 // g_team.c
 //
 qboolean OnSameTeam(const gentity_t* ent1, const gentity_t* ent2);
+void G_SaberBlasterFire(gentity_t* ent, qboolean charged, gentity_t* target); // SS_BLASTER (2026-10-14)
 void Team_CheckDroppedItem(const gentity_t* dropped);
 
 // Holocron table Externs.

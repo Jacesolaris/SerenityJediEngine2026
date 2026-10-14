@@ -1080,6 +1080,7 @@ using saber_styles_t = enum
 	SS_TAVION,
 	SS_DUAL,
 	SS_STAFF,
+	SS_BLASTER, // SS_BLASTER (2026-10-14): saber right hand + bryar pistol left hand, appended so existing values do not shift
 	SS_NUM_SABER_STYLES
 };
 

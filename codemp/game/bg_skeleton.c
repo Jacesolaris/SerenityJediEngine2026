@@ -178,6 +178,217 @@ qboolean BG_GLAIsHumanoid(const char* glaName)
 	return qtrue;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// MD->SJE parity (2026-10-13): MovieDuels' skeleton rules. The renderers (R_SJE_ChooseAnimGLA, tr_model.cpp) load the
+// GLA a model.glm names, except a humanoid-family GLA (BG_IsHumanoidFamilyPath) that is missing or has no animation.cfg
+// next to it (an MD model on _humanoid_md, _humanoid_kotor, _humanoid_luke... that SJE does not ship): such a glm is put
+// on the master models/players/_humanoid GLA when its bone count fits the master skeleton (53, or 72 for old remapped
+// models), and keeps its own GLA when it does not (MD's bone rule, BG_IsOwnSkeletonModel). bg reads the same files, so
+// the server, the cgame and the ui's character menu agree with the renderer.
+// ---------------------------------------------------------------------------------------------------------------
+#define BG_MASTER_HUMANOID_FOLDER	"models/players/_humanoid/"
+#define BG_MASTER_HUMANOID_GLA		"models/players/_humanoid/_humanoid"
+#define BG_OLD_HUMANOID_BONES		72	// old _humanoid models, remapped onto the master skeleton by the renderer
+#define BG_MDXM_NUMBONES_OFS		140
+#define BG_MDXA_NUMBONES_OFS		84
+#define BG_OWN_SKEL_CACHE			64
+
+// MovieDuels' humanoid-family folders (its renderers' humanoid_prefixes, the same list as R_SJE_ChooseAnimGLA's)
+static const char* const bgHumanoidPrefixes[] =
+{
+	"models/players/_humanoid",
+	"models/players/JK2anims",
+	"models/players/_humanoid_ani",
+	"models/players/_humanoid_bdroid",
+	"models/players/_humanoid_ben",
+	"models/players/_humanoid_cal",
+	"models/players/_humanoid_clo",
+	"models/players/_humanoid_deka",
+	"models/players/_humanoid_df2",
+	"models/players/_humanoid_dooku",
+	"models/players/_humanoid_galen",
+	"models/players/_humanoid_gon",
+	"models/players/_humanoid_grievous",
+	"models/players/_humanoid_jabba",
+	"models/players/_humanoid_jango",
+	"models/players/_humanoid_kotor",
+	"models/players/_humanoid_luke",
+	"models/players/_humanoid_mace",
+	"models/players/_humanoid_maul",
+	"models/players/_humanoid_md",
+	"models/players/_humanoid_melee",
+	"models/players/_humanoid_obi",
+	"models/players/_humanoid_obi3",
+	"models/players/_humanoid_pal",
+	"models/players/_humanoid_reb",
+	"models/players/_humanoid_ren",
+	"models/players/_humanoid_rey",
+	"models/players/_humanoid_sbd",
+	"models/players/_humanoid_vader",
+	"models/players/_humanoid_yoda",
+	"models/players/darktrooper_tv",
+	"models/players/hazardtrooper/hazardtrooper",
+	"models/players/rockettrooper/rockettrooper",
+	"models/players/protocol/protocol",
+	"models/players/assassin_droid/model",
+	"models/players/saber_droid/model",
+	"models/players/wampa/wampa"
+};
+
+qboolean BG_IsHumanoidFamilyPath(const char* path)
+{
+	if (!path || !path[0])
+	{
+		return qfalse;
+	}
+	for (int i = 0; i < (int)ARRAY_LEN(bgHumanoidPrefixes); i++)
+	{
+		if (!Q_stricmpn(path, bgHumanoidPrefixes[i], (int)strlen(bgHumanoidPrefixes[i])))
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+// the bone count of a GLA (name without ".gla"), 0 when it is missing or not a GLA
+static int BG_GLABoneCount(const char* gla)
+{
+	byte head[BG_MDXA_HEADER_SIZE];
+	char path[MAX_QPATH];
+
+	Com_sprintf(path, sizeof path, "%s.gla", gla);
+	const int len = BG_ReadFileStart(path, head, (int)sizeof head);
+	if (len < (int)sizeof head || memcmp(head, "2LGA", 4) != 0)
+	{
+		return 0;
+	}
+	const int numBones = BG_ReadFileInt(head, len, BG_MDXA_NUMBONES_OFS);
+	return numBones > 0 ? numBones : 0;
+}
+
+// the master skeleton's bone count (53)
+static int BG_MasterBoneCount(void)
+{
+	static int master = 0;
+
+	if (master <= 0)
+	{
+		master = BG_GLABoneCount(BG_MASTER_HUMANOID_GLA);
+		if (master <= 0)
+		{
+			master = 53;
+		}
+	}
+	return master;
+}
+
+// the renderer's rule: a mesh with this many bones is never put on the master skeleton
+static qboolean BG_BoneCountIsOwnSkeleton(const int numBones)
+{
+	return numBones > 0 && numBones != BG_OLD_HUMANOID_BONES && numBones != BG_MasterBoneCount() ? qtrue : qfalse;
+}
+
+// does the GLA's folder ("models/players/<X>/<gla>") have an animation.cfg?
+static qboolean BG_GLAFolderHasAnimCfg(const char* gla)
+{
+	char path[MAX_QPATH];
+	fileHandle_t f = 0;
+
+	Q_strncpyz(path, gla, sizeof path);
+	char* slash = strrchr(path, '/');
+	if (!slash || (size_t)(slash - path) + sizeof "/animation.cfg" > sizeof path)
+	{
+		return qfalse;
+	}
+	Q_strncpyz(slash, "/animation.cfg", (int)(sizeof path - (size_t)(slash - path)));
+
+	const int len = trap->FS_Open(path, &f, FS_READ);
+	if (f)
+	{
+		trap->FS_Close(f);
+	}
+	return len > 0 ? qtrue : qfalse;
+}
+
+// MovieDuels' own-skeleton rule (its bg_misc.c BG_IsOwnSkeletonModel): the model string's model.glm has neither the
+// master's nor 72 bones (the renderer keeps its GLA) and the GLA's folder has an animation.cfg. Cached per folder.
+qboolean BG_IsOwnSkeletonModel(const char* model)
+{
+	static struct
+	{
+		char		folder[MAX_QPATH];
+		qboolean	own;
+	} cache[BG_OWN_SKEL_CACHE];
+	static int numCached = 0;
+	char folder[MAX_QPATH];
+	char path[MAX_QPATH];
+	byte head[BG_MDXM_HEADER_SIZE];
+	int n = 0;
+
+	if (!model || !model[0])
+	{
+		return qfalse;
+	}
+	for (const char* s = model; *s && *s != '/' && *s != '\\' && *s != '|' && n < (int)sizeof folder - 1; s++)
+	{
+		const char c = *s;
+		if (Q_IsColorString(s))
+		{
+			s++;
+			continue;
+		}
+		folder[n++] = c;
+	}
+	folder[n] = 0;
+	if (!folder[0])
+	{
+		return qfalse;
+	}
+
+	for (int i = 0; i < numCached; i++)
+	{
+		if (!Q_stricmp(cache[i].folder, folder))
+		{
+			return cache[i].own;
+		}
+	}
+
+	qboolean own = qfalse;
+	Com_sprintf(path, sizeof path, "models/players/%s/model.glm", folder);
+	const int len = BG_ReadFileStart(path, head, (int)sizeof head);
+	const char* animName = BG_ReadFileName(head, len, 72);
+	if (len >= BG_MDXM_HEADER_SIZE && !memcmp(head, "2LGM", 4) && animName && animName[0] &&
+		BG_BoneCountIsOwnSkeleton(BG_ReadFileInt(head, len, BG_MDXM_NUMBONES_OFS)))
+	{
+		own = BG_GLAFolderHasAnimCfg(animName);
+	}
+
+	if (numCached < BG_OWN_SKEL_CACHE)
+	{
+		Q_strncpyz(cache[numCached].folder, folder, sizeof cache[numCached].folder);
+		cache[numCached].own = own;
+		numCached++;
+	}
+	return own;
+}
+
+// Does the renderer put a glm naming this GLA (with meshBones bones) on the master _humanoid GLA? The master folder
+// itself, or a humanoid-family GLA that is missing or has no animation.cfg next to it - in both cases only when the
+// mesh fits the master skeleton (R_SJE_ChooseAnimGLA's bone guard keeps the own GLA otherwise).
+qboolean BG_GLAFallsBackToMaster(const char* gla, const int meshBones)
+{
+	if (!gla || !gla[0] || !BG_IsHumanoidFamilyPath(gla) || BG_BoneCountIsOwnSkeleton(meshBones))
+	{
+		return qfalse;
+	}
+	if (!Q_stricmpn(gla, BG_MASTER_HUMANOID_FOLDER, (int)strlen(BG_MASTER_HUMANOID_FOLDER)))
+	{
+		return qtrue;
+	}
+	return !BG_GLAFolderHasAnimCfg(gla) || BG_GLABoneCount(gla) <= 0 ? qtrue : qfalse;
+}
+
 // The player bolts/bones of a model's own skeleton ("folder", "folder/skin" or "folder/|head|torso|legs"), SKELF_*.
 // 0 when its model.glm names players/_humanoid/ (the normal path) or the skeleton cannot be used by a player at all.
 // A usable own skeleton: the glm names a GLA outside players/_humanoid/, that GLA's folder has an animation.cfg with
@@ -225,7 +436,11 @@ static int BG_ModelSkeletonCheck(const char* modelName, char* glaOut, const int 
 	}
 	Q_strncpyz(gla, animName, sizeof gla);
 
-	if (strstr(gla, "players/_humanoid/"))
+	// MD->SJE parity (2026-10-13): a humanoid-family GLA SJE does not have (or without its animation.cfg) is replaced by
+	// the master one in the renderer when the mesh fits the master skeleton: the normal path, as the master itself
+	// (BG_GLAFallsBackToMaster). Only a mesh with another bone count (MD's rule, BG_IsOwnSkeletonModel) keeps its own.
+	if (BG_GLAFallsBackToMaster(gla, BG_ReadFileInt(bgGLMReadBuf, glmLen, BG_MDXM_NUMBONES_OFS)) ||
+		strstr(gla, "players/_humanoid/") && !BG_IsOwnSkeletonModel(modelName))
 	{
 		return 0; // the master skeleton: the normal path
 	}
@@ -324,7 +539,10 @@ qboolean BG_ModelUsesHumanoidGLA(const char* modelName)
 	{
 		return qfalse;
 	}
-	return strstr(animName, "players/_humanoid/") ? qtrue : qfalse;
+	// MD->SJE parity (2026-10-13): also a glm the renderer puts on the master GLA (an MD model on a dedicated
+	// _humanoid_* set SJE does not ship, BG_GLAFallsBackToMaster)
+	return strstr(animName, "players/_humanoid/") ||
+		BG_GLAFallsBackToMaster(animName, BG_ReadFileInt(bgGLMReadBuf, glmLen, BG_MDXM_NUMBONES_OFS)) ? qtrue : qfalse;
 }
 
 int BG_ModelSkeletonFlags(const char* modelName)
@@ -371,6 +589,12 @@ qboolean BG_ClassSkeletonOk(const int botclass, const int skelFlags)
 	if (!(skelFlags & SKELF_OWN) || skelFlags & SKELF_FULL)
 	{
 		return qtrue;
+	}
+	if (botclass == BCLASS_ELDER)
+	{
+		// MD->SJE parity (2026-10-13), as MD: melee only, no Force, no saber (jabba: both hands and a head, no Motion /
+		// upper_lumbar)
+		return (skelFlags & (SKELF_RHAND | SKELF_LHAND | SKELF_HEAD)) == (SKELF_RHAND | SKELF_LHAND | SKELF_HEAD) ? qtrue : qfalse;
 	}
 	if (!BG_ClassIsCreature(botclass))
 	{

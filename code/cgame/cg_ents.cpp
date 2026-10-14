@@ -367,6 +367,17 @@ void CG_AddRadarEnt(const centity_t* cent)
 	cg.radarEntities[cg.radarEntityCount++] = cent->currentState.number;
 }
 
+void CG_AddBracketedEnt(const centity_t* cent)
+{
+	static constexpr size_t num_bracket_ents = std::size(cg.bracketedEntities);
+	if (cg.bracketedEntityCount >= num_bracket_ents)
+	{
+		return;
+	}
+	cg.bracketedEntities[cg.bracketedEntityCount++] = cent->currentState.number;
+}
+
+extern qboolean CG_InFighter();
 /*
 ==================
 CG_General
@@ -380,6 +391,15 @@ static void CG_General(centity_t* cent)
 	if (cent->currentState.eFlags2 & EF2_RADAROBJECT)
 	{
 		CG_AddRadarEnt(cent);
+	}
+
+	if (cent->currentState.eFlags2 & EF2_BRACKET_ENTITY)
+	{
+		if (CG_InFighter())
+		{
+			//only bracken when in a fighter
+			CG_AddBracketedEnt(cent);
+		}
 	}
 
 	s1 = &cent->currentState;

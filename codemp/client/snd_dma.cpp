@@ -1491,14 +1491,32 @@ Starts an ambient, 'one-shot" sound.
 // The Pazaak board is open (s_pazaakMute, set by the UI): everything but the interface sounds is quiet
 int Key_GetCatcher();
 
+static qboolean s_startingUISound; // S_StartLocalSoundUI is starting a menu sound
+
+// The in-game menu is open (Escape: the UI has the keys while in a game, not a demo): game sounds, loops, ambience and
+// music are quiet, only the menu's own sounds play (DH 2026-10-13). The cgame weapon / force wheel has its own key
+// catcher and keeps the sound; the main menu and the loading screen are not "in a game".
+static qboolean S_InGameMenuOpen()
+{
+	return cls.state == CA_ACTIVE && !clc.demoplaying && Key_GetCatcher() & KEYCATCH_UI ? qtrue : qfalse;
+}
+
 static qboolean S_PazaakMuted(const int entchannel)
 {
+	if (s_startingUISound)
+	{
+		return qfalse;
+	}
+	if (S_InGameMenuOpen())
+	{
+		return qtrue;
+	}
 	return s_pazaakMute && s_pazaakMute->integer && entchannel != CHAN_LOCAL_SOUND ? qtrue : qfalse;
 }
 
 static float S_MusicVolume()
 {
-	return s_pazaakMute && s_pazaakMute->integer ? 0.0f : s_musicVolume->value;
+	return s_pazaakMute && s_pazaakMute->integer || S_InGameMenuOpen() ? 0.0f : s_musicVolume->value;
 }
 
 void S_StartAmbientSound(const vec3_t origin, const int entityNum, const unsigned char volume,
@@ -1561,6 +1579,7 @@ void S_StartAmbientSound(const vec3_t origin, const int entityNum, const unsigne
 	ch->entnum = entityNum;
 	ch->entchannel = CHAN_AMBIENT;
 	ch->thesfx = sfx;
+	ch->uiSound = s_startingUISound;
 	ch->startSample = START_SAMPLE_IMMEDIATE;
 
 	ch->leftvol = ch->master_vol; // these will get calced at next spatialize
@@ -1712,6 +1731,7 @@ void S_StartSound(const vec3_t origin, const int entityNum, const int entchannel
 	ch->entnum = entityNum;
 	ch->entchannel = entchannel;
 	ch->thesfx = sfx;
+	ch->uiSound = s_startingUISound;
 	ch->startSample = START_SAMPLE_IMMEDIATE;
 
 	ch->leftvol = ch->master_vol; // these will get calced at next spatialize
@@ -1757,6 +1777,14 @@ void S_StartLocalSound(const sfxHandle_t sfxHandle, const int channelNum)
 	}
 
 	S_StartSound(nullptr, listener_number, channelNum, sfxHandle);
+}
+
+// a sound from the ui module (menu button / focus sounds): it still plays while the in-game menu mutes the game
+void S_StartLocalSoundUI(const sfxHandle_t sfxHandle, const int channelNum)
+{
+	s_startingUISound = qtrue;
+	S_StartLocalSound(sfxHandle, channelNum);
+	s_startingUISound = qfalse;
 }
 
 /*
@@ -2193,6 +2221,7 @@ static void S_AddLoopSounds(void)
 		ch->rightvol = right_total;
 		ch->loopSound = qtrue; // remove next frame
 		ch->thesfx = loop->sfx;
+		ch->uiSound = qfalse;
 
 		ch->doppler = loop->doppler;
 		ch->dopplerScale = loop->dopplerScale;
@@ -2838,6 +2867,40 @@ static void S_DoLipSynchs(const unsigned s_oldpaintedtime)
 	}
 }
 
+// stops every sound but the menu's own (the in-game menu opened)
+static void S_StopGameSounds()
+{
+	S_ClearLoopingSounds();
+
+	channel_t* ch = s_channels;
+	for (int i = 0; i < MAX_CHANNELS; i++, ch++)
+	{
+		if (!ch->thesfx || ch->uiSound)
+		{
+			continue;
+		}
+#ifdef USE_OPENAL
+		if (s_UseOpenAL)
+		{
+			alSourceStop(ch->alSource);
+			alSourcei(ch->alSource, AL_BUFFER, NULL);
+			ch->thesfx = nullptr;
+			memset(&ch->MP3StreamHeader, 0, sizeof(MP3STREAM));
+			ch->bLooping = false;
+			ch->bProcessed = false;
+			ch->bPlaying = false;
+			ch->bStreaming = false;
+			continue;
+		}
+#endif
+		ch->thesfx = nullptr;
+		ch->loopSound = qfalse;
+	}
+
+	// clear out the lip synching override array
+	memset(s_entityWavVol, 0, sizeof s_entityWavVol);
+}
+
 /*
 ============
 S_Update
@@ -2858,6 +2921,17 @@ void S_Update(void)
 	if (s_pazaakMute && s_pazaakMute->integer && !(Key_GetCatcher() & 0x0002))
 	{
 		Cvar_Set("s_pazaakMute", "0"); // no UI any more (KEYCATCH_UI): the board was closed some other way
+	}
+	// the in-game menu just opened: stop the game's sounds and loops (new ones are kept out while it stays open), the
+	// menu's own sounds keep playing; closing it lets everything back in
+	static qboolean s_menuMuted = qfalse;
+	if (S_InGameMenuOpen() != s_menuMuted)
+	{
+		s_menuMuted = S_InGameMenuOpen();
+		if (s_menuMuted && s_soundStarted)
+		{
+			S_StopGameSounds();
+		}
 	}
 
 	if (!s_soundStarted || s_soundMuted)
@@ -3548,6 +3622,7 @@ void UpdateLoopingSounds()
 			ch->entnum = loop->entnum;
 			ch->entchannel = CHAN_AMBIENT; // Make sure this gets set to something
 			ch->thesfx = loop->sfx;
+			ch->uiSound = qfalse;
 			ch->bLooping = true;
 
 			// Check if the Source is positioned at exactly the same location as the listener

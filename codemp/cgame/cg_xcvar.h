@@ -34,6 +34,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 
 XCVAR_DEF(bg_fighterAltControl, "0", NULL, CVAR_SYSTEMINFO)
+XCVAR_DEF(g_fighterArcade, "1", NULL, CVAR_SYSTEMINFO)	// (2026-10-13) fighter flight model, value from the server (bg prediction)
+XCVAR_DEF(g_fighterTurnScale, "1.6", NULL, CVAR_SYSTEMINFO)	// (2026-10-13) fighter turn rate scale, value from the server (bg prediction)
+XCVAR_DEF(cg_fighterCamTight, "1", NULL, CVAR_ARCHIVE)	// (2026-10-13) fighters: 1 = closer chase camera that does not swing out when strafing, 0 = the old camera
 XCVAR_DEF(g_repulseHoverHeight, "90", NULL, CVAR_SYSTEMINFO)	// Force Repulse hover height, value from the server (bg_pmove)
 XCVAR_DEF(broadsword, "1", NULL, CVAR_ARCHIVE)
 XCVAR_DEF(cg_animBlend, "1", NULL, CVAR_NONE)

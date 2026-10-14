@@ -290,7 +290,7 @@ models/players/visor/animation.cfg, etc
 
 ======================
 */
-static char UIPAFtext[180000];
+static char UIPAFtext[262144]; // MD->SJE parity (2026-10-13): 256 KB (was 180000), as bg_panimate.c BG_ANIM_TEXT_BUFFER_SIZE
 
 int UI_ParseAnimationFile(const char* filename, animation_t* animset, qboolean is_humanoid)
 {
@@ -1597,8 +1597,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 13/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 07------------------------------\n");
+	Com_Printf("---------------------Build date 14/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 08------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");

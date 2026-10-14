@@ -1486,7 +1486,7 @@ qboolean PM_SaberKataDone(const int curmove, const int newmove)
 		}
 	}
 
-	if (pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_TAVION)
+	if ((pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER) || pm->ps->fd.saberAnimLevel == SS_TAVION) // SS_BLASTER (2026-10-14)
 	{
 		//desann and tavion can link up as many attacks as they want
 		return qfalse;
@@ -2028,6 +2028,27 @@ static void PM_SaberLocked(void)
 		PM_InSaberLock(pm->ps->torsoAnim) &&
 		PM_InSaberLock(genemy->torsoAnim))
 	{
+		if (pm->ps->fd.saberAnimLevel == SS_BLASTER && pm->ps->weapon == WP_SABER)
+		{
+			// SS_BLASTER (2026-10-14): alt attack charges the pistol (weaponChargeTime), then the charged shot at the
+			// enemy's chest (server: EV_SABERBLASTER SBE_LOCKSHOT) ends the lock as a win
+			if (!pm->ps->weaponChargeTime)
+			{
+				if (pm_saberBlasterAlt)
+				{
+					pm->ps->weaponChargeTime = pm->cmd.serverTime;
+					PM_AddEventWithParm(EV_SABERBLASTER, SBE_CHARGE);
+				}
+			}
+			else if (pm->cmd.serverTime - pm->ps->weaponChargeTime >= SABERBLASTER_LOCK_CHARGE)
+			{
+				pm->ps->weaponChargeTime = 0;
+				PM_AddEventWithParm(EV_SABERBLASTER, SBE_LOCKSHOT);
+				PM_SaberLockBreak(genemy, qtrue, 0);
+				return;
+			}
+		}
+
 		pm->ps->torsoTimer = 0;
 		pm->ps->weaponTime = 0;
 		genemy->torsoTimer = 0;
@@ -2594,7 +2615,7 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean noSpecials)
 		}
 		return LS_A_JUMP_T__B_;
 	}
-	if (pm->ps->fd.saberAnimLevel == SS_DESANN)
+	if ((pm->ps->fd.saberAnimLevel == SS_DESANN))
 	{
 		VectorCopy(pm->ps->viewangles, fwdAngles);
 		fwdAngles[PITCH] = fwdAngles[ROLL] = 0;
@@ -2607,6 +2628,10 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean noSpecials)
 			return LS_A_JUMP_PALP_;
 		}
 		return LS_A_JUMP_T__B_;
+	}
+	if ((pm->ps->fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
+	{
+		return LS_SPINATTACK;
 	}
 	if (pm->ps->fd.saberAnimLevel == SS_TAVION)
 	{
@@ -3484,7 +3509,7 @@ static saberMoveName_t PM_SaberAttackForMovement(const int curmove)
 			}
 			else if (!noSpecials &&
 				(pm->ps->fd.saberAnimLevel == SS_STRONG
-					|| pm->ps->fd.saberAnimLevel == SS_DESANN) &&
+					|| (pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER)) && // SS_BLASTER (2026-10-14)
 				pm->ps->velocity[2] > 100 &&
 				PM_GroundDistance() < 32 &&
 				!PM_InSpecialJump(pm->ps->legsAnim) &&
@@ -4794,7 +4819,7 @@ static qboolean PM_SaberBlocking(void)
 		else if ((pm->ps->fd.saberAnimLevel == SS_FAST ||
 			pm->ps->fd.saberAnimLevel == SS_MEDIUM ||
 			pm->ps->fd.saberAnimLevel == SS_STRONG ||
-			pm->ps->fd.saberAnimLevel == SS_DESANN ||
+			(pm->ps->fd.saberAnimLevel == SS_DESANN || pm->ps->fd.saberAnimLevel == SS_BLASTER) || // SS_BLASTER (2026-10-14)
 			pm->ps->fd.saberAnimLevel == SS_TAVION) &&
 			(pm->cmd.buttons & BUTTON_WALKING && pm->cmd.buttons & BUTTON_USE)
 			&& pm->ps->saberBlocked >= BLOCKED_UPPER_RIGHT
@@ -5357,6 +5382,7 @@ static qboolean PM_CanDoSmashdown(const pmove_t* pm)
 	case SS_TAVION:
 	case SS_STRONG:
 	case SS_DESANN:
+	case SS_BLASTER: // SS_BLASTER (2026-10-14)
 	case SS_MEDIUM:
 		chanceThreshold = 95;
 		break;
@@ -5481,10 +5507,18 @@ static void PM_KataAnimationStyle(void)
 		switch (pm->ps->fd.saberAnimLevel)
 		{
 		case SS_FAST:
+		case SS_BLASTER:
 		{
 			if (PM_CanDoSmashdown(pm) == qtrue)
 			{
-				PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+				if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+				}
+				else
+				{
+					PM_SetSaberMove(LS_SMASHDOWN_SINGLE);
+				}
 			}
 			else if (saber0 && saber0->type == SABER_SINGLE_YODA)
 			{
@@ -5881,13 +5915,17 @@ void PM_WeaponLightsaber(void)
 		{
 			if (is_walking_and_blocking == qtrue)
 			{
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(), SETANIM_FLAG_OVERRIDE);
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(), SETANIM_FLAG_OVERRIDE);
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(), SETANIM_FLAG_OVERRIDE);
 				}
 				else
 				{
@@ -6010,6 +6048,9 @@ void PM_WeaponLightsaber(void)
 			case SS_DUAL:
 				PM_SetAnim(SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				break;
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
+				PM_SetAnim(SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+				break;
 			case SS_STAFF:
 				PM_SetAnim(SETANIM_TORSO, BOTH_SABERPULL_ALT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 				break;
@@ -6079,6 +6120,9 @@ void PM_WeaponLightsaber(void)
 				case SS_STRONG:
 				case SS_DESANN:
 				case SS_DUAL:
+					PM_SetAnim(SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+					break;
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					PM_SetAnim(SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 					break;
 				case SS_STAFF:
@@ -6267,13 +6311,17 @@ weapChecks:
 			{
 				if (is_walking_and_blocking == qtrue)
 				{
-					if (pm->ps->saberAnimLevel == SS_DUAL)
+					if ((pm->ps->saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 					{
 						PM_BlockingPoseForsaber_anim_levelDual();
 					}
 					else if (pm->ps->saberAnimLevel == SS_STAFF)
 					{
 						PM_BlockingPoseForsaber_anim_levelStaff();
+					}
+					else if (pm->ps->saberAnimLevel == SS_BLASTER)
+					{
+						PM_BlockingPoseForsaber_anim_levelSingle();
 					}
 					else
 					{
@@ -6630,13 +6678,17 @@ weapChecks:
 			// Blocking override
 			if (is_walking_and_blocking == qtrue)
 			{
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(), SETANIM_FLAG_OVERRIDE);
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(), SETANIM_FLAG_OVERRIDE);
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(), SETANIM_FLAG_OVERRIDE);
 				}
 				else
 				{
@@ -6980,13 +7032,17 @@ weapChecks:
 				{
 					if (is_walking_and_blocking == qtrue)
 					{
-						if (pm->ps->saberAnimLevel == SS_DUAL)
+						if ((pm->ps->saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 						{
 							PM_BlockingPoseForsaber_anim_levelDual();
 						}
 						else if (pm->ps->saberAnimLevel == SS_STAFF)
 						{
 							PM_BlockingPoseForsaber_anim_levelStaff();
+						}
+						else if (pm->ps->saberAnimLevel == SS_BLASTER)
+						{
+							PM_BlockingPoseForsaber_anim_levelSingle();
 						}
 						else
 						{
@@ -7059,9 +7115,13 @@ weapChecks:
 		{
 			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 		}
-		else if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+		else if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) 
 		{
 			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+		}
+		else if ((pm->ps->fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
+		{
+			PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(), SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 		}
 		else
 		{
@@ -7438,7 +7498,11 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 
 	if (new_move == LS_DRAW || new_move == LS_DRAW2 || new_move == LS_DRAW3)
 	{
-		if (saber1
+		if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+		{
+			anim = BOTH_STAND1TO2; // SS_BLASTER (2026-10-14): draw anim placeholder
+		}
+		else if (saber1
 			&& saber1->drawAnim != -1)
 		{
 			anim = saber1->drawAnim;
@@ -7478,7 +7542,11 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 	}
 	else if (new_move == LS_PUTAWAY)
 	{
-		if (saber1
+		if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+		{
+			anim = BOTH_STAND2TO1; // SS_BLASTER (2026-10-14): put-away anim placeholder
+		}
+		else if (saber1
 			&& saber1->putawayAnim != -1)
 		{
 			anim = saber1->putawayAnim;
@@ -7505,9 +7573,29 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		}
 	}
 	//different styles use different animations for the DFA move.
-	else if (new_move == LS_A_JUMP_T__B_ && pm->ps->fd.saberAnimLevel == SS_DESANN)
+	else if (new_move == LS_A_JUMP_T__B_ && (pm->ps->fd.saberAnimLevel == SS_DESANN)) // SS_BLASTER (2026-10-14)
 	{
 		anim = Q_irand(BOTH_FJSS_TR_BL, BOTH_FJSS_TL_BR);
+	}
+	else if (new_move == LS_A_JUMP_T__B_ && (pm->ps->fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
+	{
+		anim = BOTH_JUMPATTACK6;
+	}
+	else if (pm->ps->fd.saberAnimLevel == SS_BLASTER && new_move >= LS_V1_BR && new_move < LS_REFLECT_LL)
+	{
+		// SS_BLASTER (2026-10-14): knockaways, parries, broken parries and reflects use the SS_DUAL set
+		anim = BOTH_P6_S6_T_ + (anim - BOTH_P1_S1_T_);
+	}
+	else if (pm->ps->fd.saberAnimLevel == SS_BLASTER
+		&& !PM_SaberInIdle(new_move) && !PM_SaberInParry(new_move) && !PM_SaberInKnockaway(new_move)
+		&& !PM_SaberInBrokenParry(new_move) && !PM_SaberInReflect(new_move) && !PM_SaberInSpecial(new_move))
+	{
+		// SS_BLASTER (2026-10-14): the SS_DESANN anims, except the top-to-bottom attack, which uses the staff one
+		anim += (SS_DESANN - FORCE_LEVEL_1) * SABER_ANIM_GROUP_SIZE;
+		if (anim == BOTH_A4_T__B_)
+		{
+			anim = BOTH_PULL_IMPALE_STAB;
+		}
 	}
 	else if (pm->ps->fd.saberAnimLevel == SS_STAFF && new_move >= LS_S_TL2BR && new_move < LS_REFLECT_LL)
 	{
@@ -7608,13 +7696,17 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		{
 			if (is_walking_and_blocking == qtrue)
 			{
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelDual();
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelStaff();
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					anim = PM_BlockingPoseForsaber_anim_levelSingle();
 				}
 				else
 				{
@@ -7631,13 +7723,17 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		{
 			if (is_walking_and_blocking == qtrue)
 			{
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelDual(), SETANIM_FLAG_OVERRIDE);
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelStaff(), SETANIM_FLAG_OVERRIDE);
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					PM_SetAnim(SETANIM_TORSO, PM_BlockingPoseForsaber_anim_levelSingle(), SETANIM_FLAG_OVERRIDE);
 				}
 				else
 				{
@@ -7655,13 +7751,17 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		{
 			if (is_walking_and_blocking == qtrue)
 			{
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelDual();
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelStaff();
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					anim = PM_BlockingPoseForsaber_anim_levelSingle();
 				}
 				else
 				{
@@ -7678,13 +7778,17 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 		{
 			if (is_walking_and_blocking == qtrue)
 			{
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelDual();
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelStaff();
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					anim = PM_BlockingPoseForsaber_anim_levelSingle();
 				}
 				else
 				{
@@ -7777,13 +7881,17 @@ void PM_SetSaberMove(saberMoveName_t new_move)
 				&& !PM_SaberInSpecial(new_move))
 			{
 				parts = SETANIM_TORSO;
-				if (pm->ps->fd.saberAnimLevel == SS_DUAL)
+				if ((pm->ps->fd.saberAnimLevel == SS_DUAL)) // SS_BLASTER (2026-10-14)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelDual();
 				}
 				else if (pm->ps->fd.saberAnimLevel == SS_STAFF)
 				{
 					anim = PM_BlockingPoseForsaber_anim_levelStaff();
+				}
+				else if (pm->ps->fd.saberAnimLevel == SS_BLASTER)
+				{
+					anim = PM_BlockingPoseForsaber_anim_levelSingle();
 				}
 				else
 				{

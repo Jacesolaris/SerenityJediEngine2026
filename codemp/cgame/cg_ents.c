@@ -2028,7 +2028,8 @@ static void CG_General(centity_t* cent)
 				|| cent->currentState.botclass == BCLASS_JEDITRAINER
 				|| cent->currentState.botclass == BCLASS_JEDIMASTER
 				|| cent->currentState.botclass == BCLASS_LUKE
-				|| cent->currentState.botclass == BCLASS_KYLE)
+				|| cent->currentState.botclass == BCLASS_KYLE
+				|| cent->currentState.botclass == BCLASS_RAY) // MD->SJE parity (2026-10-13): MD's Rey class, as MD
 			{
 				ent.shaderRGBA[0] = 0;
 				ent.shaderRGBA[1] = 120;
@@ -2105,7 +2106,8 @@ static void CG_General(centity_t* cent)
 					|| cent->currentState.botclass == BCLASS_JEDITRAINER
 					|| cent->currentState.botclass == BCLASS_JEDIMASTER
 					|| cent->currentState.botclass == BCLASS_LUKE
-					|| cent->currentState.botclass == BCLASS_KYLE)
+					|| cent->currentState.botclass == BCLASS_KYLE
+					|| cent->currentState.botclass == BCLASS_RAY)
 				{
 					ent.shaderRGBA[0] = 0;
 					ent.shaderRGBA[1] = 120;

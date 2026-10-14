@@ -1090,7 +1090,9 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 					{
 						WP_SaberFatiguedParry(blocker, attacker, saberNum, bladeNum);
 					}
-					else if (attacker->client->ps.saberAnimLevel == SS_DESANN || attacker->client->ps.saberAnimLevel == SS_STRONG)
+					else if (attacker->client->ps.saberAnimLevel == SS_DESANN ||
+						attacker->client->ps.saberAnimLevel == SS_BLASTER ||
+						attacker->client->ps.saberAnimLevel == SS_STRONG) // SS_BLASTER (2026-10-14)
 					{
 						WP_SaberFatiguedParry(blocker, attacker, saberNum, bladeNum);
 					}
@@ -1132,6 +1134,7 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 					WP_SaberFatiguedParry(blocker, attacker, saberNum, bladeNum);
 				}
 				else if (attacker->client->ps.saberAnimLevel == SS_DESANN ||
+					attacker->client->ps.saberAnimLevel == SS_BLASTER || // SS_BLASTER (2026-10-14)
 					attacker->client->ps.saberAnimLevel == SS_STRONG)
 				{
 					WP_SaberFatiguedParry(blocker, attacker, saberNum, bladeNum);
@@ -1181,7 +1184,9 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 			}
 			else if ((accurate_parry || npc_blocking)) //Other types and npc,s
 			{
-				if (attacker->client->ps.saberAnimLevel == SS_DESANN || attacker->client->ps.saberAnimLevel == SS_STRONG)
+				if (attacker->client->ps.saberAnimLevel == SS_DESANN || 
+					attacker->client->ps.saberAnimLevel == SS_BLASTER || 
+					attacker->client->ps.saberAnimLevel == SS_STRONG) // SS_BLASTER (2026-10-14)
 				{
 					WP_SaberFatiguedParry(blocker, attacker, saberNum, bladeNum);
 				}
@@ -1467,6 +1472,7 @@ void WP_SaberWearOnBlock(gentity_t* blocker, const gentity_t* attacker)
 		{
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 		case SS_TAVION:
 			amount = 4.0f;
 			heavy = qtrue;

@@ -989,8 +989,11 @@ static int svcmdcmp(const void* a, const void* b)
 	return Q_stricmp(a, ((svcmd_t*)b)->name);
 }
 
+extern void G_FighterTest_f(void); // (2026-10-13) g_vehicles.c, developer test (sv_cheats 1)
+
 svcmd_t svcmds[] = {
 	{"addbot", Svcmd_AddBot_f, qfalse},
+	{"fightertest", G_FighterTest_f, qfalse},
 	{"addip", Svcmd_AddIP_f, qfalse},
 	{"botlist", Svcmd_BotList_f, qfalse},
 	{"entitylist", Svcmd_EntityList_f, qfalse},

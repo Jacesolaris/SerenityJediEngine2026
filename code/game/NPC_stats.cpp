@@ -4217,9 +4217,9 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 					continue;
 				}
 				//cap
-				if (n > SS_STAFF)
+				if (n > SS_BLASTER) // SS_BLASTER (2026-10-14)
 				{
-					n = SS_STAFF;
+					n = SS_BLASTER;
 				}
 				else if (n < SS_FAST)
 				{

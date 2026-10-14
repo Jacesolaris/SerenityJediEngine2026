@@ -16623,6 +16623,47 @@ static void CG_HolsteredWeaponRender(centity_t* cent, const clientInfo_t* ci, co
 #define		G2MODEL_BLASTER2_HOLSTERED		8
 #define		G2MODEL_LAUNCHER_HOLSTERED		9
 #define		G2MODEL_GOLAN_HOLSTERED			10
+#define		SABERBLASTER_HIP_HOLSTERED		(MAX_WEAPONS + 1) // SS_BLASTER (2026-10-14): blaster2_holstered marker
+
+// SS_BLASTER (2026-10-14): the blaster saber style holds a bryar pistol in the left hand (visual only): the left hand
+// pistol instance (bolted to *l_hand) goes into ghoul2 slot 2, which single saber users do not use
+static void CG_SaberBlasterPistolUpdate(centity_t* cent, const clientInfo_t* ci)
+{
+	if (!cent->ghoul2 || !ci)
+	{
+		return;
+	}
+	if (cent->currentState.weapon != WP_SABER)
+	{
+		// the weapon change code clears slot 2 itself
+		cent->saberBlasterPistol = qfalse;
+		return;
+	}
+	if (cent->currentState.fireflag == SS_BLASTER
+		&& !ci->saber[1].model[0]
+		&& !(cent->currentState.eFlags & EF_DEAD))
+	{
+		if (!trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, 2))
+		{
+			void* pistol = CG_G2WeaponInstance2(cent, WP_BRYAR_PISTOL);
+
+			if (!pistol)
+			{
+				return;
+			}
+			trap->G2API_CopySpecificGhoul2Model(pistol, 0, cent->ghoul2, 2);
+		}
+		cent->saberBlasterPistol = qtrue;
+	}
+	else if (cent->saberBlasterPistol)
+	{
+		if (!ci->saber[1].model[0] && trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, 2))
+		{
+			trap->G2API_RemoveGhoul2Model(&cent->ghoul2, 2);
+		}
+		cent->saberBlasterPistol = qfalse;
+	}
+}
 
 void CG_VisualWeaponsUpdate(centity_t* cent, clientInfo_t* ci)
 {
@@ -16978,8 +17019,60 @@ void CG_VisualWeaponsUpdate(centity_t* cent, clientInfo_t* ci)
 		* Start Left Hip Holster code
 		*============================
 		*/
+		// SS_BLASTER (2026-10-14): someone who can use the blaster saber style (single one-blade saber that does not
+		// forbid it) but does not use it right now carries its bryar pistol on the left hip; it takes the left hip
+		// before any other gun. With the style active the pistol is in his left hand (CG_SaberBlasterPistolUpdate).
+		if (weap_inv & 1 << WP_SABER
+			&& ci->saber[0].model[0] && !ci->saber[1].model[0]
+			&& ci->saber[0].numBlades == 1
+			&& !(ci->saber[0].saberFlags & SFL_TWO_HANDED)
+			&& !(ci->saber[0].stylesForbidden & 1 << SS_BLASTER))
+		{
+			if (!(cent->currentState.weapon == WP_SABER && cent->currentState.fireflag == SS_BLASTER))
+			{
+				if (ci->holster_blaster2 != -1)
+				{
+					if (ci->blaster2_holstered != SABERBLASTER_HIP_HOLSTERED)
+					{
+						if (ci->blaster2_holstered != 0
+							&& trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED))
+						{
+							trap->G2API_RemoveGhoul2Model(&cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED);
+						}
+						trap->G2API_CopySpecificGhoul2Model(CG_G2WeaponInstance(cent, WP_BRYAR_PISTOL), 0, cent->ghoul2,
+							G2MODEL_BLASTER2_HOLSTERED);
+						trap->G2API_SetBoltInfo(cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED, ci->holster_blaster2);
+						ci->blaster2_holstered = SABERBLASTER_HIP_HOLSTERED;
+					}
+				}
+				else
+				{
+					CG_HolsteredWeaponRender(cent, ci, HLR_PISTOL_L);
+				}
+			}
+			else if (ci->holster_blaster2 != -1 && ci->blaster2_holstered == SABERBLASTER_HIP_HOLSTERED)
+			{
+				// the pistol is in his hand now
+				if (trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED))
+				{
+					trap->G2API_RemoveGhoul2Model(&cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED);
+				}
+				ci->blaster2_holstered = 0;
+			}
+			left_hip_in_use = SABERBLASTER_HIP_HOLSTERED; // the left hip stays reserved for the pistol
+		}
+		else if (ci->holster_blaster2 != -1 && ci->blaster2_holstered == SABERBLASTER_HIP_HOLSTERED)
+		{
+			if (trap->G2API_HasGhoul2ModelOnIndex(&cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED))
+			{
+				trap->G2API_RemoveGhoul2Model(&cent->ghoul2, G2MODEL_BLASTER2_HOLSTERED);
+			}
+			ci->blaster2_holstered = 0;
+		}
+
 		//Handle Blaster Holster on left hip
-		if (!(weap_inv & 1 << WP_BLASTER) //don't have blaster
+		if (left_hip_in_use // SS_BLASTER (2026-10-14): the blaster style pistol has the left hip
+			|| !(weap_inv & 1 << WP_BLASTER) //don't have blaster
 			|| cent->currentState.weapon == WP_BLASTER //or are currently using blaster
 			|| right_hip_in_use == WP_BLASTER) //or the blaster is already on the right hip.
 
@@ -17582,6 +17675,7 @@ static void CG_SaberIgnitionStep(const centity_t* cent, saberInfo_t* saber)
 				case SS_FAST: ms = 250.0f; break;
 				case SS_STRONG: ms = 2500.0f; break;
 				case SS_DESANN: ms = 3000.0f; break;
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				case SS_TAVION: ms = 1250.0f; break;
 				case SS_DUAL: ms = 2000.0f; break;
 				case SS_STAFF: ms = 3500.0f; speed = cg_ignitionSpeedstaff.value; break;
@@ -18391,6 +18485,7 @@ void CG_Player(centity_t* cent)
 	}
 
 	CG_VisualWeaponsUpdate(cent, ci);
+	CG_SaberBlasterPistolUpdate(cent, ci); // SS_BLASTER (2026-10-14)
 
 	if (cent->saberWasInFlight && g2_has_weapon && cent->ghoul2weapon == CG_G2WeaponInstance(cent, WP_SABER))
 	{
@@ -20946,7 +21041,8 @@ stillDoSaber:
 				|| cent->currentState.botclass == BCLASS_JEDITRAINER
 				|| cent->currentState.botclass == BCLASS_JEDIMASTER
 				|| cent->currentState.botclass == BCLASS_LUKE
-				|| cent->currentState.botclass == BCLASS_KYLE)
+				|| cent->currentState.botclass == BCLASS_KYLE
+				|| cent->currentState.botclass == BCLASS_RAY) // MD->SJE parity (2026-10-13): MD's Rey class, as MD
 			{
 				legs.shaderRGBA[0] = 0;
 				legs.shaderRGBA[1] = 120;
@@ -21020,7 +21116,8 @@ stillDoSaber:
 					|| cent->currentState.botclass == BCLASS_JEDITRAINER
 					|| cent->currentState.botclass == BCLASS_JEDIMASTER
 					|| cent->currentState.botclass == BCLASS_LUKE
-					|| cent->currentState.botclass == BCLASS_KYLE)
+					|| cent->currentState.botclass == BCLASS_KYLE
+					|| cent->currentState.botclass == BCLASS_RAY)
 				{
 					legs.shaderRGBA[0] = 0;
 					legs.shaderRGBA[1] = 120;

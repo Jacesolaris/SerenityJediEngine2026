@@ -222,6 +222,7 @@ typedef struct
 	const int* dual;
 	const int* staff;
 	int count;
+	qboolean blasterUsesDual; // SS_BLASTER (2026-10-14): blocking reactions use the SS_DUAL set
 } saberReactionSet_t;
 
 static QINLINE void G_PlayReaction(
@@ -238,10 +239,11 @@ static QINLINE void G_PlayReaction(
 
 	const int* anims =
 		(style == SS_DUAL) ? set->dual :
+		(style == SS_BLASTER && set->blasterUsesDual) ? set->dual : // SS_BLASTER (2026-10-14)
 		(style == SS_STAFF) ? set->staff :
 		(style == SS_MEDIUM) ? set->medium :
 		(style == SS_STRONG) ? set->strong :
-		(style == SS_DESANN) ? set->desann :
+		((style == SS_DESANN || style == SS_BLASTER)) ? set->desann : // SS_BLASTER (2026-10-14)
 		(style == SS_TAVION) ? set->tavion :
 		set->fast; // fallback for SS_NONE + SS_FAST
 
@@ -351,7 +353,8 @@ static const int knock_fast[6] = {
 static const saberReactionSet_t REACT_KNOCKAWAY = {
 	knock_fast, knock_fast, knock_fast, knock_fast, knock_fast,
 	knock_dual, knock_staff,
-	6
+	6,
+	qtrue // SS_BLASTER (2026-10-14)
 };
 
 static const int stag_hit[7] = {
@@ -560,6 +563,11 @@ static QINLINE int g_saber_attack_power(gentity_t* ent, const qboolean attacking
 	assert(ent && ent->client);
 
 	int base_level = ent->client->ps.fd.saberAnimLevel;
+
+	if (base_level == SS_BLASTER)
+	{
+		base_level = SS_DESANN; // SS_BLASTER (2026-10-14): Desann's power
+	}
 
 	//Give "medium" strength for the two special stances.
 	if (base_level == SS_DUAL)
@@ -1541,10 +1549,13 @@ typedef enum
 #define LOCK_IDEAL_DIST_TOP 32.0f
 #define LOCK_IDEAL_DIST_CIRCLE 48.0f
 
-static int G_SaberLockAnim(const int attacker_saber_style, const int defender_saber_style, const int top_or_side,
+static int G_SaberLockAnim(const int attacker_saber_style_in, const int defender_saber_style_in, const int top_or_side,
 	const int lock_or_break_or_super_break,
 	const int win_or_lose)
 {
+	// SS_BLASTER (2026-10-14): saberlocks use the dual saber lock anims (BOTH_LK_DL_*)
+	const int attacker_saber_style = attacker_saber_style_in == SS_BLASTER ? SS_DUAL : attacker_saber_style_in;
+	const int defender_saber_style = defender_saber_style_in == SS_BLASTER ? SS_DUAL : defender_saber_style_in;
 	int base_anim = -1;
 	if (lock_or_break_or_super_break == SABER_LOCK_LOCK)
 	{
@@ -2891,6 +2902,7 @@ static int BasicSaberBlockCost(const int attackerStyle)
 	case SS_MEDIUM:
 		return 15;
 	case SS_DESANN:
+	case SS_BLASTER: // SS_BLASTER (2026-10-14)
 		return 16;
 	case SS_STRONG:
 		return 17;
@@ -10592,7 +10604,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 								}
 							}
 						}
-						else if (ent->client->ps.fd.saberAnimLevel == SS_DESANN
+						else if ((ent->client->ps.fd.saberAnimLevel == SS_DESANN || ent->client->ps.fd.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 							&& (hitEnt->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
 								hitEnt->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
 							&& !((hitEnt->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))

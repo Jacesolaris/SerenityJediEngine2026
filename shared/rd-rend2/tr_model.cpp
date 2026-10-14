@@ -485,6 +485,200 @@ static qboolean R_LoadMDXA_Server(model_t* mod, void* buffer, const char* mod_na
 	return qtrue;
 }
 
+#ifndef REND2_SP
+/*
+=================
+MD->SJE parity (2026-10-13): MovieDuels' choice of the animation set (GLA) a mesh loads (its R_MD_ChooseAnimGLA, the
+Classic style only: SJE has no Master style), shared by R_LoadMDXM (tr_ghoul2.cpp) and the server mesh loader:
+ - a mesh whose GLA is outside the humanoid family (sjeHumanoidPrefixes) loads that GLA, as before;
+ - a humanoid-family mesh loads the GLA its model.glm names when that folder has an animation.cfg (_humanoid_yoda,
+   protocol, wampa...). Else, or when that GLA is missing (an MD model on _humanoid_md, _humanoid_kotor... that SJE does not
+   ship), it uses the master models/players/_humanoid GLA - unless the mesh's bone count does not fit the master skeleton
+   (MD's sbd 43, jabba 71...): then its own GLA, which may fail as before.
+ - a mesh with more bones than its own GLA is refused (its bone references would read past the GLA's bone cache).
+The cached glm buffer keeps the GLA actually loaded in mdxm->animName (G2API_GetGLAName: the game and cgame pick the
+animation.cfg from it), so the glm's own name is remembered here. bg mirrors this rule (bg_skeleton.c
+BG_GLAFallsBackToMaster), so server, client and the character menu agree.
+=================
+*/
+#define SJE_MASTER_HUMANOID_GLA		"models/players/_humanoid/_humanoid"
+#define SJE_MAX_MESH_ANIMNAMES		2048
+
+static const char* const sjeHumanoidPrefixes[] =
+{
+	"models/players/_humanoid",
+	"models/players/JK2anims",
+	"models/players/_humanoid_ani",
+	"models/players/_humanoid_bdroid",
+	"models/players/_humanoid_ben",
+	"models/players/_humanoid_cal",
+	"models/players/_humanoid_clo",
+	"models/players/_humanoid_deka",
+	"models/players/_humanoid_df2",
+	"models/players/_humanoid_dooku",
+	"models/players/_humanoid_galen",
+	"models/players/_humanoid_gon",
+	"models/players/_humanoid_grievous",
+	"models/players/_humanoid_jabba",
+	"models/players/_humanoid_jango",
+	"models/players/_humanoid_kotor",
+	"models/players/_humanoid_luke",
+	"models/players/_humanoid_mace",
+	"models/players/_humanoid_maul",
+	"models/players/_humanoid_md",
+	"models/players/_humanoid_melee",
+	"models/players/_humanoid_obi",
+	"models/players/_humanoid_obi3",
+	"models/players/_humanoid_pal",
+	"models/players/_humanoid_reb",
+	"models/players/_humanoid_ren",
+	"models/players/_humanoid_rey",
+	"models/players/_humanoid_sbd",
+	"models/players/_humanoid_vader",
+	"models/players/_humanoid_yoda",
+	"models/players/darktrooper_tv",
+	"models/players/hazardtrooper/hazardtrooper",
+	"models/players/rockettrooper/rockettrooper",
+	"models/players/protocol/protocol",
+	"models/players/assassin_droid/model",
+	"models/players/saber_droid/model",
+	"models/players/wampa/wampa"
+};
+
+static qboolean R_SJE_IsHumanoidPath(const char* animName)
+{
+	if (!animName || !animName[0])
+	{
+		return qfalse;
+	}
+	for (int i = 0; i < (int)ARRAY_LEN(sjeHumanoidPrefixes); i++)
+	{
+		if (!Q_stricmpn(animName, sjeHumanoidPrefixes[i], (int)strlen(sjeHumanoidPrefixes[i])))
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+typedef struct sjeMeshAnimName_s
+{
+	char mesh[MAX_QPATH];
+	char animName[MAX_QPATH];
+} sjeMeshAnimName_t;
+
+static sjeMeshAnimName_t sjeMeshAnimNames[SJE_MAX_MESH_ANIMNAMES];
+static int sjeNumMeshAnimNames = 0;
+
+// The GLA the glm file names. fresh: the header was just read from the file (not a cached, possibly rewritten copy).
+static const char* R_SJE_MeshOwnAnimName(const char* meshName, const char* headerAnimName, const qboolean fresh)
+{
+	for (int i = 0; i < sjeNumMeshAnimNames; i++)
+	{
+		if (!Q_stricmp(sjeMeshAnimNames[i].mesh, meshName))
+		{
+			if (fresh)
+			{
+				Q_strncpyz(sjeMeshAnimNames[i].animName, headerAnimName, sizeof sjeMeshAnimNames[i].animName);
+			}
+			return sjeMeshAnimNames[i].animName;
+		}
+	}
+	if (sjeNumMeshAnimNames < SJE_MAX_MESH_ANIMNAMES)
+	{
+		sjeMeshAnimName_t* entry = &sjeMeshAnimNames[sjeNumMeshAnimNames++];
+		Q_strncpyz(entry->mesh, meshName, sizeof entry->mesh);
+		Q_strncpyz(entry->animName, headerAnimName, sizeof entry->animName);
+		return entry->animName;
+	}
+	return headerAnimName;
+}
+
+// does the GLA's folder have an animation.cfg (pk3s included)?
+static qboolean R_SJE_GLAFolderHasAnimCfg(const char* gla)
+{
+	char path[MAX_QPATH];
+
+	Q_strncpyz(path, gla, sizeof path);
+	char* slash = strrchr(path, '/');
+	if (!slash || (size_t)(slash - path) + sizeof "/animation.cfg" > sizeof path)
+	{
+		return qfalse;
+	}
+	Q_strncpyz(slash, "/animation.cfg", (int)(sizeof path - (size_t)(slash - path)));
+	return ri.FS_ReadFile(path, NULL) > 0 ? qtrue : qfalse;
+}
+
+static qhandle_t R_SJE_RegisterGLA(const char* gla, const qboolean server)
+{
+	return server ? RE_RegisterServerModel(va("%s.gla", gla)) : RE_RegisterModel(va("%s.gla", gla));
+}
+
+// the bone count of a registered GLA, 0 when it is not one
+static int R_SJE_GLABoneCount(const qhandle_t handle)
+{
+	const model_t* gla = R_GetModelByHandle(handle);
+	return gla && gla->type == MOD_MDXA && gla->data.gla ? gla->data.gla->numBones : 0;
+}
+
+qhandle_t R_SJE_ChooseAnimGLA(const char* meshName, const mdxmHeader_t* mdxm, const qboolean fresh, const qboolean server,
+	char* usedName, const int usedNameSize)
+{
+	const char* ownName = R_SJE_MeshOwnAnimName(meshName, mdxm->animName, fresh);
+	qhandle_t animIndex = 0;
+
+	Q_strncpyz(usedName, ownName, usedNameSize);
+
+	if (R_SJE_IsHumanoidPath(ownName))
+	{
+		// the model's dedicated humanoid set (models/players/_humanoid_yoda/...), when its folder has the animation.cfg
+		if (Q_stricmpn(ownName, "models/players/_humanoid/", (int)strlen("models/players/_humanoid/")) &&
+			R_SJE_GLAFolderHasAnimCfg(ownName))
+		{
+			animIndex = R_SJE_RegisterGLA(ownName, server);
+		}
+
+		if (!animIndex)
+		{
+			animIndex = R_SJE_RegisterGLA(SJE_MASTER_HUMANOID_GLA, server);
+			if (!animIndex)
+			{
+				return 0;
+			}
+
+			// A mesh with another bone count than the master skeleton (MD's super battle droid 43, jabba 71...) was built
+			// for its own skeleton: on the master its bones would be wrong. Keep its own GLA (old 72-bone models are
+			// remapped by the caller).
+			const int masterBones = R_SJE_GLABoneCount(animIndex);
+			if (mdxm->numBones != 72 && masterBones && mdxm->numBones != masterBones)
+			{
+				animIndex = R_SJE_RegisterGLA(ownName, server);
+			}
+			else
+			{
+				Q_strncpyz(usedName, SJE_MASTER_HUMANOID_GLA, usedNameSize);
+				return animIndex;
+			}
+		}
+	}
+	else
+	{
+		// non-humanoid or custom skeleton: the model's own GLA, as before
+		animIndex = R_SJE_RegisterGLA(ownName, server);
+	}
+
+	// the own GLA: refuse a mesh that has more bones than it (not the old 72-bone humanoid models, remapped by the caller)
+	const int glaBones = animIndex ? R_SJE_GLABoneCount(animIndex) : 0;
+	if (glaBones && mdxm->numBones != 72 && mdxm->numBones > glaBones)
+	{
+		Com_Printf(S_COLOR_YELLOW "WARNING: %s has %d bones, more than its animation file %s (%d), not loaded\n", meshName,
+			mdxm->numBones, ownName, glaBones);
+		return 0;
+	}
+	return animIndex;
+}
+#endif // !REND2_SP
+
 /*
 =================
 R_LoadMDXM_Server - load a Ghoul 2 Mesh file
@@ -550,11 +744,23 @@ static qboolean R_LoadMDXM_Server(model_t* mod, void* buffer, const char* mod_na
 	}
 
 	// first up, go load in the animation file we need that has the skeletal animation info for this model
+#ifndef REND2_SP
+	// MD->SJE parity (2026-10-13): the GLA the glm names, or the master one (R_SJE_ChooseAnimGLA); the glm keeps the name
+	// of the GLA actually loaded, as in R_LoadMDXM
+	char animNameToUse[MAX_QPATH];
+	mdxm->animIndex = R_SJE_ChooseAnimGLA(mod_name, mdxm, (qboolean)!bAlreadyFound, qtrue, animNameToUse, sizeof animNameToUse);
+	if (!mdxm->animIndex)
+	{
+		return qfalse;
+	}
+	Q_strncpyz(mdxm->animName, animNameToUse, sizeof mdxm->animName);
+#else
 	mdxm->animIndex = RE_RegisterServerModel(va("%s.gla", mdxm->animName));
 	if (!mdxm->animIndex)
 	{
 		return qfalse;
 	}
+#endif
 
 	mod->numLods = mdxm->numLODs - 1;	//copy this up to the model for ease of use - it wil get inced after this.
 

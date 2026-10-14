@@ -454,7 +454,7 @@ static void CG_DrawCusSaberStyle(const centity_t* cent, const float hud_ratio)
 	{
 		index = OHB_SABERSTYLE_TAVION;
 	}
-	else if (cg.saberAnimLevelPending == SS_DESANN)
+	else if ((cg.saberAnimLevelPending == SS_DESANN || cg.saberAnimLevelPending == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 	{
 		index = OHB_SABERSTYLE_DESANN;
 	}
@@ -471,7 +471,8 @@ static void CG_DrawCusSaberStyle(const centity_t* cent, const float hud_ratio)
 		index = OHB_SABERSTYLE_STRONG;
 	}
 
-	CG_SaberWearSetColor(otherHUDBits[index].color);
+	// SS_BLASTER (2026-10-14): the Desann icon tinted pink (placeholder until DH decides)
+	CG_SaberWearSetColor(cg.saberAnimLevelPending == SS_BLASTER ? colorTable[CT_LTPINK] : otherHUDBits[index].color);
 
 	CG_DrawPic(
 		SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[index].xPos) + 5 * hud_ratio,
@@ -1640,6 +1641,10 @@ static void CG_DrawJK2Ammo(const centity_t* cent, const int x, const int y)
 			break;
 		case 7: //FORCE_LEVEL_5://DUELS
 			CG_DrawPic(x, y, 80, 40, cgs.media.JK2HUDSaberStyleDuels);
+			break;
+		case SS_BLASTER: // SS_BLASTER (2026-10-14): the Desann icon tinted pink (placeholder)
+			CG_SaberWearSetColor(colorTable[CT_LTPINK]);
+			CG_DrawPic(x, y, 80, 40, cgs.media.JK2HUDSaberStyleDesann);
 			break;
 		default:;
 		}
@@ -3385,6 +3390,11 @@ static void CG_DrawSimpleSaberStyle(const centity_t* cent)
 		Com_sprintf(num, sizeof num, "DESANN");
 		calc_color = CT_HUD_RED;
 		break;
+	case SS_BLASTER: // SS_BLASTER (2026-10-14): style name + pistol clip, pink placeholder colour
+		Com_sprintf(num, sizeof num, "BLASTER %d",
+			SABERBLASTER_CLIP_SIZE - cg.snap->ps.ammo[SABERBLASTER_CLIP_SLOT]);
+		calc_color = CT_LTPINK;
+		break;
 	case SS_TAVION:
 		Com_sprintf(num, sizeof num, "TAVION");
 		calc_color = CT_ICON_BLUE;
@@ -4171,6 +4181,10 @@ static void CG_DrawDataPadAmmo(const centity_t* cent, const int x, const int y)
 			CG_DrawPic(x, y, 80, 40, cgs.media.HUDSaberStyleStrong);
 			break;
 		case SS_DESANN:
+			CG_DrawPic(x, y, 80, 40, cgs.media.HUDSaberStyleDesann);
+			break;
+		case SS_BLASTER: // SS_BLASTER (2026-10-14): the Desann icon tinted pink (placeholder)
+			CG_SaberWearSetColor(colorTable[CT_LTPINK]);
 			CG_DrawPic(x, y, 80, 40, cgs.media.HUDSaberStyleDesann);
 			break;
 		case SS_TAVION:
@@ -5740,6 +5754,43 @@ qboolean CG_WorldCoordToScreenCoord(vec3_t world_coord, int* x, int* y)
 		return qtrue;
 	}
 
+	return qfalse;
+}
+
+qboolean CG_InFighter()
+{
+	if (cg.predictedPlayerState.m_iVehicleNum)
+	{
+		//I'm in a vehicle
+		const centity_t* veh_cent = &cg_entities[cg.predictedPlayerState.m_iVehicleNum];
+
+		if (veh_cent
+			&& veh_cent->m_pVehicle
+			&& veh_cent->m_pVehicle->m_pVehicleInfo
+			&& veh_cent->m_pVehicle->m_pVehicleInfo->type == VH_FIGHTER)
+		{
+			//I'm in a fighter
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+static qboolean CG_InATST()
+{
+	if (cg.predictedPlayerState.m_iVehicleNum)
+	{
+		//I'm in a vehicle
+		const centity_t* veh_cent = &cg_entities[cg.predictedPlayerState.m_iVehicleNum];
+		if (veh_cent
+			&& veh_cent->m_pVehicle
+			&& veh_cent->m_pVehicle->m_pVehicleInfo
+			&& veh_cent->m_pVehicle->m_pVehicleInfo->type == VH_WALKER)
+		{
+			//I'm in an atst
+			return qtrue;
+		}
+	}
 	return qfalse;
 }
 

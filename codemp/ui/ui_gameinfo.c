@@ -345,6 +345,35 @@ void UI_LoadSPArenas(void)
 	}
 }
 
+// a bot whose name is already loaded (from another bot file, or the other bot folder) is skipped: the first one
+// wins, as the name lookups always did, and the lists show it once (2026-10-13)
+static void UI_DropRepeatedBots(const int first, const char* filename)
+{
+	int keep = first;
+
+	for (int n = first; n < ui_numBots; n++)
+	{
+		char name[MAX_QPATH];
+		qboolean repeated = qfalse;
+
+		Q_strncpyz(name, Info_ValueForKey(ui_botInfos[n], "name"), sizeof name);
+		for (int o = 0; o < keep && !repeated; o++)
+		{
+			repeated = !Q_stricmp(Info_ValueForKey(ui_botInfos[o], "name"), name) ? qtrue : qfalse;
+		}
+		if (repeated)
+		{
+			if (trap->Cvar_VariableValue("developer"))
+			{
+				Com_Printf("bot \"%s\" in %s is already loaded, skipped\n", name, filename);
+			}
+			continue;
+		}
+		ui_botInfos[keep++] = ui_botInfos[n];
+	}
+	ui_numBots = keep;
+}
+
 /*
 ===============
 UI_LoadBotsFromFile
@@ -390,7 +419,9 @@ static void UI_LoadBotsFromFile(char* filename) {
 
 	COM_Compress(buf);
 
+	const int firstBot = ui_numBots;
 	ui_numBots += UI_ParseInfos(buf, MAX_BOTS - ui_numBots, &ui_botInfos[ui_numBots]);
+	UI_DropRepeatedBots(firstBot, filename);
 }
 
 /*
@@ -416,16 +447,20 @@ void UI_LoadBots(void)
 		UI_LoadBotsFromFile("botfiles/bots.txt");
 	}
 
-	// get all bots from .bot files
-	const int numdirs = trap->FS_GetFileList("scriptsmp", ".bot", dirlist, 1024);
-	char* dirptr = dirlist;
-	for (int i = 0; i < numdirs; i++, dirptr += dirlen + 1)
+	// get all bots from .bot files: scriptsmp/ (this mod's), then botfiles/ (the other mod's layout, so a bot file from
+	// MovieDuels / SerenityJediEngine2026 loads in either; repeated names are skipped) (2026-10-13)
+	static const char* const botFolders[] = { "scriptsmp", "botfiles" };
+	for (int folder = 0; folder < 2; folder++)
 	{
-		char filename[128];
-		dirlen = strlen(dirptr);
-		strcpy(filename, "scriptsmp/");
-		strcat(filename, dirptr);
-		UI_LoadBotsFromFile(filename);
+		const int numdirs = trap->FS_GetFileList(botFolders[folder], ".bot", dirlist, sizeof dirlist);
+		char* dirptr = dirlist;
+		for (int i = 0; i < numdirs; i++, dirptr += dirlen + 1)
+		{
+			char filename[MAX_QPATH];
+			dirlen = strlen(dirptr);
+			Com_sprintf(filename, sizeof filename, "%s/%s", botFolders[folder], dirptr);
+			UI_LoadBotsFromFile(filename);
+		}
 	}
 }
 

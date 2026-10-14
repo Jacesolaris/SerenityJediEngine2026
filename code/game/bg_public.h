@@ -1137,4 +1137,13 @@ extern cvar_t* g_gripitems;
 extern cvar_t* g_stasistems;
 extern cvar_t* g_sentryexplode;
 
+// SS_BLASTER (2026-10-14): saber in the right hand, a bryar pistol (visual only, no inventory weapon) in the left
+constexpr auto SABERBLASTER_CLIP_SIZE = 20; // bryar shots per clip
+constexpr auto SABERBLASTER_RELOAD_TIME = 1000; // ms, alt attack + attack
+constexpr auto SABERBLASTER_CLIP_SLOT = AMMO_MAX; // unused ps.ammo[] slot: shots used from the clip (0 = full clip)
+int BG_NextSaberStyleInCycle(int style);
+extern cvar_t* g_saberBlasterAimArc;
+extern cvar_t* g_saberBlasterAimRange;
+extern cvar_t* g_saberBlasterLockCharge;
+
 #endif//#ifndef __BG_PUBLIC_H__

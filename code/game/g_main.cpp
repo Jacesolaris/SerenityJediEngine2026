@@ -200,6 +200,8 @@ cvar_t* com_outcast;
 cvar_t* g_saberRealisticImpact;
 
 cvar_t* g_speederControlScheme;
+cvar_t* g_fighterArcade; // (2026-10-13) fighters: 1 = responsive flight, 0 = the old flight exactly (FighterNPC.cpp)
+cvar_t* g_fighterTurnScale; // (2026-10-13) fighters, g_fighterArcade 1: top turn rate = turningSpeed x this x 12 deg/s
 
 cvar_t* g_char_model;
 cvar_t* g_char_skin_head;
@@ -237,6 +239,9 @@ cvar_t* g_pushitems;
 cvar_t* g_gripitems;
 cvar_t* g_stasistems;
 cvar_t* g_sentryexplode;
+cvar_t* g_saberBlasterAimArc; // SS_BLASTER (2026-10-14)
+cvar_t* g_saberBlasterAimRange;
+cvar_t* g_saberBlasterLockCharge;
 cvar_t* g_vehAutoAimLead;
 cvar_t* in_joystick;
 cvar_t* g_Weather;
@@ -740,6 +745,10 @@ static void G_InitCvars()
 	g_gripitems = gi.cvar("g_gripitems", "1", CVAR_ARCHIVE);
 	g_stasistems = gi.cvar("g_stasistems", "1", CVAR_ARCHIVE);
 	g_sentryexplode = gi.cvar("g_sentryexplode", "3", CVAR_ARCHIVE);
+	// SS_BLASTER (2026-10-14): pistol auto aim half angle (degrees) and range, saberlock charge time (ms)
+	g_saberBlasterAimArc = gi.cvar("g_saberBlasterAimArc", "30", CVAR_ARCHIVE);
+	g_saberBlasterAimRange = gi.cvar("g_saberBlasterAimRange", "4096", CVAR_ARCHIVE);
+	g_saberBlasterLockCharge = gi.cvar("g_saberBlasterLockCharge", "1500", CVAR_ARCHIVE);
 
 	g_vehAutoAimLead = gi.cvar("g_vehAutoAimLead", "0", CVAR_ARCHIVE);
 
@@ -747,6 +756,8 @@ static void G_InitCvars()
 	gi.cvar_set("newTotalSecrets", "0"); //used to carry over the count from SP_target_secret to ClientBegin
 
 	g_speederControlScheme = gi.cvar("g_speederControlScheme", "2", CVAR_ARCHIVE); //2 is default, 1 is alternate
+	g_fighterArcade = gi.cvar("g_fighterArcade", "1", CVAR_ARCHIVE); // (2026-10-13)
+	g_fighterTurnScale = gi.cvar("g_fighterTurnScale", "1.6", CVAR_ARCHIVE); // (2026-10-13)
 
 	if (com_outcast && com_outcast->integer == 0) //playing academy
 	{

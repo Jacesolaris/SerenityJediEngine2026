@@ -34,6 +34,7 @@ void S_StartAmbientSound(const vec3_t origin, int entityNum, unsigned char volum
 void S_MuteSound(int entityNum, int entchannel);
 void S_StartSound(const vec3_t origin, int entityNum, int entchannel, sfxHandle_t sfxHandle);
 void S_StartLocalSound(sfxHandle_t sfxHandle, int channelNum);
+void S_StartLocalSoundUI(sfxHandle_t sfxHandle, int channelNum);
 void S_StartLocalLoopingSound(sfxHandle_t sfxHandle);
 
 void S_UnCacheDynamicMusic(void);

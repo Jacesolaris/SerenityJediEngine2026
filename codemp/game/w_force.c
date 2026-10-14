@@ -1064,7 +1064,7 @@ int ForcePowerUsableOn(const gentity_t* attacker, const gentity_t* other, const 
 		return 0;
 
 	if (other->client &&
-		other->client->ps.fd.saberAnimLevel == SS_DESANN &&
+		(other->client->ps.fd.saberAnimLevel == SS_DESANN || other->client->ps.fd.saberAnimLevel == SS_BLASTER) && // SS_BLASTER (2026-10-14)
 		other->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY)
 		return 0;
 
@@ -2285,7 +2285,7 @@ static qboolean WP_CounterForce(const gentity_t* attacker, const gentity_t* defe
 		return qfalse;
 	}
 	if (defender->client->ps.saberFatigueChainCount >= MISHAPLEVEL_LIGHT
-		&& attacker->client->ps.fd.saberAnimLevel == SS_DESANN)
+		&& (attacker->client->ps.fd.saberAnimLevel == SS_DESANN || attacker->client->ps.fd.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 	{
 		//can't block if we're too off balance and they are using Juyo's perk
 		return qfalse;
@@ -3534,6 +3534,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 								case SS_TAVION:
 								case SS_STRONG:
 								case SS_DESANN:
+								case SS_BLASTER: // SS_BLASTER (2026-10-14)
 								case SS_MEDIUM:
 									G_SetAnim(traceEnt, &traceEnt->client->pers.cmd, SETANIM_TORSO, BOTH_P1_S1_T_,
 										SETANIM_AFLAG_PACE, 0);
@@ -3594,6 +3595,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 							case SS_TAVION:
 							case SS_STRONG:
 							case SS_DESANN:
+							case SS_BLASTER: // SS_BLASTER (2026-10-14)
 							case SS_MEDIUM:
 								G_SetAnim(traceEnt, &traceEnt->client->pers.cmd, SETANIM_TORSO, BOTH_P1_S1_T_,
 									SETANIM_AFLAG_PACE, 0);

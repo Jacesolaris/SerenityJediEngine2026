@@ -2749,6 +2749,7 @@ extern void CG_BuildSolidList();
 extern void CG_ClearHealthBarEnts();
 extern void CG_ClearBlockPointBarEnts();
 extern cvar_t* in_joystick;
+extern cvar_t* g_fighterArcade; // (2026-10-13) g_main.cpp
 extern vec3_t serverViewOrg;
 static qboolean cg_rangedFogging = qfalse; //so we know if we should go back to normal fog
 
@@ -2837,7 +2838,10 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView)
 		const Vehicle_t* p_veh;
 
 		// Mouse turns slower.
-		if ((p_veh = G_IsRidingVehicle(&g_entities[0])) != nullptr)
+		// (2026-10-13) not with the responsive fighter flight (g_fighterArcade): the aim moves at the normal mouse / look
+		// speed and the ship follows it at its own turn rate (FighterNPC.cpp), as MP
+		if ((p_veh = G_IsRidingVehicle(&g_entities[0])) != nullptr
+			&& !(p_veh->m_pVehicleInfo->type == VH_FIGHTER && g_fighterArcade && g_fighterArcade->integer))
 		{
 			if (p_veh->m_pVehicleInfo->mousePitch)
 			{
@@ -2908,6 +2912,20 @@ void CG_DrawActiveFrame(const int serverTime, const stereoFrame_t stereoView)
 		if (!mYawOverride)
 		{
 			keyYawScale = 0.0f;
+		}
+	}
+
+	// (2026-10-13) tell the client when the player pilots a fighter: there a controller flies it (cl_fighterPad)
+	{
+		static int lastFighterPilot = -1;
+		const Vehicle_t* pilotVeh = g_entities[0].client != nullptr ? G_IsRidingVehicle(&g_entities[0]) : nullptr;
+		const int fighterPilot = pilotVeh != nullptr && pilotVeh->m_pVehicleInfo != nullptr
+			&& pilotVeh->m_pVehicleInfo->type == VH_FIGHTER && pilotVeh->m_pPilot == &g_entities[0] ? 1 : 0;
+
+		if (fighterPilot != lastFighterPilot)
+		{
+			cgi_Cvar_Set("cl_fighterPilot", fighterPilot ? "1" : "0");
+			lastFighterPilot = fighterPilot;
 		}
 	}
 

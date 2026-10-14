@@ -3781,11 +3781,12 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 	}
 	else
 	{
-		select_level++;
+		// SS_BLASTER (2026-10-14): explicit cycle order, single saber styles FAST..TAVION then BLASTER
+		select_level = BG_NextSaberStyleInCycle(select_level);
 
-		for (int attempts = 0; attempts < SS_TAVION; attempts++)
+		for (int attempts = 0; attempts < SS_TAVION + 1; attempts++)
 		{
-			if (select_level > SS_TAVION)
+			if (select_level >= SS_NUM_SABER_STYLES || select_level == SS_DUAL || select_level == SS_STAFF)
 			{
 				if ((ent->client->saber[0].type == SABER_SINGLE_BACKHAND))
 				{
@@ -3807,7 +3808,7 @@ void Cmd_SaberAttackCycle_f(gentity_t* ent)
 			}
 
 			//no dice, keep looking
-			select_level++;
+			select_level = BG_NextSaberStyleInCycle(select_level); // SS_BLASTER (2026-10-14)
 		}
 
 		if (d_saberStanceDebug.integer)

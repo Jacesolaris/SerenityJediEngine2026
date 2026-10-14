@@ -36,6 +36,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 
 XCVAR_DEF(bg_fighterAltControl, "0", NULL, CVAR_SYSTEMINFO, qtrue)
+XCVAR_DEF(g_fighterArcade, "1", NULL, CVAR_ARCHIVE | CVAR_SYSTEMINFO, qtrue) // (2026-10-13) fighters: 1 = responsive flight (rate steering, quick throttle, stick roll), 0 = the old flight exactly; sent to the clients for the prediction
+XCVAR_DEF(g_fighterTurnScale, "1.6", NULL, CVAR_ARCHIVE | CVAR_SYSTEMINFO, qtrue) // (2026-10-13) fighters with g_fighterArcade 1: top turn rate = turningSpeed x this x 12 deg/s (the old flight's hard-coded factor is 0.8)
 XCVAR_DEF(capturelimit, "8", NULL, CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, qtrue)
 XCVAR_DEF(com_optvehtrace, "0", NULL, CVAR_NONE, qtrue)
 XCVAR_DEF(d_altRoutes, "0", NULL, CVAR_CHEAT, qfalse)
@@ -139,6 +141,8 @@ XCVAR_DEF(g_saberDmgDelay_Wound, "100", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_saberDmgVelocityScale, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_saberLockFactor, "2", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_saberLocking, "1", NULL, CVAR_ARCHIVE, qtrue)
+XCVAR_DEF(g_saberBlasterAimArc, "30", NULL, CVAR_ARCHIVE, qtrue) // SS_BLASTER (2026-10-14): pistol auto aim half angle (degrees)
+XCVAR_DEF(g_saberBlasterAimRange, "4096", NULL, CVAR_ARCHIVE, qtrue) // SS_BLASTER (2026-10-14): pistol auto aim range
 XCVAR_DEF(g_saberRealisticCombat, "2", NULL, CVAR_ARCHIVE, qfalse)
 XCVAR_DEF(g_saberRestrictForce, "0", NULL, CVAR_ARCHIVE, qfalse)
 XCVAR_DEF(g_saberTraceSaberFirst, "0", NULL, CVAR_ARCHIVE, qtrue)

@@ -289,6 +289,10 @@ typedef enum
 	BCLASS_MANDO_SABER_NO_FP_ARMOUR,
 	BCLASS_PAZVIZSLA,
 	BCLASS_RESISTANCE,
+	// MD->SJE parity (2026-10-13): MovieDuels' classes, appended (same values as in MD) so no other value moves
+	BCLASS_HEAVYTROOPER,
+	BCLASS_DOOKU,
+	BCLASS_RAY,
 
 	BCLASS_NUM_CLASSES
 } bclass_t;

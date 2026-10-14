@@ -462,6 +462,9 @@ static qboolean Pickup_Saber(gentity_t* self, qboolean hadSaber, gentity_t* pick
 					case SS_DUAL:
 						NPC_SetAnim(self, SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
+						NPC_SetAnim(self, SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+						break;
 					case SS_STAFF:
 						NPC_SetAnim(self, SETANIM_TORSO, BOTH_SABERPULL_ALT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;

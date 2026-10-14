@@ -658,6 +658,7 @@ int PM_PowerLevelForSaberAnim(const playerState_t* ps, const int saberNum)
 		{
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			return FORCE_LEVEL_3;
 		case SS_TAVION:
 		case SS_STAFF:
@@ -2841,7 +2842,7 @@ qboolean PM_SaberKataDone(const int curmove = LS_NONE, const int newmove = LS_NO
 		return qfalse;
 	}
 
-	if (pm->ps->saberAnimLevel == SS_DESANN || pm->ps->saberAnimLevel == SS_TAVION)
+	if (pm->ps->saberAnimLevel == SS_DESANN || pm->ps->saberAnimLevel == SS_BLASTER || pm->ps->saberAnimLevel == SS_TAVION) // SS_BLASTER (2026-10-14)
 	{
 		//desann and tavion can link up as many attacks as they want
 		return qfalse;
@@ -3001,7 +3002,7 @@ static saberMoveName_t PM_PickBackStab()
 		}
 		return LS_A_BACKSTAB;
 	}
-	if (pm->gent->client->ps.saberAnimLevel == SS_DESANN)
+	if ((pm->gent->client->ps.saberAnimLevel == SS_DESANN || pm->gent->client->ps.saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 	{
 		if (pm->ps->saberMove == LS_READY || !Q_irand(0, 3))
 		{
@@ -3513,6 +3514,9 @@ saberMoveName_t PM_SaberLungeAttackMove(const qboolean fallback_to_normal_lunge)
 			return LS_A_JUMP_T__B_;
 		}
 		break;
+	case SS_BLASTER:
+		return LS_SPINATTACK;
+		break;
 	default: //normal lunge
 		if (fallback_to_normal_lunge)
 		{
@@ -3570,6 +3574,7 @@ qboolean PM_CheckLungeAttackMove()
 		|| pm->ps->saberAnimLevel == SS_DUAL //dual
 		|| pm->ps->saberAnimLevel == SS_STAFF //staff
 		|| pm->ps->saberAnimLevel == SS_DESANN
+		|| pm->ps->saberAnimLevel == SS_BLASTER // SS_BLASTER (2026-10-14)
 		|| pm->ps->saberAnimLevel == SS_TAVION
 		|| pm->ps->dualSabers)
 	{
@@ -3609,7 +3614,7 @@ qboolean PM_CheckLungeAttackMove()
 						&& !Q_irand(0, 3 - g_spskill->integer))
 					{
 						//only fencer and higher can do this
-						if (pm->ps->saberAnimLevel == SS_DESANN)
+						if ((pm->ps->saberAnimLevel == SS_DESANN || pm->ps->saberAnimLevel == SS_BLASTER)) // SS_BLASTER (2026-10-14)
 						{
 							if (!Q_irand(0, 4))
 							{
@@ -3963,7 +3968,8 @@ static qboolean PM_CheckJumpForwardAttackMove()
 		}
 		//check strong
 		else if (pm->ps->saberAnimLevel == SS_STRONG //strong style
-			|| pm->ps->saberAnimLevel == SS_DESANN) //desann
+			|| pm->ps->saberAnimLevel == SS_DESANN
+			|| pm->ps->saberAnimLevel == SS_BLASTER) //desann // SS_BLASTER (2026-10-14)
 		{
 			if (!pm->ps->dualSabers)
 			{
@@ -6165,6 +6171,7 @@ void PM_SaberStartTransAnim(const int saberAnimLevel, const int anim, float* ani
 				break;
 
 			case SS_FAST:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				*animSpeed *= 1.1f;
 				break;
 			case SS_MEDIUM:
@@ -6882,6 +6889,9 @@ static void PM_TorsoAnimLightsaber()
 						case SS_STAFF:
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						case SS_NONE:
 						case SS_FAST:
 						case SS_MEDIUM:
@@ -6913,6 +6923,9 @@ static void PM_TorsoAnimLightsaber()
 						case SS_DESANN:
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14): draw anim placeholder
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						default:
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
@@ -6928,11 +6941,16 @@ static void PM_TorsoAnimLightsaber()
 						case SS_STAFF:
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14): draw anim placeholder
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						case SS_NONE:
 						case SS_FAST:
 						case SS_MEDIUM:
 						case SS_STRONG:
 						case SS_TAVION:
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						case SS_DESANN:
 							if (pm->ps->saber[0].type == SABER_SINGLE_BACKHAND || pm->ps->saber[0].type == SABER_SINGLE_ASBACKHAND) //saber backhand
 							{
@@ -7369,9 +7387,11 @@ static void PM_TorsoAnimLightsaber()
 						case SS_DUAL:
 							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							break;
 						case SS_STAFF:
-							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL_ALT,
-								SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL_ALT,SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
 						default:;
 						}
@@ -7757,12 +7777,13 @@ void PM_TorsoAnimation()
 							case SS_STRONG:
 							case SS_DESANN:
 							case SS_DUAL:
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL,
-									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL,SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+								break;
+							case SS_BLASTER: // SS_BLASTER (2026-10-14)
+								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 								break;
 							case SS_STAFF:
-								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL_ALT,
-									SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+								PM_SetAnim(pm, SETANIM_TORSO, BOTH_SABERPULL_ALT,SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 								break;
 							default:;
 							}

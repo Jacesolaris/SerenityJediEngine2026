@@ -5180,7 +5180,7 @@ static void Q3_SetForcePowerLevel(const int entID, const int forcePower, const i
 
 	if (forceLevel < 0 || forceLevel >= NUM_FORCE_POWER_LEVELS)
 	{
-		if (forcePower != FP_SABER_OFFENSE || forceLevel >= SS_NUM_SABER_STYLES)
+		if (forcePower != FP_SABER_OFFENSE || forceLevel > SS_STAFF) // SS_BLASTER (2026-10-14): keep the old bound
 		{
 			G_DebugPrint(WL_ERROR, "Q3_SetForcePowerLevel: Force power setting %d out of range (0-3)\n", forceLevel);
 			return;

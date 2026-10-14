@@ -47,6 +47,7 @@ extern void TryUse(gentity_t* ent);
 extern void ChangeWeapon(const gentity_t* ent, int new_weapon);
 extern void ScoreBoardReset();
 extern void wp_saber_update(gentity_t* self, const usercmd_t* ucmd);
+extern void WP_SaberBlasterThink(gentity_t* ent, usercmd_t* ucmd); // SS_BLASTER (2026-10-14)
 extern void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd);
 extern void WP_ForcePowersUpdate(gentity_t* self, usercmd_t* ucmd);
 extern void WP_BlockPointsUpdate(const gentity_t* self);
@@ -2945,7 +2946,7 @@ static gentity_t* G_KickTrace(gentity_t* ent, vec3_t kick_dir, const float kick_
 								}
 							}
 						}
-						else if (ent->client->ps.saberAnimLevel == SS_DESANN
+						else if ((ent->client->ps.saberAnimLevel == SS_DESANN || ent->client->ps.saberAnimLevel == SS_BLASTER) // SS_BLASTER (2026-10-14)
 							&& (hitEnt->client->ps.saberFatigueChainCount >= MISHAPLEVEL_HEAVY ||
 								hitEnt->client->ps.BlasterAttackChainCount >= BLASTERMISHAPLEVEL_HEAVY)
 							&& !((hitEnt->client->ps.ManualBlockingFlags & 1 << MBF_HOLDINGBLOCK) != 0))
@@ -6960,6 +6961,7 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 			{
 			case SS_TAVION:
 			case SS_FAST:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				client->ps.speed *= 0.85f;
 				break;
 			case SS_MEDIUM:
@@ -7015,6 +7017,7 @@ static void ClientAlterSpeed(gentity_t* ent, usercmd_t* ucmd, const qboolean con
 			case SS_MEDIUM:
 			case SS_DUAL:
 			case SS_STAFF:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				client->ps.speed *= 0.85f;
 				break;
 			case SS_DESANN:
@@ -8864,18 +8867,14 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 
 	G_CheckClampUcmd(ent, ucmd);
 
+	WP_SaberBlasterThink(ent, ucmd); // SS_BLASTER (2026-10-14): left hand pistol, filters alt attack
+
 	WP_ForcePowersUpdate(ent, ucmd);
 
 	if (client->ps.blockPoints < BLOCK_POINTS_MAX)
 	{
 		WP_BlockPointsUpdate(ent);
 	}
-
-	//if (ucmd->buttons & BUTTON_BLOCK)
-	//{
-	//	//blocking with saber
-	//	ent->client->ps.saberManualBlockingTime = level.time + FRAMETIME;
-	//}
 
 	//if we have the saber in hand, check for starting a block to reflect shots
 	if (ent->s.number < MAX_CLIENTS || ent->NPC && G_JediInNormalAI(ent)) //NPC jedi not in a special AI mode
@@ -8910,6 +8909,11 @@ static void ClientThink_real(gentity_t* ent, usercmd_t* ucmd)
 			//that. With it - 100 for most fighters - the same ship at the same range looked a good deal smaller here.)
 			cg.overrides.active |= CG_OVERRIDE_3RD_PERSON_RNG | CG_OVERRIDE_3RD_PERSON_VOF | CG_OVERRIDE_3RD_PERSON_POF;
 			cg.overrides.thirdPersonRange = pPlayerVeh->m_pVehicleInfo->cameraRange;
+			if (cg_fighterCamTight.integer && pPlayerVeh->m_pVehicleInfo->type == VH_FIGHTER)
+			{
+				//(2026-10-13) cg_fighterCamTight: a closer chase camera for the fighter's pilot, as MP
+				cg.overrides.thirdPersonRange *= 0.8f;
+			}
 			cg.overrides.thirdPersonVertOffset = pPlayerVeh->m_pVehicleInfo->cameraVertOffset;
 			cg.overrides.thirdPersonPitchOffset = pPlayerVeh->m_pVehicleInfo->cameraPitchOffset;
 

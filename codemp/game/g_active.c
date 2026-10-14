@@ -2064,6 +2064,18 @@ static void ClientEvents(gentity_t* ent, int old_event_sequence)
 			ent->client->invulnerableTimer = 0;
 			break;
 
+		case EV_SABERBLASTER: // SS_BLASTER (2026-10-14): the left hand pistol shot (anim / clip predicted in bg)
+			if (Client->ps.eventParms[index] == SBE_FIRE)
+			{
+				G_SaberBlasterFire(ent, qfalse, NULL);
+			}
+			else if (Client->ps.eventParms[index] == SBE_LOCKSHOT)
+			{
+				const int lock_enemy = Client->saberBlasterLockEnemy;
+				G_SaberBlasterFire(ent, qtrue, lock_enemy >= 0 && lock_enemy < ENTITYNUM_WORLD ? &g_entities[lock_enemy] : NULL);
+			}
+			break;
+
 			// ========================================================
 			// ITEM USE EVENTS
 			// ========================================================
@@ -3196,6 +3208,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (saber1 && saber1->type == SABER_SINGLE_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
 						{
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -3482,6 +3495,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
 					case SS_DUAL:
@@ -3513,6 +3527,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SHOWOFF_STRONG, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						break;
 					case SS_DUAL:
@@ -3621,6 +3636,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (ent->client->ps.saberHolstered)
 						{
 							//turn on first
@@ -3681,6 +3697,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 						break;
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (ent->client->ps.saberHolstered)
 						{
 							//turn on first
@@ -3858,6 +3875,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					if (saber1 && saber1->type == SABER_SINGLE_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -3936,6 +3954,7 @@ void G_SetTauntAnim(gentity_t* ent, int taunt)
 					break;
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 					if (saber1 && saber1->type == SABER_SINGLE_VADER || ent->client->pers.botclass == BCLASS_VADER) //saber kylo
 					{
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_VADERTAUNT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
@@ -4099,6 +4118,10 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOn);
 							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
+							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOn);
+							break;
 						default:
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOn);
@@ -4123,6 +4146,7 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 						case SS_STRONG:
 						case SS_TAVION:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABER_IGNITION_JFA, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOn);
 							break;
@@ -4150,7 +4174,12 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 						case SS_STRONG:
 						case SS_TAVION:
 						case SS_DESANN:
-							if (saber1 && (saber1->type == SABER_SINGLE_BACKHAND || saber1->type == SABER_SINGLE_ASBACKHAND))
+							if (ent->client->pers.botclass == BCLASS_DOOKU)
+							{
+								// MD->SJE parity (2026-10-13): MD's Dooku class draws as Dooku's saber does, whatever saber
+								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_DOOKU_SMALLDRAW, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							}
+							else if (saber1 && (saber1->type == SABER_SINGLE_BACKHAND || saber1->type == SABER_SINGLE_ASBACKHAND))
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_SABER_BACKHAND_IGNITION, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
@@ -4182,6 +4211,10 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 							{
 								NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							}
+							G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOn);
+							break;
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
+							NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND1TO2, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOn);
 							break;
 						default:
@@ -4224,6 +4257,7 @@ void G_SetsaberdownorAnim(gentity_t* ent)
 					case SS_STRONG:
 					case SS_TAVION:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						NPC_SetAnim(ent, SETANIM_TORSO, BOTH_STAND2TO1, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 						G_Sound(ent, CHAN_AUTO, ent->client->saber[0].soundOff);
 						break;
@@ -4592,6 +4626,7 @@ static qboolean Bot_Is_Saber_Class(gentity_t* ent)
 	case BCLASS_JEDIMASTER:
 	case BCLASS_JEDITRAINER:
 	case BCLASS_KYLE:
+	case BCLASS_RAY: // MD->SJE parity (2026-10-13): MD's Rey and Dooku classes, as MD
 	case BCLASS_LUKE:
 	case BCLASS_MORGANKATARN:
 	case BCLASS_REBORN:
@@ -4604,6 +4639,7 @@ static qboolean Bot_Is_Saber_Class(gentity_t* ent)
 	case BCLASS_YODA:
 	case BCLASS_PADAWAN:
 	case BCLASS_SITHLORD:
+	case BCLASS_DOOKU:
 	case BCLASS_VADER:
 	case BCLASS_SITH:
 	case BCLASS_APPRENTICE:
@@ -4642,6 +4678,7 @@ qboolean Bot_Is_Allowed_to_use_force(gentity_t* ent)
 	case BCLASS_CULTIST:
 	case BCLASS_JEDI:
 	case BCLASS_KYLE:
+	case BCLASS_RAY: // MD->SJE parity (2026-10-13): MD's Rey and Dooku classes, as MD
 	case BCLASS_JEDIMASTER:
 	case BCLASS_JEDITRAINER:
 	case BCLASS_DUELS:
@@ -4660,6 +4697,7 @@ qboolean Bot_Is_Allowed_to_use_force(gentity_t* ent)
 	case BCLASS_PADAWAN:
 	case BCLASS_GRIEVOUS:
 	case BCLASS_SITHLORD:
+	case BCLASS_DOOKU:
 	case BCLASS_VADER:
 	case BCLASS_SITH:
 	case BCLASS_APPRENTICE:
@@ -5670,6 +5708,7 @@ static void ClientThink_real(gentity_t* ent)
 			{
 			case SS_TAVION:
 			case SS_FAST:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				client->ps.speed *= 0.85f;
 				break;
 			case SS_MEDIUM:
@@ -5707,6 +5746,7 @@ static void ClientThink_real(gentity_t* ent)
 			case SS_MEDIUM:
 			case SS_DUAL:
 			case SS_STAFF:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				client->ps.speed *= 0.85f;
 				break;
 			case SS_DESANN:
@@ -5950,6 +5990,7 @@ static void ClientThink_real(gentity_t* ent)
 					case SS_MEDIUM:
 					case SS_STRONG:
 					case SS_DESANN:
+					case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						if (client->ps.saberHolstered == 1 && client->saber[1].model[0])
 						{
 						}
@@ -6988,6 +7029,7 @@ static void ClientThink_real(gentity_t* ent)
 							break;
 						case SS_STRONG:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 							strength = Q_irand(3, 4);
 							break;
 						}
@@ -7138,6 +7180,9 @@ static void ClientThink_real(gentity_t* ent)
 		}
 #endif
 	}
+
+	// SS_BLASTER (2026-10-14): remember the saberlock enemy, a lock shot breaks the lock inside Pmove
+	ent->client->saberBlasterLockEnemy = ent->client->ps.saberLockTime >= level.time ? ent->client->ps.saberLockEnemy : ENTITYNUM_NONE;
 
 	Pmove(&pmove);
 

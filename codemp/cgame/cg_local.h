@@ -509,6 +509,7 @@ typedef struct centity_s {
 	qboolean		ikStatus;
 
 	qboolean		saberWasInFlight;
+	qboolean		saberBlasterPistol; // SS_BLASTER (2026-10-14): the left hand pistol model is in ghoul2 slot 2
 
 	float			smoothYaw;
 
@@ -1111,7 +1112,7 @@ typedef struct cg_s {
 	} sharedBuffer;
 
 	short				radarEntityCount;
-	short				radarEntities[64];
+	short				radarEntities[128];
 
 	short				bracketedEntityCount;
 	short				bracketedEntities[MAX_CLIENTS + 16];

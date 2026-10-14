@@ -3049,6 +3049,7 @@ static void Jedi_AdjustSaberAnimLevel(const gentity_t* self, int new_level)
 			Com_Printf(S_COLOR_RED"%s Saber Attack Set: strong\n", self->NPC_type);
 			break;
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			Com_Printf(S_COLOR_RED"%s Saber Attack Set: desann\n", self->NPC_type);
 			break;
 		case SS_TAVION:

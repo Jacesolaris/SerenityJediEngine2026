@@ -595,6 +595,8 @@ stringID_table_t SaberStyleTable[] =
 	{"desann", SS_DESANN},
 	ENUM2STRING(SS_TAVION),
 	{"tavion", SS_TAVION},
+	ENUM2STRING(SS_BLASTER), // SS_BLASTER (2026-10-14)
+	{"blaster", SS_BLASTER},
 	ENUM2STRING(SS_DUAL),
 	{"dual", SS_DUAL},
 	ENUM2STRING(SS_STAFF),
@@ -2230,6 +2232,11 @@ static int g_saber_attack_power(const gentity_t* ent, const qboolean attacking)
 {
 	int base_level = ent->client->ps.saberAnimLevel;
 
+	if (base_level == SS_BLASTER)
+	{
+		base_level = SS_DESANN; // SS_BLASTER (2026-10-14): Desann's power
+	}
+
 	//Give "medium" strength for the two special stances.
 	if (base_level == SS_DUAL)
 	{
@@ -3145,8 +3152,9 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 									{
 										gi.Printf(S_COLOR_RED"saberInBackAttack\n");
 									}
-									if (ent->client->ps.saberAnimLevel == SS_DESANN || ent->client->ps.saberAnimLevel ==
-										SS_STRONG)
+									if (ent->client->ps.saberAnimLevel == SS_DESANN ||
+										ent->client->ps.saberAnimLevel == SS_BLASTER|| // SS_BLASTER (2026-10-14)
+										ent->client->ps.saberAnimLevel == SS_STRONG)
 									{
 										totalDmg[i] = g_get_attack_damage(ent, 50, 100, 0.5f);
 									}
@@ -3170,8 +3178,9 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 									{
 										gi.Printf(S_COLOR_RED"saberInOverHeadAttack\n");
 									}
-									if (ent->client->ps.saberAnimLevel == SS_DESANN || ent->client->ps.saberAnimLevel ==
-										SS_STRONG)
+									if (ent->client->ps.saberAnimLevel == SS_DESANN ||
+										ent->client->ps.saberAnimLevel == SS_BLASTER || // SS_BLASTER (2026-10-14)
+										ent->client->ps.saberAnimLevel == SS_STRONG)
 									{
 										totalDmg[i] = g_get_attack_damage(ent, 50, 100, 0.5f);
 									}
@@ -4928,10 +4937,13 @@ constexpr auto LOCK_IDEAL_DIST_JKA = 46.0f;
 extern void PM_SetAnimFrame(gentity_t* gent, int frame, qboolean torso, qboolean legs);
 extern qboolean ValidAnimFileIndex(int index);
 
-static int G_SaberLockAnim(const int attacker_saber_style, const int defender_saber_style, const int top_or_side,
+static int G_SaberLockAnim(const int attacker_saber_style_in, const int defender_saber_style_in, const int top_or_side,
 	const int lock_or_break_or_super_break,
 	const int win_or_lose)
 {
+	// SS_BLASTER (2026-10-14): saberlocks use the dual saber lock anims (BOTH_LK_DL_*)
+	const int attacker_saber_style = attacker_saber_style_in == SS_BLASTER ? SS_DUAL : attacker_saber_style_in;
+	const int defender_saber_style = defender_saber_style_in == SS_BLASTER ? SS_DUAL : defender_saber_style_in;
 	int base_anim = -1;
 	if (lock_or_break_or_super_break == SABER_LOCK_LOCK)
 	{
@@ -6654,8 +6666,10 @@ static const int* stag_table_sp[] =
 	stag_fast_sp,   // SS_DESANN
 	stag_fast_sp,   // SS_TAVION
 	stag_dual_sp,   // SS_DUAL
-	stag_staff_sp   // SS_STAFF
+	stag_staff_sp,  // SS_STAFF
+	stag_fast_sp    // SS_BLASTER (2026-10-14): like SS_DESANN
 };
+static_assert(sizeof stag_table_sp / sizeof stag_table_sp[0] == SS_NUM_SABER_STYLES, "stag_table_sp needs one entry per saber style"); // SS_BLASTER (2026-10-14)
 
 void G_StaggerAttacker(gentity_t* atk)
 {
@@ -6665,7 +6679,7 @@ void G_StaggerAttacker(gentity_t* atk)
 	if (PM_InGetUp(&atk->client->ps) || PM_InForceGetUp(&atk->client->ps))
 		return;
 
-	const int style = clamp_int(atk->client->ps.saberAnimLevel, 0, SS_STAFF);
+	const int style = clamp_int(atk->client->ps.saberAnimLevel, 0, SS_NUM_SABER_STYLES - 1); // SS_BLASTER (2026-10-14)
 	const int anim = stag_table_sp[style][Q_irand(0, 7)];
 
 	G_PlayTorsoAnim_SP(atk, anim);
@@ -6727,8 +6741,10 @@ static const int* bounce_table_sp[] =
 	bounce_desann_sp,  // SS_DESANN
 	bounce_tavion_sp,  // SS_TAVION
 	bounce_dual_sp,    // SS_DUAL
-	bounce_staff_sp    // SS_STAFF
+	bounce_staff_sp,   // SS_STAFF
+	bounce_desann_sp   // SS_BLASTER (2026-10-14): like SS_DESANN
 };
+static_assert(sizeof bounce_table_sp / sizeof bounce_table_sp[0] == SS_NUM_SABER_STYLES, "bounce_table_sp needs one entry per saber style"); // SS_BLASTER (2026-10-14)
 
 void G_BounceAttacker(gentity_t* atk)
 {
@@ -6738,7 +6754,7 @@ void G_BounceAttacker(gentity_t* atk)
 	if (PM_InGetUp(&atk->client->ps) || PM_InForceGetUp(&atk->client->ps))
 		return;
 
-	const int style = clamp_int(atk->client->ps.saberAnimLevel, 0, SS_STAFF);
+	const int style = clamp_int(atk->client->ps.saberAnimLevel, 0, SS_NUM_SABER_STYLES - 1); // SS_BLASTER (2026-10-14)
 	const int anim = bounce_table_sp[style][Q_irand(0, 6)];
 
 	G_PlayTorsoAnim_SP(atk, anim);
@@ -6776,8 +6792,10 @@ static const int* knock_table_sp[] =
 	knock_fast_sp,   // SS_DESANN
 	knock_fast_sp,   // SS_TAVION
 	knock_dual_sp,   // SS_DUAL
-	knock_staff_sp   // SS_STAFF
+	knock_staff_sp,  // SS_STAFF
+	knock_dual_sp    // SS_BLASTER (2026-10-14): SS_DUAL blocking
 };
+static_assert(sizeof knock_table_sp / sizeof knock_table_sp[0] == SS_NUM_SABER_STYLES, "knock_table_sp needs one entry per saber style"); // SS_BLASTER (2026-10-14)
 
 void g_fatigue_bp_knockaway(gentity_t* blocker)
 {
@@ -6787,7 +6805,7 @@ void g_fatigue_bp_knockaway(gentity_t* blocker)
 	if (PM_InGetUp(&blocker->client->ps) || PM_InForceGetUp(&blocker->client->ps))
 		return;
 
-	const int style = clamp_int(blocker->client->ps.saberAnimLevel, 0, SS_STAFF);
+	const int style = clamp_int(blocker->client->ps.saberAnimLevel, 0, SS_NUM_SABER_STYLES - 1); // SS_BLASTER (2026-10-14)
 	const int anim = knock_table_sp[style][Q_irand(0, 5)];
 
 	G_PlayTorsoAnim_SP(blocker, anim);
@@ -8594,6 +8612,7 @@ static void WP_SaberCatchFromWall(gentity_t* self, gentity_t* saber, const qbool
 		case SS_MEDIUM:
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			NPC_SetAnim(self, SETANIM_TORSO, BOTH_STAND1TO2,
 				SETANIM_AFLAG_PACE | SETANIM_FLAG_OVERRIDE);
 			break;
@@ -10739,6 +10758,7 @@ void WP_SaberCatch(gentity_t* self, gentity_t* saber, const qboolean switch_to_s
 		case SS_MEDIUM:
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			NPC_SetAnim(self, SETANIM_TORSO, BOTH_STAND1TO2,
 				SETANIM_AFLAG_PACE | SETANIM_FLAG_OVERRIDE);
 			break;
@@ -11659,6 +11679,7 @@ static int BasicSaberBlockCost(const int attackerStyle)
 	case SS_MEDIUM:
 		return 15;
 	case SS_DESANN:
+	case SS_BLASTER: // SS_BLASTER (2026-10-14)
 		return 16;
 	case SS_STRONG:
 		return 17;
@@ -15447,6 +15468,291 @@ void wp_saber_start_missile_block_check(gentity_t* self, const usercmd_t* ucmd)
 static void WP_SetSaberMove(const gentity_t* self, const short blocked)
 {
 	self->client->ps.saberBlocked = blocked;
+}
+
+//SS_BLASTER (2026-10-14)===================================================================
+// Saber in the right hand, a bryar pistol in the left hand (visual only, not an inventory weapon).
+// Alt attack fires the pistol (auto aim at the chest of the enemy nearest the crosshair), alt attack + attack
+// reloads its clip (ps.ammo[SABERBLASTER_CLIP_SLOT] = shots used), in a saberlock alt attack charges a shot that
+// ends the lock. Transient per-entity state (not saved): alt held this frame, saberlock charge start.
+static qboolean saberBlasterAltHeld[MAX_GENTITIES];
+static int saberBlasterChargeStart[MAX_GENTITIES];
+extern qboolean G_ValidEnemy(const gentity_t* self, const gentity_t* enemy);
+extern gentity_t* CreateMissile(vec3_t org, vec3_t dir, float vel, int life, gentity_t* owner, qboolean alt_fire);
+extern void WP_TraceSetStart(const gentity_t* ent, vec3_t start);
+
+static qboolean WP_SaberBlasterActive(const gentity_t* ent)
+{
+	return ent && ent->client
+		&& ent->client->ps.weapon == WP_SABER
+		&& ent->client->ps.saberAnimLevel == SS_BLASTER
+		&& !ent->client->ps.dualSabers
+		? qtrue
+		: qfalse;
+}
+
+static qboolean WP_SaberBlasterIsPistolModel(const gentity_t* ent)
+{
+	const int model_index = ent->weaponModel[1];
+
+	if (model_index <= 0 || model_index >= static_cast<int>(ent->ghoul2.size()))
+	{
+		return qfalse;
+	}
+	char base[MAX_QPATH];
+	Q_strncpyz(base, weaponData[WP_BRYAR_PISTOL].weaponMdl, sizeof base);
+	if (char* ext = strrchr(base, '.'))
+	{
+		*ext = 0;
+	}
+	return Q_stricmpn(ent->ghoul2[model_index].mFileName, base, static_cast<int>(strlen(base))) == 0 ? qtrue : qfalse;
+}
+
+// the pistol model on the left hand bolt while the style is used, removed otherwise
+static void WP_SaberBlasterUpdatePistolModel(gentity_t* ent)
+{
+	if (WP_SaberBlasterActive(ent) && ent->health > 0 && ent->playerModel >= 0 && ent->handLBolt >= 0)
+	{
+		if (ent->weaponModel[1] <= 0)
+		{
+			G_CreateG2AttachedWeaponModel(ent, weaponData[WP_BRYAR_PISTOL].weaponMdl, ent->handLBolt, 1);
+		}
+	}
+	else if (!ent->client->ps.dualSabers && WP_SaberBlasterIsPistolModel(ent))
+	{
+		gi.G2API_RemoveGhoul2Model(ent->ghoul2, ent->weaponModel[1]);
+		ent->weaponModel[1] = -1;
+	}
+}
+
+static void WP_SaberBlasterMuzzle(gentity_t* ent, vec3_t muzzle_point)
+{
+	if (ent->playerModel >= 0 && ent->handLBolt >= 0 && ent->ghoul2.size())
+	{
+		mdxaBone_t bolt_matrix;
+		vec3_t bolt_origin;
+		const vec3_t yaw_only_angles = { 0, ent->currentAngles[YAW], 0 };
+
+		gi.G2API_GetBoltMatrix(ent->ghoul2, ent->playerModel, ent->handLBolt, &bolt_matrix, yaw_only_angles,
+			ent->currentOrigin, cg.time ? cg.time : level.time, nullptr, ent->s.modelScale);
+		gi.G2API_GiveMeVectorFromMatrix(bolt_matrix, ORIGIN, bolt_origin);
+		VectorCopy(bolt_origin, muzzle_point);
+		return;
+	}
+	// no ghoul2 hand: in front of the left shoulder
+	vec3_t fwd, right;
+	AngleVectors(ent->client->ps.viewangles, fwd, right, nullptr);
+	VectorCopy(ent->client->renderInfo.eyePoint, muzzle_point);
+	muzzle_point[2] -= 12.0f;
+	VectorMA(muzzle_point, 16.0f, fwd, muzzle_point);
+	VectorMA(muzzle_point, -8.0f, right, muzzle_point);
+}
+
+// auto aim: the enemy whose chest is nearest the crosshair within the arc (g_saberBlasterAimArc half angle,
+// g_saberBlasterAimRange), with a clear line of sight
+static gentity_t* WP_SaberBlasterFindTarget(const gentity_t* ent, const vec3_t eye, const vec3_t fwd)
+{
+	const float arc = Com_Clamp(0.0f, 180.0f, g_saberBlasterAimArc->value);
+	const float range = g_saberBlasterAimRange->value;
+	float best_dot = cosf(DEG2RAD(arc));
+	gentity_t* best = nullptr;
+
+	for (int i = 0; i < globals.num_entities; i++)
+	{
+		gentity_t* other = &g_entities[i];
+
+		if (other == ent || !other->inuse || !other->client || other->health <= 0)
+		{
+			continue;
+		}
+		if (!G_ValidEnemy(ent, other))
+		{
+			continue;
+		}
+		vec3_t spot, dir;
+		CalcEntitySpot(other, SPOT_CHEST, spot);
+		VectorSubtract(spot, eye, dir);
+		if (VectorNormalize(dir) > range)
+		{
+			continue;
+		}
+		const float dot = DotProduct(dir, fwd);
+		if (dot < best_dot)
+		{
+			continue;
+		}
+		trace_t tr;
+		gi.trace(&tr, eye, nullptr, nullptr, spot, ent->s.number, MASK_SHOT, static_cast<EG2_Collision>(0), 0);
+		if (tr.fraction < 1.0f && tr.entityNum != other->s.number)
+		{
+			continue;
+		}
+		best_dot = dot;
+		best = other;
+	}
+	return best;
+}
+
+static void WP_SaberBlasterFire(gentity_t* ent, const qboolean charged, gentity_t* target)
+{
+	vec3_t eye, fwd, start, dir;
+
+	VectorCopy(ent->client->renderInfo.eyePoint, eye);
+	AngleVectors(ent->client->ps.viewangles, fwd, nullptr, nullptr);
+	WP_SaberBlasterMuzzle(ent, start);
+	WP_TraceSetStart(ent, start);
+
+	if (!target)
+	{
+		target = WP_SaberBlasterFindTarget(ent, eye, fwd);
+	}
+	if (target)
+	{
+		vec3_t spot;
+		CalcEntitySpot(target, SPOT_CHEST, spot);
+		VectorSubtract(spot, start, dir);
+	}
+	else
+	{
+		// no enemy in the arc: where the crosshair points
+		trace_t tr;
+		vec3_t end;
+		VectorMA(eye, 8192.0f, fwd, end);
+		gi.trace(&tr, eye, nullptr, nullptr, end, ent->s.number, MASK_SHOT, static_cast<EG2_Collision>(0), 0);
+		VectorSubtract(tr.endpos, start, dir);
+	}
+	if (VectorNormalize(dir) < 1.0f)
+	{
+		VectorCopy(fwd, dir);
+	}
+
+	gentity_t* missile = CreateMissile(start, dir, BRYAR_PISTOL_VEL, 10000, ent, charged);
+	if (!missile)
+	{
+		return;
+	}
+	missile->classname = "bryar_proj";
+	missile->s.weapon = WP_BRYAR_PISTOL;
+	if (charged)
+	{
+		constexpr int count = 5; // fully charged
+		missile->count = count;
+		missile->damage = weaponData[WP_BRYAR_PISTOL].altDamage * count;
+		missile->methodOfDeath = MOD_PISTOL_ALT;
+	}
+	else
+	{
+		missile->damage = weaponData[WP_BRYAR_PISTOL].damage;
+		missile->methodOfDeath = MOD_PISTOL;
+	}
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK;
+	missile->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
+	missile->bounceCount = 8;
+
+	G_SoundOnEnt(ent, CHAN_WEAPON, charged ? "sound/weapons/bryar/alt_fire.wav" : "sound/weapons/bryar/fire.wav");
+	G_PlayEffect("bryar/muzzle_flash", start, dir);
+	ent->client->ps.persistant[PERS_ACCURACY_SHOTS]++;
+}
+
+// called from ClientThink_real before the force powers, the saber and Pmove see the buttons
+void WP_SaberBlasterThink(gentity_t* ent, usercmd_t* ucmd)
+{
+	const qboolean is_Ready_to_Reload = ((ent->client->buttons & BUTTON_WALKING) && (ent->client->buttons & BUTTON_DASH)) ? qtrue : qfalse;
+	if (!ent || !ent->client)
+	{
+		return;
+	}
+	const int ent_num = ent->s.number;
+
+	WP_SaberBlasterUpdatePistolModel(ent);
+	saberBlasterAltHeld[ent_num] = qfalse;
+
+	if (ent->client->ps.saberLockTime < level.time)
+	{
+		saberBlasterChargeStart[ent_num] = 0;
+	}
+	if (!WP_SaberBlasterActive(ent))
+	{
+		return;
+	}
+
+	const qboolean alt = is_Ready_to_Reload;
+	const qboolean reload = alt && ucmd->buttons & BUTTON_ATTACK ? qtrue : qfalse;
+
+	if (reload)
+	{
+		ucmd->buttons &= ~BUTTON_ATTACK;
+	}
+	saberBlasterAltHeld[ent_num] = alt && !reload ? qtrue : qfalse;
+
+	playerState_t* ps = &ent->client->ps;
+
+	if (!alt
+		|| ent->health <= 0
+		|| ps->weaponTime > 0
+		|| ps->saberLockTime >= level.time //the lock is handled in PM_SaberLocked
+		|| ps->saberInFlight
+		|| PM_InKnockDown(ps)
+		|| (!ent_num && (cg.zoomMode || in_camera)))
+	{
+		return;
+	}
+
+	if (reload)
+	{
+		if (ps->ammo[SABERBLASTER_CLIP_SLOT] > 0)
+		{
+			ps->ammo[SABERBLASTER_CLIP_SLOT] = 0;
+			NPC_SetAnim(ent, SETANIM_TORSO, BOTH_RELOAD, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+			ps->torsoAnimTimer = SABERBLASTER_RELOAD_TIME;
+			ps->weaponTime = SABERBLASTER_RELOAD_TIME;
+			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/reload.mp3");
+		}
+		return;
+	}
+
+	if (ps->ammo[SABERBLASTER_CLIP_SLOT] >= SABERBLASTER_CLIP_SIZE)
+	{
+		// empty clip: click
+		ps->weaponTime = 500;
+		G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/noammo.wav");
+		return;
+	}
+
+	ps->ammo[SABERBLASTER_CLIP_SLOT]++;
+	ps->saberBlocked = BLOCKED_NONE;
+	NPC_SetAnim(ent, SETANIM_TORSO, BOTH_FORCELIGHTNING, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
+	ps->weaponTime = weaponData[WP_BRYAR_PISTOL].fireTime;
+	ps->torsoAnimTimer = ps->weaponTime;
+	WP_SaberBlasterFire(ent, qfalse, nullptr);
+}
+
+// called from PM_SaberLocked: alt attack starts a charge, after g_saberBlasterLockCharge ms a charged shot is fired
+// at the lock enemy's chest; returns qtrue when the shot was fired (the caller ends the lock as a win)
+qboolean WP_SaberBlasterLockCharge(gentity_t* ent, gentity_t* enemy)
+{
+	if (!WP_SaberBlasterActive(ent) || !enemy || !enemy->client)
+	{
+		return qfalse;
+	}
+	const int ent_num = ent->s.number;
+
+	if (!saberBlasterChargeStart[ent_num])
+	{
+		if (saberBlasterAltHeld[ent_num])
+		{
+			saberBlasterChargeStart[ent_num] = level.time;
+			G_SoundOnEnt(ent, CHAN_WEAPON, "sound/weapons/bryar/altcharge.wav");
+		}
+		return qfalse;
+	}
+	if (level.time - saberBlasterChargeStart[ent_num] < g_saberBlasterLockCharge->integer)
+	{
+		return qfalse;
+	}
+	saberBlasterChargeStart[ent_num] = 0;
+	WP_SaberBlasterFire(ent, qtrue, enemy);
+	return qtrue;
 }
 
 void wp_saber_update(gentity_t* self, const usercmd_t* ucmd)
@@ -22876,6 +23182,7 @@ static void ForceShootstrike(gentity_t* self)
 								case SS_TAVION:
 								case SS_STRONG:
 								case SS_DESANN:
+								case SS_BLASTER: // SS_BLASTER (2026-10-14)
 								case SS_MEDIUM:
 								case SS_NONE:
 								default:
@@ -23169,6 +23476,7 @@ static void ForceShootstrike(gentity_t* self)
 								case SS_TAVION:
 								case SS_STRONG:
 								case SS_DESANN:
+								case SS_BLASTER: // SS_BLASTER (2026-10-14)
 								case SS_MEDIUM:
 								case SS_NONE:
 								default:
@@ -23462,6 +23770,7 @@ static void ForceShootstrike(gentity_t* self)
 								case SS_TAVION:
 								case SS_STRONG:
 								case SS_DESANN:
+								case SS_BLASTER: // SS_BLASTER (2026-10-14)
 								case SS_MEDIUM:
 								case SS_NONE:
 								default:
@@ -23768,6 +24077,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 				case SS_TAVION:
 				case SS_STRONG:
 				case SS_DESANN:
+				case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				case SS_MEDIUM:
 					NPC_SetAnim(traceEnt, SETANIM_TORSO, BOTH_P1_S1_T_, SETANIM_AFLAG_PACE);
 					break;
@@ -23949,6 +24259,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						case SS_TAVION:
 						case SS_STRONG:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						case SS_MEDIUM:
 							NPC_SetAnim(traceEnt, SETANIM_TORSO, BOTH_P1_S1_T_, SETANIM_AFLAG_PACE);
 							break;
@@ -24053,6 +24364,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						case SS_TAVION:
 						case SS_STRONG:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						case SS_MEDIUM:
 							NPC_SetAnim(traceEnt, SETANIM_TORSO, BOTH_P1_S1_T_, SETANIM_AFLAG_PACE);
 							break;
@@ -24117,6 +24429,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						case SS_TAVION:
 						case SS_STRONG:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						case SS_MEDIUM:
 							NPC_SetAnim(traceEnt, SETANIM_TORSO, BOTH_P1_S1_TL, SETANIM_AFLAG_PACE);
 							break;
@@ -24178,6 +24491,7 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 						case SS_TAVION:
 						case SS_STRONG:
 						case SS_DESANN:
+						case SS_BLASTER: // SS_BLASTER (2026-10-14)
 						case SS_MEDIUM:
 							NPC_SetAnim(traceEnt, SETANIM_TORSO, BOTH_P1_S1_T_, SETANIM_AFLAG_PACE);
 							break;

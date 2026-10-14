@@ -1368,6 +1368,35 @@ static void G_SpawnBots(char* botList, int baseDelay)
 }
 #endif
 
+// a bot whose name is already loaded (from another bot file, or the other bot folder) is skipped: the first one
+// wins, as the name lookups always did, and the lists show it once (2026-10-13)
+static void G_DropRepeatedBots(const int first, const char* filename)
+{
+	int keep = first;
+
+	for (int n = first; n < level.bots.num; n++)
+	{
+		char name[MAX_QPATH];
+		qboolean repeated = qfalse;
+
+		Q_strncpyz(name, Info_ValueForKey(level.bots.infos[n], "name"), sizeof name);
+		for (int o = 0; o < keep && !repeated; o++)
+		{
+			repeated = !Q_stricmp(Info_ValueForKey(level.bots.infos[o], "name"), name) ? qtrue : qfalse;
+		}
+		if (repeated)
+		{
+			if (developer.integer)
+			{
+				Com_Printf("bot \"%s\" in %s is already loaded, skipped\n", name, filename);
+			}
+			continue;
+		}
+		level.bots.infos[keep++] = level.bots.infos[n];
+	}
+	level.bots.num = keep;
+}
+
 /*
 ===============
 G_LoadBotsFromFile
@@ -1395,7 +1424,9 @@ static void G_LoadBotsFromFile(char* filename)
 	buf[len] = 0;
 	trap->FS_Close(f);
 
+	const int firstBot = level.bots.num;
 	level.bots.num += G_ParseInfos(buf, MAX_BOTS - level.bots.num, &level.bots.infos[level.bots.num]);
+	G_DropRepeatedBots(firstBot, filename);
 }
 
 /*
@@ -1426,16 +1457,20 @@ static void G_LoadBots(void)
 		G_LoadBotsFromFile("botfiles/bots.txt");
 	}
 
-	// get all bots from .bot files
-	const int numdirs = trap->FS_GetFileList("scriptsmp", ".bot", dirlist, 1024);
-	char* dirptr = dirlist;
-	for (int i = 0; i < numdirs; i++, dirptr += dirlen + 1)
+	// get all bots from .bot files: scriptsmp/ (this mod's), then botfiles/ (the other mod's layout, so a bot file from
+	// MovieDuels / SerenityJediEngine2026 loads in either; repeated names are skipped) (2026-10-13)
+	static const char* const botFolders[] = { "scriptsmp", "botfiles" };
+	for (int folder = 0; folder < 2; folder++)
 	{
-		char filename[128];
-		dirlen = strlen(dirptr);
-		strcpy(filename, "scriptsmp/");
-		strcat(filename, dirptr);
-		G_LoadBotsFromFile(filename);
+		const int numdirs = trap->FS_GetFileList(botFolders[folder], ".bot", dirlist, sizeof dirlist);
+		char* dirptr = dirlist;
+		for (int i = 0; i < numdirs; i++, dirptr += dirlen + 1)
+		{
+			char filename[MAX_QPATH];
+			dirlen = strlen(dirptr);
+			Com_sprintf(filename, sizeof filename, "%s/%s", botFolders[folder], dirptr);
+			G_LoadBotsFromFile(filename);
+		}
 	}
 }
 

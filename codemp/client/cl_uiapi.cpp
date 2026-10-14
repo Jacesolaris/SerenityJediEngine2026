@@ -1058,7 +1058,7 @@ intptr_t CL_UISystemCalls(intptr_t* args)
 		return S_RegisterSound(static_cast<const char*>(VMA(1)));
 
 	case UI_S_STARTLOCALSOUND:
-		S_StartLocalSound(args[1], args[2]);
+		S_StartLocalSoundUI(args[1], args[2]);
 		return 0;
 
 	case UI_KEY_KEYNUMTOSTRINGBUF:
@@ -1555,7 +1555,7 @@ void CL_BindUI()
 		uii.LAN_UpdateVisiblePings = LAN_UpdateVisiblePings;
 
 		uii.S_StartBackgroundTrack = S_StartBackgroundTrack;
-		uii.S_StartLocalSound = S_StartLocalSound;
+		uii.S_StartLocalSound = S_StartLocalSoundUI;
 		uii.S_StopBackgroundTrack = S_StopBackgroundTrack;
 		uii.S_RegisterSound = S_RegisterSound;
 

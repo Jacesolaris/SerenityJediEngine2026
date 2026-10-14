@@ -356,7 +356,7 @@ SetForceCmd SetForceTable[NUM_FORCE_POWERS] = {
 	{"forceLightning", "setForceLightning", FORCE_LEVEL_3},
 	{"saberThrow", "setSaberThrow", FORCE_LEVEL_3},
 	{"saberDefense", "setSaberDefense", FORCE_LEVEL_3},
-	{"saberOffense", "setSaberOffense", SS_NUM_SABER_STYLES - 1},
+	{"saberOffense", "setSaberOffense", SS_STAFF}, // SS_BLASTER (2026-10-14): keep the old bound
 	{"forceRage", "setForceRage", FORCE_LEVEL_3},
 	{"forceProtect", "setForceProtect", FORCE_LEVEL_3},
 	{"forceAbsorb", "setForceAbsorb", FORCE_LEVEL_3},
@@ -668,14 +668,14 @@ static void Svcmd_SaberAttackCycle_f()
 	{
 		saberAnimLevel = self->client->ps.saberAnimLevel;
 	}
-	saberAnimLevel++;
+	saberAnimLevel = BG_NextSaberStyleInCycle(saberAnimLevel); // SS_BLASTER (2026-10-14): explicit cycle order
 	int sanityCheck = 0;
 	while (self->client->ps.saberAnimLevel != saberAnimLevel
 		&& !(allowedStyles & 1 << saberAnimLevel)
 		&& sanityCheck < SS_NUM_SABER_STYLES + 1)
 	{
-		saberAnimLevel++;
-		if (saberAnimLevel > SS_STAFF)
+		saberAnimLevel = BG_NextSaberStyleInCycle(saberAnimLevel); // SS_BLASTER (2026-10-14)
+		if (saberAnimLevel >= SS_NUM_SABER_STYLES) // SS_BLASTER (2026-10-14): past the end of the cycle
 		{
 			if (self->s.clientNum >= MAX_CLIENTS //not the player
 				&& !G_ControlledByPlayer(self) &&
@@ -771,6 +771,9 @@ static void Svcmd_SaberAttackCycle_f()
 	case SS_DESANN:
 		gi.Printf(S_COLOR_CYAN"Lightsaber Combat Style: Desann\n");
 		//LIGHTSABERCOMBATSTYLE_DESANN
+		break;
+	case SS_BLASTER: // SS_BLASTER (2026-10-14)
+		gi.Printf(S_COLOR_MAGENTA"Lightsaber Combat Style: Blaster\n");
 		break;
 	case SS_TAVION:
 		gi.Printf(S_COLOR_MAGENTA"Lightsaber Combat Style: Tavion\n");
@@ -1141,9 +1144,9 @@ static void Svcmd_SaberOffense_f()
 	{
 		g_entities[0].client->ps.forcePowerLevel[FP_SABER_OFFENSE] = FORCE_LEVEL_0;
 	}
-	else if (g_entities[0].client->ps.forcePowerLevel[FP_SABER_OFFENSE] >= SS_NUM_SABER_STYLES)
+	else if (g_entities[0].client->ps.forcePowerLevel[FP_SABER_OFFENSE] > SS_STAFF) // SS_BLASTER (2026-10-14): keep the old bound
 	{
-		g_entities[0].client->ps.forcePowerLevel[FP_SABER_OFFENSE] = SS_NUM_SABER_STYLES - 1;
+		g_entities[0].client->ps.forcePowerLevel[FP_SABER_OFFENSE] = SS_STAFF;
 	}
 }
 
@@ -1719,9 +1722,12 @@ static int svcmdcmp(const void* a, const void* b)
 	return Q_stricmp(static_cast<const char*>(a), ((svcmd_t*)b)->name);
 }
 
+extern void Svcmd_FighterTest_f(); // (2026-10-13) g_vehicles.cpp, developer test (cheats)
+
 // FIXME some of these should be made CMD_ALIVE too!
 static svcmd_t svcmds[] = {
 	{"entitylist", Svcmd_EntityList_f, CMD_NONE},
+	{"fightertest", Svcmd_FighterTest_f, CMD_CHEAT},
 	{"game_memory", Svcmd_GameMem_f, CMD_NONE},
 
 	{"nav", Svcmd_Nav_f, CMD_CHEAT},

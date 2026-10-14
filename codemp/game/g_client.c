@@ -3034,6 +3034,12 @@ static void G_AssignClassAndScaleFromModel(gentity_t* ent, const int clientNum, 
 		}
 	}
 
+	// a new class (another character picked): the next spawn re-reads the player's own Force setup before the class
+	// rules apply, or a Jedi turned stormtrooper and back keeps the stormtrooper's zeroed powers (2026-10-13)
+	if (client->pers.botclass != client->pers.nextbotclass)
+	{
+		client->ps.fd.forceDoInit = 1;
+	}
 	client->pers.botclass = client->pers.nextbotclass;   // if you use pers.botclass
 	ent->s.botclass = client->pers.nextbotclass;   // this is what cgame can see
 	client->ps.botclass = client->pers.nextbotclass; // BG_PlayerStateToEntityState(ExtraPolate) copies ps.botclass into s.botclass every frame: without this the class was 0 for clients
@@ -4462,6 +4468,49 @@ static void ClassItemHealthSetup(gentity_t* ent)
 	}
 }
 
+// the ten SJE SP powers (Stasis .. Blinding, FP_STASIS onwards): the classes without the Force lose them as well
+// (their rules in ClientSpawn only list the original eighteen) (2026-10-13)
+static void G_ClearNewForcePowers(gclient_t* client)
+{
+	for (int fp = FP_STASIS; fp < NUM_FORCE_POWERS; fp++)
+	{
+		client->ps.fd.forcePowerLevel[fp] = FORCE_LEVEL_0;
+	}
+}
+
+// after the class rules: a power at level 0 is not known and not running, and the selected power is a known one
+static void G_DropUnusableForcePowers(gentity_t* ent)
+{
+	gclient_t* client = ent->client;
+
+	for (int fp = 0; fp < NUM_FORCE_POWERS; fp++)
+	{
+		if (client->ps.fd.forcePowerLevel[fp] > FORCE_LEVEL_0)
+		{
+			continue;
+		}
+		if (client->ps.fd.forcePowersActive & 1 << fp)
+		{
+			WP_ForcePowerStop(ent, (forcePowers_t)fp);
+		}
+		client->ps.fd.forcePowersKnown &= ~(1 << fp);
+	}
+
+	if (!(client->ps.fd.forcePowersKnown & 1 << client->ps.fd.forcePowerSelected))
+	{
+		client->ps.fd.forcePowerSelected = FP_HEAL;
+		for (int fp = 0; fp < NUM_FORCE_POWERS; fp++)
+		{
+			if (client->ps.fd.forcePowersKnown & 1 << fp && fp != FP_LEVITATION && fp != FP_SABER_OFFENSE &&
+				fp != FP_SABER_DEFENSE && fp != FP_SABERTHROW)
+			{
+				client->ps.fd.forcePowerSelected = fp;
+				break;
+			}
+		}
+	}
+}
+
 void ClientSpawn(gentity_t* ent)
 {
 	int i = 0, index = 0, savesaber_num = ENTITYNUM_NONE, wDisable = 0, savedSiegeIndex = 0, maxHealth = 100;
@@ -4569,7 +4618,7 @@ void ClientSpawn(gentity_t* ent)
 		&& ent->client->ps.fd.saberAnimLevel != SS_DUAL)
 	{
 		//Bots randomly switch styles on respawn if not using a staff or dual
-		int newLevel = Q_irand(SS_MEDIUM, SS_STAFF);
+		int newLevel = Q_irand(SS_MEDIUM, SS_BLASTER); // SS_BLASTER (2026-10-14): bots can pick the blaster style too
 
 		//new validation technique.
 		if (!G_ValidSaberStyle(ent, newLevel))
@@ -5312,6 +5361,8 @@ spawn_done:
 				case BCLASS_PADAWAN:
 				case BCLASS_GRIEVOUS:
 				case BCLASS_SITHLORD:
+				case BCLASS_DOOKU: // MD->SJE parity (2026-10-13): MD's Dooku and Rey classes (saber + melee, as MD)
+				case BCLASS_RAY:
 				case BCLASS_VADER:
 				case BCLASS_SITH:
 				case BCLASS_APPRENTICE:
@@ -5884,6 +5935,18 @@ spawn_done:
 					client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
 					ClassAmmoSetup(ent);
 					break;
+				case BCLASS_HEAVYTROOPER:
+					// MD->SJE parity (2026-10-13): MD's heavy trooper (evotrooper, clonerc2); MD also gives WP_CLONECOMMANDO,
+					// which SJE MP does not have
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_FLECHETTE;
+					client->skillLevel[SK_FLECHETTE] = FORCE_LEVEL_3;
+					ClassAmmoSetup(ent);
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_Z6_ROTARY_CANNON;
+					client->skillLevel[SK_REPEATER] = FORCE_LEVEL_3;
+					client->ps.stats[STAT_WEAPONS] |= 1 << WP_THERMAL;
+					client->ps.ammo[AMMO_THERMAL] = 4;
+					break;
 				case BCLASS_PLAYER:
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_MELEE;
 					client->ps.stats[STAT_WEAPONS] |= 1 << WP_BLASTER;
@@ -6249,6 +6312,11 @@ spawn_done:
 			client->ps.stats[STAT_MAX_HEALTH] = 100;
 			ClassItemHealthSetup(ent);
 			break;
+		case BCLASS_RAY: // MD->SJE parity (2026-10-13): MD's Rey class, as MD
+			client->ps.stats[STAT_ARMOR] = 100;
+			client->ps.stats[STAT_MAX_HEALTH] = 100;
+			ClassItemHealthSetup(ent);
+			break;
 		case BCLASS_LANDO:
 			client->ps.stats[STAT_HOLDABLE_ITEMS] |= 1 << HI_EWEB;
 			client->ps.stats[STAT_HOLDABLE_ITEMS] |= 1 << HI_HEALTHDISP;
@@ -6456,6 +6524,11 @@ spawn_done:
 			ClassItemHealthSetup(ent);
 			break;
 		case BCLASS_SITHLORD:
+			client->ps.stats[STAT_ARMOR] = 200;
+			client->ps.stats[STAT_MAX_HEALTH] = 100;
+			ClassItemHealthSetup(ent);
+			break;
+		case BCLASS_DOOKU: // MD->SJE parity (2026-10-13): MD's Dooku class, as MD
 			client->ps.stats[STAT_ARMOR] = 200;
 			client->ps.stats[STAT_MAX_HEALTH] = 100;
 			ClassItemHealthSetup(ent);
@@ -6678,6 +6751,9 @@ spawn_done:
 			client->ps.fd.forcePowerMax = 200;
 			client->ps.fd.forcePower = client->ps.fd.forcePowerMax;
 			break;
+		case BCLASS_HEAVYTROOPER: // MD->SJE parity (2026-10-13): MD's heavy trooper, as MD
+			client->ps.stats[STAT_HOLDABLE_ITEMS] |= 1 << HI_SPHERESHIELD;
+			break;
 		case BCLASS_R2D2:
 		case BCLASS_R5D2:
 		case BCLASS_GONK:
@@ -6725,6 +6801,7 @@ spawn_done:
 		case BCLASS_CULTIST:
 		case BCLASS_JEDI:
 		case BCLASS_KYLE:
+		case BCLASS_RAY: // MD->SJE parity (2026-10-13): MD's Rey and Dooku classes keep their Force, as MD
 		case BCLASS_JEDIMASTER:
 		case BCLASS_JEDITRAINER:
 		case BCLASS_DUELS:
@@ -6743,6 +6820,7 @@ spawn_done:
 		case BCLASS_PADAWAN:
 		case BCLASS_GRIEVOUS:
 		case BCLASS_SITHLORD:
+		case BCLASS_DOOKU:
 		case BCLASS_VADER:
 		case BCLASS_SITH:
 		case BCLASS_APPRENTICE:
@@ -6809,6 +6887,7 @@ spawn_done:
 		case BCLASS_IPPERIALAGENT3:
 		case BCLASS_CLONETROOPER:
 		case BCLASS_JANGO_NOJP: // these weren't in the switch, so they kept the player's Force setup (as MD now)
+		case BCLASS_HEAVYTROOPER: // MD->SJE parity (2026-10-13): MD's heavy trooper has no Force, as MD
 		case BCLASS_PAZVIZSLA:
 		case BCLASS_RESISTANCE:
 		case BCLASS_GRAN_SHOOTER:
@@ -6831,6 +6910,7 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_0;
+			G_ClearNewForcePowers(client);
 			break;
 		case BCLASS_CHEWIE:
 			client->ps.fd.forcePowerLevel[FP_HEAL] = FORCE_LEVEL_0;
@@ -6851,6 +6931,7 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_RAGE] = FORCE_LEVEL_3; //chewie gets rage
+			G_ClearNewForcePowers(client);
 			break;
 		case BCLASS_ROCKETTROOPER:
 		case BCLASS_MANDOLORIAN:
@@ -6877,6 +6958,7 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_0;
+			G_ClearNewForcePowers(client);
 			break;
 		case BCLASS_TUSKEN_RAIDER:
 		case BCLASS_SABERNOFP: // sword / darksaber users: no Force, but the saber needs offense, defense and throw (as MD)
@@ -6899,6 +6981,7 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE] = FORCE_LEVEL_3;
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_3;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_3;
+			G_ClearNewForcePowers(client);
 			break;
 		case BCLASS_WOOKIE:
 			client->ps.fd.forcePowerLevel[FP_HEAL] = FORCE_LEVEL_0;
@@ -6919,6 +7002,7 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE] = FORCE_LEVEL_3;
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_3;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_3;
+			G_ClearNewForcePowers(client);
 			break;
 		case BCLASS_WOOKIEMELEE:
 			client->ps.fd.forcePowerLevel[FP_HEAL] = FORCE_LEVEL_0;
@@ -6939,6 +7023,7 @@ spawn_done:
 			client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABER_DEFENSE] = FORCE_LEVEL_0;
 			client->ps.fd.forcePowerLevel[FP_SABERTHROW] = FORCE_LEVEL_0;
+			G_ClearNewForcePowers(client);
 			break;
 		case BCLASS_PROTOCOL:
 		case BCLASS_R2D2:
@@ -6962,6 +7047,9 @@ spawn_done:
 			break;
 		}
 	}
+	// every power the class (or the player's setup) leaves at level 0 is unknown and stopped, and the selected power is
+	// one that is known: a Jedi turned stormtrooper in the Select Character menu keeps no Force (2026-10-13)
+	G_DropUnusableForcePowers(ent);
 
 	if (client->sess.sessionTeam == TEAM_SPECTATOR)
 	{

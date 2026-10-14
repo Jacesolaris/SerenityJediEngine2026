@@ -13246,7 +13246,8 @@ void standard_bot_ai(bot_state_t* bs)
 					bs->cur_ps.fd.saberAnimLevel != SS_TAVION &&
 					bs->cur_ps.fd.saberAnimLevel != SS_MEDIUM &&
 					bs->cur_ps.fd.saberAnimLevel != SS_STRONG &&
-					bs->cur_ps.fd.saberAnimLevel != SS_DESANN))
+					bs->cur_ps.fd.saberAnimLevel != SS_DESANN &&
+					bs->cur_ps.fd.saberAnimLevel != SS_BLASTER))
 			{//using a single saber
 				Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
 			}
@@ -13656,7 +13657,7 @@ void standard_bot_ai(bot_state_t* bs)
 			use_the_force = 1;
 			forceHostile = 1;
 		}
-	}
+	} // SS_BLASTER (2026-10-14)
 
 	if (use_the_force && forceHostile)
 	{
@@ -14586,7 +14587,7 @@ void standard_bot_ai(bot_state_t* bs)
 						if ((bs->currentEnemy->health > 75 ||
 							enemyps->fd.blockPoints > BLOCKPOINTS_FULL) &&
 							ps->fd.saberAnimLevel != SS_STRONG &&
-							ps->fd.saberAnimLevel != SS_DESANN &&
+							(ps->fd.saberAnimLevel != SS_DESANN && ps->fd.saberAnimLevel != SS_BLASTER) &&
 							bs->saberPower)
 						{
 							Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
@@ -16731,7 +16732,7 @@ void Enhanced_bot_ai(bot_state_t* bs)
 						if ((bs->currentEnemy->health > 75 ||
 							enemyps->fd.blockPoints > BLOCKPOINTS_FULL) &&
 							ps->fd.saberAnimLevel != SS_STRONG &&
-							ps->fd.saberAnimLevel != SS_DESANN &&
+							(ps->fd.saberAnimLevel != SS_DESANN && ps->fd.saberAnimLevel != SS_BLASTER) &&
 							bs->saberPower)
 						{
 							Cmd_SaberAttackCycle_f(&g_entities[bs->client]);
@@ -18953,4 +18954,4 @@ int bot_ai_shutdown(const int restart)
 		trap->BotLibShutdown();
 	}
 	return qtrue;
-}
+} // SS_BLASTER (2026-10-14)

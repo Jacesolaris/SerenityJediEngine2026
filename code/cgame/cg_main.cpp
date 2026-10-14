@@ -429,6 +429,7 @@ vmCvar_t cg_scaleJoystickSensitivity;
 vmCvar_t cg_vehicleStickYaw;
 vmCvar_t cg_vehicleStickPitch;
 vmCvar_t cg_vehicleStickEaseIn;
+vmCvar_t cg_fighterCamTight; // (2026-10-13)
 
 vmCvar_t cg_SaberInnonblockableAttackWarning;
 vmCvar_t cg_IsSaberDoingAttackDamage;
@@ -493,6 +494,7 @@ vmCvar_t cg_aimShoulder;
 vmCvar_t cg_com_rend2;
 
 vmCvar_t cg_textprintscale;
+vmCvar_t cg_subtitleSize; // (2026-10-13) g_subtitlesize
 
 using cvarTable_t = struct
 {
@@ -658,6 +660,8 @@ static cvarTable_t cvarTable[] = {
 	{&cg_vehicleStickYaw, "cg_vehicleStickYaw", "0.3", CVAR_ARCHIVE},
 	{&cg_vehicleStickPitch, "cg_vehicleStickPitch", "0.22", CVAR_ARCHIVE},
 	{&cg_vehicleStickEaseIn, "cg_vehicleStickEaseIn", "400", CVAR_ARCHIVE},
+	//(2026-10-13) fighters: 1 = closer chase camera (x 0.8 of the vehicle cameraRange), 0 = the old camera
+	{&cg_fighterCamTight, "cg_fighterCamTight", "1", CVAR_ARCHIVE},
 
 	{&cg_trueguns, "cg_trueguns", "1", CVAR_ARCHIVE},
 	{&cg_holsteredweapons, "cg_holsteredweapons", "2", CVAR_ARCHIVE},
@@ -717,6 +721,8 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_com_rend2, "com_rend2", "0", CVAR_ARCHIVE | CVAR_SAVEGAME },
 
 	{ &cg_textprintscale, "cg_textprintscale", "0.5f", CVAR_ARCHIVE },
+
+	{ &cg_subtitleSize, "g_subtitlesize", "0.5", CVAR_ARCHIVE }, // (2026-10-13) subtitle/caption size, clamped 0.25 - 2.0
 };
 
 static constexpr size_t cvarTableSize = std::size(cvarTable);

@@ -14733,6 +14733,8 @@ extern qboolean G_GetRootSurfNameWithVariant(gentity_t* ent, const char* rootSur
 extern qboolean G_RagDoll(gentity_t* ent, vec3_t forcedAngles);
 int cg_saberOnSoundTime[MAX_GENTITIES] = { 0 };
 extern void CG_AddRadarEnt(const centity_t* cent);
+extern qboolean CG_InFighter();
+extern void CG_AddBracketedEnt(const centity_t* cent);
 extern float CG_MachinegunSpinAngle(centity_t* cent);
 extern vmCvar_t cg_SpinningBarrels;
 
@@ -14920,7 +14922,21 @@ void CG_Player(centity_t* cent)
 
 	CG_AddRadarEnt(cent);
 
-	CG_VehicleEffects(cent);
+	if (cent->gent && cent->gent->client && cent->gent->client->NPC_class == CLASS_VEHICLE)
+	{
+		CG_VehicleEffects(cent);
+
+		// vehicles are already on the radar (CG_AddRadarEnt above adds every entity)
+		if (CG_InFighter())
+		{
+			//this is a vehicle, bracket it
+			if (cg.predictedPlayerState.m_iVehicleNum != cent->currentState.clientNum)
+			{
+				//don't add the vehicle I'm in... :)
+				CG_AddBracketedEnt(cent);
+			}
+		}
+	}
 
 	G_RagDoll(cent->gent, cent->lerpAngles);
 
@@ -15630,6 +15646,7 @@ void CG_Player(centity_t* cent)
 											100 * cg_ignitionSpeed.value;
 										break;
 									case SS_DESANN:
+									case SS_BLASTER: // SS_BLASTER (2026-10-14)
 										cent->gent->client->ps.saber[saberNum].blade[bladeNum].length += cent->gent->
 											client->ps.saber[saberNum].blade[bladeNum].lengthMax / 10 * cg.frametime /
 											300 * cg_ignitionSpeed.value;

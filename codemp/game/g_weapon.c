@@ -6704,3 +6704,146 @@ void SP_emplaced_eweb(gentity_t* ent)
 
 	trap->LinkEntity((sharedEntity_t*)ent);
 }
+
+//SS_BLASTER (2026-10-14)===================================================================
+// The left hand bryar pistol of SS_BLASTER: the shot is spawned here on EV_SABERBLASTER (g_active.c ClientEvents),
+// the anim, fire rate and clip are predicted in bg_pmove.c PM_SaberBlasterWeapon / bg_saber.c PM_SaberLocked.
+extern void CalcEntitySpot(const gentity_t* ent, spot_t spot, vec3_t point);
+extern qboolean G_ValidEnemy(const gentity_t* self, const gentity_t* enemy);
+
+static qboolean G_SaberBlasterIsEnemy(const gentity_t* self, const gentity_t* other)
+{
+	if (other == self || !other->inuse || !other->client || other->health <= 0)
+	{
+		return qfalse;
+	}
+	if (other->client->ps.pm_type == PM_DEAD
+		|| other->client->sess.sessionTeam == TEAM_SPECTATOR
+		|| other->client->ps.pm_flags & PMF_FOLLOW
+		|| other->s.NPC_class == CLASS_VEHICLE)
+	{
+		return qfalse;
+	}
+	if (self->enemy == other)
+	{
+		return qtrue;
+	}
+	if (self->s.number < MAX_CLIENTS && other->s.number < MAX_CLIENTS)
+	{
+		// player vs player: anyone not on my team
+		return OnSameTeam(self, other) ? qfalse : qtrue;
+	}
+	return G_ValidEnemy(self, other);
+}
+
+// auto aim: the enemy whose chest is nearest the crosshair within the arc (g_saberBlasterAimArc half angle,
+// g_saberBlasterAimRange), with a clear line of sight
+static gentity_t* G_SaberBlasterFindTarget(const gentity_t* ent, const vec3_t eye, const vec3_t fwd)
+{
+	const float arc = Com_Clamp(0.0f, 180.0f, g_saberBlasterAimArc.value);
+	const float range = g_saberBlasterAimRange.value;
+	float best_dot = cosf(DEG2RAD(arc));
+	gentity_t* best = NULL;
+
+	for (int i = 0; i < level.num_entities; i++)
+	{
+		gentity_t* other = &g_entities[i];
+		vec3_t spot, dir;
+		trace_t tr;
+
+		if (!G_SaberBlasterIsEnemy(ent, other))
+		{
+			continue;
+		}
+		CalcEntitySpot(other, SPOT_CHEST, spot);
+		VectorSubtract(spot, eye, dir);
+		if (VectorNormalize(dir) > range)
+		{
+			continue;
+		}
+		const float dot = DotProduct(dir, fwd);
+		if (dot < best_dot)
+		{
+			continue;
+		}
+		trap->Trace(&tr, eye, NULL, NULL, spot, ent->s.number, MASK_SHOT, qfalse, 0, 0);
+		if (tr.fraction < 1.0f && tr.entityNum != other->s.number)
+		{
+			continue;
+		}
+		best_dot = dot;
+		best = other;
+	}
+	return best;
+}
+
+void G_SaberBlasterFire(gentity_t* ent, const qboolean charged, gentity_t* target)
+{
+	vec3_t eye, fwd, right, start, dir;
+
+	if (!ent || !ent->client || ent->health <= 0)
+	{
+		return;
+	}
+
+	VectorCopy(ent->client->ps.origin, eye);
+	eye[2] += ent->client->ps.viewheight;
+	AngleVectors(ent->client->ps.viewangles, fwd, right, NULL);
+
+	// left hand, in front of the left shoulder
+	VectorCopy(eye, start);
+	start[2] -= 12.0f;
+	VectorMA(start, 16.0f, fwd, start);
+	VectorMA(start, -8.0f, right, start);
+	WP_TraceSetStart(ent, start, vec3_origin, vec3_origin);
+
+	if (!target)
+	{
+		target = G_SaberBlasterFindTarget(ent, eye, fwd);
+	}
+	if (target && target->inuse)
+	{
+		vec3_t spot;
+		CalcEntitySpot(target, SPOT_CHEST, spot);
+		VectorSubtract(spot, start, dir);
+	}
+	else
+	{
+		// no enemy in the arc: where the crosshair points
+		trace_t tr;
+		vec3_t end;
+		VectorMA(eye, 8192.0f, fwd, end);
+		trap->Trace(&tr, eye, NULL, NULL, end, ent->s.number, MASK_SHOT, qfalse, 0, 0);
+		VectorSubtract(tr.endpos, start, dir);
+	}
+	if (VectorNormalize(dir) < 1.0f)
+	{
+		VectorCopy(fwd, dir);
+	}
+
+	gentity_t* missile = CreateMissile(start, dir, BRYAR_PISTOL_VEL, 10000, ent, charged);
+
+	missile->classname = "bryar_proj";
+	missile->s.weapon = WP_BRYAR_PISTOL;
+
+	if (charged)
+	{
+		const float box_size = BRYAR_ALT_SIZE * (BRYAR_MAX_CHARGE * 0.5f);
+
+		missile->s.generic1 = BRYAR_MAX_CHARGE; // fully charged
+		missile->damage = BRYAR_PISTOL_ALT_DPMAXDAMAGE;
+		missile->methodOfDeath = MOD_BRYAR_PISTOL_ALT;
+		VectorSet(missile->r.maxs, box_size, box_size, box_size);
+		VectorSet(missile->r.mins, -box_size, -box_size, -box_size);
+	}
+	else
+	{
+		missile->damage = BRYAR_PISTOL_DAMAGE;
+		missile->methodOfDeath = MOD_BRYAR_PISTOL;
+	}
+	missile->dflags = DAMAGE_DEATH_KNOCKBACK | DAMAGE_EXTRA_KNOCKBACK;
+	missile->clipmask = MASK_SHOT;
+	missile->bounceCount = 8;
+
+	ent->client->accuracy_shots++;
+}

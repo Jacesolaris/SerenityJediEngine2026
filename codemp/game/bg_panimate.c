@@ -3322,6 +3322,7 @@ int pm_power_level_for_saber_anims(const playerState_t* ps)
 		{
 		case SS_STRONG:
 		case SS_DESANN:
+		case SS_BLASTER: // SS_BLASTER (2026-10-14)
 			return FORCE_LEVEL_3;
 		case SS_TAVION:
 		case SS_STAFF:
@@ -4910,6 +4911,11 @@ static animation_t* BG_AnimsetAlloc(void)
 static void BG_AnimsetFree()
 {}
 
+// MD->SJE parity (2026-10-13): the animation.cfg / animevents.cfg text buffers (bgpa_ftext, bgAnimEvtTextBuffer), static
+// (not on the stack). 256 KB, so MovieDuels' master _humanoid files (animation.cfg 120,872 bytes, animevents.cfg 97,208
+// bytes) load with headroom; they were 120000 / 80000 ("exceeds the allowed game-side animation buffer" / "too long").
+#define BG_ANIM_TEXT_BUFFER_SIZE	262144
+
 #ifdef _CGAME //none of this is actually needed server side. Could just be moved to cgame code but it's here since it used to tie in a lot with the anim loading stuff.
 
 stringID_table_t animEventTypeTable[MAX_ANIM_EVENTS + 1] =
@@ -5514,7 +5520,7 @@ static int bg_animParseIncluding = 0;
 
 // Single shared text buffer for animation event parsing.
 // Replaces the old 80 KB stack allocation.
-static char bgAnimEvtTextBuffer[80000];
+static char bgAnimEvtTextBuffer[BG_ANIM_TEXT_BUFFER_SIZE]; // MD->SJE parity (2026-10-13): was 80000
 
 int BG_ParseAnimationEvtFile(const char* as_filename, const int animFileIndex, const int eventFileIndex)
 {
@@ -5740,7 +5746,7 @@ int bg_parse_animation_file(const char* filename, animation_t* anim_set, const q
 	int used_index;
 	int next_index = bgNumAllAnims;
 	qboolean dyn_alloc = qfalse;
-	static char bgpa_ftext[120000];
+	static char bgpa_ftext[BG_ANIM_TEXT_BUFFER_SIZE]; // MD->SJE parity (2026-10-13): was 120000
 	fileHandle_t f;
 
 	bgpa_ftext[0] = '\0';
@@ -6703,6 +6709,7 @@ void PM_SaberStartTransAnim(const int clientNum, const int saberAnimLevel, const
 				break;
 
 			case SS_FAST:
+			case SS_BLASTER: // SS_BLASTER (2026-10-14)
 				*animSpeed *= 1.1f;
 				break;
 			case SS_MEDIUM:

@@ -172,6 +172,7 @@ struct centity_s
 
 	int previousEvent;
 	//	int				teleportFlag;
+	Vehicle_t* m_pVehicle; //vehicle data
 
 	int trailTime; // so missile trails can handle dropped initial packets
 	int miscTime;
@@ -564,7 +565,10 @@ using cg_t = struct
 	overrides_t overrides; //for overriding certain third-person camera properties
 
 	short radarEntityCount;
-	short radarEntities[64];
+	short radarEntities[128];
+
+	short bracketedEntityCount;
+	short bracketedEntities[64];
 };
 
 constexpr auto MAX_SHOWPOWERS = 22;
@@ -713,6 +717,7 @@ extern vmCvar_t cg_scaleJoystickSensitivity;
 extern vmCvar_t cg_vehicleStickYaw;
 extern vmCvar_t cg_vehicleStickPitch;
 extern vmCvar_t cg_vehicleStickEaseIn;
+extern vmCvar_t cg_fighterCamTight; // (2026-10-13)
 extern vmCvar_t cg_drawRadar;
 extern vmCvar_t cg_dynamicHud;
 extern vmCvar_t cg_dynamicHudTime;
@@ -750,6 +755,7 @@ extern vmCvar_t cg_aimShoulder;
 extern vmCvar_t cg_com_rend2;
 
 extern vmCvar_t cg_textprintscale;
+extern vmCvar_t cg_subtitleSize; // (2026-10-13)
 
 void CG_NewClientinfo(const int clientNum);
 //
