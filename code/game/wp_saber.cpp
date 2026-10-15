@@ -4384,6 +4384,13 @@ constexpr auto SABER_RADIUS_DAMAGE_DIST = 2;
 constexpr auto SABER_COLLISION_BLOCKING_DIST = 8; //was 2//was 4//was 8//was 16;
 extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thresh_hold = 0.0f);
 
+// An NPC made invisible by script (set_invisible: EF_NODRAW) is not in the scene: it must not react to force powers
+// or be hit by (or hit with) a lightsaber. Clients riding inside a vehicle are also EF_NODRAW and are skipped the same way.
+qboolean WP_IsScriptInvisible(const gentity_t* ent)
+{
+	return ent && ent->client && ent->s.eFlags & EF_NODRAW ? qtrue : qfalse;
+}
+
 static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t end, float dmg, vec3_t blade_dir,
 	const qboolean no_ghoul,
 	const saberType_t saber_type, const qboolean extrapolate,
@@ -4393,6 +4400,10 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 	trace_t tr;
 	constexpr int mask = MASK_SHOT | CONTENTS_LIGHTSABER;
 	const gentity_t* attacker = &g_entities[ignore];
+	if (WP_IsScriptInvisible(attacker))
+	{// a script-invisible NPC's saber hits nothing
+		return qfalse;
+	}
 	vec3_t end2;
 	VectorCopy(end, end2);
 
@@ -4492,6 +4503,12 @@ static qboolean WP_SaberDamageForTrace(const int ignore, vec3_t start, vec3_t en
 	{
 		gentity_t* hitEnt = &g_entities[tr.entityNum];
 		const gentity_t* owner = g_entities[tr.entityNum].owner;
+
+		// a script-invisible NPC (set_invisible) is not there: its body and its saber cannot be hit
+		if (WP_IsScriptInvisible(hitEnt) || hitEnt->contents & CONTENTS_LIGHTSABER && WP_IsScriptInvisible(owner))
+		{
+			return qfalse;
+		}
 
 		if (wp_saber_must_block(hitEnt, owner, qfalse, tr.endpos, -1, -1))
 		{
@@ -15477,6 +15494,10 @@ static void WP_SetSaberMove(const gentity_t* self, const short blocked)
 // ends the lock. Transient per-entity state (not saved): alt held this frame, saberlock charge start.
 static qboolean saberBlasterAltHeld[MAX_GENTITIES];
 static int saberBlasterChargeStart[MAX_GENTITIES];
+// the shot leaves the pistol at the arm's full reach: SABERBLASTER_FIRE_FRAME of BOTH_FORCELIGHTNING (the 6th frame),
+// not as the anim starts (2026-10-15); saberBlasterFireTime = when the pending shot goes (0 = none)
+constexpr int SABERBLASTER_FIRE_FRAME = 5;
+static int saberBlasterFireTime[MAX_GENTITIES];
 extern qboolean G_ValidEnemy(const gentity_t* self, const gentity_t* enemy);
 extern gentity_t* CreateMissile(vec3_t org, vec3_t dir, float vel, int life, gentity_t* owner, qboolean alt_fire);
 extern void WP_TraceSetStart(const gentity_t* ent, vec3_t start);
@@ -15667,6 +15688,19 @@ void WP_SaberBlasterThink(gentity_t* ent, usercmd_t* ucmd)
 	WP_SaberBlasterUpdatePistolModel(ent);
 	saberBlasterAltHeld[ent_num] = qfalse;
 
+	// a shot started below goes now, its arm fully out - unless he was knocked down / killed / the anim was cut
+	if (saberBlasterFireTime[ent_num] && saberBlasterFireTime[ent_num] <= level.time)
+	{
+		saberBlasterFireTime[ent_num] = 0;
+		if (WP_SaberBlasterActive(ent)
+			&& ent->health > 0
+			&& ent->client->ps.torsoAnim == BOTH_FORCELIGHTNING
+			&& !PM_InKnockDown(&ent->client->ps))
+		{
+			WP_SaberBlasterFire(ent, qfalse, nullptr);
+		}
+	}
+
 	if (ent->client->ps.saberLockTime < level.time)
 	{
 		saberBlasterChargeStart[ent_num] = 0;
@@ -15724,7 +15758,27 @@ void WP_SaberBlasterThink(gentity_t* ent, usercmd_t* ucmd)
 	NPC_SetAnim(ent, SETANIM_TORSO, BOTH_FORCELIGHTNING, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
 	ps->weaponTime = weaponData[WP_BRYAR_PISTOL].fireTime;
 	ps->torsoAnimTimer = ps->weaponTime;
-	WP_SaberBlasterFire(ent, qfalse, nullptr);
+
+	// fire at the anim's SABERBLASTER_FIRE_FRAME (the left arm fully out), within the shot's weaponTime
+	int fire_delay = SABERBLASTER_FIRE_FRAME * 50;
+	const int anim_file = ent->client->clientInfo.animFileIndex;
+	if (ValidAnimFileIndex(anim_file))
+	{
+		fire_delay = abs(level.knownAnimFileSets[anim_file].animations[BOTH_FORCELIGHTNING].frameLerp) * SABERBLASTER_FIRE_FRAME;
+	}
+	if (fire_delay > ps->weaponTime - 50)
+	{
+		fire_delay = ps->weaponTime - 50;
+	}
+	if (fire_delay <= 0)
+	{
+		saberBlasterFireTime[ent_num] = 0;
+		WP_SaberBlasterFire(ent, qfalse, nullptr);
+	}
+	else
+	{
+		saberBlasterFireTime[ent_num] = level.time + fire_delay;
+	}
 }
 
 // called from PM_SaberLocked: alt attack starts a charge, after g_saberBlasterLockCharge ms a charged shot is fired
@@ -16017,6 +16071,10 @@ void wp_saber_update(gentity_t* self, const usercmd_t* ucmd)
 		}
 
 		saberent->clipmask = MASK_SHOT | CONTENTS_LIGHTSABER;
+		if (self->s.eFlags & EF_NODRAW)
+		{// script-invisible (set_invisible): its saber cannot be hit
+			saberent->contents = 0;
+		}
 		gi.linkentity(saberent);
 	}
 	else
@@ -16616,6 +16674,10 @@ qboolean WP_ForceThrowable(gentity_t* ent, const gentity_t* forward_ent, const g
 		return qfalse;
 	if (!ent->inuse)
 		return qfalse;
+	if (WP_IsScriptInvisible(ent))
+	{// a script-invisible NPC (set_invisible) is not there: no resist, no push/pull
+		return qfalse;
+	}
 	if (ent->NPC && ent->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		if (!in_camera && ent->NPC && ent->NPC->scriptFlags & SCF_NO_FORCE)
@@ -20033,7 +20095,7 @@ int IsPressingDashButton(const gentity_t* self)
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
 		&& (self->client->buttons & BUTTON_DASH)
-		&& (self->client->ps.forcePowerLevel[FP_SPEED] >= FORCE_LEVEL_1))
+		&& (self->client->ps.forcePowerLevel[FP_SABER_OFFENSE] > FORCE_LEVEL_0)) // ground dash: any saber user (Saber Offense 1+); gunners with no saber skill cannot
 	{
 		return qtrue;
 	}
@@ -20285,63 +20347,183 @@ static void ForceSpeedDash(gentity_t* self)
 	}
 }
 
-void player_Burn(const gentity_t* self);
+// ---------------------------------------------------------------------------------------------------------------
+// Burning (2026-10-15, after Jedi Knight Galaxies' "standard-fire" buff). A character hit by flame (a flamethrower, any
+// MOD_BURNING damage - see G_Damage) catches fire for BURN_DURATION ms: BURN_DAMAGE every BURN_DAMAGE_RATE ms
+// (MOD_BURNING, credited to whoever lit them) and the JKG burning effect (effects/sje_burn/burning.efx) on the lower
+// back. Rolling or going into water (waist deep) puts the fire out early, dying ends it, more flame refreshes the time.
+// State: PEF_BURNING in the playerState (saved, drives the HUD fire tint) + the timers below (not saved: a loaded game
+// starts with the fire out). Player_CheckBurn runs every frame for every client (ClientThink).
+// ---------------------------------------------------------------------------------------------------------------
+constexpr int BURN_DURATION = 6000;
+constexpr int BURN_DAMAGE = 2;
+constexpr int BURN_DAMAGE_RATE = 500;
+constexpr int BURN_FX_RATE = 200; // the effect is re-triggered this often while burning (as JKG's buff efx debounce)
+
+static int s_burnEndTime[MAX_GENTITIES];
+static int s_burnNextDamage[MAX_GENTITIES];
+static int s_burnNextFx[MAX_GENTITIES];
+static int s_burnAttacker[MAX_GENTITIES];
+
+// in water (waist deep) or rolling: the fire goes out / doesn't catch
+static qboolean G_BurnPutOut(const gentity_t* self)
+{
+	// water only: lava / slime are "water" to waterlevel too, and lava lights you (P_WorldEffects)
+	return self->waterlevel >= 2 && self->watertype & CONTENTS_WATER || PM_InRoll(&self->client->ps) ? qtrue : qfalse;
+}
+
+// Map fire (2026-10-15): fires in maps are an fx_runner playing a flame effect, hurting with its DAMAGE spawnflag or a
+// trigger_hurt around it. An effect counts as fire if its file name says so.
+static qboolean G_IsFireEffectName(const char* name)
+{
+	static const char* fire_words[] = { "fire", "flame", "burn", "torch", "lava", "inferno", "blaze" };
+	char lower[MAX_QPATH];
+	int i;
+
+	if (!name || !name[0])
+	{
+		return qfalse;
+	}
+	for (i = 0; name[i] && i < MAX_QPATH - 1; i++)
+	{
+		lower[i] = (char)tolower((unsigned char)name[i]);
+	}
+	lower[i] = 0;
+	for (i = 0; i < (int)(sizeof fire_words / sizeof fire_words[0]); i++)
+	{
+		if (strstr(lower, fire_words[i]))
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+// an fx_runner whose effect is fire
+qboolean G_FxRunnerIsFire(const gentity_t* ent)
+{
+	return ent && ent->fxFile ? G_IsFireEffectName(ent->fxFile) : qfalse;
+}
+
+// a fire fx_runner inside (or within 48 units of) this trigger's box: a trigger_hurt there is a fire
+qboolean G_NearFireEffect(const gentity_t* area)
+{
+	int i, a;
+
+	for (i = MAX_CLIENTS; i < globals.num_entities; i++)
+	{
+		const gentity_t* fx = &g_entities[i];
+		qboolean inside = qtrue;
+
+		if (!fx->inuse || !fx->classname || Q_stricmp(fx->classname, "fx_runner") != 0)
+		{
+			continue;
+		}
+		for (a = 0; a < 3; a++)
+		{
+			if (fx->currentOrigin[a] < area->absmin[a] - 48.0f
+				|| fx->currentOrigin[a] > area->absmax[a] + 48.0f)
+			{
+				inside = qfalse;
+				break;
+			}
+		}
+		if (inside && G_FxRunnerIsFire(fx))
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
 
 void player_StopBurn(const gentity_t* self)
 {
 	if (self && self->client)
 	{
-		if (self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING)
-		{
-			//Unburn
-			self->client->ps.PlayerEffectFlags &= ~(1 << PEF_BURNING);
-		}
-		else
-		{
-			//Unburn
-			self->client->ps.PlayerEffectFlags &= ~(1 << PEF_BURNING);
-		}
+		self->client->ps.PlayerEffectFlags &= ~(1 << PEF_BURNING);
+		s_burnEndTime[self->s.number] = 0;
 	}
 }
 
+// set a character on fire, or keep them burning longer; attacker (may be null) gets the kill
+void G_SetOnFire(gentity_t* self, gentity_t* attacker)
+{
+	if (!self || !self->client || self->health <= 0 || self->s.eFlags & EF_NODRAW)
+	{
+		return;
+	}
+	if (G_BurnPutOut(self))
+	{
+		return;
+	}
+	const int num = self->s.number;
+
+	if (!(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING) || s_burnEndTime[num] < level.time)
+	{
+		// newly lit
+		self->client->ps.PlayerEffectFlags |= 1 << PEF_BURNING;
+		s_burnNextDamage[num] = level.time + BURN_DAMAGE_RATE;
+		s_burnNextFx[num] = level.time;
+	}
+	s_burnEndTime[num] = level.time + BURN_DURATION;
+	s_burnAttacker[num] = attacker && attacker != self ? attacker->s.number : ENTITYNUM_NONE;
+}
+
+// every frame for every client (ClientThink): the effect, the damage, and putting the fire out
 void Player_CheckBurn(const gentity_t* self)
 {
-	if (self && self->client)
+	if (!self || !self->client || !(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING))
 	{
-		if (self->health <= 0 || self->painDebounceTime < level.time)
+		return;
+	}
+	const int num = self->s.number;
+
+	if (self->health <= 0 || s_burnEndTime[num] < level.time || G_BurnPutOut(self))
+	{
+		player_StopBurn(self);
+		return;
+	}
+
+	gentity_t* ent = &g_entities[num];
+
+	if (s_burnNextFx[num] <= level.time)
+	{
+		s_burnNextFx[num] = level.time + BURN_FX_RATE;
+		if (ent->ghoul2.size() && ent->playerModel >= 0 && ent->torsoBolt > 0)
 		{
-			player_StopBurn(self);
-		}
-		else if (PM_InRoll(&self->client->ps))
-		{
-			player_StopBurn(self);
-		}
-		else if (TIMER_Done(self, "BurnDebounce"))
-		{
-			player_StopBurn(self);
-		}
-		else if (self->client->ps.saberEventFlags & SEF_INWATER)
-		{
-			player_StopBurn(self);
+			// lower_lumbar, as JKG
+			G_PlayEffect(G_EffectIndex("sje_burn/burning"), ent->playerModel, ent->torsoBolt, num, ent->currentOrigin, 0,
+				qtrue);
 		}
 		else
 		{
-			player_StopBurn(self);
+			G_PlayEffect(G_EffectIndex("sje_burn/burning"), ent->currentOrigin);
 		}
+	}
+
+	if (s_burnNextDamage[num] <= level.time)
+	{
+		s_burnNextDamage[num] = level.time + BURN_DAMAGE_RATE;
+
+		gentity_t* attacker = nullptr;
+		if (s_burnAttacker[num] >= 0 && s_burnAttacker[num] < ENTITYNUM_WORLD && g_entities[s_burnAttacker[num]].inuse)
+		{
+			attacker = &g_entities[s_burnAttacker[num]];
+		}
+		// inflictor = the burning character itself: G_Damage doesn't relight them from their own fire
+		G_Damage(ent, ent, attacker, nullptr, ent->currentOrigin, BURN_DAMAGE,
+			DAMAGE_NO_KNOCKBACK | DAMAGE_NO_HIT_LOC | DAMAGE_NO_ARMOR, MOD_BURNING, HL_NONE);
 	}
 }
 
+// old entry point (flamethrower hits): G_Damage has already lit them for MOD_BURNING damage; this only lights a
+// character that isn't burning yet (no attacker known)
 void player_Burn(const gentity_t* self)
 {
-	if ((self->s.number < MAX_CLIENTS || G_ControlledByPlayer(self)) && self && self->client)
+	if (self && self->client && !(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING))
 	{
-		if (!(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING))
-		{
-			self->client->ps.PlayerEffectFlags |= 1 << PEF_BURNING;
-		}
+		G_SetOnFire(const_cast<gentity_t*>(self), nullptr);
 	}
-
-	TIMER_Set(self, "BurnDebounce", 1000);
 }
 
 static void WP_StartForceHealEffects(const gentity_t* self)
@@ -20569,6 +20751,10 @@ void ForceTelepathy(gentity_t* self)
 
 	gentity_t* traceEnt = &g_entities[tr.entityNum];
 
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 	if (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		return;
@@ -20759,6 +20945,10 @@ void ForceTelepathy(gentity_t* self)
 
 static void ForceGripWide(gentity_t* self, gentity_t* traceEnt)
 {
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 #ifdef JK2_RAGDOLL_GRIPNOHEALTH
 	if (!traceEnt || traceEnt == self || traceEnt->bmodel || traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
@@ -21228,6 +21418,10 @@ void ForceGripAdvanced(gentity_t* self)
 				}
 
 				// ok, we are within the radius, add us to the incoming list
+				if (WP_IsScriptInvisible(traceEnt))
+				{// a script-invisible NPC (set_invisible) is not there: no force reaction
+					continue;
+				}
 				G_AddVoiceEvent(traceEnt, Q_irand(EV_CHOKE1, EV_CHOKE3), 2000);
 				ForceGripWide(self, traceEnt);
 			}
@@ -21371,7 +21565,15 @@ void ForceGripAdvanced(gentity_t* self)
 			}
 		}
 		traceEnt = &g_entities[tr.entityNum];
+		if (WP_IsScriptInvisible(traceEnt))
+		{// a script-invisible NPC (set_invisible) is not there: no force reaction
+			return;
+		}
 		G_AddVoiceEvent(traceEnt, Q_irand(EV_CHOKE1, EV_CHOKE3), 2000);
+	}
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
 	}
 #ifdef JK2_RAGDOLL_GRIPNOHEALTH
 	if (!traceEnt || traceEnt == self || traceEnt->bmodel || traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
@@ -21837,6 +22039,10 @@ void ForceGripBasic(gentity_t* self)
 
 		traceEnt = &g_entities[tr.entityNum];
 	}
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 #ifdef JK2_RAGDOLL_GRIPNOHEALTH
 	if (!traceEnt || traceEnt == self || traceEnt->bmodel || traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
@@ -22245,6 +22451,10 @@ void ForceFear(gentity_t* self)
 
 	gentity_t* traceEnt = &g_entities[tr.entityNum];
 
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 	if (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		return;
@@ -22434,6 +22644,10 @@ void ForceInsanity(gentity_t* self)
 
 	gentity_t* traceEnt = &g_entities[tr.entityNum];
 
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 	if (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		return;
@@ -22631,6 +22845,10 @@ void ForceBlinding(gentity_t* self)
 
 	gentity_t* traceEnt = &g_entities[tr.entityNum];
 
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 	if (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		return;
@@ -24022,6 +24240,10 @@ static void force_lightning_damage(gentity_t* self, gentity_t* traceEnt, vec3_t 
 {
 	int lightning_blocked = qfalse;
 
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 	if (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		if (!in_camera
@@ -25109,6 +25331,10 @@ qboolean ForceDrain2(gentity_t* self)
 		return qfalse;
 	}
 	gentity_t* traceEnt = &g_entities[tr.entityNum];
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return qfalse;
+	}
 	if (!traceEnt || traceEnt == self/*???*/ || traceEnt->bmodel || traceEnt->health <= 0 && traceEnt->takedamage
 		||
 		traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
@@ -26793,7 +27019,16 @@ static void ForceStasisWide(const gentity_t* self, gentity_t* traceEnt)
 		}
 
 		traceEnt = &g_entities[tr.entityNum];
+		if (WP_IsScriptInvisible(traceEnt))
+		{// a script-invisible NPC (set_invisible) is not there: no force reaction
+			return;
+		}
 		G_AddVoiceEvent(traceEnt, Q_irand(EV_PUSHED1, EV_PUSHED3), 2000);
+	}
+
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
 	}
 
 	if (traceEnt->NPC != NULL &&
@@ -27354,6 +27589,10 @@ void ForceStasis(gentity_t* self)
 		}
 	}
 
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 	if (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{
 		return;
@@ -27650,6 +27889,10 @@ void ForceGrasp(gentity_t* self)
 		return; // charging Force Repulse: can't be gripped (2026-10-12)
 	}
 	//rww - RAGDOLL_BEGIN
+	if (WP_IsScriptInvisible(traceEnt))
+	{// a script-invisible NPC (set_invisible) is not there: no force reaction
+		return;
+	}
 #ifdef JK2_RAGDOLL_GRIPNOHEALTH
 	if (!traceEnt || traceEnt == self || traceEnt->bmodel || traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE)
 	{

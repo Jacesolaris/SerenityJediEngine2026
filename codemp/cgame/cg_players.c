@@ -19245,6 +19245,40 @@ SkipTrueView:
 		trap->FX_PlayEntityEffectID(cgs.effects.flamethrower, ef_org, axis, -1, -1, -1, -1);
 	}
 
+	// burning (game w_saber.c, PEF_BURNING, 2026-10-15): the Jedi Knight Galaxies burning effect bolted on the lower back
+	// (lower_lumbar, as JKG), re-triggered every 200 ms while the character burns (as JKG's buff efx debounce)
+	if (cent->currentState.PlayerEffectFlags & 1 << PEF_BURNING && cent->ghoul2 && !(cent->currentState.eFlags & EF_DEAD))
+	{
+		static int s_burnFxTime[MAX_GENTITIES];
+		static int s_burnFx;
+		const int burn_num = cent->currentState.number;
+
+		if (!s_burnFx)
+		{
+			s_burnFx = trap->FX_RegisterEffect("sje_burn/burning");
+		}
+		if (s_burnFxTime[burn_num] > cg.time + 1000)
+		{
+			// cg.time restarted (new map)
+			s_burnFxTime[burn_num] = 0;
+		}
+		if (s_burnFx && cg.time >= s_burnFxTime[burn_num])
+		{
+			const int burn_bolt = trap->G2API_AddBolt(cent->ghoul2, 0, "lower_lumbar");
+
+			s_burnFxTime[burn_num] = cg.time + 200;
+			if (burn_bolt >= 0)
+			{
+				trap->FX_PlayBoltedEffectID(s_burnFx, cent->lerpOrigin, cent->ghoul2, burn_bolt, burn_num, 0, 0, qtrue);
+			}
+			else
+			{
+				vec3_t burn_up = { 0, 0, 1 };
+				trap->FX_PlayEffectID(s_burnFx, cent->lerpOrigin, burn_up, -1, -1, qfalse);
+			}
+		}
+	}
+
 	// Force Repulse charging (floating, bg_pmove PM_RepulseHover): a blue light and the repulse refraction around the
 	// body, as SP's PW_FORCE_REPULSE (2026-10-12)
 	if (cent->currentState.forcePowersActive & 1 << FP_REPULSE && cent->currentState.eType != ET_NPC)

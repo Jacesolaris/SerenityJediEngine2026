@@ -6552,6 +6552,8 @@ vec3_t gPainPoint;
 
 extern void AnimateStun(gentity_t* self, gentity_t* inflictor, vec3_t impact);
 
+extern void G_SetOnFire(gentity_t* self, gentity_t* attacker); // w_saber.c (burning)
+
 void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t dir, vec3_t point, int damage,
 	int dflags, int mod)
 {
@@ -7963,6 +7965,13 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 					AddFatigueHurtBonus(attacker, targ, mod);
 				}
 			}
+		}
+
+		// burning (w_saber.c): flame damage sets a character on fire - any MOD_BURNING except the fire's own ticks,
+		// which come from the burning character itself (inflictor == targ)
+		if (take > 0 && mod == MOD_BURNING && inflictor != targ && targ->client && targ->health > 0)
+		{
+			G_SetOnFire(targ, attacker);
 		}
 
 		targ->health = targ->health - take;

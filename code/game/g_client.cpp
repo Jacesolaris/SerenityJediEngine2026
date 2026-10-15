@@ -3337,7 +3337,16 @@ qboolean ClientSpawn(gentity_t* ent, SavedGameJustLoaded_e e_saved_game_just_loa
 			char bleh[MAX_SPAWN_VARS_CHARS];
 			Q_strncpyz(bleh, ent->NPC_type, sizeof bleh);
 
+			// G_ChangePlayerModel re-reads the NPC file (NPC_ParseParms), which puts back that character's
+			// playerTeam / enemyTeam: keep the saved ones, so a team changed in game by the playerteam / enemyteam
+			// commands or a script survives the save and load (2026-10-15, as MD)
+			const team_t saved_player_team = ent->client->playerTeam;
+			const team_t saved_enemy_team = ent->client->enemyTeam;
+
 			G_ChangePlayerModel(ent, bleh);
+
+			ent->client->playerTeam = saved_player_team;
+			ent->client->enemyTeam = saved_enemy_team;
 		}
 		else
 		{

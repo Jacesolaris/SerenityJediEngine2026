@@ -389,6 +389,8 @@ cvar_t* Cvar_Get(const char* var_name, const char* var_value, uint32_t flags, co
 					Cvar_FreeString(var->latchedString);
 
 				var->latchedString = CopyString(var_value);
+				// an old 'seta' line from the config must not keep an internal (ROM) cvar archived
+				var->flags &= ~CVAR_ARCHIVE;
 			}
 		}
 

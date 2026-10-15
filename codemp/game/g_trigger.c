@@ -1407,6 +1407,10 @@ void hurt_use(gentity_t* self, gentity_t* other, gentity_t* activator)
 	}
 }
 
+extern void G_SetOnFire(gentity_t* self, gentity_t* attacker); // burning (w_saber.c)
+extern qboolean G_NearFireEffect(const gentity_t* area);
+extern qboolean G_FxRunnerIsFire(const gentity_t* ent);
+
 void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 {
 	int dflags;
@@ -1529,6 +1533,11 @@ void hurt_touch(gentity_t* self, gentity_t* other, trace_t* trace)
 		else
 		{
 			G_Damage(other, self, self, NULL, NULL, dmg, dflags | DAMAGE_NO_PROTECTION, MOD_TRIGGER_HURT);
+		}
+		// burning: a trigger_hurt at a map fire (a fire fx_runner in / by it) also sets them alight
+		if (other->client && other->health > 0 && G_NearFireEffect(self))
+		{
+			G_SetOnFire(other, self->activator && self->activator->inuse && self->activator->client ? self->activator : NULL);
 		}
 	}
 }

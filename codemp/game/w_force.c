@@ -2420,7 +2420,7 @@ int IsPressingDashButton(const gentity_t* self)
 		&& (!(self->client->buttons & BUTTON_KICK))
 		&& (!(self->client->buttons & BUTTON_USE))
 		&& (self->client->buttons & BUTTON_DASH)
-		&& (self->client->ps.fd.forcePowerLevel[FP_SPEED] >= FORCE_LEVEL_1))
+		&& (self->client->ps.fd.forcePowerLevel[FP_SABER_OFFENSE] > FORCE_LEVEL_0)) // ground dash: any saber user (Saber Offense 1+); gunners with no saber skill cannot
 	{
 		return qtrue;
 	}

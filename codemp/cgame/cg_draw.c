@@ -11691,8 +11691,11 @@ static void CG_Draw2D(void)
 	}
 	else if (cent->currentState.PlayerEffectFlags & 1 << PEF_BURNING)
 	{
-		//draw it as long as it isn't full
-		CG_DrawPic(0, 0, 640, 480, trap->R_RegisterShader("gfx/2d/firesense"));
+		if (cg.snap->ps.stats[STAT_HEALTH] <= 15)
+		{
+			//draw it as long as it isn't full
+			CG_DrawPic(0, 0, 640, 480, trap->R_RegisterShader("gfx/2d/firesense"));
+		}
 	}
 	else if (cent->currentState.PlayerEffectFlags & 1 << PEF_FREEZING)
 	{

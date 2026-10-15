@@ -53,6 +53,8 @@ Runs the specified effect, can also be targeted at an info_notnull to orient the
 constexpr auto FX_RUNNER_RESERVED = 0x800000;
 
 //----------------------------------------------------------
+extern qboolean G_FxRunnerIsFire(const gentity_t* ent); // burning (wp_saber.cpp)
+
 void fx_runner_think(gentity_t* ent)
 {
 	vec3_t temp;
@@ -72,7 +74,9 @@ void fx_runner_think(gentity_t* ent)
 
 	if (ent->spawnflags & 4) // damage
 	{
-		G_RadiusDamage(ent->currentOrigin, ent, ent->splashDamage, ent->splashRadius, ent, MOD_UNKNOWN);
+		// a fire effect burns (MOD_BURNING sets them alight - G_Damage)
+		G_RadiusDamage(ent->currentOrigin, ent, ent->splashDamage, ent->splashRadius, ent,
+			G_FxRunnerIsFire(ent) ? MOD_BURNING : MOD_UNKNOWN);
 	}
 
 	if (ent->target2)

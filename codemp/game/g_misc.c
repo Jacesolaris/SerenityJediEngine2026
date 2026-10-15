@@ -489,7 +489,7 @@ void GasBurst(gentity_t* self, gentity_t* attacker, int damage)
 
 	// do some damage to anything that may be standing on top of it when it bursts into flame
 	pt[2] += 32;
-	g_radius_damage(pt, self, 32, 32, self, self, MOD_UNKNOWN);
+	g_radius_damage(pt, self, 32, 32, self, self, MOD_BURNING); // a flame jet: sets them alight (burning)
 
 	//  only get one burst
 	self->pain = NULL;
@@ -3286,6 +3286,8 @@ extern int BMS_START;
 extern int BMS_MID;
 extern int BMS_END;
 //----------------------------------------------------------
+extern qboolean G_FxRunnerIsFire(const gentity_t* ent); // burning (w_saber.c)
+
 void fx_runner_think(gentity_t* ent)
 {
 	BG_EvaluateTrajectory(&ent->s.pos, level.time, ent->r.currentOrigin);
@@ -3311,7 +3313,9 @@ void fx_runner_think(gentity_t* ent)
 
 	if (ent->spawnflags & 4) // damage
 	{
-		g_radius_damage(ent->r.currentOrigin, ent, ent->splashDamage, ent->splashRadius, ent, ent, MOD_UNKNOWN);
+		// a fire effect burns (MOD_BURNING sets them alight - G_Damage)
+		g_radius_damage(ent->r.currentOrigin, ent, ent->splashDamage, ent->splashRadius, ent, ent,
+			G_FxRunnerIsFire(ent) ? MOD_BURNING : MOD_UNKNOWN);
 	}
 
 	if (ent->target2 && ent->target2[0])

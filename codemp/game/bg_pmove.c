@@ -19871,6 +19871,27 @@ static void PM_RepulseHover(void)
 // attack reloads, no saber throw / kata. The server spawns the bolt on EV_SABERBLASTER (g_active.c ClientEvents).
 qboolean pm_saberBlasterAlt = qfalse; // alt attack held this pmove (taken out of pm->cmd), read by PM_SaberLocked
 static qboolean pm_saberBlasterReload = qfalse;
+// the shot leaves the pistol at the arm's full reach: SABERBLASTER_FIRE_FRAME of BOTH_FORCELIGHTNING (the 6th frame),
+// not as the anim starts (2026-10-15). Predicted: SBE_FIRE goes out on the pmove where weaponTime (set to the bryar's
+// fireTime as the shot starts) passes fireTime - the delay; pm_saberBlasterPrevWeaponTime = weaponTime as this pmove began
+#define SABERBLASTER_FIRE_FRAME	5
+static int pm_saberBlasterPrevWeaponTime = 0;
+
+static int PM_SaberBlasterFireDelay(void)
+{
+	int delay = SABERBLASTER_FIRE_FRAME * 50;
+
+	if (pm_entSelf && pm_entSelf->localAnimIndex >= 0 && pm_entSelf->localAnimIndex < MAX_ANIM_FILES
+		&& bgAllAnims[pm_entSelf->localAnimIndex].anims)
+	{
+		delay = abs(bgAllAnims[pm_entSelf->localAnimIndex].anims[BOTH_FORCELIGHTNING].frameLerp) * SABERBLASTER_FIRE_FRAME;
+	}
+	if (delay > weaponData[WP_BRYAR_PISTOL].fireTime - 50)
+	{
+		delay = weaponData[WP_BRYAR_PISTOL].fireTime - 50;
+	}
+	return delay > 0 ? delay : 0;
+}
 
 static qboolean PM_SaberBlasterActive(void)
 {
@@ -19883,6 +19904,7 @@ static void PM_SaberBlasterFilterCmd(void)
 
 	pm_saberBlasterAlt = qfalse;
 	pm_saberBlasterReload = qfalse;
+	pm_saberBlasterPrevWeaponTime = pm->ps->weaponTime;
 
 	if (!PM_SaberBlasterActive())
 	{
@@ -19921,6 +19943,22 @@ static void PM_SaberBlasterFilterCmd(void)
 
 static void WP_SaberBlasterThink(void)
 {
+	// a shot started earlier goes now, its arm fully out - unless he was knocked down / killed / the anim was cut
+	if (PM_SaberBlasterActive()
+		&& pm->ps->torsoAnim == BOTH_FORCELIGHTNING
+		&& pm->ps->stats[STAT_HEALTH] > 0
+		&& pm->ps->pm_type != PM_DEAD
+		&& !PM_InKnockDown(pm->ps))
+	{
+		const int delay = PM_SaberBlasterFireDelay();
+		const int fire_at = weaponData[WP_BRYAR_PISTOL].fireTime - delay;
+
+		if (delay > 0 && pm_saberBlasterPrevWeaponTime > fire_at && pm->ps->weaponTime <= fire_at)
+		{
+			PM_AddEventWithParm(EV_SABERBLASTER, SBE_FIRE);
+		}
+	}
+
 	if (!PM_SaberBlasterActive()
 		|| pm->ps->weaponTime > 0
 		|| pm->ps->saberLockTime >= pm->cmd.serverTime //the lock is handled in PM_SaberLocked
@@ -19966,7 +20004,11 @@ static void WP_SaberBlasterThink(void)
 	PM_SetAnim(SETANIM_TORSO, BOTH_FORCELIGHTNING, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD | SETANIM_FLAG_RESTART);
 	pm->ps->weaponTime = weaponData[WP_BRYAR_PISTOL].fireTime;
 	pm->ps->torsoTimer = pm->ps->weaponTime;
-	PM_AddEventWithParm(EV_SABERBLASTER, SBE_FIRE);
+	if (PM_SaberBlasterFireDelay() <= 0)
+	{
+		PM_AddEventWithParm(EV_SABERBLASTER, SBE_FIRE);
+	}
+	// else: SBE_FIRE at the anim's SABERBLASTER_FIRE_FRAME (top of this function, a later pmove)
 }
 
 static void PmoveSingle(pmove_t* pmove)

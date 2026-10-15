@@ -392,6 +392,8 @@ void G_RunWeatherDamage(void)
 	}
 }
 
+extern void G_SetOnFire(gentity_t* self, gentity_t* attacker); // burning (w_saber.c)
+
 static void P_WorldEffects(gentity_t* ent)
 {
 	if (ent->client->noclip)
@@ -476,6 +478,7 @@ static void P_WorldEffects(gentity_t* ent)
 				if (ent->watertype & CONTENTS_LAVA)
 				{
 					G_Damage(ent, NULL, NULL, NULL, NULL, 30 * waterlevel, 0, MOD_LAVA);
+					G_SetOnFire(ent, NULL); // burning: lava sets them alight
 				}
 
 				if (ent->watertype & CONTENTS_SLIME)
@@ -7741,6 +7744,9 @@ static void ClientThink_real(gentity_t* ent)
 	client->oldbuttons = client->buttons;
 	client->buttons = ucmd->buttons;
 	client->latched_buttons |= client->buttons & ~client->oldbuttons;
+
+	// burning (w_saber.c): the damage ticks, put out by rolling / water / death
+	Player_CheckBurn(ent);
 
 	// Did we kick someone in our pmove sequence?
 	if (client->ps.forceKickFlip && !(client->buttons & BUTTON_GRAPPLE))

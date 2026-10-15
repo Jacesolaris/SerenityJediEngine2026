@@ -16354,60 +16354,177 @@ qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self)
 	return qfalse;
 }
 
-void player_Burn(const gentity_t* self);
-void player_StopBurn(const gentity_t* self);
+// ---------------------------------------------------------------------------------------------------------------
+// Burning (2026-10-15, after Jedi Knight Galaxies' "standard-fire" buff; as SP wp_saber.cpp). A character hit by flame
+// (the flamethrowers, any MOD_BURNING damage - see G_Damage) catches fire for BURN_DURATION ms: BURN_DAMAGE every
+// BURN_DAMAGE_RATE ms (MOD_BURNING, credited to whoever lit them). Rolling or going into water (waist deep) puts the
+// fire out early, dying ends it, more flame refreshes the time. PEF_BURNING (playerState, copied to the entityState
+// and sent to every client) makes the cgame play the JKG burning effect on the lower back (cg_players.c CG_Player).
+// Player_CheckBurn runs every frame for every client (ClientThink_real).
+// ---------------------------------------------------------------------------------------------------------------
+#define BURN_DURATION		6000
+#define BURN_DAMAGE			2
+#define BURN_DAMAGE_RATE	500
 
-void Player_CheckBurn(const gentity_t* self)
+static int s_burnEndTime[MAX_GENTITIES];
+static int s_burnNextDamage[MAX_GENTITIES];
+static int s_burnAttacker[MAX_GENTITIES];
+
+// in water (waist deep) or rolling: the fire goes out / doesn't catch
+static qboolean G_BurnPutOut(const gentity_t* self)
 {
-	if (self->health <= 0 || self->painDebounceTime < level.time)
-	{
-		player_StopBurn(self);
-	}
-	else if (PM_InRoll(&self->client->ps))
-	{
-		player_StopBurn(self);
-	}
-	else if (TIMER_Done(self, "BurnDebounce"))
-	{
-		player_StopBurn(self);
-	}
-	else if (self->client->ps.saberEventFlags & SEF_INWATER)
-	{
-		player_StopBurn(self);
-	}
-	else
-	{
-		player_StopBurn(self);
-	}
+	// water only: lava / slime are "water" to waterlevel too, and lava lights you (P_WorldEffects)
+	return self->waterlevel >= 2 && self->watertype & CONTENTS_WATER || PM_InRoll(&self->client->ps) ? qtrue : qfalse;
 }
 
-void player_Burn(const gentity_t* self)
+// Map fire (2026-10-15): fires in maps are an fx_runner playing a flame effect, hurting with its DAMAGE spawnflag or a
+// trigger_hurt around it. An effect counts as fire if its file name says so.
+static qboolean G_IsFireEffectName(const char* name)
 {
-	if ((self->s.number < MAX_CLIENTS || G_ControlledByPlayer(self)) && self && self->client)
+	static const char* fire_words[] = { "fire", "flame", "burn", "torch", "lava", "inferno", "blaze" };
+	char lower[MAX_QPATH];
+	int i;
+
+	if (!name || !name[0])
 	{
-		if (!(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING))
+		return qfalse;
+	}
+	for (i = 0; name[i] && i < MAX_QPATH - 1; i++)
+	{
+		lower[i] = (char)tolower((unsigned char)name[i]);
+	}
+	lower[i] = 0;
+	for (i = 0; i < (int)(sizeof fire_words / sizeof fire_words[0]); i++)
+	{
+		if (strstr(lower, fire_words[i]))
 		{
-			self->client->ps.PlayerEffectFlags |= 1 << PEF_BURNING;
+			return qtrue;
 		}
 	}
+	return qfalse;
+}
 
-	TIMER_Set(self, "BurnDebounce", 1000);
+// an fx_runner whose effect is fire
+qboolean G_FxRunnerIsFire(const gentity_t* ent)
+{
+	char name[MAX_QPATH];
+
+	if (!ent || ent->s.modelIndex <= 0)
+	{
+		return qfalse;
+	}
+	trap->GetConfigstring(CS_EFFECTS + ent->s.modelIndex, name, sizeof name);
+	return G_IsFireEffectName(name);
+}
+
+// a fire fx_runner inside (or within 48 units of) this trigger's box: a trigger_hurt there is a fire
+qboolean G_NearFireEffect(const gentity_t* area)
+{
+	int i, a;
+
+	for (i = MAX_CLIENTS; i < level.num_entities; i++)
+	{
+		const gentity_t* fx = &g_entities[i];
+		qboolean inside = qtrue;
+
+		if (!fx->inuse || !fx->classname || Q_stricmp(fx->classname, "fx_runner") != 0)
+		{
+			continue;
+		}
+		for (a = 0; a < 3; a++)
+		{
+			if (fx->r.currentOrigin[a] < area->r.absmin[a] - 48.0f
+				|| fx->r.currentOrigin[a] > area->r.absmax[a] + 48.0f)
+			{
+				inside = qfalse;
+				break;
+			}
+		}
+		if (inside && G_FxRunnerIsFire(fx))
+		{
+			return qtrue;
+		}
+	}
+	return qfalse;
 }
 
 void player_StopBurn(const gentity_t* self)
 {
 	if (self && self->client)
 	{
-		if (self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING)
-		{
-			//Unburn
-			self->client->ps.PlayerEffectFlags &= ~(1 << PEF_BURNING);
-		}
-		else
-		{
-			//Unburn
-			self->client->ps.PlayerEffectFlags &= ~(1 << PEF_BURNING);
-		}
+		self->client->ps.PlayerEffectFlags &= ~(1 << PEF_BURNING);
+		s_burnEndTime[self->s.number] = 0;
+	}
+}
+
+// set a character on fire, or keep them burning longer; attacker (may be NULL) gets the kill
+void G_SetOnFire(gentity_t* self, gentity_t* attacker)
+{
+	int num;
+
+	if (!self || !self->client || self->health <= 0 || self->s.eFlags & EF_NODRAW)
+	{
+		return;
+	}
+	if (G_BurnPutOut(self))
+	{
+		return;
+	}
+	num = self->s.number;
+
+	if (!(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING) || s_burnEndTime[num] < level.time)
+	{
+		// newly lit
+		self->client->ps.PlayerEffectFlags |= 1 << PEF_BURNING;
+		s_burnNextDamage[num] = level.time + BURN_DAMAGE_RATE;
+	}
+	s_burnEndTime[num] = level.time + BURN_DURATION;
+	s_burnAttacker[num] = attacker && attacker != self ? attacker->s.number : ENTITYNUM_NONE;
+}
+
+// every frame for every client (ClientThink_real): the damage, and putting the fire out
+void Player_CheckBurn(const gentity_t* self)
+{
+	int num;
+	gentity_t* ent;
+	gentity_t* attacker;
+
+	if (!self || !self->client || !(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING))
+	{
+		return;
+	}
+	num = self->s.number;
+
+	if (self->health <= 0 || s_burnEndTime[num] < level.time || G_BurnPutOut(self))
+	{
+		player_StopBurn(self);
+		return;
+	}
+
+	if (s_burnNextDamage[num] > level.time)
+	{
+		return;
+	}
+	s_burnNextDamage[num] = level.time + BURN_DAMAGE_RATE;
+
+	ent = &g_entities[num];
+	attacker = NULL;
+	if (s_burnAttacker[num] >= 0 && s_burnAttacker[num] < ENTITYNUM_WORLD && g_entities[s_burnAttacker[num]].inuse)
+	{
+		attacker = &g_entities[s_burnAttacker[num]];
+	}
+	// inflictor = the burning character itself: G_Damage doesn't relight them from their own fire
+	G_Damage(ent, ent, attacker, NULL, ent->client->ps.origin, BURN_DAMAGE,
+		DAMAGE_NO_KNOCKBACK | DAMAGE_NO_HIT_LOC | DAMAGE_NO_ARMOR, MOD_BURNING);
+}
+
+// old entry point (flamethrower hits): G_Damage has already lit them for MOD_BURNING damage; this only lights a
+// character that isn't burning yet (no attacker known)
+void player_Burn(const gentity_t* self)
+{
+	if (self && self->client && !(self->client->ps.PlayerEffectFlags & 1 << PEF_BURNING))
+	{
+		G_SetOnFire((gentity_t*)self, NULL);
 	}
 }
 
