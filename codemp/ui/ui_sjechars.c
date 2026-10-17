@@ -53,6 +53,9 @@ typedef enum
 	SJEF_COUNT
 } sjeFaction_t;
 
+// the factions a player can pick: "Other" (droids, creatures, ...) is bots only and is not offered in the menu
+#define SJEF_PLAYABLE	SJEF_OTHER
+
 // the values of the menu's "fraction" multi (DH: Empire / Rebels / Sith / Jedi / bh / Natives / other)
 static const char* const sjeFactionKeys[SJEF_COUNT] = { "empire", "rebels", "sith", "jedi", "bh", "natives", "other" };
 // shown in the FACTION box (DH's names)
@@ -671,7 +674,7 @@ static qboolean SJE_IsGroupClass(const char* c)
 static void SJE_AddNpc(const sjeNpc_t* n)
 {
 	char model[48];
-	char skin[MAX_QPATH];
+	char skin[MAX_QPATH] = { 0 };
 	char modelString[MAX_QPATH];
 
 	Q_strncpyz(model, n->model, sizeof model);
@@ -1085,7 +1088,7 @@ static void SJE_FinishChars(void)
 			for (int v = 0; v < ch->numVariants; v++)
 			{
 				char npcName[64];
-				char a[64], b[64];
+				char a[64] = { 0 }, b[64] = { 0 };
 				int na = 0, nb = 0;
 				SJE_CleanName(ch->variants[v].npc, npcName, sizeof npcName);
 				// same letters and digits as the folder (KyleJK2 = kylejk2)
@@ -1153,6 +1156,16 @@ static void SJE_FinishChars(void)
 			{
 				ch->scale = o->scale;
 			}
+		}
+		// Morgan Katarn fought for the Rebellion (his NPC team is neutral, so he would land in "Other")
+		if ((!o || o->faction < 0) && (Q_stristr(ch->folder, "morgan") || Q_stristr(ch->name, "morgan")))
+		{
+			ch->faction = SJEF_REBELS;
+		}
+		// "Other" is bots only: not listed in the menu
+		if (ch->faction >= SJEF_PLAYABLE)
+		{
+			ch->hidden = qtrue;
 		}
 		if (!ch->species[0])
 		{
@@ -1277,7 +1290,7 @@ static void SJE_FinishChars(void)
 	qsort(sjeChars, sjeNumChars, sizeof sjeChars[0], SJE_CompareChars);
 }
 
-void UI_SJEChars_Build(void)
+static void UI_SJEChars_Build(void)
 {
 	if (sjeBuilt)
 	{
@@ -1363,14 +1376,14 @@ static int SJE_NumPages(void)
 
 static void SJE_BuildDesc(const sjeChar_t* ch, char* out, const int outSize)
 {
-	char buf[1024];
+	char buf[1024] = { 0 };
 
 	out[0] = 0;
 	if (ch->desc)
 	{
 		if (ch->desc[0] == '@')
 		{// DH's strings come twice: KEY (sometimes only the plain name) and KEY1 ("Name: ...")
-			char buf1[1024];
+			char buf1[1024] = { 0 };
 			buf[0] = 0;
 			buf1[0] = 0;
 			trap->SE_GetStringTextString(ch->desc + 1, buf, sizeof buf);
@@ -1395,9 +1408,9 @@ static void SJE_BuildDesc(const sjeChar_t* ch, char* out, const int outSize)
 
 	// MENUS_<NPC>, MENUS_<FOLDER>, with or without DH's trailing 1
 	{
-		char keys[4][96];
-		char npc[48];
-		char folder[48];
+		char keys[4][96] = { { 0 } };
+		char npc[48] = { 0 };
+		char folder[48] = { 0 };
 		Q_strncpyz(npc, ch->variants[0].npc, sizeof npc);
 		Q_strncpyz(folder, ch->folder, sizeof folder);
 		Q_strupr(npc);
@@ -1566,7 +1579,7 @@ static void SJE_Select(const int charIndex, const int variant)
 
 static void SJE_SetFaction(const int faction, const qboolean selectFirst)
 {
-	sjeFaction = faction >= 0 && faction < SJEF_COUNT ? faction : SJEF_EMPIRE;
+	sjeFaction = faction >= 0 && faction < SJEF_PLAYABLE ? faction : SJEF_EMPIRE;
 	trap->Cvar_Set("fraction", sjeFactionKeys[sjeFaction]);
 	{
 		menuDef_t* menu = SJE_Menu();
@@ -1610,7 +1623,7 @@ static void SJE_CheckFactionCvar(void)
 // ---------------------------------------------------------------------------------------------------------------
 static qboolean SJE_SaberOkInMP(const char* saber)
 {
-	char buf[1024];
+	char buf[1024] = { 0 };
 
 	buf[0] = 0;
 	if (!WP_SaberParseParm(saber, "saberModel", buf) || !buf[0])
@@ -1805,7 +1818,7 @@ qboolean UI_SJEChars_Script(const char* name, char** args)
 		{
 			n = 1;
 		}
-		SJE_SetFaction((sjeFaction + (n < 0 ? SJEF_COUNT - 1 : 1)) % SJEF_COUNT, qtrue);
+		SJE_SetFaction((sjeFaction + (n < 0 ? SJEF_PLAYABLE - 1 : 1)) % SJEF_PLAYABLE, qtrue);
 	}
 	else if (!Q_stricmp(name, "sje_char_pick"))
 	{
@@ -1848,7 +1861,7 @@ qboolean UI_SJEChars_Script(const char* name, char** args)
 		uiSJECharDualPreview = qfalse;
 		for (int i = 0; i < (int)ARRAY_LEN(closeScripts); i++)
 		{
-			char cmd[64];
+			char cmd[64] = { 0 };
 			char* p = cmd;
 			Q_strncpyz(cmd, closeScripts[i], sizeof cmd);
 			uiInfo.uiDC.runScript(&p);
@@ -1964,7 +1977,7 @@ qboolean UI_SJEChars_ConsoleCommand(const char* cmd)
 	}
 	if (!Q_stricmp(cmd, "sje_charmenu"))
 	{
-		char line[MAX_STRING_CHARS];
+		char line[MAX_STRING_CHARS] = { 0 };
 		char* p = line;
 		line[0] = 0;
 		for (int i = 1; i < trap->Cmd_Argc(); i++)
