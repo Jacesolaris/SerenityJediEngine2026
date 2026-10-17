@@ -1,4 +1,4 @@
-// bg_classmodel.c -- SerenityJediEngine2026 MP: model string -> bot class, shared by the game (G_AssignClassAndScaleFromModel)
+// bg_classmodel.c -- SerenityJediEngine2027 MP: model string -> bot class, shared by the game (G_AssignClassAndScaleFromModel)
 // and the ui (the Select Character menu shows only what the server lets a player play, with the class the server gives).
 // The lookup was G_ClassModelFor in g_client.c (moved here 2026-10-11, same steps and order).
 

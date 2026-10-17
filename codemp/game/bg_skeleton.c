@@ -1,4 +1,4 @@
-// bg_skeleton.c -- SerenityJediEngine2026 MP: player model skeleton checks, shared by game, cgame and ui.
+// bg_skeleton.c -- SerenityJediEngine2027 MP: player model skeleton checks, shared by game, cgame and ui.
 //
 // Moved unchanged from bg_panimate.c (2026-10-11) so the ui's character menu decides "playable" with exactly the
 // rules the server (G_AssignClassAndScaleFromModel) and the client (CG_RegisterClientModelname) use:

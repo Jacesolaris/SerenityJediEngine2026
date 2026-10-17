@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -38,16 +38,16 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
-#define PRODUCT_NAME			"SerenityJediEngine2026-MP"
+#define PRODUCT_NAME			"SerenityJediEngine2027-MP"
 
-#define CLIENT_WINDOW_TITLE "SerenityJediEngine2026 (MP)"
-#define CLIENT_CONSOLE_TITLE "SerenityJediEngine2026 Console (MP)"
-#define HOMEPATH_NAME_UNIX "SerenityJediEngine2026"
-#define HOMEPATH_NAME_WIN "SerenityJediEngine2026"
+#define CLIENT_WINDOW_TITLE "SerenityJediEngine2027 (MP)"
+#define CLIENT_CONSOLE_TITLE "SerenityJediEngine2027 Console (MP)"
+#define HOMEPATH_NAME_UNIX "SerenityJediEngine2027"
+#define HOMEPATH_NAME_WIN "SerenityJediEngine2027"
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 
 #define	BASEGAME "base"
-#define SerenityJediEngine2026GAME "SerenityJediEngine2026"
+#define SerenityJediEngine2027GAME "SerenityJediEngine2027"
 
 //NOTENOTE: Only change this to re-point ICARUS to a new script directory
 #define Q3_SCRIPT_DIR	"scriptsmp"

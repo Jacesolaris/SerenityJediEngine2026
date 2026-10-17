@@ -1,4 +1,4 @@
-// bg_classmodel.h -- SerenityJediEngine2026 MP: model string -> bot class (g_classmodels.h), shared by game and ui.
+// bg_classmodel.h -- SerenityJediEngine2027 MP: model string -> bot class (g_classmodels.h), shared by game and ui.
 #pragma once
 
 // Row of classModels[] (g_classmodels.h) for a model string, -1 when none (the server then uses BCLASS_SABERNOFP).

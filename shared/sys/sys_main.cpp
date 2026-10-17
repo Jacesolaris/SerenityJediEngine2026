@@ -1,11 +1,11 @@
 /*
 ===========================================================================
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -380,7 +380,7 @@ enum SearchPathFlag
 {
 	SEARCH_PATH_MOD = 1 << 0,
 	SEARCH_PATH_BASE = 1 << 1,
-	SEARCH_PATH_SerenityJediEngine2026 = 1 << 2,
+	SEARCH_PATH_SerenityJediEngine2027 = 1 << 2,
 	SEARCH_PATH_ROOT = 1 << 3
 };
 
@@ -424,7 +424,7 @@ static void* Sys_LoadDllFromPaths(const char* filename, const char* gamedir, con
 		}
 	}
 
-	if (searchFlags & SEARCH_PATH_SerenityJediEngine2026)
+	if (searchFlags & SEARCH_PATH_SerenityJediEngine2027)
 	{
 		for (size_t i = 0; i < numPaths; i++)
 		{
@@ -432,7 +432,7 @@ static void* Sys_LoadDllFromPaths(const char* filename, const char* gamedir, con
 			if (!libDir[0])
 				continue;
 
-			fn = FS_BuildOSPath(libDir, SerenityJediEngine2026GAME, filename);
+			fn = FS_BuildOSPath(libDir, SerenityJediEngine2027GAME, filename);
 			libHandle = Sys_LoadLibrary(fn);
 			if (libHandle)
 				return libHandle;
@@ -586,7 +586,7 @@ void* Sys_LoadSPGameDll(const char* name, GetGameAPIProc** GetGameAPI)
 		constexpr size_t numPaths = ARRAY_LEN(searchPaths);
 
 		libHandle = Sys_LoadDllFromPaths(filename, gamedir, searchPaths, numPaths,
-			SEARCH_PATH_BASE | SEARCH_PATH_MOD | SEARCH_PATH_SerenityJediEngine2026 | SEARCH_PATH_ROOT,
+			SEARCH_PATH_BASE | SEARCH_PATH_MOD | SEARCH_PATH_SerenityJediEngine2027 | SEARCH_PATH_ROOT,
 			__FUNCTION__);
 		if (!libHandle)
 			return nullptr;
@@ -747,14 +747,14 @@ static char* Sys_StripAppBundle(char* dir)
 #endif
 
 #if defined(_WIN32) && defined(NDEBUG) && !defined(_DEBUG) && !defined(DEDICATED) && !defined(JK2_MODE)
-// Release builds only start from the SerenityJediEngine2026 launcher: it sets SJE_LAUNCHER_ENV on the game process. Started any
+// Release builds only start from the SerenityJediEngine2027 launcher: it sets SJE_LAUNCHER_ENV on the game process. Started any
 // other way (the exe directly, a shortcut), the game starts the launcher from its own folder and quits.
 // Debug builds (and the dedicated server and the JO exe, which the launcher doesn't start) start as normal. Keep SJE_LAUNCHER_ENV / SJE_LAUNCHER_TOKEN the same as
 // kLauncherEnv / kLauncherToken in code/launcher/sje_launcher.cpp.
 #include <process.h>
 #include <SDL_messagebox.h>
 
-#define SJE_LAUNCHER_EXE		"SerenityJediEngine2026-Launcher.exe"
+#define SJE_LAUNCHER_EXE		"SerenityJediEngine2027-Launcher.exe"
 #define SJE_LAUNCHER_ENV		"SJE_LAUNCHER"
 #define SJE_LAUNCHER_TOKEN	"sje-launcher-4b8e2d6a"
 
@@ -795,8 +795,8 @@ static void Sys_RequireLauncher(void)
 
 	if (_spawnl(_P_NOWAIT, launcher, launcherArg, (char*)nullptr) == -1)
 	{
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SerenityJediEngine2026",
-			"Please start SerenityJediEngine2026 with " SJE_LAUNCHER_EXE ".\n\n"
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SerenityJediEngine2027",
+			"Please start SerenityJediEngine2027 with " SJE_LAUNCHER_EXE ".\n\n"
 			SJE_LAUNCHER_EXE " was not found in the game folder.", nullptr);
 	}
 	exit(0);
@@ -808,7 +808,7 @@ int main(int argc, char* argv[])
 	char commandLine[MAX_STRING_CHARS] = { 0 };
 
 #if defined(_WIN32) && defined(NDEBUG) && !defined(_DEBUG) && !defined(DEDICATED) && !defined(JK2_MODE)
-	Sys_RequireLauncher(); // release builds: only from the SerenityJediEngine2026 launcher
+	Sys_RequireLauncher(); // release builds: only from the SerenityJediEngine2027 launcher
 #endif
 
 	Sys_PlatformInit();

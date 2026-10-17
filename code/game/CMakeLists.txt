@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+# Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 #
-# This file is part of the SerenityJediEngine2026 source code.
+# This file is part of the SerenityJediEngine2027 source code.
 #
-# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2026)
+if(NOT InSerenityJediEngine2027)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2026)
+endif(NOT InSerenityJediEngine2027)
 
 set(SPGameDefines ${SharedDefines} "SP_GAME")
 set(SPGameIncludeDirectories
@@ -379,7 +379,7 @@ set(SPGameFiles ${SPGameFiles} ${SPGameClientFiles})
 
 if(WIN32)
 	set(SPGameWin32Files
-		"${SPDir}/win32/SerenityJediEngine2026-Game.rc")
+		"${SPDir}/win32/SerenityJediEngine2027-Game.rc")
 	source_group("win32" FILES ${SPGameWin32Files})
 	set(SPGameFiles ${SPGameFiles} ${SPGameWin32Files})
 endif(WIN32)
@@ -387,7 +387,7 @@ endif(WIN32)
 add_library(${SPGame} SHARED ${SPGameFiles})
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${SPGame} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+set_property(TARGET ${SPGame} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 if(NOT MSVC)
 	# remove "lib" prefix for .so/.dylib files
@@ -397,18 +397,18 @@ endif()
 if(WIN32)
 	install(TARGETS ${SPGame}
 		RUNTIME
-		DESTINATION "${JKAInstallDir}/SerenityJediEngine2026"
+		DESTINATION "${JKAInstallDir}/SerenityJediEngine2027"
 		COMPONENT ${JKASPClientComponent})
 else(WIN32)
 	if(MakeApplicationBundles AND BuildSPEngine)
 		install(TARGETS ${SPGame}
 			LIBRARY
-			DESTINATION "${JKAInstallDir}/${SPEngine}.app/Contents/MacOS/SerenityJediEngine2026"
+			DESTINATION "${JKAInstallDir}/${SPEngine}.app/Contents/MacOS/SerenityJediEngine2027"
 			COMPONENT ${JKASPClientComponent})
 	else()
 		install(TARGETS ${SPGame}
 			LIBRARY
-			DESTINATION "${JKAInstallDir}/SerenityJediEngine2026"
+			DESTINATION "${JKAInstallDir}/SerenityJediEngine2027"
 			COMPONENT ${JKASPClientComponent})
 	endif()
 endif()

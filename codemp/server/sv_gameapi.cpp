@@ -1,10 +1,10 @@
 /*
 ===========================================================================
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -3421,7 +3421,7 @@ void SV_InitGame(const qboolean restart)
 void SV_BindGame(void)
 {
 	static gameImport_t gi;
-	char dllName[MAX_OSPATH] = "SerenityJediEngine2026-mpgame" ARCH_STRING DLL_EXT;
+	char dllName[MAX_OSPATH] = "SerenityJediEngine2027-mpgame" ARCH_STRING DLL_EXT;
 
 	memset(&gi, 0, sizeof gi);
 

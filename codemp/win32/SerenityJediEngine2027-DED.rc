@@ -7,7 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include <windows.h>
+#include "winresrc.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -34,12 +34,13 @@ END
 
 2 TEXTINCLUDE
 BEGIN
-"#include ""winres.h""\r\n"
+"#include ""winresrc.h""\r\n"
 "\0"
 END
 
 3 TEXTINCLUDE
 BEGIN
+"\r\n"
 "\0"
 END
 
@@ -49,21 +50,22 @@ END
 //
 // Icon
 //
-//
+
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 
-IDI_ICON1               ICON                    "SerenityJediEngine2026-SP.ico"
+IDI_ICON1               ICON                    "SerenityJediEngine2027-DED.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Version
 //
-#include "AutoVersion.h"
+
+#include "../qcommon/game_version.h"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION VERSION_MAJOR_RELEASE, VERSION_MINOR_RELEASE, VERSION_INTERNAL_BUILD
-PRODUCTVERSION VERSION_MAJOR_RELEASE, VERSION_MINOR_RELEASE, VERSION_INTERNAL_BUILD
+FILEVERSION VERSION_MAJOR_RELEASE, VERSION_MINOR_RELEASE
+PRODUCTVERSION VERSION_MAJOR_RELEASE, VERSION_MINOR_RELEASE
 FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
 FILEFLAGS 0x1L
@@ -78,14 +80,12 @@ BLOCK "StringFileInfo"
 BEGIN
 BLOCK "040904b0"
 BEGIN
-VALUE "Comments", "Raven Software"
-VALUE "CompanyName", "Activision Inc"
-VALUE "FileDescription", "Singleplayer"
+VALUE "Comments", "Contributors"
+VALUE "FileDescription", "Dedicated Server"
 VALUE "FileVersion", VERSION_STRING
-VALUE "InternalName", "SJE SP"
-VALUE "LegalCopyright", "Copyright (C) 2026"
-VALUE "OriginalFilename", "SerenityJediEngine2026-SP.exe"
-VALUE "ProductName", "Singleplayer"
+VALUE "InternalName", "SJE MP Ded"
+VALUE "OriginalFilename", "SerenityJediEngine2027-DED.exe"
+VALUE "ProductName", "Dedicated Server"
 VALUE "ProductVersion", VERSION_STRING
 END
 END
@@ -97,3 +97,12 @@ END
 
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED

@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1271,7 +1271,7 @@ long FS_FOpenFileRead(const char* filename, fileHandle_t* file, qboolean uniqueF
 			}
 			// is the element a pak file?
 			if (search->pack && search->pack->hashTable[hash]) {
-				// autoexec_sp.cfg and SerenityJediEngine2026-SP-default.cfg can only be loaded outside of pk3 files.
+				// autoexec_sp.cfg and SerenityJediEngine2027-SP-default.cfg can only be loaded outside of pk3 files.
 				if (isUserConfig) {
 					continue;
 				}
@@ -2765,7 +2765,7 @@ static void FS_Startup(const char* gameName)
 		homePath = fs_basepath->string;
 	}
 	fs_homepath = Cvar_Get("fs_homepath", homePath, CVAR_INIT | CVAR_PROTECTED);
-	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2026", CVAR_INIT | CVAR_SYSTEMINFO);
+	fs_gamedirvar = Cvar_Get("fs_game", "SerenityJediEngine2027", CVAR_INIT | CVAR_SYSTEMINFO);
 
 	fs_dirbeforepak = Cvar_Get("fs_dirbeforepak", "0", CVAR_INIT | CVAR_PROTECTED);
 
@@ -2880,12 +2880,12 @@ void FS_InitFilesystem() {
 	// try to start up normally
 	FS_Startup(BASEGAME);
 
-	// if we can't find SerenityJediEngine2026-SP-default.cfg, assume that the paths are
+	// if we can't find SerenityJediEngine2027-SP-default.cfg, assume that the paths are
 	// busted and error out now, rather than getting an unreadable
 	// graphics screen when the font fails to load
-	if (FS_ReadFile("SerenityJediEngine2026-SP-default.cfg", nullptr) <= 0)
+	if (FS_ReadFile("SerenityJediEngine2027-SP-default.cfg", nullptr) <= 0)
 	{
-		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2026-SP-default.cfg");
+		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2027-SP-default.cfg");
 		// bk001208 - SafeMode see below, FIXME?
 	}
 
@@ -2908,10 +2908,10 @@ void FS_Restart()
 	// try to start up normally
 	FS_Startup(BASEGAME);
 
-	// if we can't find SerenityJediEngine2026-SP-default.cfg, assume that the paths are
+	// if we can't find SerenityJediEngine2027-SP-default.cfg, assume that the paths are
 	// busted and error out now, rather than getting an unreadable
 	// graphics screen when the font fails to load
-	if (FS_ReadFile("SerenityJediEngine2026-SP-default.cfg", nullptr) <= 0) {
+	if (FS_ReadFile("SerenityJediEngine2027-SP-default.cfg", nullptr) <= 0) {
 		// this might happen when connecting to a pure server not using BASEGAME/pak0.pk3
 		// (for instance a TA demo server)
 		if (lastValidBase[0]) {
@@ -2922,7 +2922,7 @@ void FS_Restart()
 			FS_Restart();
 			Com_Error(ERR_DROP, "Invalid game folder");
 		}
-		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2026-SP-default.cfg");
+		Com_Error(ERR_FATAL, "Couldn't load SerenityJediEngine2027-SP-default.cfg");
 	}
 
 	if (Q_stricmp(fs_gamedirvar->string, lastValidGame)) {

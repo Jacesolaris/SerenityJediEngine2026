@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -51,7 +51,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
 
-#define	GAME_VERSION		"SerenityJediEngine2026"
+#define	GAME_VERSION		"SerenityJediEngine2027"
 
 // Wall-run (Fallen Order style): the run lasts as long as its animation, which plays at this speed (slower = longer)
 #define WALL_RUN_ANIM_SCALE	0.75f
@@ -81,7 +81,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_REDTEAM_NAME	"Empire"
 #define DEFAULT_BLUETEAM_NAME	"Rebellion"
 
-#define CURRENT_SJE_CLIENTVERSION		"Day-16,Month-10,Year-26,BuildNum-10" // build date
+#define CURRENT_SJE_CLIENTVERSION		"Day-17,Month-10,Year-26,BuildNum-10" // build date
 
 #define	STEPSIZE		18
 

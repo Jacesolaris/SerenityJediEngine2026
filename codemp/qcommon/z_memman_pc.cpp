@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -319,15 +319,15 @@ void* Z_Malloc(const int iSize, const memtag_t eTag, const qboolean bZeroit, con
 // Special wrapper around Z_Malloc for better separation between the main engine
 // code and the bundled minizip library.
 
-extern "C" Q_EXPORT void* SerenityJediEngine2026_minizip_malloc(int size);
-extern "C" Q_EXPORT void SerenityJediEngine2026_minizip_free(void* to_free);
+extern "C" Q_EXPORT void* SerenityJediEngine2027_minizip_malloc(int size);
+extern "C" Q_EXPORT void SerenityJediEngine2027_minizip_free(void* to_free);
 
-void* SerenityJediEngine2026_minizip_malloc(const int size)
+void* SerenityJediEngine2027_minizip_malloc(const int size)
 {
 	return Z_Malloc(size, TAG_MINIZIP, qfalse, 0);
 }
 
-void SerenityJediEngine2026_minizip_free(void* to_free)
+void SerenityJediEngine2027_minizip_free(void* to_free)
 {
 	Z_Free(to_free);
 }

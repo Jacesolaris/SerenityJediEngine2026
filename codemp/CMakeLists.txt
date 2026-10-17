@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+# Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 #
-# This file is part of the SerenityJediEngine2026 source code.
+# This file is part of the SerenityJediEngine2027 source code.
 #
-# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2026)
+if(NOT InSerenityJediEngine2027)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2026)
+endif(NOT InSerenityJediEngine2027)
 
 set(MPSharedDefines ${SharedDefines})
 
@@ -164,7 +164,7 @@ if(BuildMPEngine OR BuildMPDed)
 	add_library(${MPBotLib} STATIC ${MPBotlibFiles})
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${MPBotLib} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+	set_property(TARGET ${MPBotLib} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 	set_target_properties(${MPBotLib} PROPERTIES COMPILE_DEFINITIONS "${MPBotlibDefines}")
 	set_target_properties(${MPBotLib} PROPERTIES INCLUDE_DIRECTORIES "${MPBotlibIncludeDirectories}")
@@ -369,7 +369,7 @@ if(BuildMPEngine)
 		if(UseInternalOpenAL)
 			# There's a libs/OpenAL32.lib
 			# (mrw) TODO Is this actually required on windows? It is loaded at runtime, should not be linked?
-			find_library(OpenALLibrary NAMES OpenAL32 PATHS ${SerenityJediEngine2026LibDir})
+			find_library(OpenALLibrary NAMES OpenAL32 PATHS ${SerenityJediEngine2027LibDir})
 			if(NOT OpenALLibrary)
 				message(FATAL_ERROR "UseInternalOpenAL enabled, but lib/OpenAL32.lib not found!")
 			endif(NOT OpenALLibrary)
@@ -385,20 +385,20 @@ if(BuildMPEngine)
 		if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 			set(MPEngineLibraries
 				${MPEngineLibraries}
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SerenityJediEngine2026-SDL2.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x86/SDL2main.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x86/SerenityJediEngine2027-SDL2.lib
 				)
 		else()
 			set(MPEngineLibraries
 				${MPEngineLibraries}
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SerenityJediEngine2026-SDL2.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x64/SDL2main.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x64/SerenityJediEngine2027-SDL2.lib
 				)
 		endif()
 
 		set(MPEngineIncludeDirectories
 			${MPEngineIncludeDirectories}
-			${SerenityJediEngine2026LibDir}/SDL2/include
+			${SerenityJediEngine2027LibDir}/SDL2/include
 			)
 	else()
 		find_package(SDL2 REQUIRED CONFIG)
@@ -531,9 +531,9 @@ if(BuildMPEngine)
 
 	if(WIN32)
 		set(MPEngineWin32Files
-			"${MPDir}/win32/SerenityJediEngine2026-MP.ico"
+			"${MPDir}/win32/SerenityJediEngine2027-MP.ico"
 			"${MPDir}/win32/resource.h"
-			"${MPDir}/win32/SerenityJediEngine2026-MP.rc"
+			"${MPDir}/win32/SerenityJediEngine2027-MP.rc"
 			)
 
 		set(MPEngineFiles ${MPEngineFiles} ${MPEngineWin32Files})
@@ -558,9 +558,9 @@ if(BuildMPEngine)
 	if(MakeApplicationBundles)
 		set(MACOSX_BUNDLE_BUNDLE_NAME ${MPEngine})
 		set(MACOSX_BUNDLE_DISPLAY_NAME ${MPEngine})
-		set(MACOSX_BUNDLE_ICON_FILE SerenityJediEngine2026.icns)
-		set_source_files_properties(${MPDir}/macosx/SerenityJediEngine2026.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-		set(MPEngineFiles ${MPEngineFiles} ${MPDir}/macosx/SerenityJediEngine2026.icns)
+		set(MACOSX_BUNDLE_ICON_FILE SerenityJediEngine2027.icns)
+		set_source_files_properties(${MPDir}/macosx/SerenityJediEngine2027.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+		set(MPEngineFiles ${MPEngineFiles} ${MPDir}/macosx/SerenityJediEngine2027.icns)
 		set_source_files_properties(${MPDir}/macosx/English.lproj/InfoPlist.strings PROPERTIES MACOSX_PACKAGE_LOCATION Resources/English.lproj)
 		set(MPEngineFiles ${MPEngineFiles} ${MPDir}/macosx/English.lproj/InfoPlist.strings)
 	endif(MakeApplicationBundles)
@@ -570,18 +570,18 @@ if(BuildMPEngine)
 		if(UseInternalSDL2)
 			if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 				set(MPEngineExtraInstallFiles
-					${SerenityJediEngine2026LibDir}/SDL2/bin/x86/SerenityJediEngine2026-SDL2.dll
+					${SerenityJediEngine2027LibDir}/SDL2/bin/x86/SerenityJediEngine2027-SDL2.dll
 					)
 			else()
 				set(MPEngineExtraInstallFiles
-					${SerenityJediEngine2026LibDir}/SDL2/bin/x64/SerenityJediEngine2026-SDL2.dll
+					${SerenityJediEngine2027LibDir}/SDL2/bin/x64/SerenityJediEngine2027-SDL2.dll
 					)
 			endif()
 		endif()
 	else(WIN32)
 		if(MakeApplicationBundles)
 			add_executable(${MPEngine} MACOSX_BUNDLE ${MPEngineFiles})
-			set_target_properties(${MPEngine} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${MPDir}/macosx/SerenityJediEngine2026Info.plist")
+			set_target_properties(${MPEngine} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${MPDir}/macosx/SerenityJediEngine2027Info.plist")
 		else(MakeApplicationBundles)
 			add_executable(${MPEngine} ${MPEngineFiles})
 		endif(MakeApplicationBundles)
@@ -607,14 +607,14 @@ if(BuildMPEngine)
 	set_target_properties(${MPEngine} PROPERTIES COMPILE_DEFINITIONS "${MPEngineDefines}")
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${MPEngine} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+	set_property(TARGET ${MPEngine} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 	set_target_properties(${MPEngine} PROPERTIES INCLUDE_DIRECTORIES "${MPEngineIncludeDirectories}")
 	set_target_properties(${MPEngine} PROPERTIES PROJECT_LABEL "MP Client")
 	target_link_libraries(${MPEngine} ${MPEngineLibraries})
 endif(BuildMPEngine)
 
-#        Dedicated Server (Engine) (SerenityJediEngine2026-DED.exe)
+#        Dedicated Server (Engine) (SerenityJediEngine2027-DED.exe)
 
 if(BuildMPDed)
 	set(MPDedLibraries ${MPEngineAndDedLibraries})
@@ -654,7 +654,7 @@ if(BuildMPDed)
 	set(MPDedFiles ${MPDedFiles} ${MPDedNullFiles})
 	if(WIN32)
 		set(MPDedWin32Files
-			"${MPDir}/win32/SerenityJediEngine2026-DED.rc"
+			"${MPDir}/win32/SerenityJediEngine2027-DED.rc"
 			)
 		source_group("win32" FILES ${MPDedWin32Files})
 		set(MPDedFiles ${MPDedFiles} ${MPDedWin32Files})
@@ -699,7 +699,7 @@ if(BuildMPDed)
 	set_target_properties(${MPDed} PROPERTIES COMPILE_DEFINITIONS "${MPDedDefines}")
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${MPDed} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+	set_property(TARGET ${MPDed} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 	set_target_properties(${MPDed} PROPERTIES INCLUDE_DIRECTORIES "${MPDedIncludeDirectories}")
 	set_target_properties(${MPDed} PROPERTIES PROJECT_LABEL "MP Dedicated Server")
@@ -743,6 +743,6 @@ set(GameLibFullPaths)
 		ALL
 		DEPENDS ${AssetsPk3})
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${AssetsPk3}
-		DESTINATION "${JKAInstallDir}/SerenityJediEngine2026"
+		DESTINATION "${JKAInstallDir}/SerenityJediEngine2027"
 		COMPONENT ${JKAMPCoreComponent})
 endif()

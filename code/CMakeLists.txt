@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+# Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 #
-# This file is part of the SerenityJediEngine2026 source code.
+# This file is part of the SerenityJediEngine2027 source code.
 #
-# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2026)
+if(NOT InSerenityJediEngine2027)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2026)
+endif(NOT InSerenityJediEngine2027)
 
 #    Add Game Project
 if(BuildSPGame)
@@ -34,7 +34,7 @@ if(BuildSPRend2 OR BuildJK2SPRdRend2)
 	add_subdirectory("${SPDir}/rd-rend2")
 endif(BuildSPRend2 OR BuildJK2SPRdRend2)
 
-#    Add SerenityJediEngine2026 launcher project (Windows only)
+#    Add SerenityJediEngine2027 launcher project (Windows only)
 if(WIN32)
 	add_subdirectory("${SPDir}/launcher")
 endif(WIN32)
@@ -60,7 +60,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		if(UseInternalOpenAL)
 			# There's a libs/OpenAL32.lib
 			# (mrw) TODO Is this actually required on windows? It is loaded at runtime, should not be linked?
-			find_library(OpenALLibrary NAMES OpenAL32 PATHS "${SerenityJediEngine2026LibDir}")
+			find_library(OpenALLibrary NAMES OpenAL32 PATHS "${SerenityJediEngine2027LibDir}")
 			if(NOT OpenALLibrary)
 				message(FATAL_ERROR "UseInternalOpenAL enabled, but lib/OpenAL32.lib not found!")
 			endif(NOT OpenALLibrary)
@@ -83,20 +83,20 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 			set(SPEngineLibraries
 				${SPEngineLibraries}
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x86/SerenityJediEngine2026-SDL2.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x86/SDL2main.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x86/SerenityJediEngine2027-SDL2.lib
 				)
 		else()
 			set(SPEngineLibraries
 				${SPEngineLibraries}
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SDL2main.lib
-				${SerenityJediEngine2026LibDir}/SDL2/lib/x64/SerenityJediEngine2026-SDL2.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x64/SDL2main.lib
+				${SerenityJediEngine2027LibDir}/SDL2/lib/x64/SerenityJediEngine2027-SDL2.lib
 				)
 		endif()
 
 		set(SPEngineIncludeDirectories
 			${SPEngineIncludeDirectories}
-			${SerenityJediEngine2026LibDir}/SDL2/include
+			${SerenityJediEngine2027LibDir}/SDL2/include
 			)
 	else()
 		find_package(SDL2 REQUIRED CONFIG)
@@ -342,7 +342,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	if(WIN32)
 		set(SPEngineWin32Files
 			"${SPDir}/win32/resource.h"
-			"${SPDir}/win32/SerenityJediEngine2026-SP.rc"
+			"${SPDir}/win32/SerenityJediEngine2027-SP.rc"
 			)
 		source_group("win32" FILES ${SPEngineWin32Files})
 		set(SPEngineFiles ${SPEngineFiles} ${SPEngineWin32Files})
@@ -391,8 +391,8 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	# project macro so we can invoke it twice: for jk2 and for ja
 	function(add_sp_project ProjectName Label SPDirName InstallDir Component)
 		if(MakeApplicationBundles)
-			set_source_files_properties(${SPDirName}/macosx/SerenityJediEngine2026.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-			set(SPEngineFiles ${SPEngineFiles} ${SPDirName}/macosx/SerenityJediEngine2026.icns)
+			set_source_files_properties(${SPDirName}/macosx/SerenityJediEngine2027.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+			set(SPEngineFiles ${SPEngineFiles} ${SPDirName}/macosx/SerenityJediEngine2027.icns)
 			set_source_files_properties(${SPDirName}/macosx/English.lproj/InfoPlist.strings PROPERTIES MACOSX_PACKAGE_LOCATION Resources/English.lproj)
 			set(SPEngineFiles ${SPEngineFiles} ${SPDirName}/macosx/English.lproj/InfoPlist.strings)
 		endif(MakeApplicationBundles)
@@ -402,18 +402,18 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 			if(UseInternalSDL2)
 				if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 					set(SPEngineExtraInstallFiles
-						${SerenityJediEngine2026LibDir}/SDL2/bin/x86/SerenityJediEngine2026-SDL2.dll
+						${SerenityJediEngine2027LibDir}/SDL2/bin/x86/SerenityJediEngine2027-SDL2.dll
 						)
 				else()
 					set(SPEngineExtraInstallFiles
-						${SerenityJediEngine2026LibDir}/SDL2/bin/x64/SerenityJediEngine2026-SDL2.dll
+						${SerenityJediEngine2027LibDir}/SDL2/bin/x64/SerenityJediEngine2027-SDL2.dll
 						)
 				endif()
 			endif()
 		else(WIN32)
 			if(MakeApplicationBundles)
 				add_executable(${ProjectName} MACOSX_BUNDLE ${SPEngineFiles})
-				set_target_properties(${ProjectName} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${SPDirName}/macosx/SerenityJediEngine2026Info.plist")
+				set_target_properties(${ProjectName} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${SPDirName}/macosx/SerenityJediEngine2027Info.plist")
 			else(MakeApplicationBundles)
 				add_executable(${ProjectName} ${SPEngineFiles})
 			endif(MakeApplicationBundles)
@@ -439,7 +439,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		set_target_properties(${ProjectName} PROPERTIES COMPILE_DEFINITIONS "${SPEngineDefines}")
 
 		# Hide symbols not explicitly marked public.
-		set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+		set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 		set_target_properties(${ProjectName} PROPERTIES INCLUDE_DIRECTORIES "${SPEngineIncludeDirectories}")
 		set_target_properties(${ProjectName} PROPERTIES PROJECT_LABEL ${Label})

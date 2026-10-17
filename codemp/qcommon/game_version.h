@@ -2,11 +2,11 @@
 ===========================================================================
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -42,13 +42,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define VERSION_MINOR_RELEASE		10  // Build month
 #define VERSION_INTERNAL_BUILD		10  // Build number
 
-#define VERSION_STRING				"Day-16,Month-10,Year-26,BuildNum-10" // build date
-#define VERSION_STRING_DOTTED		"Day-16.Month-10.Year-26.BuildNum-10" // build date
+#define VERSION_STRING				"Day-17,Month-10,Year-26,BuildNum-10" // build date
+#define VERSION_STRING_DOTTED		"Day-17.Month-10.Year-26.BuildNum-10" // build date
 #if defined(_DEBUG)
-#define	JK_VERSION		"(debug)SerenityJediEngine2026-MP: " VERSION_STRING_DOTTED
+#define	JK_VERSION		"(debug)SerenityJediEngine2027-MP: " VERSION_STRING_DOTTED
 #define JK_VERSION_OLD	"(debug)SJE-mp: " VERSION_STRING_DOTTED
 #else
-#define	JK_VERSION		"SerenityJediEngine2026-MP: " VERSION_STRING_DOTTED
+#define	JK_VERSION		"SerenityJediEngine2027-MP: " VERSION_STRING_DOTTED
 #define JK_VERSION_OLD	"SJE-mp: " VERSION_STRING_DOTTED
 #endif
 #endif // GAME_VERSION_H

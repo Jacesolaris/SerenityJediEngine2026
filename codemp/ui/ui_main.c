@@ -4,11 +4,11 @@ Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
 Copyright (C) 2005 - 2015, ioquake3 contributors
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1597,7 +1597,7 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- genuine SerenityJediEngine-(Solaris Edition)MP--------\n");
-	Com_Printf("---------------------Build date 16/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------Build date 17/10/2026-----------------------\n"); // build date
 	Com_Printf("---------------------------Build 10------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
@@ -2612,8 +2612,8 @@ static void UI_DrawNetFilter(rectDef_t* rect, float scale, vec4_t color, int tex
 	// Load the localized "Game:" label
 	trap->SE_GetStringTextString("MENUS_GAME", holdSPString, sizeof holdSPString);
 
-	//Only show SerenityJediEngine2026 as the filter option, since that's the only one that works for MP
-	const char* fixedGameName = "SerenityJediEngine2026"; //SERVER FILTER
+	//Only show SerenityJediEngine2027 as the filter option, since that's the only one that works for MP
+	const char* fixedGameName = "SerenityJediEngine2027"; //SERVER FILTER
 
 	Text_Paint(
 		rect->x,
@@ -3111,8 +3111,8 @@ static int UI_OwnerDrawWidth(int ownerDraw, float scale)
 	case UI_NETFILTER:
 		trap->SE_GetStringTextString("MENUS_GAME", holdSPString, sizeof holdSPString);
 
-		//Only show SerenityJediEngine2026 as the filter option, since that's the only one that works for MP
-		s = va("%s %s", holdSPString, "SerenityJediEngine2026"); //SERVER FILTER
+		//Only show SerenityJediEngine2027 as the filter option, since that's the only one that works for MP
+		s = va("%s %s", holdSPString, "SerenityJediEngine2027"); //SERVER FILTER
 		break;
 	case UI_TIER:
 		break;
@@ -4480,7 +4480,7 @@ static qboolean UI_NetSource_HandleKey(int flags, float* special, int key)
 
 static qboolean UI_NetFilter_HandleKey(int flags, float* special, int key)
 { //SERVER FILTER
-	//Only show SerenityJediEngine2026 as the filter option, since that's the only one that works for MP
+	//Only show SerenityJediEngine2027 as the filter option, since that's the only one that works for MP
 	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
 	{
 		int value = ui_serverFilterType.integer;
@@ -7117,7 +7117,7 @@ static void UI_RunMenuScript(char** args)
 		{
 			trap->Cmd_ExecuteText(EXEC_APPEND, "cvar_restart\n");
 			Controls_SetDefaults();
-			trap->Cmd_ExecuteText(EXEC_APPEND, "exec SerenityJediEngine2026-MP-default.cfg\n");
+			trap->Cmd_ExecuteText(EXEC_APPEND, "exec SerenityJediEngine2027-MP-default.cfg\n");
 			trap->Cmd_ExecuteText(EXEC_APPEND, "vid_restart\n");
 		}
 		else if (Q_stricmp(name, "loadArenas") == 0)
@@ -8751,7 +8751,7 @@ static void UI_BuildServerDisplayList(int force) {
 	trap->Cvar_VariableStringBuffer("cl_motdString", uiInfo.serverStatus.motd, sizeof(uiInfo.serverStatus.motd));
 	len = strlen(uiInfo.serverStatus.motd);
 	if (len == 0) {
-		Q_strncpyz(uiInfo.serverStatus.motd, "Welcome to SerenityJediEngine2026 MP!", sizeof(uiInfo.serverStatus.motd));
+		Q_strncpyz(uiInfo.serverStatus.motd, "Welcome to SerenityJediEngine2027 MP!", sizeof(uiInfo.serverStatus.motd));
 		len = strlen(uiInfo.serverStatus.motd);
 	}
 	if (len != uiInfo.serverStatus.motdLen) {
@@ -8806,11 +8806,11 @@ static void UI_BuildServerDisplayList(int force) {
 				continue;
 			}
 
-			//Only show SerenityJediEngine2026 as the filter option, since that's the only one that works for MP
+			//Only show SerenityJediEngine2027 as the filter option, since that's the only one that works for MP
 			{
 				const char* hostname = Info_ValueForKey(info, "hostname");
 
-				if (Q_stricmp(hostname, "SerenityJediEngine2026") != 0)//SERVER FILTER
+				if (Q_stricmp(hostname, "SerenityJediEngine2027") != 0)//SERVER FILTER
 				{
 					trap->LAN_MarkServerVisible(lanSource, i, qfalse);
 					continue;

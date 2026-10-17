@@ -1,16 +1,16 @@
 /*
 ===========================================================================
-SerenityJediEngine2026 launcher
+SerenityJediEngine2027 launcher
 ===========================================================================
 
 A small window like the Jedi Academy launcher: SINGLEPLAYER, MULTIPLAYER, OPTIONS and EXIT.
 MULTIPLAYER opens its own list: START MULTIPLAYER, START SERVER and BACK. START SERVER runs
-"Start SerenityJediEngine-MP-FFA-Server.bat" from the SerenityJediEngine2026 mod folder in its own console window
+"Start SerenityJediEngine-MP-FFA-Server.bat" from the SerenityJediEngine2027 mod folder in its own console window
 and the launcher stays open (so the game can be started next, to join the server).
-It starts SerenityJediEngine2026-SP.x86_64.exe or SerenityJediEngine2026-MP.x86_64.exe from its own
+It starts SerenityJediEngine2027-SP.x86_64.exe or SerenityJediEngine2027-MP.x86_64.exe from its own
 folder, passing the options chosen on the OPTIONS page as "+set" command line values (they override
-the configs), and then closes. The options are remembered in SerenityJediEngine2026-Launcher.ini in
-Documents\STARWARS SerenityJediEngine\SerenityJediEngine2026, next to the game's own configs and saves.
+the configs), and then closes. The options are remembered in SerenityJediEngine2027-Launcher.ini in
+Documents\STARWARS SerenityJediEngine\SerenityJediEngine2027, next to the game's own configs and saves.
 
 The background (the SP main menu art), the menu sound and the main menu music are built into the exe,
 see sje_launcher.rc. The buttons are drawn here in the SJE blue. The music loops while the launcher is
@@ -54,12 +54,12 @@ namespace
 	const wchar_t* const kMusicAlias = L"sje_launcher_music";
 	constexpr int kMusicVolume = 600; // 0..1000
 
-	const wchar_t* const kSPExe = L"SerenityJediEngine2026-SP.x86_64.exe";
-	const wchar_t* const kMPExe = L"SerenityJediEngine2026-MP.x86_64.exe";
-	const wchar_t* const kIniName = L"SerenityJediEngine2026-Launcher.ini";
+	const wchar_t* const kSPExe = L"SerenityJediEngine2027-SP.x86_64.exe";
+	const wchar_t* const kMPExe = L"SerenityJediEngine2027-MP.x86_64.exe";
+	const wchar_t* const kIniName = L"SerenityJediEngine2027-Launcher.ini";
 	// the mod folder (fs_game) next to the exes, and the dedicated server batch file in it (it does "cd .." itself, so it
 	// runs from the mod folder)
-	const wchar_t* const kModFolder = L"SerenityJediEngine2026";
+	const wchar_t* const kModFolder = L"SerenityJediEngine2027";
 	const wchar_t* const kServerBat = L"Start SerenityJediEngine-MP-FFA-Server.bat";
 	// Release builds of the game only start when this is set on their process (shared/sys/sys_main.cpp
 	// Sys_RequireLauncher: SJE_LAUNCHER_ENV / SJE_LAUNCHER_TOKEN); keep the two the same.
@@ -68,7 +68,7 @@ namespace
 	// the game's home folder in Documents, with its configs and saves (Sys_DefaultHomePath: "STARWARS SerenityJediEngine\"
 	// + HOMEPATH_NAME_WIN)
 	const wchar_t* const kHomeParent = L"STARWARS SerenityJediEngine";
-	const wchar_t* const kHomeFolder = L"SerenityJediEngine2026";
+	const wchar_t* const kHomeFolder = L"SerenityJediEngine2027";
 
 	// SJE colours: the blue of the menu art and the icons
 	const Gdiplus::Color kTextColor(255, 177, 194, 220);  // the main menu's button text (.695 .760 .861)
@@ -80,8 +80,8 @@ namespace
 	enum class Page { Main, Options, Multiplayer };
 
 	// the game's config files (in the mod folder of the Documents home, else of the install folder)
-	const wchar_t* const kSPConfig = L"SerenityJediEngine2026-SP.cfg";
-	const wchar_t* const kMPConfig = L"SerenityJediEngine2026-MP.cfg";
+	const wchar_t* const kSPConfig = L"SerenityJediEngine2027-SP.cfg";
+	const wchar_t* const kMPConfig = L"SerenityJediEngine2027-MP.cfg";
 
 	// resolutions the OPTIONS page cycles through (0 x 0 = the desktop resolution, r_mode -2)
 	struct Resolution
@@ -218,7 +218,7 @@ namespace
 		}
 		if (g_launcher.music_file.empty())
 		{
-			g_launcher.music_file = WriteResourceToTemp(IDR_MUSIC, L"SerenityJediEngine2026-Launcher-music.mp3");
+			g_launcher.music_file = WriteResourceToTemp(IDR_MUSIC, L"SerenityJediEngine2027-Launcher-music.mp3");
 		}
 		if (g_launcher.music_file.empty() || !OpenMp3(g_launcher.music_file, kMusicAlias))
 		{
@@ -270,7 +270,7 @@ namespace
 	}
 
 	// ------------------------------------------------------------------------------------------
-	// Settings (SerenityJediEngine2026-Launcher.ini in Documents\STARWARS SerenityJediEngine\SerenityJediEngine2026,
+	// Settings (SerenityJediEngine2027-Launcher.ini in Documents\STARWARS SerenityJediEngine\SerenityJediEngine2027,
 	// with the game's configs and saves: a game installed under Program Files can't write next to its exe)
 	// ------------------------------------------------------------------------------------------
 
@@ -332,8 +332,8 @@ namespace
 
 	// ------------------------------------------------------------------------------------------
 	// The game's own configs: renderer, display and resolution are read from the config the game uses (the one in
-	// Documents\STARWARS SerenityJediEngine\SerenityJediEngine2026\SerenityJediEngine2026 when it exists, else the one in
-	// the install's SerenityJediEngine2026 folder) and written back into both the SP and the MP config: only those
+	// Documents\STARWARS SerenityJediEngine\SerenityJediEngine2027\SerenityJediEngine2027 when it exists, else the one in
+	// the install's SerenityJediEngine2027 folder) and written back into both the SP and the MP config: only those
 	// "seta" lines are replaced (or added), every other line stays as it was.
 	// ------------------------------------------------------------------------------------------
 
@@ -560,8 +560,8 @@ namespace
 	const char* RendererName(const bool rend2, const bool multiplayer)
 	{
 		return multiplayer
-			? (rend2 ? "SerenityJediEngine2026-rdmp-rend2" : "SerenityJediEngine2026-rdmp")
-			: (rend2 ? "SerenityJediEngine2026-rdsp-rend2" : "SerenityJediEngine2026-rdsp");
+			? (rend2 ? "SerenityJediEngine2027-rdmp-rend2" : "SerenityJediEngine2027-rdmp")
+			: (rend2 ? "SerenityJediEngine2027-rdsp-rend2" : "SerenityJediEngine2027-rdsp");
 	}
 
 	// the cvars the OPTIONS page sets, for the SP or the MP config / command line
@@ -865,8 +865,8 @@ namespace
 		const std::wstring exe = g_launcher.folder + L"\\" + (multiplayer ? kMPExe : kSPExe);
 		if (!PathFileExistsW(exe.c_str()))
 		{
-			const std::wstring msg = L"Could not find " + exe + L"\n\nThe launcher must be in the SerenityJediEngine2026 game folder.";
-			MessageBoxW(hwnd, msg.c_str(), L"SerenityJediEngine2026", MB_OK | MB_ICONERROR);
+			const std::wstring msg = L"Could not find " + exe + L"\n\nThe launcher must be in the SerenityJediEngine2027 game folder.";
+			MessageBoxW(hwnd, msg.c_str(), L"SerenityJediEngine2027", MB_OK | MB_ICONERROR);
 			return false;
 		}
 
@@ -886,7 +886,7 @@ namespace
 		std::wstring cmd_buffer = cmd; // CreateProcessW may write into it
 		if (!CreateProcessW(exe.c_str(), &cmd_buffer[0], nullptr, nullptr, FALSE, 0, nullptr, g_launcher.folder.c_str(), &si, &pi))
 		{
-			MessageBoxW(hwnd, (L"Could not start " + exe).c_str(), L"SerenityJediEngine2026", MB_OK | MB_ICONERROR);
+			MessageBoxW(hwnd, (L"Could not start " + exe).c_str(), L"SerenityJediEngine2027", MB_OK | MB_ICONERROR);
 			return false;
 		}
 		CloseHandle(pi.hThread);
@@ -902,8 +902,8 @@ namespace
 		const std::wstring bat = mod + L"\\" + kServerBat;
 		if (!PathFileExistsW(bat.c_str()))
 		{
-			const std::wstring msg = L"Could not find " + bat + L"\n\nThe launcher must be in the SerenityJediEngine2026 game folder.";
-			MessageBoxW(hwnd, msg.c_str(), L"SerenityJediEngine2026", MB_OK | MB_ICONERROR);
+			const std::wstring msg = L"Could not find " + bat + L"\n\nThe launcher must be in the SerenityJediEngine2027 game folder.";
+			MessageBoxW(hwnd, msg.c_str(), L"SerenityJediEngine2027", MB_OK | MB_ICONERROR);
 			return false;
 		}
 
@@ -922,7 +922,7 @@ namespace
 		PROCESS_INFORMATION pi = {};
 		if (!CreateProcessW(comspec, &cmd[0], nullptr, nullptr, FALSE, CREATE_NEW_CONSOLE, nullptr, mod.c_str(), &si, &pi))
 		{
-			MessageBoxW(hwnd, (L"Could not start " + bat).c_str(), L"SerenityJediEngine2026", MB_OK | MB_ICONERROR);
+			MessageBoxW(hwnd, (L"Could not start " + bat).c_str(), L"SerenityJediEngine2027", MB_OK | MB_ICONERROR);
 			return false;
 		}
 		CloseHandle(pi.hThread);
@@ -1150,13 +1150,13 @@ int WINAPI wWinMain(_In_ const HINSTANCE instance, _In_opt_ HINSTANCE, _In_ PWST
 	wc.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(IDI_LAUNCHER));
 	wc.hIconSm = wc.hIcon;
 	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-	wc.lpszClassName = L"SerenityJediEngine2026Launcher";
+	wc.lpszClassName = L"SerenityJediEngine2027Launcher";
 	RegisterClassExW(&wc);
 
 	// centred, borderless (the art has its own frame and window buttons)
 	const int x = (GetSystemMetrics(SM_CXSCREEN) - kWidth) / 2;
 	const int y = (GetSystemMetrics(SM_CYSCREEN) - kHeight) / 2;
-	const HWND hwnd = CreateWindowExW(0, wc.lpszClassName, L"SerenityJediEngine2026", WS_POPUP | WS_MINIMIZEBOX | WS_SYSMENU,
+	const HWND hwnd = CreateWindowExW(0, wc.lpszClassName, L"SerenityJediEngine2027", WS_POPUP | WS_MINIMIZEBOX | WS_SYSMENU,
 		x, y, kWidth, kHeight, nullptr, nullptr, instance, nullptr);
 	if (!hwnd)
 	{

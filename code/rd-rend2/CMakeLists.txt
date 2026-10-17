@@ -1,7 +1,7 @@
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2026)
+if(NOT InSerenityJediEngine2027)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2026)
+endif(NOT InSerenityJediEngine2027)
 
 set(SPRend2IncludeDirectories
 	"${SharedDir}"
@@ -149,7 +149,7 @@ set(SPRend2Files
 	${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp)
 
-set(SPRend2IncludeDirectories ${SPRend2IncludeDirectories} ${SerenityJediEngine2026LibDir})
+set(SPRend2IncludeDirectories ${SPRend2IncludeDirectories} ${SerenityJediEngine2027LibDir})
 
 function(add_sp_renderer_project ProjectName Label EngineName InstallDir Component)
 	add_library(${ProjectName} SHARED ${SPRend2Files})
@@ -180,7 +180,7 @@ function(add_sp_renderer_project ProjectName Label EngineName InstallDir Compone
 	set_target_properties(${ProjectName} PROPERTIES COMPILE_DEFINITIONS "${SPRend2Defines}")
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+	set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 	set_target_properties(${ProjectName} PROPERTIES INCLUDE_DIRECTORIES "${SPRend2IncludeDirectories}")
 	set_target_properties(${ProjectName} PROPERTIES PROJECT_LABEL ${Label})
@@ -200,41 +200,41 @@ if(BuildJK2SPRdRend2)
 	add_sp_renderer_project(${JK2SPRend2Renderer} "JK2 SP Rend2 Renderer" ${JK2SPEngine} ${JK2InstallDir} ${JK2SPClientComponent})
 endif(BuildJK2SPRdRend2)
 
-set_source_files_properties(../win32/SerenityJediEngine2026-glsl-SP.rc PROPERTIES LANGUAGE RC)
+set_source_files_properties(../win32/SerenityJediEngine2027-glsl-SP.rc PROPERTIES LANGUAGE RC)
 # GLSL shader file generator
-add_executable(SerenityJediEngine2026-glsl-SP
+add_executable(SerenityJediEngine2027-glsl-SP
 	${SharedDir}/rd-rend2/glsl/compact.cpp
 	${SharedDir}/rd-rend2/tr_allocator.cpp
 	${SharedDir}/rd-rend2/tr_allocator.h
 	${SharedDir}/rd-rend2/tr_glsl_parse.cpp)
-target_sources(SerenityJediEngine2026-glsl-SP PRIVATE ../win32/SerenityJediEngine2026-glsl-SP.rc)
-target_compile_definitions(SerenityJediEngine2026-glsl-SP PRIVATE "GLSL_BUILDTOOL" "NOMINMAX" "REND2_SP")
+target_sources(SerenityJediEngine2027-glsl-SP PRIVATE ../win32/SerenityJediEngine2027-glsl-SP.rc)
+target_compile_definitions(SerenityJediEngine2027-glsl-SP PRIVATE "GLSL_BUILDTOOL" "NOMINMAX" "REND2_SP")
 if (NOT WIN32 AND NOT APPLE)
-	target_compile_definitions(SerenityJediEngine2026-glsl-SP PRIVATE "ARCH_STRING=\"${Architecture}\"")
+	target_compile_definitions(SerenityJediEngine2027-glsl-SP PRIVATE "ARCH_STRING=\"${Architecture}\"")
 endif()
-target_include_directories(SerenityJediEngine2026-glsl-SP PRIVATE "${SPRend2IncludeDirectories}")
+target_include_directories(SerenityJediEngine2027-glsl-SP PRIVATE "${SPRend2IncludeDirectories}")
 if (WIN32 OR APPLE)
 add_custom_command(
 	OUTPUT
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	COMMAND
-		SerenityJediEngine2026-glsl-SP
+		SerenityJediEngine2027-glsl-SP
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 			${SPRend2GLSLFiles}
 	DEPENDS
-		SerenityJediEngine2026-glsl-SP ${SPRend2GLSLFiles})
+		SerenityJediEngine2027-glsl-SP ${SPRend2GLSLFiles})
 else()
 add_custom_command(
 	OUTPUT
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 	COMMAND
-		${CMAKE_BINARY_DIR}/SerenityJediEngine2026-glsl-SP
+		${CMAKE_BINARY_DIR}/SerenityJediEngine2027-glsl-SP
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
 			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
 			${SPRend2GLSLFiles}
 	DEPENDS
-		SerenityJediEngine2026-glsl-SP ${SPRend2GLSLFiles})
+		SerenityJediEngine2027-glsl-SP ${SPRend2GLSLFiles})
 endif()

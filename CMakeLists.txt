@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2018, SerenityJediEngine2026 contributors
+# Copyright (C) 2013 - 2018, SerenityJediEngine2027 contributors
 # 
-# This file is part of the SerenityJediEngine2026 source code.
+# This file is part of the SerenityJediEngine2027 source code.
 # 
-# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 # 
@@ -20,12 +20,12 @@ cmake_minimum_required(VERSION 3.5...4.4)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version")
 
 # For checks in subdirectories
-set(InSerenityJediEngine2026 TRUE)
+set(InSerenityJediEngine2027 TRUE)
 
 
 
 # Project name
-set(ProjectName "SerenityJediEngine2026" CACHE STRING "Project Name")
+set(ProjectName "SerenityJediEngine2027" CACHE STRING "Project Name")
 project(${ProjectName})
 
 # C++ language standard: C++17 for every C++ project (shown in VS as "ISO C++17 Standard (/std:c++17)").
@@ -40,19 +40,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 # Customizable options
 option(BuildPortableVersion "Build portable version (does not read or write files from your user/home directory" OFF)
 
-option(BuildMPEngine "Whether to create projects for the MP client (SerenityJediEngine2026-MP.exe)" ON)
-option(BuildMPRdVanilla "Whether to create projects for the MP default renderer (SerenityJediEngine2026-rdmp_x86.dll)" ON)
-option(BuildMPDed "Whether to create projects for the MP dedicated server (SerenityJediEngine2026-DED.exe)" ON)
-option(BuildMPGame "Whether to create projects for the MP server-side gamecode (SerenityJediEngine2026-mpgamex86.dll)" ON)
-option(BuildMPCGame "Whether to create projects for the MP clientside gamecode (SerenityJediEngine2026-cgamex86.dll)" ON)
-option(BuildMPUI "Whether to create projects for the MP UI code (SerenityJediEngine2026-uix86.dll)" ON)
+option(BuildMPEngine "Whether to create projects for the MP client (SerenityJediEngine2027-MP.exe)" ON)
+option(BuildMPRdVanilla "Whether to create projects for the MP default renderer (SerenityJediEngine2027-rdmp_x86.dll)" ON)
+option(BuildMPDed "Whether to create projects for the MP dedicated server (SerenityJediEngine2027-DED.exe)" ON)
+option(BuildMPGame "Whether to create projects for the MP server-side gamecode (SerenityJediEngine2027-mpgamex86.dll)" ON)
+option(BuildMPCGame "Whether to create projects for the MP clientside gamecode (SerenityJediEngine2027-cgamex86.dll)" ON)
+option(BuildMPUI "Whether to create projects for the MP UI code (SerenityJediEngine2027-uix86.dll)" ON)
 
-option(BuildMPRend2 "Whether to create projects for the MP rend2 renderer (SerenityJediEngine2026-rdmp-rend2_x86.dll)" ON)
-option(BuildSPRend2 "Whether to create projects for the SP rend2 renderer (SerenityJediEngine2026-rdsp-rend2_x86.dll)" ON)
+option(BuildMPRend2 "Whether to create projects for the MP rend2 renderer (SerenityJediEngine2027-rdmp-rend2_x86.dll)" ON)
+option(BuildSPRend2 "Whether to create projects for the SP rend2 renderer (SerenityJediEngine2027-rdsp-rend2_x86.dll)" ON)
 
-option(BuildSPEngine "Whether to create projects for the SP engine (SerenityJediEngine2026-SP.exe)" ON)
-option(BuildSPGame "Whether to create projects for the SP gamecode (SerenityJediEngine2026-gamex86.dll)" ON)
-option(BuildSPRdVanilla "Whether to create projects for the SP default renderer (SerenityJediEngine2026-rdsp_x86.dll)" ON)
+option(BuildSPEngine "Whether to create projects for the SP engine (SerenityJediEngine2027-SP.exe)" ON)
+option(BuildSPGame "Whether to create projects for the SP gamecode (SerenityJediEngine2027-gamex86.dll)" ON)
+option(BuildSPRdVanilla "Whether to create projects for the SP default renderer (SerenityJediEngine2027-rdsp_x86.dll)" ON)
 
 Include(CMakeDependentOption)
 CMAKE_DEPENDENT_OPTION(BuildSymbolServer "Build WIP Windows Symbol Server (experimental and unused)" OFF "NOT WIN32 OR NOT MSVC" OFF)
@@ -153,25 +153,25 @@ message(STATUS "Git revision is ${GIT_SHA1}")
 
 
 # Binary names
-set(SPEngine "SerenityJediEngine2026-SP.${Architecture}")
-set(SPGame "SerenityJediEngine2026-game${Architecture}")
-set(SPRDVanillaRenderer "SerenityJediEngine2026-rdsp_${Architecture}")
+set(SPEngine "SerenityJediEngine2027-SP.${Architecture}")
+set(SPGame "SerenityJediEngine2027-game${Architecture}")
+set(SPRDVanillaRenderer "SerenityJediEngine2027-rdsp_${Architecture}")
 
-set(MPEngine "SerenityJediEngine2026-MP.${Architecture}")
-set(MPVanillaRenderer "SerenityJediEngine2026-rdmp_${Architecture}")
-set(MPDed "SerenityJediEngine2026-DED.${Architecture}")
-set(MPGame "SerenityJediEngine2026-mpgame${Architecture}")
-set(MPCGame "SerenityJediEngine2026-cgame${Architecture}")
-set(MPUI "SerenityJediEngine2026-ui${Architecture}")
+set(MPEngine "SerenityJediEngine2027-MP.${Architecture}")
+set(MPVanillaRenderer "SerenityJediEngine2027-rdmp_${Architecture}")
+set(MPDed "SerenityJediEngine2027-DED.${Architecture}")
+set(MPGame "SerenityJediEngine2027-mpgame${Architecture}")
+set(MPCGame "SerenityJediEngine2027-cgame${Architecture}")
+set(MPUI "SerenityJediEngine2027-ui${Architecture}")
 
-set(MPRend2 "SerenityJediEngine2026-rdmp-rend2_${Architecture}")
-set(SPRend2 "SerenityJediEngine2026-rdsp-rend2_${Architecture}")
+set(MPRend2 "SerenityJediEngine2027-rdmp-rend2_${Architecture}")
+set(SPRend2 "SerenityJediEngine2027-rdsp-rend2_${Architecture}")
 
-set(JK2SPEngine "SerenityJediEngineJO2026-SP.${Architecture}")
-set(JK2SPGame "SerenityJediEngineJO2026-game${Architecture}")
-set(JK2SPVanillaRenderer "SerenityJediEngineJO2026-josp_${Architecture}")
+set(JK2SPEngine "SerenityJediEngineJO2027-SP.${Architecture}")
+set(JK2SPGame "SerenityJediEngineJO2027-game${Architecture}")
+set(JK2SPVanillaRenderer "SerenityJediEngineJO2027-josp_${Architecture}")
 
-set(AssetsPk3 "SerenityJediEngine2026-Assets-0-${Architecture}.pk3")
+set(AssetsPk3 "SerenityJediEngine2027-Assets-0-${Architecture}.pk3")
 # Library names
 set(MPBotLib "botlib")
 set(SharedLib "shared")
@@ -183,8 +183,8 @@ set(SPDir "${CMAKE_SOURCE_DIR}/code")
 set(MPDir "${CMAKE_SOURCE_DIR}/codemp")
 set(JK2SPDir "${CMAKE_SOURCE_DIR}/codeJK2")
 set(SharedDir ${CMAKE_SOURCE_DIR}/shared)
-set(SerenityJediEngine2026LibDir "${CMAKE_SOURCE_DIR}/lib")
-set(GSLIncludeDirectory "${SerenityJediEngine2026LibDir}/gsl-lite/include")
+set(SerenityJediEngine2027LibDir "${CMAKE_SOURCE_DIR}/lib")
+set(GSLIncludeDirectory "${SerenityJediEngine2027LibDir}/gsl-lite/include")
 
 # INSTALL and PACKAGE projects (install rules + CPack installer/zip): not needed, the built exes and dlls are copied
 # to the mod by hand. Left out of the solution unless MakeInstallProjects is turned on in CMake.
@@ -244,7 +244,7 @@ if(MSVC)
 	set(SharedDefines ${SharedDefines} "_HAS_STD_BYTE=0")
 
 	# We don't try to control symbol visibility under MSVC.
-	set(SERENITYJEDIENGINE2026_VISIBILITY_FLAGS "")
+	set(SERENITYJEDIENGINE2027_VISIBILITY_FLAGS "")
 
 elseif (("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_C_COMPILER_ID}" MATCHES "Clang"))
 	# I hope this doesn't come back to bite me in the butt later on.
@@ -255,7 +255,7 @@ elseif (("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_C_COMPILER_ID}" M
 	# ZLib explicitly declares symbols hidden, rather than defaulting to hidden.
 	#
 	# Note that -fvisibility=hidden is stronger than -fvisibility-inlines-hidden.
-	set(SERENITYJEDIENGINE2026_VISIBILITY_FLAGS "-fvisibility=hidden")
+	set(SERENITYJEDIENGINE2027_VISIBILITY_FLAGS "-fvisibility=hidden")
 
 	# removes the -rdynamic flag at linking (which causes crashes for some reason)
 	set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")

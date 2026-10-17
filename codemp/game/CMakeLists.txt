@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+# Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 #
-# This file is part of the SerenityJediEngine2026 source code.
+# This file is part of the SerenityJediEngine2027 source code.
 #
-# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2026)
+if(NOT InSerenityJediEngine2027)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2026)
+endif(NOT InSerenityJediEngine2027)
 
 set(MPGameIncludeDirectories
 	"${MPDir}"
@@ -240,7 +240,7 @@ endif()
 if(MakeApplicationBundles AND BuildMPEngine)
 	install(TARGETS ${MPGame}
 		LIBRARY
-		DESTINATION "${JKAInstallDir}/${MPEngine}.app/Contents/MacOS/SerenityJediEngine2026"
+		DESTINATION "${JKAInstallDir}/${MPEngine}.app/Contents/MacOS/SerenityJediEngine2027"
 		COMPONENT ${JKAMPCoreComponent})
 	install(TARGETS ${MPGame}
 		LIBRARY
@@ -249,7 +249,7 @@ if(MakeApplicationBundles AND BuildMPEngine)
 elseif(WIN32)
 	install(TARGETS ${MPGame}
 		RUNTIME
-		DESTINATION "${JKAInstallDir}/SerenityJediEngine2026"
+		DESTINATION "${JKAInstallDir}/SerenityJediEngine2027"
 		COMPONENT ${JKAMPCoreComponent})
 	if (WIN64)
 		# Don't do this on 32-bit Windows to avoid overwriting
@@ -262,7 +262,7 @@ elseif(WIN32)
 else()
 	install(TARGETS ${MPGame}
 		LIBRARY
-		DESTINATION "${JKAInstallDir}/SerenityJediEngine2026"
+		DESTINATION "${JKAInstallDir}/SerenityJediEngine2027"
 		COMPONENT ${JKAMPCoreComponent})
 	install(TARGETS ${MPGame}
 		LIBRARY
@@ -273,7 +273,7 @@ endif()
 set_target_properties(${MPGame} PROPERTIES COMPILE_DEFINITIONS "${MPGameDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPGame} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+set_property(TARGET ${MPGame} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 set_target_properties(${MPGame} PROPERTIES INCLUDE_DIRECTORIES "${MPGameIncludeDirectories}")
 set_target_properties(${MPGame} PROPERTIES PROJECT_LABEL "MP Game Library")

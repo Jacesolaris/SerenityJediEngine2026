@@ -1,4 +1,4 @@
-// ui_sjechars.c -- SerenityJediEngine2026 MP: the in-game "Select Character" menu (ui/sjemp/ingameclass.menu,
+// ui_sjechars.c -- SerenityJediEngine2027 MP: the in-game "Select Character" menu (ui/sjemp/ingameclass.menu,
 // menuDef "ingameclassMenu", opened from the CHARACTERS box of Player Configuration).
 //
 // The characters are built here from the JKA/SJE NPC files (ext_data/npcs, then ext_data/mpnpcs; the first definition

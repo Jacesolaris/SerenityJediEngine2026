@@ -1,10 +1,10 @@
 /*
 ===========================================================================
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1472,7 +1472,7 @@ intptr_t CL_UISystemCalls(intptr_t* args)
 void CL_BindUI()
 {
 	static uiImport_t uii;
-	char dll_name[MAX_OSPATH] = "SerenityJediEngine2026-ui" ARCH_STRING DLL_EXT;
+	char dll_name[MAX_OSPATH] = "SerenityJediEngine2027-ui" ARCH_STRING DLL_EXT;
 
 	memset(&uii, 0, sizeof uii);
 

@@ -3,11 +3,11 @@
 Copyright (C) 1999 - 2005, Id Software, Inc.
 Copyright (C) 2000 - 2013, Raven Software, Inc.
 Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -223,8 +223,8 @@ using cgameImport_t = enum
 	CG_SP_GETSTRINGTEXT,
 	CG_ANYLANGUAGE_READFROMSTRING2,
 
-	CG_SerenityJediEngine2026_MENU_PAINT,
-	CG_SerenityJediEngine2026_GETMENU_BYNAME,
+	CG_SerenityJediEngine2027_MENU_PAINT,
+	CG_SerenityJediEngine2027_GETMENU_BYNAME,
 };
 
 #ifdef JK2_MODE
@@ -348,8 +348,8 @@ typedef enum {
 	CG_UI_GETITEMTEXT_JK2,
 	CG_ANYLANGUAGE_READFROMSTRING2_JK2,
 
-	CG_SerenityJediEngine2026_MENU_PAINT_JK2,
-	CG_SerenityJediEngine2026_GETMENU_BYNAME_JK2,
+	CG_SerenityJediEngine2027_MENU_PAINT_JK2,
+	CG_SerenityJediEngine2027_GETMENU_BYNAME_JK2,
 } cgameJK2Import_t;
 #endif
 

@@ -1,10 +1,10 @@
 /*
 ===========================================================================
-Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 
-This file is part of the SerenityJediEngine2026 source code.
+This file is part of the SerenityJediEngine2027 source code.
 
-SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License version 2 as
 published by the Free Software Foundation.
 
@@ -1963,7 +1963,7 @@ static void RE_InitRendererTerrain(const char* /*info*/)
 void CL_BindCGame(void)
 {
 	static cgameImport_t cgi;
-	char dllName[MAX_OSPATH] = "SerenityJediEngine2026-cgame" ARCH_STRING DLL_EXT;
+	char dllName[MAX_OSPATH] = "SerenityJediEngine2027-cgame" ARCH_STRING DLL_EXT;
 
 	memset(&cgi, 0, sizeof cgi);
 

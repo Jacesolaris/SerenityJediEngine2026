@@ -1,9 +1,9 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, SerenityJediEngine2026 contributors
+# Copyright (C) 2013 - 2015, SerenityJediEngine2027 contributors
 #
-# This file is part of the SerenityJediEngine2026 source code.
+# This file is part of the SerenityJediEngine2027 source code.
 #
-# SerenityJediEngine2026 is free software; you can redistribute it and/or modify it
+# SerenityJediEngine2027 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InSerenityJediEngine2026)
+if(NOT InSerenityJediEngine2027)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InSerenityJediEngine2026)
+endif(NOT InSerenityJediEngine2027)
 
 if(BuildSPRdVanilla OR BuildJK2SPRdVanilla)
 
@@ -154,7 +154,7 @@ if(BuildSPRdVanilla OR BuildJK2SPRdVanilla)
 	set(SPRDVanillaRendererIncludeDirectories ${SPRDVanillaRendererIncludeDirectories} ${OPENGL_INCLUDE_DIR})
 	set(SPRDVanillaRendererLibraries ${SPRDVanillaRendererLibraries} ${OPENGL_LIBRARIES})
 
-	set(SPRDVanillaRendererIncludeDirectories ${SPRDVanillaRendererIncludeDirectories} ${SerenityJediEngine2026LibDir})
+	set(SPRDVanillaRendererIncludeDirectories ${SPRDVanillaRendererIncludeDirectories} ${SerenityJediEngine2027LibDir})
 
 	function(add_sp_renderer_project ProjectName Label EngineName InstallDir Component)
 		add_library(${ProjectName} SHARED ${SPRDVanillaFiles})
@@ -185,7 +185,7 @@ if(BuildSPRdVanilla OR BuildJK2SPRdVanilla)
 		set_target_properties(${ProjectName} PROPERTIES COMPILE_DEFINITIONS "${SPRDVanillaDefines}")
 
 		# Hide symbols not explicitly marked public.
-		set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2026_VISIBILITY_FLAGS})
+		set_property(TARGET ${ProjectName} APPEND PROPERTY COMPILE_OPTIONS ${SERENITYJEDIENGINE2027_VISIBILITY_FLAGS})
 
 		set_target_properties(${ProjectName} PROPERTIES INCLUDE_DIRECTORIES "${SPRDVanillaRendererIncludeDirectories}")
 		set_target_properties(${ProjectName} PROPERTIES PROJECT_LABEL ${Label})

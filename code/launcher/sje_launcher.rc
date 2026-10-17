@@ -1,7 +1,7 @@
 #include "resource.h"
 
 // the Jedi emblem icon (as the GLSL and dedicated server exes) in green, so the launcher stands out
-IDI_LAUNCHER        ICON    "art/SerenityJediEngine2026-Launcher.ico"
+IDI_LAUNCHER        ICON    "art/SerenityJediEngine2027-Launcher.ico"
 
 IDR_BG              RCDATA  "art/launcher_bg.png"
 

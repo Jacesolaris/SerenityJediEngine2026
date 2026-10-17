@@ -1,6 +1,6 @@
 #pragma once
 
-// SerenityJediEngine2026 launcher resources (sje_launcher.rc)
+// SerenityJediEngine2027 launcher resources (sje_launcher.rc)
 #define IDI_LAUNCHER        101
 
 // launcher art (PNG), built by MD-work/sje-launcher/make_art.ps1 from the SP main menu background
