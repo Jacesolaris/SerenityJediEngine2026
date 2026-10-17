@@ -914,13 +914,13 @@ static const char* SJE_WeaponText(const char* wp)
 		const char* wp;
 		const char* text;
 	} names[] = {
-		{ "WP_SABER", "Lightsaber" }, { "WP_BRYAR_PISTOL", "Bryar Pistol" }, { "WP_BLASTER", "Blaster Rifle" },
-		{ "WP_DISRUPTOR", "Disruptor Rifle" }, { "WP_BOWCASTER", "Bowcaster" }, { "WP_REPEATER", "Repeater" },
-		{ "WP_DEMP2", "DEMP 2" }, { "WP_FLECHETTE", "Flechette" }, { "WP_ROCKET_LAUNCHER", "Rocket Launcher" },
-		{ "WP_THERMAL", "Thermal Detonators" }, { "WP_TRIP_MINE", "Trip Mines" }, { "WP_DET_PACK", "Detonation Packs" },
-		{ "WP_CONCUSSION", "Concussion Rifle" }, { "WP_BRYAR_OLD", "Bryar Pistol" }, { "WP_STUN_BATON", "Stun Baton" },
-		{ "WP_BLASTER_PISTOL", "Blaster Pistol" }, { "WP_EMPLACED_GUN", "Emplaced Gun" }, { "WP_TUSKEN_RIFLE", "Tusken Rifle" },
-		{ "WP_TUSKEN_STAFF", "Gaffi Stick" }, { "WP_NOGHRI_STICK", "Noghri Stick" }, { "WP_SCEPTER", "Scepter" },
+		{ "WP_SABER", "Lightsaber" },{ "WP_BRYAR_PISTOL", "Bryar Pistol" },{ "WP_BLASTER", "Blaster Rifle" },
+		{ "WP_DISRUPTOR", "Disruptor Rifle" },{ "WP_BOWCASTER", "Bowcaster" },{ "WP_REPEATER", "Repeater" },
+		{ "WP_DEMP2", "DEMP 2" },{ "WP_FLECHETTE", "Flechette" },{ "WP_ROCKET_LAUNCHER", "Rocket Launcher" },
+		{ "WP_THERMAL", "Thermal Detonators" },{ "WP_TRIP_MINE", "Trip Mines" },{ "WP_DET_PACK", "Detonation Packs" },
+		{ "WP_CONCUSSION", "Concussion Rifle" },{ "WP_BRYAR_OLD", "Bryar Pistol" },{ "WP_STUN_BATON", "Stun Baton" },
+		{ "WP_BLASTER_PISTOL", "Blaster Pistol" },{ "WP_EMPLACED_GUN", "Emplaced Gun" },{ "WP_TUSKEN_RIFLE", "Tusken Rifle" },
+		{ "WP_TUSKEN_STAFF", "Gaffi Stick" },{ "WP_NOGHRI_STICK", "Noghri Stick" },{ "WP_SCEPTER", "Scepter" },
 	};
 	for (int i = 0; i < (int)ARRAY_LEN(names); i++)
 	{
@@ -939,14 +939,14 @@ static const char* SJE_SpeciesFor(const sjeChar_t* ch)
 		const char* key;
 		const char* species;
 	} table[] = {
-		{ "rodian", "Rodian" }, { "trandoshan", "Trandoshan" }, { "weequay", "Weequay" }, { "gran", "Gran" },
-		{ "chiss", "Chiss" }, { "noghri", "Noghri" }, { "ugnaught", "Ugnaught" }, { "jawa", "Jawa" },
-		{ "tusken", "Tusken Raider" }, { "wookiee", "Wookiee" }, { "chewbacca", "Wookiee" }, { "gamorrean", "Gamorrean" },
-		{ "reelo", "Nikto" }, { "monmothma", "Human" }, { "yoda", "Unknown" }, { "r2d2", "Astromech Droid" },
-		{ "r5d2", "Astromech Droid" }, { "protocol", "Protocol Droid" }, { "gonk", "Power Droid" },
-		{ "assassin_droid", "Assassin Droid" }, { "saber_droid", "Droid" }, { "sbd", "Super Battle Droid" },
-		{ "battledroid", "Battle Droid" }, { "rancor", "Rancor" }, { "wampa", "Wampa" }, { "howler", "Howler" },
-		{ "minemonster", "Mine Monster" }, { "omicron_iridonian", "Zabrak" }, { "alora", "Twi'lek" },
+		{ "rodian", "Rodian" },{ "trandoshan", "Trandoshan" },{ "weequay", "Weequay" },{ "gran", "Gran" },
+		{ "chiss", "Chiss" },{ "noghri", "Noghri" },{ "ugnaught", "Ugnaught" },{ "jawa", "Jawa" },
+		{ "tusken", "Tusken Raider" },{ "wookiee", "Wookiee" },{ "chewbacca", "Wookiee" },{ "gamorrean", "Gamorrean" },
+		{ "reelo", "Nikto" },{ "monmothma", "Human" },{ "yoda", "Unknown" },{ "r2d2", "Astromech Droid" },
+		{ "r5d2", "Astromech Droid" },{ "protocol", "Protocol Droid" },{ "gonk", "Power Droid" },
+		{ "assassin_droid", "Assassin Droid" },{ "saber_droid", "Droid" },{ "sbd", "Super Battle Droid" },
+		{ "battledroid", "Battle Droid" },{ "rancor", "Rancor" },{ "wampa", "Wampa" },{ "howler", "Howler" },
+		{ "minemonster", "Mine Monster" },{ "omicron_iridonian", "Zabrak" },{ "alora", "Twi'lek" },
 	};
 	for (int i = 0; i < (int)ARRAY_LEN(table); i++)
 	{

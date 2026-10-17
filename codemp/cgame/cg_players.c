@@ -4372,7 +4372,7 @@ qboolean CG_RagDoll(centity_t* cent, vec3_t forced_angles)
 
 			// Bolt indices and positions
 			int    bolt_checks[5] = { 0 };
-			vec3_t bolt_points[5] = { {0,0,0} };
+			vec3_t bolt_points[5] = { { 0,0,0 } };
 			vec3_t t_ang;
 
 			trace_t     tr;
@@ -16395,7 +16395,7 @@ extern stringID_table_t holsterTypeTable[];
 static void CG_HolsteredWeaponRender(centity_t* cent, const clientInfo_t* ci, const int holster_type)
 {
 	refEntity_t ent;
-	vec3_t axis[3] = { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} };
+	vec3_t axis[3] = { { 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 } };
 	vec3_t bolt_org;
 	mdxaBone_t boltMatrix;
 	vec3_t pos_offset = { 0, 0, 0 };
@@ -19246,7 +19246,7 @@ SkipTrueView:
 	}
 
 	// burning (game w_saber.c, PEF_BURNING, 2026-10-15): the Jedi Knight Galaxies burning effect bolted on the lower back
-	// (lower_lumbar, as JKG), re-triggered every 200 ms while the character burns (as JKG's buff efx debounce)
+	// (lower_lumbar, as SJE), re-triggered every 200 ms while the character burns (as SJE's buff efx debounce)
 	if (cent->currentState.PlayerEffectFlags & 1 << PEF_BURNING && cent->ghoul2 && !(cent->currentState.eFlags & EF_DEAD))
 	{
 		static int s_burnFxTime[MAX_GENTITIES];

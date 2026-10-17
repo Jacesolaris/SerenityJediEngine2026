@@ -71,35 +71,35 @@ enum
 
 static const stringID_table_t hlsTypeTable[] =
 {
-	{"HLR_NONE", HLR_NONE},
-	{"HLR_SINGLESABER_1", HLR_SINGLESABER_1},
-	{"HLR_SINGLESABER_2", HLR_SINGLESABER_2},
-	{"HLR_STAFFSABER", HLR_STAFFSABER},
-	{"HLR_PISTOL_L", HLR_PISTOL_L},
-	{"HLR_PISTOL_R", HLR_PISTOL_R},
-	{"HLR_BLASTER_L", HLR_BLASTER_L},
-	{"HLR_BLASTER_R", HLR_BLASTER_R},
-	{"HLR_BRYARPISTOL_L", HLR_BRYARPISTOL_L},
-	{"HLR_BRYARPISTOL_R", HLR_BRYARPISTOL_R},
-	{"HLR_BOWCASTER", HLR_BOWCASTER},
-	{"HLR_ROCKET_LAUNCHER", HLR_ROCKET_LAUNCHER},
-	{"HLR_DEMP2", HLR_DEMP2},
-	{"HLR_CONCUSSION", HLR_CONCUSSION},
-	{"HLR_REPEATER", HLR_REPEATER},
-	{"HLR_FLECHETTE", HLR_FLECHETTE},
-	{"HLR_DISRUPTOR", HLR_DISRUPTOR},
-	{"HLR_Z6", HLR_Z6},
-	{nullptr, -1}
+	{ "HLR_NONE", HLR_NONE },
+	{ "HLR_SINGLESABER_1", HLR_SINGLESABER_1 },
+	{ "HLR_SINGLESABER_2", HLR_SINGLESABER_2 },
+	{ "HLR_STAFFSABER", HLR_STAFFSABER },
+	{ "HLR_PISTOL_L", HLR_PISTOL_L },
+	{ "HLR_PISTOL_R", HLR_PISTOL_R },
+	{ "HLR_BLASTER_L", HLR_BLASTER_L },
+	{ "HLR_BLASTER_R", HLR_BLASTER_R },
+	{ "HLR_BRYARPISTOL_L", HLR_BRYARPISTOL_L },
+	{ "HLR_BRYARPISTOL_R", HLR_BRYARPISTOL_R },
+	{ "HLR_BOWCASTER", HLR_BOWCASTER },
+	{ "HLR_ROCKET_LAUNCHER", HLR_ROCKET_LAUNCHER },
+	{ "HLR_DEMP2", HLR_DEMP2 },
+	{ "HLR_CONCUSSION", HLR_CONCUSSION },
+	{ "HLR_REPEATER", HLR_REPEATER },
+	{ "HLR_FLECHETTE", HLR_FLECHETTE },
+	{ "HLR_DISRUPTOR", HLR_DISRUPTOR },
+	{ "HLR_Z6", HLR_Z6 },
+	{ nullptr, -1 }
 };
 
 static const stringID_table_t hlsBoneTable[] =
 {
-	{"HOLSTER_NONE", HLB_NONE},
-	{"HOLSTER_UPPERBACK", HLB_UPPERBACK},
-	{"HOLSTER_LOWERBACK", HLB_LOWERBACK},
-	{"HOLSTER_LEFTHIP", HLB_LEFTHIP},
-	{"HOLSTER_RIGHTHIP", HLB_RIGHTHIP},
-	{nullptr, -1}
+	{ "HOLSTER_NONE", HLB_NONE },
+	{ "HOLSTER_UPPERBACK", HLB_UPPERBACK },
+	{ "HOLSTER_LOWERBACK", HLB_LOWERBACK },
+	{ "HOLSTER_LEFTHIP", HLB_LEFTHIP },
+	{ "HOLSTER_RIGHTHIP", HLB_RIGHTHIP },
+	{ nullptr, -1 }
 };
 
 // The bolt (bone or surface tag) of each body part, as in multiplayer
@@ -149,17 +149,17 @@ struct hlsGun_t
 };
 static const hlsGun_t hlsGuns[] =
 {
-	{WP_BLASTER, qfalse, HLR_BLASTER_R, HLR_BLASTER_L},
-	{WP_BLASTER_PISTOL, qfalse, HLR_PISTOL_R, HLR_PISTOL_L},
-	{WP_BRYAR_PISTOL, qfalse, HLR_BRYARPISTOL_R, HLR_BRYARPISTOL_L},
-	{WP_ROCKET_LAUNCHER, qtrue, HLR_ROCKET_LAUNCHER, HLR_ROCKET_LAUNCHER},
-	{WP_CONCUSSION, qtrue, HLR_CONCUSSION, HLR_CONCUSSION},
-	{WP_REPEATER, qtrue, HLR_REPEATER, HLR_REPEATER},
-	{WP_FLECHETTE, qtrue, HLR_FLECHETTE, HLR_FLECHETTE},
-	{WP_DISRUPTOR, qtrue, HLR_DISRUPTOR, HLR_DISRUPTOR},
-	{WP_BOWCASTER, qtrue, HLR_BOWCASTER, HLR_BOWCASTER},
-	{WP_DEMP2, qtrue, HLR_DEMP2, HLR_DEMP2},
-	{WP_Z6_ROTARY_CANNON, qtrue, HLR_Z6, HLR_Z6},
+	{ WP_BLASTER, qfalse, HLR_BLASTER_R, HLR_BLASTER_L },
+	{ WP_BLASTER_PISTOL, qfalse, HLR_PISTOL_R, HLR_PISTOL_L },
+	{ WP_BRYAR_PISTOL, qfalse, HLR_BRYARPISTOL_R, HLR_BRYARPISTOL_L },
+	{ WP_ROCKET_LAUNCHER, qtrue, HLR_ROCKET_LAUNCHER, HLR_ROCKET_LAUNCHER },
+	{ WP_CONCUSSION, qtrue, HLR_CONCUSSION, HLR_CONCUSSION },
+	{ WP_REPEATER, qtrue, HLR_REPEATER, HLR_REPEATER },
+	{ WP_FLECHETTE, qtrue, HLR_FLECHETTE, HLR_FLECHETTE },
+	{ WP_DISRUPTOR, qtrue, HLR_DISRUPTOR, HLR_DISRUPTOR },
+	{ WP_BOWCASTER, qtrue, HLR_BOWCASTER, HLR_BOWCASTER },
+	{ WP_DEMP2, qtrue, HLR_DEMP2, HLR_DEMP2 },
+	{ WP_Z6_ROTARY_CANNON, qtrue, HLR_Z6, HLR_Z6 },
 };
 
 static const hlsGun_t* Hls_Gun(const int weapon)
@@ -456,7 +456,8 @@ static void Hls_RotateAxis(vec3_t axis[3], const int rotType, const float value)
 
 // Draws one gun in one holster place (multiplayer's CG_HolsteredWeaponRender)
 static void Hls_Render(centity_t* cent, const holsterModel_t* model, const int holsterType, const int weapon,
-	const vec3_t g2Angles, const vec3_t origin, const int playerRenderfx, const float shadowPlane)
+	const vec3_t g2Angles, const vec3_t origin, const int playerRenderfx, const float shadowPlane,
+	const float pullIn = 0.0f)
 {
 	holster_t h = model->data[holsterType];
 
@@ -511,6 +512,16 @@ static void Hls_Render(centity_t* cent, const holsterModel_t* model, const int h
 	VectorMA(boltOrg, h.posOffset[0], axis[0], boltOrg);
 	VectorMA(boltOrg, h.posOffset[1], axis[1], boltOrg);
 	VectorMA(boltOrg, h.posOffset[2], axis[2], boltOrg);
+	if (pullIn > 0.0f)
+	{
+		// SS_BLASTER (2026-10-15): moved this far sideways (along the left / right axis) towards the middle of the
+		// body, never past it, so the gun sits closer to the body
+		vec3_t toBody;
+		VectorSubtract(origin, boltOrg, toBody);
+		const float side = DotProduct(toBody, axis[0]);
+		const float move = fabs(side) < pullIn ? fabs(side) : pullIn;
+		VectorMA(boltOrg, side < 0.0f ? -move : move, axis[0], boltOrg);
+	}
 
 	VectorCopy(axis[1], ent.axis[0]);
 	VectorScale(axis[0], -1.0f, ent.axis[1]); // reversed, right-hand rule
@@ -648,6 +659,16 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		places[HLP_LHIP] = WP_NONE;
 		used--;
 	}
+	// SS_BLASTER (2026-10-15): with the blaster style his bryar pistol IS the one on the left hip, it gets no
+	// second place (no bryar on the right hip as well)
+	for (int p = 0; blasterHip && p < HLP_NUM; p++)
+	{
+		if (places[p] == WP_BRYAR_PISTOL)
+		{
+			places[p] = WP_NONE;
+			used--;
+		}
+	}
 	auto placed = [&](const int weapon)
 		{
 			for (int p = 0; p < HLP_NUM; p++)
@@ -665,7 +686,7 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 		{
 			break;
 		}
-		if (!carries(gun.weapon) || placed(gun.weapon))
+		if (!carries(gun.weapon) || placed(gun.weapon) || blasterHip && gun.weapon == WP_BRYAR_PISTOL)
 		{
 			continue;
 		}
@@ -701,9 +722,12 @@ void CG_HolsteredWeapons(centity_t* cent, const vec3_t g2Angles, const vec3_t or
 			Hls_Render(cent, model, Hls_PlaceType(gun, p), weapon, g2Angles, origin, playerRenderfx, shadowPlane);
 		}
 	}
-	if (blasterHip && !(inHand == WP_SABER && client->ps.saberAnimLevel == SS_BLASTER))
+	// not drawn while the pistol is in his hand: the bryar pistol selected as a weapon, or the saber in the blaster
+	// style (the pistol in his left hand)
+	if (blasterHip && inHand != WP_BRYAR_PISTOL && !(inHand == WP_SABER && client->ps.saberAnimLevel == SS_BLASTER))
 	{
-		Hls_Render(cent, model, HLR_BRYARPISTOL_L, WP_BRYAR_PISTOL, g2Angles, origin, playerRenderfx, shadowPlane);
+		Hls_Render(cent, model, HLR_BRYARPISTOL_L, WP_BRYAR_PISTOL, g2Angles, origin, playerRenderfx, shadowPlane,
+			cg_blasterHipPullIn.value); // SS_BLASTER (2026-10-15): closer to the body
 		hlsBlasterHip[cent->currentState.number] = qtrue;
 	}
 }

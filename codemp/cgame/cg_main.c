@@ -1298,7 +1298,7 @@ static void CG_RegisterSounds(void)
 		cg_siegeWinTeam = atoi(soundName);
 	}
 
-	if (cgs.gametype == GT_SIEGE)
+	if (cgs.gametype == GT_SIEGE || CG_SiegeMissionsTFFA()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		CG_ParseSiegeObjectiveStatus(CG_ConfigString(CS_SIEGE_OBJECTIVES));
 		cg_beatingSiegeTime = atoi(CG_ConfigString(CS_SIEGE_TIMEOVERRIDE));

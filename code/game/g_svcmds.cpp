@@ -42,6 +42,7 @@ extern void WP_RemoveSaber(gentity_t* ent, int saberNum);
 extern saber_colors_t TranslateSaberColor(const char* name);
 extern qboolean WP_SaberBladeUseSecondBladeStyle(const saberInfo_t* saber, int bladeNum);
 extern qboolean WP_UseFirstValidSaberStyle(const gentity_t* ent, int* saberAnimLevel);
+extern qboolean WP_SaberStyleValidForSaber(const gentity_t* ent, int saberAnimLevel); // SS_BLASTER (2026-10-15)
 extern void G_RemoveWeather();
 extern void RemoveBarrier(gentity_t* ent);
 
@@ -346,32 +347,32 @@ struct SetForceCmd
 };
 
 SetForceCmd SetForceTable[NUM_FORCE_POWERS] = {
-	{"forceHeal", "setForceHeal", FORCE_LEVEL_3},
-	{"forceJump", "setForceJump", FORCE_LEVEL_3},
-	{"forceSpeed", "setForceSpeed", FORCE_LEVEL_3},
-	{"forcePush", "setForcePush", FORCE_LEVEL_3},
-	{"forcePull", "setForcePull", FORCE_LEVEL_3},
-	{"forceMindTrick", "setForceMindTrick", FORCE_LEVEL_4},
-	{"forceGrip", "setForceGrip", FORCE_LEVEL_3},
-	{"forceLightning", "setForceLightning", FORCE_LEVEL_3},
-	{"saberThrow", "setSaberThrow", FORCE_LEVEL_3},
-	{"saberDefense", "setSaberDefense", FORCE_LEVEL_3},
-	{"saberOffense", "setSaberOffense", SS_STAFF}, // SS_BLASTER (2026-10-14): keep the old bound
-	{"forceRage", "setForceRage", FORCE_LEVEL_3},
-	{"forceProtect", "setForceProtect", FORCE_LEVEL_3},
-	{"forceAbsorb", "setForceAbsorb", FORCE_LEVEL_3},
-	{"forceDrain", "setForceDrain", FORCE_LEVEL_3},
-	{"forceSight", "setForceSight", FORCE_LEVEL_3},
-	{"forceStasis", "setForceStasis", FORCE_LEVEL_3},
-	{"forceDestruction", "setForceDestruction", FORCE_LEVEL_3},
-	{"forceGrasp", "setForceGrasp", FORCE_LEVEL_3},
-	{"forceRepulse", "setForceRepulse", FORCE_LEVEL_3},
-	{"forceLightningStrike", "setForceLightningStrike", FORCE_LEVEL_3},
-	{"forceFear", "setForceFear", FORCE_LEVEL_3},
-	{"forceDeadlySight", "setForceDeadlySight", FORCE_LEVEL_3},
-	{"forceblast", "setForceBlast", FORCE_LEVEL_3},
-	{"forceInsanity", "setForceInsanity", FORCE_LEVEL_3},
-	{"forceBlinding", "setForceBlinding", FORCE_LEVEL_3},
+	{ "forceHeal", "setForceHeal", FORCE_LEVEL_3 },
+	{ "forceJump", "setForceJump", FORCE_LEVEL_3 },
+	{ "forceSpeed", "setForceSpeed", FORCE_LEVEL_3 },
+	{ "forcePush", "setForcePush", FORCE_LEVEL_3 },
+	{ "forcePull", "setForcePull", FORCE_LEVEL_3 },
+	{ "forceMindTrick", "setForceMindTrick", FORCE_LEVEL_4 },
+	{ "forceGrip", "setForceGrip", FORCE_LEVEL_3 },
+	{ "forceLightning", "setForceLightning", FORCE_LEVEL_3 },
+	{ "saberThrow", "setSaberThrow", FORCE_LEVEL_3 },
+	{ "saberDefense", "setSaberDefense", FORCE_LEVEL_3 },
+	{ "saberOffense", "setSaberOffense", SS_STAFF }, // SS_BLASTER (2026-10-14): keep the old bound
+	{ "forceRage", "setForceRage", FORCE_LEVEL_3 },
+	{ "forceProtect", "setForceProtect", FORCE_LEVEL_3 },
+	{ "forceAbsorb", "setForceAbsorb", FORCE_LEVEL_3 },
+	{ "forceDrain", "setForceDrain", FORCE_LEVEL_3 },
+	{ "forceSight", "setForceSight", FORCE_LEVEL_3 },
+	{ "forceStasis", "setForceStasis", FORCE_LEVEL_3 },
+	{ "forceDestruction", "setForceDestruction", FORCE_LEVEL_3 },
+	{ "forceGrasp", "setForceGrasp", FORCE_LEVEL_3 },
+	{ "forceRepulse", "setForceRepulse", FORCE_LEVEL_3 },
+	{ "forceLightningStrike", "setForceLightningStrike", FORCE_LEVEL_3 },
+	{ "forceFear", "setForceFear", FORCE_LEVEL_3 },
+	{ "forceDeadlySight", "setForceDeadlySight", FORCE_LEVEL_3 },
+	{ "forceblast", "setForceBlast", FORCE_LEVEL_3 },
+	{ "forceInsanity", "setForceInsanity", FORCE_LEVEL_3 },
+	{ "forceBlinding", "setForceBlinding", FORCE_LEVEL_3 },
 };
 
 static void Svcmd_ForceSetLevel_f(const int forcePower)
@@ -663,6 +664,15 @@ static void Svcmd_SaberAttackCycle_f()
 	if (!self->s.number)
 	{
 		saberAnimLevel = cg.saberAnimLevelPending;
+		// SS_BLASTER (2026-10-15): a pending style he can't take (left over from an earlier character / map, or
+		// one this saber can't use) would make the cycle stop on his current style and the key do nothing (e.g.
+		// starting a map in SS_MEDIUM with only SS_MEDIUM and SS_BLASTER known): cycle from his current style
+		if (saberAnimLevel <= SS_NONE || saberAnimLevel >= SS_NUM_SABER_STYLES
+			|| !(allowedStyles & 1 << saberAnimLevel)
+			|| !WP_SaberStyleValidForSaber(self, saberAnimLevel))
+		{
+			saberAnimLevel = self->client->ps.saberAnimLevel;
+		}
 	}
 	else
 	{
@@ -1726,74 +1736,74 @@ extern void Svcmd_FighterTest_f(); // (2026-10-13) g_vehicles.cpp, developer tes
 
 // FIXME some of these should be made CMD_ALIVE too!
 static svcmd_t svcmds[] = {
-	{"entitylist", Svcmd_EntityList_f, CMD_NONE},
-	{"fightertest", Svcmd_FighterTest_f, CMD_CHEAT},
-	{"game_memory", Svcmd_GameMem_f, CMD_NONE},
+	{ "entitylist", Svcmd_EntityList_f, CMD_NONE },
+	{ "fightertest", Svcmd_FighterTest_f, CMD_CHEAT },
+	{ "game_memory", Svcmd_GameMem_f, CMD_NONE },
 
-	{"nav", Svcmd_Nav_f, CMD_CHEAT},
-	{"npc", Svcmd_NPC_f, CMD_CHEAT},
-	{"use", Svcmd_Use_f, CMD_CHEAT},
-	{"ICARUS", Svcmd_ICARUS_f, CMD_CHEAT},
+	{ "nav", Svcmd_Nav_f, CMD_CHEAT },
+	{ "npc", Svcmd_NPC_f, CMD_CHEAT },
+	{ "use", Svcmd_Use_f, CMD_CHEAT },
+	{ "ICARUS", Svcmd_ICARUS_f, CMD_CHEAT },
 
-	{"saberColor", Svcmd_SaberColor_f, CMD_CHEAT},
-	{"customSaber", Svcmd_CustomSaber_f, CMD_CHEAT},
-	{"saber", Svcmd_Saber_f, CMD_CHEAT},
-	{"saberBlade", Svcmd_SaberBlade_f, CMD_CHEAT},
+	{ "saberColor", Svcmd_SaberColor_f, CMD_CHEAT },
+	{ "customSaber", Svcmd_CustomSaber_f, CMD_CHEAT },
+	{ "saber", Svcmd_Saber_f, CMD_CHEAT },
+	{ "saberBlade", Svcmd_SaberBlade_f, CMD_CHEAT },
 
-	{"setForceJump", Svcmd_ForceSetLevel_f<FP_LEVITATION>, CMD_CHEAT},
-	{"setSaberThrow", Svcmd_ForceSetLevel_f<FP_SABERTHROW>, CMD_CHEAT},
-	{"setForceHeal", Svcmd_ForceSetLevel_f<FP_HEAL>, CMD_CHEAT},
-	{"setForcePush", Svcmd_ForceSetLevel_f<FP_PUSH>, CMD_CHEAT},
-	{"setForcePull", Svcmd_ForceSetLevel_f<FP_PULL>, CMD_CHEAT},
-	{"setForceSpeed", Svcmd_ForceSetLevel_f<FP_SPEED>, CMD_CHEAT},
-	{"setForceGrip", Svcmd_ForceSetLevel_f<FP_GRIP>, CMD_CHEAT},
-	{"setForceLightning", Svcmd_ForceSetLevel_f<FP_LIGHTNING>, CMD_CHEAT},
-	{"setMindTrick", Svcmd_ForceSetLevel_f<FP_TELEPATHY>, CMD_CHEAT},
-	{"setSaberDefense", Svcmd_ForceSetLevel_f<FP_SABER_DEFENSE>, CMD_CHEAT},
-	{"setSaberOffense", Svcmd_ForceSetLevel_f<FP_SABER_OFFENSE>, CMD_CHEAT},
-	{"setForceRage", Svcmd_ForceSetLevel_f<FP_RAGE>, CMD_CHEAT},
-	{"setForceDrain", Svcmd_ForceSetLevel_f<FP_DRAIN>, CMD_CHEAT},
-	{"setForceProtect", Svcmd_ForceSetLevel_f<FP_PROTECT>, CMD_CHEAT},
-	{"setForceAbsorb", Svcmd_ForceSetLevel_f<FP_ABSORB>, CMD_CHEAT},
-	{"setForceSight", Svcmd_ForceSetLevel_f<FP_SEE>, CMD_CHEAT},
-	{"setForceStasis", Svcmd_ForceSetLevel_f<FP_STASIS>, CMD_CHEAT},
-	{"setForceDestruction", Svcmd_ForceSetLevel_f<FP_DESTRUCTION>, CMD_CHEAT},
-	{"setForceGrasp", Svcmd_ForceSetLevel_f<FP_GRASP>, CMD_CHEAT},
-	{"setForceRepulse", Svcmd_ForceSetLevel_f<FP_REPULSE>, CMD_CHEAT},
-	{"setForceLightningStrike", Svcmd_ForceSetLevel_f<FP_LIGHTNING_STRIKE>, CMD_CHEAT},
-	{"setForceFear", Svcmd_ForceSetLevel_f<FP_FEAR>, CMD_CHEAT},
-	{"setForceDeadlySight", Svcmd_ForceSetLevel_f<FP_DEADLYSIGHT>, CMD_CHEAT},
-	{"setForceBlast", Svcmd_ForceSetLevel_f<FP_BLAST>, CMD_CHEAT},
-	{"setForceInsanity", Svcmd_ForceSetLevel_f<FP_INSANITY>, CMD_CHEAT},
-	{"setForceBlinding", Svcmd_ForceSetLevel_f<FP_BLINDING>, CMD_CHEAT},
-	{"setForceAll", Svcmd_SetForceAll_f, CMD_CHEAT},
-	{"setSaberAll", Svcmd_SetSaberAll_f, CMD_CHEAT},
+	{ "setForceJump", Svcmd_ForceSetLevel_f<FP_LEVITATION>, CMD_CHEAT },
+	{ "setSaberThrow", Svcmd_ForceSetLevel_f<FP_SABERTHROW>, CMD_CHEAT },
+	{ "setForceHeal", Svcmd_ForceSetLevel_f<FP_HEAL>, CMD_CHEAT },
+	{ "setForcePush", Svcmd_ForceSetLevel_f<FP_PUSH>, CMD_CHEAT },
+	{ "setForcePull", Svcmd_ForceSetLevel_f<FP_PULL>, CMD_CHEAT },
+	{ "setForceSpeed", Svcmd_ForceSetLevel_f<FP_SPEED>, CMD_CHEAT },
+	{ "setForceGrip", Svcmd_ForceSetLevel_f<FP_GRIP>, CMD_CHEAT },
+	{ "setForceLightning", Svcmd_ForceSetLevel_f<FP_LIGHTNING>, CMD_CHEAT },
+	{ "setMindTrick", Svcmd_ForceSetLevel_f<FP_TELEPATHY>, CMD_CHEAT },
+	{ "setSaberDefense", Svcmd_ForceSetLevel_f<FP_SABER_DEFENSE>, CMD_CHEAT },
+	{ "setSaberOffense", Svcmd_ForceSetLevel_f<FP_SABER_OFFENSE>, CMD_CHEAT },
+	{ "setForceRage", Svcmd_ForceSetLevel_f<FP_RAGE>, CMD_CHEAT },
+	{ "setForceDrain", Svcmd_ForceSetLevel_f<FP_DRAIN>, CMD_CHEAT },
+	{ "setForceProtect", Svcmd_ForceSetLevel_f<FP_PROTECT>, CMD_CHEAT },
+	{ "setForceAbsorb", Svcmd_ForceSetLevel_f<FP_ABSORB>, CMD_CHEAT },
+	{ "setForceSight", Svcmd_ForceSetLevel_f<FP_SEE>, CMD_CHEAT },
+	{ "setForceStasis", Svcmd_ForceSetLevel_f<FP_STASIS>, CMD_CHEAT },
+	{ "setForceDestruction", Svcmd_ForceSetLevel_f<FP_DESTRUCTION>, CMD_CHEAT },
+	{ "setForceGrasp", Svcmd_ForceSetLevel_f<FP_GRASP>, CMD_CHEAT },
+	{ "setForceRepulse", Svcmd_ForceSetLevel_f<FP_REPULSE>, CMD_CHEAT },
+	{ "setForceLightningStrike", Svcmd_ForceSetLevel_f<FP_LIGHTNING_STRIKE>, CMD_CHEAT },
+	{ "setForceFear", Svcmd_ForceSetLevel_f<FP_FEAR>, CMD_CHEAT },
+	{ "setForceDeadlySight", Svcmd_ForceSetLevel_f<FP_DEADLYSIGHT>, CMD_CHEAT },
+	{ "setForceBlast", Svcmd_ForceSetLevel_f<FP_BLAST>, CMD_CHEAT },
+	{ "setForceInsanity", Svcmd_ForceSetLevel_f<FP_INSANITY>, CMD_CHEAT },
+	{ "setForceBlinding", Svcmd_ForceSetLevel_f<FP_BLINDING>, CMD_CHEAT },
+	{ "setForceAll", Svcmd_SetForceAll_f, CMD_CHEAT },
+	{ "setSaberAll", Svcmd_SetSaberAll_f, CMD_CHEAT },
 
-	{"saberAttackCycle", Svcmd_SaberAttackCycle_f, CMD_NONE},
+	{ "saberAttackCycle", Svcmd_SaberAttackCycle_f, CMD_NONE },
 
-	{"runscript", Svcmd_RunScript_f, CMD_CHEAT},
+	{ "runscript", Svcmd_RunScript_f, CMD_CHEAT },
 
-	{"playerTeam", Svcmd_PlayerTeam_f, CMD_CHEAT},
+	{ "playerTeam", Svcmd_PlayerTeam_f, CMD_CHEAT },
 
-	{"control", Svcmd_Control_f, CMD_CHEAT},
-	{"grab", Svcmd_Grab_f, CMD_CHEAT},
-	{"knockdown", Svcmd_Knockdown_f, CMD_CHEAT},
+	{ "control", Svcmd_Control_f, CMD_CHEAT },
+	{ "grab", Svcmd_Grab_f, CMD_CHEAT },
+	{ "knockdown", Svcmd_Knockdown_f, CMD_CHEAT },
 
-	{"playerModel", Svcmd_PlayerModel_f, CMD_NONE},
-	{"playerTint", Svcmd_PlayerTint_f, CMD_NONE},
+	{ "playerModel", Svcmd_PlayerModel_f, CMD_NONE },
+	{ "playerTint", Svcmd_PlayerTint_f, CMD_NONE },
 
-	{"nexttestaxes", G_NextTestAxes, CMD_NONE},
+	{ "nexttestaxes", G_NextTestAxes, CMD_NONE },
 
-	{"exitview", Svcmd_ExitView_f, CMD_NONE},
+	{ "exitview", Svcmd_ExitView_f, CMD_NONE },
 
-	{"iknowkungfu", Svcmd_IKnowKungfu_f, CMD_CHEAT},
+	{ "iknowkungfu", Svcmd_IKnowKungfu_f, CMD_CHEAT },
 
-	{"secrets", Svcmd_Secrets_f, CMD_NONE},
-	{"difficulty", Svcmd_Difficulty_f, CMD_NONE},
+	{ "secrets", Svcmd_Secrets_f, CMD_NONE },
+	{ "difficulty", Svcmd_Difficulty_f, CMD_NONE },
 
-	{"giveForceAll", Svcmd_GiveForceAll_f, CMD_NONE},
+	{ "giveForceAll", Svcmd_GiveForceAll_f, CMD_NONE },
 
-	{"scale", Svcmd_Scale_f, CMD_NONE},
+	{ "scale", Svcmd_Scale_f, CMD_NONE },
 };
 static constexpr size_t numsvcmds = std::size(svcmds);
 

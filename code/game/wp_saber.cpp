@@ -572,7 +572,7 @@ int saberThrowDistSquared[NUM_FORCE_POWER_LEVELS] =
 
 // Where each thrown saber left its owner's hand (WP_SaberLaunch), for the return / drop rule in WP_SaberReleaseThrow.
 static vec3_t s_saberThrowOrigin[MAX_GENTITIES];
-#define SABER_THROW_DROP_FRACTION	0.85f	// let go further than this part of the max throw distance: it drops
+constexpr auto SABER_THROW_DROP_FRACTION = 0.85f;	// let go further than this part of the max throw distance: it drops
 
 int parry_debounce[NUM_FORCE_POWER_LEVELS] =
 {
@@ -584,24 +584,24 @@ int parry_debounce[NUM_FORCE_POWER_LEVELS] =
 
 stringID_table_t SaberStyleTable[] =
 {
-	{"NULL", SS_NONE},
+	{ "NULL", SS_NONE },
 	ENUM2STRING(SS_FAST),
-	{"fast", SS_FAST},
+	{ "fast", SS_FAST },
 	ENUM2STRING(SS_MEDIUM),
-	{"medium", SS_MEDIUM},
+	{ "medium", SS_MEDIUM },
 	ENUM2STRING(SS_STRONG),
-	{"strong", SS_STRONG},
+	{ "strong", SS_STRONG },
 	ENUM2STRING(SS_DESANN),
-	{"desann", SS_DESANN},
+	{ "desann", SS_DESANN },
 	ENUM2STRING(SS_TAVION),
-	{"tavion", SS_TAVION},
+	{ "tavion", SS_TAVION },
 	ENUM2STRING(SS_BLASTER), // SS_BLASTER (2026-10-14)
-	{"blaster", SS_BLASTER},
+	{ "blaster", SS_BLASTER },
 	ENUM2STRING(SS_DUAL),
-	{"dual", SS_DUAL},
+	{ "dual", SS_DUAL },
 	ENUM2STRING(SS_STAFF),
-	{"staff", SS_STAFF},
-	{"", 0},
+	{ "staff", SS_STAFF },
+	{ "", 0 },
 };
 
 static qboolean class_is_gunner(const gentity_t* self)
@@ -719,7 +719,7 @@ static void g_create_g2_holstered_weapon_model(gentity_t* ent, const char* ps_we
 					const vec3_t g2_angles = { angles[PITCH], angles[ROLL], angles[YAW] };
 					vec3_t axis[3];
 					AnglesToAxis(g2_angles, axis);
-					mdxaBone_t matrix;
+					mdxaBone_t matrix{};
 					for (int i = 0; i < 3; i++)
 					{
 						matrix.matrix[i][0] = axis[0][i];
@@ -3153,7 +3153,7 @@ static qboolean WP_SaberApplyDamage(gentity_t* ent, const float base_damage, con
 										gi.Printf(S_COLOR_RED"saberInBackAttack\n");
 									}
 									if (ent->client->ps.saberAnimLevel == SS_DESANN ||
-										ent->client->ps.saberAnimLevel == SS_BLASTER|| // SS_BLASTER (2026-10-14)
+										ent->client->ps.saberAnimLevel == SS_BLASTER || // SS_BLASTER (2026-10-14)
 										ent->client->ps.saberAnimLevel == SS_STRONG)
 									{
 										totalDmg[i] = g_get_attack_damage(ent, 50, 100, 0.5f);
@@ -4386,7 +4386,7 @@ extern qboolean InFront(vec3_t spot, vec3_t from, vec3_t from_angles, float thre
 
 // An NPC made invisible by script (set_invisible: EF_NODRAW) is not in the scene: it must not react to force powers
 // or be hit by (or hit with) a lightsaber. Clients riding inside a vehicle are also EF_NODRAW and are skipped the same way.
-qboolean WP_IsScriptInvisible(const gentity_t* ent)
+static qboolean WP_IsScriptInvisible(const gentity_t* ent)
 {
 	return ent && ent->client && ent->s.eFlags & EF_NODRAW ? qtrue : qfalse;
 }
@@ -8836,7 +8836,7 @@ static qboolean WP_SaberThrowerIsYoda(const gentity_t* owner)
 
 static qboolean WP_SaberBodyBoneFrame(gentity_t* victim, vec3_t org_out, vec3_t axis_out[3])
 {
-	vec3_t org, axis[3];
+	vec3_t org, axis[3]{};
 
 	if (!victim || !victim->inuse || !victim->client || !victim->ghoul2.size() || victim->playerModel < 0)
 	{
@@ -8877,7 +8877,7 @@ static qboolean WP_SaberBodyBoneFrame(gentity_t* victim, vec3_t org_out, vec3_t 
 // puts the saber where it sits in the body now (the body moves, falls, ragdolls)
 static qboolean WP_SaberBodyStuckPlace(gentity_t* saber)
 {
-	vec3_t org, axis[3], hilt, blade_dir, angles;
+	vec3_t org, axis[3], hilt, blade_dir, angles{};
 
 	if (!WP_SaberBodyBoneFrame(saber->activator, org, axis))
 	{
@@ -19099,7 +19099,7 @@ void ForceDeadlySight(gentity_t* self)
 // The saber goes out while charging and comes back on after the throw if it was on. Kept per entity and not saved:
 // a save in the half second between release and blast just loses that blast.
 #define REPULSE_THROW_ANIM	BOTH_SUPERPUSH
-#define REPULSE_THROW_FRAME	12
+constexpr auto REPULSE_THROW_FRAME = 12;
 static int repulseBlastTime[MAX_GENTITIES];
 static int repulseBlastCharge[MAX_GENTITIES];
 static int repulseRelightTime[MAX_GENTITIES];
@@ -19109,7 +19109,7 @@ static qboolean repulseSaberWasOn[MAX_GENTITIES];
 static qboolean repulseHeld[MAX_GENTITIES];
 // after the release he floats on through the throw and comes down a moment after the blast (DH 2026-10-13, as The Force
 // Unleashed 2): until this time PM_RepulseHover keeps him up (WP_RepulseHoverHeld), 0 = no
-#define REPULSE_HOVER_AFTER_BLAST	175
+constexpr auto REPULSE_HOVER_AFTER_BLAST = 175;
 static int repulseHoverEnd[MAX_GENTITIES];
 
 void WP_RepulseClearPending()
@@ -20350,7 +20350,7 @@ static void ForceSpeedDash(gentity_t* self)
 // ---------------------------------------------------------------------------------------------------------------
 // Burning (2026-10-15, after Jedi Knight Galaxies' "standard-fire" buff). A character hit by flame (a flamethrower, any
 // MOD_BURNING damage - see G_Damage) catches fire for BURN_DURATION ms: BURN_DAMAGE every BURN_DAMAGE_RATE ms
-// (MOD_BURNING, credited to whoever lit them) and the JKG burning effect (effects/sje_burn/burning.efx) on the lower
+// (MOD_BURNING, credited to whoever lit them) and the SJE burning effect (effects/sje_burn/burning.efx) on the lower
 // back. Rolling or going into water (waist deep) puts the fire out early, dying ends it, more flame refreshes the time.
 // State: PEF_BURNING in the playerState (saved, drives the HUD fire tint) + the timers below (not saved: a loaded game
 // starts with the fire out). Player_CheckBurn runs every frame for every client (ClientThink).
@@ -20358,7 +20358,7 @@ static void ForceSpeedDash(gentity_t* self)
 constexpr int BURN_DURATION = 6000;
 constexpr int BURN_DAMAGE = 2;
 constexpr int BURN_DAMAGE_RATE = 500;
-constexpr int BURN_FX_RATE = 200; // the effect is re-triggered this often while burning (as JKG's buff efx debounce)
+constexpr int BURN_FX_RATE = 200; // the effect is re-triggered this often while burning (as SJE's buff efx debounce)
 
 static int s_burnEndTime[MAX_GENTITIES];
 static int s_burnNextDamage[MAX_GENTITIES];
@@ -20377,7 +20377,7 @@ static qboolean G_BurnPutOut(const gentity_t* self)
 static qboolean G_IsFireEffectName(const char* name)
 {
 	static const char* fire_words[] = { "fire", "flame", "burn", "torch", "lava", "inferno", "blaze" };
-	char lower[MAX_QPATH];
+	char lower[MAX_QPATH]{};
 	int i;
 
 	if (!name || !name[0])
@@ -20436,7 +20436,7 @@ qboolean G_NearFireEffect(const gentity_t* area)
 	return qfalse;
 }
 
-void player_StopBurn(const gentity_t* self)
+static void player_StopBurn(const gentity_t* self)
 {
 	if (self && self->client)
 	{
@@ -20491,7 +20491,7 @@ void Player_CheckBurn(const gentity_t* self)
 		s_burnNextFx[num] = level.time + BURN_FX_RATE;
 		if (ent->ghoul2.size() && ent->playerModel >= 0 && ent->torsoBolt > 0)
 		{
-			// lower_lumbar, as JKG
+			// lower_lumbar, as SJE
 			G_PlayEffect(G_EffectIndex("sje_burn/burning"), ent->playerModel, ent->torsoBolt, num, ent->currentOrigin, 0,
 				qtrue);
 		}
@@ -27901,7 +27901,7 @@ void ForceGrasp(gentity_t* self)
 	if (traceEnt == player && player->flags & FL_NOFORCE)
 		return;
 #else
-//rww - RAGDOLL_END
+	//rww - RAGDOLL_END
 	if (!traceEnt || traceEnt == self/*???*/ || traceEnt->bmodel || (traceEnt->health <= 0 && traceEnt->takedamage) || (traceEnt->NPC && traceEnt->NPC->scriptFlags & SCF_NO_FORCE))
 	{
 		return;

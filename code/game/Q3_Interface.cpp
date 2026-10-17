@@ -110,7 +110,7 @@ stringID_table_t BSTable[] =
 	ENUM2STRING(BS_INVESTIGATE),
 	ENUM2STRING(BS_HUNT_AND_KILL),
 	ENUM2STRING(BS_FOLLOW_OVERRIDE), //# Follow your leader and shoot any enemies you come across
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t NPCClassTable[] =
@@ -192,9 +192,9 @@ stringID_table_t NPCClassTable[] =
 	ENUM2STRING(CLASS_SITHLORD),
 	ENUM2STRING(CLASS_YODA),
 	ENUM2STRING(CLASS_OBJECT),
-	{"CLASS_GALAK_MECH", CLASS_GALAKMECH},
+	{ "CLASS_GALAK_MECH", CLASS_GALAKMECH },
 
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t RankTable[] =
@@ -208,7 +208,7 @@ stringID_table_t RankTable[] =
 	ENUM2STRING(RANK_COMMANDER),
 	ENUM2STRING(RANK_CAPTAIN),
 
-	{"", -1},
+	{ "", -1 },
 };
 
 stringID_table_t MoveTypeTable[] =
@@ -217,7 +217,7 @@ stringID_table_t MoveTypeTable[] =
 	ENUM2STRING(MT_WALK),
 	ENUM2STRING(MT_RUNJUMP),
 	ENUM2STRING(MT_FLYSWIM),
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t BSETTable[] =
@@ -239,12 +239,12 @@ stringID_table_t BSETTable[] =
 	ENUM2STRING(BSET_FFIRE), //# script to run when player shoots their own teammates
 	ENUM2STRING(BSET_FFDEATH), //# script to run when player kills a teammate
 	stringIDExpand("", BSET_INVALID),
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t WPTable[] =
 {
-	{"NULL", WP_NONE},
+	{ "NULL", WP_NONE },
 	ENUM2STRING(WP_NONE),
 	// Player weapons
 	ENUM2STRING(WP_SABER),
@@ -282,7 +282,7 @@ stringID_table_t WPTable[] =
 	ENUM2STRING(WP_SCEPTER),
 	ENUM2STRING(WP_NOGHRI_STICK),
 	ENUM2STRING(WP_Z6_ROTARY_CANNON),
-	{"", 0}
+	{ "", 0 }
 };
 
 stringID_table_t INVTable[] =
@@ -294,31 +294,31 @@ stringID_table_t INVTable[] =
 	ENUM2STRING(INV_SENTRY),
 	ENUM2STRING(INV_CLOAK),
 	ENUM2STRING(INV_BARRIER),
-	{"", 0}
+	{ "", 0 }
 };
 
 stringID_table_t eventTable[] =
 {
 	//BOTH_h
 	//END
-	{"", EV_BAD}
+	{ "", EV_BAD }
 };
 
 stringID_table_t DMSTable[] =
 {
-	{"NULL", -1},
+	{ "NULL", -1 },
 	ENUM2STRING(DM_AUTO), //# let the game determine the dynamic music as normal
 	ENUM2STRING(DM_SILENCE), //# stop the music
 	ENUM2STRING(DM_EXPLORE), //# force the exploration music to play
 	ENUM2STRING(DM_ACTION), //# force the action music to play
 	ENUM2STRING(DM_BOSS), //# force the boss battle music to play (if there is any)
 	ENUM2STRING(DM_DEATH), //# force the "player dead" music to play
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t HLTable[] =
 {
-	{"NULL", -1},
+	{ "NULL", -1 },
 	ENUM2STRING(HL_FOOT_RT),
 	ENUM2STRING(HL_FOOT_LT),
 	ENUM2STRING(HL_LEG_RT),
@@ -341,7 +341,7 @@ stringID_table_t HLTable[] =
 	ENUM2STRING(HL_GENERIC4),
 	ENUM2STRING(HL_GENERIC5),
 	ENUM2STRING(HL_GENERIC6),
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t setTable[] =
@@ -641,7 +641,7 @@ stringID_table_t setTable[] =
 	ENUM2STRING(SET_PAZAAK_ALLOWED),
 	ENUM2STRING(SET_PAZAAK_END),
 
-	{"", SET_}
+	{ "", SET_ }
 };
 
 qboolean COM_ParseString(char** data, char** s);
@@ -2340,7 +2340,7 @@ stringID_table_t teamTable[] =
 	ENUM2STRING(TEAM_ENEMY),
 	ENUM2STRING(TEAM_NEUTRAL),
 	ENUM2STRING(TEAM_SOLO),
-	{"", TEAM_FREE},
+	{ "", TEAM_FREE },
 };
 
 /*

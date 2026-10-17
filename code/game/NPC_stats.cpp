@@ -71,7 +71,7 @@ stringID_table_t animEventTypeTable[] =
 	ENUM2STRING(AEV_SABER_SWING), //# animID AEV_SABER_SWING framenum CHANNEL randomlow randomhi chancetoplay
 	ENUM2STRING(AEV_SABER_SPIN), //# animID AEV_SABER_SPIN framenum CHANNEL chancetoplay
 	//must be terminated
-	{nullptr, -1}
+	{ nullptr, -1 }
 };
 
 stringID_table_t footstepTypeTable[] =
@@ -85,7 +85,7 @@ stringID_table_t footstepTypeTable[] =
 	ENUM2STRING(FOOTSTEP_HEAVY_SBD_R),
 	ENUM2STRING(FOOTSTEP_HEAVY_SBD_L),
 	//must be terminated
-	{nullptr, -1}
+	{ nullptr, -1 }
 };
 
 stringID_table_t FPTable[] =
@@ -117,24 +117,24 @@ stringID_table_t FPTable[] =
 	ENUM2STRING(FP_BLAST),
 	ENUM2STRING(FP_INSANITY),
 	ENUM2STRING(FP_BLINDING),
-	{"", -1}
+	{ "", -1 }
 };
 
 stringID_table_t TeamTable[] =
 {
-	{"free", TEAM_FREE},
+	{ "free", TEAM_FREE },
 	// caution, some code checks a team_t via "if (!team_t_varname)" so I guess this should stay as entry 0, great or what? -slc
 	ENUM2STRING(TEAM_FREE),
 	// caution, some code checks a team_t via "if (!team_t_varname)" so I guess this should stay as entry 0, great or what? -slc
-	{"player", TEAM_PLAYER},
+	{ "player", TEAM_PLAYER },
 	ENUM2STRING(TEAM_PLAYER),
-	{"enemy", TEAM_ENEMY},
+	{ "enemy", TEAM_ENEMY },
 	ENUM2STRING(TEAM_ENEMY),
-	{"neutral", TEAM_NEUTRAL}, // most droids are team_neutral, there are some exceptions like Probe,Seeker,Interrogator
+	{ "neutral", TEAM_NEUTRAL }, // most droids are team_neutral, there are some exceptions like Probe,Seeker,Interrogator
 	ENUM2STRING(TEAM_NEUTRAL), // most droids are team_neutral, there are some exceptions like Probe,Seeker,Interrogator
-	{"solo", TEAM_SOLO},
+	{ "solo", TEAM_SOLO },
 	ENUM2STRING(TEAM_SOLO),
-	{"", -1}
+	{ "", -1 }
 };
 
 // this list was made using the model directories, this MUST be in the same order as the CLASS_ enum in teams.h
@@ -217,8 +217,8 @@ stringID_table_t ClassTable[] =
 	ENUM2STRING(CLASS_SITHLORD),
 	ENUM2STRING(CLASS_YODA),
 	ENUM2STRING(CLASS_OBJECT),
-	{"CLASS_GALAK_MECH", CLASS_GALAKMECH},
-	{"", -1}
+	{ "CLASS_GALAK_MECH", CLASS_GALAKMECH },
+	{ "", -1 }
 };
 
 /*

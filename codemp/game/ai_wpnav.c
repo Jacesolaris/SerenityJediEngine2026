@@ -3710,7 +3710,7 @@ static int AG_SeedNode(const vec3_t point, const float spacing)
 
 static int AG_Flood(const float spacing)
 {
-	static const int dirs[8][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
+	static const int dirs[8][2] = { { 1, 0 },{ -1, 0 },{ 0, 1 },{ 0, -1 },{ 1, 1 },{ 1, -1 },{ -1, 1 },{ -1, -1 } };
 	int head = 0;
 
 	// every node is checked once, in the order found (a breadth-first fill)

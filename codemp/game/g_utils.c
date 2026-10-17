@@ -2232,7 +2232,7 @@ void TryUse(gentity_t* ent)
 	vec3_t src, dest, vf;
 	vec3_t viewspot;
 
-	if (level.gametype == GT_SIEGE &&
+	if (G_SiegeMissionRules() && // SJE (2026-10-16): also siege missions in Team FFA
 		!gSiegeRoundBegun)
 	{
 		//nothing can be used til the round starts.
@@ -2435,7 +2435,7 @@ void TryUse(gentity_t* ent)
 
 	//Check for a use command
 	if (ValidUseTarget(target)
-		&& (level.gametype != GT_SIEGE
+		&& (!G_SiegeMissionRules() // SJE (2026-10-16): team locks also in siege missions in Team FFA
 			|| !target->alliedTeam
 			|| target->alliedTeam != ent->client->sess.sessionTeam
 			|| g_ff_objectives.integer))
@@ -2662,12 +2662,12 @@ qboolean G_CheckInSolid(gentity_t* self, const qboolean fix)
 	//===========================================
 	static const vec3_t nudges[] =
 	{
-		{  8,  0,  0 },
+		{ 8,  0,  0 },
 		{ -8,  0,  0 },
-		{  0,  8,  0 },
-		{  0, -8,  0 },
-		{  0,  0,  8 },
-		{  0,  0, -8 }
+		{ 0,  8,  0 },
+		{ 0, -8,  0 },
+		{ 0,  0,  8 },
+		{ 0,  0, -8 }
 	};
 
 	for (int i = 0; i < 6; i++)

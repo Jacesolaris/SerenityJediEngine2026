@@ -1358,8 +1358,8 @@ wristWeapon_t missileStates[4] = {
 		BOBA_MISSILE_LASER, FP_GRIP, WP_EMPLACED_GUN, qfalse, 5, BOBA_FLAMEDURATION, 150, BOTH_FLAMETHROWER, qfalse,
 		qtrue, qtrue
 	},
-	{BOBA_MISSILE_DART, FP_FIRST, WP_DISRUPTOR, qfalse, 1, 1500, 200, BOTH_PULL_IMPALE_STAB, qfalse, qfalse, qtrue},
-	{BOBA_MISSILE_VIBROBLADE, FP_DRAIN, WP_MELEE, qfalse, 1, 1000, 100, BOTH_PULL_IMPALE_STAB, qfalse, qfalse, qfalse}
+	{ BOBA_MISSILE_DART, FP_FIRST, WP_DISRUPTOR, qfalse, 1, 1500, 200, BOTH_PULL_IMPALE_STAB, qfalse, qfalse, qtrue },
+	{ BOBA_MISSILE_VIBROBLADE, FP_DRAIN, WP_MELEE, qfalse, 1, 1000, 100, BOTH_PULL_IMPALE_STAB, qfalse, qfalse, qfalse }
 };
 
 extern void WP_FireWristMissile(gentity_t* ent, vec3_t start, vec3_t dir);

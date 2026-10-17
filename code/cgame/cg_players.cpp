@@ -12705,7 +12705,7 @@ constexpr auto SABER_TRAIL_TIME = 40.0f;
 static void CG_AddSaberBladeGo(const centity_t* cent, centity_t* scent, const int renderfx, const int modelIndex,
 	vec3_t origin, vec3_t angles, const int saberNum, const int bladeNum)
 {
-	vec3_t org, end, axis[3] = { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} };
+	vec3_t org, end, axis[3] = { { 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 } };
 	trace_t trace;
 	float length;
 	mdxaBone_t boltMatrix;

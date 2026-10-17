@@ -2906,11 +2906,11 @@ void G_SetSharedVehicleFunctions(vehicleInfo_t * pVehInfo)
 #endif
 
 // (2026-10-13) fightertest: the most open spot near the player (room around a ship, well clear of the ground)
-static void G_FighterTestOpenAir(const gentity_t* player, const float height, vec3_t out)
+static void G_FighterTestOpenAir(const gentity_t * player, const float height, vec3_t out)
 {
 	vec3_t boxMins = { -400.0f, -400.0f, -150.0f };
 	vec3_t boxMaxs = { 400.0f, 400.0f, 150.0f };
-	static const vec3_t dirs[6] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
+	static const vec3_t dirs[6] = { { 1, 0, 0 },{ -1, 0, 0 },{ 0, 1, 0 },{ 0, -1, 0 },{ 0, 0, 1 },{ 0, 0, -1 } };
 	float bestScore = -1.0f;
 
 	VectorCopy(player->client->ps.origin, out);
@@ -2955,7 +2955,7 @@ static void G_FighterTestOpenAir(const gentity_t* player, const float height, ve
 }
 
 // (2026-10-13) fightertest: put the player into this vehicle, level and at idle speed
-static void G_FighterTestBoard(gentity_t* player, gentity_t* veh)
+static void G_FighterTestBoard(gentity_t * player, gentity_t * veh)
 {
 	if (!veh->m_pVehicle->m_pVehicleInfo->Board(veh->m_pVehicle, player))
 	{

@@ -123,8 +123,8 @@ static gsl::cstring_view GetToken(gsl::cstring_view& text, const bool allowLineB
 		// find the first of '\n', "//" or "/*"; that's end of token
 		auto tokenEnd = std::find(text.begin(), text.end(), '\n');
 		static constexpr std::array<char, 2> commentPatterns[]{
-			{{'/', '*'}},
-			{{'/', '/'}}
+			{ { '/', '*' } },
+			{ { '/', '/' } }
 		};
 		for (auto& pattern : commentPatterns)
 		{

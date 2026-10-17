@@ -148,20 +148,20 @@ using StaticMem_t = struct StaticMem_s
 #pragma pack(pop)
 
 StaticZeroMem_t gZeroMalloc =
-{ {ZONE_MAGIC, TAG_STATIC, 0, nullptr, nullptr}, {ZONE_MAGIC} };
+{ { ZONE_MAGIC, TAG_STATIC, 0, nullptr, nullptr },{ ZONE_MAGIC } };
 StaticMem_t gEmptyString =
-{ {ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'\0', '\0'}, {ZONE_MAGIC} };
+{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '\0', '\0' },{ ZONE_MAGIC } };
 StaticMem_t gNumberString[] = {
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'0', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'1', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'2', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'3', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'4', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'5', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'6', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'7', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'8', '\0'}, {ZONE_MAGIC}},
-	{{ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr}, {'9', '\0'}, {ZONE_MAGIC}},
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '0', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '1', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '2', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '3', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '4', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '5', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '6', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '7', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '8', '\0' },{ ZONE_MAGIC } },
+	{ { ZONE_MAGIC, TAG_STATIC, 2, nullptr, nullptr },{ '9', '\0' },{ ZONE_MAGIC } },
 };
 
 qboolean gbMemFreeupOccured = qfalse;

@@ -41,49 +41,49 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 vec3_t WP_muzzlePoint[WP_NUM_WEAPONS] =
 {
 	//	Fwd,	right,	up.
-	{0, 0, 0}, // WP_NONE,
-	{0, 8, 0}, // WP_STUN_BATON,
-	{0, 8, 0}, // WP_MELEE,
-	{8, 16, 0}, // WP_SABER,
-	{12, 6, -6}, // WP_BRYAR_PISTOL,
-	{12, 6, -6}, // WP_BLASTER,
-	{12, 6, -6}, // WP_DISRUPTOR,
-	{12, 2, -6}, // WP_BOWCASTER,
-	{12, 4.5, -6}, // WP_REPEATER,
-	{12, 6, -6}, // WP_DEMP2,
-	{12, 6, -6}, // WP_FLECHETTE,
-	{12, 8, -4}, // WP_ROCKET_LAUNCHER,
-	{12, 0, -4}, // WP_THERMAL,
-	{12, 0, -10}, // WP_TRIP_MINE,
-	{12, 0, -4}, // WP_DET_PACK,
-	{12, 6, -6}, // WP_CONCUSSION
-	{12, 8, -6}, // WP_DROIDEKA (right arm)
-	{12, 6, -6}, // WP_Z6_ROTARY_CANNON
-	{12, 6, -6}, // WP_BRYAR_OLD,
+	{ 0, 0, 0 }, // WP_NONE,
+	{ 0, 8, 0 }, // WP_STUN_BATON,
+	{ 0, 8, 0 }, // WP_MELEE,
+	{ 8, 16, 0 }, // WP_SABER,
+	{ 12, 6, -6 }, // WP_BRYAR_PISTOL,
+	{ 12, 6, -6 }, // WP_BLASTER,
+	{ 12, 6, -6 }, // WP_DISRUPTOR,
+	{ 12, 2, -6 }, // WP_BOWCASTER,
+	{ 12, 4.5, -6 }, // WP_REPEATER,
+	{ 12, 6, -6 }, // WP_DEMP2,
+	{ 12, 6, -6 }, // WP_FLECHETTE,
+	{ 12, 8, -4 }, // WP_ROCKET_LAUNCHER,
+	{ 12, 0, -4 }, // WP_THERMAL,
+	{ 12, 0, -10 }, // WP_TRIP_MINE,
+	{ 12, 0, -4 }, // WP_DET_PACK,
+	{ 12, 6, -6 }, // WP_CONCUSSION
+	{ 12, 8, -6 }, // WP_DROIDEKA (right arm)
+	{ 12, 6, -6 }, // WP_Z6_ROTARY_CANNON
+	{ 12, 6, -6 }, // WP_BRYAR_OLD,
 };
 
 vec3_t WP_muzzlePoint2[WP_NUM_WEAPONS] =
 {
 	//	Fwd,	right,	up.
-	{0, 0, 0}, // WP_NONE,
-	{0, 8, 0}, // WP_STUN_BATON,
-	{0, 8, 0}, // WP_MELEE,
-	{8, 16, 0}, // WP_SABER,
-	{12, -6, -6}, // WP_BRYAR_PISTOL,
-	{12, -6, -6}, // WP_BLASTER,
-	{12, -6, -6}, // WP_DISRUPTOR,
-	{12, -8, -6}, // WP_BOWCASTER,
-	{12, -6.5, -6}, // WP_REPEATER,
-	{12, -7, -6}, // WP_DEMP2,
-	{12, -8, -6}, // WP_FLECHETTE,
-	{12, -8, -4}, // WP_ROCKET_LAUNCHER,
-	{12, -5.5, -4}, // WP_THERMAL,
-	{12, 0, -10}, // WP_TRIP_MINE,
-	{12, 0, -4}, // WP_DET_PACK,
-	{12, -6, -6}, // WP_CONCUSSION
-	{12, -8, -6}, // WP_DROIDEKA (left arm)
-	{12, -6, -6}, // WP_Z6_ROTARY_CANNON
-	{12, -6, -6}, // WP_BRYAR_OLD,
+	{ 0, 0, 0 }, // WP_NONE,
+	{ 0, 8, 0 }, // WP_STUN_BATON,
+	{ 0, 8, 0 }, // WP_MELEE,
+	{ 8, 16, 0 }, // WP_SABER,
+	{ 12, -6, -6 }, // WP_BRYAR_PISTOL,
+	{ 12, -6, -6 }, // WP_BLASTER,
+	{ 12, -6, -6 }, // WP_DISRUPTOR,
+	{ 12, -8, -6 }, // WP_BOWCASTER,
+	{ 12, -6.5, -6 }, // WP_REPEATER,
+	{ 12, -7, -6 }, // WP_DEMP2,
+	{ 12, -8, -6 }, // WP_FLECHETTE,
+	{ 12, -8, -4 }, // WP_ROCKET_LAUNCHER,
+	{ 12, -5.5, -4 }, // WP_THERMAL,
+	{ 12, 0, -10 }, // WP_TRIP_MINE,
+	{ 12, 0, -4 }, // WP_DET_PACK,
+	{ 12, -6, -6 }, // WP_CONCUSSION
+	{ 12, -8, -6 }, // WP_DROIDEKA (left arm)
+	{ 12, -6, -6 }, // WP_Z6_ROTARY_CANNON
+	{ 12, -6, -6 }, // WP_BRYAR_OLD,
 };
 
 weaponData_t weaponData[WP_NUM_WEAPONS] =

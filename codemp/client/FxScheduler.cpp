@@ -358,19 +358,19 @@ struct primitiveType_s
 	const char* name;
 	EPrimType type;
 } primitiveTypes[] = {
-	{"particle", Particle},
-	{"line", Line},
-	{"tail", Tail},
-	{"sound", Sound},
-	{"cylinder", Cylinder},
-	{"electricity", Electricity},
-	{"emitter", Emitter},
-	{"decal", Decal},
-	{"orientedparticle", OrientedParticle},
-	{"fxrunner", FxRunner},
-	{"light", Light},
-	{"cameraShake", CameraShake},
-	{"flash", ScreenFlash},
+	{ "particle", Particle },
+	{ "line", Line },
+	{ "tail", Tail },
+	{ "sound", Sound },
+	{ "cylinder", Cylinder },
+	{ "electricity", Electricity },
+	{ "emitter", Emitter },
+	{ "decal", Decal },
+	{ "orientedparticle", OrientedParticle },
+	{ "fxrunner", FxRunner },
+	{ "light", Light },
+	{ "cameraShake", CameraShake },
+	{ "flash", ScreenFlash },
 };
 
 int CFxScheduler::ParseEffect(const char* file, const CGPGroup* base)

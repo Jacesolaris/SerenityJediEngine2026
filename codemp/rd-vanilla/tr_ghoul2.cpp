@@ -130,9 +130,9 @@ static inline int G2_Find_Bone_ByNum(const model_t* mod, boneInfo_v& blist, cons
 constexpr static mdxaBone_t identityMatrix =
 {
 	{
-		{0.0f, -1.0f, 0.0f, 0.0f},
-		{1.0f, 0.0f, 0.0f, 0.0f},
-		{0.0f, 0.0f, 1.0f, 0.0f}
+		{ 0.0f, -1.0f, 0.0f, 0.0f },
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f }
 	}
 };
 
@@ -2071,9 +2071,9 @@ void G2_TransformBone(const int index, CBoneCache& cb)
 			static mdxaBone_t toMatrix =
 			{
 				{
-					{1.0f, 0.0f, 0.0f, 0.0f},
-					{0.0f, 1.0f, 0.0f, 0.0f},
-					{0.0f, 0.0f, 1.0f, 0.0f}
+					{ 1.0f, 0.0f, 0.0f, 0.0f },
+					{ 0.0f, 1.0f, 0.0f, 0.0f },
+					{ 0.0f, 0.0f, 1.0f, 0.0f }
 				}
 			};
 			toMatrix.matrix[0][0] = matrixScale;

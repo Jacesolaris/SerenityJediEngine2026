@@ -2284,6 +2284,9 @@ void CG_CheckChangedPredictableEvents(const playerState_t* ps);
 // cg_siege.c
 //
 void CG_InitSiegeMode(void);
+qboolean CG_SiegeMissionsTFFA(void); // SJE (2026-10-16): siege missions in Team FFA (cg_saga.c)
+void CG_DrawSiegeMissionObjectives(void);
+void CG_DrawSiegeMessageNonMenu(const char* str);
 void CG_SiegeRoundOver(centity_t* ent, int won);
 void CG_SiegeObjectiveCompleted(centity_t* ent, const int won, const int objectivenum);
 void CG_TrueViewInit(void);

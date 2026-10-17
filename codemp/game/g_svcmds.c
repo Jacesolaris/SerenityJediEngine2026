@@ -549,7 +549,7 @@ void G_WeatherLoadMapDefault(void)
 	static const char* const rend2NoWeatherMaps[] = {
 		// as SP g_itemLoad.cpp: no file weather on these with rend2
 		"yavin1", "demo", "01nar", "md2_bd_ch", "md_sn_intro_jedi", "md_ch_battledroids", "md_ep4_intro", "secbase",
-		"level0", "JKG_ImperialBase", "kejim_post"
+		"level0", "SJE_ImperialBase", "kejim_post"
 	};
 
 	if (g_AllowWeather.integer != 1)
@@ -992,19 +992,19 @@ static int svcmdcmp(const void* a, const void* b)
 extern void G_FighterTest_f(void); // (2026-10-13) g_vehicles.c, developer test (sv_cheats 1)
 
 svcmd_t svcmds[] = {
-	{"addbot", Svcmd_AddBot_f, qfalse},
-	{"fightertest", G_FighterTest_f, qfalse},
-	{"addip", Svcmd_AddIP_f, qfalse},
-	{"botlist", Svcmd_BotList_f, qfalse},
-	{"entitylist", Svcmd_EntityList_f, qfalse},
-	{"forceteam", Svcmd_ForceTeam_f, qfalse},
-	{"game_memory", Svcmd_GameMem_f, qfalse},
-	{"listip", Svcmd_ListIP_f, qfalse},
-	{"removeip", Svcmd_RemoveIP_f, qfalse},
-	{"say", Svcmd_Say_f, qtrue},
-	{"toggleallowvote", Svcmd_ToggleAllowVote_f, qfalse},
-	{"toggleuserinfovalidation", Svcmd_ToggleUserinfoValidation_f, qfalse},
-	{"centersay", Svcmd_CenterSay_f, qfalse},
+	{ "addbot", Svcmd_AddBot_f, qfalse },
+	{ "fightertest", G_FighterTest_f, qfalse },
+	{ "addip", Svcmd_AddIP_f, qfalse },
+	{ "botlist", Svcmd_BotList_f, qfalse },
+	{ "entitylist", Svcmd_EntityList_f, qfalse },
+	{ "forceteam", Svcmd_ForceTeam_f, qfalse },
+	{ "game_memory", Svcmd_GameMem_f, qfalse },
+	{ "listip", Svcmd_ListIP_f, qfalse },
+	{ "removeip", Svcmd_RemoveIP_f, qfalse },
+	{ "say", Svcmd_Say_f, qtrue },
+	{ "toggleallowvote", Svcmd_ToggleAllowVote_f, qfalse },
+	{ "toggleuserinfovalidation", Svcmd_ToggleUserinfoValidation_f, qfalse },
+	{ "centersay", Svcmd_CenterSay_f, qfalse },
 };
 static const size_t numsvcmds = ARRAY_LEN(svcmds);
 

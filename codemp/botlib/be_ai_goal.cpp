@@ -144,15 +144,15 @@ using iteminfo_t = struct iteminfo_s
 
 fielddef_t iteminfo_fields[] =
 {
-{"name", ITEMINFO_OFS(name), FT_STRING},
-{"model", ITEMINFO_OFS(model), FT_STRING},
-{"modelIndex", ITEMINFO_OFS(modelIndex), FT_INT},
-{"type", ITEMINFO_OFS(type), FT_INT},
-{"index", ITEMINFO_OFS(index), FT_INT},
-{"respawntime", ITEMINFO_OFS(respawntime), FT_FLOAT},
-{"mins", ITEMINFO_OFS(mins), FT_FLOAT | FT_ARRAY, 3},
-{"maxs", ITEMINFO_OFS(maxs), FT_FLOAT | FT_ARRAY, 3},
-{nullptr, 0, 0}
+{ "name", ITEMINFO_OFS(name), FT_STRING },
+{ "model", ITEMINFO_OFS(model), FT_STRING },
+{ "modelIndex", ITEMINFO_OFS(modelIndex), FT_INT },
+{ "type", ITEMINFO_OFS(type), FT_INT },
+{ "index", ITEMINFO_OFS(index), FT_INT },
+{ "respawntime", ITEMINFO_OFS(respawntime), FT_FLOAT },
+{ "mins", ITEMINFO_OFS(mins), FT_FLOAT | FT_ARRAY, 3 },
+{ "maxs", ITEMINFO_OFS(maxs), FT_FLOAT | FT_ARRAY, 3 },
+{ nullptr, 0, 0 }
 };
 
 structdef_t iteminfo_struct =

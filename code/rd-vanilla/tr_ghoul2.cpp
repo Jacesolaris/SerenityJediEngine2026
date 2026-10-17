@@ -91,9 +91,9 @@ qhandle_t goreShader = -1;
 constexpr static mdxaBone_t identityMatrix =
 {
 	{
-		{0.0f, -1.0f, 0.0f, 0.0f},
-		{1.0f, 0.0f, 0.0f, 0.0f},
-		{0.0f, 0.0f, 1.0f, 0.0f}
+		{ 0.0f, -1.0f, 0.0f, 0.0f },
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f }
 	}
 };
 
@@ -1799,9 +1799,9 @@ void G2_TransformBone(const int index, const CBoneCache& cb)
 			static mdxaBone_t toMatrix =
 			{
 				{
-					{1.0f, 0.0f, 0.0f, 0.0f},
-					{0.0f, 1.0f, 0.0f, 0.0f},
-					{0.0f, 0.0f, 1.0f, 0.0f}
+					{ 1.0f, 0.0f, 0.0f, 0.0f },
+					{ 0.0f, 1.0f, 0.0f, 0.0f },
+					{ 0.0f, 0.0f, 1.0f, 0.0f }
 				}
 			};
 			toMatrix.matrix[0][0] = matrixScale;

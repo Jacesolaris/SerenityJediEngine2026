@@ -729,6 +729,7 @@ extern vmCvar_t cg_holsteredweapons;
 extern vmCvar_t cg_holsterdebug;
 extern vmCvar_t cg_holsterdebug_boneindex;
 extern vmCvar_t cg_holsterdebug_posoffset;
+extern vmCvar_t cg_blasterHipPullIn; // SS_BLASTER (2026-10-15)
 extern vmCvar_t cg_holsterdebug_angoffset;
 extern vmCvar_t cg_fpls;
 extern vmCvar_t cg_trueroll;

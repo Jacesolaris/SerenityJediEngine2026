@@ -16359,7 +16359,7 @@ qboolean WP_DoingForcedAnimationForForcePowers(const gentity_t* self)
 // (the flamethrowers, any MOD_BURNING damage - see G_Damage) catches fire for BURN_DURATION ms: BURN_DAMAGE every
 // BURN_DAMAGE_RATE ms (MOD_BURNING, credited to whoever lit them). Rolling or going into water (waist deep) puts the
 // fire out early, dying ends it, more flame refreshes the time. PEF_BURNING (playerState, copied to the entityState
-// and sent to every client) makes the cgame play the JKG burning effect on the lower back (cg_players.c CG_Player).
+// and sent to every client) makes the cgame play the SJE burning effect on the lower back (cg_players.c CG_Player).
 // Player_CheckBurn runs every frame for every client (ClientThink_real).
 // ---------------------------------------------------------------------------------------------------------------
 #define BURN_DURATION		6000

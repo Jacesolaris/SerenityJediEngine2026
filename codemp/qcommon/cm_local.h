@@ -185,19 +185,19 @@ using traceWork_t = struct traceWork_s
 	//rwwRMG - modified
 	vec3_t start = { 0, 0, 0 };
 	vec3_t end = { 0, 0, 0 };
-	vec3_t size[2] = { { 0, 0, 0 }, { 0, 0, 0 } }; // size of the box being swept through the model
-	vec3_t offsets[8] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 } }; // [signbits][x] = either size[0][x] or size[1][x]
+	vec3_t size[2] = { { 0, 0, 0 },{ 0, 0, 0 } }; // size of the box being swept through the model
+	vec3_t offsets[8] = { { 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 },{ 0, 0, 0 } }; // [signbits][x] = either size[0][x] or size[1][x]
 	float maxOffset = 0; // longest corner length from origin
 	vec3_t extents = { 0, 0, 0 }; // greatest of abs(size[0]) and abs(size[1])
 	vec3_t modelOrigin = { 0, 0, 0 }; // origin of the model tracing through
 	int contents = 0; // ored contents of the model tracing through
 	qboolean isPoint = qfalse; // optimized case
 
-	sphere_t sphere = { qfalse, 0, 0, { 0, 0, 0 } }; // sphere for oriendted capsule collision
+	sphere_t sphere = { qfalse, 0, 0,{ 0, 0, 0 } }; // sphere for oriendted capsule collision
 
 	//rwwRMG - added:
-	vec3pair_t bounds = { { 0, 0, 0 }, { 0, 0, 0 } }; // enclosing box of start and end surrounding by size
-	vec3pair_t localBounds = { { 0, 0, 0 }, { 0, 0, 0 } }; // enclosing box of start and end surrounding by size for a segment
+	vec3pair_t bounds = { { 0, 0, 0 },{ 0, 0, 0 } }; // enclosing box of start and end surrounding by size
+	vec3pair_t localBounds = { { 0, 0, 0 },{ 0, 0, 0 } }; // enclosing box of start and end surrounding by size for a segment
 
 	float baseEnterFrac = 0; // global enter fraction (before processing subsections of the brush)
 	float baseLeaveFrac = 0; // global leave fraction (before processing subsections of the brush)

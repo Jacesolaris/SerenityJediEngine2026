@@ -31,6 +31,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 #include "cg_local.h"
 #include "game/bg_saga.h"
+#include "ui/ui_shared.h" // SJE (2026-10-16): ITEM_TEXTSTYLE_* / FONT_* for the mission objectives list
 
 int cgSiegeRoundState = 0;
 int cgSiegeRoundTime = 0;
@@ -50,6 +51,21 @@ int true_view_valid;
 static char true_view_model[MAX_QPATH]; // the model the eye position was last set for (CG_TrueViewCheckModel)
 
 static char cgParseObjectives[MAX_SIEGE_INFO_SIZE];
+
+// SJE (2026-10-16): siege missions in Team FFA (the server's g_siegeMissions, g_saga.c): the mission runs without the
+// siege menus, classes or timer; the player's team's objectives are listed on the HUD (CG_DrawSiegeMissionObjectives)
+#define MAX_MISSION_OBJECTIVES 32
+static int cg_siegeMissionsServer = 0;
+static int cgMissionObjCount[3];
+static qboolean cgMissionObjDone[3][MAX_MISSION_OBJECTIVES + 1];
+static char cgMissionObjName[3][MAX_MISSION_OBJECTIVES + 1][128];
+
+static void CG_SiegeMissionCacheObjectives(void);
+
+qboolean CG_SiegeMissionsTFFA(void)
+{
+	return cgs.gametype == GT_TEAM && cg_siegeMissionsServer && siege_valid ? qtrue : qfalse;
+}
 
 extern void CG_LoadCISounds(clientInfo_t* ci, qboolean modelloaded); //cg_players.c
 
@@ -215,7 +231,11 @@ void CG_InitSiegeMode(void)
 	char levelname[MAX_QPATH];
 	fileHandle_t f;
 
-	if (cgs.gametype != GT_SIEGE)
+	// SJE (2026-10-16): siege missions in Team FFA (the server's g_siegeMissions) - the mission only
+	cg_siegeMissionsServer = atoi(Info_ValueForKey(CG_ConfigString(CS_SERVERINFO), "g_siegeMissions"));
+	const qboolean missionsTFFA = cgs.gametype == GT_TEAM && cg_siegeMissionsServer ? qtrue : qfalse;
+
+	if (cgs.gametype != GT_SIEGE && !missionsTFFA)
 	{
 		goto failure;
 	}
@@ -312,7 +332,7 @@ void CG_InitSiegeMode(void)
 			trap->Cvar_Set("team1_icon", teamIcon);
 		}
 
-		if (BG_SiegeGetPairedValue(teamInfo, "Timed", btime))
+		if (!missionsTFFA && BG_SiegeGetPairedValue(teamInfo, "Timed", btime)) // no mission timer in Team FFA
 		{
 			team1Timed = atoi(btime) * 1000;
 			CG_SetSiegeTimerCvar(team1Timed);
@@ -357,7 +377,7 @@ void CG_InitSiegeMode(void)
 			trap->Cvar_Set("team2_icon", teamIcon);
 		}
 
-		if (BG_SiegeGetPairedValue(teamInfo, "Timed", btime))
+		if (!missionsTFFA && BG_SiegeGetPairedValue(teamInfo, "Timed", btime)) // no mission timer in Team FFA
 		{
 			team2Timed = atoi(btime) * 1000;
 			CG_SetSiegeTimerCvar(team2Timed);
@@ -372,116 +392,124 @@ void CG_InitSiegeMode(void)
 		trap->Error(ERR_DROP, "No team entry for '%s'\n", team2);
 	}
 
-	/* Load classes */
-	BG_SiegeLoadClasses(NULL);
-
-	if (!bgNumSiegeClasses)
+	if (!missionsTFFA) // SJE (2026-10-16): no siege classes in Team FFA missions
 	{
-		trap->Error(ERR_DROP, "Couldn't find any player classes for Siege");
-	}
+		/* Load classes */
+		BG_SiegeLoadClasses(NULL);
 
-	/* Load teams */
-	BG_SiegeLoadTeams();
-
-	if (!bgNumSiegeTeams)
-	{
-		trap->Error(ERR_DROP, "Couldn't find any player teams for Siege");
-	}
-
-	/* Team themes */
-	if (BG_SiegeGetValueGroup(siege_info, team1, teamInfo))
-	{
-		if (BG_SiegeGetPairedValue(teamInfo, "UseTeam", btime))
+		if (!bgNumSiegeClasses)
 		{
-			BG_SiegeSetTeamTheme(SIEGETEAM_TEAM1, btime);
+			trap->Error(ERR_DROP, "Couldn't find any player classes for Siege");
 		}
 
-		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
-		{
-			cgSiegeTeam1PlShader = trap->R_RegisterShaderNoMip(btime);
-		}
-		else
-		{
-			cgSiegeTeam1PlShader = 0;
-		}
-	}
+		/* Load teams */
+		BG_SiegeLoadTeams();
 
-	if (BG_SiegeGetValueGroup(siege_info, team2, teamInfo))
-	{
-		if (BG_SiegeGetPairedValue(teamInfo, "UseTeam", btime))
+		if (!bgNumSiegeTeams)
 		{
-			BG_SiegeSetTeamTheme(SIEGETEAM_TEAM2, btime);
+			trap->Error(ERR_DROP, "Couldn't find any player teams for Siege");
 		}
 
-		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
+		/* Team themes */
+		if (BG_SiegeGetValueGroup(siege_info, team1, teamInfo))
 		{
-			cgSiegeTeam2PlShader = trap->R_RegisterShaderNoMip(btime);
-		}
-		else
-		{
-			cgSiegeTeam2PlShader = 0;
-		}
-	}
-
-	/* Precache forced models/skins */
-	for (int i = SIEGETEAM_TEAM1; i <= SIEGETEAM_TEAM2; i++)
-	{
-		const siegeTeam_t* sTeam = BG_SiegeFindThemeForTeam(i);
-
-		if (!sTeam)
-		{
-			continue;
-		}
-
-		if (i == SIEGETEAM_TEAM1)
-		{
-			cgSiegeTeam1PlShader = sTeam->friendlyShader;
-		}
-		else
-		{
-			cgSiegeTeam2PlShader = sTeam->friendlyShader;
-		}
-
-		for (int j = 0; j < sTeam->numClasses; j++)
-		{
-			siegeClass_t* cl = sTeam->classes[j];
-
-			if (cl->forcedModel[0])
+			if (BG_SiegeGetPairedValue(teamInfo, "UseTeam", btime))
 			{
-				trap->R_RegisterModel(va("models/players/%s/model.glm", cl->forcedModel));
+				BG_SiegeSetTeamTheme(SIEGETEAM_TEAM1, btime);
+			}
 
-				if (cl->forcedSkin[0])
+			if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
+			{
+				cgSiegeTeam1PlShader = trap->R_RegisterShaderNoMip(btime);
+			}
+			else
+			{
+				cgSiegeTeam1PlShader = 0;
+			}
+		}
+
+		if (BG_SiegeGetValueGroup(siege_info, team2, teamInfo))
+		{
+			if (BG_SiegeGetPairedValue(teamInfo, "UseTeam", btime))
+			{
+				BG_SiegeSetTeamTheme(SIEGETEAM_TEAM2, btime);
+			}
+
+			if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
+			{
+				cgSiegeTeam2PlShader = trap->R_RegisterShaderNoMip(btime);
+			}
+			else
+			{
+				cgSiegeTeam2PlShader = 0;
+			}
+		}
+
+		/* Precache forced models/skins */
+		for (int i = SIEGETEAM_TEAM1; i <= SIEGETEAM_TEAM2; i++)
+		{
+			const siegeTeam_t* sTeam = BG_SiegeFindThemeForTeam(i);
+
+			if (!sTeam)
+			{
+				continue;
+			}
+
+			if (i == SIEGETEAM_TEAM1)
+			{
+				cgSiegeTeam1PlShader = sTeam->friendlyShader;
+			}
+			else
+			{
+				cgSiegeTeam2PlShader = sTeam->friendlyShader;
+			}
+
+			for (int j = 0; j < sTeam->numClasses; j++)
+			{
+				siegeClass_t* cl = sTeam->classes[j];
+
+				if (cl->forcedModel[0])
 				{
-					char* useSkinName;
+					trap->R_RegisterModel(va("models/players/%s/model.glm", cl->forcedModel));
 
-					if (strchr(cl->forcedSkin, '|'))
+					if (cl->forcedSkin[0])
 					{
-						useSkinName = va("models/players/%s/|%s", cl->forcedModel, cl->forcedSkin);
-					}
-					else
-					{
-						useSkinName = va("models/players/%s/model_%s.skin", cl->forcedModel, cl->forcedSkin);
-					}
+						char* useSkinName;
 
-					trap->R_RegisterSkin(useSkinName);
+						if (strchr(cl->forcedSkin, '|'))
+						{
+							useSkinName = va("models/players/%s/|%s", cl->forcedModel, cl->forcedSkin);
+						}
+						else
+						{
+							useSkinName = va("models/players/%s/model_%s.skin", cl->forcedModel, cl->forcedSkin);
+						}
+
+						trap->R_RegisterSkin(useSkinName);
+					}
 				}
 			}
 		}
+
+		/* Sabers + players */
+		BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM1);
+		BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM2);
+
+		CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM1);
+		CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM2);
+
+		CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM1);
+		CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM2);
 	}
-
-	/* Sabers + players */
-	BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM1);
-	BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM2);
-
-	CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM1);
-	CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM2);
-
-	CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM1);
-	CG_PrecachePlayersForSiegeTeam(SIEGETEAM_TEAM2);
 
 	/* Objectives */
 	CG_PrecacheSiegeObjectiveAssetsForTeam(SIEGETEAM_TEAM1);
 	CG_PrecacheSiegeObjectiveAssetsForTeam(SIEGETEAM_TEAM2);
+
+	if (missionsTFFA)
+	{
+		CG_SiegeMissionCacheObjectives(); // SJE (2026-10-16)
+	}
 
 	return;
 
@@ -539,6 +567,11 @@ void CG_ParseSiegeObjectiveStatus(const char* str)
 		{
 			objectiveNum++;
 			i++;
+
+			if (objectiveNum <= MAX_MISSION_OBJECTIVES)
+			{
+				cgMissionObjDone[team][objectiveNum] = str[i] == '1' ? qtrue : qfalse; // SJE (2026-10-16): HUD list
+			}
 
 			const char* cvarName = va("team%i_objective%i", team, objectiveNum);
 			if (str[i] == '1')
@@ -1327,4 +1360,78 @@ void CG_TrueViewSave_f(void)
 	memcpy(true_view_info, new_info, n + 1);
 	true_view_valid = 1;
 	Com_Printf("True View: saved %s %s to trueview.cfg (in your game folder).\n", true_view_model, value);
+}
+
+// SJE (2026-10-16): siege missions in Team FFA - the objective names ("goalname") of both teams for the HUD list
+static void CG_SiegeMissionCacheObjectives(void)
+{
+	static char teamGroup[MAX_SIEGE_INFO_SIZE];
+	static char objGroup[8192];
+	char name[128];
+
+	for (int team = SIEGETEAM_TEAM1; team <= SIEGETEAM_TEAM2; team++)
+	{
+		cgMissionObjCount[team] = 0;
+		if (!BG_SiegeGetValueGroup(siege_info, team == SIEGETEAM_TEAM1 ? team1 : team2, teamGroup))
+		{
+			continue;
+		}
+		for (int i = 1; i <= MAX_MISSION_OBJECTIVES; i++)
+		{
+			if (!BG_SiegeGetValueGroup(teamGroup, va("Objective%i", i), objGroup))
+			{
+				break;
+			}
+			name[0] = 0;
+			if (!BG_SiegeGetPairedValue(objGroup, "goalname", name) || !name[0])
+			{
+				Com_sprintf(name, sizeof name, "Objective %i", i);
+			}
+			if (name[0] == '@')
+			{
+				trap->SE_GetStringTextString(name + 1, cgMissionObjName[team][i], sizeof cgMissionObjName[team][i]);
+			}
+			else
+			{
+				Q_strncpyz(cgMissionObjName[team][i], name, sizeof cgMissionObjName[team][i]);
+			}
+			cgMissionObjCount[team] = i;
+		}
+	}
+}
+
+// SJE (2026-10-16): siege missions in Team FFA - the player's team's objectives at the top left of the HUD, done ones
+// green and ticked
+void CG_DrawSiegeMissionObjectives(void)
+{
+	static vec4_t doneColor = { 0.3f, 1.0f, 0.3f, 1.0f };
+	static vec4_t todoColor = { 1.0f, 1.0f, 1.0f, 0.9f };
+	static vec4_t headColor = { 1.0f, 0.85f, 0.4f, 1.0f };
+	const float scale = 0.55f;
+	float y = 140.0f;
+	const float x = 8.0f;
+
+	if (!CG_SiegeMissionsTFFA() || cg.showScores || cg.predictedPlayerState.pm_type == PM_INTERMISSION)
+	{
+		return;
+	}
+
+	const int team = cg.snap ? cg.snap->ps.persistant[PERS_TEAM] : cg.predictedPlayerState.persistant[PERS_TEAM];
+
+	if ((team != SIEGETEAM_TEAM1 && team != SIEGETEAM_TEAM2) || !cgMissionObjCount[team])
+	{
+		return;
+	}
+
+	CG_Text_Paint(x, y, scale, headColor, "Objectives", 0, 0, ITEM_TEXTSTYLE_SHADOWED, FONT_SMALL);
+	y += 14.0f;
+
+	for (int i = 1; i <= cgMissionObjCount[team]; i++)
+	{
+		const qboolean done = cgMissionObjDone[team][i];
+
+		CG_Text_Paint(x, y, scale, done ? doneColor : todoColor,
+			va("%s %s", done ? "[X]" : "[  ]", cgMissionObjName[team][i]), 0, 320, ITEM_TEXTSTYLE_SHADOWED, FONT_SMALL); // 320: the limit is a pixel width, not characters
+		y += 12.0f;
+	}
 }

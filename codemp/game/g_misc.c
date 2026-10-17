@@ -3875,7 +3875,7 @@ void maglock_link(gentity_t* self)
 
 	trap->LinkEntity((sharedEntity_t*)self);
 
-	if (level.gametype != GT_SIEGE)
+	if (!G_SiegeMissionRules()) // SJE (2026-10-16): mission maglocks stay in siege missions in Team FFA
 	{// Screw maglocks in non-siege games. Trigger it on map load...
 		maglock_die(self, self, self, 10000, MOD_SABER);
 		trap->Print("Destroyed a siege/sp maglock.\n");

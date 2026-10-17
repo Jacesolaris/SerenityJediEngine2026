@@ -168,14 +168,14 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 		return;
 	}
 
-	if (level.gametype == GT_SIEGE &&
+	if (G_SiegeMissionRules() && // SJE (2026-10-16): also siege missions in Team FFA
 		!gSiegeRoundBegun)
 	{
 		// nothing can be used til the round starts
 		return;
 	}
 
-	if (level.gametype == GT_SIEGE &&
+	if (G_SiegeMissionRules() && // SJE (2026-10-16): team locks also in siege missions in Team FFA
 		activator && activator->client &&
 		ent->alliedTeam &&
 		activator->client->sess.sessionTeam != ent->alliedTeam)
@@ -203,7 +203,7 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 		}
 	}
 
-	if (level.gametype == GT_SIEGE && ent->genericValue1)
+	if (G_SiegeMissionRules() && ent->genericValue1) // SJE (2026-10-16): siege item goals also in Team FFA missions
 	{
 		halt_trigger = qtrue;
 
@@ -265,7 +265,7 @@ static void multi_trigger(gentity_t* ent, gentity_t* activator)
 		// static: too big for the stack, and BG_Alloc is never freed: asked for on every call, this ran the pool dry
 		static int entity_list[MAX_GENTITIES];
 
-		if (level.gametype != GT_SIEGE)
+		if (!G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 		{
 			return;
 		}

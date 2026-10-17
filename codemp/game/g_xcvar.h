@@ -149,6 +149,7 @@ XCVAR_DEF(g_saberTraceSaberFirst, "0", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_saberWallDamageScale, "0.4", NULL, CVAR_NONE, qfalse)
 XCVAR_DEF(g_securityLog, "1", NULL, CVAR_ARCHIVE, qfalse)
 XCVAR_DEF(g_showDuelHealths, "1", NULL, CVAR_SERVERINFO, qfalse)
+XCVAR_DEF(g_siegeMissions, "1", NULL, CVAR_ARCHIVE | CVAR_SERVERINFO | CVAR_LATCH, qfalse) // SJE (2026-10-16): a siege map in Team FFA runs its mission
 XCVAR_DEF(g_siegeRespawn, "20", NULL, CVAR_ARCHIVE, qtrue)
 XCVAR_DEF(g_siegeTeam1, "none", NULL, CVAR_ARCHIVE | CVAR_SERVERINFO, qfalse)
 XCVAR_DEF(g_siegeTeam2, "none", NULL, CVAR_ARCHIVE | CVAR_SERVERINFO, qfalse)

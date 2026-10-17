@@ -2082,141 +2082,141 @@ void CL_SendCmd(void)
 
 static constexpr cmdList_t inputCmds[] =
 {
-	{"centerview", "Centers view on screen", IN_CenterView, nullptr},
-	{"+moveup", "Jump", IN_UpDown, nullptr},
-	{"-moveup", nullptr, IN_UpUp, nullptr},
-	{"+movedown", "Crouch", IN_DownDown, nullptr},
-	{"-movedown", nullptr, IN_DownUp, nullptr},
-	{"+left", "Rotate camera left", IN_LeftDown, nullptr},
-	{"-left", nullptr, IN_LeftUp, nullptr},
-	{"+right", "Rotate camera right", IN_RightDown, nullptr},
-	{"-right", nullptr, IN_RightUp, nullptr},
-	{"+forward", "Move forward", IN_ForwardDown, nullptr},
-	{"-forward", nullptr, IN_ForwardUp, nullptr},
-	{"+back", "Move backward", IN_BackDown, nullptr},
-	{"-back", nullptr, IN_BackUp, nullptr},
-	{"+lookup", "Tilt camera up", IN_LookupDown, nullptr},
-	{"-lookup", nullptr, IN_LookupUp, nullptr},
-	{"+lookdown", "Tilt camera down", IN_LookdownDown, nullptr},
-	{"-lookdown", nullptr, IN_LookdownUp, nullptr},
-	{"+strafe", "Hold to strafe", IN_StrafeDown, nullptr},
-	{"-strafe", nullptr, IN_StrafeUp, nullptr},
-	{"+moveleft", "Strafe left", IN_MoveleftDown, nullptr},
-	{"-moveleft", nullptr, IN_MoveleftUp, nullptr},
-	{"+moveright", "Strafe right", IN_MoverightDown, nullptr},
-	{"-moveright", nullptr, IN_MoverightUp, nullptr},
-	{"+speed", "Walk or run", IN_SpeedDown, nullptr},
-	{"-speed", nullptr, IN_SpeedUp, nullptr},
-	{"+attack", "Primary Attack", IN_Button0Down, nullptr},
-	{"-attack", nullptr, IN_Button0Up, nullptr},
-	{"+use", "Use item", IN_Button5Down, nullptr},
-	{"-use", nullptr, IN_Button5Up, nullptr},
-	{"+force_grip", "Hold to use grip force power", IN_Button6Down, nullptr},
-	{"-force_grip", nullptr, IN_Button6Up, nullptr},
-	{"+altattack", "Alternate Attack", IN_Button7Down, nullptr},
-	{"-altattack", nullptr, IN_Button7Up, nullptr},
-	{"+useforce", "Use selected force power", IN_Button9Down, nullptr},
-	{"-useforce", nullptr, IN_Button9Up, nullptr},
-	{"+force_lightning", "Hold to use lightning force power", IN_Button10Down, nullptr},
-	{"-force_lightning", nullptr, IN_Button10Up, nullptr},
-	{"+force_drain", "Hold to use drain force power", IN_Button11Down, nullptr},
-	{"-force_drain", nullptr, IN_Button11Up, nullptr},
-	{"+button0", "Button 0", IN_Button0Down, nullptr},
-	{"-button0", nullptr, IN_Button0Up, nullptr},
-	{"+button1", "Button 1", IN_Button1Down, nullptr},
-	{"-button1", nullptr, IN_Button1Up, nullptr},
-	{"+button2", "Button 2", IN_Button2Down, nullptr},
-	{"-button2", nullptr, IN_Button2Up, nullptr},
-	{"+button3", "Button 3", IN_Button3Down, nullptr},
-	{"-button3", nullptr, IN_Button3Up, nullptr},
-	{"+button4", "Button 4", IN_Button4Down, nullptr},
-	{"-button4", nullptr, IN_Button4Up, nullptr},
-	{"+button5", "Button 5", IN_Button5Down, nullptr},
-	{"-button5", nullptr, IN_Button5Up, nullptr},
-	{"+button6", "Button 6", IN_Button6Down, nullptr},
-	{"-button6", nullptr, IN_Button6Up, nullptr},
-	{"+button7", "Button 7", IN_Button7Down, nullptr},
-	{"-button7", nullptr, IN_Button7Up, nullptr},
-	{"+button8", "Button 8", IN_Button8Down, nullptr},
-	{"-button8", nullptr, IN_Button8Up, nullptr},
-	{"+button9", "Button 9", IN_Button9Down, nullptr},
-	{"-button9", nullptr, IN_Button9Up, nullptr},
-	{"+button10", "Button 10", IN_Button10Down, nullptr},
-	{"-button10", nullptr, IN_Button10Up, nullptr},
-	{"+button11", "Button 11", IN_Button11Down, nullptr},
-	{"-button11", nullptr, IN_Button11Up, nullptr},
-	{"+button12", "Button 12", IN_Button12Down, nullptr},
-	{"-button12", nullptr, IN_Button12Up, nullptr},
-	{"+button13", "Button 13", IN_Button13Down, nullptr},
-	{"-button13", nullptr, IN_Button13Up, nullptr},
-	{"+button14", "Button 14", IN_Button14Down, nullptr},
-	{"-button14", nullptr, IN_Button14Up, nullptr},
-	{"+button15", "Button 15", IN_Button15Down, nullptr},
-	{"-button15", nullptr, IN_Button15Up, nullptr},
+	{ "centerview", "Centers view on screen", IN_CenterView, nullptr },
+	{ "+moveup", "Jump", IN_UpDown, nullptr },
+	{ "-moveup", nullptr, IN_UpUp, nullptr },
+	{ "+movedown", "Crouch", IN_DownDown, nullptr },
+	{ "-movedown", nullptr, IN_DownUp, nullptr },
+	{ "+left", "Rotate camera left", IN_LeftDown, nullptr },
+	{ "-left", nullptr, IN_LeftUp, nullptr },
+	{ "+right", "Rotate camera right", IN_RightDown, nullptr },
+	{ "-right", nullptr, IN_RightUp, nullptr },
+	{ "+forward", "Move forward", IN_ForwardDown, nullptr },
+	{ "-forward", nullptr, IN_ForwardUp, nullptr },
+	{ "+back", "Move backward", IN_BackDown, nullptr },
+	{ "-back", nullptr, IN_BackUp, nullptr },
+	{ "+lookup", "Tilt camera up", IN_LookupDown, nullptr },
+	{ "-lookup", nullptr, IN_LookupUp, nullptr },
+	{ "+lookdown", "Tilt camera down", IN_LookdownDown, nullptr },
+	{ "-lookdown", nullptr, IN_LookdownUp, nullptr },
+	{ "+strafe", "Hold to strafe", IN_StrafeDown, nullptr },
+	{ "-strafe", nullptr, IN_StrafeUp, nullptr },
+	{ "+moveleft", "Strafe left", IN_MoveleftDown, nullptr },
+	{ "-moveleft", nullptr, IN_MoveleftUp, nullptr },
+	{ "+moveright", "Strafe right", IN_MoverightDown, nullptr },
+	{ "-moveright", nullptr, IN_MoverightUp, nullptr },
+	{ "+speed", "Walk or run", IN_SpeedDown, nullptr },
+	{ "-speed", nullptr, IN_SpeedUp, nullptr },
+	{ "+attack", "Primary Attack", IN_Button0Down, nullptr },
+	{ "-attack", nullptr, IN_Button0Up, nullptr },
+	{ "+use", "Use item", IN_Button5Down, nullptr },
+	{ "-use", nullptr, IN_Button5Up, nullptr },
+	{ "+force_grip", "Hold to use grip force power", IN_Button6Down, nullptr },
+	{ "-force_grip", nullptr, IN_Button6Up, nullptr },
+	{ "+altattack", "Alternate Attack", IN_Button7Down, nullptr },
+	{ "-altattack", nullptr, IN_Button7Up, nullptr },
+	{ "+useforce", "Use selected force power", IN_Button9Down, nullptr },
+	{ "-useforce", nullptr, IN_Button9Up, nullptr },
+	{ "+force_lightning", "Hold to use lightning force power", IN_Button10Down, nullptr },
+	{ "-force_lightning", nullptr, IN_Button10Up, nullptr },
+	{ "+force_drain", "Hold to use drain force power", IN_Button11Down, nullptr },
+	{ "-force_drain", nullptr, IN_Button11Up, nullptr },
+	{ "+button0", "Button 0", IN_Button0Down, nullptr },
+	{ "-button0", nullptr, IN_Button0Up, nullptr },
+	{ "+button1", "Button 1", IN_Button1Down, nullptr },
+	{ "-button1", nullptr, IN_Button1Up, nullptr },
+	{ "+button2", "Button 2", IN_Button2Down, nullptr },
+	{ "-button2", nullptr, IN_Button2Up, nullptr },
+	{ "+button3", "Button 3", IN_Button3Down, nullptr },
+	{ "-button3", nullptr, IN_Button3Up, nullptr },
+	{ "+button4", "Button 4", IN_Button4Down, nullptr },
+	{ "-button4", nullptr, IN_Button4Up, nullptr },
+	{ "+button5", "Button 5", IN_Button5Down, nullptr },
+	{ "-button5", nullptr, IN_Button5Up, nullptr },
+	{ "+button6", "Button 6", IN_Button6Down, nullptr },
+	{ "-button6", nullptr, IN_Button6Up, nullptr },
+	{ "+button7", "Button 7", IN_Button7Down, nullptr },
+	{ "-button7", nullptr, IN_Button7Up, nullptr },
+	{ "+button8", "Button 8", IN_Button8Down, nullptr },
+	{ "-button8", nullptr, IN_Button8Up, nullptr },
+	{ "+button9", "Button 9", IN_Button9Down, nullptr },
+	{ "-button9", nullptr, IN_Button9Up, nullptr },
+	{ "+button10", "Button 10", IN_Button10Down, nullptr },
+	{ "-button10", nullptr, IN_Button10Up, nullptr },
+	{ "+button11", "Button 11", IN_Button11Down, nullptr },
+	{ "-button11", nullptr, IN_Button11Up, nullptr },
+	{ "+button12", "Button 12", IN_Button12Down, nullptr },
+	{ "-button12", nullptr, IN_Button12Up, nullptr },
+	{ "+button13", "Button 13", IN_Button13Down, nullptr },
+	{ "-button13", nullptr, IN_Button13Up, nullptr },
+	{ "+button14", "Button 14", IN_Button14Down, nullptr },
+	{ "-button14", nullptr, IN_Button14Up, nullptr },
+	{ "+button15", "Button 15", IN_Button15Down, nullptr },
+	{ "-button15", nullptr, IN_Button15Up, nullptr },
 
-	{"+button16", "Button 16", IN_Button16Down, nullptr},
-	{"-button16", nullptr, IN_Button16Up, nullptr},
-	{"+button17", "Button 17", IN_Button17Down, nullptr},
-	{"-button17", nullptr, IN_Button17Up, nullptr},
-	{"+button18", "Button 18", IN_Button18Down, nullptr},
-	{"-button18", nullptr, IN_Button18Up, nullptr},
-	{"+button19", "Button 19", IN_Button19Down, nullptr},
-	{"-button19", nullptr, IN_Button19Up, nullptr},
-	{"+button20", "Button 20", IN_Button20Down, nullptr},
-	{"-button20", nullptr, IN_Button20Up, nullptr},
+	{ "+button16", "Button 16", IN_Button16Down, nullptr },
+	{ "-button16", nullptr, IN_Button16Up, nullptr },
+	{ "+button17", "Button 17", IN_Button17Down, nullptr },
+	{ "-button17", nullptr, IN_Button17Up, nullptr },
+	{ "+button18", "Button 18", IN_Button18Down, nullptr },
+	{ "-button18", nullptr, IN_Button18Up, nullptr },
+	{ "+button19", "Button 19", IN_Button19Down, nullptr },
+	{ "-button19", nullptr, IN_Button19Up, nullptr },
+	{ "+button20", "Button 20", IN_Button20Down, nullptr },
+	{ "-button20", nullptr, IN_Button20Up, nullptr },
 
-	{"+mlook", "Hold to use mouse look", IN_MLookDown, nullptr},
-	{"-mlook", nullptr, IN_MLookUp, nullptr},
+	{ "+mlook", "Hold to use mouse look", IN_MLookDown, nullptr },
+	{ "-mlook", nullptr, IN_MLookUp, nullptr },
 
-	{"sv_saberswitch", "Holster/activate lightsaber", IN_GenCMD1, nullptr},                   //GENCMD_SABERSWITCH
-	{"engage_duel", "Engage private duel", IN_GenCMD2, nullptr},                              //GENCMD_ENGAGE_DUEL
+	{ "sv_saberswitch", "Holster/activate lightsaber", IN_GenCMD1, nullptr },                   //GENCMD_SABERSWITCH
+	{ "engage_duel", "Engage private duel", IN_GenCMD2, nullptr },                              //GENCMD_ENGAGE_DUEL
 
-	{"force_heal", "Use heal force power", IN_GenCMD3, nullptr},                              //GENCMD_FORCE_HEAL
-	{"force_speed", "Activate speed force power", IN_GenCMD4, nullptr},                       //GENCMD_FORCE_SPEED
-	{"force_throw", "Use push force power", IN_GenCMD5, nullptr},                             //GENCMD_FORCE_THROW
-	{"force_pull", "Use pull force power", IN_GenCMD6, nullptr},                              //GENCMD_FORCE_PULL
-	{"force_distract", "Activate mind trick force power", IN_GenCMD7, nullptr},               //GENCMD_FORCE_DISTRACT
-	{"force_rage", "Activate rage force power",  IN_GenCMD8, nullptr},                        //GENCMD_FORCE_RAGE
-	{"force_protect", "Activate protect force power", IN_GenCMD9, nullptr},                   //GENCMD_FORCE_PROTECT
-	{"force_absorb", "Activate absorb force power", IN_GenCMD10, nullptr},                    //GENCMD_FORCE_ABSORB
-	{"force_healother", "Use team heal force power", IN_GenCMD11, nullptr},                   //GENCMD_FORCE_HEALOTHER
-	{"force_forcepowerother", "Use team energize force power", IN_GenCMD12, nullptr},         //GENCMD_FORCE_FORCEPOWEROTHER
-	{"force_seeing", "Activate seeing force power", IN_GenCMD13, nullptr},                    //GENCMD_FORCE_SEEING
+	{ "force_heal", "Use heal force power", IN_GenCMD3, nullptr },                              //GENCMD_FORCE_HEAL
+	{ "force_speed", "Activate speed force power", IN_GenCMD4, nullptr },                       //GENCMD_FORCE_SPEED
+	{ "force_throw", "Use push force power", IN_GenCMD5, nullptr },                             //GENCMD_FORCE_THROW
+	{ "force_pull", "Use pull force power", IN_GenCMD6, nullptr },                              //GENCMD_FORCE_PULL
+	{ "force_distract", "Activate mind trick force power", IN_GenCMD7, nullptr },               //GENCMD_FORCE_DISTRACT
+	{ "force_rage", "Activate rage force power",  IN_GenCMD8, nullptr },                        //GENCMD_FORCE_RAGE
+	{ "force_protect", "Activate protect force power", IN_GenCMD9, nullptr },                   //GENCMD_FORCE_PROTECT
+	{ "force_absorb", "Activate absorb force power", IN_GenCMD10, nullptr },                    //GENCMD_FORCE_ABSORB
+	{ "force_healother", "Use team heal force power", IN_GenCMD11, nullptr },                   //GENCMD_FORCE_HEALOTHER
+	{ "force_forcepowerother", "Use team energize force power", IN_GenCMD12, nullptr },         //GENCMD_FORCE_FORCEPOWEROTHER
+	{ "force_seeing", "Activate seeing force power", IN_GenCMD13, nullptr },                    //GENCMD_FORCE_SEEING
 
-	{"use_seeker", "Use seeker drone item", IN_GenCMD14, nullptr},                            //GENCMD_USE_SEEKER
-	{"use_field", "Use forcefield item",  IN_GenCMD15, nullptr},                              //GENCMD_USE_SHIELD
-	{"use_bacta", "Use bacta item", IN_GenCMD16, nullptr},                                    //GENCMD_USE_MEDPAC
-	{"use_bactabig", "Use big bacta item", IN_GenCMD17, nullptr},                             //GENCMD_USE_MEDPAC_BIG
-	{"zoom", "Use binoculars item", IN_GenCMD18, nullptr},                                    //GENCMD_USE_ELECTROBINOCULARS
-	{"use_sentry", "Use sentry gun item", IN_GenCMD19, nullptr},                              //GENCMD_USE_SENTRY
-	{"use_jetpack", "Use jetpack item", IN_GenCMD20, nullptr},                                //GENCMD_USE_JETPACK
+	{ "use_seeker", "Use seeker drone item", IN_GenCMD14, nullptr },                            //GENCMD_USE_SEEKER
+	{ "use_field", "Use forcefield item",  IN_GenCMD15, nullptr },                              //GENCMD_USE_SHIELD
+	{ "use_bacta", "Use bacta item", IN_GenCMD16, nullptr },                                    //GENCMD_USE_MEDPAC
+	{ "use_bactabig", "Use big bacta item", IN_GenCMD17, nullptr },                             //GENCMD_USE_MEDPAC_BIG
+	{ "zoom", "Use binoculars item", IN_GenCMD18, nullptr },                                    //GENCMD_USE_ELECTROBINOCULARS
+	{ "use_sentry", "Use sentry gun item", IN_GenCMD19, nullptr },                              //GENCMD_USE_SENTRY
+	{ "use_jetpack", "Use jetpack item", IN_GenCMD20, nullptr },                                //GENCMD_USE_JETPACK
 
-	{"use_healthdisp", "Use health dispenser item", IN_GenCMD21, nullptr},                    //GENCMD_USE_HEALTHDISP
-	{"use_ammodisp", "Use ammo dispenser item", IN_GenCMD22, nullptr},                        //GENCMD_USE_AMMODISP
-	{"use_eweb", "Use e-web item", IN_GenCMD23, nullptr},                                     //GENCMD_USE_EWEB
-	{"use_cloak", "Use cloaking item",  IN_GenCMD24, nullptr},                                //GENCMD_USE_CLOAK
+	{ "use_healthdisp", "Use health dispenser item", IN_GenCMD21, nullptr },                    //GENCMD_USE_HEALTHDISP
+	{ "use_ammodisp", "Use ammo dispenser item", IN_GenCMD22, nullptr },                        //GENCMD_USE_AMMODISP
+	{ "use_eweb", "Use e-web item", IN_GenCMD23, nullptr },                                     //GENCMD_USE_EWEB
+	{ "use_cloak", "Use cloaking item",  IN_GenCMD24, nullptr },                                //GENCMD_USE_CLOAK
 
-	{"flamethrower", "Use flamethrower item", IN_GenCMD25, nullptr},                          //GENCMD_FLAMETHROWER
-	{"swoop", "Use swoop item", IN_GenCMD26, nullptr},                                        //GENCMD_USE_SWOOP
-	{"decca", "decca", IN_GenCMD27, nullptr},                                                 //GENCMD_USE_DECCA
-	{"Sphereshield", "Sphereshield", IN_GenCMD28, nullptr },                                  //GENCMD_USE_SPHERESHIELD
+	{ "flamethrower", "Use flamethrower item", IN_GenCMD25, nullptr },                          //GENCMD_FLAMETHROWER
+	{ "swoop", "Use swoop item", IN_GenCMD26, nullptr },                                        //GENCMD_USE_SWOOP
+	{ "decca", "decca", IN_GenCMD27, nullptr },                                                 //GENCMD_USE_DECCA
+	{ "Sphereshield", "Sphereshield", IN_GenCMD28, nullptr },                                  //GENCMD_USE_SPHERESHIELD
 
-	{"grapple", "grapple", IN_GenCMD29, nullptr},                                             //GENCMD_USE_GRAPPLE
+	{ "grapple", "grapple", IN_GenCMD29, nullptr },                                             //GENCMD_USE_GRAPPLE
 
-	{"saberAttackCycle", "Switch lightsaber attack styles", IN_GenCMD30, nullptr},           //GENCMD_SABERATTACKCYCLE
+	{ "saberAttackCycle", "Switch lightsaber attack styles", IN_GenCMD30, nullptr },           //GENCMD_SABERATTACKCYCLE
 
-	{"taunt", "Taunt",IN_GenCMD31, nullptr},                                                  //GENCMD_TAUNT
-	{"bow", "Bow",IN_GenCMD32, nullptr},                                                      //GENCMD_BOW
-	{"meditate", "Meditate", IN_GenCMD33, nullptr },                                          //GENCMD_MEDITATE
-	{"flourish", "Flourish", IN_GenCMD34, nullptr },                                          //GENCMD_FLOURISH
-	{"gloat", "Gloat", IN_GenCMD35, nullptr},                                                 //GENCMD_GLOAT
-	{"surrender", "Surrender", IN_GenCMD36, nullptr},                                         //GENCMD_SURRENDER
+	{ "taunt", "Taunt",IN_GenCMD31, nullptr },                                                  //GENCMD_TAUNT
+	{ "bow", "Bow",IN_GenCMD32, nullptr },                                                      //GENCMD_BOW
+	{ "meditate", "Meditate", IN_GenCMD33, nullptr },                                          //GENCMD_MEDITATE
+	{ "flourish", "Flourish", IN_GenCMD34, nullptr },                                          //GENCMD_FLOURISH
+	{ "gloat", "Gloat", IN_GenCMD35, nullptr },                                                 //GENCMD_GLOAT
+	{ "surrender", "Surrender", IN_GenCMD36, nullptr },                                         //GENCMD_SURRENDER
 
 	{ "useGivenForce", "Use specified force power", IN_UseGivenForce, nullptr },
 	{ "automap_button", "Show/hide automap", IN_AutoMapButton, nullptr },
 	{ "automap_toggle", "Show/hide radar", IN_AutoMapToggle, nullptr },
 	{ "voicechat", "Open voice chat menu", IN_VoiceChatButton, nullptr },
-	{nullptr, nullptr, nullptr, nullptr}
+	{ nullptr, nullptr, nullptr, nullptr }
 };
 
 /*

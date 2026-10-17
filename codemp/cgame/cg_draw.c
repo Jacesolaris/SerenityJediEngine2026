@@ -95,21 +95,21 @@ const char* forceTicName[MAX_HUD_TICS] =
 
 forceTicPos_t JK2forceTicPos[] =
 {
-	{11, 41, 20, 10, "gfx/hud/JK2force_tick1", NULL_HANDLE}, // Left Top
-	{12, 45, 20, 10, "gfx/hud/JK2force_tick2", NULL_HANDLE},
-	{14, 49, 20, 10, "gfx/hud/JK2force_tick3", NULL_HANDLE},
-	{17, 52, 20, 10, "gfx/hud/JK2force_tick4", NULL_HANDLE},
-	{22, 55, 10, 10, "gfx/hud/JK2force_tick5", NULL_HANDLE},
-	{28, 57, 10, 20, "gfx/hud/JK2force_tick6", NULL_HANDLE},
-	{34, 59, 10, 10, "gfx/hud/JK2force_tick7", NULL_HANDLE}, // Left bottom
+	{ 11, 41, 20, 10, "gfx/hud/JK2force_tick1", NULL_HANDLE }, // Left Top
+	{ 12, 45, 20, 10, "gfx/hud/JK2force_tick2", NULL_HANDLE },
+	{ 14, 49, 20, 10, "gfx/hud/JK2force_tick3", NULL_HANDLE },
+	{ 17, 52, 20, 10, "gfx/hud/JK2force_tick4", NULL_HANDLE },
+	{ 22, 55, 10, 10, "gfx/hud/JK2force_tick5", NULL_HANDLE },
+	{ 28, 57, 10, 20, "gfx/hud/JK2force_tick6", NULL_HANDLE },
+	{ 34, 59, 10, 10, "gfx/hud/JK2force_tick7", NULL_HANDLE }, // Left bottom
 
-	{46, 59, -10, 10, "gfx/hud/JK2force_tick7", NULL_HANDLE}, // Right bottom
-	{52, 57, -10, 20, "gfx/hud/JK2force_tick6", NULL_HANDLE},
-	{58, 55, -10, 10, "gfx/hud/JK2force_tick5", NULL_HANDLE},
-	{63, 52, -20, 10, "gfx/hud/JK2force_tick4", NULL_HANDLE},
-	{66, 49, -20, 10, "gfx/hud/JK2force_tick3", NULL_HANDLE},
-	{68, 45, -20, 10, "gfx/hud/JK2force_tick2", NULL_HANDLE},
-	{69, 41, -20, 10, "gfx/hud/JK2force_tick1", NULL_HANDLE}, // Right top
+	{ 46, 59, -10, 10, "gfx/hud/JK2force_tick7", NULL_HANDLE }, // Right bottom
+	{ 52, 57, -10, 20, "gfx/hud/JK2force_tick6", NULL_HANDLE },
+	{ 58, 55, -10, 10, "gfx/hud/JK2force_tick5", NULL_HANDLE },
+	{ 63, 52, -20, 10, "gfx/hud/JK2force_tick4", NULL_HANDLE },
+	{ 66, 49, -20, 10, "gfx/hud/JK2force_tick3", NULL_HANDLE },
+	{ 68, 45, -20, 10, "gfx/hud/JK2force_tick2", NULL_HANDLE },
+	{ 69, 41, -20, 10, "gfx/hud/JK2force_tick1", NULL_HANDLE }, // Right top
 };
 
 const char* ammoTicName[MAX_HUD_TICS] =
@@ -122,21 +122,21 @@ const char* ammoTicName[MAX_HUD_TICS] =
 
 forceTicPos_t JK2ammoTicPos[] =
 {
-	{12, 34, 10, 10, "gfx/hud/JK2ammo_tick7-l", NULL_HANDLE}, // Bottom
-	{13, 28, 10, 10, "gfx/hud/JK2ammo_tick6-l", NULL_HANDLE},
-	{15, 23, 10, 10, "gfx/hud/JK2ammo_tick5-l", NULL_HANDLE},
-	{19, 19, 10, 10, "gfx/hud/JK2ammo_tick4-l", NULL_HANDLE},
-	{23, 15, 10, 10, "gfx/hud/JK2ammo_tick3-l", NULL_HANDLE},
-	{29, 12, 10, 10, "gfx/hud/JK2ammo_tick2-l", NULL_HANDLE},
-	{34, 11, 10, 10, "gfx/hud/JK2ammo_tick1-l", NULL_HANDLE},
+	{ 12, 34, 10, 10, "gfx/hud/JK2ammo_tick7-l", NULL_HANDLE }, // Bottom
+	{ 13, 28, 10, 10, "gfx/hud/JK2ammo_tick6-l", NULL_HANDLE },
+	{ 15, 23, 10, 10, "gfx/hud/JK2ammo_tick5-l", NULL_HANDLE },
+	{ 19, 19, 10, 10, "gfx/hud/JK2ammo_tick4-l", NULL_HANDLE },
+	{ 23, 15, 10, 10, "gfx/hud/JK2ammo_tick3-l", NULL_HANDLE },
+	{ 29, 12, 10, 10, "gfx/hud/JK2ammo_tick2-l", NULL_HANDLE },
+	{ 34, 11, 10, 10, "gfx/hud/JK2ammo_tick1-l", NULL_HANDLE },
 
-	{47, 11, -10, 10, "gfx/hud/JK2ammo_tick1-r", NULL_HANDLE},
-	{52, 12, -10, 10, "gfx/hud/JK2ammo_tick2-r", NULL_HANDLE},
-	{58, 15, -10, 10, "gfx/hud/JK2ammo_tick3-r", NULL_HANDLE},
-	{62, 19, -10, 10, "gfx/hud/JK2ammo_tick4-r", NULL_HANDLE},
-	{66, 23, -10, 10, "gfx/hud/JK2ammo_tick5-r", NULL_HANDLE},
-	{68, 28, -10, 10, "gfx/hud/JK2ammo_tick6-r", NULL_HANDLE},
-	{69, 34, -10, 10, "gfx/hud/JK2ammo_tick7-r", NULL_HANDLE},
+	{ 47, 11, -10, 10, "gfx/hud/JK2ammo_tick1-r", NULL_HANDLE },
+	{ 52, 12, -10, 10, "gfx/hud/JK2ammo_tick2-r", NULL_HANDLE },
+	{ 58, 15, -10, 10, "gfx/hud/JK2ammo_tick3-r", NULL_HANDLE },
+	{ 62, 19, -10, 10, "gfx/hud/JK2ammo_tick4-r", NULL_HANDLE },
+	{ 66, 23, -10, 10, "gfx/hud/JK2ammo_tick5-r", NULL_HANDLE },
+	{ 68, 28, -10, 10, "gfx/hud/JK2ammo_tick6-r", NULL_HANDLE },
+	{ 69, 34, -10, 10, "gfx/hud/JK2ammo_tick7-r", NULL_HANDLE },
 };
 
 const char* mishapTics[MAX_HUD_TICS] =
@@ -4783,10 +4783,10 @@ typedef struct
 
 veh_damage_t vehDamageData[4] =
 {
-	{"vehicle_front",SHIPSURF_DAMAGE_FRONT_HEAVY,SHIPSURF_DAMAGE_FRONT_LIGHT},
-	{"vehicle_back",SHIPSURF_DAMAGE_BACK_HEAVY,SHIPSURF_DAMAGE_BACK_LIGHT},
-	{"vehicle_left",SHIPSURF_DAMAGE_LEFT_HEAVY,SHIPSURF_DAMAGE_LEFT_LIGHT},
-	{"vehicle_right",SHIPSURF_DAMAGE_RIGHT_HEAVY,SHIPSURF_DAMAGE_RIGHT_LIGHT},
+	{ "vehicle_front",SHIPSURF_DAMAGE_FRONT_HEAVY,SHIPSURF_DAMAGE_FRONT_LIGHT },
+	{ "vehicle_back",SHIPSURF_DAMAGE_BACK_HEAVY,SHIPSURF_DAMAGE_BACK_LIGHT },
+	{ "vehicle_left",SHIPSURF_DAMAGE_LEFT_HEAVY,SHIPSURF_DAMAGE_LEFT_LIGHT },
+	{ "vehicle_right",SHIPSURF_DAMAGE_RIGHT_HEAVY,SHIPSURF_DAMAGE_RIGHT_LIGHT },
 };
 
 // Draw health graphic for given part of vehicle
@@ -6755,6 +6755,13 @@ static void CG_DrawLagometer(void)
 
 void CG_DrawSiegeMessage(const char* str, const int objective_screen)
 {
+	if (CG_SiegeMissionsTFFA())
+	{
+		// SJE (2026-10-16): siege missions in Team FFA - no siege menus, the message is printed on screen
+		CG_DrawSiegeMessageNonMenu(str);
+		return;
+	}
+
 	//	if (!( trap->Key_GetCatcher() & KEYCATCH_UI ))
 	{
 		trap->OpenUIMenu(UIMENU_CLOSEALL);
@@ -11941,6 +11948,8 @@ static void CG_Draw2D(void)
 	{
 		CG_DrawWarmup();
 	}
+
+	CG_DrawSiegeMissionObjectives(); // SJE (2026-10-16): siege missions in Team FFA
 
 	if (cgSiegeRoundState)
 	{

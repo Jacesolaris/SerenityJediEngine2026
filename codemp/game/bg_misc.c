@@ -184,35 +184,35 @@ int forceMasteryPoints[NUM_FORCE_MASTERY_LEVELS] =
 
 int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS] = //0 == neutral
 {
-	{0, 2, 4, 6}, // Heal			// FP_HEAL
-	{0, 2, 4, 6}, // Jump			//FP_LEVITATION,//hold/duration
-	{0, 2, 4, 6}, // Speed		//FP_SPEED,//duration
-	{0, 1, 3, 6}, // Push			//FP_PUSH,//hold/duration
-	{0, 1, 3, 6}, // Pull			//FP_PULL,//hold/duration
-	{0, 4, 6, 8}, // Mind Trick	//FP_TELEPATHY,//instant
-	{0, 1, 3, 6}, // Grip			//FP_GRIP,//hold/duration
-	{0, 2, 5, 8}, // Lightning	//FP_LIGHTNING,//hold/duration
-	{0, 4, 6, 8}, // Dark Rage	//FP_RAGE,//duration
-	{0, 2, 5, 8}, // Protection	//FP_PROTECT,//duration
-	{0, 1, 3, 6}, // Absorb		//FP_ABSORB,//duration
-	{0, 1, 3, 6}, // Team Heal	//FP_TEAM_HEAL,//instant
-	{0, 1, 3, 6}, // Team Force	//FP_TEAM_FORCE,//instant
-	{0, 2, 4, 6}, // Drain		//FP_DRAIN,//hold/duration
-	{0, 2, 5, 8}, // Sight		//FP_SEE,//duration
-	{0, 1, 5, 8}, // Saber Attack	//FP_SABER_OFFENSE,
-	{0, 1, 5, 8}, // Saber Defend	//FP_SABER_DEFENSE,
-	{0, 2, 6, 8}, // Saber Throw	//FP_SABERTHROW,
+	{ 0, 2, 4, 6 }, // Heal			// FP_HEAL
+	{ 0, 2, 4, 6 }, // Jump			//FP_LEVITATION,//hold/duration
+	{ 0, 2, 4, 6 }, // Speed		//FP_SPEED,//duration
+	{ 0, 1, 3, 6 }, // Push			//FP_PUSH,//hold/duration
+	{ 0, 1, 3, 6 }, // Pull			//FP_PULL,//hold/duration
+	{ 0, 4, 6, 8 }, // Mind Trick	//FP_TELEPATHY,//instant
+	{ 0, 1, 3, 6 }, // Grip			//FP_GRIP,//hold/duration
+	{ 0, 2, 5, 8 }, // Lightning	//FP_LIGHTNING,//hold/duration
+	{ 0, 4, 6, 8 }, // Dark Rage	//FP_RAGE,//duration
+	{ 0, 2, 5, 8 }, // Protection	//FP_PROTECT,//duration
+	{ 0, 1, 3, 6 }, // Absorb		//FP_ABSORB,//duration
+	{ 0, 1, 3, 6 }, // Team Heal	//FP_TEAM_HEAL,//instant
+	{ 0, 1, 3, 6 }, // Team Force	//FP_TEAM_FORCE,//instant
+	{ 0, 2, 4, 6 }, // Drain		//FP_DRAIN,//hold/duration
+	{ 0, 2, 5, 8 }, // Sight		//FP_SEE,//duration
+	{ 0, 1, 5, 8 }, // Saber Attack	//FP_SABER_OFFENSE,
+	{ 0, 1, 5, 8 }, // Saber Defend	//FP_SABER_DEFENSE,
+	{ 0, 2, 6, 8 }, // Saber Throw	//FP_SABERTHROW,
 	// the SP powers ported to MP (2026-10-12): as the MP power they are closest to
-	{0, 2, 4, 6}, // Stasis		//FP_STASIS
-	{0, 2, 5, 8}, // Destruction	//FP_DESTRUCTION
-	{0, 1, 3, 6}, // Grasp		//FP_GRASP (as grip)
-	{0, 1, 3, 6}, // Repulse	//FP_REPULSE (as push)
-	{0, 2, 5, 8}, // Lightning Strike //FP_LIGHTNING_STRIKE (as lightning)
-	{0, 2, 4, 6}, // Fear		//FP_FEAR
-	{0, 2, 5, 8}, // Deadly Sight //FP_DEADLYSIGHT
-	{0, 1, 3, 6}, // Blast		//FP_BLAST
-	{0, 2, 5, 8}, // Insanity	//FP_INSANITY
-	{0, 2, 4, 6}  // Blinding	//FP_BLINDING
+	{ 0, 2, 4, 6 }, // Stasis		//FP_STASIS
+	{ 0, 2, 5, 8 }, // Destruction	//FP_DESTRUCTION
+	{ 0, 1, 3, 6 }, // Grasp		//FP_GRASP (as grip)
+	{ 0, 1, 3, 6 }, // Repulse	//FP_REPULSE (as push)
+	{ 0, 2, 5, 8 }, // Lightning Strike //FP_LIGHTNING_STRIKE (as lightning)
+	{ 0, 2, 4, 6 }, // Fear		//FP_FEAR
+	{ 0, 2, 5, 8 }, // Deadly Sight //FP_DEADLYSIGHT
+	{ 0, 1, 3, 6 }, // Blast		//FP_BLAST
+	{ 0, 2, 5, 8 }, // Insanity	//FP_INSANITY
+	{ 0, 2, 4, 6 }  // Blinding	//FP_BLINDING
 	//NUM_FORCE_POWERS
 };
 
@@ -1844,7 +1844,7 @@ Don't place this
 {
 	"weapon_repeater",
 	"sound/weapons/w_pkup.wav",
-	{"models/weapons2/heavy_repeater/heavy_repeater_w.glm", 0, 0, 0},
+	{ "models/weapons2/heavy_repeater/heavy_repeater_w.glm", 0, 0, 0 },
 	/* view */ "models/weapons2/heavy_repeater/heavy_repeater.md3",
 	/* icon */ "gfx/hud/w_icon_repeater",
 	/* pickup */ //	"Imperial Heavy Repeater",
@@ -2331,7 +2331,7 @@ Only in One Flag CTF games
 },
 
 // end of list marker
-{NULL}
+{ NULL }
 };
 
 int bg_numItems = sizeof bg_itemlist / sizeof bg_itemlist[0] - 1;

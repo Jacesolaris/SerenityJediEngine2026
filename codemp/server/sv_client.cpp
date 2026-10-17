@@ -1386,16 +1386,16 @@ using ucmd_t = struct ucmd_s
 };
 
 static ucmd_t ucmds[] = {
-	{"userinfo", SV_UpdateUserinfo_f},
-	{"disconnect", SV_Disconnect_f},
-	{"cp", SV_VerifyPaks_f},
-	{"vdr", SV_ResetPureClient_f},
-	{"download", SV_BeginDownload_f},
-	{"nextdl", SV_NextDownload_f},
-	{"stopdl", SV_StopDownload_f},
-	{"donedl", SV_DoneDownload_f},
+	{ "userinfo", SV_UpdateUserinfo_f },
+	{ "disconnect", SV_Disconnect_f },
+	{ "cp", SV_VerifyPaks_f },
+	{ "vdr", SV_ResetPureClient_f },
+	{ "download", SV_BeginDownload_f },
+	{ "nextdl", SV_NextDownload_f },
+	{ "stopdl", SV_StopDownload_f },
+	{ "donedl", SV_DoneDownload_f },
 
-	{nullptr, nullptr}
+	{ nullptr, nullptr }
 };
 
 /*

@@ -43,7 +43,7 @@ stringID_table_t TeamTable[] =
 	ENUM2STRING(NPCTEAM_NEUTRAL),
 	// most droids are team_neutral, there are some exceptions like Probe,Seeker,Interrogator
 	ENUM2STRING(NPCTEAM_SOLO),
-	{"", -1}
+	{ "", -1 }
 };
 
 // this list was made using the model directories, this MUST be in the same order as the CLASS_ enum in teams.h
@@ -125,8 +125,8 @@ stringID_table_t ClassTable[] =
 	ENUM2STRING(CLASS_VADER),
 	ENUM2STRING(CLASS_SITHLORD),
 	ENUM2STRING(CLASS_OBJECT),
-	{"CLASS_GALAK_MECH", CLASS_GALAKMECH},
-	{"", -1}
+	{ "CLASS_GALAK_MECH", CLASS_GALAKMECH },
+	{ "", -1 }
 };
 
 stringID_table_t BSTable[] =
@@ -151,7 +151,7 @@ stringID_table_t BSTable[] =
 	ENUM2STRING(BS_INVESTIGATE),
 	ENUM2STRING(BS_HUNT_AND_KILL),
 	ENUM2STRING(BS_FOLLOW_OVERRIDE), //# Follow your leader and shoot any enemies you come across
-	{"", -1},
+	{ "", -1 },
 };
 
 #define stringIDExpand(str, strEnum)	{str, strEnum}, ENUM2STRING(strEnum)
@@ -175,7 +175,7 @@ stringID_table_t BSETTable[] =
 	ENUM2STRING(BSET_FFIRE), //# script to run when player shoots their own teammates
 	ENUM2STRING(BSET_FFDEATH), //# script to run when player kills a teammate
 	stringIDExpand("", BSET_INVALID),
-	{"", -1},
+	{ "", -1 },
 };
 
 extern stringID_table_t WPTable[];
@@ -3392,15 +3392,17 @@ qboolean NPC_ParseParms(const char* npc_name, gentity_t* npc)
 					SkipRestOfLine(&p);
 					continue;
 				}
-				//cap
-				if (n < 0)
+				//cap - as SP (2026-10-15): every style up to SS_BLASTER; each line adds a known style
+				// (client->saberStylesKnown, G_ValidSaberStyle) and the last one is the starting style
+				if (n > SS_BLASTER)
 				{
-					n = 0;
+					n = SS_BLASTER;
 				}
-				else if (n > 5)
+				else if (n < SS_FAST)
 				{
-					n = 5;
+					n = SS_FAST;
 				}
+				npc->client->saberStylesKnown |= 1 << n;
 				npc->client->ps.fd.saberAnimLevel = n;
 				continue;
 			}

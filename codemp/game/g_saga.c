@@ -77,6 +77,21 @@ void SetTeamQuick(const gentity_t* ent, const int team, const qboolean doBegin);
 static char gParseObjectives[MAX_SIEGE_INFO_SIZE];
 char gObjectiveCfgStr[1024];
 
+// SJE (2026-10-16): siege missions in Team FFA (g_siegeMissions): a siege map played in Team FFA runs its mission -
+// the .siege objectives, the objective entities, siege items, the siege spawn points (forward spawns included), team
+// locked triggers / doors / objectives and the round begin / round over targets - without the siege class menu,
+// classes, respawn waves, the mission timer or team switching. Siege team 1 is red, team 2 blue.
+qboolean G_SiegeMissionsTFFA(void)
+{
+	return level.gametype == GT_TEAM && g_siegeMissions.integer && siege_valid ? qtrue : qfalse;
+}
+
+// The siege mission rules are on: Siege, or a siege map in Team FFA with g_siegeMissions
+qboolean G_SiegeMissionRules(void)
+{
+	return level.gametype == GT_SIEGE || G_SiegeMissionsTFFA() ? qtrue : qfalse;
+}
+
 //go through all classes on a team and register their
 //weapons and items for precaching.
 static void G_SiegeRegisterWeaponsAndHoldables(const int team)
@@ -141,7 +156,10 @@ void InitSiegeMode(void)
 
 	objective[0] = '\0';
 
-	if (level.gametype != GT_SIEGE)
+	// SJE (2026-10-16): siege missions in Team FFA - the mission only (no classes, timer or team switching)
+	const qboolean missionsTFFA = level.gametype == GT_TEAM && g_siegeMissions.integer ? qtrue : qfalse;
+
+	if (level.gametype != GT_SIEGE && !missionsTFFA)
 	{
 		goto failure;
 	}
@@ -150,7 +168,7 @@ void InitSiegeMode(void)
 	SiegeSetCompleteData(0);
 
 	//get pers data in case it existed from last level
-	if (g_siegeTeamSwitch.integer)
+	if (g_siegeTeamSwitch.integer && !missionsTFFA)
 	{
 		trap->SiegePersGet(&g_siegePersistant);
 		if (g_siegePersistant.beatingTime)
@@ -248,7 +266,7 @@ void InitSiegeMode(void)
 		{
 			rebel_goals_required = atoi(goalreq);
 		}
-		if (BG_SiegeGetPairedValue(gParseObjectives, "Timed", goalreq))
+		if (!missionsTFFA && BG_SiegeGetPairedValue(gParseObjectives, "Timed", goalreq)) // no mission timer in Team FFA
 		{
 			rebel_time_limit = atoi(goalreq) * 1000;
 			if (g_siegeTeamSwitch.integer &&
@@ -278,7 +296,7 @@ void InitSiegeMode(void)
 		{
 			imperial_goals_required = atoi(goalreq);
 		}
-		if (BG_SiegeGetPairedValue(gParseObjectives, "Timed", goalreq))
+		if (!missionsTFFA && BG_SiegeGetPairedValue(gParseObjectives, "Timed", goalreq)) // no mission timer in Team FFA
 		{
 			if (rebel_time_limit)
 			{
@@ -305,29 +323,32 @@ void InitSiegeMode(void)
 		}
 	}
 
-	//Load the player class types
-	BG_SiegeLoadClasses(NULL);
-
-	if (!bgNumSiegeClasses)
+	if (!missionsTFFA) // SJE (2026-10-16): no siege classes in Team FFA
 	{
-		//We didn't find any?!
-		trap->Error(ERR_DROP, "Couldn't find any player classes for Siege");
-	}
+		//Load the player class types
+		BG_SiegeLoadClasses(NULL);
 
-	//Now load the teams since we have class data.
-	BG_SiegeLoadTeams();
+		if (!bgNumSiegeClasses)
+		{
+			//We didn't find any?!
+			trap->Error(ERR_DROP, "Couldn't find any player classes for Siege");
+		}
 
-	if (!bgNumSiegeTeams)
-	{
-		//React same as with classes.
-		trap->Error(ERR_DROP, "Couldn't find any player teams for Siege");
+		//Now load the teams since we have class data.
+		BG_SiegeLoadTeams();
+
+		if (!bgNumSiegeTeams)
+		{
+			//React same as with classes.
+			trap->Error(ERR_DROP, "Couldn't find any player teams for Siege");
+		}
 	}
 
 	//Get and set the team themes for each team. This will control which classes can be
 	//used on each team.
 	if (BG_SiegeGetValueGroup(siege_info, team1, gParseObjectives))
 	{
-		if (BG_SiegeGetPairedValue(gParseObjectives, "UseTeam", goalreq))
+		if (!missionsTFFA && BG_SiegeGetPairedValue(gParseObjectives, "UseTeam", goalreq))
 		{
 			BG_SiegeSetTeamTheme(SIEGETEAM_TEAM1, goalreq);
 		}
@@ -344,7 +365,7 @@ void InitSiegeMode(void)
 	}
 	if (BG_SiegeGetValueGroup(siege_info, team2, gParseObjectives))
 	{
-		if (BG_SiegeGetPairedValue(gParseObjectives, "UseTeam", goalreq))
+		if (!missionsTFFA && BG_SiegeGetPairedValue(gParseObjectives, "UseTeam", goalreq))
 		{
 			BG_SiegeSetTeamTheme(SIEGETEAM_TEAM2, goalreq);
 		}
@@ -379,12 +400,15 @@ void InitSiegeMode(void)
 	//And finally set the actual config string
 	trap->SetConfigstring(CS_SIEGE_OBJECTIVES, gObjectiveCfgStr);
 
-	//precache saber data for classes that use sabers on both teams
-	BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM1);
-	BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM2);
+	if (!missionsTFFA) // SJE (2026-10-16): no siege classes in Team FFA
+	{
+		//precache saber data for classes that use sabers on both teams
+		BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM1);
+		BG_PrecacheSabersForSiegeTeam(SIEGETEAM_TEAM2);
 
-	G_SiegeRegisterWeaponsAndHoldables(SIEGETEAM_TEAM1);
-	G_SiegeRegisterWeaponsAndHoldables(SIEGETEAM_TEAM2);
+		G_SiegeRegisterWeaponsAndHoldables(SIEGETEAM_TEAM1);
+		G_SiegeRegisterWeaponsAndHoldables(SIEGETEAM_TEAM2);
+	}
 
 	return;
 
@@ -691,6 +715,18 @@ static void SiegeRoundComplete(const int winningteam, int winningclient)
 
 	AddSiegeWinningTeamPoints(winningteam, winningclient);
 
+	if (G_SiegeMissionsTFFA())
+	{
+		// SJE (2026-10-16): Team FFA is won on team score - the team that completed the mission wins the match
+		const int losingteam = winningteam == SIEGETEAM_TEAM1 ? SIEGETEAM_TEAM2 : SIEGETEAM_TEAM1;
+
+		if (level.teamScores[winningteam] <= level.teamScores[losingteam])
+		{
+			level.teamScores[winningteam] = level.teamScores[losingteam] + 1;
+		}
+		CalculateRanks();
+	}
+
 	//Instead of exiting like this, fire off a target, and let it handle things.
 	//Can be a script or whatever the designer wants.
 	if (winningteam == SIEGETEAM_TEAM1)
@@ -881,7 +917,7 @@ static void SiegeBeginRound(const int entNum)
 	//entNum is just used as something to fire targets from.
 	char targname[1024];
 
-	if (!g_preroundState)
+	if (!g_preroundState && !G_SiegeMissionsTFFA()) // SJE (2026-10-16): nobody is respawned in Team FFA
 	{
 		//if players are not ingame on round start then respawn them now
 		int i = 0;
@@ -936,6 +972,18 @@ void SiegeCheckTimers(void)
 	int i = 0;
 	int num_team1 = 0;
 	int num_team2 = 0;
+
+	if (G_SiegeMissionsTFFA())
+	{
+		// SJE (2026-10-16): siege missions in Team FFA - no mission timer and no "waiting for players" countdown: the
+		// mission begins a moment after the map starts (the round begin target fires, nobody is respawned)
+		if (!gSiegeRoundBegun && !gSiegeRoundEnded && !level.intermissiontime && level.time > level.startTime + 1000)
+		{
+			gSiegeRoundBegun = qtrue;
+			SiegeBeginRound(MAX_CLIENTS);
+		}
+		return;
+	}
 
 	if (level.gametype != GT_SIEGE)
 	{
@@ -1188,7 +1236,7 @@ void SP_info_siege_objective(gentity_t* ent)
 {
 	char* s;
 
-	if (!siege_valid || level.gametype != GT_SIEGE)
+	if (!siege_valid || !G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		G_FreeEntity(ent);
 		return;
@@ -1256,7 +1304,7 @@ void SP_info_siege_radaricon(gentity_t* ent)
 	char* s;
 	int i;
 
-	if (!siege_valid || level.gametype != GT_SIEGE)
+	if (!siege_valid || !G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		G_FreeEntity(ent);
 		return;
@@ -1362,7 +1410,7 @@ static void decompTriggerUse(const gentity_t* ent, gentity_t* other, gentity_t* 
 */
 void SP_info_siege_decomplete(gentity_t* ent)
 {
-	if (!siege_valid || level.gametype != GT_SIEGE)
+	if (!siege_valid || !G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		G_FreeEntity(ent);
 		return;
@@ -1390,7 +1438,7 @@ Do a logexit for siege when used.
 */
 void SP_target_siege_end(gentity_t* ent)
 {
-	if (!siege_valid || level.gametype != GT_SIEGE)
+	if (!siege_valid || !G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		G_FreeEntity(ent);
 		return;
@@ -1851,7 +1899,7 @@ void SP_misc_siege_item(gentity_t* ent)
 	int noradar;
 	char* s;
 
-	if (!siege_valid || level.gametype != GT_SIEGE)
+	if (!siege_valid || !G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		G_FreeEntity(ent);
 		return;

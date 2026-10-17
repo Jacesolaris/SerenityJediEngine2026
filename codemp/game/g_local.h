@@ -793,6 +793,8 @@ struct gclient_s
 
 	int saberCycleQueue;
 	int saberBlasterLockEnemy; // SS_BLASTER (2026-10-14): saberlock enemy before this Pmove (lock shot target)
+	int saberStylesKnown; // (2026-10-15) 1 << SS_ bit per saber style this NPC / bot may use (NPC file saberStyle lines,
+	// bot class); 0 = no limit. As SP ps.saberStylesKnown - checked by G_ValidSaberStyle
 
 	int legsAnimExecute;
 	int torsoAnimExecute;
@@ -1939,6 +1941,8 @@ void QDECL G_ClearClientLog(int client);
 
 // g_siege.c
 void InitSiegeMode(void);
+qboolean G_SiegeMissionsTFFA(void); // SJE (2026-10-16): siege missions in Team FFA (g_saga.c)
+qboolean G_SiegeMissionRules(void);
 void G_SiegeClientExData(const gentity_t* msg_targ);
 
 // g_timer

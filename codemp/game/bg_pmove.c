@@ -18278,6 +18278,18 @@ static void BG_G2ClientNeckAngles(void* ghoul2, const int time, const vec3_t loo
 }
 
 //rww - Finally decided to convert all this stuff to BG form.
+// SS_BLASTER (2026-10-16): BOTH_PULL_IMPALE_STAB is the SS_BLASTER top-to-bottom swing, an ordinary attack there: it keeps
+// the motion bone correction (as in SP), without it the torso followed the anim's own body turn and twisted to the right.
+// Everywhere else (the real pull-stab special) it counts as a special attack as before.
+static qboolean BG_SpecialAttackNoMotionComp(const entityState_t* cent, const int anim)
+{
+	if (anim == BOTH_PULL_IMPALE_STAB && cent->fireflag == SS_BLASTER)
+	{
+		return qfalse;
+	}
+	return PM_SaberInSpecialAttack(anim);
+}
+
 static void BG_G2ClientSpineAngles(void* ghoul2, const int motionBolt, vec3_t cent_lerpOrigin, vec3_t cent_lerpAngles,
 	entityState_t* cent,
 	int time, vec3_t viewAngles, int ciLegs, int ciTorso, const vec3_t angles,
@@ -18309,8 +18321,8 @@ static void BG_G2ClientSpineAngles(void* ghoul2, const int motionBolt, vec3_t ce
 		!BG_InRollES(cent, cent->legsAnim) &&
 		!BG_InRollAnim(cent) &&
 		!PM_SaberInSpecial(cent->saberMove) &&
-		!PM_SaberInSpecialAttack(cent->torsoAnim) &&
-		!PM_SaberInSpecialAttack(cent->legsAnim) &&
+		!BG_SpecialAttackNoMotionComp(cent, cent->torsoAnim) &&
+		!BG_SpecialAttackNoMotionComp(cent, cent->legsAnim) &&
 
 		!BG_InKnockDown(cent->torsoAnim) &&
 		!BG_InKnockDown(cent->legsAnim) &&
@@ -18324,8 +18336,8 @@ static void BG_G2ClientSpineAngles(void* ghoul2, const int motionBolt, vec3_t ce
 		!PM_InSpecialJump(ciTorso) &&
 		!BG_InDeathAnim(ciLegs) &&
 		!BG_InDeathAnim(ciTorso) &&
-		!PM_SaberInSpecialAttack(ciTorso) &&
-		!PM_SaberInSpecialAttack(ciLegs) &&
+		!BG_SpecialAttackNoMotionComp(cent, ciTorso) &&
+		!BG_SpecialAttackNoMotionComp(cent, ciLegs) &&
 
 		!(cent->eFlags & EF_DEAD) &&
 		cent->legsAnim != cent->torsoAnim &&

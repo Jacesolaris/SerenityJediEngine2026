@@ -651,6 +651,50 @@ static void G_DeathAlert(const gentity_t* victim, gentity_t* attacker)
 	G_AlertTeam(victim, attacker, DEATH_ALERT_RADIUS, DEATH_ALERT_SOUND_RADIUS);
 }
 
+// SJE probe wreck (2026-10-16): a destroyed probe droid leaves its burnt wreck (SJE's
+// models/map_objects/imp_mine/probedestroyed.md3) on the floor below it, not solid, removed after
+// g_corpseRemovalTime seconds like a body (0 = it stays). Nothing when there is no floor below (a pit, the sky).
+constexpr auto PROBE_WRECK_MODEL = "models/map_objects/imp_mine/probedestroyed.md3";
+extern cvar_t* g_corpseRemovalTime;
+
+static void G_SpawnProbeWreck(const gentity_t* ent)
+{
+	trace_t tr;
+	vec3_t start, end;
+
+	VectorCopy(ent->currentOrigin, start);
+	start[2] += 16;
+	VectorCopy(start, end);
+	end[2] -= 1024;
+	gi.trace(&tr, start, nullptr, nullptr, end, ent->s.number, MASK_SOLID, static_cast<EG2_Collision>(0), 0);
+	if (tr.startsolid || tr.allsolid || tr.fraction >= 1.0f)
+	{
+		return;
+	}
+
+	gentity_t* wreck = G_Spawn();
+	if (!wreck)
+	{
+		return;
+	}
+	wreck->classname = "probe_wreck";
+	wreck->s.eType = ET_GENERAL;
+	wreck->s.modelindex = G_ModelIndex(PROBE_WRECK_MODEL);
+	VectorSet(wreck->mins, -24, -24, 0);
+	VectorSet(wreck->maxs, 24, 24, 32);
+	wreck->contents = 0;
+	wreck->clipmask = 0;
+	G_SetOrigin(wreck, tr.endpos);
+	const vec3_t angles = { 0, ent->currentAngles[YAW], 0 };
+	G_SetAngles(wreck, angles);
+	if (g_corpseRemovalTime->integer > 0)
+	{
+		wreck->e_ThinkFunc = thinkF_G_FreeEntity;
+		wreck->nextthink = level.time + g_corpseRemovalTime->integer * 1000;
+	}
+	gi.linkentity(wreck);
+}
+
 /*
 ----------------------------------------
 DeathFX
@@ -695,6 +739,7 @@ void DeathFX(const gentity_t* ent)
 		VectorCopy(ent->currentOrigin, effect_pos);
 		effect_pos[2] += 50;
 		G_PlayEffect("explosions/probeexplosion1", effect_pos);
+		G_SpawnProbeWreck(ent); // SJE probe wreck (2026-10-16)
 		break;
 
 	case CLASS_ATST:

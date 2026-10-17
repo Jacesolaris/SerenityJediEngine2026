@@ -230,125 +230,125 @@ static datpadmovedata_t datapadMoveData[MD_MOVE_TITLE_MAX][MAX_MOVES] =
 {
 	{
 		// Acrobatics
-		{"@MENUS_FORCE_JUMP1", "@MENUS_FORCE_JUMP1_DESC", "BOTH_FORCEJUMP1", MDS_FORCE_JUMP},
-		{"@MENUS_FORCE_FLIP", "@MENUS_FORCE_FLIP_DESC", "BOTH_FLIP_F", MDS_FORCE_JUMP},
-		{"@MENUS_ROLL", "@MENUS_ROLL_DESC", "BOTH_ROLL_F", MDS_ROLL},
-		{"@MENUS_BACKFLIP_OFF_WALL", "@MENUS_BACKFLIP_OFF_WALL_DESC", "BOTH_WALL_FLIP_BACK1", MDS_FORCE_JUMP},
-		{"@MENUS_SIDEFLIP_OFF_WALL", "@MENUS_SIDEFLIP_OFF_WALL_DESC", "BOTH_WALL_FLIP_RIGHT", MDS_FORCE_JUMP},
-		{"@MENUS_WALL_RUN", "@MENUS_WALL_RUN_DESC", "BOTH_WALL_RUN_RIGHT", MDS_FORCE_JUMP},
-		{"@MENUS_LONG_JUMP", "@MENUS_LONG_JUMP_DESC", "BOTH_FORCELONGLEAP_START", MDS_FORCE_JUMP},
-		{"@MENUS_WALL_GRAB_JUMP", "@MENUS_WALL_GRAB_JUMP_DESC", "BOTH_FORCEWALLREBOUND_FORWARD", MDS_FORCE_JUMP},
+		{ "@MENUS_FORCE_JUMP1", "@MENUS_FORCE_JUMP1_DESC", "BOTH_FORCEJUMP1", MDS_FORCE_JUMP },
+		{ "@MENUS_FORCE_FLIP", "@MENUS_FORCE_FLIP_DESC", "BOTH_FLIP_F", MDS_FORCE_JUMP },
+		{ "@MENUS_ROLL", "@MENUS_ROLL_DESC", "BOTH_ROLL_F", MDS_ROLL },
+		{ "@MENUS_BACKFLIP_OFF_WALL", "@MENUS_BACKFLIP_OFF_WALL_DESC", "BOTH_WALL_FLIP_BACK1", MDS_FORCE_JUMP },
+		{ "@MENUS_SIDEFLIP_OFF_WALL", "@MENUS_SIDEFLIP_OFF_WALL_DESC", "BOTH_WALL_FLIP_RIGHT", MDS_FORCE_JUMP },
+		{ "@MENUS_WALL_RUN", "@MENUS_WALL_RUN_DESC", "BOTH_WALL_RUN_RIGHT", MDS_FORCE_JUMP },
+		{ "@MENUS_LONG_JUMP", "@MENUS_LONG_JUMP_DESC", "BOTH_FORCELONGLEAP_START", MDS_FORCE_JUMP },
+		{ "@MENUS_WALL_GRAB_JUMP", "@MENUS_WALL_GRAB_JUMP_DESC", "BOTH_FORCEWALLREBOUND_FORWARD", MDS_FORCE_JUMP },
 		{
 			"@MENUS_RUN_UP_WALL_BACKFLIP", "@MENUS_RUN_UP_WALL_BACKFLIP_DESC", "BOTH_FORCEWALLRUNFLIP_START",
 			MDS_FORCE_JUMP
 		},
-		{"@MENUS_JUMPUP_FROM_KNOCKDOWN", "@MENUS_JUMPUP_FROM_KNOCKDOWN_DESC", "BOTH_KNOCKDOWN3", MDS_NONE},
-		{"@MENUS_JUMPKICK_FROM_KNOCKDOWN", "@MENUS_JUMPKICK_FROM_KNOCKDOWN_DESC", "BOTH_KNOCKDOWN2", MDS_NONE},
-		{"@MENUS_ROLL_FROM_KNOCKDOWN", "@MENUS_ROLL_FROM_KNOCKDOWN_DESC", "BOTH_KNOCKDOWN1", MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
+		{ "@MENUS_JUMPUP_FROM_KNOCKDOWN", "@MENUS_JUMPUP_FROM_KNOCKDOWN_DESC", "BOTH_KNOCKDOWN3", MDS_NONE },
+		{ "@MENUS_JUMPKICK_FROM_KNOCKDOWN", "@MENUS_JUMPKICK_FROM_KNOCKDOWN_DESC", "BOTH_KNOCKDOWN2", MDS_NONE },
+		{ "@MENUS_ROLL_FROM_KNOCKDOWN", "@MENUS_ROLL_FROM_KNOCKDOWN_DESC", "BOTH_KNOCKDOWN1", MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
 	},
 
 	{
 		//Single Saber, Fast Style
-		{"@MENUS_STAB_BACK", "@MENUS_STAB_BACK_DESC", "BOTH_A2_STABBACK1", MDS_SABER},
-		{"@MENUS_LUNGE_ATTACK", "@MENUS_LUNGE_ATTACK_DESC", "BOTH_LUNGE2_B__T_", MDS_SABER},
-		{"@MENUS_FORCE_PULL_IMPALE", "@MENUS_FORCE_PULL_IMPALE_DESC", "BOTH_PULL_IMPALE_STAB", MDS_SABER},
-		{"@MENUS_FAST_ATTACK_KATA", "@MENUS_FAST_ATTACK_KATA_DESC", "BOTH_A1_SPECIAL", MDS_SABER},
-		{"@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN", MDS_FORCE_JUMP},
-		{"@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP},
-		{"@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
+		{ "@MENUS_STAB_BACK", "@MENUS_STAB_BACK_DESC", "BOTH_A2_STABBACK1", MDS_SABER },
+		{ "@MENUS_LUNGE_ATTACK", "@MENUS_LUNGE_ATTACK_DESC", "BOTH_LUNGE2_B__T_", MDS_SABER },
+		{ "@MENUS_FORCE_PULL_IMPALE", "@MENUS_FORCE_PULL_IMPALE_DESC", "BOTH_PULL_IMPALE_STAB", MDS_SABER },
+		{ "@MENUS_FAST_ATTACK_KATA", "@MENUS_FAST_ATTACK_KATA_DESC", "BOTH_A1_SPECIAL", MDS_SABER },
+		{ "@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN", MDS_FORCE_JUMP },
+		{ "@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP },
+		{ "@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
 	},
 
 	{
 		//Single Saber, Medium Style
-		{"@MENUS_SLASH_BACK", "@MENUS_SLASH_BACK_DESC", "BOTH_ATTACK_BACK", MDS_SABER},
-		{"@MENUS_FLIP_ATTACK", "@MENUS_FLIP_ATTACK_DESC", "BOTH_JUMPFLIPSLASHDOWN1", MDS_FORCE_JUMP},
-		{"@MENUS_FORCE_PULL_SLASH", "@MENUS_FORCE_PULL_SLASH_DESC", "BOTH_PULL_IMPALE_SWING", MDS_SABER},
-		{"@MENUS_MEDIUM_ATTACK_KATA", "@MENUS_MEDIUM_ATTACK_KATA_DESC", "BOTH_A2_SPECIAL", MDS_SABER},
-		{"@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN", MDS_FORCE_JUMP},
-		{"@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP},
-		{"@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
+		{ "@MENUS_SLASH_BACK", "@MENUS_SLASH_BACK_DESC", "BOTH_ATTACK_BACK", MDS_SABER },
+		{ "@MENUS_FLIP_ATTACK", "@MENUS_FLIP_ATTACK_DESC", "BOTH_JUMPFLIPSLASHDOWN1", MDS_FORCE_JUMP },
+		{ "@MENUS_FORCE_PULL_SLASH", "@MENUS_FORCE_PULL_SLASH_DESC", "BOTH_PULL_IMPALE_SWING", MDS_SABER },
+		{ "@MENUS_MEDIUM_ATTACK_KATA", "@MENUS_MEDIUM_ATTACK_KATA_DESC", "BOTH_A2_SPECIAL", MDS_SABER },
+		{ "@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN", MDS_FORCE_JUMP },
+		{ "@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP },
+		{ "@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
 	},
 
 	{
 		//Single Saber, Strong Style
-		{"@MENUS_SLASH_BACK", "@MENUS_SLASH_BACK_DESC", "BOTH_ATTACK_BACK", MDS_SABER},
-		{"@MENUS_JUMP_ATTACK", "@MENUS_JUMP_ATTACK_DESC", "BOTH_FORCELEAP2_T__B_", MDS_FORCE_JUMP},
-		{"@MENUS_FORCE_PULL_SLASH", "@MENUS_FORCE_PULL_SLASH_DESC", "BOTH_PULL_IMPALE_SWING", MDS_SABER},
-		{"@MENUS_STRONG_ATTACK_KATA", "@MENUS_STRONG_ATTACK_KATA_DESC", "BOTH_A3_SPECIAL", MDS_SABER},
-		{"@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN", MDS_FORCE_JUMP},
-		{"@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP},
-		{"@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
+		{ "@MENUS_SLASH_BACK", "@MENUS_SLASH_BACK_DESC", "BOTH_ATTACK_BACK", MDS_SABER },
+		{ "@MENUS_JUMP_ATTACK", "@MENUS_JUMP_ATTACK_DESC", "BOTH_FORCELEAP2_T__B_", MDS_FORCE_JUMP },
+		{ "@MENUS_FORCE_PULL_SLASH", "@MENUS_FORCE_PULL_SLASH_DESC", "BOTH_PULL_IMPALE_SWING", MDS_SABER },
+		{ "@MENUS_STRONG_ATTACK_KATA", "@MENUS_STRONG_ATTACK_KATA_DESC", "BOTH_A3_SPECIAL", MDS_SABER },
+		{ "@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN", MDS_FORCE_JUMP },
+		{ "@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP },
+		{ "@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
 	},
 
 	{
 		//Dual Sabers
-		{"@MENUS_SLASH_BACK", "@MENUS_SLASH_BACK_DESC", "BOTH_ATTACK_BACK", MDS_SABER},
-		{"@MENUS_FLIP_FORWARD_ATTACK", "@MENUS_FLIP_FORWARD_ATTACK_DESC", "BOTH_JUMPATTACK6", MDS_FORCE_JUMP},
-		{"@MENUS_DUAL_SABERS_TWIRL", "@MENUS_DUAL_SABERS_TWIRL_DESC", "BOTH_SPINATTACK6", MDS_SABER},
-		{"@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN_DUAL", MDS_FORCE_JUMP},
-		{"@MENUS_DUAL_SABER_BARRIER", "@MENUS_DUAL_SABER_BARRIER_DESC", "BOTH_A6_SABERPROTECT", MDS_SABER},
-		{"@MENUS_DUAL_STAB_FRONT_BACK", "@MENUS_DUAL_STAB_FRONT_BACK_DESC", "BOTH_A6_FB", MDS_SABER},
-		{"@MENUS_DUAL_STAB_LEFT_RIGHT", "@MENUS_DUAL_STAB_LEFT_RIGHT_DESC", "BOTH_A6_LR", MDS_SABER},
-		{"@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP},
-		{"@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB_DESC", "BOTH_ROLL_STAB", MDS_SABER},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
+		{ "@MENUS_SLASH_BACK", "@MENUS_SLASH_BACK_DESC", "BOTH_ATTACK_BACK", MDS_SABER },
+		{ "@MENUS_FLIP_FORWARD_ATTACK", "@MENUS_FLIP_FORWARD_ATTACK_DESC", "BOTH_JUMPATTACK6", MDS_FORCE_JUMP },
+		{ "@MENUS_DUAL_SABERS_TWIRL", "@MENUS_DUAL_SABERS_TWIRL_DESC", "BOTH_SPINATTACK6", MDS_SABER },
+		{ "@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN_DUAL", MDS_FORCE_JUMP },
+		{ "@MENUS_DUAL_SABER_BARRIER", "@MENUS_DUAL_SABER_BARRIER_DESC", "BOTH_A6_SABERPROTECT", MDS_SABER },
+		{ "@MENUS_DUAL_STAB_FRONT_BACK", "@MENUS_DUAL_STAB_FRONT_BACK_DESC", "BOTH_A6_FB", MDS_SABER },
+		{ "@MENUS_DUAL_STAB_LEFT_RIGHT", "@MENUS_DUAL_STAB_LEFT_RIGHT_DESC", "BOTH_A6_LR", MDS_SABER },
+		{ "@MENUS_CARTWHEEL", "@MENUS_CARTWHEEL_DESC", "BOTH_ARIAL_RIGHT", MDS_FORCE_JUMP },
+		{ "@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB_DESC", "BOTH_ROLL_STAB", MDS_SABER },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
 	},
 
 	{
 		// Saber Staff
-		{"@MENUS_STAB_BACK", "@MENUS_STAB_BACK_DESC", "BOTH_A2_STABBACK1", MDS_SABER},
-		{"@MENUS_BACK_FLIP_ATTACK", "@MENUS_BACK_FLIP_ATTACK_DESC", "BOTH_JUMPATTACK7", MDS_FORCE_JUMP},
-		{"@MENUS_SABER_STAFF_TWIRL", "@MENUS_SABER_STAFF_TWIRL_DESC", "BOTH_SPINATTACK7", MDS_SABER},
-		{"@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN_STAFF", MDS_FORCE_JUMP},
-		{"@MENUS_SPINNING_KATA", "@MENUS_SPINNING_KATA_DESC", "BOTH_A7_SOULCAL", MDS_SABER},
-		{"@MENUS_KICK1", "@MENUS_KICK1_DESC", "BOTH_A7_KICK_F", MDS_FORCE_JUMP},
-		{"@MENUS_JUMP_KICK", "@MENUS_JUMP_KICK_DESC", "BOTH_A7_KICK_F_AIR", MDS_FORCE_JUMP},
-		{"@MENUS_SPLIT_KICK", "@MENUS_SPLIT_KICK_DESC", "BOTH_A7_KICK_RL", MDS_FORCE_JUMP},
-		{"@MENUS_SPIN_KICK", "@MENUS_SPIN_KICK_DESC", "BOTH_A7_KICK_S", MDS_FORCE_JUMP},
-		{"@MENUS_FLIP_KICK", "@MENUS_FLIP_KICK_DESC", "BOTH_A7_KICK_BF", MDS_FORCE_JUMP},
-		{"@MENUS_BUTTERFLY_ATTACK", "@MENUS_BUTTERFLY_ATTACK_DESC", "BOTH_BUTTERFLY_FR1", MDS_SABER},
-		{"@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
-		{nullptr, nullptr, nullptr, MDS_NONE},
+		{ "@MENUS_STAB_BACK", "@MENUS_STAB_BACK_DESC", "BOTH_A2_STABBACK1", MDS_SABER },
+		{ "@MENUS_BACK_FLIP_ATTACK", "@MENUS_BACK_FLIP_ATTACK_DESC", "BOTH_JUMPATTACK7", MDS_FORCE_JUMP },
+		{ "@MENUS_SABER_STAFF_TWIRL", "@MENUS_SABER_STAFF_TWIRL_DESC", "BOTH_SPINATTACK7", MDS_SABER },
+		{ "@MENUS_ATTACK_ENEMYONGROUND", "@MENUS_ATTACK_ENEMYONGROUND_DESC", "BOTH_STABDOWN_STAFF", MDS_FORCE_JUMP },
+		{ "@MENUS_SPINNING_KATA", "@MENUS_SPINNING_KATA_DESC", "BOTH_A7_SOULCAL", MDS_SABER },
+		{ "@MENUS_KICK1", "@MENUS_KICK1_DESC", "BOTH_A7_KICK_F", MDS_FORCE_JUMP },
+		{ "@MENUS_JUMP_KICK", "@MENUS_JUMP_KICK_DESC", "BOTH_A7_KICK_F_AIR", MDS_FORCE_JUMP },
+		{ "@MENUS_SPLIT_KICK", "@MENUS_SPLIT_KICK_DESC", "BOTH_A7_KICK_RL", MDS_FORCE_JUMP },
+		{ "@MENUS_SPIN_KICK", "@MENUS_SPIN_KICK_DESC", "BOTH_A7_KICK_S", MDS_FORCE_JUMP },
+		{ "@MENUS_FLIP_KICK", "@MENUS_FLIP_KICK_DESC", "BOTH_A7_KICK_BF", MDS_FORCE_JUMP },
+		{ "@MENUS_BUTTERFLY_ATTACK", "@MENUS_BUTTERFLY_ATTACK_DESC", "BOTH_BUTTERFLY_FR1", MDS_SABER },
+		{ "@MENUS_BOTH_ROLL_STAB", "@MENUS_BOTH_ROLL_STAB2_DESC", "BOTH_ROLL_STAB", MDS_SABER },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
+		{ nullptr, nullptr, nullptr, MDS_NONE },
 	}
 };
 
@@ -514,87 +514,87 @@ static void UI_Set2DRatio()
 
 static cvarTable_t cvarTable[] =
 {
-	{&ui_menuFiles, "ui_menuFiles", "ui/menus.txt", nullptr, CVAR_ARCHIVE},
+	{ &ui_menuFiles, "ui_menuFiles", "ui/menus.txt", nullptr, CVAR_ARCHIVE },
 
-	{&ui_hudFiles, "cg_hudFiles", "ui/sje-hud.txt", nullptr, CVAR_ARCHIVE},
+	{ &ui_hudFiles, "cg_hudFiles", "ui/sje-hud.txt", nullptr, CVAR_ARCHIVE },
 
-	{&ui_char_anim, "ui_char_anim", "BOTH_MENUIDLE1", nullptr, 0},
+	{ &ui_char_anim, "ui_char_anim", "BOTH_MENUIDLE1", nullptr, 0 },
 
-	{&ui_char_model, "ui_char_model", "", nullptr, 0}, //these are filled in by the "g_*" versions on load
-	{&ui_char_skin_head, "ui_char_skin_head", "", nullptr, 0},
+	{ &ui_char_model, "ui_char_model", "", nullptr, 0 }, //these are filled in by the "g_*" versions on load
+	{ &ui_char_skin_head, "ui_char_skin_head", "", nullptr, 0 },
 	//the "g_*" versions are initialized in UI_Init, ui_atoms.cpp
-	{&ui_char_skin_torso, "ui_char_skin_torso", "", nullptr, 0},
-	{&ui_char_skin_legs, "ui_char_skin_legs", "", nullptr, 0},
+	{ &ui_char_skin_torso, "ui_char_skin_torso", "", nullptr, 0 },
+	{ &ui_char_skin_legs, "ui_char_skin_legs", "", nullptr, 0 },
 
-	{&ui_saber_type, "ui_saber_type", "", nullptr, 0},
-	{&ui_saber, "ui_saber", "", nullptr, 0},
-	{&ui_saber2, "ui_saber2", "", nullptr, 0},
-	{&ui_saber_color, "ui_saber_color", "", nullptr, 0},
-	{&ui_saber2_color, "ui_saber2_color", "", nullptr, 0},
+	{ &ui_saber_type, "ui_saber_type", "", nullptr, 0 },
+	{ &ui_saber, "ui_saber", "", nullptr, 0 },
+	{ &ui_saber2, "ui_saber2", "", nullptr, 0 },
+	{ &ui_saber_color, "ui_saber_color", "", nullptr, 0 },
+	{ &ui_saber2_color, "ui_saber2_color", "", nullptr, 0 },
 
-	{&ui_char_color_red, "ui_char_color_red", "", nullptr, 0},
-	{&ui_char_color_green, "ui_char_color_green", "", nullptr, 0},
-	{&ui_char_color_blue, "ui_char_color_blue", "", nullptr, 0},
+	{ &ui_char_color_red, "ui_char_color_red", "", nullptr, 0 },
+	{ &ui_char_color_green, "ui_char_color_green", "", nullptr, 0 },
+	{ &ui_char_color_blue, "ui_char_color_blue", "", nullptr, 0 },
 
-	{ &ui_char_color_2_red,		"ui_char_color_2_red",	"", nullptr, 0},
-	{ &ui_char_color_2_green,		"ui_char_color_2_green",	"", nullptr, 0},
-	{ &ui_char_color_2_blue,		"ui_char_color_2_blue",	"", nullptr, 0},
+	{ &ui_char_color_2_red,		"ui_char_color_2_red",	"", nullptr, 0 },
+	{ &ui_char_color_2_green,		"ui_char_color_2_green",	"", nullptr, 0 },
+	{ &ui_char_color_2_blue,		"ui_char_color_2_blue",	"", nullptr, 0 },
 
-	{&ui_PrecacheModels, "ui_PrecacheModels", "1", nullptr, CVAR_ARCHIVE},
+	{ &ui_PrecacheModels, "ui_PrecacheModels", "1", nullptr, CVAR_ARCHIVE },
 
-	{&ui_screenshotType, "ui_screenshotType", "jpg", UI_UpdateScreenshot, CVAR_ARCHIVE},
+	{ &ui_screenshotType, "ui_screenshotType", "jpg", UI_UpdateScreenshot, CVAR_ARCHIVE },
 
-	{&ui_rgb_saber_red, "ui_rgb_saber_red", "", nullptr, 0},
-	{&ui_rgb_saber_blue, "ui_rgb_saber_blue", "", nullptr, 0},
-	{&ui_rgb_saber_green, "ui_rgb_saber_green", "", nullptr, 0},
-	{&ui_rgb_saber2_red, "ui_rgb_saber2_red", "", nullptr, 0},
-	{&ui_rgb_saber2_blue, "ui_rgb_saber2_blue", "", nullptr, 0},
-	{&ui_rgb_saber2_green, "ui_rgb_saber2_green", "", nullptr, 0},
+	{ &ui_rgb_saber_red, "ui_rgb_saber_red", "", nullptr, 0 },
+	{ &ui_rgb_saber_blue, "ui_rgb_saber_blue", "", nullptr, 0 },
+	{ &ui_rgb_saber_green, "ui_rgb_saber_green", "", nullptr, 0 },
+	{ &ui_rgb_saber2_red, "ui_rgb_saber2_red", "", nullptr, 0 },
+	{ &ui_rgb_saber2_blue, "ui_rgb_saber2_blue", "", nullptr, 0 },
+	{ &ui_rgb_saber2_green, "ui_rgb_saber2_green", "", nullptr, 0 },
 
-	{ &ui_hilt_color_red,		"ui_hilt_color_red",	"", nullptr, 0},
-	{ &ui_hilt_color_green,		"ui_hilt_color_green",	"", nullptr, 0},
-	{ &ui_hilt_color_blue,		"ui_hilt_color_blue",	"", nullptr, 0},
+	{ &ui_hilt_color_red,		"ui_hilt_color_red",	"", nullptr, 0 },
+	{ &ui_hilt_color_green,		"ui_hilt_color_green",	"", nullptr, 0 },
+	{ &ui_hilt_color_blue,		"ui_hilt_color_blue",	"", nullptr, 0 },
 
-	{ &ui_hilt2_color_red,		"ui_hilt2_color_red",	"", nullptr, 0},
-	{ &ui_hilt2_color_green,	"ui_hilt2_color_green",	"", nullptr, 0},
-	{ &ui_hilt2_color_blue,		"ui_hilt2_color_blue",	"", nullptr, 0},
+	{ &ui_hilt2_color_red,		"ui_hilt2_color_red",	"", nullptr, 0 },
+	{ &ui_hilt2_color_green,	"ui_hilt2_color_green",	"", nullptr, 0 },
+	{ &ui_hilt2_color_blue,		"ui_hilt2_color_blue",	"", nullptr, 0 },
 
-	{&ui_SFXSabers, "cg_SFXSabers", "3", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSize, "cg_SFXSabersGlowSize", "0.6f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSize, "cg_SFXSabersCoreSize", "0.5f", nullptr, CVAR_ARCHIVE},
+	{ &ui_SFXSabers, "cg_SFXSabers", "3", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSize, "cg_SFXSabersGlowSize", "0.6f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSize, "cg_SFXSabersCoreSize", "0.5f", nullptr, CVAR_ARCHIVE },
 
-	{&ui_SFXSabersGlowSizeBF2, "cg_SFXSabersGlowSizeBF2", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeBF2, "cg_SFXSabersCoreSizeBF2", "0.5f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeSFX, "cg_SFXSabersGlowSizeSFX", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeSFX, "cg_SFXSabersCoreSizeSFX", "0.5f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeEP1, "cg_SFXSabersGlowSizeEP1", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeEP1, "cg_SFXSabersCoreSizeEP1", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeEP2, "cg_SFXSabersGlowSizeEP2", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeEP2, "cg_SFXSabersCoreSizeEP2", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeEP3, "cg_SFXSabersGlowSizeEP3", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeEP3, "cg_SFXSabersCoreSizeEP3", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeOT, "cg_SFXSabersGlowSizeOT", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeOT, "cg_SFXSabersCoreSizeOT", "0.9f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeTFA, "cg_SFXSabersGlowSizeTFA", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeTFA, "cg_SFXSabersCoreSizeTFA", "0.8f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersGlowSizeCSM, "cg_SFXSabersGlowSizeCSM", "1.0f", nullptr, CVAR_ARCHIVE},
-	{&ui_SFXSabersCoreSizeCSM, "cg_SFXSabersCoreSizeCSM", "1.0f", nullptr, CVAR_ARCHIVE},
+	{ &ui_SFXSabersGlowSizeBF2, "cg_SFXSabersGlowSizeBF2", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeBF2, "cg_SFXSabersCoreSizeBF2", "0.5f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeSFX, "cg_SFXSabersGlowSizeSFX", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeSFX, "cg_SFXSabersCoreSizeSFX", "0.5f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeEP1, "cg_SFXSabersGlowSizeEP1", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeEP1, "cg_SFXSabersCoreSizeEP1", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeEP2, "cg_SFXSabersGlowSizeEP2", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeEP2, "cg_SFXSabersCoreSizeEP2", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeEP3, "cg_SFXSabersGlowSizeEP3", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeEP3, "cg_SFXSabersCoreSizeEP3", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeOT, "cg_SFXSabersGlowSizeOT", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeOT, "cg_SFXSabersCoreSizeOT", "0.9f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeTFA, "cg_SFXSabersGlowSizeTFA", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeTFA, "cg_SFXSabersCoreSizeTFA", "0.8f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSizeCSM, "cg_SFXSabersGlowSizeCSM", "1.0f", nullptr, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSizeCSM, "cg_SFXSabersCoreSizeCSM", "1.0f", nullptr, CVAR_ARCHIVE },
 
-	{&ui_char_model_angle, "ui_char_model_angle", "175", nullptr, 0},
+	{ &ui_char_model_angle, "ui_char_model_angle", "175", nullptr, 0 },
 
-	{&ui_com_outcast, "com_outcast", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME},
+	{ &ui_com_outcast, "com_outcast", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME },
 
-	{&r_ratiofix, "r_ratiofix", "0", UI_Set2DRatio, CVAR_ARCHIVE},
+	{ &r_ratiofix, "r_ratiofix", "0", UI_Set2DRatio, CVAR_ARCHIVE },
 
-	{&ui_g_newgameplusJKA, "g_newgameplusJKA", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART},
+	{ &ui_g_newgameplusJKA, "g_newgameplusJKA", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART },
 
-	{&ui_g_newgameplusJKO, "g_newgameplusJKO", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART},
+	{ &ui_g_newgameplusJKO, "g_newgameplusJKO", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART },
 
-	{&ui_com_rend2, "com_rend2", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME},
+	{ &ui_com_rend2, "com_rend2", "0", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME },
 
-	{&ui_r_AdvancedsurfaceSprites, "r_advancedlod", "1", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME},
+	{ &ui_r_AdvancedsurfaceSprites, "r_advancedlod", "1", nullptr, CVAR_ARCHIVE | CVAR_SAVEGAME },
 
-	{&ui_dynamicHud, "cg_dynamicHud", "1", nullptr, CVAR_ARCHIVE},
+	{ &ui_dynamicHud, "cg_dynamicHud", "1", nullptr, CVAR_ARCHIVE },
 };
 
 constexpr auto FP_UPDATED_NONE = -1;
@@ -3963,8 +3963,8 @@ void UI_LoadMenus(const char* menuFile, const qboolean reset)
 	Com_Printf("--------------------- Client Initialization ---------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("---------- Genuine SerenityJediEngine-(Solaris Edition)SP--------\n");
-	Com_Printf("---------------------Build date 15/10/2026-----------------------\n"); // build date
-	Com_Printf("---------------------------Build 09------------------------------\n");
+	Com_Printf("---------------------Build date 16/10/2026-----------------------\n"); // build date
+	Com_Printf("---------------------------Build 10------------------------------\n");
 	Com_Printf("-----------------------------------------------------------------\n");
 	Com_Printf("------------------------LightSaber-------------------------------\n");
 	Com_Printf("-----------An elegant weapon for a more civilized age------------\n");
@@ -5761,51 +5761,51 @@ using powerEnum_t = struct
 static powerEnum_t powerEnums[MAX_POWER_ENUMS] =
 {
 #ifndef JK2_MODE
-	{"absorb", FP_ABSORB},
+	{ "absorb", FP_ABSORB },
 #endif // !JK2_MODE
 
-	{"heal", FP_HEAL},
-	{"mindtrick", FP_TELEPATHY},
+	{ "heal", FP_HEAL },
+	{ "mindtrick", FP_TELEPATHY },
 
 #ifndef JK2_MODE
-	{"protect", FP_PROTECT},
+	{ "protect", FP_PROTECT },
 #endif // !JK2_MODE
 
 	// Core powers
-	{"jump", FP_LEVITATION},
-	{"pull", FP_PULL},
-	{"push", FP_PUSH},
+	{ "jump", FP_LEVITATION },
+	{ "pull", FP_PULL },
+	{ "push", FP_PUSH },
 
 #ifndef JK2_MODE
-	{"sense", FP_SEE},
+	{ "sense", FP_SEE },
 #endif // !JK2_MODE
 
-	{"stasis", FP_STASIS},
-	{"speed", FP_SPEED},
-	{"sabdef", FP_SABER_DEFENSE},
-	{"saboff", FP_SABER_OFFENSE},
-	{"sabthrow", FP_SABERTHROW},
+	{ "stasis", FP_STASIS },
+	{ "speed", FP_SPEED },
+	{ "sabdef", FP_SABER_DEFENSE },
+	{ "saboff", FP_SABER_OFFENSE },
+	{ "sabthrow", FP_SABERTHROW },
 
 	// Dark powers
 #ifndef JK2_MODE
-	{"drain", FP_DRAIN},
+	{ "drain", FP_DRAIN },
 #endif // !JK2_MODE
 
-	{"grip", FP_GRIP},
-	{"lightning", FP_LIGHTNING},
+	{ "grip", FP_GRIP },
+	{ "lightning", FP_LIGHTNING },
 
 #ifndef JK2_MODE
-	{"rage", FP_RAGE},
-	{"destruction", FP_DESTRUCTION},
+	{ "rage", FP_RAGE },
+	{ "destruction", FP_DESTRUCTION },
 
-	{"grasp", FP_GRASP},
-	{"repulse", FP_REPULSE},
-	{"strike", FP_LIGHTNING_STRIKE},
-	{"fear", FP_FEAR},
-	{"deadlysight", FP_DEADLYSIGHT},
-	{"blast", FP_BLAST},
-	{"insanity", FP_INSANITY},
-	{"blinding", FP_BLINDING},
+	{ "grasp", FP_GRASP },
+	{ "repulse", FP_REPULSE },
+	{ "strike", FP_LIGHTNING_STRIKE },
+	{ "fear", FP_FEAR },
+	{ "deadlysight", FP_DEADLYSIGHT },
+	{ "blast", FP_BLAST },
+	{ "insanity", FP_INSANITY },
+	{ "blinding", FP_BLINDING },
 #endif // !JK2_MODE
 };
 

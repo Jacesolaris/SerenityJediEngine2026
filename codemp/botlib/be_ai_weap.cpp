@@ -59,50 +59,50 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 //weapon definition // bk001212 - static
 static fielddef_t weaponinfo_fields[] =
 {
-{"number", WEAPON_OFS(number), FT_INT},						//weapon number
-{"name", WEAPON_OFS(name), FT_STRING},							//name of the weapon
-{"level", WEAPON_OFS(level), FT_INT},
-{"model", WEAPON_OFS(model), FT_STRING},						//model of the weapon
-{"weapon_index", WEAPON_OFS(weapon_index), FT_INT},			//index of weapon in inventory
-{"flags", WEAPON_OFS(flags), FT_INT},							//special flags
-{"projectile", WEAPON_OFS(projectile), FT_STRING},			//projectile used by the weapon
-{"numprojectiles", WEAPON_OFS(numprojectiles), FT_INT},	//number of projectiles
-{"hspread", WEAPON_OFS(hspread), FT_FLOAT},					//horizontal spread of projectiles (degrees from middle)
-{"vspread", WEAPON_OFS(vspread), FT_FLOAT},					//vertical spread of projectiles (degrees from middle)
-{"speed", WEAPON_OFS(speed), FT_FLOAT},						//speed of the projectile (0 = instant hit)
-{"acceleration", WEAPON_OFS(acceleration), FT_FLOAT},		//"acceleration" * time (in seconds) + "speed" = projectile speed
-{"recoil", WEAPON_OFS(recoil), FT_FLOAT | FT_ARRAY, 3},		//amount of recoil the player gets from the weapon
-{"offset", WEAPON_OFS(offset), FT_FLOAT | FT_ARRAY, 3},		//projectile start offset relative to eye and view angles
-{"angleoffset", WEAPON_OFS(angleoffset), FT_FLOAT | FT_ARRAY, 3},//offset of the shoot angles relative to the view angles
-{"extrazvelocity", WEAPON_OFS(extrazvelocity), FT_FLOAT},//extra z velocity the projectile gets
-{"ammoamount", WEAPON_OFS(ammoamount), FT_INT},				//ammo amount used per shot
-{"ammoindex", WEAPON_OFS(ammoindex), FT_INT},				//index of ammo in inventory
-{"activate", WEAPON_OFS(activate), FT_FLOAT},				//time it takes to select the weapon
-{"reload", WEAPON_OFS(reload), FT_FLOAT},						//time it takes to reload the weapon
-{"spinup", WEAPON_OFS(spinup), FT_FLOAT},						//time it takes before first shot
-{"spindown", WEAPON_OFS(spindown), FT_FLOAT},				//time it takes before weapon stops firing
-{nullptr, 0, 0, 0}
+{ "number", WEAPON_OFS(number), FT_INT },						//weapon number
+{ "name", WEAPON_OFS(name), FT_STRING },							//name of the weapon
+{ "level", WEAPON_OFS(level), FT_INT },
+{ "model", WEAPON_OFS(model), FT_STRING },						//model of the weapon
+{ "weapon_index", WEAPON_OFS(weapon_index), FT_INT },			//index of weapon in inventory
+{ "flags", WEAPON_OFS(flags), FT_INT },							//special flags
+{ "projectile", WEAPON_OFS(projectile), FT_STRING },			//projectile used by the weapon
+{ "numprojectiles", WEAPON_OFS(numprojectiles), FT_INT },	//number of projectiles
+{ "hspread", WEAPON_OFS(hspread), FT_FLOAT },					//horizontal spread of projectiles (degrees from middle)
+{ "vspread", WEAPON_OFS(vspread), FT_FLOAT },					//vertical spread of projectiles (degrees from middle)
+{ "speed", WEAPON_OFS(speed), FT_FLOAT },						//speed of the projectile (0 = instant hit)
+{ "acceleration", WEAPON_OFS(acceleration), FT_FLOAT },		//"acceleration" * time (in seconds) + "speed" = projectile speed
+{ "recoil", WEAPON_OFS(recoil), FT_FLOAT | FT_ARRAY, 3 },		//amount of recoil the player gets from the weapon
+{ "offset", WEAPON_OFS(offset), FT_FLOAT | FT_ARRAY, 3 },		//projectile start offset relative to eye and view angles
+{ "angleoffset", WEAPON_OFS(angleoffset), FT_FLOAT | FT_ARRAY, 3 },//offset of the shoot angles relative to the view angles
+{ "extrazvelocity", WEAPON_OFS(extrazvelocity), FT_FLOAT },//extra z velocity the projectile gets
+{ "ammoamount", WEAPON_OFS(ammoamount), FT_INT },				//ammo amount used per shot
+{ "ammoindex", WEAPON_OFS(ammoindex), FT_INT },				//index of ammo in inventory
+{ "activate", WEAPON_OFS(activate), FT_FLOAT },				//time it takes to select the weapon
+{ "reload", WEAPON_OFS(reload), FT_FLOAT },						//time it takes to reload the weapon
+{ "spinup", WEAPON_OFS(spinup), FT_FLOAT },						//time it takes before first shot
+{ "spindown", WEAPON_OFS(spindown), FT_FLOAT },				//time it takes before weapon stops firing
+{ nullptr, 0, 0, 0 }
 };
 
 //projectile definition
 static fielddef_t projectileinfo_fields[] =
 {
-{"name", PROJECTILE_OFS(name), FT_STRING},					//name of the projectile
-{"model", PROJECTILE_OFS(model), FT_STRING},					//model of the projectile
-{"flags", PROJECTILE_OFS(flags), FT_INT},						//special flags
-{"gravity", PROJECTILE_OFS(gravity), FT_FLOAT},				//amount of gravity applied to the projectile [0,1]
-{"damage", PROJECTILE_OFS(damage), FT_INT},					//damage of the projectile
-{"radius", PROJECTILE_OFS(radius), FT_FLOAT},				//radius of damage
-{"visdamage", PROJECTILE_OFS(visdamage), FT_INT},			//damage of the projectile to visible entities
-{"damagetype", PROJECTILE_OFS(damagetype), FT_INT},		//type of damage (combination of the DAMAGETYPE_? flags)
-{"healthinc", PROJECTILE_OFS(healthinc), FT_INT},			//health increase the owner gets
-{"push", PROJECTILE_OFS(push), FT_FLOAT},						//amount a player is pushed away from the projectile impact
-{"detonation", PROJECTILE_OFS(detonation), FT_FLOAT},		//time before projectile explodes after fire pressed
-{"bounce", PROJECTILE_OFS(bounce), FT_FLOAT},				//amount the projectile bounces
-{"bouncefric", PROJECTILE_OFS(bouncefric), FT_FLOAT}, 	//amount the bounce decreases per bounce
-{"bouncestop", PROJECTILE_OFS(bouncestop), FT_FLOAT},		//minimum bounce value before bouncing stops
+{ "name", PROJECTILE_OFS(name), FT_STRING },					//name of the projectile
+{ "model", PROJECTILE_OFS(model), FT_STRING },					//model of the projectile
+{ "flags", PROJECTILE_OFS(flags), FT_INT },						//special flags
+{ "gravity", PROJECTILE_OFS(gravity), FT_FLOAT },				//amount of gravity applied to the projectile [0,1]
+{ "damage", PROJECTILE_OFS(damage), FT_INT },					//damage of the projectile
+{ "radius", PROJECTILE_OFS(radius), FT_FLOAT },				//radius of damage
+{ "visdamage", PROJECTILE_OFS(visdamage), FT_INT },			//damage of the projectile to visible entities
+{ "damagetype", PROJECTILE_OFS(damagetype), FT_INT },		//type of damage (combination of the DAMAGETYPE_? flags)
+{ "healthinc", PROJECTILE_OFS(healthinc), FT_INT },			//health increase the owner gets
+{ "push", PROJECTILE_OFS(push), FT_FLOAT },						//amount a player is pushed away from the projectile impact
+{ "detonation", PROJECTILE_OFS(detonation), FT_FLOAT },		//time before projectile explodes after fire pressed
+{ "bounce", PROJECTILE_OFS(bounce), FT_FLOAT },				//amount the projectile bounces
+{ "bouncefric", PROJECTILE_OFS(bouncefric), FT_FLOAT }, 	//amount the bounce decreases per bounce
+{ "bouncestop", PROJECTILE_OFS(bouncestop), FT_FLOAT },		//minimum bounce value before bouncing stops
 //recurive projectile definition??
-{nullptr, 0, 0, 0}
+{ nullptr, 0, 0, 0 }
 };
 
 static structdef_t weaponinfo_struct =

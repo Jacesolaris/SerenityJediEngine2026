@@ -4930,7 +4930,7 @@ stringID_table_t animEventTypeTable[MAX_ANIM_EVENTS + 1] =
 	ENUM2STRING(AEV_SABER_SPIN), //# animID AEV_SABER_SPIN framenum CHANNEL chance to play
 	ENUM2STRING(AEV_AMBIENT),
 	//must be terminated
-	{NULL, -1}
+	{ NULL, -1 }
 };
 
 stringID_table_t footstepTypeTable[NUM_FOOTSTEP_TYPES + 1] =
@@ -4944,7 +4944,7 @@ stringID_table_t footstepTypeTable[NUM_FOOTSTEP_TYPES + 1] =
 	ENUM2STRING(FOOTSTEP_HEAVY_SBD_R),
 	ENUM2STRING(FOOTSTEP_HEAVY_SBD_L),
 	//must be terminated
-	{NULL, -1}
+	{ NULL, -1 }
 };
 
 int CheckAnimFrameForEventType(const animevent_t* anim_events, const int key_frame, const animEventType_t event_type)
@@ -5184,8 +5184,9 @@ static void ParseAnimationEvtBlock(const char* aeb_filename, animevent_t* anim_e
 		if (animations[anim_num].numFrames == 0)
 		{
 			//we don't use this anim
-			Com_Printf(S_COLOR_YELLOW"WARNING: %s mpanimevents.cfg: anim %s not used by this model\n", aeb_filename,
-				token);
+			// SJE (2026-10-16): no warning - a model's animation.cfg leaving out anims an animevents file lists (staff /
+			// dual walks and runs on the JK2 skeleton) is normal, the entry is just skipped
+			//Com_Printf(S_COLOR_YELLOW"WARNING: %s mpanimevents.cfg: anim %s not used by this model\n", aeb_filename, 				token);
 			//skip this entry
 			SkipRestOfLine(text_p);
 			continue;

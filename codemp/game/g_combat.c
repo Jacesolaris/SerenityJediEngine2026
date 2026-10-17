@@ -2089,6 +2089,50 @@ static int G_DeathFXClass(const gentity_t* ent)
 	return ent->client->NPC_class;
 }
 
+// JKG probe wreck (2026-10-16): a destroyed probe droid leaves its burnt wreck (JKG's
+// models/map_objects/imp_mine/probedestroyed.md3) on the floor below it, not solid, removed after
+// g_corpseRemovalTime seconds like a body (0 = it stays). Nothing when there is no floor below (a pit, the sky).
+#define PROBE_WRECK_MODEL "models/map_objects/imp_mine/probedestroyed.md3"
+
+static void G_SpawnProbeWreck(const gentity_t* ent)
+{
+	trace_t tr;
+	vec3_t start, end, angles;
+	gentity_t* wreck;
+
+	VectorCopy(ent->r.currentOrigin, start);
+	start[2] += 16;
+	VectorCopy(start, end);
+	end[2] -= 1024;
+	trap->Trace(&tr, start, NULL, NULL, end, ent->s.number, MASK_SOLID, qfalse, 0, 0);
+	if (tr.startsolid || tr.allsolid || tr.fraction >= 1.0f)
+	{
+		return;
+	}
+
+	wreck = G_Spawn();
+	if (!wreck)
+	{
+		return;
+	}
+	wreck->classname = "probe_wreck";
+	wreck->s.eType = ET_GENERAL;
+	wreck->s.modelIndex = G_model_index(PROBE_WRECK_MODEL);
+	VectorSet(wreck->r.mins, -24, -24, 0);
+	VectorSet(wreck->r.maxs, 24, 24, 32);
+	wreck->r.contents = 0;
+	wreck->clipmask = 0;
+	G_SetOrigin(wreck, tr.endpos);
+	VectorSet(angles, 0, ent->r.currentAngles[YAW], 0);
+	G_SetAngles(wreck, angles);
+	if (g_corpseRemovalTime.integer > 0)
+	{
+		wreck->think = G_FreeEntity;
+		wreck->nextthink = level.time + g_corpseRemovalTime.integer * 1000;
+	}
+	trap->LinkEntity((sharedEntity_t*)wreck);
+}
+
 void DeathFX(gentity_t* ent)
 {
 	vec3_t effect_pos, right;
@@ -2127,6 +2171,7 @@ void DeathFX(gentity_t* ent)
 		VectorCopy(ent->r.currentOrigin, effect_pos);
 		effect_pos[2] += 50;
 		G_PlayEffectID(G_EffectIndex("explosions/probeexplosion1"), effect_pos, default_dir);
+		G_SpawnProbeWreck(ent); // JKG probe wreck (2026-10-16)
 		break;
 
 	case CLASS_ATST:
@@ -2350,6 +2395,7 @@ static void death_fxextra(gentity_t* ent)
 		VectorCopy(ent->r.currentOrigin, effect_pos);
 		effect_pos[2] += 50;
 		G_PlayEffectID(G_EffectIndex("explosions/probeexplosion1"), effect_pos, default_dir);
+		G_SpawnProbeWreck(ent); // JKG probe wreck (2026-10-16)
 		break;
 
 	case CLASS_ATST:
@@ -6616,7 +6662,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 		}
 	}
 
-	if (level.gametype == GT_SIEGE &&
+	if (G_SiegeMissionRules() && // SJE (2026-10-16): also siege missions in Team FFA
 		!gSiegeRoundBegun)
 	{
 		//nothing can be damaged til the round starts.
@@ -7246,7 +7292,7 @@ void G_Damage(gentity_t* targ, gentity_t* inflictor, gentity_t* attacker, vec3_t
 	if (attacker && !targ->client)
 	{
 		//attacker hit a non-client
-		if (level.gametype == GT_SIEGE &&
+		if (G_SiegeMissionRules() && // SJE (2026-10-16): objectives a team can't damage, also in Team FFA missions
 			!g_ff_objectives.integer)
 		{
 			//in siege mode (and...?)

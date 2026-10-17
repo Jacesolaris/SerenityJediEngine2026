@@ -80,9 +80,9 @@ struct SBCSOverrideLanguages_t
 //
 SBCSOverrideLanguages_t g_SBCSOverrideLanguages[] =
 {
-	{"russian",	eRussian},
-	{"polish",	ePolish},
-	{nullptr,	eWestern}
+	{ "russian",	eRussian },
+	{ "polish",	ePolish },
+	{ nullptr,	eWestern }
 };
 
 //================================================

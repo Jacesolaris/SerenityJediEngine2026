@@ -875,7 +875,7 @@ static void NPC_SetMiscDefaultData(gentity_t* ent)
 	else
 	{
 		//for siege, want "bad" npc's allied with the "bad" team
-		if (level.gametype == GT_SIEGE && ent->s.NPC_class != CLASS_VEHICLE)
+		if (G_SiegeMissionRules() && ent->s.NPC_class != CLASS_VEHICLE) // SJE (2026-10-16): also Team FFA missions
 		{
 			if (ent->client->enemyTeam == NPCTEAM_PLAYER)
 			{
@@ -1569,6 +1569,27 @@ void NPC_Begin(gentity_t* ent)
 		&& WP_SaberCanTurnOffSomeBlades(&ent->client->saber[0]))
 	{
 		ent->client->ps.fd.saber_anim_levelBase = ent->client->ps.fd.saberAnimLevel = SS_STAFF;
+	}
+	else if (ent->client->saberStylesKnown)
+	{
+		// (2026-10-15) the NPC file gave it its styles: start in the one it set last (NPC_ParseParms), else the first known
+		int newLevel = ent->client->ps.fd.saberAnimLevel;
+
+		if (!G_ValidSaberStyle(ent, newLevel))
+		{
+			for (newLevel = SS_FAST; newLevel < SS_NUM_SABER_STYLES; newLevel++)
+			{
+				if (G_ValidSaberStyle(ent, newLevel))
+				{
+					break;
+				}
+			}
+			if (newLevel >= SS_NUM_SABER_STYLES)
+			{
+				newLevel = SS_MEDIUM;
+			}
+		}
+		ent->client->ps.fd.saber_anim_levelBase = ent->client->ps.fd.saberAnimLevel = newLevel;
 	}
 	else
 	{

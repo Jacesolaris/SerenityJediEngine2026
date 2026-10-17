@@ -52,6 +52,7 @@ void NPC_Probe_Precache()
 	G_EffectIndex("chunks/probehead");
 	G_EffectIndex("env/med_explode2");
 	G_EffectIndex("explosions/probeexplosion1");
+	G_ModelIndex("models/map_objects/imp_mine/probedestroyed.md3"); // SJE probe wreck (2026-10-16), g_combat.cpp DeathFX
 	G_EffectIndex("bryar_old/muzzle_flash");
 
 	RegisterItem(FindItemForAmmo(AMMO_BLASTER));

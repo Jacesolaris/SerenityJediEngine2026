@@ -922,253 +922,253 @@ using netField_t = struct netField_s
 
 netField_t entityStateFields[] =
 {
-	{NETF(pos.trTime), 32},
-	{NETF(pos.trBase[1]), 0},
-	{NETF(pos.trBase[0]), 0},
-	{NETF(apos.trBase[1]), 0},
-	{NETF(pos.trBase[2]), 0},
-	{NETF(apos.trBase[0]), 0},
-	{NETF(pos.trDelta[0]), 0},
-	{NETF(pos.trDelta[1]), 0},
-	{NETF(eType), 8},
-	{NETF(angles[1]), 0},
-	{NETF(pos.trDelta[2]), 0},
-	{NETF(origin[0]), 0},
-	{NETF(origin[1]), 0},
-	{NETF(origin[2]), 0},
+	{ NETF(pos.trTime), 32 },
+	{ NETF(pos.trBase[1]), 0 },
+	{ NETF(pos.trBase[0]), 0 },
+	{ NETF(apos.trBase[1]), 0 },
+	{ NETF(pos.trBase[2]), 0 },
+	{ NETF(apos.trBase[0]), 0 },
+	{ NETF(pos.trDelta[0]), 0 },
+	{ NETF(pos.trDelta[1]), 0 },
+	{ NETF(eType), 8 },
+	{ NETF(angles[1]), 0 },
+	{ NETF(pos.trDelta[2]), 0 },
+	{ NETF(origin[0]), 0 },
+	{ NETF(origin[1]), 0 },
+	{ NETF(origin[2]), 0 },
 	// does this need to be 8 bits?
-	{NETF(weapon), 8},
-	{NETF(apos.trType), 8},
+	{ NETF(weapon), 8 },
+	{ NETF(apos.trType), 8 },
 	// changed from 12 to 16
-	{NETF(legsAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ NETF(legsAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
 	// suspicious
-	{NETF(torsoAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ NETF(torsoAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
 	// large use beyond GENTITYNUM_BITS - should use generic1 insead
-	{NETF(genericenemyindex), 32}, //Do not change to GENTITYNUM_BITS, used as a time offset for seeker
-	{NETF(eFlags), 32},
-	{NETF(pos.trDuration), 32},
+	{ NETF(genericenemyindex), 32 }, //Do not change to GENTITYNUM_BITS, used as a time offset for seeker
+	{ NETF(eFlags), 32 },
+	{ NETF(pos.trDuration), 32 },
 	// might be able to reduce
-	{NETF(teamowner), 8},
-	{NETF(groundEntityNum), GENTITYNUM_BITS},
-	{NETF(pos.trType), 8},
-	{NETF(angles[2]), 0},
-	{NETF(angles[0]), 0},
-	{NETF(solid), 24},
+	{ NETF(teamowner), 8 },
+	{ NETF(groundEntityNum), GENTITYNUM_BITS },
+	{ NETF(pos.trType), 8 },
+	{ NETF(angles[2]), 0 },
+	{ NETF(angles[0]), 0 },
+	{ NETF(solid), 24 },
 	// flag states barely used - could be moved elsewhere
-	{NETF(fireflag), 4}, // was 2: also carries the saber style (SS_NONE..SS_STAFF = 0..7)
-	{NETF(event), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ NETF(fireflag), 4 }, // was 2: also carries the saber style (SS_NONE..SS_STAFF = 0..7)
+	{ NETF(event), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
 	// used mostly for players and npcs - appears to be static / never changing
-	{NETF(customRGBA[3]), 8}, //0-255
+	{ NETF(customRGBA[3]), 8 }, //0-255
 	// used mostly for players and npcs - appears to be static / never changing
-	{NETF(customRGBA[0]), 8}, //0-255
+	{ NETF(customRGBA[0]), 8 }, //0-255
 	// only used in fx system (which rick did) and chunks
-	{NETF(speed), 0},
+	{ NETF(speed), 0 },
 	// why are npc's clientNum's that big?
-	{NETF(clientNum), GENTITYNUM_BITS}, //with npc's clientNum can be > MAX_CLIENTS so use entnum bits now instead.
-	{NETF(apos.trBase[2]), 0},
-	{NETF(apos.trTime), 32},
+	{ NETF(clientNum), GENTITYNUM_BITS }, //with npc's clientNum can be > MAX_CLIENTS so use entnum bits now instead.
+	{ NETF(apos.trBase[2]), 0 },
+	{ NETF(apos.trTime), 32 },
 	// used mostly for players and npcs - appears to be static / never changing
-	{NETF(customRGBA[1]), 8}, //0-255
+	{ NETF(customRGBA[1]), 8 }, //0-255
 	// used mostly for players and npcs - appears to be static / never changing
-	{NETF(customRGBA[2]), 8}, //0-255
+	{ NETF(customRGBA[2]), 8 }, //0-255
 	// multiple meanings
-	{NETF(saberEntityNum), GENTITYNUM_BITS},
+	{ NETF(saberEntityNum), GENTITYNUM_BITS },
 	// could probably just eliminate and assume a big number
-	{NETF(g2radius), 8},
-	{NETF(otherentityNum2), GENTITYNUM_BITS},
+	{ NETF(g2radius), 8 },
+	{ NETF(otherentityNum2), GENTITYNUM_BITS },
 	// used all over the place
-	{NETF(owner), GENTITYNUM_BITS},
-	{NETF(model_index2), 8},
+	{ NETF(owner), GENTITYNUM_BITS },
+	{ NETF(model_index2), 8 },
 	// why was this changed from 0 to 8 ?
-	{NETF(eventParm), 8},
+	{ NETF(eventParm), 8 },
 	// unknown about size?
-	{NETF(saberMove), 8},
-	{NETF(apos.trDelta[1]), 0},
-	{NETF(boneAngles1[1]), 0},
+	{ NETF(saberMove), 8 },
+	{ NETF(apos.trDelta[1]), 0 },
+	{ NETF(boneAngles1[1]), 0 },
 	// why raised from 8 to -16?
-	{NETF(modelIndex), -16},
+	{ NETF(modelIndex), -16 },
 	// barely used, could probably be replaced
-	{NETF(emplacedOwner), 32}, //As above, also used as a time value (for electricity render time)
-	{NETF(apos.trDelta[0]), 0},
-	{NETF(apos.trDelta[2]), 0},
+	{ NETF(emplacedOwner), 32 }, //As above, also used as a time value (for electricity render time)
+	{ NETF(apos.trDelta[0]), 0 },
+	{ NETF(apos.trDelta[2]), 0 },
 	// shouldn't these be better off as flags?  otherwise, they may consume more bits this way
-	{NETF(torsoFlip), 1},
-	{NETF(angles2[1]), 0},
+	{ NETF(torsoFlip), 1 },
+	{ NETF(angles2[1]), 0 },
 	// used mostly in saber and npc
-	{NETF(lookTarget), GENTITYNUM_BITS},
-	{NETF(origin2[2]), 0},
+	{ NETF(lookTarget), GENTITYNUM_BITS },
+	{ NETF(origin2[2]), 0 },
 	// randomly used, not sure why this was used instead of svc_noclient
 	//	if (cent->currentState.modelGhoul2 == 127)
 	//	{ //not ready to be drawn or initialized..
 	//		return;
 	//	}
-	{NETF(modelGhoul2), 8},
-	{NETF(loopSound), 8},
-	{NETF(origin2[0]), 0},
+	{ NETF(modelGhoul2), 8 },
+	{ NETF(loopSound), 8 },
+	{ NETF(origin2[0]), 0 },
 	// multiple purpose bit flag
-	{NETF(shouldtarget), 1},
+	{ NETF(shouldtarget), 1 },
 	// widely used, does not appear that they have to be 16 bits
-	{NETF(trickedentindex), 16}, //See note in PSF
-	{NETF(otherentityNum), GENTITYNUM_BITS},
-	{NETF(origin2[1]), 0},
-	{NETF(time2), 32},
-	{NETF(legsFlip), 1},
+	{ NETF(trickedentindex), 16 }, //See note in PSF
+	{ NETF(otherentityNum), GENTITYNUM_BITS },
+	{ NETF(origin2[1]), 0 },
+	{ NETF(time2), 32 },
+	{ NETF(legsFlip), 1 },
 	// fully used
-	{NETF(bolt2), GENTITYNUM_BITS},
-	{NETF(constantLight), 32},
-	{NETF(time), 32},
+	{ NETF(bolt2), GENTITYNUM_BITS },
+	{ NETF(constantLight), 32 },
+	{ NETF(time), 32 },
 	// why doesn't lookTarget just indicate this?
-	{NETF(hasLookTarget), 1},
-	{NETF(boneAngles1[2]), 0},
+	{ NETF(hasLookTarget), 1 },
+	{ NETF(boneAngles1[2]), 0 },
 	// used for both force pass and an emplaced gun - gun is just a flag indicator
-	{NETF(activeForcePass), 6},
+	{ NETF(activeForcePass), 6 },
 	// used to indicate health
-	{NETF(health), 10}, //if something's health exceeds 1024, then.. too bad!
+	{ NETF(health), 10 }, //if something's health exceeds 1024, then.. too bad!
 	// appears to have multiple means, could be eliminated by indicating a sound set differently
-	{NETF(loopIsSoundset), 1},
-	{NETF(saberHolstered), 2},
+	{ NETF(loopIsSoundset), 1 },
+	{ NETF(saberHolstered), 2 },
 	//NPC-SPECIFIC:
 	// both are used for NPCs sabers, though limited
-	{NETF(npcSaber1), 9},
-	{NETF(maxhealth), 10},
-	{NETF(trickedentindex2), 16},
+	{ NETF(npcSaber1), 9 },
+	{ NETF(maxhealth), 10 },
+	{ NETF(trickedentindex2), 16 },
 	// appear to only be 18 powers?
-	{NETF(forcePowersActive), 32},
+	{ NETF(forcePowersActive), 32 },
 	// used, doesn't appear to be flexible
-	{NETF(iModelScale), 10},
+	{ NETF(iModelScale), 10 },
 	//0-1024 (guess it's gotta be increased if we want larger allowable scale.. but 1024% is pretty big)
 	// full bits used
-	{NETF(powerups), MAX_POWERUPS},
+	{ NETF(powerups), MAX_POWERUPS },
 	// can this be reduced?
-	{NETF(soundSetIndex), 8}, //rww - if MAX_AMBIENT_SETS is changed from 256, REMEMBER TO CHANGE THIS
+	{ NETF(soundSetIndex), 8 }, //rww - if MAX_AMBIENT_SETS is changed from 256, REMEMBER TO CHANGE THIS
 	// looks like this can be reduced to 4? (ship parts = 4, people parts = 2)
-	{NETF(brokenLimbs), 8}, //up to 8 limbs at once (not that that many are used)
-	{NETF(csSounds_Std), 8}, //soundindex must be 8 unless max sounds is changed
+	{ NETF(brokenLimbs), 8 }, //up to 8 limbs at once (not that that many are used)
+	{ NETF(csSounds_Std), 8 }, //soundindex must be 8 unless max sounds is changed
 	// used extensively
-	{NETF(saberInFlight), 1},
-	{NETF(angles2[0]), 0},
-	{NETF(frame), 16},
-	{NETF(angles2[2]), 0},
+	{ NETF(saberInFlight), 1 },
+	{ NETF(angles2[0]), 0 },
+	{ NETF(frame), 16 },
+	{ NETF(angles2[2]), 0 },
 	// why not use torsoAnim and set a flag to do the same thing as forceFrame (saberLockFrame)
-	{NETF(forceFrame), 16},
+	{ NETF(forceFrame), 16 },
 	//if you have over 65536 frames, then this will explode. Of course if you have that many things then lots of things will probably explode.
-	{NETF(generic1), 8},
+	{ NETF(generic1), 8 },
 	// do we really need 4 indexes?
-	{NETF(boneIndex1), 6}, //up to 64 bones can be accessed by this indexing method
+	{ NETF(boneIndex1), 6 }, //up to 64 bones can be accessed by this indexing method
 	// only 54 classes, could cut down 2 bits
-	{NETF(NPC_class), 8},
-	{NETF(apos.trDuration), 32},
+	{ NETF(NPC_class), 8 },
+	{ NETF(apos.trDuration), 32 },
 	// there appears to be only 2 different version of parms passed - a flag would better be suited
-	{NETF(boneOrient), 9}, //3 bits per orientation dir
+	{ NETF(boneOrient), 9 }, //3 bits per orientation dir
 	// this looks to be a single bit flag
-	{NETF(bolt1), 8},
-	{NETF(trickedentindex3), 16},
+	{ NETF(bolt1), 8 },
+	{ NETF(trickedentindex3), 16 },
 	// in use for vehicles
-	{NETF(m_iVehicleNum), GENTITYNUM_BITS}, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
-	{NETF(trickedentindex4), 16},
+	{ NETF(m_iVehicleNum), GENTITYNUM_BITS }, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
+	{ NETF(trickedentindex4), 16 },
 	// but why is there an opposite state of surfaces field?
-	{NETF(surfacesOff), 32},
-	{NETF(eFlags2), 10},
+	{ NETF(surfacesOff), 32 },
+	{ NETF(eFlags2), 10 },
 	// should be bit field
-	{NETF(isJediMaster), 1},
+	{ NETF(isJediMaster), 1 },
 	// should be bit field
-	{NETF(isPortalEnt), 1},
+	{ NETF(isPortalEnt), 1 },
 	// possible multiple definitions
-	{NETF(heldByClient), 6},
+	{ NETF(heldByClient), 6 },
 	// this does not appear to be used in any production or non-cheat fashion - REMOVE
-	{NETF(ragAttach), GENTITYNUM_BITS},
+	{ NETF(ragAttach), GENTITYNUM_BITS },
 	// used only in one spot for seige
-	{NETF(boltToPlayer), 6},
-	{NETF(npcSaber2), 9},
-	{NETF(csSounds_Combat), 8},
-	{NETF(csSounds_Extra), 8},
-	{NETF(csSounds_Jedi), 8},
-	{NETF(csSounds_Custom), 8},
+	{ NETF(boltToPlayer), 6 },
+	{ NETF(npcSaber2), 9 },
+	{ NETF(csSounds_Combat), 8 },
+	{ NETF(csSounds_Extra), 8 },
+	{ NETF(csSounds_Jedi), 8 },
+	{ NETF(csSounds_Custom), 8 },
 	// used only for surfaces on NPCs
-	{NETF(surfacesOn), 32}, //allow up to 32 surfaces in the bitflag
-	{NETF(boneIndex2), 6},
-	{NETF(boneIndex3), 6},
-	{NETF(boneIndex4), 6},
-	{NETF(boneAngles1[0]), 0},
-	{NETF(boneAngles2[0]), 0},
-	{NETF(boneAngles2[1]), 0},
-	{NETF(boneAngles2[2]), 0},
-	{NETF(boneAngles3[0]), 0},
-	{NETF(boneAngles3[1]), 0},
-	{NETF(boneAngles3[2]), 0},
-	{NETF(boneAngles4[0]), 0},
-	{NETF(boneAngles4[1]), 0},
-	{NETF(boneAngles4[2]), 0},
+	{ NETF(surfacesOn), 32 }, //allow up to 32 surfaces in the bitflag
+	{ NETF(boneIndex2), 6 },
+	{ NETF(boneIndex3), 6 },
+	{ NETF(boneIndex4), 6 },
+	{ NETF(boneAngles1[0]), 0 },
+	{ NETF(boneAngles2[0]), 0 },
+	{ NETF(boneAngles2[1]), 0 },
+	{ NETF(boneAngles2[2]), 0 },
+	{ NETF(boneAngles3[0]), 0 },
+	{ NETF(boneAngles3[1]), 0 },
+	{ NETF(boneAngles3[2]), 0 },
+	{ NETF(boneAngles4[0]), 0 },
+	{ NETF(boneAngles4[1]), 0 },
+	{ NETF(boneAngles4[2]), 0 },
 
 	//rww - for use by mod authors only
-	{NETF(userInt1), 1},
-	{NETF(userInt2), 8}, // was 1: saber fatigue, for the bars over the heads (BG_PlayerStateToEntityState)
-	{NETF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22) go to the clients
-	{NETF(userFloat1), 1},
-	{NETF(userFloat2), 1},
-	{NETF(userFloat3), 1},
-	{NETF(userVec1[0]), 1},
-	{NETF(userVec1[1]), 1},
-	{NETF(userVec1[2]), 1},
-	{NETF(userVec2[0]), 1},
-	{NETF(userVec2[1]), 1},
-	{NETF(userVec2[2]), 1},
+	{ NETF(userInt1), 1 },
+	{ NETF(userInt2), 8 }, // was 1: saber fatigue, for the bars over the heads (BG_PlayerStateToEntityState)
+	{ NETF(userInt3), 32 }, // was 1: the FLAG_* bits (q_shared.h, up to bit 22) go to the clients
+	{ NETF(userFloat1), 1 },
+	{ NETF(userFloat2), 1 },
+	{ NETF(userFloat3), 1 },
+	{ NETF(userVec1[0]), 1 },
+	{ NETF(userVec1[1]), 1 },
+	{ NETF(userVec1[2]), 1 },
+	{ NETF(userVec2[0]), 1 },
+	{ NETF(userVec2[1]), 1 },
+	{ NETF(userVec2[2]), 1 },
 
-	{NETF(botclass), 8},
-	{NETF(nextbotclass), 8},
-	{NETF(blockPoints), 16},
-	{NETF(blockPointsMax), 16},
-	{NETF(forceSpeedRecoveryTime), 32},
-	{NETF(PlayerEffectFlags), 16},
+	{ NETF(botclass), 8 },
+	{ NETF(nextbotclass), 8 },
+	{ NETF(blockPoints), 16 },
+	{ NETF(blockPointsMax), 16 },
+	{ NETF(forceSpeedRecoveryTime), 32 },
+	{ NETF(PlayerEffectFlags), 16 },
 
-	{NETF(ManualBlockingFlags), 32},
-	{NETF(ManualBlockingTime), 32},
-	{NETF(ManualMBlockingTime), 32},
-	{NETF(ManualblockStartTime), 32},
-	{NETF(BoltblockStartTime), 32},
+	{ NETF(ManualBlockingFlags), 32 },
+	{ NETF(ManualBlockingTime), 32 },
+	{ NETF(ManualMBlockingTime), 32 },
+	{ NETF(ManualblockStartTime), 32 },
+	{ NETF(BoltblockStartTime), 32 },
 
-	{NETF(MeleeblockStartTime), 32}, //Blocking 2
-	{NETF(MeleeblockLastStartTime), 32}, //Blocking 3
+	{ NETF(MeleeblockStartTime), 32 }, //Blocking 2
+	{ NETF(MeleeblockLastStartTime), 32 }, //Blocking 3
 
-	{NETF(DodgeStartTime), 32}, //Blocking 2
-	{NETF(DodgeLastStartTime), 32}, //Blocking 3
+	{ NETF(DodgeStartTime), 32 }, //Blocking 2
+	{ NETF(DodgeLastStartTime), 32 }, //Blocking 3
 
-	{NETF(communicatingflags), 32},
-	{NETF(frozenTime), 32 },
+	{ NETF(communicatingflags), 32 },
+	{ NETF(frozenTime), 32 },
 
-	{NETF(respectingtime), 32},
-	{NETF(respectingstartTime), 32},
-	{NETF(respectinglaststartTime), 32},
+	{ NETF(respectingtime), 32 },
+	{ NETF(respectingstartTime), 32 },
+	{ NETF(respectinglaststartTime), 32 },
 
-	{NETF(gesturingtime), 32},
-	{NETF(gesturingstartTime), 32},
-	{NETF(gesturinglaststartTime), 32},
+	{ NETF(gesturingtime), 32 },
+	{ NETF(gesturingstartTime), 32 },
+	{ NETF(gesturinglaststartTime), 32 },
 
-	{NETF(surrendertimeplayer), 32},
-	{NETF(surrenderstartTime), 32},
-	{NETF(surrenderlaststartTime), 32},
+	{ NETF(surrendertimeplayer), 32 },
+	{ NETF(surrenderstartTime), 32 },
+	{ NETF(surrenderlaststartTime), 32 },
 
-	{NETF(dashstartTime), 32},
-	{NETF(dashlaststartTime), 32},
-	{NETF(Dash_Count), 32},
-	{NETF(Dash_BOT_Count), 32 },
+	{ NETF(dashstartTime), 32 },
+	{ NETF(dashlaststartTime), 32 },
+	{ NETF(Dash_Count), 32 },
+	{ NETF(Dash_BOT_Count), 32 },
 
-	{NETF(kickstartTime), 32},
-	{NETF(kicklaststartTime), 32},
+	{ NETF(kickstartTime), 32 },
+	{ NETF(kicklaststartTime), 32 },
 
-	{NETF(cloakCharcgestartTime), 32},
-	{NETF(cloakchargelaststartTime), 32},
+	{ NETF(cloakCharcgestartTime), 32 },
+	{ NETF(cloakchargelaststartTime), 32 },
 
-	{NETF(grappletimeplayer), 32},
-	{NETF(grapplestartTime), 32},
-	{NETF(grapplelaststartTime), 32},
-	{NETF(modelindex), 32 },
-	{NETF(weaponfiredelaytime), 32 },
-	{NETF(reloadTime), 32 },
+	{ NETF(grappletimeplayer), 32 },
+	{ NETF(grapplestartTime), 32 },
+	{ NETF(grapplelaststartTime), 32 },
+	{ NETF(modelindex), 32 },
+	{ NETF(weaponfiredelaytime), 32 },
+	{ NETF(reloadTime), 32 },
 
-	{NETF(SaberSmashStartTime), 32 },
-	{NETF(SaberSmashLastStartTime), 32 },
-	{NETF(Smash_Count), 32 }
+	{ NETF(SaberSmashStartTime), 32 },
+	{ NETF(SaberSmashLastStartTime), 32 },
+	{ NETF(Smash_Count), 32 }
 };
 
 // if (int)f == f and (int)f + ( 1<<(FLOAT_INT_BITS-1) ) < ( 1 << FLOAT_INT_BITS )
@@ -1504,378 +1504,378 @@ playerState_t communication
 
 netField_t playerStateFields[] =
 {
-	{PSF(commandTime), 32},
-	{PSF(origin[1]), 0},
-	{PSF(origin[0]), 0},
-	{PSF(viewangles[1]), 0},
-	{PSF(viewangles[0]), 0},
-	{PSF(origin[2]), 0},
-	{PSF(velocity[0]), 0},
-	{PSF(velocity[1]), 0},
-	{PSF(velocity[2]), 0},
-	{PSF(bobCycle), 8},
-	{PSF(weaponTime), -16},
-	{PSF(delta_angles[1]), 16},
-	{PSF(speed), 0}, //sadly, the vehicles require negative speed values, so..
-	{PSF(legsAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
-	{PSF(delta_angles[0]), 16},
-	{PSF(torsoAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
-	{PSF(groundEntityNum), GENTITYNUM_BITS},
-	{PSF(eFlags), 32},
-	{PSF(fd.forcePower), 8},
-	{PSF(eventSequence), 16},
-	{PSF(torsoTimer), 16},
-	{PSF(legsTimer), 16},
-	{PSF(viewheight), -8},
-	{PSF(fd.saberAnimLevel), 4},
-	{PSF(rocketLockIndex), GENTITYNUM_BITS},
-	{PSF(fd.saberDrawAnimLevel), 4},
-	{PSF(genericEnemyIndex), 32},
+	{ PSF(commandTime), 32 },
+	{ PSF(origin[1]), 0 },
+	{ PSF(origin[0]), 0 },
+	{ PSF(viewangles[1]), 0 },
+	{ PSF(viewangles[0]), 0 },
+	{ PSF(origin[2]), 0 },
+	{ PSF(velocity[0]), 0 },
+	{ PSF(velocity[1]), 0 },
+	{ PSF(velocity[2]), 0 },
+	{ PSF(bobCycle), 8 },
+	{ PSF(weaponTime), -16 },
+	{ PSF(delta_angles[1]), 16 },
+	{ PSF(speed), 0 }, //sadly, the vehicles require negative speed values, so..
+	{ PSF(legsAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ PSF(delta_angles[0]), 16 },
+	{ PSF(torsoAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ PSF(groundEntityNum), GENTITYNUM_BITS },
+	{ PSF(eFlags), 32 },
+	{ PSF(fd.forcePower), 8 },
+	{ PSF(eventSequence), 16 },
+	{ PSF(torsoTimer), 16 },
+	{ PSF(legsTimer), 16 },
+	{ PSF(viewheight), -8 },
+	{ PSF(fd.saberAnimLevel), 4 },
+	{ PSF(rocketLockIndex), GENTITYNUM_BITS },
+	{ PSF(fd.saberDrawAnimLevel), 4 },
+	{ PSF(genericEnemyIndex), 32 },
 	//NOTE: This isn't just an index all the time, it's often used as a time value, and thus needs 32 bits
-	{PSF(events[0]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
-	{PSF(events[1]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
-	{PSF(customRGBA[0]), 8}, //0-255
-	{PSF(movementDir), 4},
-	{PSF(saberEntityNum), GENTITYNUM_BITS},
+	{ PSF(events[0]), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ PSF(events[1]), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ PSF(customRGBA[0]), 8 }, //0-255
+	{ PSF(movementDir), 4 },
+	{ PSF(saberEntityNum), GENTITYNUM_BITS },
 	//Also used for channel tracker storage, but should never exceed entity number
-	{PSF(customRGBA[3]), 8}, //0-255
-	{PSF(weaponstate), 4},
-	{PSF(saberMove), 32},
+	{ PSF(customRGBA[3]), 8 }, //0-255
+	{ PSF(weaponstate), 4 },
+	{ PSF(saberMove), 32 },
 	//This value sometimes exceeds the max LS_ value and gets set to a crazy amount, so it needs 32 bits
-	{PSF(standheight), 10},
-	{PSF(crouchheight), 10},
-	{PSF(basespeed), -16},
-	{PSF(pm_flags), 32}, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
-	{PSF(jetpackFuel), 8},
-	{PSF(sprintFuel), 8},
-	{PSF(cloakFuel), 8},
-	{PSF(pm_time), -16},
-	{PSF(customRGBA[1]), 8}, //0-255
-	{PSF(clientNum), GENTITYNUM_BITS},
-	{PSF(duelIndex), GENTITYNUM_BITS},
-	{PSF(customRGBA[2]), 8}, //0-255
-	{PSF(gravity), 16},
-	{PSF(weapon), 8},
-	{PSF(delta_angles[2]), 16},
-	{PSF(saberCanThrow), 1},
-	{PSF(viewangles[2]), 0},
-	{PSF(fd.forcePowersKnown), 32},
-	{PSF(fd.forcePowerLevel[FP_LEVITATION]), 2},
+	{ PSF(standheight), 10 },
+	{ PSF(crouchheight), 10 },
+	{ PSF(basespeed), -16 },
+	{ PSF(pm_flags), 32 }, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
+	{ PSF(jetpackFuel), 8 },
+	{ PSF(sprintFuel), 8 },
+	{ PSF(cloakFuel), 8 },
+	{ PSF(pm_time), -16 },
+	{ PSF(customRGBA[1]), 8 }, //0-255
+	{ PSF(clientNum), GENTITYNUM_BITS },
+	{ PSF(duelIndex), GENTITYNUM_BITS },
+	{ PSF(customRGBA[2]), 8 }, //0-255
+	{ PSF(gravity), 16 },
+	{ PSF(weapon), 8 },
+	{ PSF(delta_angles[2]), 16 },
+	{ PSF(saberCanThrow), 1 },
+	{ PSF(viewangles[2]), 0 },
+	{ PSF(fd.forcePowersKnown), 32 },
+	{ PSF(fd.forcePowerLevel[FP_LEVITATION]), 2 },
 	//unfortunately we need this for fall damage calculation (client needs to know the distance for the fall noise)
-	{PSF(fd.forcePowerDebounce[FP_LEVITATION]), 32},
-	{PSF(fd.forcePowerSelected), 8},
-	{PSF(torsoFlip), 1},
-	{PSF(externalEvent), 10},
-	{PSF(damageYaw), 8},
-	{PSF(damageCount), 8},
-	{PSF(inAirAnim), 1},
+	{ PSF(fd.forcePowerDebounce[FP_LEVITATION]), 32 },
+	{ PSF(fd.forcePowerSelected), 8 },
+	{ PSF(torsoFlip), 1 },
+	{ PSF(externalEvent), 10 },
+	{ PSF(damageYaw), 8 },
+	{ PSF(damageCount), 8 },
+	{ PSF(inAirAnim), 1 },
 	//just transmit it for the sake of knowing right when on the client to play a land anim, it's only 1 bit
-	{PSF(eventParms[1]), 8},
-	{PSF(fd.forceSide), 2}, //so we know if we should apply greyed out shaders to dark/light force enlightenment
-	{PSF(saberAttackChainCount), 4},
-	{PSF(saberFatigueChainCount), 4},
-	{PSF(BlasterAttackChainCount), 4},
-	{PSF(pm_type), 8},
-	{PSF(externalEventParm), 8},
-	{PSF(eventParms[0]), -16},
-	{PSF(lookTarget), GENTITYNUM_BITS},
+	{ PSF(eventParms[1]), 8 },
+	{ PSF(fd.forceSide), 2 }, //so we know if we should apply greyed out shaders to dark/light force enlightenment
+	{ PSF(saberAttackChainCount), 4 },
+	{ PSF(saberFatigueChainCount), 4 },
+	{ PSF(BlasterAttackChainCount), 4 },
+	{ PSF(pm_type), 8 },
+	{ PSF(externalEventParm), 8 },
+	{ PSF(eventParms[0]), -16 },
+	{ PSF(lookTarget), GENTITYNUM_BITS },
 	//{ PSF(vehOrientation[0]), 0 },
-	{PSF(weaponChargeSubtractTime), 32}, //? really need 32 bits??
+	{ PSF(weaponChargeSubtractTime), 32 }, //? really need 32 bits??
 	//{ PSF(vehOrientation[1]), 0 },
 	//{ PSF(moveDir[1]), 0 },
 	//{ PSF(moveDir[0]), 0 },
-	{PSF(weaponChargeTime), 32}, //? really need 32 bits??
+	{ PSF(weaponChargeTime), 32 }, //? really need 32 bits??
 	//{ PSF(vehOrientation[2]), 0 },
-	{PSF(legsFlip), 1},
-	{PSF(damageEvent), 8},
+	{ PSF(legsFlip), 1 },
+	{ PSF(damageEvent), 8 },
 	//{ PSF(moveDir[2]), 0 },
-	{PSF(rocketTargetTime), 32},
-	{PSF(activeForcePass), 6},
-	{PSF(electrifyTime), 32},
-	{PSF(fd.forceJumpZStart), 0},
-	{PSF(loopSound), 16}, //rwwFIXMEFIXME: max sounds is 256, doesn't this only need to be 8?
-	{PSF(hasLookTarget), 1},
-	{PSF(saberBlocked), 8},
-	{PSF(damageType), 2},
-	{PSF(rocketLockTime), 32},
-	{PSF(forceHandExtend), 8},
-	{PSF(saberHolstered), 2},
-	{PSF(fd.forcePowersActive), 32},
-	{PSF(damagePitch), 8},
-	{PSF(m_iVehicleNum), GENTITYNUM_BITS}, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
+	{ PSF(rocketTargetTime), 32 },
+	{ PSF(activeForcePass), 6 },
+	{ PSF(electrifyTime), 32 },
+	{ PSF(fd.forceJumpZStart), 0 },
+	{ PSF(loopSound), 16 }, //rwwFIXMEFIXME: max sounds is 256, doesn't this only need to be 8?
+	{ PSF(hasLookTarget), 1 },
+	{ PSF(saberBlocked), 8 },
+	{ PSF(damageType), 2 },
+	{ PSF(rocketLockTime), 32 },
+	{ PSF(forceHandExtend), 8 },
+	{ PSF(saberHolstered), 2 },
+	{ PSF(fd.forcePowersActive), 32 },
+	{ PSF(damagePitch), 8 },
+	{ PSF(m_iVehicleNum), GENTITYNUM_BITS }, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
 	//{ PSF(vehTurnaroundTime), 32 },//only used by vehicle?
-	{PSF(generic1), 8},
-	{PSF(jumppad_ent), GENTITYNUM_BITS},
-	{PSF(hasDetPackPlanted), 1},
-	{PSF(saberInFlight), 1},
-	{PSF(forceDodgeAnim), 16},
-	{PSF(zoomMode), 2}, // NOTENOTE Are all of these necessary?
-	{PSF(hackingTime), 32},
-	{PSF(zoomTime), 32}, // NOTENOTE Are all of these necessary?
-	{PSF(brokenLimbs), 8}, //up to 8 limbs at once (not that that many are used)
-	{PSF(zoomLocked), 1}, // NOTENOTE Are all of these necessary?
-	{PSF(zoomFov), 0}, // NOTENOTE Are all of these necessary?
-	{PSF(fd.forceRageRecoveryTime), 32},
-	{PSF(fallingToDeath), 32},
-	{PSF(fd.forceMindtrickTargetIndex), 16},
+	{ PSF(generic1), 8 },
+	{ PSF(jumppad_ent), GENTITYNUM_BITS },
+	{ PSF(hasDetPackPlanted), 1 },
+	{ PSF(saberInFlight), 1 },
+	{ PSF(forceDodgeAnim), 16 },
+	{ PSF(zoomMode), 2 }, // NOTENOTE Are all of these necessary?
+	{ PSF(hackingTime), 32 },
+	{ PSF(zoomTime), 32 }, // NOTENOTE Are all of these necessary?
+	{ PSF(brokenLimbs), 8 }, //up to 8 limbs at once (not that that many are used)
+	{ PSF(zoomLocked), 1 }, // NOTENOTE Are all of these necessary?
+	{ PSF(zoomFov), 0 }, // NOTENOTE Are all of these necessary?
+	{ PSF(fd.forceRageRecoveryTime), 32 },
+	{ PSF(fallingToDeath), 32 },
+	{ PSF(fd.forceMindtrickTargetIndex), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
-	{PSF(fd.forceMindtrickTargetIndex2), 16},
+	{ PSF(fd.forceMindtrickTargetIndex2), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
 	//{ PSF(vehWeaponsLinked), 1 },//only used by vehicle?
-	{PSF(lastHitLoc[2]), 0},
+	{ PSF(lastHitLoc[2]), 0 },
 	//{ PSF(hyperSpaceTime), 32 },//only used by vehicle?
-	{PSF(fd.forceMindtrickTargetIndex3), 16},
+	{ PSF(fd.forceMindtrickTargetIndex3), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
-	{PSF(lastHitLoc[0]), 0},
-	{PSF(eFlags2), 10},
-	{PSF(fd.forceMindtrickTargetIndex4), 16},
+	{ PSF(lastHitLoc[0]), 0 },
+	{ PSF(eFlags2), 10 },
+	{ PSF(fd.forceMindtrickTargetIndex4), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
 	//{ PSF(hyperSpaceAngles[1]), 0 },//only used by vehicle?
-	{PSF(lastHitLoc[1]), 0},
+	{ PSF(lastHitLoc[1]), 0 },
 	//currently only used so client knows to orient disruptor disintegration.. seems a bit much for just that though.
 	//{ PSF(vehBoarding), 1 }, //only used by vehicle? not like the normal boarding value, this is a simple "1 or 0" value
-	{PSF(fd.sentryDeployed), 1},
-	{PSF(saberLockTime), 32},
-	{PSF(saberLockFrame), 16},
+	{ PSF(fd.sentryDeployed), 1 },
+	{ PSF(saberLockTime), 32 },
+	{ PSF(saberLockFrame), 16 },
 	//{ PSF(vehTurnaroundIndex), GENTITYNUM_BITS },//only used by vehicle?
 	//{ PSF(vehSurfaces), 16 }, //only used by vehicle? allow up to 16 surfaces in the flag I guess
-	{PSF(fd.forcePowerLevel[FP_SEE]), 2}, //needed for knowing when to display players through walls
-	{PSF(saberLockEnemy), GENTITYNUM_BITS},
-	{PSF(fd.forceGripCripple), 1}, //should only be 0 or 1 ever
-	{PSF(emplacedIndex), GENTITYNUM_BITS},
-	{PSF(holocronBits), 32},
-	{PSF(isJediMaster), 1},
-	{PSF(forceRestricted), 1},
-	{PSF(trueJedi), 1},
-	{PSF(trueNonJedi), 1},
-	{PSF(duelTime), 32},
-	{PSF(duelInProgress), 1},
-	{PSF(saberLockAdvance), 1},
-	{PSF(heldByClient), 6},
-	{PSF(ragAttach), GENTITYNUM_BITS},
-	{PSF(iModelScale), 10},
+	{ PSF(fd.forcePowerLevel[FP_SEE]), 2 }, //needed for knowing when to display players through walls
+	{ PSF(saberLockEnemy), GENTITYNUM_BITS },
+	{ PSF(fd.forceGripCripple), 1 }, //should only be 0 or 1 ever
+	{ PSF(emplacedIndex), GENTITYNUM_BITS },
+	{ PSF(holocronBits), 32 },
+	{ PSF(isJediMaster), 1 },
+	{ PSF(forceRestricted), 1 },
+	{ PSF(trueJedi), 1 },
+	{ PSF(trueNonJedi), 1 },
+	{ PSF(duelTime), 32 },
+	{ PSF(duelInProgress), 1 },
+	{ PSF(saberLockAdvance), 1 },
+	{ PSF(heldByClient), 6 },
+	{ PSF(ragAttach), GENTITYNUM_BITS },
+	{ PSF(iModelScale), 10 },
 	//0-1024 (guess it's gotta be increased if we want larger allowable scale.. but 1024% is pretty big)
-	{PSF(hackingBaseTime), 16}, //up to 65536ms, over 10 seconds would just be silly anyway
+	{ PSF(hackingBaseTime), 16 }, //up to 65536ms, over 10 seconds would just be silly anyway
 	//{ PSF(hyperSpaceAngles[0]), 0 },//only used by vehicle?
 
 	//rww - for use by mod authors only
-	{PSF(userInt1), 1},
-	{PSF(userInt2), 1},
-	{PSF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
-	{PSF(userFloat1), 1},
-	{PSF(userFloat2), 1},
-	{PSF(userFloat3), 1},
-	{PSF(userVec1[0]), 1},
-	{PSF(userVec1[1]), 1},
-	{PSF(userVec1[2]), 1},
-	{PSF(userVec2[0]), 1},
-	{PSF(userVec2[1]), 1},
-	{PSF(userVec2[2]), 1},
+	{ PSF(userInt1), 1 },
+	{ PSF(userInt2), 1 },
+	{ PSF(userInt3), 32 }, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
+	{ PSF(userFloat1), 1 },
+	{ PSF(userFloat2), 1 },
+	{ PSF(userFloat3), 1 },
+	{ PSF(userVec1[0]), 1 },
+	{ PSF(userVec1[1]), 1 },
+	{ PSF(userVec1[2]), 1 },
+	{ PSF(userVec2[0]), 1 },
+	{ PSF(userVec2[1]), 1 },
+	{ PSF(userVec2[2]), 1 },
 
-	{PSF(botclass), 8},
-	{PSF(nextbotclass), 8},
-	{PSF(fd.blockPoints), 16},
-	{PSF(fd.blockPointsMax), 16},
-	{PSF(fd.forceSpeedRecoveryTime), 32},
-	{PSF(fd.forcePowerLevel[FP_SPEED]), 2}, //force long leap needs force speed 3 (bg_pmove, predicted by the client)
-	{PSF(fd.forcePowerDebounce[FP_SPEED]), 32}, //force long leap: force speed must have just started
-	{PSF(PlayerEffectFlags), 16},
+	{ PSF(botclass), 8 },
+	{ PSF(nextbotclass), 8 },
+	{ PSF(fd.blockPoints), 16 },
+	{ PSF(fd.blockPointsMax), 16 },
+	{ PSF(fd.forceSpeedRecoveryTime), 32 },
+	{ PSF(fd.forcePowerLevel[FP_SPEED]), 2 }, //force long leap needs force speed 3 (bg_pmove, predicted by the client)
+	{ PSF(fd.forcePowerDebounce[FP_SPEED]), 32 }, //force long leap: force speed must have just started
+	{ PSF(PlayerEffectFlags), 16 },
 
-	{PSF(ManualBlockingFlags), 32},
-	{PSF(ManualBlockingTime), 32},
-	{PSF(ManualMBlockingTime), 32},
-	{PSF(ManualblockStartTime), 32},
-	{PSF(BoltblockStartTime), 32},
+	{ PSF(ManualBlockingFlags), 32 },
+	{ PSF(ManualBlockingTime), 32 },
+	{ PSF(ManualMBlockingTime), 32 },
+	{ PSF(ManualblockStartTime), 32 },
+	{ PSF(BoltblockStartTime), 32 },
 
-	{PSF(MeleeblockStartTime), 32}, //Blocking 2
-	{PSF(MeleeblockLastStartTime), 32}, //Blocking 3
+	{ PSF(MeleeblockStartTime), 32 }, //Blocking 2
+	{ PSF(MeleeblockLastStartTime), 32 }, //Blocking 3
 
-	{PSF(DodgeStartTime), 32}, //Blocking 2
-	{PSF(DodgeLastStartTime), 32}, //Blocking 3
+	{ PSF(DodgeStartTime), 32 }, //Blocking 2
+	{ PSF(DodgeLastStartTime), 32 }, //Blocking 3
 
-	{PSF(communicatingflags), 32},
-	{PSF(frozenTime), 32 },
+	{ PSF(communicatingflags), 32 },
+	{ PSF(frozenTime), 32 },
 
-	{PSF(respectingtime), 32},
-	{PSF(respectingstartTime), 32},
-	{PSF(respectinglaststartTime), 32},
+	{ PSF(respectingtime), 32 },
+	{ PSF(respectingstartTime), 32 },
+	{ PSF(respectinglaststartTime), 32 },
 
-	{PSF(gesturingtime), 32},
-	{PSF(gesturingstartTime), 32},
-	{PSF(gesturinglaststartTime), 32},
+	{ PSF(gesturingtime), 32 },
+	{ PSF(gesturingstartTime), 32 },
+	{ PSF(gesturinglaststartTime), 32 },
 
-	{PSF(surrendertimeplayer), 32},
-	{PSF(surrenderstartTime), 32},
-	{PSF(surrenderlaststartTime), 32},
+	{ PSF(surrendertimeplayer), 32 },
+	{ PSF(surrenderstartTime), 32 },
+	{ PSF(surrenderlaststartTime), 32 },
 
-	{PSF(dashstartTime), 32},
-	{PSF(dashlaststartTime), 32},
-	{PSF(Dash_Count), 32},
-	{PSF(Dash_BOT_Count), 32 },
+	{ PSF(dashstartTime), 32 },
+	{ PSF(dashlaststartTime), 32 },
+	{ PSF(Dash_Count), 32 },
+	{ PSF(Dash_BOT_Count), 32 },
 
-	{PSF(kickstartTime), 32},
-	{PSF(kicklaststartTime), 32},
+	{ PSF(kickstartTime), 32 },
+	{ PSF(kicklaststartTime), 32 },
 
-	{PSF(cloakCharcgestartTime), 32},
-	{PSF(cloakchargelaststartTime), 32},
+	{ PSF(cloakCharcgestartTime), 32 },
+	{ PSF(cloakchargelaststartTime), 32 },
 
-	{PSF(grappletimeplayer), 32},
-	{PSF(grapplestartTime), 32},
-	{PSF(grapplelaststartTime), 32},
+	{ PSF(grappletimeplayer), 32 },
+	{ PSF(grapplestartTime), 32 },
+	{ PSF(grapplelaststartTime), 32 },
 
-	{PSF(SaberSmashStartTime), 32 },
-	{PSF(SaberSmashLastStartTime), 32 },
-	{PSF(Smash_Count), 32 }
+	{ PSF(SaberSmashStartTime), 32 },
+	{ PSF(SaberSmashLastStartTime), 32 },
+	{ PSF(Smash_Count), 32 }
 };
 
 netField_t pilotPlayerStateFields[] =
 {
-	{PSF(commandTime), 32},
-	{PSF(origin[1]), 0},
-	{PSF(origin[0]), 0},
-	{PSF(viewangles[1]), 0},
-	{PSF(viewangles[0]), 0},
-	{PSF(origin[2]), 0},
-	{PSF(weaponTime), -16},
-	{PSF(delta_angles[1]), 16},
-	{PSF(delta_angles[0]), 16},
-	{PSF(eFlags), 32},
-	{PSF(eventSequence), 16},
-	{PSF(rocketLockIndex), GENTITYNUM_BITS},
-	{PSF(events[0]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
-	{PSF(events[1]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
-	{PSF(weaponstate), 4},
-	{PSF(pm_flags), 32}, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
-	{PSF(pm_time), -16},
-	{PSF(clientNum), GENTITYNUM_BITS},
-	{PSF(weapon), 8},
-	{PSF(delta_angles[2]), 16},
-	{PSF(viewangles[2]), 0},
-	{PSF(externalEvent), 10},
-	{PSF(eventParms[1]), 8},
-	{PSF(pm_type), 8},
-	{PSF(externalEventParm), 8},
-	{PSF(eventParms[0]), -16},
-	{PSF(weaponChargeSubtractTime), 32}, //? really need 32 bits??
-	{PSF(weaponChargeTime), 32}, //? really need 32 bits??
-	{PSF(rocketTargetTime), 32},
-	{PSF(fd.forceJumpZStart), 0},
-	{PSF(rocketLockTime), 32},
-	{PSF(m_iVehicleNum), GENTITYNUM_BITS}, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
-	{PSF(generic1), 8}, //used by passengers
-	{PSF(eFlags2), 10},
+	{ PSF(commandTime), 32 },
+	{ PSF(origin[1]), 0 },
+	{ PSF(origin[0]), 0 },
+	{ PSF(viewangles[1]), 0 },
+	{ PSF(viewangles[0]), 0 },
+	{ PSF(origin[2]), 0 },
+	{ PSF(weaponTime), -16 },
+	{ PSF(delta_angles[1]), 16 },
+	{ PSF(delta_angles[0]), 16 },
+	{ PSF(eFlags), 32 },
+	{ PSF(eventSequence), 16 },
+	{ PSF(rocketLockIndex), GENTITYNUM_BITS },
+	{ PSF(events[0]), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ PSF(events[1]), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ PSF(weaponstate), 4 },
+	{ PSF(pm_flags), 32 }, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
+	{ PSF(pm_time), -16 },
+	{ PSF(clientNum), GENTITYNUM_BITS },
+	{ PSF(weapon), 8 },
+	{ PSF(delta_angles[2]), 16 },
+	{ PSF(viewangles[2]), 0 },
+	{ PSF(externalEvent), 10 },
+	{ PSF(eventParms[1]), 8 },
+	{ PSF(pm_type), 8 },
+	{ PSF(externalEventParm), 8 },
+	{ PSF(eventParms[0]), -16 },
+	{ PSF(weaponChargeSubtractTime), 32 }, //? really need 32 bits??
+	{ PSF(weaponChargeTime), 32 }, //? really need 32 bits??
+	{ PSF(rocketTargetTime), 32 },
+	{ PSF(fd.forceJumpZStart), 0 },
+	{ PSF(rocketLockTime), 32 },
+	{ PSF(m_iVehicleNum), GENTITYNUM_BITS }, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
+	{ PSF(generic1), 8 }, //used by passengers
+	{ PSF(eFlags2), 10 },
 
 	//===THESE SHOULD NOT BE CHANGING OFTEN====================================================================
-	{PSF(legsAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
-	{PSF(torsoAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
-	{PSF(torsoTimer), 16},
-	{PSF(legsTimer), 16},
-	{PSF(jetpackFuel), 8},
-	{PSF(sprintFuel), 8},
-	{PSF(cloakFuel), 8},
-	{PSF(saberCanThrow), 1},
-	{PSF(fd.forcePowerDebounce[FP_LEVITATION]), 32},
-	{PSF(torsoFlip), 1},
-	{PSF(legsFlip), 1},
-	{PSF(fd.forcePowersActive), 32},
-	{PSF(hasDetPackPlanted), 1},
-	{PSF(fd.forceRageRecoveryTime), 32},
-	{PSF(saberInFlight), 1},
-	{PSF(fd.forceMindtrickTargetIndex), 16},
+	{ PSF(legsAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ PSF(torsoAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ PSF(torsoTimer), 16 },
+	{ PSF(legsTimer), 16 },
+	{ PSF(jetpackFuel), 8 },
+	{ PSF(sprintFuel), 8 },
+	{ PSF(cloakFuel), 8 },
+	{ PSF(saberCanThrow), 1 },
+	{ PSF(fd.forcePowerDebounce[FP_LEVITATION]), 32 },
+	{ PSF(torsoFlip), 1 },
+	{ PSF(legsFlip), 1 },
+	{ PSF(fd.forcePowersActive), 32 },
+	{ PSF(hasDetPackPlanted), 1 },
+	{ PSF(fd.forceRageRecoveryTime), 32 },
+	{ PSF(saberInFlight), 1 },
+	{ PSF(fd.forceMindtrickTargetIndex), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
-	{PSF(fd.forceMindtrickTargetIndex2), 16},
+	{ PSF(fd.forceMindtrickTargetIndex2), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
-	{PSF(fd.forceMindtrickTargetIndex3), 16},
+	{ PSF(fd.forceMindtrickTargetIndex3), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
-	{PSF(fd.forceMindtrickTargetIndex4), 16},
+	{ PSF(fd.forceMindtrickTargetIndex4), 16 },
 	//NOTE: Not just an index, used as a (1 << val) bitflag for up to 16 clients
-	{PSF(fd.sentryDeployed), 1},
-	{PSF(fd.forcePowerLevel[FP_SEE]), 2}, //needed for knowing when to display players through walls
-	{PSF(holocronBits), 32},
-	{PSF(fd.forcePower), 8},
+	{ PSF(fd.sentryDeployed), 1 },
+	{ PSF(fd.forcePowerLevel[FP_SEE]), 2 }, //needed for knowing when to display players through walls
+	{ PSF(holocronBits), 32 },
+	{ PSF(fd.forcePower), 8 },
 
 	//===THE REST OF THESE SHOULD NOT BE RELEVANT, BUT, FOR SAFETY, INCLUDE THEM ANYWAY, JUST AT THE BOTTOM===============================================================
-	{PSF(velocity[0]), 0},
-	{PSF(velocity[1]), 0},
-	{PSF(velocity[2]), 0},
-	{PSF(bobCycle), 8},
-	{PSF(speed), 0}, //sadly, the vehicles require negative speed values, so..
-	{PSF(groundEntityNum), GENTITYNUM_BITS},
-	{PSF(viewheight), -8},
-	{PSF(fd.saberAnimLevel), 4},
-	{PSF(fd.saberDrawAnimLevel), 4},
-	{PSF(genericEnemyIndex), 32},
+	{ PSF(velocity[0]), 0 },
+	{ PSF(velocity[1]), 0 },
+	{ PSF(velocity[2]), 0 },
+	{ PSF(bobCycle), 8 },
+	{ PSF(speed), 0 }, //sadly, the vehicles require negative speed values, so..
+	{ PSF(groundEntityNum), GENTITYNUM_BITS },
+	{ PSF(viewheight), -8 },
+	{ PSF(fd.saberAnimLevel), 4 },
+	{ PSF(fd.saberDrawAnimLevel), 4 },
+	{ PSF(genericEnemyIndex), 32 },
 	//NOTE: This isn't just an index all the time, it's often used as a time value, and thus needs 32 bits
-	{PSF(customRGBA[0]), 8}, //0-255
-	{PSF(movementDir), 4},
-	{PSF(saberEntityNum), GENTITYNUM_BITS},
+	{ PSF(customRGBA[0]), 8 }, //0-255
+	{ PSF(movementDir), 4 },
+	{ PSF(saberEntityNum), GENTITYNUM_BITS },
 	//Also used for channel tracker storage, but should never exceed entity number
-	{PSF(customRGBA[3]), 8}, //0-255
-	{PSF(saberMove), 32},
+	{ PSF(customRGBA[3]), 8 }, //0-255
+	{ PSF(saberMove), 32 },
 	//This value sometimes exceeds the max LS_ value and gets set to a crazy amount, so it needs 32 bits
-	{PSF(standheight), 10},
-	{PSF(crouchheight), 10},
-	{PSF(basespeed), -16},
-	{PSF(customRGBA[1]), 8}, //0-255
-	{PSF(duelIndex), GENTITYNUM_BITS},
-	{PSF(customRGBA[2]), 8}, //0-255
-	{PSF(gravity), 16},
-	{PSF(fd.forcePowersKnown), 32},
-	{PSF(fd.forcePowerLevel[FP_LEVITATION]), 2},
+	{ PSF(standheight), 10 },
+	{ PSF(crouchheight), 10 },
+	{ PSF(basespeed), -16 },
+	{ PSF(customRGBA[1]), 8 }, //0-255
+	{ PSF(duelIndex), GENTITYNUM_BITS },
+	{ PSF(customRGBA[2]), 8 }, //0-255
+	{ PSF(gravity), 16 },
+	{ PSF(fd.forcePowersKnown), 32 },
+	{ PSF(fd.forcePowerLevel[FP_LEVITATION]), 2 },
 	//unfortunately we need this for fall damage calculation (client needs to know the distance for the fall noise)
-	{PSF(fd.forcePowerSelected), 8},
-	{PSF(damageYaw), 8},
-	{PSF(damageCount), 8},
-	{PSF(inAirAnim), 1},
+	{ PSF(fd.forcePowerSelected), 8 },
+	{ PSF(damageYaw), 8 },
+	{ PSF(damageCount), 8 },
+	{ PSF(inAirAnim), 1 },
 	//just transmit it for the sake of knowing right when on the client to play a land anim, it's only 1 bit
-	{PSF(fd.forceSide), 2}, //so we know if we should apply greyed out shaders to dark/light force enlightenment
-	{PSF(saberAttackChainCount), 4},
-	{PSF(saberFatigueChainCount), 4},
-	{PSF(BlasterAttackChainCount), 4},
-	{PSF(lookTarget), GENTITYNUM_BITS},
-	{PSF(moveDir[1]), 0},
-	{PSF(moveDir[0]), 0},
-	{PSF(damageEvent), 8},
-	{PSF(moveDir[2]), 0},
-	{PSF(activeForcePass), 6},
-	{PSF(electrifyTime), 32},
-	{PSF(damageType), 2},
-	{PSF(loopSound), 16}, //rwwFIXMEFIXME: max sounds is 256, doesn't this only need to be 8?
-	{PSF(hasLookTarget), 1},
-	{PSF(saberBlocked), 8},
-	{PSF(forceHandExtend), 8},
-	{PSF(saberHolstered), 2},
-	{PSF(damagePitch), 8},
-	{PSF(jumppad_ent), GENTITYNUM_BITS},
-	{PSF(forceDodgeAnim), 16},
-	{PSF(zoomMode), 2}, // NOTENOTE Are all of these necessary?
-	{PSF(hackingTime), 32},
-	{PSF(zoomTime), 32}, // NOTENOTE Are all of these necessary?
-	{PSF(brokenLimbs), 8}, //up to 8 limbs at once (not that that many are used)
-	{PSF(zoomLocked), 1}, // NOTENOTE Are all of these necessary?
-	{PSF(zoomFov), 0}, // NOTENOTE Are all of these necessary?
-	{PSF(fallingToDeath), 32},
-	{PSF(lastHitLoc[2]), 0},
-	{PSF(lastHitLoc[0]), 0},
-	{PSF(lastHitLoc[1]), 0},
+	{ PSF(fd.forceSide), 2 }, //so we know if we should apply greyed out shaders to dark/light force enlightenment
+	{ PSF(saberAttackChainCount), 4 },
+	{ PSF(saberFatigueChainCount), 4 },
+	{ PSF(BlasterAttackChainCount), 4 },
+	{ PSF(lookTarget), GENTITYNUM_BITS },
+	{ PSF(moveDir[1]), 0 },
+	{ PSF(moveDir[0]), 0 },
+	{ PSF(damageEvent), 8 },
+	{ PSF(moveDir[2]), 0 },
+	{ PSF(activeForcePass), 6 },
+	{ PSF(electrifyTime), 32 },
+	{ PSF(damageType), 2 },
+	{ PSF(loopSound), 16 }, //rwwFIXMEFIXME: max sounds is 256, doesn't this only need to be 8?
+	{ PSF(hasLookTarget), 1 },
+	{ PSF(saberBlocked), 8 },
+	{ PSF(forceHandExtend), 8 },
+	{ PSF(saberHolstered), 2 },
+	{ PSF(damagePitch), 8 },
+	{ PSF(jumppad_ent), GENTITYNUM_BITS },
+	{ PSF(forceDodgeAnim), 16 },
+	{ PSF(zoomMode), 2 }, // NOTENOTE Are all of these necessary?
+	{ PSF(hackingTime), 32 },
+	{ PSF(zoomTime), 32 }, // NOTENOTE Are all of these necessary?
+	{ PSF(brokenLimbs), 8 }, //up to 8 limbs at once (not that that many are used)
+	{ PSF(zoomLocked), 1 }, // NOTENOTE Are all of these necessary?
+	{ PSF(zoomFov), 0 }, // NOTENOTE Are all of these necessary?
+	{ PSF(fallingToDeath), 32 },
+	{ PSF(lastHitLoc[2]), 0 },
+	{ PSF(lastHitLoc[0]), 0 },
+	{ PSF(lastHitLoc[1]), 0 },
 	//currently only used so client knows to orient disruptor disintegration.. seems a bit much for just that though.
-	{PSF(saberLockTime), 32},
-	{PSF(saberLockFrame), 16},
-	{PSF(saberLockEnemy), GENTITYNUM_BITS},
-	{PSF(fd.forceGripCripple), 1}, //should only be 0 or 1 ever
-	{PSF(emplacedIndex), GENTITYNUM_BITS},
-	{PSF(isJediMaster), 1},
-	{PSF(forceRestricted), 1},
-	{PSF(trueJedi), 1},
-	{PSF(trueNonJedi), 1},
-	{PSF(duelTime), 32},
-	{PSF(duelInProgress), 1},
-	{PSF(saberLockAdvance), 1},
-	{PSF(heldByClient), 6},
-	{PSF(ragAttach), GENTITYNUM_BITS},
-	{PSF(iModelScale), 10},
+	{ PSF(saberLockTime), 32 },
+	{ PSF(saberLockFrame), 16 },
+	{ PSF(saberLockEnemy), GENTITYNUM_BITS },
+	{ PSF(fd.forceGripCripple), 1 }, //should only be 0 or 1 ever
+	{ PSF(emplacedIndex), GENTITYNUM_BITS },
+	{ PSF(isJediMaster), 1 },
+	{ PSF(forceRestricted), 1 },
+	{ PSF(trueJedi), 1 },
+	{ PSF(trueNonJedi), 1 },
+	{ PSF(duelTime), 32 },
+	{ PSF(duelInProgress), 1 },
+	{ PSF(saberLockAdvance), 1 },
+	{ PSF(heldByClient), 6 },
+	{ PSF(ragAttach), GENTITYNUM_BITS },
+	{ PSF(iModelScale), 10 },
 	//0-1024 (guess it's gotta be increased if we want larger allowable scale.. but 1024% is pretty big)
-	{PSF(hackingBaseTime), 16}, //up to 65536ms, over 10 seconds would just be silly anyway
+	{ PSF(hackingBaseTime), 16 }, //up to 65536ms, over 10 seconds would just be silly anyway
 	//===NEVER SEND THESE, ONLY USED BY VEHICLES==============================================================
 
 	//{ PSF(vehOrientation[0]), 0 },
@@ -1892,212 +1892,212 @@ netField_t pilotPlayerStateFields[] =
 	//{ PSF(hyperSpaceAngles[2]), 0 },//only used by vehicle?
 
 	//rww - for use by mod authors only
-	{PSF(userInt1), 1},
-	{PSF(userInt2), 1},
-	{PSF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
-	{PSF(userFloat1), 1},
-	{PSF(userFloat2), 1},
-	{PSF(userFloat3), 1},
-	{PSF(userVec1[0]), 1},
-	{PSF(userVec1[1]), 1},
-	{PSF(userVec1[2]), 1},
-	{PSF(userVec2[0]), 1},
-	{PSF(userVec2[1]), 1},
-	{PSF(userVec2[2]), 1},
+	{ PSF(userInt1), 1 },
+	{ PSF(userInt2), 1 },
+	{ PSF(userInt3), 32 }, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
+	{ PSF(userFloat1), 1 },
+	{ PSF(userFloat2), 1 },
+	{ PSF(userFloat3), 1 },
+	{ PSF(userVec1[0]), 1 },
+	{ PSF(userVec1[1]), 1 },
+	{ PSF(userVec1[2]), 1 },
+	{ PSF(userVec2[0]), 1 },
+	{ PSF(userVec2[1]), 1 },
+	{ PSF(userVec2[2]), 1 },
 
-	{PSF(botclass), 8},
-	{PSF(nextbotclass), 8},
-	{PSF(fd.blockPoints), 16},
-	{PSF(fd.blockPointsMax), 16},
-	{PSF(fd.forceSpeedRecoveryTime), 32},
-	{PSF(fd.forcePowerLevel[FP_SPEED]), 2}, //force long leap needs force speed 3 (bg_pmove, predicted by the client)
-	{PSF(fd.forcePowerDebounce[FP_SPEED]), 32}, //force long leap: force speed must have just started
-	{PSF(PlayerEffectFlags), 16},
+	{ PSF(botclass), 8 },
+	{ PSF(nextbotclass), 8 },
+	{ PSF(fd.blockPoints), 16 },
+	{ PSF(fd.blockPointsMax), 16 },
+	{ PSF(fd.forceSpeedRecoveryTime), 32 },
+	{ PSF(fd.forcePowerLevel[FP_SPEED]), 2 }, //force long leap needs force speed 3 (bg_pmove, predicted by the client)
+	{ PSF(fd.forcePowerDebounce[FP_SPEED]), 32 }, //force long leap: force speed must have just started
+	{ PSF(PlayerEffectFlags), 16 },
 
-	{PSF(ManualBlockingFlags), 32},
-	{PSF(ManualBlockingTime), 32},
-	{PSF(ManualMBlockingTime), 32},
-	{PSF(ManualblockStartTime), 32},
-	{PSF(BoltblockStartTime), 32},
+	{ PSF(ManualBlockingFlags), 32 },
+	{ PSF(ManualBlockingTime), 32 },
+	{ PSF(ManualMBlockingTime), 32 },
+	{ PSF(ManualblockStartTime), 32 },
+	{ PSF(BoltblockStartTime), 32 },
 
-	{PSF(MeleeblockStartTime), 32}, //Blocking 2
-	{PSF(MeleeblockLastStartTime), 32}, //Blocking 3
+	{ PSF(MeleeblockStartTime), 32 }, //Blocking 2
+	{ PSF(MeleeblockLastStartTime), 32 }, //Blocking 3
 
-	{PSF(DodgeStartTime), 32}, //Blocking 2
-	{PSF(DodgeLastStartTime), 32}, //Blocking 3
+	{ PSF(DodgeStartTime), 32 }, //Blocking 2
+	{ PSF(DodgeLastStartTime), 32 }, //Blocking 3
 
-	{PSF(communicatingflags), 32},
-	{PSF(frozenTime), 32 },
+	{ PSF(communicatingflags), 32 },
+	{ PSF(frozenTime), 32 },
 
-	{PSF(respectingtime), 32},
-	{PSF(respectingstartTime), 32},
-	{PSF(respectinglaststartTime), 32},
+	{ PSF(respectingtime), 32 },
+	{ PSF(respectingstartTime), 32 },
+	{ PSF(respectinglaststartTime), 32 },
 
-	{PSF(gesturingtime), 32},
-	{PSF(gesturingstartTime), 32},
-	{PSF(gesturinglaststartTime), 32},
+	{ PSF(gesturingtime), 32 },
+	{ PSF(gesturingstartTime), 32 },
+	{ PSF(gesturinglaststartTime), 32 },
 
-	{PSF(surrendertimeplayer), 32},
-	{PSF(surrenderstartTime), 32},
-	{PSF(surrenderlaststartTime), 32},
+	{ PSF(surrendertimeplayer), 32 },
+	{ PSF(surrenderstartTime), 32 },
+	{ PSF(surrenderlaststartTime), 32 },
 
-	{PSF(dashstartTime), 32},
-	{PSF(dashlaststartTime), 32},
-	{PSF(Dash_Count), 32},
-	{PSF(Dash_BOT_Count), 32 },
+	{ PSF(dashstartTime), 32 },
+	{ PSF(dashlaststartTime), 32 },
+	{ PSF(Dash_Count), 32 },
+	{ PSF(Dash_BOT_Count), 32 },
 
-	{PSF(kickstartTime), 32},
-	{PSF(kicklaststartTime), 32},
+	{ PSF(kickstartTime), 32 },
+	{ PSF(kicklaststartTime), 32 },
 
-	{PSF(cloakCharcgestartTime), 32},
-	{PSF(cloakchargelaststartTime), 32},
+	{ PSF(cloakCharcgestartTime), 32 },
+	{ PSF(cloakchargelaststartTime), 32 },
 
-	{PSF(grappletimeplayer), 32},
-	{PSF(grapplestartTime), 32},
-	{PSF(grapplelaststartTime), 32},
+	{ PSF(grappletimeplayer), 32 },
+	{ PSF(grapplestartTime), 32 },
+	{ PSF(grapplelaststartTime), 32 },
 
-	{PSF(SaberSmashStartTime), 32 },
-	{PSF(SaberSmashLastStartTime), 32 },
-	{PSF(Smash_Count), 32 }
+	{ PSF(SaberSmashStartTime), 32 },
+	{ PSF(SaberSmashLastStartTime), 32 },
+	{ PSF(Smash_Count), 32 }
 };
 
 netField_t vehPlayerStateFields[] =
 {
-	{PSF(commandTime), 32},
-	{PSF(origin[1]), 0},
-	{PSF(origin[0]), 0},
-	{PSF(viewangles[1]), 0},
-	{PSF(viewangles[0]), 0},
-	{PSF(origin[2]), 0},
-	{PSF(velocity[0]), 0},
-	{PSF(velocity[1]), 0},
-	{PSF(velocity[2]), 0},
-	{PSF(weaponTime), -16},
-	{PSF(delta_angles[1]), 16},
-	{PSF(speed), 0}, //sadly, the vehicles require negative speed values, so..
-	{PSF(legsAnim), 16}, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
-	{PSF(delta_angles[0]), 16},
-	{PSF(groundEntityNum), GENTITYNUM_BITS},
-	{PSF(eFlags), 32},
-	{PSF(eventSequence), 16},
-	{PSF(legsTimer), 16},
-	{PSF(rocketLockIndex), GENTITYNUM_BITS},
+	{ PSF(commandTime), 32 },
+	{ PSF(origin[1]), 0 },
+	{ PSF(origin[0]), 0 },
+	{ PSF(viewangles[1]), 0 },
+	{ PSF(viewangles[0]), 0 },
+	{ PSF(origin[2]), 0 },
+	{ PSF(velocity[0]), 0 },
+	{ PSF(velocity[1]), 0 },
+	{ PSF(velocity[2]), 0 },
+	{ PSF(weaponTime), -16 },
+	{ PSF(delta_angles[1]), 16 },
+	{ PSF(speed), 0 }, //sadly, the vehicles require negative speed values, so..
+	{ PSF(legsAnim), 16 }, // Maximum number of animation sequences is 2048.  Top bit is reserved for the togglebit
+	{ PSF(delta_angles[0]), 16 },
+	{ PSF(groundEntityNum), GENTITYNUM_BITS },
+	{ PSF(eFlags), 32 },
+	{ PSF(eventSequence), 16 },
+	{ PSF(legsTimer), 16 },
+	{ PSF(rocketLockIndex), GENTITYNUM_BITS },
 	//{ PSF(genericEnemyIndex), 32 }, //NOTE: This isn't just an index all the time, it's often used as a time value, and thus needs 32 bits
-	{PSF(events[0]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
-	{PSF(events[1]), 10}, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ PSF(events[0]), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
+	{ PSF(events[1]), 10 }, // There is a maximum of 256 events (8 bits transmission, 2 high bits for uniqueness)
 	//{ PSF(customRGBA[0]), 8 }, //0-255
 	//{ PSF(movementDir), 4 },
 	//{ PSF(customRGBA[3]), 8 }, //0-255
-	{PSF(weaponstate), 4},
+	{ PSF(weaponstate), 4 },
 	//{ PSF(basespeed), -16 },
-	{PSF(pm_flags), 32}, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
-	{PSF(pm_time), -16},
+	{ PSF(pm_flags), 32 }, // all 32 bits: PMF_JUMPING, PMF_DOUBLE_JUMPED... are above 16 (client prediction)
+	{ PSF(pm_time), -16 },
 	//{ PSF(customRGBA[1]), 8 }, //0-255
-	{PSF(clientNum), GENTITYNUM_BITS},
+	{ PSF(clientNum), GENTITYNUM_BITS },
 	//{ PSF(duelIndex), GENTITYNUM_BITS },
 	//{ PSF(customRGBA[2]), 8 }, //0-255
-	{PSF(gravity), 16},
-	{PSF(weapon), 8},
-	{PSF(delta_angles[2]), 16},
-	{PSF(viewangles[2]), 0},
-	{PSF(externalEvent), 10},
-	{PSF(eventParms[1]), 8},
-	{PSF(pm_type), 8},
-	{PSF(externalEventParm), 8},
-	{PSF(eventParms[0]), -16},
-	{PSF(vehOrientation[0]), 0},
-	{PSF(vehOrientation[1]), 0},
-	{PSF(moveDir[1]), 0},
-	{PSF(moveDir[0]), 0},
-	{PSF(vehOrientation[2]), 0},
-	{PSF(moveDir[2]), 0},
-	{PSF(rocketTargetTime), 32},
+	{ PSF(gravity), 16 },
+	{ PSF(weapon), 8 },
+	{ PSF(delta_angles[2]), 16 },
+	{ PSF(viewangles[2]), 0 },
+	{ PSF(externalEvent), 10 },
+	{ PSF(eventParms[1]), 8 },
+	{ PSF(pm_type), 8 },
+	{ PSF(externalEventParm), 8 },
+	{ PSF(eventParms[0]), -16 },
+	{ PSF(vehOrientation[0]), 0 },
+	{ PSF(vehOrientation[1]), 0 },
+	{ PSF(moveDir[1]), 0 },
+	{ PSF(moveDir[0]), 0 },
+	{ PSF(vehOrientation[2]), 0 },
+	{ PSF(moveDir[2]), 0 },
+	{ PSF(rocketTargetTime), 32 },
 	//{ PSF(activeForcePass), 6 },//actually, you only need to know this for other vehicles, not your own
-	{PSF(electrifyTime), 32},
+	{ PSF(electrifyTime), 32 },
 	//{ PSF(fd.forceJumpZStart), 0 },//set on rider by vehicle, but not used by vehicle
-	{PSF(loopSound), 16}, //rwwFIXMEFIXME: max sounds is 256, doesn't this only need to be 8?
-	{PSF(rocketLockTime), 32},
-	{PSF(m_iVehicleNum), GENTITYNUM_BITS}, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
-	{PSF(vehTurnaroundTime), 32},
+	{ PSF(loopSound), 16 }, //rwwFIXMEFIXME: max sounds is 256, doesn't this only need to be 8?
+	{ PSF(rocketLockTime), 32 },
+	{ PSF(m_iVehicleNum), GENTITYNUM_BITS }, // 10 bits fits all possible entity nums (2^10 = 1024). - AReis
+	{ PSF(vehTurnaroundTime), 32 },
 	//{ PSF(generic1), 8 },//used by passengers of vehicles, but not vehicles themselves
-	{PSF(hackingTime), 32},
-	{PSF(brokenLimbs), 8}, //up to 8 limbs at once (not that that many are used)
-	{PSF(vehWeaponsLinked), 1},
-	{PSF(hyperSpaceTime), 32},
-	{PSF(eFlags2), 10},
-	{PSF(hyperSpaceAngles[1]), 0},
-	{PSF(vehBoarding), 1}, //not like the normal boarding value, this is a simple "1 or 0" value
-	{PSF(vehTurnaroundIndex), GENTITYNUM_BITS},
-	{PSF(vehSurfaces), 16}, //allow up to 16 surfaces in the flag I guess
-	{PSF(hyperSpaceAngles[0]), 0},
-	{PSF(hyperSpaceAngles[2]), 0},
+	{ PSF(hackingTime), 32 },
+	{ PSF(brokenLimbs), 8 }, //up to 8 limbs at once (not that that many are used)
+	{ PSF(vehWeaponsLinked), 1 },
+	{ PSF(hyperSpaceTime), 32 },
+	{ PSF(eFlags2), 10 },
+	{ PSF(hyperSpaceAngles[1]), 0 },
+	{ PSF(vehBoarding), 1 }, //not like the normal boarding value, this is a simple "1 or 0" value
+	{ PSF(vehTurnaroundIndex), GENTITYNUM_BITS },
+	{ PSF(vehSurfaces), 16 }, //allow up to 16 surfaces in the flag I guess
+	{ PSF(hyperSpaceAngles[0]), 0 },
+	{ PSF(hyperSpaceAngles[2]), 0 },
 
 	//rww - for use by mod authors only
-	{PSF(userInt1), 1},
-	{PSF(userInt2), 1},
-	{PSF(userInt3), 32}, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
-	{PSF(userFloat1), 1},
-	{PSF(userFloat2), 1},
-	{PSF(userFloat3), 1},
-	{PSF(userVec1[0]), 1},
-	{PSF(userVec1[1]), 1},
-	{PSF(userVec1[2]), 1},
-	{PSF(userVec2[0]), 1},
-	{PSF(userVec2[1]), 1},
-	{PSF(userVec2[2]), 1},
+	{ PSF(userInt1), 1 },
+	{ PSF(userInt2), 1 },
+	{ PSF(userInt3), 32 }, // was 1: the FLAG_* bits (q_shared.h, up to bit 22)
+	{ PSF(userFloat1), 1 },
+	{ PSF(userFloat2), 1 },
+	{ PSF(userFloat3), 1 },
+	{ PSF(userVec1[0]), 1 },
+	{ PSF(userVec1[1]), 1 },
+	{ PSF(userVec1[2]), 1 },
+	{ PSF(userVec2[0]), 1 },
+	{ PSF(userVec2[1]), 1 },
+	{ PSF(userVec2[2]), 1 },
 
-	{PSF(botclass), 8},
-	{PSF(nextbotclass), 8},
-	{PSF(fd.blockPoints), 16},
-	{PSF(fd.blockPointsMax), 16},
-	{PSF(fd.forceSpeedRecoveryTime), 32},
-	{PSF(PlayerEffectFlags), 16},
+	{ PSF(botclass), 8 },
+	{ PSF(nextbotclass), 8 },
+	{ PSF(fd.blockPoints), 16 },
+	{ PSF(fd.blockPointsMax), 16 },
+	{ PSF(fd.forceSpeedRecoveryTime), 32 },
+	{ PSF(PlayerEffectFlags), 16 },
 
-	{PSF(ManualBlockingFlags), 32},
-	{PSF(ManualBlockingTime), 32},
-	{PSF(ManualMBlockingTime), 32},
-	{PSF(ManualblockStartTime), 32},
-	{PSF(BoltblockStartTime), 32},
+	{ PSF(ManualBlockingFlags), 32 },
+	{ PSF(ManualBlockingTime), 32 },
+	{ PSF(ManualMBlockingTime), 32 },
+	{ PSF(ManualblockStartTime), 32 },
+	{ PSF(BoltblockStartTime), 32 },
 
-	{PSF(MeleeblockStartTime), 32}, //Blocking 2
-	{PSF(MeleeblockLastStartTime), 32}, //Blocking 3
+	{ PSF(MeleeblockStartTime), 32 }, //Blocking 2
+	{ PSF(MeleeblockLastStartTime), 32 }, //Blocking 3
 
-	{PSF(DodgeStartTime), 32}, //Blocking 2
-	{PSF(DodgeLastStartTime), 32}, //Blocking 3
+	{ PSF(DodgeStartTime), 32 }, //Blocking 2
+	{ PSF(DodgeLastStartTime), 32 }, //Blocking 3
 
-	{PSF(communicatingflags), 32},
-	{PSF(frozenTime), 32 },
+	{ PSF(communicatingflags), 32 },
+	{ PSF(frozenTime), 32 },
 
-	{PSF(respectingtime), 32},
-	{PSF(respectingstartTime), 32},
-	{PSF(respectinglaststartTime), 32},
+	{ PSF(respectingtime), 32 },
+	{ PSF(respectingstartTime), 32 },
+	{ PSF(respectinglaststartTime), 32 },
 
-	{PSF(gesturingtime), 32},
-	{PSF(gesturingstartTime), 32},
-	{PSF(gesturinglaststartTime), 32},
+	{ PSF(gesturingtime), 32 },
+	{ PSF(gesturingstartTime), 32 },
+	{ PSF(gesturinglaststartTime), 32 },
 
-	{PSF(surrendertimeplayer), 32},
-	{PSF(surrenderstartTime), 32},
-	{PSF(surrenderlaststartTime), 32},
+	{ PSF(surrendertimeplayer), 32 },
+	{ PSF(surrenderstartTime), 32 },
+	{ PSF(surrenderlaststartTime), 32 },
 
-	{PSF(dashstartTime), 32},
-	{PSF(dashlaststartTime), 32},
-	{PSF(Dash_Count), 32},
-	{PSF(Dash_BOT_Count), 32 },
+	{ PSF(dashstartTime), 32 },
+	{ PSF(dashlaststartTime), 32 },
+	{ PSF(Dash_Count), 32 },
+	{ PSF(Dash_BOT_Count), 32 },
 
-	{PSF(kickstartTime), 32},
-	{PSF(kicklaststartTime), 32},
+	{ PSF(kickstartTime), 32 },
+	{ PSF(kicklaststartTime), 32 },
 
-	{PSF(cloakCharcgestartTime), 32},
-	{PSF(cloakchargelaststartTime), 32},
+	{ PSF(cloakCharcgestartTime), 32 },
+	{ PSF(cloakchargelaststartTime), 32 },
 
-	{PSF(grappletimeplayer), 32},
-	{PSF(grapplestartTime), 32},
-	{PSF(grapplelaststartTime), 32},
+	{ PSF(grappletimeplayer), 32 },
+	{ PSF(grapplestartTime), 32 },
+	{ PSF(grapplelaststartTime), 32 },
 
-	{PSF(SaberSmashStartTime), 32 },
-	{PSF(SaberSmashLastStartTime), 32 },
-	{PSF(Smash_Count), 32 }
+	{ PSF(SaberSmashStartTime), 32 },
+	{ PSF(SaberSmashLastStartTime), 32 },
+	{ PSF(Smash_Count), 32 }
 };
 
 //=====_OPTIMIZED_VEHICLE_NETWORKING=======================================================================

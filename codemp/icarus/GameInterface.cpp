@@ -616,7 +616,7 @@ stringID_table_t BSTable[] =
 	ENUM2STRING(BS_INVESTIGATE),
 	ENUM2STRING(BS_HUNT_AND_KILL),
 	ENUM2STRING(BS_FOLLOW_OVERRIDE), //# Follow your leader and shoot any enemies you come across
-	{"", -1}
+	{ "", -1 }
 };
 
 /*

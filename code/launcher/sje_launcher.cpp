@@ -89,12 +89,12 @@ namespace
 		int width;
 		int height;
 	};
-	const Resolution kResolutions[] = { { 0, 0 }, { 1280, 720 }, { 1366, 768 }, { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 },
+	const Resolution kResolutions[] = { { 0, 0 },{ 1280, 720 },{ 1366, 768 },{ 1600, 900 },{ 1920, 1080 },{ 2560, 1440 },
 		{ 3840, 2160 } };
 	// the engine's fixed r_mode list (shared/sdl/sdl_window.cpp r_vidModes, r_mode 0..20)
-	const Resolution kRModes[] = { { 320, 240 }, { 400, 300 }, { 512, 384 }, { 640, 480 }, { 800, 600 }, { 856, 480 },
-		{ 960, 720 }, { 1024, 768 }, { 1152, 864 }, { 1280, 720 }, { 1280, 1024 }, { 1366, 768 }, { 1440, 900 },
-		{ 1600, 900 }, { 1600, 1200 }, { 1680, 1050 }, { 1920, 1080 }, { 2048, 1536 }, { 2400, 600 }, { 2560, 1440 },
+	const Resolution kRModes[] = { { 320, 240 },{ 400, 300 },{ 512, 384 },{ 640, 480 },{ 800, 600 },{ 856, 480 },
+		{ 960, 720 },{ 1024, 768 },{ 1152, 864 },{ 1280, 720 },{ 1280, 1024 },{ 1366, 768 },{ 1440, 900 },
+		{ 1600, 900 },{ 1600, 1200 },{ 1680, 1050 },{ 1920, 1080 },{ 2048, 1536 },{ 2400, 600 },{ 2560, 1440 },
 		{ 3840, 2160 } };
 
 	struct Settings
@@ -778,8 +778,8 @@ namespace
 		const Gdiplus::REAL sy = static_cast<Gdiplus::REAL>(s.top);
 		g.DrawEllipse(&music_pen, sx, sy, 20.0f, 20.0f);
 		const Gdiplus::PointF speaker[] = {
-			{ sx + 4.5f, sy + 8.0f }, { sx + 7.5f, sy + 8.0f }, { sx + 11.0f, sy + 5.0f },
-			{ sx + 11.0f, sy + 15.0f }, { sx + 7.5f, sy + 12.0f }, { sx + 4.5f, sy + 12.0f } };
+			{ sx + 4.5f, sy + 8.0f },{ sx + 7.5f, sy + 8.0f },{ sx + 11.0f, sy + 5.0f },
+			{ sx + 11.0f, sy + 15.0f },{ sx + 7.5f, sy + 12.0f },{ sx + 4.5f, sy + 12.0f } };
 		Gdiplus::Pen thin_pen(g_launcher.hover == kHitMusic ? bright : blue, 1.5f);
 		g.DrawPolygon(&thin_pen, speaker, 6);
 		if (g_launcher.settings.music)

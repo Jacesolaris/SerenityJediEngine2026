@@ -10837,7 +10837,7 @@ static void PM_Footsteps(void)
 							PM_SetAnim(pm, SETANIM_LEGS, BOTH_SABERPULL, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
 						case SS_STAFF:
-							PM_SetAnim(pm, SETANIM_LEGS, BOTH_SABERPULL_ALT,SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
+							PM_SetAnim(pm, SETANIM_LEGS, BOTH_SABERPULL_ALT, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD);
 							break;
 						default:;
 						}
@@ -11279,7 +11279,7 @@ static void PM_Footsteps(void)
 					else if (pm->ps->saberAnimLevel == SS_FAST
 						|| pm->ps->saberAnimLevel == SS_MEDIUM
 						|| pm->ps->saberAnimLevel == SS_STRONG
-						|| pm->ps->saberAnimLevel == SS_DESANN 
+						|| pm->ps->saberAnimLevel == SS_DESANN
 						|| pm->ps->saberAnimLevel == SS_BLASTER // SS_BLASTER (2026-10-14)
 						|| pm->ps->saberAnimLevel == SS_TAVION)
 					{
@@ -11612,8 +11612,8 @@ static void PM_Footsteps(void)
 							}
 						}
 						else if (pm->ps->saberAnimLevel == SS_TAVION ||
-							pm->ps->saberAnimLevel == SS_DESANN || 
-							pm->ps->saberAnimLevel == SS_BLASTER|| // SS_BLASTER (2026-10-14)
+							pm->ps->saberAnimLevel == SS_DESANN ||
+							pm->ps->saberAnimLevel == SS_BLASTER || // SS_BLASTER (2026-10-14)
 							pm->ps->saberAnimLevel == SS_STRONG ||
 							pm->ps->saberAnimLevel == SS_MEDIUM ||
 							pm->ps->saberAnimLevel == SS_FAST)

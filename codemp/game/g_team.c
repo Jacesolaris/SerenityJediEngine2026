@@ -1090,7 +1090,7 @@ static gentity_t* SelectRandomTeamSpawnPoint(const int teamstate, const team_t t
 	char* classname;
 	qboolean mustBeEnabled = qfalse;
 
-	if (level.gametype == GT_SIEGE)
+	if (G_SiegeMissionRules()) // SJE (2026-10-16): also siege missions in Team FFA
 	{
 		if (team == SIEGETEAM_TEAM1)
 		{
@@ -1147,7 +1147,7 @@ static gentity_t* SelectRandomTeamSpawnPoint(const int teamstate, const team_t t
 			break;
 	}
 
-	if (!count && level.gametype != GT_SIEGE && teamstate == TEAM_BEGIN)
+	if (!count && !G_SiegeMissionRules() && teamstate == TEAM_BEGIN)
 	{// Try using other type...
 		count = 0;
 

@@ -1184,8 +1184,8 @@ qboolean sab_beh_block_vs_attack(gentity_t* blocker, gentity_t* attacker, const 
 			}
 			else if ((accurate_parry || npc_blocking)) //Other types and npc,s
 			{
-				if (attacker->client->ps.saberAnimLevel == SS_DESANN || 
-					attacker->client->ps.saberAnimLevel == SS_BLASTER || 
+				if (attacker->client->ps.saberAnimLevel == SS_DESANN ||
+					attacker->client->ps.saberAnimLevel == SS_BLASTER ||
 					attacker->client->ps.saberAnimLevel == SS_STRONG) // SS_BLASTER (2026-10-14)
 				{
 					WP_SaberFatiguedParry(blocker, attacker, saberNum, bladeNum);

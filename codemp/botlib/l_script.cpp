@@ -90,80 +90,80 @@ typedef enum { qfalse, qtrue }	qboolean;
 punctuation_t default_punctuations[] =
 {
 	//binary operators
-	{">>=",P_RSHIFT_ASSIGN, nullptr},
-	{"<<=",P_LSHIFT_ASSIGN, nullptr},
+	{ ">>=",P_RSHIFT_ASSIGN, nullptr },
+	{ "<<=",P_LSHIFT_ASSIGN, nullptr },
 	//
-	{"...",P_PARMS, nullptr},
+	{ "...",P_PARMS, nullptr },
 	//define merge operator
-	{"##",P_PRECOMPMERGE, nullptr},
+	{ "##",P_PRECOMPMERGE, nullptr },
 	//logic operators
-	{"&&",P_LOGIC_AND, nullptr},
-	{"||",P_LOGIC_OR, nullptr},
-	{">=",P_LOGIC_GEQ, nullptr},
-	{"<=",P_LOGIC_LEQ, nullptr},
-	{"==",P_LOGIC_EQ, nullptr},
-	{"!=",P_LOGIC_UNEQ, nullptr},
+	{ "&&",P_LOGIC_AND, nullptr },
+	{ "||",P_LOGIC_OR, nullptr },
+	{ ">=",P_LOGIC_GEQ, nullptr },
+	{ "<=",P_LOGIC_LEQ, nullptr },
+	{ "==",P_LOGIC_EQ, nullptr },
+	{ "!=",P_LOGIC_UNEQ, nullptr },
 	//arithmatic operators
-	{"*=",P_MUL_ASSIGN, nullptr},
-	{"/=",P_DIV_ASSIGN, nullptr},
-	{"%=",P_MOD_ASSIGN, nullptr},
-	{"+=",P_ADD_ASSIGN, nullptr},
-	{"-=",P_SUB_ASSIGN, nullptr},
-	{"++",P_INC, nullptr},
-	{"--",P_DEC, nullptr},
+	{ "*=",P_MUL_ASSIGN, nullptr },
+	{ "/=",P_DIV_ASSIGN, nullptr },
+	{ "%=",P_MOD_ASSIGN, nullptr },
+	{ "+=",P_ADD_ASSIGN, nullptr },
+	{ "-=",P_SUB_ASSIGN, nullptr },
+	{ "++",P_INC, nullptr },
+	{ "--",P_DEC, nullptr },
 	//binary operators
-	{"&=",P_BIN_AND_ASSIGN, nullptr},
-	{"|=",P_BIN_OR_ASSIGN, nullptr},
-	{"^=",P_BIN_XOR_ASSIGN, nullptr},
-	{">>",P_RSHIFT, nullptr},
-	{"<<",P_LSHIFT, nullptr},
+	{ "&=",P_BIN_AND_ASSIGN, nullptr },
+	{ "|=",P_BIN_OR_ASSIGN, nullptr },
+	{ "^=",P_BIN_XOR_ASSIGN, nullptr },
+	{ ">>",P_RSHIFT, nullptr },
+	{ "<<",P_LSHIFT, nullptr },
 	//reference operators
-	{"->",P_POINTERREF, nullptr},
+	{ "->",P_POINTERREF, nullptr },
 	//C++
-	{"::",P_CPP1, nullptr},
-	{".*",P_CPP2, nullptr},
+	{ "::",P_CPP1, nullptr },
+	{ ".*",P_CPP2, nullptr },
 	//arithmatic operators
-	{"*",P_MUL, nullptr},
-	{"/",P_DIV, nullptr},
-	{"%",P_MOD, nullptr},
-	{"+",P_ADD, nullptr},
-	{"-",P_SUB, nullptr},
-	{"=",P_ASSIGN, nullptr},
+	{ "*",P_MUL, nullptr },
+	{ "/",P_DIV, nullptr },
+	{ "%",P_MOD, nullptr },
+	{ "+",P_ADD, nullptr },
+	{ "-",P_SUB, nullptr },
+	{ "=",P_ASSIGN, nullptr },
 	//binary operators
-	{"&",P_BIN_AND, nullptr},
-	{"|",P_BIN_OR, nullptr},
-	{"^",P_BIN_XOR, nullptr},
-	{"~",P_BIN_NOT, nullptr},
+	{ "&",P_BIN_AND, nullptr },
+	{ "|",P_BIN_OR, nullptr },
+	{ "^",P_BIN_XOR, nullptr },
+	{ "~",P_BIN_NOT, nullptr },
 	//logic operators
-	{"!",P_LOGIC_NOT, nullptr},
-	{">",P_LOGIC_GREATER, nullptr},
-	{"<",P_LOGIC_LESS, nullptr},
+	{ "!",P_LOGIC_NOT, nullptr },
+	{ ">",P_LOGIC_GREATER, nullptr },
+	{ "<",P_LOGIC_LESS, nullptr },
 	//reference operator
-	{".",P_REF, nullptr},
+	{ ".",P_REF, nullptr },
 	//seperators
-	{",",P_COMMA, nullptr},
-	{";",P_SEMICOLON, nullptr},
+	{ ",",P_COMMA, nullptr },
+	{ ";",P_SEMICOLON, nullptr },
 	//label indication
-	{":",P_COLON, nullptr},
+	{ ":",P_COLON, nullptr },
 	//if statement
-	{"?",P_QUESTIONMARK, nullptr},
+	{ "?",P_QUESTIONMARK, nullptr },
 	//embracements
-	{"(",P_PARENTHESESOPEN, nullptr},
-	{")",P_PARENTHESESCLOSE, nullptr},
-	{"{",P_BRACEOPEN, nullptr},
-	{"}",P_BRACECLOSE, nullptr},
-	{"[",P_SQBRACKETOPEN, nullptr},
-	{"]",P_SQBRACKETCLOSE, nullptr},
+	{ "(",P_PARENTHESESOPEN, nullptr },
+	{ ")",P_PARENTHESESCLOSE, nullptr },
+	{ "{",P_BRACEOPEN, nullptr },
+	{ "}",P_BRACECLOSE, nullptr },
+	{ "[",P_SQBRACKETOPEN, nullptr },
+	{ "]",P_SQBRACKETCLOSE, nullptr },
 	//
-	{"\\",P_BACKSLASH, nullptr},
+	{ "\\",P_BACKSLASH, nullptr },
 	//precompiler operator
-	{"#",P_PRECOMP, nullptr},
+	{ "#",P_PRECOMP, nullptr },
 #ifdef DOLLAR
-	{"$",P_DOLLAR, nullptr},
+	{ "$",P_DOLLAR, nullptr },
 #endif //DOLLAR
 	// StringEd key
-	{"@",P_ATSIGN, nullptr},
-	{nullptr, 0}
+	{ "@",P_ATSIGN, nullptr },
+	{ nullptr, 0 }
 };
 
 #ifdef BSPC

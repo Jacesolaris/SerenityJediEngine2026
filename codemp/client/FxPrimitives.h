@@ -709,7 +709,7 @@ public:
 	vec3_t mOrg[MAX_CPOLY_VERTS] = { { 0.0f, 0.0f, 0.0f } };
 	vec2_t mST[MAX_CPOLY_VERTS] = { { 0.0f, 0.0f } };
 
-	float mRot[3][3] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
+	float mRot[3][3] = { { 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f, 0.0f } };
 	int mLastFrameTime;
 
 	CPoly()
